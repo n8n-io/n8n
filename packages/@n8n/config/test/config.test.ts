@@ -5,6 +5,7 @@ import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import {
+	AgentsConfig,
 	DEFAULT_CONTENT_SECURITY_POLICY,
 	GlobalConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
@@ -87,6 +88,7 @@ describe('GlobalConfig', () => {
 		},
 		editorBaseUrl: '',
 		webhookUrl: '',
+		agentWebhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -308,6 +310,7 @@ describe('GlobalConfig', () => {
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
+			agentWebhook: 'agent-webhook',
 			disableProductionWebhooksOnMainProcess: false,
 			disableUi: false,
 			form: 'form',
@@ -361,7 +364,7 @@ describe('GlobalConfig', () => {
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
 			assistantAgentEnabled: false,
-			model: 'anthropic/claude-opus-4-8',
+			model: 'anthropic/claude-opus-5-5',
 			modelUrl: '',
 			modelRequestLabels: false,
 			modelApiKey: '',
@@ -762,7 +765,13 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			maxGeneratedFileSizeMb: 50,
+			maxGeneratedFileCount: 100,
+			maxGeneratedTotalMb: 500,
+			maxTotalMb: 1536,
+			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 300,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
@@ -1267,6 +1276,19 @@ describe('GlobalConfig', () => {
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
+	});
+
+	it('falls back to the default for a negative or infinite agent file cap', () => {
+		process.env = {
+			N8N_AGENTS_FILES_MAX_TOTAL_MB: '-1',
+			N8N_AGENTS_FILES_MAX_IMPORT_MB: 'Infinity',
+			N8N_AGENTS_FILES_MAX_GENERATED_COUNT: '20',
+		};
+
+		const config = Container.get(AgentsConfig);
+		expect(config.maxTotalMb).toEqual(1536);
+		expect(config.maxImportMb).toEqual(200);
+		expect(config.maxGeneratedFileCount).toEqual(20);
 	});
 
 	describe('health endpoint transformation', () => {

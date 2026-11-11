@@ -9,18 +9,10 @@ description: >-
   contains postBuildFlow.reason "direct-one-off-build-succeeded". Do not load
   for automations the user will run again — that is the normal build +
   post-build-flow path.
-recommended_tools:
-  - execute_node
-  - get_node_types
-  - workflow_builder_build_workflow
-  - setup_workflow
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - get_execution_node_output
-  - ask_user
-  - workflow_builder_verify_built_workflow
+recommended_tool_groups:
+  - nodes
+  - workflows
+  - executions
 ---
 
 # One-Off Operations
@@ -66,7 +58,7 @@ output items — no workflow to build, set up, verify, or clean up afterwards.
 Direct execution is sufficient when ALL of these hold:
 
 - The effect is one node call (one write, one API operation). A read-back of
-  the destination may be a second `execute` call of a read operation.
+  the destination may be a second `execute_node` run (through `call_tool`) of a read operation.
 - The input items are already at hand — pasted into the chat or read earlier
   in the conversation — so you can pass them literally as `input` items.
   Parameters must not use expressions referencing other nodes; they cannot
@@ -113,12 +105,12 @@ cannot write to external services directly) — the intent changes the
 2. **Setup** is unchanged: if the build outcome requires credential or value
    setup, route it through `setup_workflow` as usual. A one-off
    still needs real credentials before it can run live.
-3. **Run live** with `run_workflow`. The run-approval card is the
+3. **Run live** by running `run_workflow` through `call_tool`. The run-approval card is the
    user's consent gate — for a one-off, the live run IS what the user asked
    for, so the usual "reserve live runs for explicit user requests" rule is
    satisfied by the request itself. Do not run before setup is complete.
 4. **Read back before reporting.** After the run, inspect the actual output of
-   the effect nodes with `get_execution_node_output` — the run
+   the effect nodes by running `get_execution_node_output` through `call_tool` — the run
    result data is truncated and not enough for quantitative claims. Check that
    each write/effect node's input was the intended data (the rows you meant to
    write), not an upstream node's API response. Report only numbers, columns,

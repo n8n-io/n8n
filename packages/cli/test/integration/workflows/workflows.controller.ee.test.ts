@@ -15,6 +15,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type {
 	CredentialsEntity,
+	Person,
 	Project,
 	User,
 	WorkflowEntity,
@@ -32,12 +33,8 @@ import {
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
-import {
-	UnexpectedError,
-	WorkflowActivationError,
-	calculateWorkflowChecksum,
-	type INode,
-} from 'n8n-workflow';
+import { WorkflowActivationError, calculateWorkflowChecksum, type INode } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { ExecuteWorkflow } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
 import { v4 as uuid } from 'uuid';
 
@@ -60,10 +57,10 @@ import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
 
-let owner: User;
-let admin: User;
+let owner: Person;
+let admin: Person;
 let ownerPersonalProject: Project;
-let member: User;
+let member: Person;
 let memberPersonalProject: Project;
 let anotherMember: User;
 let anotherMemberPersonalProject: Project;

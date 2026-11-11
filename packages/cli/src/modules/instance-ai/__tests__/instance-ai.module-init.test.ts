@@ -15,8 +15,10 @@ import { SelfHealingConfigurationService } from '../self-healing/self-healing-co
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provider';
+import { AssistantThreadCreditsService } from '../assistant-agent/assistant-thread-credits.service';
 import { AssistantTurnTracer } from '../assistant-agent/assistant-turn-trace';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
+import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiSetupTelemetryService } from '../instance-ai-setup-telemetry.service';
@@ -68,6 +70,10 @@ vi.mock('../self-healing/self-healing-result.service', () => ({
 }));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../assistant-agent/assistant-agent.provider', () => ({ AssistantAgentProvider: vi.fn() }));
+vi.mock('../assistant-agent/assistant-thread-credits.service', () => ({
+	AssistantThreadCreditsService: vi.fn(),
+}));
+vi.mock('../instance-ai-credit.service', () => ({ InstanceAiCreditService: vi.fn() }));
 vi.mock('@/modules/agents/system-agents/system-agent-registration.service', () => ({
 	SystemAgentRegistrationService: vi.fn(),
 }));
@@ -75,6 +81,7 @@ vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
 }));
 vi.mock('../instance-ai.controller', () => ({}));
+vi.mock('../assistant.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
 vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
@@ -122,6 +129,8 @@ describe('InstanceAiModule.init', () => {
 		mockInstance(InstanceAiEventRelay);
 		const runtime = mockInstance(InstanceAiService);
 		const tracer = mockInstance(AssistantTurnTracer);
+		const credits = mockInstance(InstanceAiCreditService);
+		const threadCredits = mockInstance(AssistantThreadCreditsService);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -141,6 +150,8 @@ describe('InstanceAiModule.init', () => {
 			settings,
 			runtime,
 			tracer,
+			credits,
+			threadCredits,
 		};
 	}
 
@@ -287,7 +298,7 @@ describe('InstanceAiModule.init', () => {
 	});
 
 	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
-		const { config, investigations } = setup();
+		const { config, investigations, credits, threadCredits } = setup();
 		const systemAgents = mockInstance(SystemAgentRegistrationService);
 		systemAgents.register.mockResolvedValue();
 		const provider = mockInstance(AssistantAgentProvider);
@@ -298,11 +309,14 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
 		expect(systemAgents.register).not.toHaveBeenCalled();
+		expect(credits.useAgentThreadCredits).not.toHaveBeenCalled();
 
 		config.assistantAgentEnabled = true;
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 		expect(systemAgents.register).toHaveBeenCalledWith(provider);
+		// Assistant agent threads keep their credit total in the Agents memory.
+		expect(credits.useAgentThreadCredits).toHaveBeenCalledWith(threadCredits);
 
 		eligibleModules = ['instance-ai'];
 		systemAgents.register.mockClear();

@@ -38,7 +38,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
-| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
+| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying, 'awaiting'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | FK_agent_execution_parentExecutionId | FOREIGN KEY | FOREIGN KEY ("parentExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
@@ -128,6 +128,7 @@ erDiagram
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agent_execution_message_links" {

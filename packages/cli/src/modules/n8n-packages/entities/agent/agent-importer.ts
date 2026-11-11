@@ -1,9 +1,8 @@
 import type { AgentIntegrationConfig, ImportedAgentChannel } from '@n8n/api-types';
 import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
@@ -98,6 +97,7 @@ export class AgentImporter {
 		);
 		plan.skills = skillPlan.plan;
 		plan.issues.push(...skillPlan.issues);
+		for (const item of plan.items) useSkillCopies(item, skillPlan.copyIds);
 		return plan;
 	}
 
@@ -154,7 +154,6 @@ export class AgentImporter {
 			requiredAgentScopes(plan),
 		);
 		if (plan.skills) await this.skillImporter.applyShared(context.user, plan.skills);
-		const raisedRevisions = plan.skills?.raisedRevisions ?? new Map<string, number>();
 		for (const item of plan.items) {
 			if (item.action === 'skip') {
 				outcomes.push({
@@ -191,9 +190,8 @@ export class AgentImporter {
 					context.user,
 					{
 						...options,
-						// The shared skill writes of this package raised the revision of the Agents that follow them.
-						expectedRevision:
-							item.existing.revision + (raisedRevisions.get(item.sourceAgentId) ?? 0),
+						// Shared skill writes do not change the revision of the Agents that follow them.
+						expectedRevision: item.existing.revision,
 					},
 				);
 			}
@@ -297,6 +295,15 @@ function withImportedChannels<T extends PreparedAgent & { channels: ImportedChan
 	if (!item.config || !source) return item;
 	const { integrations, channels } = resolveImportedChannels(destination, source);
 	return { ...item, config: { ...item.config, integrations }, channels };
+}
+
+/** Points the skill refs of the Agent to the copies that the import uses. */
+function useSkillCopies(item: AgentPlanItem, copyIds: Map<string, string>): void {
+	if (!item.config?.skills) return;
+	item.config.skills = item.config.skills.map((ref) => ({
+		...ref,
+		id: copyIds.get(ref.id) ?? ref.id,
+	}));
 }
 
 function completeDefinition(item: PreparedAgent): CompleteAgentDefinition {

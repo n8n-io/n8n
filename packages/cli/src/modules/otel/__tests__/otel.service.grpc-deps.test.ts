@@ -4,12 +4,14 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 // Only the gRPC exporter is mocked, so grpc-js and the OTLP/HTTP exporter stay real:
 // their option and metadata rules are stricter than any stand-in, and warn-and-skip
@@ -57,6 +59,8 @@ describe('OtelService with real gRPC dependencies', () => {
 			mock<OtelSdk>(),
 			mock<ModuleRegistry>(),
 			mock<Publisher>(),
+			mock<ExternalHooks>(),
+			mock<OtelConfigureHook>(),
 		);
 	});
 

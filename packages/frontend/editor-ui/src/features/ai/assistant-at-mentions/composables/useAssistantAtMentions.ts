@@ -30,6 +30,22 @@ function findLastMentionTriggerIndex(text: string): number {
 	return -1;
 }
 
+/** True at the start of the text or after whitespace. */
+function isMentionBoundary(text: string, triggerIndex: number): boolean {
+	return triggerIndex === 0 || /\s/.test(text[triggerIndex - 1] ?? '');
+}
+
+/**
+ * Remove a typed trigger and its query. Also remove one following space when
+ * the trigger starts the text or follows whitespace. That space would stay
+ * in the draft.
+ */
+function textWithoutTypedRange(text: string, range: MentionRange): string {
+	const end =
+		isMentionBoundary(text, range.start) && text[range.end] === ' ' ? range.end + 1 : range.end;
+	return text.slice(0, range.start) + text.slice(end);
+}
+
 export function useAssistantAtMentions(options: {
 	text: Ref<string>;
 	enabled: MaybeRefOrGetter<boolean>;
@@ -131,10 +147,9 @@ export function useAssistantAtMentions(options: {
 		savedSelection.value = { start: caret, end: caret };
 		const valueBeforeCaret = value.slice(0, caret);
 		const possibleTriggerIndex = findLastMentionTriggerIndex(valueBeforeCaret);
-		const triggerIndex =
-			possibleTriggerIndex === 0 || /\s/.test(valueBeforeCaret[possibleTriggerIndex - 1] ?? '')
-				? possibleTriggerIndex
-				: -1;
+		const triggerIndex = isMentionBoundary(valueBeforeCaret, possibleTriggerIndex)
+			? possibleTriggerIndex
+			: -1;
 		const range = activeRange.value;
 		if (triggerIndex >= 0 && (!range || range.origin !== 'typed' || range.start !== triggerIndex)) {
 			if (dismissedTypedTriggerIndex.value === triggerIndex && !range) return;
@@ -174,20 +189,30 @@ export function useAssistantAtMentions(options: {
 		}
 	}
 
-	async function replaceActiveRange(label: string): Promise<void> {
+	/**
+	 * A typed pick removes the `@` query. A button pick leaves the draft unchanged.
+	 */
+	async function clearActiveRange(): Promise<void> {
 		const range = activeRange.value;
-		const start = range?.start ?? savedSelection.value.start;
-		const end = range?.end ?? savedSelection.value.end;
-		const insertedText = `"${label}"`;
-		updateText(options.text.value.slice(0, start) + insertedText + options.text.value.slice(end));
+		const typed = range?.origin === 'typed';
+		if (typed && range) {
+			updateText(textWithoutTypedRange(options.text.value, range));
+		}
 		close(false, 'selected');
 
 		await nextTick();
-		const caret = start + insertedText.length;
 		const input = options.getInputElement();
 		input?.focus({ preventScroll: true });
-		input?.setSelectionRange(caret, caret);
-		savedSelection.value = { start: caret, end: caret };
+		if (typed && range) {
+			input?.setSelectionRange(range.start, range.start);
+			savedSelection.value = { start: range.start, end: range.start };
+			return;
+		}
+
+		const start = range?.start ?? savedSelection.value.start;
+		const end = range?.end ?? savedSelection.value.end;
+		input?.setSelectionRange(start, end);
+		savedSelection.value = { start, end };
 	}
 
 	/**
@@ -208,7 +233,7 @@ export function useAssistantAtMentions(options: {
 			return false;
 		}
 
-		updateText(text.slice(0, range.start) + text.slice(range.end));
+		updateText(textWithoutTypedRange(text, range));
 		close();
 		void nextTick(() => {
 			const input = options.getInputElement();
@@ -252,7 +277,7 @@ export function useAssistantAtMentions(options: {
 		handleTextChange,
 		handleCaretMove,
 		handleMenuOpenChange,
-		replaceActiveRange,
+		clearActiveRange,
 		close,
 	};
 }

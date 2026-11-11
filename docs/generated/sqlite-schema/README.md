@@ -9,11 +9,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 25 |  | table |
+| [agent_background_job](agent_background_job.md) | 26 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
-| [agent_chat_attachments](agent_chat_attachments.md) | 13 |  | table |
+| [agent_chat_attachments](agent_chat_attachments.md) | 14 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 7 |  | table |
 | [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
@@ -54,7 +54,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 10 |  | table |
+| [app_version](app_version.md) | 12 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -135,11 +135,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_configuration](self_healing_configuration.md) | 8 |  | table |
+| [self_healing_configuration](self_healing_configuration.md) | 9 |  | table |
 | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) | 2 |  | table |
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
 | [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
-| [self_healing_result](self_healing_result.md) | 16 |  | table |
+| [self_healing_result](self_healing_result.md) | 14 |  | table |
 | [service_account_details](service_account_details.md) | 4 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
@@ -181,7 +181,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
-| [workflow_suggestion](workflow_suggestion.md) | 16 |  | table |
+| [workflow_suggestion](workflow_suggestion.md) | 17 |  | table |
 | [workflow_suggestion_activity](workflow_suggestion_activity.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -209,8 +209,8 @@ erDiagram
 "agent_eval_result" }o--|| "agent_eval_run" : "FOREIGN KEY (runId) REFERENCES agent_eval_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -272,9 +272,9 @@ erDiagram
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -395,12 +395,10 @@ erDiagram
 "self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_investigation" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_investigation" }o--o| "self_healing_result" : "FOREIGN KEY (resultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--|| "self_healing_configuration" : "FOREIGN KEY (configurationId) REFERENCES self_healing_configuration (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "service_account_details" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -466,9 +464,10 @@ erDiagram
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_suggestion" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_suggestion" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "self_healing_result" : "FOREIGN KEY (selfHealingResultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion_activity" }o--o| "user" : "FOREIGN KEY (actorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_suggestion_activity" }o--|| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -512,6 +511,7 @@ erDiagram
   datetime_3_ timeoutAt
   varchar_255_ title
   datetime_3_ updatedAt
+  varchar wakeAttemptId
   varchar_36_ workflowId
 }
 "agent_budget_applied_call" {
@@ -540,6 +540,7 @@ erDiagram
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
+  VARCHAR_64_ contentHash
   datetime_3_ createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName
@@ -631,7 +632,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  BOOLEAN acceptsSteering
+  boolean acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens
@@ -642,8 +643,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
-  VARCHAR_32_ finishReason
-  VARCHAR_64_ guardrailCode
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -984,11 +985,13 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK
@@ -1777,6 +1780,7 @@ erDiagram
   varchar enabledById FK
   INTEGER id
   BOOLEAN includeAllProjectMembers
+  BOOLEAN includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
@@ -1810,14 +1814,12 @@ erDiagram
   datetime_3_ completedAt
   INTEGER configurationId FK
   datetime_3_ createdAt
-  datetime_3_ dismissedAt
-  varchar dismissedById FK
   varchar_36_ executionId
   varchar_36_ id PK
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage
@@ -2246,6 +2248,7 @@ erDiagram
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

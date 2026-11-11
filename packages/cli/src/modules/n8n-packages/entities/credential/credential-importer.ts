@@ -2,11 +2,11 @@ import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { NotFoundError, UnprocessableRequestError, UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { CredentialDataError } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialsService } from '@/credentials/credentials.service';

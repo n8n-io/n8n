@@ -1,8 +1,13 @@
 operationId: promoteProjectSelection
 tags:
   - Promotions
-summary: Promote a selection of a project's workflows
-description: Promotes a chosen set of a team project's workflows to the branch of the project's Promote environment. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables.
+summary: "Beta: Promote a selection of a project's workflows and folders"
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables.
+
+  Requires the `promotions:promote` API key scope.
 x-required-scope: promotions:promote
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -13,7 +18,6 @@ parameters:
     name: projectId
     in: path
 requestBody:
-  required: true
   content:
     application/json:
       schema:
@@ -25,14 +29,18 @@ requestBody:
               type: string
               minLength: 1
               maxLength: 36
-            minItems: 1
+          folderIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
+            description: Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.
           commitMessage:
             type: string
             minLength: 1
             maxLength: 1000
             description: Message for the promotion commit. If you omit it, the commit uses a generated message.
-        required:
-          - workflowIds
         additionalProperties: false
 responses:
   '200':

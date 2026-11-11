@@ -9,8 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-policy:
+    uses: ./.github/workflows/ci-pr-policy-reusable.yml
+
   install-and-build:
     name: Install & Build
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
@@ -40,10 +45,11 @@ jobs:
           || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
-      lint_base: ${{ steps.lint-base.outputs.sha }}
+      affected_base: ${{ steps.affected-base.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
+      lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
@@ -58,11 +64,11 @@ jobs:
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # Lint compares the checked-out commit against this base. On a PR it is the
-      # first parent of the merge commit. A merge group can hold more than one PR,
-      # so it uses the queue base.
-      - name: Resolve lint base
-        id: lint-base
+      # Lint and typecheck compare the checked-out commit against this base. On a
+      # PR it is the first parent of the merge commit. A merge group can hold more
+      # than one PR, so it uses the queue base.
+      - name: Resolve affected base
+        id: affected-base
         env:
           MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
@@ -148,6 +154,7 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               .github/workflows/ci-pull-requests.yml
+              .github/workflows/ci-pr-policy-reusable.yml
               .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
@@ -266,27 +273,38 @@ jobs:
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
-      # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
-      # full Postgres range, so every merge still gates on the older majors.
+      # PRs and the merge queue run SQLite plus the primary Postgres leg.
+      # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
+      # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
         if: fromJSON(steps.ci-filter.outputs.results).db
         env:
-          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
+          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'queue' || 'pr' }}
+          CLI_INTEGRATION_RUNS: ${{ fromJSON(steps.ci-filter.outputs.results).unit }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE" --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
-          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          JANITOR=packages/quality/testing/janitor/dist/cli.js
+          # Without a built janitor (a workflow-only PR skips the build), report no
+          # signal: every package then treats a lockfile change as a full run.
+          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE" || echo ALL)
+          echo "Lockfile impact: $LOCKFILE_IMPACT"
+          echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"
+          PACKAGES=$(LOCKFILE_IMPACTED_PACKAGES="$LOCKFILE_IMPACT" node "$JANITOR" affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
   format-check:
     name: Format check
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
@@ -305,9 +323,13 @@ jobs:
             pnpm-lock.yaml
             package.json
 
+      - name: Check dependency policy
+        run: pnpm check:dependencies
+
       - name: Run format check
         run: pnpm format:check
 
+  # The merge queue runs the affected tests to catch conflicts between queued PRs.
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.unit == 'true'
@@ -319,6 +341,8 @@ jobs:
       testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
+      fullCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
@@ -330,17 +354,30 @@ jobs:
       # Inherited by every worker turbo spawns, so the real budget is
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
       NODE_OPTIONS: --max-old-space-size=6144
+      # Read by `turbo --affected`. If the base is missing, turbo checks every package.
+      TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+      TURBO_SCM_HEAD: HEAD
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      # Turbo needs the history back to the base to find the merge base.
+      - name: Fetch history back to the affected base
+        if: env.TURBO_SCM_BASE != ''
+        run: |
+          for depth in 2 10 50 200; do
+            git merge-base --is-ancestor "$TURBO_SCM_BASE" HEAD 2>/dev/null && exit 0
+            git fetch --no-tags --quiet --depth="$depth" origin "$(git rev-parse HEAD)" || break
+          done
+          git merge-base --is-ancestor "$TURBO_SCM_BASE" HEAD || echo "::warning::Base $TURBO_SCM_BASE is not reachable. Typecheck runs on all packages."
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           # turbo directly, not the root `typecheck` script, to keep the
           # concurrency bound CI-only.
-          build-command: pnpm turbo typecheck --concurrency=2
+          build-command: pnpm turbo typecheck --concurrency=2${{ needs.install-and-build.outputs.affected_base != '' && ' --affected' || '' }}
 
   lint:
     name: Lint
@@ -349,7 +386,7 @@ jobs:
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      affectedBase: ${{ needs.install-and-build.outputs.lint_base }}
+      affectedBase: ${{ needs.install-and-build.outputs.affected_base }}
 
   check-packaging:
     name: Check packaging
@@ -516,6 +553,7 @@ jobs:
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
       changed-files: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfile-impacted-packages: ${{ needs.install-and-build.outputs.lockfile_impact }}
 
   e2e-performance:
     name: E2E Performance
@@ -585,6 +623,7 @@ jobs:
     name: Required Checks
     needs:
       [
+        pr-policy,
         install-and-build,
         format-check,
         unit-test,
@@ -604,15 +643,21 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+      - name: Checkout CI filter
+        if: needs.pr-policy.outputs.skip-ci != 'true'
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
       - name: Validate required checks
+        if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+      - name: Pass automated release PR
+        if: needs.pr-policy.outputs.skip-ci == 'true'
+        run: echo 'CI is not required for automated release PRs.'
 
   # A red `chore: Bundle/*` PR blocks publishing every fix batched into it, so the
   # failure is announced instead of waiting to be noticed. Only fires in n8n-private,

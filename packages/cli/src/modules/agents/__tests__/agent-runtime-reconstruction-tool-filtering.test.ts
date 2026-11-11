@@ -29,8 +29,11 @@ import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -50,13 +53,12 @@ import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-
 import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
-import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -172,7 +174,7 @@ function makeService(overrides: {
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<AgentFileRepository>(),
+		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		workflowRepository,
 		mock<N8NCheckpointStorage>(),
@@ -192,6 +194,7 @@ function makeService(overrides: {
 		credentialsService,
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 
 	return {
@@ -206,7 +209,7 @@ function makeService(overrides: {
 /** Routes every tool ref through `resolveTool`, as the real `buildFromJson` does. */
 function buildFromJsonResolvingTools(resolved: Array<agents.BuiltTool | null | undefined>) {
 	// The workflow tool context is assembled from the container.
-	Container.set(WorkflowToolWorkflowLoader, mock<WorkflowToolWorkflowLoader>());
+	Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
 	Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	Container.set(SubworkflowPolicyChecker, mock<SubworkflowPolicyChecker>());
 	buildFromJsonMock.mockImplementationOnce(
@@ -328,6 +331,23 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				publishedN8nChat: true,
 			}),
 		);
+	});
+
+	it('uses the AI Gateway token refresh fetch of the credential provider for models', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+		const credentialProvider = new AgentsCredentialProvider(mock<CredentialsService>(), projectId);
+		const refreshFetch = vi.fn<typeof fetch>();
+		vi.spyOn(credentialProvider, 'createAiGatewayTokenRefreshFetch').mockReturnValue(refreshFetch);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity([]), credentialProvider, 'test');
+
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			unknown,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		expect(options.modelFetch).toBe(refreshFetch);
 	});
 
 	it('forwards the preview marker to workflow tools', async () => {
@@ -630,7 +650,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
 		const { service } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(
-			new WorkflowToolUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
+			new CallableWorkflowUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
 		);
 		const resolved: Array<agents.BuiltTool | null | undefined> = [];
 		buildFromJsonResolvingTools(resolved);

@@ -9,8 +9,8 @@ import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 @Index(['workflowId', 'executionId'], { unique: true })
 @Index(['workflowId'], { unique: true, where: '"finishedAt" IS NULL' })
 @Index(['resultId'], { unique: true, where: '"resultId" IS NOT NULL' })
+@Index(['configurationId', 'createdAt'])
 export class SelfHealingInvestigation extends WithTimestampsAndStringId {
-	@Index()
 	@Column({ type: 'int' })
 	configurationId: number;
 

@@ -136,6 +136,7 @@ erDiagram
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agent_channel_status" {
@@ -154,6 +155,7 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName

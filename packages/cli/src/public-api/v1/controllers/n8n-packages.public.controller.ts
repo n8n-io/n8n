@@ -21,9 +21,8 @@ import {
 	PublicApiController,
 	type BinaryResult,
 } from '@n8n/decorators';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 
 import {
 	PackageEntityAccessDeniedError,
@@ -257,7 +256,7 @@ export class N8nPackagesPublicController {
 				dependencyPolicy: body.dependencyPolicy,
 				versionPolicy: body.versionPolicy,
 				credentialExportPolicy: body.credentialExportPolicy,
-				includeArchivedWorkflows: body.includeArchivedWorkflows,
+				includeArchived: body.includeArchived,
 			});
 		} catch (error) {
 			this.eventService.emit('n8n-package-export-failed', {

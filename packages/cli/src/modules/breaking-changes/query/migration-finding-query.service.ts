@@ -53,7 +53,10 @@ const workflowFilter = (scope: ReportScope) =>
 	scope.kind === 'workflows' ? scope.workflowIds : undefined;
 
 /** The rule fields both report types share. */
-type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+/** What n8n Assistant can do with a rule's findings. A rule that does not opt in offers none. */
+const assistantActionOf = (rule: WorkflowLevelRule) => rule.getMetadata().assistant ?? 'none';
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
@@ -107,7 +110,7 @@ export class MigrationFindingQueryService {
 			this.findingRepository.countWontFixByRule(targetVersion, filter, {}),
 			this.findingRepository.countDistinctUnresolvedWorkflows(targetVersion, filter, {}),
 			this.syncRepository.getForVersion(targetVersion, {}),
-			scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
+			this.workflowRepository.countUnarchived(filter),
 			// Instance rules read config and environment, not workflows, so they stay live.
 			// They describe the instance, so only the instance scope sees them.
 			scope.kind === 'instance'
@@ -189,6 +192,7 @@ export class MigrationFindingQueryService {
 				id: finding.workflowId,
 				name: finding.workflow.name,
 				active: !!finding.workflow.activeVersionId,
+				isArchived: finding.workflow.isArchived,
 				lastUpdatedAt: finding.workflow.updatedAt,
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
@@ -202,7 +206,59 @@ export class MigrationFindingQueryService {
 			});
 		}
 
-		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+		return {
+			...(await this.describeRule(rule, affectedWorkflows)),
+			affectedWorkflows,
+			assistantAction: assistantActionOf(rule),
+		};
+	}
+
+	/**
+	 * One finding for a hand-off to n8n Assistant: the rule and the workflow's current issues.
+	 * Undefined unless the rule targets this version, checks one workflow at a time and offers
+	 * the Assistant. The caller loads the workflow and checks access.
+	 */
+	async describeWorkflowFinding(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflow: WorkflowEntity,
+	): Promise<
+		| {
+				rule: RuleDescription;
+				issues: BreakingChangeWorkflowIssue[];
+				assistantAction: 'fix' | 'review';
+				/** The draft is clean, but the published version still has the issue. */
+				unpublishedFix: boolean;
+		  }
+		| undefined
+	> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule || !('detectWorkflow' in rule) || rule.getMetadata().version !== targetVersion) {
+			return undefined;
+		}
+		const assistantAction = assistantActionOf(rule);
+		if (assistantAction === 'none') return undefined;
+
+		// A rule that throws leaves the workflow out of the map: that is not a clean draft.
+		const draftIssues = (await this.issuesFromRecheck(rule, [workflow])).get(workflow.id);
+		const issues = draftIssues ?? [];
+		const unpublishedFix =
+			draftIssues?.length === 0 && (await this.publishedVersionHasIssues(rule, workflow));
+
+		return { rule: await this.describeRule(rule), issues, assistantAction, unpublishedFix };
+	}
+
+	/** Whether the published version, when the draft is ahead of it, still breaks the rule. */
+	private async publishedVersionHasIssues(
+		rule: IBreakingChangeWorkflowRule,
+		workflow: WorkflowEntity,
+	): Promise<boolean> {
+		const nodes = (await this.breakingChangeService.loadPublishedNodes([workflow])).get(
+			workflow.id,
+		);
+		if (!nodes) return false;
+		const issues = await this.issuesFromRecheck(rule, [{ ...workflow, nodes }]);
+		return (issues.get(workflow.id) ?? []).length > 0;
 	}
 
 	private async describeRule(
