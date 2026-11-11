@@ -6,7 +6,6 @@ import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { AgentVersionMetadataModalData } from '../components/AgentVersionMetadataModal.vue';
 import type { AgentResource } from '../types';
-import type { AgentVersion } from '../agent.types';
 
 const trackMock = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -95,12 +94,7 @@ const STUBS = {
 	},
 };
 
-const activeVersion: AgentVersion = {
-	versionId: 'v1',
-	schema: null,
-	skills: null,
-	author: 'Test User',
-};
+const activeVersion = { versionId: 'v1', integrations: [] };
 
 function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	return {
@@ -108,13 +102,22 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		id: 'agent-1',
 		name: 'My Agent',
 		projectId: 'project-1',
-		isCompiled: false,
+		project: null,
+		availableInMCP: false,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
 		activeVersionId: null,
+		config: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
+		isRunnable: false,
+		hasPublishHistory: false,
+		hasVersionHistory: false,
 		activeVersion: null,
 		...overrides,
 	};

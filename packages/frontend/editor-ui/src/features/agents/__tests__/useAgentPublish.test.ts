@@ -128,7 +128,7 @@ describe('useAgentPublish', () => {
 			n8nChatFlag.value = flag;
 			publishAgentMock.mockResolvedValueOnce({
 				...agentResource,
-				activeVersion: { versionId: 'v2', schema: { integrations }, skills: null, author: '' },
+				activeVersion: { versionId: 'v2', integrations },
 			});
 			const { publish } = useAgentPublish();
 

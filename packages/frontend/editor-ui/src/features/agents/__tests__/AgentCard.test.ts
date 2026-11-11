@@ -2,8 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
-import type { AgentResource } from '../types';
-import type { AgentVersion } from '../agent.types';
+import type { AgentListItem } from '../agent.types';
 
 const { deleteAgentMock, openAgentConfirmationModalMock } = vi.hoisted(() => ({
 	deleteAgentMock: vi.fn().mockResolvedValue(undefined),
@@ -116,32 +115,24 @@ const STUBS = {
 	TimeAgo: { template: '<span />' },
 };
 
-const activeVersion: AgentVersion = {
-	versionId: 'v1',
-	schema: null,
-	skills: null,
-	author: 'Test User',
-};
-
-function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
+function createAgent(overrides: Partial<AgentListItem> = {}): AgentListItem {
 	return {
-		resourceType: 'agent',
 		id: 'agent-1',
 		name: 'My Agent',
 		projectId: 'project-1',
-		isCompiled: false,
+		project: null,
+		availableInMCP: false,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
 		activeVersionId: null,
-		tools: {},
-		skills: {},
-		activeVersion: null,
+		personalisation: null,
+		hasConfig: false,
 		...overrides,
 	};
 }
 
-async function renderComponent(agent: AgentResource = createAgent()) {
+async function renderComponent(agent: AgentListItem = createAgent()) {
 	const { default: AgentCard } = await import('../components/AgentCard.vue');
 	return mount(AgentCard, {
 		props: { agent, projectId: 'project-1' },
@@ -229,7 +220,7 @@ describe('AgentCard', () => {
 	});
 
 	it('shows Unpublish + Delete on a published agent with full scopes', async () => {
-		const wrapper = await renderComponent(createAgent({ activeVersionId: 'v1', activeVersion }));
+		const wrapper = await renderComponent(createAgent({ activeVersionId: 'v1' }));
 
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
@@ -363,7 +354,7 @@ describe('AgentCard', () => {
 
 		it('shows Published with a success dot when the draft matches the published version', async () => {
 			const wrapper = await renderComponent(
-				createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
+				createAgent({ versionId: 'v1', activeVersionId: 'v1' }),
 			);
 
 			const indicator = findIndicator(wrapper);
@@ -374,7 +365,7 @@ describe('AgentCard', () => {
 
 		it('shows Changes to publish with a warning dot when the draft differs from the published version', async () => {
 			const wrapper = await renderComponent(
-				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+				createAgent({ versionId: 'v2', activeVersionId: 'v1' }),
 			);
 
 			const indicator = findIndicator(wrapper);
@@ -385,11 +376,11 @@ describe('AgentCard', () => {
 
 		it('returns to Published after the agent is republished', async () => {
 			const wrapper = await renderComponent(
-				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+				createAgent({ versionId: 'v2', activeVersionId: 'v1' }),
 			);
 
 			await wrapper.setProps({
-				agent: createAgent({ versionId: 'v2', activeVersionId: 'v2', activeVersion }),
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v2' }),
 			});
 
 			const indicator = findIndicator(wrapper);

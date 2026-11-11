@@ -6,6 +6,7 @@ import { LockedError } from '@n8n/errors';
 
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
+import { AgentResponseMapper } from '../agent-response.mapper';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -36,7 +37,7 @@ function makeController({
 	return {
 		controller: new AgentPublishController(
 			agentPublishService,
-			agentRunnableStateService,
+			new AgentResponseMapper(agentRunnableStateService),
 			collaborationService,
 		),
 		agentPublishService,
@@ -126,8 +127,10 @@ describe('AgentPublishController revert to version', () => {
 			expect.objectContaining({
 				id: 'agent-1',
 				isRunnable: true,
+				config: null,
 			}),
 		);
+		expect(result).not.toHaveProperty('schema');
 	});
 
 	it('validates the write lock before reverting to a version', async () => {

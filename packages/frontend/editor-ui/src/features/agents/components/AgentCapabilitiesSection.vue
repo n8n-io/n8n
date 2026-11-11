@@ -508,12 +508,12 @@ async function openSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name, schema }) => {
+			agents: availableSubAgents.value.map(({ id, name, personalisation }) => {
 				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
 				return {
 					id,
 					name,
-					personalisation: schema?.personalisation,
+					personalisation: personalisation ?? undefined,
 					added: Boolean(selectedRef),
 					useWhen: selectedRef?.useWhen,
 					invalidReasons: subAgentIssueMessages.value.get(id) ?? [],

@@ -6,7 +6,7 @@ import {
 	getAgent,
 	type ListAgentsOptions,
 } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentListItem } from '@/features/agents/agent.types';
 
 const PAGE_SIZE = 40;
 
@@ -41,16 +41,16 @@ export function useAgentResourcesLocator(
 
 	const hasMoreAgentsToLoad = computed(() => totalCount.value > agentsResources.value.length);
 
-	function constructName(agent: AgentResource) {
+	function constructName(agent: AgentListItem) {
 		// Prefix the project name when the agent lives outside the personal project
 		const projectName = resolveProjectName(agent.projectId);
 		return projectName ? `${projectName} — ${agent.name}` : agent.name;
 	}
 
-	function agentToResourceMapper(agent: AgentResource): AgentResourceOption {
+	function agentToResourceMapper(agent: AgentListItem): AgentResourceOption {
 		const name = constructName(agent);
 		nameCache.set(agent.id, name);
-		return { name, value: agent.id, personalisation: agent.schema?.personalisation ?? null };
+		return { name, value: agent.id, personalisation: agent.personalisation ?? null };
 	}
 
 	function getAgentName(id: string): string {
