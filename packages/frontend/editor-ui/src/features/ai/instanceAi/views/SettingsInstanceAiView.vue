@@ -4,11 +4,9 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
-	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
-	N8nIcon,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -19,10 +17,8 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nStatusDot,
 	N8nSwitch,
 	N8nText,
-	type DropdownMenuItemProps,
 	type EmptyStateIconCards,
 } from '@n8n/design-system';
 import {
@@ -124,13 +120,6 @@ const searchValue = computed(() => {
 	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
 });
 
-const isSetupRequired = computed(
-	() =>
-		isEnabled.value &&
-		((showCredentialsRows.value && !isModelConfigured.value) ||
-			(showSandboxRow.value && !isSandboxConfigured.value) ||
-			(showCredentialsRows.value && searchState.value === 'notset')),
-);
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
 	if (!isSelfManaged.value || !store.settings) return true;
@@ -142,14 +131,6 @@ const emptyStateIcon: EmptyStateIconCards = {
 	center: 'sparkles',
 	sides: ['workflow', 'message-square', 'search', 'bot'],
 };
-
-const disableMenuItems: Array<DropdownMenuItemProps<string>> = [
-	{
-		id: 'disable',
-		label: i18n.baseText('settings.n8nAgent.status.disable'),
-		icon: { type: 'icon', value: 'power' },
-	},
-];
 
 const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'require_approval',
@@ -431,9 +412,15 @@ async function handleEnable() {
 	await finishSetup();
 }
 
-async function handleStatusAction(action: string) {
-	if (action !== 'disable') return;
+function onEnabledChange(value: boolean) {
+	if (value) {
+		void handleEnable();
+		return;
+	}
+	void confirmDisable();
+}
 
+async function confirmDisable() {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.n8nAgent.status.disable.description'),
 		{
@@ -530,60 +517,11 @@ async function handleDataSharingToggle(value: boolean) {
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
-					>
-						<template #action>
-							<N8nButton
-								v-if="isOff"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.status.enable')"
-								:disabled="store.isSaving || isTestingCredential"
-								data-test-id="n8n-agent-enable-button"
-								@click="handleEnable"
-							/>
-							<N8nDropdownMenu
-								v-else
-								:items="disableMenuItems"
-								placement="bottom-end"
-								data-test-id="n8n-agent-status-menu"
-								@select="handleStatusAction"
-							>
-								<template #trigger>
-									<N8nButton
-										variant="outline"
-										size="medium"
-										:disabled="store.isSaving"
-										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
-									>
-										<span :class="$style.statusLabel">
-											<N8nStatusDot
-												:variant="isSetupRequired ? 'warning' : 'success'"
-												:pulse="!isSetupRequired"
-												data-test-id="n8n-agent-status-dot"
-											/>
-											{{
-												isSetupRequired
-													? i18n.baseText('settings.n8nAgent.status.setupRequired')
-													: i18n.baseText('settings.n8nAgent.status.enabled')
-											}}
-											<N8nIcon icon="chevron-down" size="small" />
-										</span>
-									</N8nButton>
-								</template>
-								<template #item-leading="{ item }">
-									<N8nIcon
-										v-if="item.icon?.type === 'icon'"
-										:class="$style.danger"
-										:icon="item.icon.value"
-										size="small"
-									/>
-								</template>
-								<template #item-label="{ item }">
-									<span :class="$style.danger">{{ item.label }}</span>
-								</template>
-							</N8nDropdownMenu>
-						</template>
-					</N8nSettingsEnableRow>
+						:model-value="isEnabled"
+						:disabled="store.isSaving || isTestingCredential"
+						switch-test-id="n8n-agent-enabled-switch"
+						@update:model-value="onEnabledChange"
+					/>
 
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
@@ -884,16 +822,6 @@ async function handleDataSharingToggle(value: boolean) {
 </template>
 
 <style lang="scss" module>
-.statusLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.danger {
-	color: var(--text-color--danger);
-}
-
 .titleWithTag {
 	display: inline-flex;
 	align-items: center;

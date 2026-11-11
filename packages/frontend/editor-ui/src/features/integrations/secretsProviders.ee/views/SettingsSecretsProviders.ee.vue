@@ -259,7 +259,6 @@ function goToUpgrade() {
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
 						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
-						:max-description-lines="3"
 						:model-value="systemRolesEnabled"
 						:disabled="systemRolesToggleLoading"
 						switch-test-id="external-secrets-system-roles-switch"

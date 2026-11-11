@@ -82,7 +82,6 @@ onMounted(async () => {
 				<N8nSettingsEnableRow
 					:title="i18n.baseText('settings.agents.enable.label')"
 					:description="i18n.baseText('settings.agents.enable.description')"
-					:max-description-lines="3"
 					:model-value="settings.enabled"
 					:disabled="isSaving"
 					@update:model-value="saveEnabled"

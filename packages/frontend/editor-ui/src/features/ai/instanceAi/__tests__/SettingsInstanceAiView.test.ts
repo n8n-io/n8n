@@ -302,23 +302,7 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('status row', () => {
-		it('renders the enabled status action', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelEnvConfigured: true,
-					sandboxEnabled: true,
-					sandboxEnvConfigured: true,
-					searchDisabled: true,
-				},
-			});
-			const { getByTestId, getByText } = renderComponent();
-			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
-			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
-		});
-
-		it('renders a pulsing success dot when enabled and fully configured', () => {
+		it('shows the switch on when Assistant is enabled', () => {
 			store.$patch({
 				settings: {
 					...store.settings!,
@@ -330,41 +314,10 @@ describe('SettingsInstanceAiView', () => {
 				},
 			});
 			const { getByTestId } = renderComponent();
-			const dot = getByTestId('n8n-agent-status-dot');
-			expect(dot.className).toContain('success');
-			expect(dot.className).toContain('pulse');
+			expect(getByTestId('n8n-agent-enabled-switch')).toBeChecked();
 		});
 
-		it('renders a static warning dot when setup is required', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelName: null,
-					sandboxEnvConfigured: true,
-				},
-			});
-			const { getByTestId } = renderComponent();
-			const dot = getByTestId('n8n-agent-status-dot');
-			expect(dot.className).toContain('warning');
-			expect(dot.className).not.toContain('pulse');
-		});
-
-		it('shows setup required for a credential-only legacy model assignment', () => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelName: null,
-					sandboxEnvConfigured: true,
-				},
-			});
-			const { getByTestId, getByText } = renderComponent();
-			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
-			expect(getByText('settings.n8nAgent.status.setupRequired')).toBeVisible();
-		});
-
-		it('shows an enable button with dimmed sections when disabled but configured', () => {
+		it('shows the switch off when Assistant is disabled but configured', () => {
 			store.$patch({
 				settings: {
 					...store.settings!,
@@ -375,9 +328,8 @@ describe('SettingsInstanceAiView', () => {
 			});
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
-			const { getByTestId, getByText, queryByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enable-button')).toBeVisible();
-			expect(queryByTestId('n8n-agent-status-menu')).toBeNull();
+			const { getByTestId, getByText } = renderComponent();
+			expect(getByTestId('n8n-agent-enabled-switch')).not.toBeChecked();
 			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
 		});
 	});

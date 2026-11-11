@@ -26,45 +26,34 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:modelValue'][0]).toEqual([true]);
 	});
 
-	it('renders trailing content beside the title', () => {
+	it('shows the status badges when the flags are on', () => {
 		const { getByTestId } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable workflow reviews', modelValue: true },
-			slots: {
-				titleTrailing: '<span data-test-id="trailing-badge">Preview</span>',
+			props: {
+				title: 'Enable workflow reviews',
+				modelValue: true,
+				showPreviewBadge: true,
+				showEnterpriseReadinessBadge: true,
 			},
 		});
 
-		expect(getByTestId('trailing-badge')).toHaveTextContent('Preview');
+		expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
+		expect(getByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveTextContent(
+			'Limited enterprise support',
+		);
 	});
 
-	it('renders a custom action instead of the switch', () => {
-		const { queryByRole, getByRole } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Assistant', modelValue: false },
-			slots: { action: '<button type="button">Enable</button>' },
+	it('hides the status badges by default', () => {
+		const { queryByTestId } = render(N8nSettingsEnableRow, {
+			props: { title: 'Enable workflow reviews', modelValue: true },
 		});
 
-		expect(queryByRole('switch')).not.toBeInTheDocument();
-		expect(getByRole('button', { name: 'Enable' })).toBeInTheDocument();
+		expect(queryByTestId('settings-enable-row-preview-badge')).not.toBeInTheDocument();
+		expect(queryByTestId('settings-enable-row-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('uses the large settings switch', () => {
 		const { getByRole } = render(N8nSettingsEnableRow, {
 			props: { title: 'Enable Agents', modelValue: false },
-		});
-
-		expect(getByRole('switch', { name: 'Enable Agents' }).parentElement?.className).toContain(
-			'large',
-		);
-	});
-
-	it('uses the large settings switch when the disabled tooltip is set', () => {
-		const { getByRole } = render(N8nSettingsEnableRow, {
-			props: {
-				title: 'Enable Agents',
-				modelValue: false,
-				disabled: true,
-				disabledTooltip: 'You cannot change this',
-			},
 		});
 
 		expect(getByRole('switch', { name: 'Enable Agents' }).parentElement?.className).toContain(
@@ -111,13 +100,16 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
-	it('does not toggle from a trailing badge', async () => {
+	it('does not toggle from a status badge', async () => {
 		const { getByTestId, emitted } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable workflow reviews', modelValue: false },
-			slots: { titleTrailing: '<span data-test-id="trailing-badge">Preview</span>' },
+			props: {
+				title: 'Enable workflow reviews',
+				modelValue: false,
+				showPreviewBadge: true,
+			},
 		});
 
-		await userEvent.click(getByTestId('trailing-badge'));
+		await userEvent.click(getByTestId('settings-enable-row-preview-badge'));
 
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});

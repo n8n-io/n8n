@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 import N8nSettingsEnableRow from './SettingsEnableRow.vue';
 
 const meta = {
@@ -11,7 +10,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A settings row with a switch. Use it for the enable control at the top of a settings screen. Pass a badge through the titleTrailing slot when the setting still uses a standalone badge.',
+					'A settings row with a switch. Use it for the enable control at the top of a settings screen. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title. A later change replaces these two flags with a feature id. A FeatureBadge component then reads the feature status from a central list.',
 			},
 		},
 	},
@@ -22,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
 	render: () => ({
-		components: { N8nSettingsEnableRow, N8nPreviewBadge },
+		components: { N8nSettingsEnableRow },
 		setup() {
 			const agents = ref(true);
 			const roles = ref(false);
@@ -34,15 +33,14 @@ export const Default: Story = {
 					v-model="agents"
 					title="Enable Agents"
 					description="Allow users to build and run agents on this instance."
-				>
-					<template #titleTrailing>
-						<N8nPreviewBadge />
-					</template>
-				</N8nSettingsEnableRow>
+					show-preview-badge
+				/>
 				<N8nSettingsEnableRow
 					v-model="roles"
 					title="Enable roles"
 					description="Let admins assign project roles to members."
+					show-preview-badge
+					show-enterprise-readiness-badge
 				/>
 			</div>
 		`,
@@ -55,6 +53,5 @@ export const Disabled: Story = {
 		description: 'Chat is turned off for this instance.',
 		modelValue: false,
 		disabled: true,
-		disabledTooltip: 'Ask an instance owner to turn Chat on.',
 	},
 };

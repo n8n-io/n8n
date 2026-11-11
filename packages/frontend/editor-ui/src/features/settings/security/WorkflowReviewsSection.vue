@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { N8nAlertDialog, N8nPreviewBadge, N8nSettingsEnableRow } from '@n8n/design-system';
+import { N8nAlertDialog, N8nSettingsEnableRow } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
@@ -72,13 +72,10 @@ function confirmDisable() {
 			:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
 			:model-value="enabled"
 			:disabled="managedByEnv || isSaving"
+			show-preview-badge
 			switch-test-id="security-workflow-reviews-toggle"
 			@update:model-value="onToggle"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xxsmall" data-test-id="security-workflow-reviews-preview-tag" />
-			</template>
-		</N8nSettingsEnableRow>
+		/>
 
 		<N8nAlertDialog
 			:open="showDisableDialog"

@@ -146,7 +146,6 @@ onMounted(async () => {
 			:description="i18n.baseText('settings.chatHub.enabled.description')"
 			:model-value="isChatEnabled"
 			:disabled="disabled"
-			:disabled-tooltip="i18n.baseText('settings.chatHub.enabled.disabled.tooltip')"
 			switch-test-id="chat-hub-enabled-switch"
 			@update:model-value="onToggleEnabled"
 		/>
