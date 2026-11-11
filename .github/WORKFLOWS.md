@@ -527,7 +527,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 ### Release PR verification
 
 When the selected ref contains `packages/quality/policy/code-health`,
-`release-create-pr.yml` verifies the npm-install dependencies graph for all publishable
+`release-create-pr.yml` verifies the npm install dependencies graph for all publishable
 packages before it creates a release PR. It resolves the selected ref once.
 Verification, release preparation, and the release base branch use
 that commit SHA, even if the selected branch advances. Verification runs in blocking
