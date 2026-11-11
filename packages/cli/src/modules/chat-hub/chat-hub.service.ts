@@ -520,7 +520,7 @@ export class ChatHubService {
 
 				// Resolve tool definitions from the session's join table
 				const tools = isNewSession
-					? (await this.chatHubToolService.getEnabledTools(user.id, trx)).map((t) => t.definition)
+					? await this.chatHubToolService.getEnabledToolDefinitions(user.id, trx)
 					: await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
 				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(

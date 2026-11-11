@@ -28,6 +28,7 @@ import {
 	readSkillTables,
 	toSkillContent,
 } from '@/modules/skills/testing';
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
@@ -50,7 +51,12 @@ import { SkillExporter } from '../entities/skill/skill.exporter';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const sources: Array<{ agent: Agent; draft: SerializedAgent; published: SerializedAgent }> = [];
 let project: Project;

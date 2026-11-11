@@ -90,14 +90,10 @@ const skillsModuleEntryForTests = {
 // module registers what the skills module needs on `SkillUsageProxy`.
 const skillsModuleIsolation = {
 	group: [
-		// ESLint reads these as gitignore lines, which cannot re-include a file below an
-		// excluded folder, so `!@/permissions.ee` lets the last line re-include one file.
 		'@/*',
 		'!@/posthog',
 		'!@/telemetry',
-		'!@/permissions.ee',
 		'@/*/**',
-		'!@/permissions.ee/check-access',
 		// Any depth, so files in subfolders of the skills module are covered too.
 		'../**/agents/**',
 		'../**/instance-ai/**',

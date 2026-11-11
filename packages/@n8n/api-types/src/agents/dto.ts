@@ -58,6 +58,7 @@ export const AGENT_SESSION_STATUSES = [
 	'error',
 	'cancelled',
 	'interrupted',
+	'awaiting',
 ] as const;
 
 export const AGENT_SESSION_ORIGINS = [
@@ -462,6 +463,11 @@ export class AgentChatQueueSteerDto extends Z.class({
 export class AgentChatQueueReorderDto extends Z.class({
 	targetQueueId: z.string().regex(/^[1-9]\d*$/),
 	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
+}) {}
+
+export class AgentTaskApprovalDto extends Z.class({
+	toolCallId: z.string().min(1),
+	resumeData: z.unknown(),
 }) {}
 
 export class AgentChatResumeDto extends Z.class({

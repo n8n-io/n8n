@@ -157,6 +157,35 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('shows the reply files as chips on the assistant message', () => {
+		const message: ChatMessage = {
+			id: 'reply',
+			role: 'assistant',
+			content: 'Here is the report.',
+			status: 'success',
+			attachments: [
+				{ fileId: 'att-1', fileName: 'report.pdf', mimeType: 'application/pdf', sizeBytes: 2048 },
+			],
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle', projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="message-attachments">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="message-attachments"]').text())).toEqual(
+			message.attachments,
+		);
+	});
+
 	it('shows the summary after a parent completes the plan', async () => {
 		const complete = {
 			...planMessage(planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }), {

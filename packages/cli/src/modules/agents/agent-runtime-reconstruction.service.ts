@@ -65,6 +65,7 @@ import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { AgentCredentialProvider } from './agent-credential-provider.contracts';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
@@ -152,7 +153,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
-	credentialProvider: CredentialProvider;
+	credentialProvider: AgentCredentialProvider;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
 	 * Telemetry classification of the run this runtime serves. Baked in at build
@@ -807,6 +808,7 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -822,7 +824,7 @@ export class AgentRuntimeReconstructionService {
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			onVectorStoreSearch: (runId) =>
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
-			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
+			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
