@@ -11,6 +11,6 @@ describe('WebhookChannelController route access scopes', () => {
 	it('limits the requests of one IP address with the configured limit', () => {
 		const route = getRoutesByHandlerName(WebhookChannelController).get('respond');
 
-		expect(route?.ipRateLimit).toEqual({ limit: 100 });
+		expect(route?.ipRateLimit).toEqual({ limit: 300 });
 	});
 });
