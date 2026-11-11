@@ -65,7 +65,9 @@ function confirmDisable() {
 
 <template>
 	<div :class="$style.root">
+		<!-- The section wraps the row, so the group cannot treat it as the last child. -->
 		<N8nSettingsEnableRow
+			:show-divider="false"
 			:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
 			:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
 			:model-value="enabled"

@@ -43,4 +43,21 @@ describe('EnterpriseReadinessBadge', () => {
 			"Some enterprise capabilities don't cover this feature yet. Learn more",
 		);
 	});
+
+	it('moves keyboard focus from the badge to the docs link', async () => {
+		const { getByRole, getByText } = render({
+			components: { EnterpriseReadinessBadge },
+			template:
+				'<div><EnterpriseReadinessBadge docs-url="https://docs.n8n.io/advanced-ai/chat-hub/" /><button type="button">After</button></div>',
+		});
+
+		await userEvent.tab();
+		expect(getByText('Limited enterprise support').closest('.n8n-badge')).toHaveFocus();
+
+		await userEvent.tab();
+		expect(getByRole('link', { name: 'Learn more' })).toHaveFocus();
+
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'After' })).toHaveFocus();
+	});
 });

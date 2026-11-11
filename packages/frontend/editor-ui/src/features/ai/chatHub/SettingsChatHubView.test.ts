@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -115,6 +116,14 @@ describe('SettingsChatHubView', () => {
 		const { getByTestId } = renderComponent();
 
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
+
+		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+	});
+
+	it('calls setChatEnabled when the title is clicked', async () => {
+		const { getByText } = renderComponent();
+
+		await fireEvent.click(getByText('Enable Chat'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
 	});

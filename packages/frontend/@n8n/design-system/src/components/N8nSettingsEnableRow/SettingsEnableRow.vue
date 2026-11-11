@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useId } from 'vue';
+
 import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSwitch from '../N8nSwitch';
 import N8nTooltip from '../N8nTooltip';
@@ -29,6 +31,18 @@ withDefaults(defineProps<SettingsEnableRowProps>(), {
 });
 
 const enabled = defineModel<boolean>({ default: false });
+
+const slots = defineSlots<{
+	titleTrailing?: () => unknown;
+	action?: () => unknown;
+}>();
+
+const switchId = useId();
+
+// `size` stays large. The small switch is the parameter control.
+const settingsSwitchProps = {
+	size: 'large',
+} as const;
 </script>
 
 <template>
@@ -37,6 +51,7 @@ const enabled = defineModel<boolean>({ default: false });
 		:title="title"
 		:description="description"
 		:max-description-lines="maxDescriptionLines"
+		:label-for="slots.action ? undefined : switchId"
 	>
 		<template v-if="$slots.titleTrailing" #titleTrailing>
 			<slot name="titleTrailing" />
@@ -50,6 +65,8 @@ const enabled = defineModel<boolean>({ default: false });
 					placement="top"
 				>
 					<N8nSwitch
+						v-bind="settingsSwitchProps"
+						:id="switchId"
 						v-model="enabled"
 						size="large"
 						:disabled="disabled"
@@ -59,6 +76,8 @@ const enabled = defineModel<boolean>({ default: false });
 				</N8nTooltip>
 				<N8nSwitch
 					v-else
+					v-bind="settingsSwitchProps"
+					:id="switchId"
 					v-model="enabled"
 					size="large"
 					:disabled="disabled"

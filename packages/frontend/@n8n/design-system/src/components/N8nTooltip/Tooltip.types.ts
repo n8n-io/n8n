@@ -53,6 +53,12 @@ export interface N8nTooltipProps {
 	avoidCollisions?: boolean;
 	/** Additional CSS class for the tooltip content */
 	contentClass?: string;
+	/**
+	 * Tab from the trigger moves focus to the first link or button in the tooltip.
+	 * The tooltip stays open while that content has focus.
+	 * Use this when the tooltip contains a link.
+	 */
+	focusContent?: boolean;
 }
 
 export interface N8nTooltipSlots {

@@ -567,6 +567,34 @@ describe('components/N8nTooltip', () => {
 		});
 	});
 
+	describe('keyboard interaction', () => {
+		it('moves focus into the tooltip link when focusContent is set', async () => {
+			const { getByRole, getByText } = render({
+				components: { Tooltip },
+				template: `
+					<div>
+						<Tooltip focus-content as-child>
+							<span tabindex="0">Badge</span>
+							<template #content>
+								<a href="https://docs.n8n.io/docs">Learn more</a>
+							</template>
+						</Tooltip>
+						<button type="button">After</button>
+					</div>
+				`,
+			});
+
+			await userEvent.tab();
+			expect(getByText('Badge')).toHaveFocus();
+
+			await userEvent.tab();
+			expect(getByRole('link', { name: 'Learn more' })).toHaveFocus();
+
+			await userEvent.tab();
+			expect(getByRole('button', { name: 'After' })).toHaveFocus();
+		});
+	});
+
 	describe('hover interaction', () => {
 		it('should show tooltip on hover', async () => {
 			const wrapper = render(Tooltip, {
