@@ -83,6 +83,7 @@ export {
 	extractFromAIParameters,
 } from './utils/fromai-tool-factory';
 export { createVectorStoreNode } from './utils/vector-store/createVectorStoreNode/createVectorStoreNode';
+export { DEFAULT_OPERATION_MODES } from './utils/vector-store/createVectorStoreNode/constants';
 export type {
 	VectorStoreNodeConstructorArgs,
 	NodeOperationMode,
