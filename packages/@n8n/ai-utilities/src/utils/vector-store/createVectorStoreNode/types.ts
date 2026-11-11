@@ -2,9 +2,11 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
+	INodePropertyOptions,
 	INodeType,
 	Icon,
 	ISupplyDataFunctions,
@@ -12,7 +14,13 @@ import type {
 	IBuilderHint,
 } from 'n8n-workflow';
 
-export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
+export type NodeOperationMode =
+	| 'insert'
+	| 'load'
+	| 'retrieve'
+	| 'update'
+	| 'retrieve-as-tool'
+	| 'delete';
 
 export interface NodeMeta {
 	displayName: string;
@@ -38,6 +46,30 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
+	/** Extra fields for the 'delete' mode, for example a tenant or a namespace */
+	deleteFields?: INodeProperties[];
+	/**
+	 * Turns the JSON of the "Filter" field into the native filter of the store, which
+	 * the 'delete' mode gives to `VectorStore.delete({ filter })`. When it is set,
+	 * the "Delete By" field shows the "Filter" choice.
+	 */
+	parseDeleteFilter?: (
+		filter: IDataObject,
+		context: IExecuteFunctions,
+		itemIndex: number,
+	) => unknown;
+	/** Store-specific "Delete By" choices. `deleteDocuments` must handle them. */
+	deleteByOptions?: INodePropertyOptions[];
+	/**
+	 * Optional delete for a case that `VectorStore.delete` cannot do, such as a
+	 * "Delete By" choice from `deleteByOptions`. Return the output data to handle
+	 * the item, or `undefined` to use the default delete by IDs or by filter.
+	 */
+	deleteDocuments?: (
+		context: IExecuteFunctions,
+		vectorStore: T,
+		itemIndex: number,
+	) => Promise<IDataObject | undefined>;
 	hidden?: true;
 	/**
 	 * The text-search operations call `similaritySearchWithScore(prompt, k, filter)` instead of
