@@ -1,0 +1,38 @@
+.github/scripts/workflow-validation.test.mjs
+  s_77b8e3ff116855::t_89bf554f39c462 149-153,165,169-170,173,175-176,178-180,183,188-190,193-196,203,205
+  s_77b8e3ff116855::t_af3640297e8120 164,166-168,182,184-187,198-199,201
+  s_7b2e1c257d0740::t_7297dc4cc9e355 174
+.github/WORKFLOWS.md
+  s_77b8e3ff116855::t_b4401acdb431ce 427,432-435,788
+.github/workflows/ci-pull-requests.yml
+  s_77b8e3ff116855::t_6de9e95322dfe7 157
+  s_77b8e3ff116855::t_b4401acdb431ce 12-14,17-18,305-306,607,628,634,640
+.github/workflows/ci-pr-quality.yml
+  s_77b8e3ff116855::t_b4401acdb431ce 17-19,82,84-88,140,142-143,166,168,187,193,199,205
+.github/workflows/ci-pr-policy-reusable.yml
+  s_77b8e3ff116855::t_b4401acdb431ce 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5913681ff01b834ecf67b08cc9531df1a3d2c25",
+  "prompts": {},
+  "sessions": {
+    "s_77b8e3ff116855": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3b7cd992ffekKW9T8yYoO8pgA",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_7b2e1c257d0740": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e36a054c6ffe0a0mrspksoiqOZ",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
