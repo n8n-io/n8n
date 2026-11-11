@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddIsArchivedToAgents1794305119000 implements ReversibleMigration {
+export class AddIsArchivedToAgents1794419301361 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'agents',
