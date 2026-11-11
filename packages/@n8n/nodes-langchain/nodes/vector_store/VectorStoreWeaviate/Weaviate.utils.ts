@@ -2,6 +2,8 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
 
+import { registerIntegrationHeader } from './Weaviate.integration';
+
 export type WeaviateCredential = {
 	weaviate_cloud_endpoint: string;
 	weaviate_api_key: string;
@@ -52,6 +54,7 @@ export async function createWeaviateClient(
 				skipInitChecks,
 			},
 		);
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	} else {
 		const grpcProxy = getGrpcProxy(credentials, nodeOptionProxy);
@@ -69,6 +72,7 @@ export async function createWeaviateClient(
 			proxies: grpcProxy ? { grpc: grpcProxy } : undefined,
 			skipInitChecks,
 		});
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	}
 }
