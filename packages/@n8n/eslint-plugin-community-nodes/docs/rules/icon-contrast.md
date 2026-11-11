@@ -19,6 +19,8 @@ The editor loads file icons through an `<img>` tag. These SVG files do not inher
 
 The rule skips PNG files, missing files, invalid XML or CSS, embedded images, and `url()` paint without gradient stops. The `icon-validation` rule reports missing files. An icon with no visible paint has no contrast result.
 
+Each paint URL must refer to a local linear or radial gradient with stops. The rule follows local `href` and `xlink:href` gradient references. It skips patterns, external references, missing targets, and gradients without stops, even when another gradient has stops.
+
 This check reads declarations. It does not render the SVG or account for shape size, overlap, the CSS cascade, masks, or separate opacity declarations. A small high-contrast shape can make an icon pass.
 
 ## Options

@@ -4,6 +4,11 @@ import { SaxesParser } from 'saxes';
 
 const rgb = converter('rgb');
 
+interface GradientPaint {
+	hasStops: boolean;
+	href?: string;
+}
+
 export function parsePaintColor(paint: string): Color | undefined {
 	let value = paint
 		.trim()
@@ -20,6 +25,8 @@ export function parsePaintColor(paint: string): Color | undefined {
 /** Read declarations only. Shape size, overlap, and the CSS cascade are out of scope. */
 export function getSvgPaintColors(svg: string): Color[] | null {
 	const paints: string[] = [];
+	const gradients = new Map<string, GradientPaint>();
+	const gradientStack: GradientPaint[] = [];
 	let hasFill = false;
 	let hasStops = false;
 	let hasStopColor = false;
@@ -40,7 +47,19 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 	parser.on('opentag', (tag) => {
 		const name = tag.name.split(':').pop();
 		if (name === 'image' || name === 'foreignObject') hasImage = true;
-		if (name === 'stop') hasStops = true;
+		if (name === 'linearGradient' || name === 'radialGradient') {
+			const gradient = {
+				hasStops: false,
+				href: tag.attributes.href ?? tag.attributes['xlink:href'],
+			};
+			if (tag.attributes.id) gradients.set(tag.attributes.id, gradient);
+			gradientStack.push(gradient);
+		}
+		if (name === 'stop') {
+			hasStops = true;
+			const gradient = gradientStack.at(-1);
+			if (gradient) gradient.hasStops = true;
+		}
 		if (name === 'style') inStyle = true;
 		for (const [property, value] of Object.entries(tag.attributes)) {
 			if (property === 'style') collectCss(`svg { ${value} }`);
@@ -54,7 +73,9 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 		if (inStyle) stylesheet += text;
 	});
 	parser.on('closetag', (tag) => {
-		if (tag.name.split(':').pop() === 'style') {
+		const name = tag.name.split(':').pop();
+		if (name === 'linearGradient' || name === 'radialGradient') gradientStack.pop();
+		if (name === 'style') {
 			collectCss(stylesheet);
 			stylesheet = '';
 			inStyle = false;
@@ -66,7 +87,28 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 		// Invalid XML or CSS cannot give a reliable contrast result.
 		return null;
 	}
-	if (hasImage || (!hasStops && paints.some((paint) => /url\s*\(/i.test(paint)))) return null;
+	if (hasImage) return null;
+	const hasGradientStops = (reference: string): boolean => {
+		const visited = new Set<string>();
+		while (reference.startsWith('#') && !visited.has(reference)) {
+			visited.add(reference);
+			const gradient = gradients.get(reference.slice(1));
+			if (!gradient) return false;
+			if (gradient.hasStops) return true;
+			reference = gradient.href ?? '';
+		}
+		return false;
+	};
+	for (const paint of paints) {
+		if (!/url\s*\(/i.test(paint)) continue;
+		const references = [...paint.matchAll(/url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*?))\s*\)/gi)];
+		if (
+			references.length === 0 ||
+			references.some((match) => !hasGradientStops((match[1] ?? match[2] ?? match[3] ?? '').trim()))
+		) {
+			return null;
+		}
+	}
 	if (!hasFill || (hasStops && !hasStopColor)) paints.push('black');
 	return paints.map(parsePaintColor).filter((color) => color !== undefined);
 }

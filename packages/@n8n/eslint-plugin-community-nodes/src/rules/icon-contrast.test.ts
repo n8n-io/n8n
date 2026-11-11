@@ -22,11 +22,19 @@ const svgFiles: Record<string, string> = {
 	'stroke.svg': '<svg><path fill="none" stroke="#fff"/></svg>',
 	'gradient.svg':
 		'<svg><defs><linearGradient id="g"><stop stop-color="#fff"/></linearGradient></defs><path fill="url(#g)"/></svg>',
+	'quoted-gradient.svg':
+		'<svg><defs><radialGradient id="g"><stop stop-color="#fff"/></radialGradient></defs><path style="fill: url(\'#g\')"/></svg>',
+	'linked-gradient.svg':
+		'<svg><defs><linearGradient id="base"><stop stop-color="#fff"/></linearGradient><linearGradient id="g" href="#base"/></defs><path fill="url(#g)"/></svg>',
 	'best-color.svg': '<svg><path fill="#2b2b2b"/><circle fill="#fff" r="1"/></svg>',
 	'image.svg': '<svg><image href="data:image/png;base64,AA=="/><path fill="#fff"/></svg>',
 	'external-image.svg': '<svg><image href="image.png"/></svg>',
 	'url.svg': '<svg><path fill="url(#pattern)"/></svg>',
 	'url-style.svg': '<svg><style>.icon { fill: url(#pattern) }</style><path/></svg>',
+	'pattern-with-gradient.svg':
+		'<svg><defs><linearGradient id="g"><stop stop-color="#fff"/></linearGradient><pattern id="pattern"><path fill="#fff"/></pattern></defs><path fill="url(#pattern)"/></svg>',
+	'empty-gradient.svg':
+		'<svg><defs><linearGradient id="g"><stop stop-color="#fff"/></linearGradient><linearGradient id="empty"/></defs><path fill="url(#empty)"/></svg>',
 	'empty.svg': '<svg><path fill="none"/></svg>',
 	'broken.svg': '<svg',
 	'broken-style.svg': '<svg><style>.icon { fill: </style></svg>',
@@ -101,6 +109,8 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			'file:external-image.svg',
 			'file:url.svg',
 			'file:url-style.svg',
+			'file:pattern-with-gradient.svg',
+			'file:empty-gradient.svg',
 			'file:empty.svg',
 		].map((icon) => ({
 			name: `skip an icon that cannot be judged: ${icon}`,
@@ -138,6 +148,8 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			'stylesheet.svg',
 			'stroke.svg',
 			'gradient.svg',
+			'quoted-gradient.svg',
+			'linked-gradient.svg',
 			'fallback.svg',
 		].map((file) => ({
 			name: `white paint on the light theme: ${file}`,

@@ -90,6 +90,51 @@ describe('getSvgPaintColors', () => {
 		).toEqual([parsePaintColor('black')]);
 	});
 
+	it.each(['linearGradient', 'radialGradient'])('reads a referenced %s', (gradient) => {
+		const colors = getSvgPaintColors(
+			`<svg><defs><${gradient} id="g"><stop stop-color="white"/></${gradient}></defs><path fill="url(#g)"/></svg>`,
+		);
+		expect(colors).toEqual([parsePaintColor('white')]);
+	});
+
+	it.each(['url( #g )', 'url("#g")', "url('#g')", 'var(--paint, url(#g))'])(
+		'reads the gradient reference in %s',
+		(paint) => {
+			const colors = getSvgPaintColors(
+				`<svg><defs><linearGradient id="g"><stop stop-color="white"/></linearGradient></defs><path style='fill: ${paint.replaceAll("'", '&apos;')}'/></svg>`,
+			);
+			expect(colors).toEqual([parsePaintColor('white')]);
+		},
+	);
+
+	it.each(['href', 'xlink:href'])('follows gradient stops through %s', (attribute) => {
+		const colors = getSvgPaintColors(
+			`<svg><defs><linearGradient id="base"><stop stop-color="white"/></linearGradient><radialGradient id="g" ${attribute}="#base"/></defs><path fill="url(#g)"/></svg>`,
+		);
+		expect(colors).toEqual([parsePaintColor('white')]);
+	});
+
+	it.each([
+		'<path fill="url(#pattern)"/>',
+		'<path style="stroke: url(#pattern)"/>',
+		'<style>path { fill: url(#pattern) }</style>',
+		'<linearGradient id="empty"/><path fill="url(#empty)"/>',
+		'<path fill="url(#g)" stroke="url(#pattern)"/>',
+		'<pattern id="pattern"><stop stop-color="white"/></pattern><path fill="url(#pattern)"/>',
+		'<path fill="url(other.svg#g)"/>',
+		'<path fill="url("/>',
+		'<path fill="url()"/>',
+		'<linearGradient><stop stop-color="white"/></linearGradient><path fill="url(#missing)"/>',
+		'<linearGradient id="external" href="other.svg#g"/><path fill="url(#external)"/>',
+		'<linearGradient id="a" href="#b"/><linearGradient id="b" href="#a"/><path fill="url(#a)"/>',
+	])('skips unsupported paint despite unrelated gradient stops: %s', (content) => {
+		expect(
+			getSvgPaintColors(
+				`<svg><defs><linearGradient id="g"><stop stop-color="white"/></linearGradient></defs>${content}</svg>`,
+			),
+		).toBeNull();
+	});
+
 	it.each([
 		'<svg><image href="data:image/png;base64,AA=="/></svg>',
 		'<svg><image href="other.svg"/></svg>',
