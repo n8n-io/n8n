@@ -80,7 +80,6 @@ describe('WebhookChannelError', () => {
 describe('toResponseBody', () => {
 	it('renders one completed assistant message with the reply text', () => {
 		const body = toResponseBody({
-			model: 'anthropic/claude-sonnet-4-5',
 			conversationId: 'c-1',
 			text: 'Hello',
 			createdAt: new Date('2026-11-03T00:00:00Z'),
@@ -91,7 +90,7 @@ describe('toResponseBody', () => {
 			object: 'response',
 			created_at: 1793664000,
 			status: 'completed',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'n8n-agent',
 			conversation: { id: 'c-1' },
 			output: [
 				{

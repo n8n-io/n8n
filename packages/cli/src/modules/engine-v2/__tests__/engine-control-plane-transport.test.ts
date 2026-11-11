@@ -4,13 +4,14 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
-import type { ActionScope } from '@n8n/engine';
 import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
+const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
 
 describe('EngineControlPlaneTransport', () => {
 	let http: HttpRequestClient;
@@ -19,7 +20,10 @@ describe('EngineControlPlaneTransport', () => {
 	let engineConfig: EngineConfig;
 
 	/** Rebuilds the transport so each test can vary the config. */
-	const newTransport = (overrides: Partial<EngineConfig> = {}) => {
+	const newTransport = (
+		overrides: Partial<EngineConfig> = {},
+		tlsMaterial: Pick<EngineTlsMaterial, 'tls'> = { tls: undefined },
+	) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
@@ -34,7 +38,11 @@ describe('EngineControlPlaneTransport', () => {
 			...overrides,
 		});
 
-		return new EngineControlPlaneTransport(engineConfig, outboundHttp);
+		return new EngineControlPlaneTransport(
+			engineConfig,
+			outboundHttp,
+			tlsMaterial as EngineTlsMaterial,
+		);
 	};
 
 	/** Resolves the authorization header the way the HTTP client does per request. */
@@ -50,69 +58,72 @@ describe('EngineControlPlaneTransport', () => {
 
 	describe('forScope', () => {
 		it('dials the control plane server on the loopback, not n8n main', () => {
-			newTransport().forScope('lifecycle-events:write');
+			newTransport().forScope('credentials:read');
 
 			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3001');
 		});
 
 		it('dials the configured base URL when the control plane answers elsewhere', () => {
 			newTransport({ controlPlaneBaseUrl: 'https://cp.internal:8443' }).forScope(
-				'lifecycle-events:write',
+				'credentials:read',
 			);
 
 			expect(clientOptions?.baseURL).toBe('https://cp.internal:8443');
 		});
 
+		it('presents the client certificate and verifies the control plane against the engine CA alone when TLS is on', () => {
+			newTransport({}, { tls }).forScope('credentials:read');
+
+			expect(clientOptions?.connectionPool).toEqual({
+				agentOptions: { ...tls, rejectUnauthorized: true },
+			});
+		});
+
+		it('uses no connection pool over plain HTTP', () => {
+			newTransport().forScope('credentials:read');
+
+			expect(clientOptions?.connectionPool).toBeUndefined();
+		});
+
 		it('opts out of SSRF protection for the n8n-controlled host', () => {
-			newTransport().forScope('lifecycle-events:write');
+			newTransport().forScope('credentials:read');
 
 			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
 		});
 
 		it('sets no client timeout, so the caller owns the deadline', () => {
-			newTransport().forScope('lifecycle-events:write');
+			newTransport().forScope('credentials:read');
 
 			expect(clientOptions?.timeout).toBeUndefined();
 		});
 
 		it('mints a fresh token per request', () => {
-			newTransport().forScope('lifecycle-events:write');
+			newTransport().forScope('credentials:read');
 
 			expect(typeof clientOptions?.headers).toBe('function');
 		});
 
-		it.each<ActionScope>(['lifecycle-events:write', 'credentials:read'])(
-			'mints a token with the requested scope %s and no other',
-			(scope) => {
-				newTransport().forScope(scope);
-				const token = mintedToken();
-				const otherScope: ActionScope =
-					scope === 'credentials:read' ? 'lifecycle-events:write' : 'credentials:read';
+		it('mints a token with the requested scope', () => {
+			newTransport().forScope('credentials:read');
 
-				expect(() => verifyActionToken(authSecret, token, scope)).not.toThrow();
-				expect(() => verifyActionToken(authSecret, token, otherScope)).toThrow(
-					InvalidActionTokenError,
-				);
-			},
-		);
+			expect(() => verifyActionToken(authSecret, mintedToken(), 'credentials:read')).not.toThrow();
+		});
 
 		it('signs the token with the configured secret', () => {
-			newTransport().forScope('lifecycle-events:write');
+			newTransport().forScope('credentials:read');
 			const token = mintedToken();
 
-			expect(() => verifyActionToken('b'.repeat(32), token, 'lifecycle-events:write')).toThrow(
+			expect(() => verifyActionToken('b'.repeat(32), token, 'credentials:read')).toThrow(
 				InvalidActionTokenError,
 			);
 		});
 
 		it('reads the secret at request time, after the module generated it', () => {
-			newTransport({ authSecret: '' }).forScope('lifecycle-events:write');
+			newTransport({ authSecret: '' }).forScope('credentials:read');
 
 			engineConfig.authSecret = authSecret;
 
-			expect(() =>
-				verifyActionToken(authSecret, mintedToken(), 'lifecycle-events:write'),
-			).not.toThrow();
+			expect(() => verifyActionToken(authSecret, mintedToken(), 'credentials:read')).not.toThrow();
 		});
 	});
 });

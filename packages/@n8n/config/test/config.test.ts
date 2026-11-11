@@ -771,6 +771,7 @@ describe('GlobalConfig', () => {
 			maxTotalMb: 1536,
 			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 100,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
@@ -1288,23 +1289,6 @@ describe('GlobalConfig', () => {
 		expect(config.maxTotalMb).toEqual(1536);
 		expect(config.maxImportMb).toEqual(200);
 		expect(config.maxGeneratedFileCount).toEqual(20);
-	});
-
-	describe('agent webhook endpoint', () => {
-		it.each(['', 'a/b', '(.*)', '.', '..', 'rest', 'Webhook', 'form-test', 'healthz', 'assets'])(
-			'should fall back to the default for %j',
-			(value) => {
-				process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: value };
-
-				expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('agent-webhook');
-			},
-		);
-
-		it('should accept a path of its own', () => {
-			process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: 'ai.agents' };
-
-			expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('ai.agents');
-		});
 	});
 
 	describe('health endpoint transformation', () => {

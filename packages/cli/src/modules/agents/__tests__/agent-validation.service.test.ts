@@ -5,7 +5,7 @@ import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
@@ -77,7 +77,7 @@ function makeService() {
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	const agentTaskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 	agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);

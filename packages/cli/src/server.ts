@@ -290,9 +290,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(LogStreamingEventRelay).init();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup
