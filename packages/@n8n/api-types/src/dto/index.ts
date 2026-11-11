@@ -4,6 +4,8 @@ export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
 export { PublishAppDto } from './app/publish-app.dto';
+export { RestoreAppVersionDto } from './app/restore-app-version.dto';
+export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
@@ -44,6 +46,7 @@ export {
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
+export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -238,6 +241,7 @@ export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export {
 	ManualRunDto,
 	type ManualRunPayload,
+	type ManualRunResponse,
 	type FullManualExecutionFromKnownTriggerPayload,
 	type FullManualExecutionFromUnknownTriggerPayload,
 	type PartialManualExecutionToDestinationPayload,
@@ -728,22 +732,12 @@ export {
 } from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
-	PromotionChangesDto,
-	PromotionChangesQueryDto,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	promotionsWorkflowsMovedCrossProjectMetaSchema,
-	promotableResourceSchema,
-	promotableResourceStatusSchema,
-	promotableResourceTypeSchema,
 	promoteRequestSchema,
 	PromoteSelectionRequestDto,
-	promotionChangesSchema,
-	type PromotableResource,
-	type PromotableResourceStatus,
-	type PromotableResourceType,
 	type PromoteRequest,
-	type PromotionChanges,
 	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 
@@ -813,6 +807,7 @@ export {
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionMissingProjectListPublicDto,
 	UpdatePromotionEnvironmentDto,
 	promotionEnvironmentRemoteSchema,
 	promotionDirectionSchema,

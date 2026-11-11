@@ -5,7 +5,6 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { parseWorkflowMessage } from './collaboration.message';
 import type {
@@ -22,7 +21,7 @@ import type {
 } from './collaboration.message';
 
 import { CollaborationState, type WriteLock } from '@/collaboration/collaboration.state';
-import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import { ConflictError, LockedError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';

@@ -3,6 +3,7 @@ import {
 	type SkillListItem,
 	type SkillScanFinding,
 	type SkillScanRule,
+	type SkillScope,
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
@@ -13,8 +14,8 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 export const PROJECT_SCOPE_PREFIX = 'project:';
 
-/** Settings creates and moves skills only to a project or the instance, never to one agent. */
-export function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
+/** The scope and project of a scope picker value. */
+export function parseScope(value: string): { scope: SkillScope; projectId?: string } {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
 	}
@@ -46,20 +47,11 @@ export function useSkillScopeDisplay() {
 	}
 
 	function scopeDisplay(
-		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>,
+		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>,
 	): SkillScopeDisplay {
 		switch (skill.scope) {
 			case 'instance':
 				return { icon: 'globe', label: i18n.baseText('settings.context.skills.scope.instance') };
-			case 'agent':
-				return {
-					icon: 'bot',
-					label: skill.agentName
-						? i18n.baseText('settings.context.skills.scope.agent', {
-								interpolate: { name: skill.agentName },
-							})
-						: i18n.baseText('settings.context.skills.scope.agentFallback'),
-				};
 			case 'project':
 				if (!skill.projectId) {
 					return { icon: 'layers', label: i18n.baseText('settings.context.skills.scope.project') };
@@ -133,10 +125,10 @@ const SKILL_SCAN_RULE_KEYS = {
 	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
 	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
 	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
+	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
-	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
 
@@ -221,5 +213,10 @@ export function useSkillSourceReasons() {
 		});
 	}
 
-	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
+	/** The translated name of one rule of the security check. */
+	function ruleText(rule: SkillScanRule): string {
+		return i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText, ruleText };
 }

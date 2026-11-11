@@ -4,7 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import {

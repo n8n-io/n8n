@@ -11,7 +11,7 @@ import {
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
 import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
-import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
+import type { Person, Project, TagEntity, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
 	ProjectRepository,
@@ -54,8 +54,8 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -120,7 +120,7 @@ beforeEach(async () => {
 
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',

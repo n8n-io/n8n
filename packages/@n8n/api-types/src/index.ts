@@ -14,6 +14,7 @@ export * from './agents/index';
 export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
+export * from './schemas/app-binding.schema';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
@@ -140,9 +141,6 @@ export {
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
 	aiPreferenceSourceSchema,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 	aiPreferenceScopeOf,
 	aiPreferenceTargetOf,
 } from './schemas/ai-preference.schema';
@@ -226,11 +224,7 @@ export type {
 	DependencyCountsBatchResponse,
 } from './schemas/dependency-counts.schema';
 
-export type {
-	ProjectType,
-	ProjectIcon,
-	ProjectRelation,
-} from './schemas/project.schema';
+export type { ProjectType, ProjectIcon, ProjectRelation } from './schemas/project.schema';
 
 export {
 	isSourceControlledFileStatus,
@@ -366,6 +360,7 @@ export type {
 	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
+	BreakingChangeAssistantAction,
 } from './schemas/breaking-changes.schema';
 
 export {
@@ -433,6 +428,8 @@ export {
 	taskItemSchema,
 	taskListSchema,
 	tasksUpdatePayloadSchema,
+	instanceContextPayloadSchema,
+	statusPayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -450,6 +447,9 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	appBlueprintSchema,
+	appBlueprintResumeSchema,
+	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -545,6 +545,7 @@ export {
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -603,6 +604,9 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	AppBlueprint,
+	AppBlueprintResume,
+	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -696,7 +700,6 @@ export type {
 	InstanceAiEnvManagedFields,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
@@ -709,6 +712,7 @@ export type {
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
 	InstanceAiNodesAttachment,
+	InstanceAiElementAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -720,6 +724,8 @@ export type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
+	InstanceAiMigrationReportHandoffContext,
+	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
 	InstanceAiThreadArtifactsContext,
@@ -764,6 +770,17 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+
+export {
+	assistantAgentTargetSchema,
+	assistantAgentPreviewSessionSchema,
+} from './schemas/assistant-agent-targets.schema';
+export type {
+	AssistantAgentTarget,
+	AssistantAgentPreviewSession,
+	AssistantAgentTargetsState,
+	AssistantAgentTargetsResponse,
+} from './schemas/assistant-agent-targets.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,
@@ -998,6 +1015,7 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,

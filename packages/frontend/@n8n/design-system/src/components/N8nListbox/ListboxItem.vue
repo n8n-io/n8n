@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { getCurrentInstance, onBeforeUnmount, onMounted, onUpdated, useAttrs } from 'vue';
-
 import type { ListboxItemEmits, ListboxItemProps, ListboxItemSlots } from './ListboxItem.types';
 import { ListboxItem } from './reka-ui';
 
@@ -10,57 +8,6 @@ defineProps<ListboxItemProps>();
 defineSlots<ListboxItemSlots>();
 
 const emit = defineEmits<ListboxItemEmits>();
-const attrs = useAttrs();
-const instance = getCurrentInstance();
-
-// Reka memos the option and keeps the first attributes.
-// Copy the latest attributes after each render.
-function applyAttrs() {
-	const el = instance?.vnode.el;
-	if (!(el instanceof HTMLElement)) return;
-
-	for (const [key, value] of Object.entries(attrs)) {
-		if (key === 'class' || key === 'style' || key.startsWith('on')) continue;
-		if (value === undefined || value === null) {
-			el.removeAttribute(key);
-			continue;
-		}
-		if (value === false) {
-			if (key.startsWith('aria-') || key.startsWith('data-')) el.setAttribute(key, 'false');
-			else el.removeAttribute(key);
-			continue;
-		}
-		if (value === true) {
-			el.setAttribute(key, 'true');
-			continue;
-		}
-		if (typeof value === 'string' || typeof value === 'number') {
-			el.setAttribute(key, String(value));
-		}
-	}
-}
-
-// Up and Down move between items. They leave a button or an open menu alone.
-function onItemKeydown(event: KeyboardEvent) {
-	if (event.target === event.currentTarget || event.key === 'Tab') return;
-	event.stopPropagation();
-}
-
-function itemElement() {
-	const el = instance?.vnode.el;
-	return el instanceof HTMLElement ? el : null;
-}
-
-onMounted(() => {
-	applyAttrs();
-	itemElement()?.addEventListener('keydown', onItemKeydown);
-});
-
-onUpdated(applyAttrs);
-
-onBeforeUnmount(() => {
-	itemElement()?.removeEventListener('keydown', onItemKeydown);
-});
 
 function onSelect(event: Event) {
 	emit('select', event);
@@ -76,56 +23,65 @@ function onSelect(event: Event) {
 		:class="$style.item"
 		@select="onSelect"
 	>
-		<slot />
+		<span v-if="$slots.leading" :class="$style.leading">
+			<slot name="leading" />
+		</span>
+		<span :class="$style.content">
+			<slot />
+		</span>
+		<span v-if="$slots.trailing" :class="$style.trailing">
+			<slot name="trailing" />
+		</span>
 	</ListboxItem>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/_focus.scss';
+@use '@n8n/design-system/css/mixins/floating-item' as floating-item;
 
 .item {
-	box-sizing: border-box;
-	width: 100%;
-	min-width: 0;
-	border-radius: var(--listbox-item--radius, var(--radius));
-	outline: none;
-	cursor: pointer;
-	text-align: start;
+	@include floating-item.floating-item;
 
-	// The fill follows data-highlighted. :not([data-state='checked']) keeps this
-	// rule from beating the selected fill when both states are on one row.
-	&:not([data-disabled]):not([data-state='checked'])[data-highlighted] {
-		background-color: var(
-			--listbox-item--color--background--highlight,
-			var(--color--background--light-1)
-		);
-	}
+	gap: var(--n8n-listbox-item--gap, var(--spacing--2xs));
+	min-height: var(--n8n-listbox-item--min-height, var(--spacing--xl));
+	padding: var(--n8n-listbox-item--padding, var(--spacing--2xs) var(--spacing--xs));
+	border-radius: var(--n8n-listbox-item--radius, var(--radius));
 
-	&[data-state='checked'] {
-		background-color: var(--listbox-item--color--background--selected, var(--background--active));
-	}
+	&:not([data-disabled]) {
+		cursor: pointer;
 
-	&:focus-visible,
-	&[data-highlighted]:focus {
-		position: relative;
-		z-index: 1;
-		// A positioned track paints over an outline. Draw the ring above it.
-		outline: none;
-
-		&::after {
-			content: '';
-			position: absolute;
-			z-index: 1;
-			inset: 0;
-			border-radius: inherit;
-			pointer-events: none;
-			@include focus.focus-ring;
+		&:not([data-state='checked'])[data-highlighted] {
+			background-color: var(
+				--n8n-listbox-item--color--background--highlight,
+				var(--background--hover)
+			);
 		}
 	}
 
+	&[data-state='checked'] {
+		background-color: var(
+			--n8n-listbox-item--color--background--selected,
+			var(--background--active)
+		);
+	}
+
 	&[data-disabled] {
-		color: var(--listbox-item--color--text--disabled, var(--text-color--disabled));
+		color: var(--n8n-listbox-item--color--text--disabled, var(--text-color--disabled));
 		cursor: not-allowed;
 	}
+}
+
+.leading,
+.trailing {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+}
+
+.content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+	gap: var(--n8n-listbox-item--content-gap, var(--spacing--5xs));
 }
 </style>

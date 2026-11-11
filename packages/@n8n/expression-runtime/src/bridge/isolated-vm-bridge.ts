@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+import { unwrapTransferredValue } from '../runtime/transfer-codec';
 import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
@@ -355,7 +355,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+				return escapeHostResult(dispatchHostCall(rawMsg, resolver));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -468,8 +468,8 @@ try {
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
 			// The structured clone above drops the prototype of a class instance, so
-			// rebuild the luxon instances from the markers the isolate sent.
-			return unwrapLuxonValues(result);
+			// rebuild the luxon and Error instances from the markers the isolate sent.
+			return unwrapTransferredValue(result);
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's

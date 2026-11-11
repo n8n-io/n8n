@@ -1,6 +1,21 @@
 export { EventService, type EventMap } from './events/event.service';
-export { isBillableExecution } from './executions/is-billable-execution';
-export { sumNodeTimeSavedMinutes } from './executions/time-saved';
+export {
+	countsTowardExecutionLimit,
+	executionLimitDelta,
+	isBillableExecution,
+	isInsightsProduction,
+	isLedgerFact,
+	savesTime,
+	toLedgerFact,
+	toLedgerOutcome,
+	type CompletedRun,
+	type LedgerEntityType,
+	type LedgerEvent,
+	type LedgerFact,
+	type LedgerOutcome,
+	type LedgerSource,
+} from './executions/counting-rules';
+export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
@@ -11,6 +26,11 @@ export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
+export { Publisher } from './pubsub/publisher.service';
+export { Subscriber } from './pubsub/subscriber.service';
+export { PubSubEventBus } from './pubsub/pubsub.eventbus';
+export type { PubSub } from './pubsub/pubsub.types';
+export { MAX_PUBSUB_PAYLOAD_BYTES, SELF_SEND_COMMANDS } from './pubsub/pubsub.constants';
 export { RoleCacheService, type RoleLoader } from './services/role-cache.service';
 export {
 	RoleDeletionCheckProxy,
@@ -102,6 +122,10 @@ export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
+export {
+	NodeTypesProviderMissingError,
+	NodeTypesProxy,
+} from './services/node-types-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
+import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
@@ -19,7 +21,6 @@ import {
 } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
-	N8nAssistantIcon,
 	N8nCanvasPill,
 	N8nIcon,
 	N8nIconButton,
@@ -130,6 +131,7 @@ import {
 	PENDING_AGENT_ID_STATE,
 	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
+import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	agentsEventBus,
@@ -184,6 +186,7 @@ import {
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import { isKnownAssistantAgentThread } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
@@ -303,9 +306,15 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+function historyMarksAgentPending(targetAgentId: string): boolean {
+	return (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE] === targetAgentId;
+}
 function readPendingAgentIdFromHistory(): string | null {
 	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
-	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+	if (typeof pendingAgentId === 'string') return pendingAgentId;
+	// A fresh history entry for the same URL (e.g. the Settings back link) has
+	// no marker, so fall back to the ids this tab minted and has not saved yet.
+	return unsavedAgentIds.has(agentId.value) ? agentId.value : null;
 }
 function readPendingStarterFromHistory(): AgentStarter | null {
 	const starter = (history.state as Record<string, unknown>)[PENDING_AGENT_STARTER_STATE];
@@ -1643,11 +1652,12 @@ const persistedAgentsByTarget = new Map<string, PersistedAgent>();
 
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
+	unsavedAgentIds.delete(targetAgentId);
+	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 	const historyState = history.state as Record<string, unknown>;
 	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
 	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
-	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
 
 /**
@@ -1724,14 +1734,23 @@ async function createPendingAgent(
 	if (props.artifactPersistAgent) {
 		return await props.artifactPersistAgent(request);
 	}
-	if (aiThreadId.value) {
+	// An Assistant agent thread binds the saved agent with its next message.
+	if (aiThreadId.value && !isKnownAssistantAgentThread(aiThreadId.value)) {
 		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
 		return result.agent;
 	}
-	return await createAgent(rootStore.restApiContext, targetProjectId, name, {
-		id: targetAgentId,
-		config: initialConfig,
-	});
+	try {
+		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
+			id: targetAgentId,
+			config: initialConfig,
+		});
+	} catch (error) {
+		// The Assistant agent builds a pending agent under this same id, so it can win the insert.
+		const lostInsert = error instanceof ResponseError && error.httpStatusCode === 409;
+		if (!aiThreadId.value || !lostInsert) throw error;
+		const existing = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+		return { ...existing, config: null, configHash: null, adopted: true };
+	}
 }
 
 function applyPersistedAgent(
@@ -3096,9 +3115,14 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// drafting. Only artifacts need this: a route-backed draft's id is minted
 		// milliseconds earlier by the entry point and no other writer can reach it,
 		// so the probe would be a guaranteed 404 on every "New agent" click.
-		const probedAgent = targetArtifactPending
-			? await probePendingAgentRow(targetProjectId, targetAgentId)
-			: null;
+		// A route draft recovered from `unsavedAgentIds` (no history marker) was
+		// left at some point, and the assistant may have saved it meanwhile.
+		const recoveredRouteDraft =
+			targetAgentPending && !targetArtifactPending && !historyMarksAgentPending(targetAgentId);
+		const probedAgent =
+			targetArtifactPending || recoveredRouteDraft
+				? await probePendingAgentRow(targetProjectId, targetAgentId)
+				: null;
 		if (!isCurrentInitialization()) return;
 
 		// An agent that does not exist yet has nothing to fetch: stand up the same
@@ -3142,6 +3166,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Hand the host the row the stale marker pointed at so it can retire the
 			// pending state.
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
+			if (recoveredRouteDraft) clearRoutePendingState(targetAgentId);
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState && canEditAgent.value && agent.value?.activeVersionId === null) {
@@ -3470,6 +3495,21 @@ function onSwitchAgent(nextAgentId: string) {
 	});
 }
 
+const builderPromptHasContent = ref(false);
+const templatePrompts = computed(() =>
+	AGENT_TEMPLATES.map((template) => locale.baseText(template.placeholderKey)),
+);
+const promptInspiration = useAgentPromptInspiration({
+	prompts: templatePrompts,
+	enabled: () =>
+		showAgentIntro.value &&
+		showAiPanel.value &&
+		(!inlineTestChat.value || !isPreviewDockOpen.value) &&
+		!(compactChatLayout.value && showConfiguration.value) &&
+		!hasSentBuilderMessage.value &&
+		!builderPromptHasContent.value,
+});
+
 useKeybindings({
 	ctrl_j: {
 		disabled: function isAiPanelShortcutDisabled() {
@@ -3559,7 +3599,7 @@ useKeybindings({
 					@click="toggleAiPanel"
 				>
 					<template #icon>
-						<N8nAssistantIcon size="large" />
+						<N8nIcon icon="n8n-assistant" :size="18" />
 					</template>
 				</N8nButton>
 			</KeyboardShortcutTooltip>
@@ -3653,6 +3693,8 @@ useKeybindings({
 								: undefined
 						"
 						@message-sent="hasSentBuilderMessage = true"
+						:placeholder-preview="promptInspiration.placeholder"
+						@content-change="builderPromptHasContent = $event"
 						:key="agentId"
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
@@ -3796,9 +3838,7 @@ useKeybindings({
 					:project-id="projectId"
 					:agent-id="agentId"
 					:current-version-id="agent?.versionId"
-					:has-unpublished-changes="
-						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
-					"
+					:has-unpublished-changes="hasAgentUnpublishedChanges(agent)"
 					:agent-name="agent?.name ?? agentName"
 					:editing-locked="isEditingLocked"
 					:before-publish="flushBeforePublish"

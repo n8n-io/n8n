@@ -1,30 +1,10 @@
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
-import { vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 
+import N8nIcon from '../N8nIcon';
 import N8nListbox from './Listbox.vue';
 import N8nListboxItem from './ListboxItem.vue';
-
-const HarnessWithButton = defineComponent({
-	components: { N8nListbox, N8nListboxItem },
-	props: {
-		modelValue: { type: String, required: false },
-	},
-	setup(props) {
-		const value = ref(props.modelValue);
-		return { value };
-	},
-	template: `
-		<N8nListbox :model-value="value" label="Versions" @update:model-value="value = $event">
-			<N8nListboxItem value="v2" aria-label="v2">
-				<span>v2</span>
-				<button type="button">Compare</button>
-			</N8nListboxItem>
-			<N8nListboxItem value="v1" aria-label="v1">v1</N8nListboxItem>
-		</N8nListbox>
-	`,
-});
 
 const Harness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
@@ -100,12 +80,39 @@ const SelectionHarness = defineComponent({
 	props: {
 		selectionBehavior: { type: String, required: true },
 	},
-	setup() {
+	emits: ['update:modelValue'],
+	setup(_, { emit }) {
 		const value = ref<string | undefined>('v2');
-		return { value };
+		function onUpdate(next: string | undefined) {
+			value.value = next;
+			emit('update:modelValue', next);
+		}
+		return { value, onUpdate };
 	},
 	template: `
-		<N8nListbox v-model="value" :selection-behavior="selectionBehavior" label="Versions">
+		<N8nListbox
+			:model-value="value"
+			:selection-behavior="selectionBehavior"
+			label="Versions"
+			@update:model-value="onUpdate"
+		>
+			<N8nListboxItem value="v2">v2</N8nListboxItem>
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const DisabledList = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	emits: ['update:modelValue'],
+	setup(_, { emit }) {
+		function onUpdate(next: string | undefined) {
+			emit('update:modelValue', next);
+		}
+		return { onUpdate };
+	},
+	template: `
+		<N8nListbox model-value="v1" label="Versions" disabled @update:model-value="onUpdate">
 			<N8nListboxItem value="v2">v2</N8nListboxItem>
 			<N8nListboxItem value="v1">v1</N8nListboxItem>
 		</N8nListbox>
@@ -114,15 +121,12 @@ const SelectionHarness = defineComponent({
 
 const HoverHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
-	props: {
-		highlightOnHover: { type: Boolean, required: true },
-	},
 	setup() {
 		const value = ref('v2');
 		return { value };
 	},
 	template: `
-		<N8nListbox v-model="value" :highlight-on-hover="highlightOnHover" label="Versions">
+		<N8nListbox v-model="value" label="Versions">
 			<N8nListboxItem value="v2">v2</N8nListboxItem>
 			<N8nListboxItem value="v1">v1</N8nListboxItem>
 		</N8nListbox>
@@ -144,7 +148,101 @@ const HorizontalHarness = defineComponent({
 	`,
 });
 
+const TabHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('v2');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button">Before</button>
+			<N8nListbox v-model="value" label="Versions">
+				<N8nListboxItem value="v2">
+					<span>v2</span>
+					<button type="button">v2 actions</button>
+				</N8nListboxItem>
+				<N8nListboxItem value="v1">
+					<span>v1</span>
+					<button type="button">v1 actions</button>
+				</N8nListboxItem>
+				<N8nListboxItem value="v0" disabled>
+					<span>v0</span>
+					<button type="button">v0 actions</button>
+				</N8nListboxItem>
+				<N8nListboxItem value="archive">
+					<span>archive</span>
+					<button type="button">archive actions</button>
+				</N8nListboxItem>
+			</N8nListbox>
+			<button type="button">After</button>
+		</div>
+	`,
+});
+
+const LayoutHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem, N8nIcon },
+	template: `
+		<N8nListbox label="Workflows">
+			<N8nListboxItem value="sync">
+				<template #leading>
+					<N8nIcon icon="copy" size="large" />
+				</template>
+				<span data-test-id="sync-body">Sync</span>
+				<template #trailing>
+					<button type="button">Actions</button>
+				</template>
+			</N8nListboxItem>
+			<N8nListboxItem value="custom">
+				<template #leading>
+					<span data-test-id="custom-leading">Lead</span>
+				</template>
+				Custom
+			</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const AttrHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<N8nListbox class="caller" label="Versions" data-test-id="list">
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
 describe('N8nListbox', () => {
+	it('places an icon before the content and a trailing control after it', () => {
+		const { getByRole, getByTestId } = render(LayoutHarness);
+		const sync = getByRole('option', { name: 'Sync Actions' });
+		const custom = getByRole('option', { name: 'Lead Custom' });
+		const icon = sync.querySelector('[data-icon="copy"]');
+		const content = getByTestId('sync-body');
+		const action = getByRole('button', { name: 'Actions' });
+
+		expect(icon).toBeInstanceOf(Element);
+		expect(sync).toContainElement(content);
+		expect(sync).toContainElement(action);
+		expect(
+			(icon as Element).compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(content.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(custom.querySelector('[data-icon]')).toBeNull();
+		expect(custom).toContainElement(getByTestId('custom-leading'));
+	});
+
+	it('puts caller attributes on the list root and the label on the listbox', () => {
+		const { getByRole, getByTestId } = render(AttrHarness);
+		const list = getByRole('listbox', { name: 'Versions' });
+		const root = getByTestId('list');
+
+		expect(root).toHaveClass('caller');
+		expect(list.parentElement).toBe(root);
+	});
+
 	it('selects an item and paints the whole option', async () => {
 		const { getByRole, getByTestId, emitted } = render(Harness, { props: { modelValue: 'v1' } });
 		const current = getByRole('option', { name: 'v2' });
@@ -158,51 +256,6 @@ describe('N8nListbox', () => {
 		expect(emitted('update:modelValue')).toEqual([['v2']]);
 		expect(current).toHaveAttribute('aria-selected', 'true');
 		expect(current).toHaveAttribute('data-highlighted');
-	});
-
-	it('tabs through a control inside the item before the next item', async () => {
-		const { getByRole } = render(HarnessWithButton, { props: { modelValue: 'v2' } });
-		await nextTick();
-		const current = getByRole('option', { name: 'v2' });
-		current.focus();
-
-		await userEvent.tab();
-
-		const compare = getByRole('button', { name: 'Compare' });
-		expect(compare).toHaveFocus();
-		expect(current).toHaveAttribute('data-highlighted');
-
-		await userEvent.keyboard('{ArrowDown}');
-
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
-
-		await userEvent.tab();
-
-		const next = getByRole('option', { name: 'v1' });
-		expect(next).toHaveFocus();
-		expect(next).toHaveAttribute('data-highlighted');
-
-		await userEvent.tab({ shift: true });
-
-		expect(compare).toHaveFocus();
-	});
-
-	it('moves the highlight with Tab and then with the arrow keys', async () => {
-		const { getByRole } = render(Harness, { props: { modelValue: 'v2' } });
-		await nextTick();
-		getByRole('option', { name: 'v2' }).focus();
-
-		await userEvent.tab();
-
-		const next = getByRole('option', { name: 'v1' });
-		expect(next).toHaveAttribute('data-highlighted');
-		expect(next).toHaveFocus();
-
-		await userEvent.tab({ shift: true });
-
-		expect(getByRole('option', { name: 'v2' })).toHaveFocus();
-		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
 	});
 
 	it('moves the highlight with the arrow keys and selects on Enter', async () => {
@@ -223,12 +276,42 @@ describe('N8nListbox', () => {
 		expect(emitted('update:modelValue')).toEqual([['v1']]);
 	});
 
+	it('selects the highlighted item on Space', async () => {
+		const { getByRole, emitted } = render(Harness, { props: { modelValue: 'v2' } });
+		await nextTick();
+		getByRole('option', { name: 'v2' }).focus();
+
+		await userEvent.keyboard('{ArrowDown}');
+		await userEvent.keyboard(' ');
+
+		expect(emitted('update:modelValue')).toEqual([['v1']]);
+	});
+
 	it('skips a disabled item', async () => {
 		const { getByRole, emitted } = render(Harness, { props: { modelValue: 'v1' } });
 		const disabled = getByRole('option', { name: 'v0' });
 
 		expect(disabled).toHaveAttribute('aria-disabled', 'true');
 		await userEvent.click(disabled);
+
+		expect(emitted('update:modelValue')).toBeUndefined();
+	});
+
+	it('skips a disabled item with the arrow keys', async () => {
+		const { getByRole } = render(Harness, { props: { modelValue: 'v1' } });
+		await nextTick();
+		getByRole('option', { name: 'v1' }).focus();
+
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(getByRole('option', { name: 'Keep' })).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'v0' })).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('does not change the value when the list is disabled', async () => {
+		const { getByRole, emitted } = render(DisabledList);
+
+		await userEvent.click(getByRole('option', { name: 'v2' }));
 
 		expect(emitted('update:modelValue')).toBeUndefined();
 	});
@@ -280,16 +363,19 @@ describe('N8nListbox', () => {
 	});
 
 	it('clears the value when selection behavior is toggle', async () => {
-		const { getByRole } = render(SelectionHarness, { props: { selectionBehavior: 'toggle' } });
+		const { getByRole, emitted } = render(SelectionHarness, {
+			props: { selectionBehavior: 'toggle' },
+		});
 
 		await userEvent.click(getByRole('option', { name: 'v2' }));
 
+		expect(emitted('update:modelValue')).toEqual([[undefined]]);
 		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('aria-selected', 'true');
 		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('aria-selected', 'true');
 	});
 
-	it('moves the highlight with the pointer when highlightOnHover is set', async () => {
-		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
+	it('moves the highlight with the pointer', async () => {
+		const { getByRole } = render(HoverHarness);
 		await nextTick();
 
 		await userEvent.hover(getByRole('option', { name: 'v1' }));
@@ -298,62 +384,49 @@ describe('N8nListbox', () => {
 		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('data-highlighted');
 	});
 
-	it('clears the hovered row when arrow keys move and the pointer stays', async () => {
-		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
+	it('moves Tab from a control inside an item to the next item', async () => {
+		const { getByRole } = render(TabHarness);
 		await nextTick();
-		const current = getByRole('option', { name: 'v2' });
-		const next = getByRole('option', { name: 'v1' });
+		const v2 = getByRole('option', { name: 'v2 v2 actions' });
+		const v1 = getByRole('option', { name: 'v1 v1 actions' });
+		const archive = getByRole('option', { name: 'archive archive actions' });
+		v2.focus();
 
-		await userEvent.hover(next);
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'v2 actions' })).toHaveFocus();
 
-		expect(next).toHaveAttribute('data-highlighted');
-		expect(current).not.toHaveAttribute('data-highlighted');
+		await userEvent.tab();
+		expect(v1).toHaveFocus();
+		expect(v1).toHaveAttribute('data-highlighted');
 
-		next.focus();
-		await userEvent.keyboard('{ArrowUp}');
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'v1 actions' })).toHaveFocus();
 
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(next).not.toHaveAttribute('data-highlighted');
+		await userEvent.tab();
+		expect(archive).toHaveFocus();
+		expect(getByRole('option', { name: 'v0 v0 actions' })).not.toHaveAttribute('data-highlighted');
 
-		await userEvent.hover(next);
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'archive actions' })).toHaveFocus();
 
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(next).not.toHaveAttribute('data-highlighted');
-	});
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'After' })).toHaveFocus();
 
-	it('does not scroll the page when the list mounts', async () => {
-		const scrolling = document.documentElement;
-		scrolling.scrollTop = 180;
-		const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {
-			scrolling.scrollTop = 480;
-		});
-		const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {
-			scrolling.scrollTop = 480;
-		});
+		v1.focus();
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'v1 actions' })).toHaveFocus();
 
-		try {
-			render(HoverHarness, { props: { highlightOnHover: false } });
-			await nextTick();
-			await nextTick();
+		await userEvent.tab({ shift: true });
+		expect(v1).toHaveFocus();
 
-			expect(focus).toHaveBeenCalled();
-			expect(scrolling.scrollTop).toBe(180);
-		} finally {
-			scrollIntoView.mockRestore();
-			focus.mockRestore();
-		}
-	});
+		await userEvent.tab({ shift: true });
+		expect(getByRole('button', { name: 'v2 actions' })).toHaveFocus();
 
-	it('does not move the highlight on hover when highlightOnHover is off', async () => {
-		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: false } });
-		await nextTick();
-		const current = getByRole('option', { name: 'v2' });
-		current.focus();
+		await userEvent.tab({ shift: true });
+		expect(v2).toHaveFocus();
 
-		await userEvent.hover(getByRole('option', { name: 'v1' }));
-
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
+		await userEvent.tab({ shift: true });
+		expect(getByRole('button', { name: 'Before' })).toHaveFocus();
 	});
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {

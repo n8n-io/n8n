@@ -1,4 +1,5 @@
-import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
+import type { AppEventMap } from '@n8n/backend-module-apps';
+import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -51,6 +52,7 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import type { AiEventMap } from './ai.event-map';
 import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
@@ -73,11 +75,18 @@ export type { UserLike };
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
 
+export type SystemDeactivationReason =
+	| 'memory-guard'
+	| 'crash-recovery'
+	| 'source-control-pull'
+	| 'instance-ai-eval-rollback';
+
 export type CrashDetector =
 	| 'stall'
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {
@@ -85,7 +94,9 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = DataTableEventMap & {
+type ModuleEventMap = DataTableEventMap & AppEventMap;
+
+export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -235,6 +246,13 @@ export type RelayEventMap = DataTableEventMap & {
 		source?: WorkflowActionSource;
 	};
 
+	'workflow-deactivated-by-system': {
+		workflowId: string;
+		workflowName: string;
+		deactivatedVersionId: string;
+		reason: SystemDeactivationReason;
+	};
+
 	'workflow-pre-execute': {
 		executionId: string;
 		userId?: string;
@@ -375,6 +393,10 @@ export type RelayEventMap = DataTableEventMap & {
 		authenticationMethod: AuthenticationMethod;
 	};
 
+	'user-logged-out': {
+		user: UserLike;
+	};
+
 	'user-login-failed': {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
@@ -491,6 +513,7 @@ export type RelayEventMap = DataTableEventMap & {
 		method: string;
 		apiVersion: string;
 		userAgent?: string;
+		client: PublicApiClient;
 	};
 
 	// #endregion
@@ -566,6 +589,31 @@ export type RelayEventMap = DataTableEventMap & {
 		/** Both resolved before the delete, which cascades away the rows that name the project. */
 		credentialName: string;
 		projectId: string | undefined;
+	};
+
+	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
+	'credentials-data-read': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		publicApi: boolean;
+	};
+
+	/**
+	 * A user retrieved the decrypted data of several credentials at once through
+	 * `includeData=true` on the list. One event per chunk of ids, so that every id is
+	 * recorded and every event stays small.
+	 */
+	'credentials-list-data-read': {
+		user: UserLike;
+		/** Ids of the credentials whose data was returned, this chunk only. */
+		credentialIds: string[];
+		/** Number of credentials whose data was returned, across all chunks. */
+		credentialCount: number;
+		/** 1-based index of this chunk. */
+		chunk: number;
+		chunkCount: number;
+		publicApi: boolean;
 	};
 
 	'credentials-user-disconnected': {
@@ -1178,6 +1226,21 @@ export type RelayEventMap = DataTableEventMap & {
 
 	'memory-guard-hold-ended': {
 		heldMs: number;
+		/** Executions still waiting when the hold ended. */
+		heldExecutions: number;
+		longestWaitMs: number;
+	};
+
+	/** A production execution starts to wait because of a hold. */
+	'memory-guard-execution-held': {
+		executionId: string;
+	};
+
+	/** A held execution starts, or is cancelled while it waits. */
+	'memory-guard-execution-released': {
+		executionId: string;
+		waitedMs: number;
+		started: boolean;
 	};
 
 	/** Crashed sessions so far, by the strongest guard action before each crash. */
@@ -1366,8 +1429,12 @@ export type RelayEventMap = DataTableEventMap & {
 		user: UserLike;
 		/** Set when the outcome is 'success'. */
 		providerId?: string;
+		/** Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
 		authType: PromotionProviderAuthType;
+		/** Git host providers only. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
@@ -1376,7 +1443,12 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-environment-created': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 		/** Promote environments only. */
@@ -1386,7 +1458,12 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-provider-updated': {
 		user: UserLike;
 		providerId: string;
+		/** The name after the update. Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. The URL after the update. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'auth' | 'config'>;
 		outcome: 'success' | 'failed';
@@ -1397,13 +1474,24 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-provider-deleted': {
 		user: UserLike;
 		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. */
+		hostBaseUrl?: string;
 	};
 
+	/** Name, provider, and repository are the values after the update. */
 	'promotion-environment-updated': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
 	};
@@ -1411,6 +1499,11 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-environment-deleted': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 	};
@@ -1443,6 +1536,8 @@ export type RelayEventMap = DataTableEventMap & {
 		};
 		/** Project scope only. */
 		selectedWorkflowCount?: number;
+		/** Project scope only. */
+		selectedFolderCount?: number;
 		/** Set when the outcome is not 'failed'. */
 		openedReview?: boolean;
 	};
@@ -1459,6 +1554,10 @@ export type RelayEventMap = DataTableEventMap & {
 		workflowsChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsFailedToPublish?: number;
+		/** Set when the outcome is 'applied'. */
+		foldersChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		projectsChanged?: number;
 	};
 
 	'promotion-merge-request-opened': {

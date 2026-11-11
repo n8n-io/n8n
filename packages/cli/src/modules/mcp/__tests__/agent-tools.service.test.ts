@@ -2,7 +2,12 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
-import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
+import {
+	type EventService,
+	ProjectScopeService,
+	UrlService,
+	NodeTypesProxy,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
 import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
@@ -11,7 +16,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -31,7 +35,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError } from '@n8n/errors';
 
 import { SkillNameTakenError } from '@/modules/skills';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
@@ -68,7 +72,6 @@ import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
-import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Telemetry } from '@/telemetry';
@@ -189,7 +192,7 @@ describe('McpAgentToolsService', () => {
 		agentModelCatalogService,
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
-		mockInstance(NodeTypes),
+		mockInstance(NodeTypesProxy),
 		mockInstance(OauthService),
 		outboundHttp,
 		urlService,

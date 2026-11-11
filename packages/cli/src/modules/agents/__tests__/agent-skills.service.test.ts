@@ -9,8 +9,6 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -26,8 +24,6 @@ import {
 	type FakeAgentSkillRefsService,
 	createAgentSkillRefsService,
 } from './test-utils/stored-agent-config';
-
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -96,9 +92,6 @@ describe('AgentSkillsService', () => {
 
 		agentRepository = mock<AgentRepository>();
 		skillService = mock<SkillService>();
-		skillAccess = mock<SkillAccessService>();
-		// The real rule, on top of the mocked permission checks below.
-		skillAccess.canCreate.mockImplementation(SkillAccessService.prototype.canCreate);
 		skillRefs = createAgentSkillRefsService();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
@@ -107,9 +100,18 @@ describe('AgentSkillsService', () => {
 		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
-		vi.mocked(userHasScopes).mockResolvedValue(true);
 		projectScopeService = mock<ProjectScopeService>();
+		projectScopeService.hasScopes.mockResolvedValue(true);
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
+		skillAccess = mock<SkillAccessService>();
+		// The real rule, on top of the mocked permission checks.
+		const realAccess = new SkillAccessService(mock(), projectScopeService);
+		skillAccess.canCreate.mockImplementation(
+			async (...args) => await realAccess.canCreate(...args),
+		);
+		skillAccess.assertCanCreate.mockImplementation(
+			async (...args) => await realAccess.assertCanCreate(...args),
+		);
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -161,9 +163,9 @@ describe('AgentSkillsService', () => {
 				'agent',
 				{},
 			);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId,
-			});
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, projectId, [
+				'projectSkill:create',
+			]);
 			const refs: AgentJsonSkillConfig[] = [
 				{ type: 'skill', id: 'existing' },
 				{ type: 'skill', id: 'skill_new1' },
@@ -279,30 +281,12 @@ describe('AgentSkillsService', () => {
 
 		it('rejects a user who may not create skills in the project', async () => {
 			givenAgent({ schema: baseConfig });
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
 			).rejects.toThrow(ForbiddenError);
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
-		});
-
-		it('creates a skill for this agent only without a project skill scope', async () => {
-			givenAgent({ schema: baseConfig });
-			vi.mocked(userHasScopes).mockResolvedValue(false);
-			skillRefs.createSkills.mockResolvedValue(['skill_new']);
-
-			await service.createAndAttachSkill(agentId, projectId, skill, context, 'agent');
-
-			expect(userHasScopes).not.toHaveBeenCalled();
-			expect(skillRefs.createSkills).toHaveBeenCalledWith(
-				expect.anything(),
-				[skill],
-				'user-1',
-				'agent',
-				'agent',
-				{},
-			);
 		});
 
 		it('rejects a name that is hard to tell apart from a skill of the agent', async () => {
@@ -372,8 +356,8 @@ describe('AgentSkillsService', () => {
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
 				skills: { skill_a: skill },
 			});
-			skillRefs.availabilityOf.mockResolvedValue('project');
-			skillAccess.assertCanMove.mockResolvedValue({ projectId, agentId: null });
+			skillRefs.availabilityOf.mockResolvedValue('instance');
+			skillAccess.assertCanMove.mockResolvedValue({ projectId: null });
 
 			await service.updateSkill(
 				agentId,
@@ -383,7 +367,7 @@ describe('AgentSkillsService', () => {
 				context,
 				undefined,
 				undefined,
-				'agent',
+				'project',
 			);
 
 			expect(skillAccess.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
@@ -391,10 +375,10 @@ describe('AgentSkillsService', () => {
 			expect(skillRefs.setAvailability).toHaveBeenCalledWith(
 				agent,
 				'skill_a',
-				'agent',
+				'project',
 				{},
 				// A refused move names only the agents in projects the user may read.
-				{ checkedSource: { projectId, agentId: null }, agentProjectIds: [projectId] },
+				{ checkedSource: { projectId: null }, agentProjectIds: [projectId] },
 			);
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
@@ -418,7 +402,7 @@ describe('AgentSkillsService', () => {
 					context,
 					undefined,
 					undefined,
-					'agent',
+					'instance',
 				),
 			).rejects.toThrow('You are not allowed to move this skill out of its scope.');
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
@@ -427,7 +411,7 @@ describe('AgentSkillsService', () => {
 
 		it('writes nothing when the skill keeps where it can be added', async () => {
 			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
-			skillRefs.availabilityOf.mockResolvedValue('agent');
+			skillRefs.availabilityOf.mockResolvedValue('instance');
 
 			await service.updateSkill(
 				agentId,
@@ -437,7 +421,7 @@ describe('AgentSkillsService', () => {
 				context,
 				undefined,
 				undefined,
-				'agent',
+				'instance',
 			);
 
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
