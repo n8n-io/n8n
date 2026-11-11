@@ -332,6 +332,7 @@ describe('TelegramIntegration secret token', () => {
 			botToken: 'bot-token',
 			mode: 'webhook',
 			secretToken: expected,
+			longPolling: { allowedUpdates: expect.arrayContaining(['message', 'callback_query']) },
 		});
 	});
 
@@ -344,6 +345,20 @@ describe('TelegramIntegration secret token', () => {
 
 		expect(createTelegramAdapter).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: 'polling' }),
+		);
+	});
+
+	it('createAdapter polls for button clicks, not only messages', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext());
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({
+				longPolling: { allowedUpdates: expect.arrayContaining(['message', 'callback_query']) },
+			}),
 		);
 	});
 
@@ -407,6 +422,18 @@ describe('TelegramIntegration secret token', () => {
 		await integration.onAfterConnect(makeContext());
 
 		expect(outboundHttp.requests).toHaveBeenCalledWith();
+	});
+
+	it('onAfterConnect subscribes the webhook to button clicks, not only messages', async () => {
+		const { integration, requestMock } = makeIntegration();
+		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
+
+		await integration.onAfterConnect(makeContext());
+
+		const request = requestMock.mock.calls[0][0] as { body: { allowed_updates?: string[] } };
+		expect(request.body.allowed_updates).toEqual(
+			expect.arrayContaining(['message', 'callback_query']),
+		);
 	});
 
 	it('onAfterConnect throws when Telegram rejects setWebhook', async () => {

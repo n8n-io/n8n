@@ -70,6 +70,7 @@ describe('the prefill_type property on the message event', () => {
 		prompt_modified: false,
 		mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 		attachment_count: 0,
+		selected_element_count: 0,
 	};
 
 	it.each([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK].map((t) => [t]))(

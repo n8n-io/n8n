@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Reading a credential field is shared rather than repeated per platform so the

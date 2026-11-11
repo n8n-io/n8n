@@ -10,6 +10,21 @@ const blueprint: AppBlueprint = {
 	visibility: 'project',
 	description: 'Plan the week and track completed tasks.',
 	theme: 'both',
+	bindings: [
+		{
+			kind: 'dataTable',
+			name: 'Weekly tasks',
+			description: 'Stores tasks and their completion status.',
+			status: 'existing',
+			resourceId: 'table-1',
+		},
+		{
+			kind: 'agent',
+			name: 'Planning agent',
+			description: 'Answers questions about the weekly plan.',
+			status: 'new',
+		},
+	],
 };
 
 const renderComponent = createComponentRenderer(AppBlueprintCard);
@@ -73,12 +88,80 @@ describe('AppBlueprintCard', () => {
 		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
 	});
 
+	it('shows a taken namespace and blocks approval until the user changes it', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderComponent({
+			props: { blueprint, errors: { namespace: 'taken' } },
+		});
+		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
+
+		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toHaveTextContent(
+			'Another app already uses this namespace. Choose a different one.',
+		);
+		expect(namespace).toHaveAttribute('aria-invalid', 'true');
+		expect(getByTestId('instance-ai-app-blueprint-start')).toBeDisabled();
+
+		await userEvent.clear(namespace);
+		await userEvent.type(namespace, 'weekly-planner-2');
+
+		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
+		expect(emitted().submit?.[0]).toEqual([
+			{
+				kind: 'appBlueprint',
+				approved: true,
+				blueprint: { ...blueprint, namespace: 'weekly-planner-2' },
+			},
+		]);
+	});
+
+	it('shows no namespace error after resolution', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { blueprint, errors: { namespace: 'taken' }, readOnly: true },
+		});
+
+		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-blueprint-namespace')).not.toHaveAttribute('aria-invalid');
+	});
+
+	it('shows that n8n could not create the app', () => {
+		const { getByTestId } = renderComponent({
+			props: { blueprint, readOnly: true, failed: true },
+		});
+
+		expect(getByTestId('instance-ai-app-blueprint-failed')).toHaveTextContent(
+			"Couldn't create this app.",
+		);
+	});
+
 	it('shows the description as read-only text', () => {
 		const { getByTestId } = renderComponent({ props: { blueprint } });
 
 		expect(getByTestId('instance-ai-app-blueprint-description')).toHaveTextContent(
 			blueprint.description,
 		);
+	});
+
+	it('shows planned bindings as read-only rows', () => {
+		const { getAllByTestId, getByText, queryByText } = renderComponent({ props: { blueprint } });
+
+		const bindings = getAllByTestId('instance-ai-app-blueprint-binding');
+		expect(bindings).toHaveLength(2);
+		expect(bindings[0]).toHaveAttribute('data-binding-kind', 'dataTable');
+		expect(bindings[1]).toHaveAttribute('data-binding-kind', 'agent');
+		expect(getByText('Weekly tasks')).toBeVisible();
+		expect(getByText('Stores tasks and their completion status.')).toBeVisible();
+		expect(getByText('Existing')).toBeVisible();
+		expect(getByText('New')).toBeVisible();
+		expect(queryByText('table-1')).not.toBeInTheDocument();
+	});
+
+	it('hides the bindings section when none are planned', () => {
+		const { queryByText, queryByTestId } = renderComponent({
+			props: { blueprint: { ...blueprint, bindings: undefined } },
+		});
+
+		expect(queryByText('Runs on')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-app-blueprint-binding')).not.toBeInTheDocument();
 	});
 
 	it('is read-only after resolution', () => {

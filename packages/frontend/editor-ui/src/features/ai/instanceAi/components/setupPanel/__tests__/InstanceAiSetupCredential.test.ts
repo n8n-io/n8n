@@ -145,7 +145,7 @@ const InputStub = defineComponent({
 	},
 });
 const ExistingCredentialStub = defineComponent({
-	props: ['workflowId', 'projectId', 'overrideCredType'],
+	props: ['workflowId', 'projectId', 'overrideCredType', 'credentials'],
 	emits: ['credentialSelected'],
 	setup(props, { emit }) {
 		return () =>
@@ -154,6 +154,9 @@ const ExistingCredentialStub = defineComponent({
 				{
 					'data-workflow-id': props.workflowId,
 					'data-project-id': props.projectId,
+					'data-credential-ids': (props.credentials as Array<{ id: string }> | undefined)
+						?.map(({ id }) => id)
+						.join(','),
 					onClick: () =>
 						emit('credentialSelected', {
 							properties: {
@@ -808,7 +811,10 @@ describe('InstanceAiSetupCredential', () => {
 		expect(store.upsertCredential).not.toHaveBeenCalled();
 		test.resolve();
 		await flushPromises();
-		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf',
+			forAssistant: true,
+		});
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0]).toEqual([
 			item,
 			savedCredential.id,
@@ -1121,6 +1127,28 @@ describe('InstanceAiSetupCredential', () => {
 			expect(store.createNewCredential).not.toHaveBeenCalled();
 		},
 	);
+
+	it('gives the picker no credentials while the store holds another scope', async () => {
+		const store = mockedStore(useCredentialsStore);
+		const credential = { ...savedCredential, isResolvable: true };
+		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
+		store.getUsableCredentialByType = vi.fn().mockReturnValue([credential]);
+		store.getCredentialById = vi.fn().mockReturnValue(credential);
+		const rendered = renderComponent({
+			props: {
+				node: {
+					...node,
+					credentials: { serviceApi: { id: credential.id, name: credential.name } },
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(rendered.getByRole('button', { name: 'Select existing connection' })).toHaveAttribute(
+			'data-credential-ids',
+			'',
+		);
+	});
 
 	it('offers an existing credential before the announced workflow node exists', async () => {
 		const store = mockedStore(useCredentialsStore);

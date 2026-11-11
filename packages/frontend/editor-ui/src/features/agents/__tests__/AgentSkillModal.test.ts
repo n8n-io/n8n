@@ -175,8 +175,9 @@ function renderModal({
 		| 'onDelete'
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
-		| 'initialCompare'
 		| 'latestVersion'
+		| 'initialStep'
+		| 'initialMethod'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1513,6 +1514,49 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
+	it('opens at the form when the caller starts manually, with no Back and a default name', async () => {
+		const getDefaultName = vi.fn().mockResolvedValue('New skill 2');
+		const { container, queryByTestId } = renderModal({
+			settings: {
+				initialStep: 'manual',
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+				getDefaultName,
+			},
+		});
+
+		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
+		expect(getDefaultName).toHaveBeenCalledWith('instance');
+		await waitFor(() => expect(getTitleInput(container)).toHaveValue('New skill 2'));
+	});
+
+	it('saves a skill the caller uploaded with the upload method and no Back', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			onConfirm,
+			skill: { name: 'Research', description: 'Use for research', instructions: 'Main' },
+			settings: {
+				initialMethod: 'upload',
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('Research');
+		// The editor reports the form valid a tick after it renders, as after an in-modal upload.
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ id: undefined, method: 'upload', scope: 'instance' }),
+			),
+		);
+	});
+
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
@@ -1920,7 +1964,7 @@ function makeListItem(
 		canDelete: true,
 		canStopSyncing: false,
 		syncState: null,
-		canCheckForUpdates: false,
+		sourceId: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -2364,21 +2408,6 @@ describe('Compare mode', () => {
 		}));
 	});
 
-	it('opens comparing the latest version with the one before it', async () => {
-		const { findByTestId, getByTestId, queryByTestId } = renderModal({
-			skill: v2,
-			skillId: 'tone',
-			settings: { ...settings, initialCompare: true },
-		});
-
-		expect(await findByTestId('agent-skill-compare-bar')).toBeInTheDocument();
-		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
-		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
-		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
-		// The footer is hidden while comparing.
-		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
-	});
-
 	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
 		const { findByTestId, getByTestId, queryByTestId } = renderModal({
 			skill: v2,
@@ -2391,6 +2420,12 @@ describe('Compare mode', () => {
 		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
 		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
 		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 2);
+		expect(getByTestId('agent-skill-compare-bar')).toBeInTheDocument();
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
+		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
+		// The footer is hidden while comparing.
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('agent-skill-compare-done'));
 

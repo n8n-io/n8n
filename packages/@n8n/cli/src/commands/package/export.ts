@@ -100,7 +100,7 @@ export default class PackageExport extends BaseCommand {
 		credentialExportPolicy: Flags.option({
 			options: ['expression-values-only', 'no-values'] as const,
 			description:
-				'Whether expression values from credential data are bundled into the package; literal values never travel (default on the instance: expression-values-only)',
+				'Whether expression values from credential data are bundled into the package; a literal value travels only when it decides whether a field with a bundled expression shows (default on the instance: expression-values-only)',
 			aliases: ['credential-export-policy'],
 		})(),
 		includeArchivedWorkflows: Flags.option({

@@ -1,8 +1,8 @@
-import type {
-	InstanceAiAttachment,
-	InstanceAiThreadOrigin,
-	InstanceAiThreadSource,
-	ProviderAttachmentCapabilities,
+import {
+	acceptedMimeTypesFromCapabilities,
+	type InstanceAiAttachment,
+	type InstanceAiThreadOrigin,
+	type InstanceAiThreadSource,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -14,12 +14,37 @@ import { z } from 'zod';
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
 
-/** The file types that the Assistant agent thread view accepts. */
-export const ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES: ProviderAttachmentCapabilities = {
-	image: true,
-	pdf: true,
-	audio: false,
-};
+/**
+ * The file types that the Assistant agent chat accepts: the images and PDFs
+ * that the model reads, and the files that the `parse-file` tool reads.
+ * Extensions cover browsers that report another MIME type, such as
+ * `application/vnd.ms-excel` for a CSV file.
+ */
+export const ASSISTANT_AGENT_ACCEPTED_MIME_TYPES = [
+	acceptedMimeTypesFromCapabilities({ image: true, pdf: true, audio: false }),
+	'text/csv',
+	'application/csv',
+	'text/tab-separated-values',
+	'application/json',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'text/plain',
+	'text/markdown',
+	'text/x-markdown',
+	'text/html',
+	'application/xhtml+xml',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'.csv',
+	'.tsv',
+	'.json',
+	'.xlsx',
+	'.txt',
+	'.md',
+	'.markdown',
+	'.html',
+	'.htm',
+	'.pdf',
+	'.docx',
+].join(',');
 
 /** The id of the open Assistant agent thread, for cards that report it in telemetry. */
 export const ASSISTANT_AGENT_THREAD_ID: InjectionKey<string> = Symbol('assistantAgentThreadId');

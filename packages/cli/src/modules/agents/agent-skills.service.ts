@@ -11,9 +11,8 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import {
 	findIntroducedNameClashes,
 	findNameClashGroups,
@@ -307,7 +306,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.saveTrusted(
+			const result = await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,
@@ -319,6 +318,10 @@ export class AgentSkillsService {
 				context.user.id,
 				ctx,
 			);
+			if (pinned) {
+				await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
+			}
+			return result;
 		});
 
 		await this.skillService.refreshFollowingAgents(

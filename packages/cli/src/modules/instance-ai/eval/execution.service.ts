@@ -39,13 +39,11 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
-	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	type IWorkflowIssues,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -55,7 +53,7 @@ import type {
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { DataTableService } from '@n8n/backend-module-data-table';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { executeAgent } from '@/workflow-execute-additional-data';
@@ -142,7 +140,7 @@ interface CalledAgentRun {
 export class EvalExecutionService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
 		private readonly workflowRunner: WorkflowRunner,

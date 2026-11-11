@@ -1,5 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	linkUserToProject,
@@ -7,8 +8,16 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { CredentialsRepository, WorkflowRepository, type User } from '@n8n/db';
+import {
+	CredentialsRepository,
+	FolderRepository,
+	ProjectRepository,
+	WorkflowRepository,
+	type Project,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
@@ -18,11 +27,14 @@ import {
 	credentialRequirementsFromWorkflows,
 	githubCredentialPayload,
 	serializedCredential,
+	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { Telemetry } from '@/telemetry';
+import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -31,6 +43,8 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
+// Keep the publication outbox from draining in the background after a test publishes.
+mockInstance(WorkflowPublicationNotifier);
 
 // Must run before `setupTestServer`, which constructs the controller with this mock.
 const credentialTypesMock = mockInstance(CredentialTypes);
@@ -68,8 +82,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate([
+		'WorkflowPublishedVersion',
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
 		'Project',
 		'ProjectRelation',
 		'Folder',
@@ -482,5 +499,253 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(response.body).toStrictEqual({
 			message: "request/body must have required property 'package'",
 		});
+	});
+});
+
+describe('POST /n8n-packages/import-selection publishing and API key publish scopes', () => {
+	const selectionScopes: ApiKeyScope[] = ['workflow:import'];
+	const scheduleTriggerNodes = [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+
+	async function selectionPackage(projectId: string, sourcePublished: boolean) {
+		return await buildEntityPackageBuffer({
+			sourceId: 'http-selection-source',
+			projects: [
+				{ target: 'projects/p1', project: serializedProject({ id: projectId, name: 'P1' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wfa',
+					workflow: serializedWorkflow({
+						id: 'WFA',
+						name: 'wfa',
+						nodes: scheduleTriggerNodes,
+						publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+					}),
+				},
+			],
+		});
+	}
+
+	async function importSelectionAs(user: User, projectId: string, packageBuffer: Buffer) {
+		return await testServer
+			.publicApiAgentFor(user)
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', projectId)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', packageBuffer, 'import.n8np');
+	}
+
+	async function seedPublishedTarget(project: Project) {
+		const workflow = await createActiveWorkflow({ name: 'Published target' }, project);
+		await Container.get(WorkflowRepository).update(workflow.id, { sourceWorkflowId: 'WFA' });
+		return workflow;
+	}
+
+	async function storedWorkflows() {
+		return await Container.get(WorkflowRepository).find({
+			select: ['id', 'versionId', 'activeVersionId'],
+			order: { id: 'ASC' },
+		});
+	}
+
+	it('rejects an API key without workflow:activate when match-source publishes the selection', async () => {
+		const user = await createOwnerWithApiKey({ scopes: selectionScopes });
+		const project = await createTeamProject('Target', owner);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, true),
+		);
+
+		expect(response.statusCode).toBe(403);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('publishes the selection for an API key with workflow:activate', async () => {
+		const user = await createOwnerWithApiKey({
+			scopes: [...selectionScopes, 'workflow:activate'],
+		});
+		const project = await createTeamProject('Target', owner);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, true),
+		);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.workflows).toEqual([
+			expect.objectContaining({ sourceWorkflowId: 'WFA', publishing: { state: 'published' } }),
+		]);
+	});
+
+	it('rejects an API key without workflow:deactivate when match-source unpublishes the selection', async () => {
+		const user = await createOwnerWithApiKey({ scopes: selectionScopes });
+		const project = await createTeamProject('Target', owner);
+		await seedPublishedTarget(project);
+		const before = await storedWorkflows();
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, false),
+		);
+
+		expect(response.statusCode).toBe(403);
+		expect(await storedWorkflows()).toEqual(before);
+	});
+
+	it('unpublishes the selection for an API key with workflow:deactivate', async () => {
+		const user = await createOwnerWithApiKey({
+			scopes: [...selectionScopes, 'workflow:deactivate'],
+		});
+		const project = await createTeamProject('Target', owner);
+		const target = await seedPublishedTarget(project);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, false),
+		);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.workflows).toEqual([
+			expect.objectContaining({ sourceWorkflowId: 'WFA', publishing: { state: 'unpublished' } }),
+		]);
+		expect(await storedWorkflows()).toEqual([
+			expect.objectContaining({ id: target.id, activeVersionId: null }),
+		]);
+	});
+});
+
+describe('POST /n8n-packages/import-selection project and folder scopes', () => {
+	async function importSelectionWithScopes(
+		scopes: ApiKeyScope[],
+		projectId: string,
+		workflowId: string,
+		packageBuffer: Buffer,
+	) {
+		const user = await createOwnerWithApiKey({ scopes });
+		return await testServer
+			.publicApiAgentFor(user)
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', projectId)
+			.field('selectedWorkflowIds', JSON.stringify([workflowId]))
+			.attach('package', packageBuffer, 'import.n8np');
+	}
+
+	it('requires project:create only when the selected project does not exist', async () => {
+		const packageBuffer = await buildProjectPackage('NEW');
+
+		const denied = await importSelectionWithScopes(
+			['workflow:import'],
+			'NEW',
+			'WFA',
+			packageBuffer,
+		);
+		expect(denied.statusCode).toBe(403);
+		expect(await Container.get(ProjectRepository).findOneBy({ id: 'NEW' })).toBeNull();
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+		const allowed = await importSelectionWithScopes(
+			['workflow:import', 'project:create'],
+			'NEW',
+			'WFA',
+			packageBuffer,
+		);
+		expect(allowed.statusCode, JSON.stringify(allowed.body)).toBe(200);
+		expect(await Container.get(ProjectRepository).findOneBy({ id: 'NEW' })).not.toBeNull();
+	});
+
+	it('still refuses a user who may not update the existing project', async () => {
+		const project = await createTeamProject('Target', owner);
+		const editor = await createMemberWithApiKey({ scopes: ['workflow:import'] });
+		await linkUserToProject(editor, project, 'project:editor');
+		const packageBuffer = await buildProjectPackage(project.id);
+
+		const response = await testServer
+			.publicApiAgentFor(editor)
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', packageBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe(
+			'You do not have permission to update the existing project "P1".',
+		);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('requires folder:create only when the selection creates a folder', async () => {
+		const project = await createTeamProject('Target', owner);
+		const packageBuffer = await buildEntityPackageBuffer({
+			sourceId: 'http-selection-source',
+			projects: [
+				{ target: 'projects/p1', project: serializedProject({ id: project.id, name: 'P1' }) },
+			],
+			folders: [
+				{ target: 'projects/p1/folders/ops', folder: serializedFolder({ id: 'OPS', name: 'ops' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+				},
+				{
+					target: 'projects/p1/folders/ops/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+				},
+			],
+		});
+		const folders = Container.get(FolderRepository);
+		const workflows = Container.get(WorkflowRepository);
+
+		const rootWorkflow = await importSelectionWithScopes(
+			['workflow:import'],
+			project.id,
+			'WFA',
+			packageBuffer,
+		);
+		expect(rootWorkflow.statusCode, JSON.stringify(rootWorkflow.body)).toBe(200);
+		expect(await folders.count()).toBe(0);
+
+		const denied = await importSelectionWithScopes(
+			['workflow:import'],
+			project.id,
+			'WFB',
+			packageBuffer,
+		);
+		expect(denied.statusCode).toBe(403);
+		expect(await folders.count()).toBe(0);
+		expect(await workflows.findOneBy({ id: 'WFB' })).toBeNull();
+
+		const allowed = await importSelectionWithScopes(
+			['workflow:import', 'folder:create'],
+			project.id,
+			'WFB',
+			packageBuffer,
+		);
+		expect(allowed.statusCode, JSON.stringify(allowed.body)).toBe(200);
+		expect(await folders.findOneBy({ id: 'OPS' })).not.toBeNull();
+
+		// The folder exists now, so a new version of WFB needs no folder scope.
+		const reimport = await importSelectionWithScopes(
+			['workflow:import'],
+			project.id,
+			'WFB',
+			packageBuffer,
+		);
+		expect(reimport.statusCode, JSON.stringify(reimport.body)).toBe(200);
 	});
 });

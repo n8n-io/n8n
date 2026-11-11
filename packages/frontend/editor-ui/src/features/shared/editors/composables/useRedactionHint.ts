@@ -6,7 +6,7 @@ import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutio
  * Redaction empties the item data, so an expression that reads it resolves to
  * nothing even though the execution has a value. This exposes the active
  * execution's redaction state and the hint text to show in place of the empty
- * value, picked by whether the user can reveal the data.
+ * value, picked by the redaction reason and reveal permission.
  */
 export function useRedactionHint() {
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
@@ -22,6 +22,9 @@ export function useRedactionHint() {
 		const info = redactionInfo.value;
 		if (info?.reason === 'dynamic_credentials') {
 			return i18n.baseText('expressionModalInput.redacted.dynamicCredentials');
+		}
+		if (info?.reason === 'credential_inaccessible') {
+			return i18n.baseText('expressionModalInput.redacted.credentialInaccessible');
 		}
 		// Without permission, the generic no-permission hint applies below.
 		if (info?.reason === 'sub_workflow_redaction_policy' && info.canReveal) {
