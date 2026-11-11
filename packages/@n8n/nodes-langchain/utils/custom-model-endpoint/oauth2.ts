@@ -90,7 +90,7 @@ function statedLifetime(parsed: unknown): number {
 /** A login server can mint a token that is already dead, and caching that one for an hour 401s every request after it. */
 function lifetimeSeconds(parsed: unknown): number {
 	const stated = statedLifetime(parsed);
-	return Number.isFinite(stated) && stated >= 0 ? stated : ASSUMED_LIFETIME_SECONDS;
+	return Number.isFinite(stated) ? stated : ASSUMED_LIFETIME_SECONDS;
 }
 
 function readToken(text: string): CachedToken {
