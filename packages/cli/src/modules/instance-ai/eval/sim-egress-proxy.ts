@@ -57,6 +57,7 @@ const FORWARD_PREFIX = '/sim/';
  */
 export class SimEgressProxy {
 	private server?: Server;
+	private port?: number;
 	private readonly sockets = new Set<Socket>();
 	/** Hosts the run tried to reach that the sim server does not serve. */
 	readonly refusedHosts = new Set<string>();
@@ -82,6 +83,7 @@ export class SimEgressProxy {
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		const address = server.address();
 		if (!address || typeof address === 'string') throw new Error('Sim egress proxy has no port');
+		this.port = address.port;
 		return `http://127.0.0.1:${address.port}`;
 	}
 
@@ -130,6 +132,11 @@ export class SimEgressProxy {
 			const target = new URL(url);
 			if (LOOPBACK.has(target.hostname)) {
 				const port = Number(target.port) || 80;
+				// A request helper calling an AI base URL sends it through this proxy to this proxy.
+				if (port === this.port) {
+					this.handleOwn(`${target.pathname}${target.search}`, req, res);
+					return;
+				}
 				if (this.loopbackPorts.includes(port)) {
 					this.forwardDirect(target, req, res);
 					return;
@@ -141,6 +148,11 @@ export class SimEgressProxy {
 			this.forward(target.host, `${target.pathname}${target.search}`, req, res);
 			return;
 		}
+		this.handleOwn(url, req, res);
+	}
+
+	/** A request addressed to this proxy: `/sim/<host>/...` for AI SDK calls. */
+	private handleOwn(url: string, req: IncomingMessage, res: ServerResponse): void {
 		if (url.startsWith(FORWARD_PREFIX)) {
 			const rest = url.slice(FORWARD_PREFIX.length);
 			const slash = rest.search(/[/?]/);
