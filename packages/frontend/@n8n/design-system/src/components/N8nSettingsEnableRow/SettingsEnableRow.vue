@@ -4,6 +4,7 @@ import { useId } from 'vue';
 import N8nEnterpriseReadinessBadge from '../EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
 import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 import N8nSettingsRow from '../N8nSettingsRow';
+import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSwitch from '../N8nSwitch';
 
 export interface SettingsEnableRowProps {
@@ -52,23 +53,31 @@ const settingsSwitchProps = {
 </script>
 
 <template>
-	<N8nSettingsRow v-bind="$attrs" :title="title" :description="description" :label-for="switchId">
-		<template v-if="showPreviewBadge || showEnterpriseReadinessBadge" #titleTrailing>
-			<N8nPreviewBadge v-if="showPreviewBadge" data-test-id="settings-enable-row-preview-badge" />
-			<N8nEnterpriseReadinessBadge
-				v-if="showEnterpriseReadinessBadge"
-				data-test-id="settings-enable-row-enterprise-readiness-badge"
-			/>
-		</template>
-		<template #action>
-			<N8nSwitch
-				v-bind="settingsSwitchProps"
-				:id="switchId"
-				v-model="enabled"
-				:disabled="disabled"
-				:aria-label="title"
-				:data-test-id="switchTestId"
-			/>
-		</template>
-	</N8nSettingsRow>
+	<!-- The enable control is always its own card at the top of a settings page. -->
+	<N8nSettingsRowGroup v-bind="$attrs">
+		<N8nSettingsRow
+			:show-divider="false"
+			:title="title"
+			:description="description"
+			:label-for="switchId"
+		>
+			<template v-if="showPreviewBadge || showEnterpriseReadinessBadge" #titleTrailing>
+				<N8nPreviewBadge v-if="showPreviewBadge" data-test-id="settings-enable-row-preview-badge" />
+				<N8nEnterpriseReadinessBadge
+					v-if="showEnterpriseReadinessBadge"
+					data-test-id="settings-enable-row-enterprise-readiness-badge"
+				/>
+			</template>
+			<template #action>
+				<N8nSwitch
+					v-bind="settingsSwitchProps"
+					:id="switchId"
+					v-model="enabled"
+					:disabled="disabled"
+					:aria-label="title"
+					:data-test-id="switchTestId"
+				/>
+			</template>
+		</N8nSettingsRow>
+	</N8nSettingsRowGroup>
 </template>

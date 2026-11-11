@@ -64,32 +64,22 @@ function confirmDisable() {
 </script>
 
 <template>
-	<div :class="$style.root">
-		<!-- The section wraps the row, so the group cannot treat it as the last child. -->
-		<N8nSettingsEnableRow
-			:show-divider="false"
-			:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
-			:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
-			:model-value="enabled"
-			:disabled="managedByEnv || isSaving"
-			show-preview-badge
-			switch-test-id="security-workflow-reviews-toggle"
-			@update:model-value="onToggle"
-		/>
+	<N8nSettingsEnableRow
+		:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
+		:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
+		:model-value="enabled"
+		:disabled="managedByEnv || isSaving"
+		show-preview-badge
+		switch-test-id="security-workflow-reviews-toggle"
+		@update:model-value="onToggle"
+	/>
 
-		<N8nAlertDialog
-			:open="showDisableDialog"
-			:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
-			:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
-			@action="confirmDisable"
-			@cancel="showDisableDialog = false"
-			@update:open="showDisableDialog = $event"
-		/>
-	</div>
+	<N8nAlertDialog
+		:open="showDisableDialog"
+		:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
+		:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
+		@action="confirmDisable"
+		@cancel="showDisableDialog = false"
+		@update:open="showDisableDialog = $event"
+	/>
 </template>
-
-<style module>
-.root {
-	display: contents;
-}
-</style>

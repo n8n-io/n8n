@@ -397,12 +397,10 @@ const sharingCountText = computed(() => {
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
 			data-test-id="security-workflow-reviews-section"
 		>
-			<N8nSettingsRowGroup>
-				<WorkflowReviewsSection
-					:initial-enabled="state.workflowReviewsEnabled"
-					:managed-by-env="isManagedByEnv"
-				/>
-			</N8nSettingsRowGroup>
+			<WorkflowReviewsSection
+				:initial-enabled="state.workflowReviewsEnabled"
+				:managed-by-env="isManagedByEnv"
+			/>
 		</N8nSettingsSection>
 
 		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />
