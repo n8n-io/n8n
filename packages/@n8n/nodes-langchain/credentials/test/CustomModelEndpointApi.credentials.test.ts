@@ -145,23 +145,26 @@ describe('CustomModelEndpointApi Credential', () => {
 			expect(result.headers).toEqual({ authorization: 'Bearer sk-test' });
 		});
 
-		it('sends the token that preAuthentication minted, beside the gateway headers', async () => {
+		it.each<[string, ICredentialDataDecryptedObject, Record<string, string>]>([
+			['no Authorization header before a token has been minted', {}, {}],
+			[
+				'no Authorization header while the token slot holds its empty default',
+				{ sessionToken: '' },
+				{},
+			],
+			[
+				'the token that preAuthentication minted',
+				{ sessionToken: 'tok-abc' },
+				{ authorization: 'Bearer tok-abc' },
+			],
+		])('sends %s, beside the gateway headers', async (_name, minted, expected) => {
 			const result = await authenticate({
 				...OAUTH2,
-				sessionToken: 'tok-abc',
+				...minted,
 				gatewayHeaders: { headers: [{ name: 'x-gateway-team', value: 'platform' }] },
 			});
 
-			expect(result.headers).toEqual({
-				authorization: 'Bearer tok-abc',
-				'x-gateway-team': 'platform',
-			});
-		});
-
-		it('sends no Authorization header before a token has been minted', async () => {
-			const result = await authenticate(OAUTH2);
-
-			expect(result.headers).toEqual({});
+			expect(result.headers).toEqual({ ...expected, 'x-gateway-team': 'platform' });
 		});
 	});
 

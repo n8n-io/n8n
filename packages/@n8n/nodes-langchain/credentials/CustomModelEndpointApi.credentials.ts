@@ -251,17 +251,17 @@ export class CustomModelEndpointApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const endpoint = readCustomModelEndpointCredential(credentials);
-		const headers = buildRequestHeaders({
+		const { sessionToken } = credentials;
+
+		requestOptions.headers = buildRequestHeaders({
 			endpoint,
 			requestHeaders: toHeaderRecord(requestOptions.headers),
+			// A token left over from another login method would travel on every request
+			bearerToken:
+				endpoint.login.type === 'oauth2' && typeof sessionToken === 'string'
+					? sessionToken
+					: undefined,
 		});
-
-		// buildRequestHeaders leaves OAuth2 alone, because only this path has a minted token
-		const { sessionToken } = credentials;
-		requestOptions.headers =
-			endpoint.login.type === 'oauth2' && typeof sessionToken === 'string'
-				? { ...headers, authorization: `Bearer ${sessionToken}` }
-				: headers;
 
 		return requestOptions;
 	}
