@@ -24,6 +24,7 @@ import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES, BUILTIN_CREDENTIALS_DOCS_URL } from 
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { getAiGatewayBalancePill } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
@@ -291,14 +292,8 @@ const valueLabel = computed(() =>
 			? i18n.baseText('instanceAi.setupPanel.account')
 			: i18n.baseText('instanceAi.setupPanel.credential'),
 );
-const balanceLabel = computed(() =>
-	gateway.balance.value === undefined
-		? ''
-		: gateway.balance.value <= 0
-			? i18n.baseText('aiGateway.wallet.noCredits')
-			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-					interpolate: { balance: `$${Number(gateway.balance.value).toFixed(2)}` },
-				}),
+const balanceLabel = computed(
+	() => getAiGatewayBalancePill(gateway.balance.value, i18n)?.text ?? '',
 );
 const value = computed(() =>
 	binding.value?.__aiGatewayManaged
