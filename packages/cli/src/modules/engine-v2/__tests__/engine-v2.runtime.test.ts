@@ -43,8 +43,14 @@ const mocks = vi.hoisted(() => {
 	const listen: { error?: Error } = {};
 
 	const server = {
+		get listening() {
+			return !listen.error;
+		},
+		/** The last listener per event, so a test can fire an event after `init()`. */
+		listeners: {} as Record<string, (error?: Error) => void>,
 		close: vi.fn((done?: (error?: Error) => void) => done?.()),
 		once: vi.fn((event: string, listener: (error?: Error) => void) => {
+			server.listeners[event] = listener;
 			if (event === 'listening' && !listen.error) listener();
 			if (event === 'error' && listen.error) listener(listen.error);
 			return server;
@@ -442,6 +448,14 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.server.close).toHaveBeenCalledOnce();
 			expect(mocks.engine.stop).toHaveBeenCalled();
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('keeps the engine API server open when it reports an error after it bound', async () => {
+			await newRuntime().init(senders());
+
+			mocks.server.listeners.error(new Error('later error'));
+
+			expect(mocks.server.close).not.toHaveBeenCalled();
 		});
 
 		it('surfaces the startup failure even when the rollback fails', async () => {
