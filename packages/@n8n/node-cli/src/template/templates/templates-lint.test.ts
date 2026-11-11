@@ -59,15 +59,18 @@ async function lintProject(eslintConfig: typeof EslintConfig, projectPath: strin
 		overrideConfig: [...eslintConfig, testOnlyConfig],
 	});
 	const results = await eslint.lintFiles(['.']);
+	// Use '/' on all platforms, so that the paths match `expectedFile` also on Windows.
+	const relativePath = (filePath: string) =>
+		path.relative(projectPath, filePath).split(path.sep).join('/');
 
 	return {
-		lintedFiles: results.map((result) => path.relative(projectPath, result.filePath)),
+		lintedFiles: results.map((result) => relativePath(result.filePath)),
 		errors: results.flatMap((result) =>
 			result.messages
 				.filter((message) => message.severity === 2)
 				.map(
 					(message) =>
-						`${path.relative(projectPath, result.filePath)}:${message.line} ${message.ruleId}: ${message.message}`,
+						`${relativePath(result.filePath)}:${message.line} ${message.ruleId}: ${message.message}`,
 				),
 		),
 	};
