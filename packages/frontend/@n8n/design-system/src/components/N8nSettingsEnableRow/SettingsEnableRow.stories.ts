@@ -11,7 +11,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A settings row with a large switch. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
+					'A settings row with a small switch. The switch matches the other switches on settings screens. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
 			},
 		},
 	},

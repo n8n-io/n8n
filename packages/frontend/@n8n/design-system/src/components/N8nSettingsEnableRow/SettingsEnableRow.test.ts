@@ -43,7 +43,7 @@ describe('N8nSettingsEnableRow', () => {
 
 		expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
 		expect(getByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveTextContent(
-			'Limited enterprise support',
+			'Limited enterprise readiness',
 		);
 	});
 
@@ -60,7 +60,7 @@ describe('N8nSettingsEnableRow', () => {
 		expect(queryByTestId('settings-enable-row-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
-	it('uses the large settings switch', () => {
+	it('uses the small settings switch', () => {
 		const { getByRole } = render(N8nSettingsEnableRow, {
 			props: {
 				title: 'Enable Agents',
@@ -70,7 +70,7 @@ describe('N8nSettingsEnableRow', () => {
 		});
 
 		expect(getByRole('switch', { name: 'Enable Agents' }).parentElement?.className).toContain(
-			'large',
+			'small',
 		);
 	});
 

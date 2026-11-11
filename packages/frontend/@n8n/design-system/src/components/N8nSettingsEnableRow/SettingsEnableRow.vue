@@ -45,7 +45,7 @@ const switchId = useId();
 const hasBadges = computed(() => props.showPreviewBadge || props.showEnterpriseReadinessBadge);
 
 const settingsSwitchProps = {
-	size: 'large',
+	size: 'small',
 } as const;
 </script>
 
