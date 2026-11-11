@@ -117,8 +117,15 @@ reclaim idle remote sandboxes.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Token threshold for Observer to trigger compression |
-| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | `40000` | Token threshold for Reflector to condense observations |
+| `N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS` | number | `200000` | Largest window used for memory thresholds. Thresholds are shares of the model window or this value, whichever is smaller. `0` uses the full model window |
+| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Fixed Observer threshold. Applies only when the max window is `0` and the model window is unknown |
+| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | unset | Fixed Reflector threshold. When unset, the threshold is a share of the memory window. When set, it replaces that share. If no window is known, the SDK default applies |
+| `N8N_INSTANCE_AI_MID_RUN_OBSERVATION` | boolean | `true` | Summarize into memory during a long turn, between tool calls |
+| `N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT` | `system` \| `message` | `message` | Where the memory summary goes. `message` keeps the system prompt stable for prompt-cache reuse |
+| `N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY` | `disableForRun` \| `retry` | `retry` | What to do when an Observer call fails during a turn |
+| `N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES` | number | `5` | Maximum Observer calls after one turn. `0` means no limit |
+| `N8N_INSTANCE_AI_REFLECTION_MODE` | `background` \| `afterObserve` | `background` | When the Reflector condenses the summary |
+| `N8N_INSTANCE_AI_HISTORY_RECALL` | boolean | `true` | Let the agent read earlier messages that the summary replaced (`read_history` tool) |
 
 Observer and Reflector use the same model as the orchestrator agent (see `@n8n/agents` observational memory defaults).
 

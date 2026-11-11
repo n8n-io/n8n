@@ -6,9 +6,14 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns this cursor |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| lastModelId | varchar(255) |  | true |  |  | Model id of the last model request |
 | lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| lastRequestTokens | integer |  | true |  |  | Input tokens the provider reported for the last model request |
 | observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream checkpointed by this cursor |
+| resumeFromAt | timestamp(3) with time zone |  | true |  |  | Creation time of resumeFromMessageId |
+| resumeFromMessageId | varchar(36) |  | true |  |  | Last message replaced by resumeNotes; later requests start after it |
+| resumeNotes | text |  | true |  |  | Observation notes as sent to the model at the resume point |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -43,9 +48,14 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
