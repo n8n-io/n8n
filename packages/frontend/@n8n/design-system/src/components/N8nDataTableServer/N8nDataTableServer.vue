@@ -41,8 +41,6 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElSkeletonItem } from 'element-plus';
-
 // `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
 // `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
 // subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
@@ -51,6 +49,7 @@ import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
 import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
+import N8nLoading from '../N8nLoading';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
@@ -529,9 +528,8 @@ const table = useVueTable({
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
 									v-bind="getPinnedCellBindings(coll)"
-									class="el-skeleton is-animated"
 								>
-									<ElSkeletonItem />
+									<N8nLoading variant="text" />
 								</td>
 							</tr>
 						</template>

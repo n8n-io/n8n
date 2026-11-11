@@ -184,10 +184,6 @@ vi.mock('@/features/agents/constants', () => ({
 	EXECUTIONS_SECTION_KEY: '__executions',
 }));
 
-vi.mock('element-plus', () => ({
-	ElSkeletonItem: { template: '<div />' },
-}));
-
 import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 

@@ -28,9 +28,9 @@ import {
 	N8nBadge,
 	N8nTableBase,
 	N8nText,
+	N8nLoading,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
-import { ElSkeletonItem } from 'element-plus';
 
 type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
@@ -389,7 +389,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item" :class="$style.skeletonRow">
 							<td v-for="col in 5" :key="col">
-								<ElSkeletonItem />
+								<N8nLoading variant="text" :animated="false" />
 							</td>
 						</tr>
 					</template>

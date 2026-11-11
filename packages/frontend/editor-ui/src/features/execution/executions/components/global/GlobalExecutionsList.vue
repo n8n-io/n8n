@@ -21,8 +21,13 @@ import ExecutionsFilter from '../ExecutionsFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
-import { N8nButton, N8nCheckbox, N8nSelectedItemsInfo, N8nTableBase } from '@n8n/design-system';
-import { ElSkeletonItem } from 'element-plus';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nLoading,
+	N8nSelectedItemsInfo,
+	N8nTableBase,
+} from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -449,7 +454,7 @@ const goToUpgrade = () => {
 						<template v-if="isInitialLoad && executionsStore.loading && !executions.length">
 							<tr v-for="item in executionsStore.itemsPerPage" :key="item">
 								<td v-for="col in 9" :key="col">
-									<ElSkeletonItem />
+									<N8nLoading variant="text" :animated="false" />
 								</td>
 							</tr>
 						</template>
