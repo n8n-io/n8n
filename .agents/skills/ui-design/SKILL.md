@@ -31,7 +31,7 @@ Comprehensive guide for building, styling, and using components in the frontend.
 
 ## Components
 Use existing `design-system` components over creating custom implementations:
-- "Add an enable or disable switch at the top of a settings page" → Use `N8nSettingsEnableRow`. It is its own card. `title` and `description` are required. The control is always a large switch. Set `showPreviewBadge` or `showEnterpriseReadinessBadge` to show those badges beside the title. Use `N8nSettingsRow` for every other settings row.
+- "Add an enable or disable switch on a settings page" → Use `N8nSettingsEnableRow`. Place it in an `N8nSettingsRowGroup`, alone or with other rows. It does not have to sit at the top of the page. `title` and `description` are required. The control is always a large switch. Set `showPreviewBadge` or `showEnterpriseReadinessBadge` to show those badges beside the title. Use `N8nSettingsRow` when the action is not a switch.
 - "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`
 - "Add a dropdown to select workflow status" → Use `N8nDropdown` or `N8nSelect`
 - "Add button with + icon to add new tiem" → Wrap `N8nButton` with `iconOnly` prop with `N8nTooltip` and wrap in `N8nTooltip`. Use `N8nIcon` and proper aria-label.

@@ -3,7 +3,6 @@ import { computed, useId } from 'vue';
 
 import N8nEnterpriseReadinessBadge from '../EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
 import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
-import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
@@ -31,7 +30,7 @@ export interface SettingsEnableRowProps {
 	showEnterpriseReadinessBadge?: boolean;
 }
 
-defineOptions({ name: 'N8nSettingsEnableRow', inheritAttrs: false });
+defineOptions({ name: 'N8nSettingsEnableRow' });
 
 const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
 	disabled: false,
@@ -51,64 +50,87 @@ const settingsSwitchProps = {
 </script>
 
 <template>
-	<!-- The enable control is always its own card at the top of a settings page. -->
-	<N8nSettingsRowGroup v-bind="$attrs">
-		<div :class="$style.row">
-			<div :class="[$style.text, hasBadges && $style.withBadges]">
-				<div :class="$style.header">
-					<label :for="switchId">
-						<N8nText :class="$style.title" bold size="medium" color="text-dark">
-							{{ title }}
-						</N8nText>
-					</label>
-					<span v-if="hasBadges" :class="$style.badges">
-						<N8nPreviewBadge
-							v-if="showPreviewBadge"
-							data-test-id="settings-enable-row-preview-badge"
-						/>
-						<N8nEnterpriseReadinessBadge
-							v-if="showEnterpriseReadinessBadge"
-							data-test-id="settings-enable-row-enterprise-readiness-badge"
-						/>
-					</span>
-				</div>
+	<div :class="$style.row">
+		<div :class="[$style.text, hasBadges && $style.withBadges]">
+			<div :class="$style.header">
 				<label :for="switchId">
-					<N8nText :class="$style.description" size="small" color="text-light">
-						{{ description }}
+					<N8nText :class="$style.title" bold size="medium" color="text-dark">
+						{{ title }}
 					</N8nText>
 				</label>
+				<span v-if="hasBadges" :class="$style.badges">
+					<N8nPreviewBadge
+						v-if="showPreviewBadge"
+						data-test-id="settings-enable-row-preview-badge"
+					/>
+					<N8nEnterpriseReadinessBadge
+						v-if="showEnterpriseReadinessBadge"
+						data-test-id="settings-enable-row-enterprise-readiness-badge"
+					/>
+				</span>
 			</div>
-			<N8nSwitch
-				v-bind="settingsSwitchProps"
-				:id="switchId"
-				v-model="enabled"
-				:disabled="disabled"
-				:aria-label="title"
-				:data-test-id="switchTestId"
-			/>
+			<label :for="switchId">
+				<N8nText :class="$style.description" size="small" color="text-light">
+					{{ description }}
+				</N8nText>
+			</label>
 		</div>
-	</N8nSettingsRowGroup>
+		<N8nSwitch
+			v-bind="settingsSwitchProps"
+			:id="switchId"
+			v-model="enabled"
+			:class="$style.switch"
+			:disabled="disabled"
+			:aria-label="title"
+			:data-test-id="switchTestId"
+		/>
+		<!-- The group hides this divider on the last row. -->
+		<span :class="$style.divider" data-test-id="settings-row-divider" aria-hidden="true" />
+	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/breakpoints' as breakpoints;
+
 .row {
+	position: relative;
 	display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	align-items: center;
 	justify-content: space-between;
 	column-gap: var(--spacing--2xs);
 	row-gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
+
+	// Wrap uses the text's full line width, so a long description drops the switch
+	// on a wide card. Keep the switch beside the text until the small breakpoint.
+	@include breakpoints.breakpoint('xs-only') {
+		flex-wrap: wrap;
+	}
 }
 
 .text {
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	min-width: 0;
+
+	@include breakpoints.breakpoint('xs-only') {
+		flex-basis: 100%;
+	}
 
 	&.withBadges {
 		gap: var(--spacing--2xs);
+	}
+}
+
+.switch {
+	flex: none;
+
+	@include breakpoints.breakpoint('xs-only') {
+		margin-inline-start: auto;
 	}
 }
 
@@ -129,5 +151,14 @@ const settingsSwitchProps = {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.divider {
+	position: absolute;
+	bottom: 0;
+	left: var(--spacing--sm);
+	right: var(--spacing--sm);
+	height: 1px;
+	background: var(--border-color--subtle);
 }
 </style>

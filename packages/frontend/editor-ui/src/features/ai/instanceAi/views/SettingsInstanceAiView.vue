@@ -513,14 +513,16 @@ async function handleDataSharingToggle(value: boolean) {
 
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
-				<N8nSettingsEnableRow
-					:title="i18n.baseText('settings.n8nAgent.enable.label')"
-					:description="i18n.baseText('settings.n8nAgent.enable.description')"
-					:model-value="isEnabled"
-					:disabled="store.isSaving || isTestingCredential"
-					switch-test-id="n8n-agent-enabled-switch"
-					@update:model-value="onEnabledChange"
-				/>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.n8nAgent.enable.label')"
+						:description="i18n.baseText('settings.n8nAgent.enable.description')"
+						:model-value="isEnabled"
+						:disabled="store.isSaving || isTestingCredential"
+						switch-test-id="n8n-agent-enabled-switch"
+						@update:model-value="onEnabledChange"
+					/>
+				</N8nSettingsRowGroup>
 				<N8nSettingsRowGroup v-if="showCredentialsRows || showSandboxRow">
 					<N8nSettingsRow
 						v-if="showCredentialsRows"

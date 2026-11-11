@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { N8nAlertDialog, N8nSettingsEnableRow } from '@n8n/design-system';
+import { N8nAlertDialog, N8nSettingsEnableRow, N8nSettingsRowGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
@@ -64,22 +64,26 @@ function confirmDisable() {
 </script>
 
 <template>
-	<N8nSettingsEnableRow
-		:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
-		:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
-		:model-value="enabled"
-		:disabled="managedByEnv || isSaving"
-		show-preview-badge
-		switch-test-id="security-workflow-reviews-toggle"
-		@update:model-value="onToggle"
-	/>
+	<div>
+		<N8nSettingsRowGroup>
+			<N8nSettingsEnableRow
+				:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
+				:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
+				:model-value="enabled"
+				:disabled="managedByEnv || isSaving"
+				show-preview-badge
+				switch-test-id="security-workflow-reviews-toggle"
+				@update:model-value="onToggle"
+			/>
+		</N8nSettingsRowGroup>
 
-	<N8nAlertDialog
-		:open="showDisableDialog"
-		:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
-		:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
-		@action="confirmDisable"
-		@cancel="showDisableDialog = false"
-		@update:open="showDisableDialog = $event"
-	/>
+		<N8nAlertDialog
+			:open="showDisableDialog"
+			:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
+			:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
+			@action="confirmDisable"
+			@cancel="showDisableDialog = false"
+			@update:open="showDisableDialog = $event"
+		/>
+	</div>
 </template>

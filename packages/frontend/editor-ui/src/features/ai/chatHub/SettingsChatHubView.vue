@@ -18,6 +18,7 @@ import {
 	N8nHeading,
 	N8nPreviewBadge,
 	N8nSettingsEnableRow,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -140,15 +141,17 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<N8nSettingsEnableRow
-			data-test-id="chat-hub-enabled-row"
-			:title="i18n.baseText('settings.chatHub.enabled.label')"
-			:description="i18n.baseText('settings.chatHub.enabled.description')"
-			:model-value="isChatEnabled"
-			:disabled="disabled"
-			switch-test-id="chat-hub-enabled-switch"
-			@update:model-value="onToggleEnabled"
-		/>
+		<N8nSettingsRowGroup>
+			<N8nSettingsEnableRow
+				data-test-id="chat-hub-enabled-row"
+				:title="i18n.baseText('settings.chatHub.enabled.label')"
+				:description="i18n.baseText('settings.chatHub.enabled.description')"
+				:model-value="isChatEnabled"
+				:disabled="disabled"
+				switch-test-id="chat-hub-enabled-switch"
+				@update:model-value="onToggleEnabled"
+			/>
+		</N8nSettingsRowGroup>
 
 		<template v-if="settingsStore.isChatFeatureEnabled">
 			<ChatProvidersTable

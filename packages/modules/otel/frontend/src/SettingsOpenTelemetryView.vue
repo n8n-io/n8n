@@ -435,14 +435,16 @@ watch(
 
 		<div v-else :class="$style.settingsContent">
 			<N8nSettingsSection>
-				<N8nSettingsEnableRow
-					:title="i18n.baseText('settings.opentelemetry.status.label')"
-					:description="statusDescription"
-					:model-value="displayedEnabled"
-					:disabled="isEnvManaged('enabled') || otelStore.saving || statusSaving"
-					switch-test-id="otel-enabled-toggle"
-					@update:model-value="onToggleEnabled"
-				/>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.opentelemetry.status.label')"
+						:description="statusDescription"
+						:model-value="displayedEnabled"
+						:disabled="isEnvManaged('enabled') || otelStore.saving || statusSaving"
+						switch-test-id="otel-enabled-toggle"
+						@update:model-value="onToggleEnabled"
+					/>
+				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
 			<template v-if="displayedEnabled">

@@ -8,6 +8,7 @@ import {
 	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSettingsRowGroup,
 	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -77,13 +78,15 @@ onMounted(async () => {
 		</N8nSettingsPageHeader>
 		<N8nLoading v-if="isLoading" :rows="1" :shrink-last="false" />
 		<N8nSettingsSection v-else-if="settings">
-			<N8nSettingsEnableRow
-				:title="i18n.baseText('settings.agents.enable.label')"
-				:description="i18n.baseText('settings.agents.enable.description')"
-				:model-value="settings.enabled"
-				:disabled="isSaving"
-				@update:model-value="saveEnabled"
-			/>
+			<N8nSettingsRowGroup>
+				<N8nSettingsEnableRow
+					:title="i18n.baseText('settings.agents.enable.label')"
+					:description="i18n.baseText('settings.agents.enable.description')"
+					:model-value="settings.enabled"
+					:disabled="isSaving"
+					@update:model-value="saveEnabled"
+				/>
+			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
 		<N8nButton v-else variant="outline" @click="loadSettings">
 			{{ i18n.baseText('generic.retry') }}

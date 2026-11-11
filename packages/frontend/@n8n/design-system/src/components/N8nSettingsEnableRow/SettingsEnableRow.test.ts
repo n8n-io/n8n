@@ -133,7 +133,7 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
-	it('renders the row as its own card with no divider', () => {
+	it('renders a divider and leaves the card to the page', () => {
 		const { getByTestId, queryByTestId } = render(N8nSettingsEnableRow, {
 			props: {
 				title: 'Enable Agents',
@@ -141,7 +141,7 @@ describe('N8nSettingsEnableRow', () => {
 			},
 		});
 
-		expect(getByTestId('settings-row-group')).toBeInTheDocument();
-		expect(queryByTestId('settings-row-divider')).not.toBeInTheDocument();
+		expect(queryByTestId('settings-row-group')).not.toBeInTheDocument();
+		expect(getByTestId('settings-row-divider')).toBeInTheDocument();
 	});
 });
