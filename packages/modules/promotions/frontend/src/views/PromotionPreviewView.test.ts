@@ -78,7 +78,11 @@ const router = createRouter({
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
-	global: { plugins: [router] },
+	global: {
+		plugins: [router],
+		// These tests use real controls. Icons and skeletons only add render work.
+		stubs: { N8nIcon: true, N8nLoading: true },
+	},
 });
 
 const environment = (direction: 'promote' | 'apply') =>
@@ -237,16 +241,26 @@ describe('PromotionPreviewView', () => {
 	);
 
 	it('omits the count and disables Apply when a refresh blocks every selected workflow', async () => {
+		// Two changed workflows cover this refresh without mounting unrelated cards.
+		const preview = {
+			...previewWithCheck(),
+			resources: [
+				{ ...billingResources.reconciliation, parentKey: null },
+				{ ...billingResources.kpiReport, parentKey: null },
+			],
+			dependencies: [],
+		};
 		vi.mocked(api.getPromotionPreview)
-			.mockResolvedValueOnce(previewWithCheck())
-			.mockResolvedValue(
-				previewWithCheck(
-					check({
-						missingBindings: [{ ...variable, consumers: consumers('w1', 'w2', 'w3', 'w4') }],
-					}),
-				),
-			);
-		const { getByTestId } = await renderApply();
+			.mockResolvedValueOnce(preview)
+			.mockResolvedValue({
+				...preview,
+				check: {
+					...preview.check,
+					missingBindings: [{ ...variable, consumers: consumers('w1', 'w3') }],
+				},
+			});
+		const { getByTestId, getAllByTestId } = await renderApply();
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply 2 changes$/);
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
 
 		await userEvent.click(getByTestId('promotion-preview-refresh'));
@@ -254,6 +268,11 @@ describe('PromotionPreviewView', () => {
 
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply changes$/);
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		for (const key of ['workflow:w1', 'workflow:w3']) {
+			const row = treeRow(getAllByTestId, key);
+			expect(row.getByRole('checkbox')).toBeChecked();
+			expect(row.getByTestId('promotion-preview-tree-blocker')).toBeInTheDocument();
+		}
 	});
 
 	it.each([
@@ -678,14 +697,27 @@ describe('PromotionPreviewView', () => {
 	});
 
 	it('should clear the typed commit message when the project changes', async () => {
+		// The project change mounts the cards again. One workflow keeps this case focused.
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			billingPreview({
+				resources: [{ ...billingResources.reconciliation, parentKey: null }],
+				dependencies: [],
+			}),
+		);
 		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
 
 		const { getByTestId, queryByTestId, rerender } = await render();
 		await promote(getByTestId, 'Route leads by region');
 		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1'],
+			folderIds: [],
+			commitMessage: 'Route leads by region',
+		});
 
 		await rerender({ projectId: 'p2', direction: 'promote' });
 		await waitAllPromises();
+		expect(api.getPromotionPreview).toHaveBeenLastCalledWith(expect.anything(), 'p2', 'promote');
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 
 		expect(getByTestId('promote-commit-message')).toHaveValue('');
