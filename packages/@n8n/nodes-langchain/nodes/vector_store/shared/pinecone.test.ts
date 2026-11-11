@@ -50,6 +50,24 @@ describe('classifyIndexShape', () => {
 	});
 });
 
+describe('parseIndexModel', () => {
+	it('accepts only HTTPS hosts of Pinecone', () => {
+		const parse = (host: string) => parseIndexModel({ ...describeResponse({}), host }).host;
+		expect(parse('idx-abc.svc.us-east-1.pinecone.io')).toBe(
+			'https://idx-abc.svc.us-east-1.pinecone.io',
+		);
+		expect(parse('https://idx-abc.svc.pinecone.io')).toBe('https://idx-abc.svc.pinecone.io');
+		for (const host of [
+			'http://idx.svc.pinecone.io',
+			'evil.example.com',
+			'idx.pinecone.io.evil.com',
+			'https://evil.com/x.pinecone.io',
+		]) {
+			expect(() => parse(host)).toThrow('Unexpected Pinecone index description');
+		}
+	});
+});
+
 describe('getDocumentIndexScoring', () => {
 	it('returns undefined for indexes on the vectors API', () => {
 		expect(getDocumentIndexScoring(model(classic))).toBeUndefined();

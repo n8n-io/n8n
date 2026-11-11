@@ -21,6 +21,7 @@ type SchemaField = Record<string, unknown>;
 /** The parts of the 2026-07 describe-index response the nodes read */
 export interface PineconeIndexModel {
 	name: string;
+	/** `https://<host>`, validated as a Pinecone host */
 	host: string;
 	ready: boolean;
 	fields: Record<string, SchemaField>;
@@ -55,14 +56,28 @@ const toRequest =
 			json: true,
 		});
 
+// The data plane request carries the API key, so only HTTPS hosts of Pinecone get it
+function parseDataPlaneHost(host: string): string | undefined {
+	try {
+		const url = new URL(/^[a-z]+:\/\//i.test(host) ? host : `https://${host}`);
+		return url.protocol === 'https:' && url.hostname.endsWith('.pinecone.io')
+			? `https://${url.host}`
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function parseIndexModel(raw: unknown): PineconeIndexModel {
-	if (!isRecord(raw) || typeof raw.name !== 'string' || typeof raw.host !== 'string') {
+	const host =
+		isRecord(raw) && typeof raw.host === 'string' ? parseDataPlaneHost(raw.host) : undefined;
+	if (!isRecord(raw) || typeof raw.name !== 'string' || !host) {
 		throw new OperationalError('Unexpected Pinecone index description');
 	}
 	const fields = isRecord(raw.schema) && isRecord(raw.schema.fields) ? raw.schema.fields : {};
 	return {
 		name: raw.name,
-		host: raw.host,
+		host,
 		ready: isRecord(raw.status) && raw.status.ready === true,
 		fields: Object.fromEntries(
 			Object.entries(fields).filter((entry): entry is [string, SchemaField] => isRecord(entry[1])),
@@ -194,10 +209,9 @@ export class PineconeDocumentStore extends VectorStore {
 				.filter(([, f]) => isVectorField(f))
 				.map(([name]) => name),
 		);
-		const host = /^https?:\/\//.test(model.host) ? model.host : `https://${model.host}`;
 		// The 2026-07 API names the default namespace `__default__`, as SDK 9 does
 		const ns = encodeURIComponent(namespace || '__default__');
-		this.searchUrl = `${host}/namespaces/${ns}/documents/search`;
+		this.searchUrl = `${model.host}/namespaces/${ns}/documents/search`;
 	}
 
 	_vectorstoreType(): string {
