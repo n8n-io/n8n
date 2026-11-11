@@ -95,8 +95,8 @@ type CredentialReferences = {
 export type CredentialGuardOptions = {
 	/** Allow content loaded at runtime only for users who can use every credential. */
 	allowUninspectableSource?: boolean;
-	/** Fail the save when a read-only node has other edits to non-editable fields. */
-	rejectReadOnlyNodeEdits?: boolean;
+	/** What happens when a read-only node has edits. `restore` keeps the stored node `reject` fails the save. */
+	readOnlyNodeEdits?: 'restore' | 'reject';
 	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
 };
@@ -290,7 +290,7 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		user: User,
 		restoredNodes: INode[] = [],
-		guardOptions: Pick<CredentialGuardOptions, 'rejectReadOnlyNodeEdits' | 'unsentNodeFields'> = {},
+		guardOptions: Pick<CredentialGuardOptions, 'readOnlyNodeEdits' | 'unsentNodeFields'> = {},
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -418,7 +418,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// A node the user could not use before stays read only and is restored, or the
-		// save fails when the caller sets `rejectReadOnlyNodeEdits`. A node the user could
+		// save fails when the caller sets `readOnlyNodeEdits` to `reject`. A node the user could
 		// edit that now carries a credential they cannot use fails the save like a new
 		// node does; restoring it would drop the other edits silently.
 		const readOnlyNodeIds = new Set(
@@ -479,7 +479,7 @@ export class EnterpriseWorkflowService {
 				throw this.inaccessibleCredentialsError(node);
 			}
 
-			const mustMatchStoredNode = blockedBySource || options.rejectReadOnlyNodeEdits;
+			const mustMatchStoredNode = blockedBySource || options.readOnlyNodeEdits === 'reject';
 
 			// The caller cannot send these fields, so the stored value would always look like a change.
 			const unsentNodeFields = options.unsentNodeFields ?? [];

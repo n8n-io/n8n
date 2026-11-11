@@ -881,8 +881,8 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(previous);
 		});
 
-		describe('with rejectReadOnlyNodeEdits', () => {
-			const rejectReadOnlyNodeEdits: CredentialGuardOptions = { rejectReadOnlyNodeEdits: true };
+		describe('with readOnlyNodeEdits set to reject', () => {
+			const rejectEdits: CredentialGuardOptions = { readOnlyNodeEdits: 'reject' };
 			const foreignCredential = { httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } };
 
 			it('rejects a parameter change on a read-only node', () => {
@@ -899,7 +899,7 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						rejectEdits,
 					),
 				).toThrow(
 					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
@@ -920,7 +920,7 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						rejectEdits,
 					),
 				).toThrow(
 					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
@@ -941,7 +941,7 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						rejectEdits,
 					),
 				).toThrow(
 					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
@@ -965,7 +965,7 @@ describe('EnterpriseWorkflowService', () => {
 					previousVersion,
 					accessible,
 					[],
-					rejectReadOnlyNodeEdits,
+					rejectEdits,
 				);
 
 				expect(result.nodes[0]).toEqual(newNode);
@@ -983,7 +983,7 @@ describe('EnterpriseWorkflowService', () => {
 					previousVersion,
 					accessible,
 					[],
-					rejectReadOnlyNodeEdits,
+					rejectEdits,
 				);
 
 				expect(result.nodes[0]).toEqual(previousNode);
@@ -1002,7 +1002,7 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						rejectEdits,
 					),
 				).toThrow(
 					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
@@ -1011,7 +1011,7 @@ describe('EnterpriseWorkflowService', () => {
 
 			describe('unsentNodeFields', () => {
 				const unsentCustomFieldOptions: CredentialGuardOptions = {
-					rejectReadOnlyNodeEdits: true,
+					readOnlyNodeEdits: 'reject',
 					unsentNodeFields: ['customField'],
 				};
 
@@ -1046,7 +1046,7 @@ describe('EnterpriseWorkflowService', () => {
 							previousVersion,
 							accessible,
 							[],
-							rejectReadOnlyNodeEdits,
+							rejectEdits,
 						),
 					).toThrow(
 						/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
@@ -1077,7 +1077,7 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						rejectEdits,
 					);
 
 					expect(result.nodes[0]).toEqual(previous);
@@ -1098,7 +1098,7 @@ describe('EnterpriseWorkflowService', () => {
 					previousVersion,
 					accessible,
 					[],
-					rejectReadOnlyNodeEdits,
+					rejectEdits,
 				);
 
 				expect(result.nodes[0]).toEqual(switched);
@@ -1394,7 +1394,7 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
 		});
 
-		it('rejects a changed read-only node with a bad request when rejectReadOnlyNodeEdits is set', async () => {
+		it('rejects a changed read-only node with a bad request when readOnlyNodeEdits is set to reject', async () => {
 			workflowRepository.get.mockResolvedValue({
 				nodes: [httpNode('foreign-cred')],
 			} as unknown as WorkflowEntity);
@@ -1404,7 +1404,7 @@ describe('EnterpriseWorkflowService', () => {
 				'w1',
 				user,
 				[],
-				{ rejectReadOnlyNodeEdits: true },
+				{ readOnlyNodeEdits: 'reject' },
 			);
 
 			await expect(saved).rejects.toBeInstanceOf(BadRequestError);
