@@ -1,3 +1,4 @@
+# check=skip=InvalidDefaultArgInFrom
 # Node.js compiled with V8 pointer compression, for the n8n `-pc` image variant.
 #
 # No official pointer-compressed Node binaries exist (nodejs.org publishes none,
@@ -10,14 +11,17 @@
 #   dev               - plain Alpine with apk usable, for the n8n builder
 #                       stage, which must compile native addons against this
 #                       Node's headers
-ARG NODE_VERSION=26.13.0
+#
+# The node-pc target in docker/docker-bake.hcl sets these. Do not use plain
+# `docker build`.
+ARG NODE_VERSION
+ARG ALPINE_IMAGE
+ARG RUNTIME_IMAGE
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
 ARG MAKE_JOBS=
 
-# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the tag and digest together when updating.
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS builder
+FROM ${ALPINE_IMAGE} AS builder
 ARG NODE_VERSION
 ARG MAKE_JOBS
 
@@ -70,7 +74,7 @@ RUN apk add --no-cache --virtual .build-deps \
     # Remove unused OpenSSL headers to save ~34MB. See https://github.com/nodejs/node/issues/46451
     && find /node-install/usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \;
 
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS base
+FROM ${ALPINE_IMAGE} AS base
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -86,11 +90,9 @@ ENV npm_config_nodedir=/usr/local
 
 # ---------------------------------------------------------------------------
 
-# `n8nio/base:26.x` with one change, namely the stock Node files (node, npm,
-# npx) are swapped for the pointer-compressed build's files.
-# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the tag and digest together when updating.
-FROM n8nio/base:26.13.0@sha256:f4db5ffdbde188b568911640907797830033f2af2eb06b700a2c252bde960695 AS runtime
+# RUNTIME_IMAGE (`n8nio/base`), with the pointer-compressed Node in place of
+# the stock node, npm and npx.
+FROM ${RUNTIME_IMAGE} AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
