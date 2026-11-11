@@ -10,6 +10,7 @@ import type {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import type { EntityManager, UpdateResult } from '@n8n/typeorm';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
@@ -27,7 +28,10 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import {
+	type CredentialGuardOptions,
+	EnterpriseWorkflowService,
+} from '@/workflows/workflow.service.ee';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -876,6 +880,230 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result.nodes[0]).toEqual(previous);
 		});
+
+		describe('with readOnlyNodeEdits set to reject', () => {
+			const rejectEdits: CredentialGuardOptions = { readOnlyNodeEdits: 'reject' };
+			const foreignCredential = { httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } };
+
+			it('rejects a parameter change on a read-only node', () => {
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode(foreignCredential, { url: 'https://changed.test' })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('rejects a read-only node whose credential is swapped for another the user cannot use', () => {
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('rejects a read-only node whose unresolved credential is replaced', () => {
+				const previousVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'Old' } })],
+				} as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } })],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			it('keeps a read-only node that is only renamed, moved or disabled', () => {
+				const previousNode = httpNode(foreignCredential);
+				const newNode = {
+					...previousNode,
+					name: 'Renamed',
+					position: [10, 20],
+					disabled: true,
+				};
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(newNode);
+			});
+
+			it('keeps a read-only node whose submitted custom field matches the stored one', () => {
+				const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+				const newNode = { ...httpNode(foreignCredential), customField: 'stored' };
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(previousNode);
+			});
+
+			it('rejects a read-only node whose submitted custom field differs from the stored one', () => {
+				const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+				const newNode = { ...httpNode(foreignCredential), customField: 'changed' };
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					),
+				).toThrow(
+					/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+				);
+			});
+
+			describe('unsentNodeFields', () => {
+				const unsentCustomFieldOptions: CredentialGuardOptions = {
+					readOnlyNodeEdits: 'reject',
+					unsentNodeFields: ['customField'],
+				};
+
+				it('keeps a read-only node whose listed unsent field is missing from the submitted node', () => {
+					const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+					const newNode = httpNode(foreignCredential);
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						unsentCustomFieldOptions,
+					);
+
+					expect(result.nodes[0]).toEqual(previousNode);
+				});
+
+				it('rejects the same change when the caller does not list the field', () => {
+					const previousNode = { ...httpNode(foreignCredential), customField: 'stored' };
+					const newNode = httpNode(foreignCredential);
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					expect(() =>
+						service.validateWorkflowCredentialUsage(
+							newVersion,
+							previousVersion,
+							accessible,
+							[],
+							rejectEdits,
+						),
+					).toThrow(
+						/^You don't have access to the credentials in the 'Call' node\. Ask the owner to share them with you\.$/,
+					);
+				});
+			});
+
+			describe('with parameter defaults from the node type', () => {
+				beforeEach(() => {
+					nodeTypes.getByNameAndVersion.mockReturnValue({
+						description: {
+							properties: [
+								{ displayName: 'Method', name: 'method', type: 'options', default: 'GET' },
+							],
+						},
+					} as never);
+				});
+
+				it('keeps an unchanged read-only node that omits a default parameter', () => {
+					const previous = httpNode(foreignCredential, { url: '', method: 'GET' });
+					const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+					const newVersion = {
+						nodes: [httpNode(foreignCredential, { url: '' })],
+					} as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectEdits,
+					);
+
+					expect(result.nodes[0]).toEqual(previous);
+				});
+			});
+
+			it('still saves a read-only node switched to a credential the user can use', () => {
+				const previous = httpNode(foreignCredential);
+				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const switched = httpNode(
+					{ httpHeaderAuth: { id: 'team-cred', name: 'Team' } },
+					{ url: 'https://changed.test' },
+				);
+				const newVersion = { nodes: [switched] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[],
+					rejectEdits,
+				);
+
+				expect(result.nodes[0]).toEqual(switched);
+			});
+		});
 	});
 
 	describe('validateWorkflowCredentialUsage() - agent node parameters', () => {
@@ -1164,6 +1392,23 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result.nodes[0]).toEqual(httpNode('foreign-cred'));
 			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('rejects a changed read-only node with a bad request when readOnlyNodeEdits is set to reject', async () => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('foreign-cred')],
+			} as unknown as WorkflowEntity);
+
+			const saved = service.preventTampering(
+				{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+				[],
+				{ readOnlyNodeEdits: 'reject' },
+			);
+
+			await expect(saved).rejects.toBeInstanceOf(BadRequestError);
+			await expect(saved).rejects.toThrow(/credentials in the 'Call' node/);
 		});
 	});
 
