@@ -576,10 +576,15 @@ describe('VectorStoreWeaviate.node', () => {
 		describe('entire collection or tenant', () => {
 			const deleteCollection = vi.fn();
 			const removeTenants = vi.fn();
+			const collectionExists = vi.fn();
+			const getTenant = vi.fn();
 			const client = mock<WeaviateClient>({
 				collections: mock<WeaviateClient['collections']>({
 					delete: deleteCollection,
-					get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
+					exists: collectionExists,
+					get: vi
+						.fn()
+						.mockReturnValue({ tenants: { remove: removeTenants, getByName: getTenant } }),
 				}),
 			});
 
@@ -603,6 +608,8 @@ describe('VectorStoreWeaviate.node', () => {
 				connectSpy.mockResolvedValue(client);
 				deleteCollection.mockReset();
 				removeTenants.mockReset();
+				collectionExists.mockReset().mockResolvedValue(true);
+				getTenant.mockReset().mockResolvedValue({ name: 'tenantA' });
 			});
 
 			it('should offer the choice to delete the entire collection or tenant', () => {
@@ -636,6 +643,31 @@ describe('VectorStoreWeaviate.node', () => {
 				expect(deleteCollection).not.toHaveBeenCalled();
 				expect(result).toEqual(expect.objectContaining({ tenant: 'tenantA' }));
 			});
+
+			it('should not fail when an earlier item deleted the collection', async () => {
+				collectionExists.mockResolvedValue(false);
+
+				const result = await runDelete('collection');
+
+				expect(deleteCollection).not.toHaveBeenCalled();
+				expect(result).toEqual(expect.objectContaining({ deleted: false }));
+			});
+
+			it.each([
+				['the collection', false, null],
+				['the tenant', true, null],
+			])(
+				'should not remove the tenant when %s does not exist',
+				async (_name, hasCollection, tenant) => {
+					collectionExists.mockResolvedValue(hasCollection);
+					getTenant.mockResolvedValue(tenant);
+
+					const result = await runDelete('collection', { tenant: 'tenantA' });
+
+					expect(removeTenants).not.toHaveBeenCalled();
+					expect(result).toEqual(expect.objectContaining({ deleted: false, tenant: 'tenantA' }));
+				},
+			);
 		});
 	});
 });

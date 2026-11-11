@@ -61,8 +61,10 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 	async deleteCollection(): Promise<IDataObject> {
 		const { client, indexName, tenant } = this.args;
 		if (!indexName) throw new UnexpectedError('The Weaviate store has no collection name');
-		await clearCollection(client, indexName, tenant);
-		return { deleted: true, deleteBy: 'collection', collection: indexName, tenant };
+		// An earlier item can delete the same collection or tenant, so a missing one is not an error
+		const exists = await collectionOrTenantExists(client, indexName, tenant);
+		if (exists) await clearCollection(client, indexName, tenant);
+		return { deleted: exists, deleteBy: 'collection', collection: indexName, tenant };
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
@@ -107,6 +109,16 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 		);
 	}
+}
+
+async function collectionOrTenantExists(
+	client: WeaviateClient,
+	collectionName: string,
+	tenant?: string,
+): Promise<boolean> {
+	if (!(await client.collections.exists(collectionName))) return false;
+	if (!tenant) return true;
+	return (await client.collections.get(collectionName).tenants.getByName(tenant)) !== null;
 }
 
 /** Deletes the collection, or only the tenant when one is given. */
