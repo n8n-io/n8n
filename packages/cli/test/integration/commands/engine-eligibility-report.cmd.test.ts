@@ -6,7 +6,10 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { WorkflowPublishedVersionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { EngineEligibilityReport } from '@/commands/engine/eligibility-report';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -73,19 +76,43 @@ test('counts eligible workflows and each workflow once per reason code, without 
 	});
 });
 
-test('checks the published version of a published workflow instead of its draft', async () => {
-	const published = await createWorkflow({ nodes: [manualTrigger] });
-	await createWorkflowHistory(published, undefined, undefined, { nodes: [oauthWebhook] });
-	await setActiveVersion(published.id, published.versionId);
-	await createWorkflow({ nodes: [manualTrigger] });
+test('checks the live published version, not a newer version that waits to be published', async () => {
+	const workflow = await createWorkflow({ nodes: [manualTrigger] });
+	const liveVersionId = uuid();
+	await createWorkflowHistory(workflow, undefined, undefined, {
+		versionId: liveVersionId,
+		nodes: [oauthWebhook],
+	});
+	await createWorkflowHistory(workflow);
+	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		liveVersionId,
+	);
 
 	await command.run(['--json']);
 
 	expect(JSON.parse(stdout)).toMatchObject({
-		total: 2,
-		eligible: 1,
+		total: 1,
+		eligible: 0,
 		published: { total: 1, eligible: 0, eligiblePercent: 0 },
 		reasons: { TRIGGER_EXTERNAL_IDENTITY: 1 },
+	});
+});
+
+test('checks the draft and does not count as published a workflow whose publication was never applied', async () => {
+	const workflow = await createWorkflow({ nodes: [manualTrigger] });
+	await createWorkflowHistory(workflow, undefined, undefined, { nodes: [oauthWebhook] });
+	await setActiveVersion(workflow.id, workflow.versionId);
+
+	await command.run(['--json']);
+
+	expect(JSON.parse(stdout)).toEqual({
+		total: 1,
+		eligible: 1,
+		eligiblePercent: 100,
+		published: { total: 0, eligible: 0, eligiblePercent: 0 },
+		reasons: {},
 	});
 });
 

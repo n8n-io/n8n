@@ -1,4 +1,4 @@
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '@n8n/workflow-engine-check';
@@ -46,10 +46,14 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 		}
 	}
 
-	/** A published workflow is checked by its published version, because that is what triggers run. */
+	/**
+	 * A published workflow is checked by its live published version, because that is what triggers
+	 * run. `activeVersionId` is not used: it can name a version that is not live yet.
+	 */
 	private async buildReport(): Promise<EligibilityReport> {
 		const { nodes: nodeTypes } = await Container.get(LoadNodesAndCredentials).collectTypes();
 		const workflowRepository = Container.get(WorkflowRepository);
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 
 		let total = 0;
 		let eligible = 0;
@@ -61,9 +65,13 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 			const page = await workflowRepository.findEngineEligibilityScanPage(afterId, PAGE_SIZE);
 			if (page.length === 0) break;
 			afterId = page[page.length - 1].id;
+			const publishedVersions = await publishedVersionRepository.findPublishedVersionContents(
+				page.map(({ id }) => id),
+			);
 
 			for (const workflow of page) {
-				const version = workflow.activeVersion ?? workflow;
+				const publishedVersion = publishedVersions.get(workflow.id);
+				const version = publishedVersion ?? workflow;
 				const result = checkEngineV2Eligibility(
 					{ nodes: version.nodes, connections: version.connections, settings: workflow.settings },
 					nodeTypes,
@@ -71,7 +79,7 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 
 				total++;
 				if (result.eligible) eligible++;
-				if (workflow.activeVersion) {
+				if (publishedVersion) {
 					published.total++;
 					if (result.eligible) published.eligible++;
 				}

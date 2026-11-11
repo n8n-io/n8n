@@ -741,7 +741,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	/**
 	 * One page of unarchived workflows for the engine v2 eligibility report, keyset-paged like
-	 * `getIdsAfter`. It returns the draft and the published version, if one exists.
+	 * `getIdsAfter`. It returns the draft only.
 	 */
 	async findEngineEligibilityScanPage(
 		afterId: string | undefined,
@@ -749,7 +749,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	): Promise<WorkflowEntity[]> {
 		return await this.find({
 			select: ['id', 'nodes', 'connections', 'settings'],
-			relations: { activeVersion: true },
 			where:
 				afterId === undefined
 					? { isArchived: false }
