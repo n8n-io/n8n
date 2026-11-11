@@ -7,6 +7,7 @@ import { ReloadingHttpRequestClient } from '../reloading-http-request-client';
 describe('ReloadingHttpRequestClient', () => {
 	let built: HttpRequestClient[];
 	let client: ReloadingHttpRequestClient;
+	let fireReload: () => void;
 	const unsubscribe = vi.fn();
 
 	beforeEach(() => {
@@ -19,14 +20,17 @@ describe('ReloadingHttpRequestClient', () => {
 				built.push(next);
 				return next;
 			},
-			() => unsubscribe,
+			(reload) => {
+				fireReload = reload;
+				return unsubscribe;
+			},
 		);
 	});
 
 	it('sends requests through the newest client', async () => {
 		await expect(client.request({ url: '/a' })).resolves.toBe('from client 0');
 
-		client.reload();
+		fireReload();
 
 		await expect(client.request({ url: '/b' })).resolves.toBe('from client 1');
 		expect(built[0].request).toHaveBeenCalledExactlyOnceWith({ url: '/a' });
@@ -34,7 +38,7 @@ describe('ReloadingHttpRequestClient', () => {
 	});
 
 	it('closes the old client on reload when it has no running request', () => {
-		client.reload();
+		fireReload();
 
 		expect(built[0].close).toHaveBeenCalledOnce();
 		expect(built[1].close).not.toHaveBeenCalled();
@@ -49,7 +53,7 @@ describe('ReloadingHttpRequestClient', () => {
 		);
 		const running = client.request({ url: '/slow' });
 
-		client.reload();
+		fireReload();
 		expect(built[0].close).not.toHaveBeenCalled();
 
 		finish('slow done');
@@ -61,7 +65,7 @@ describe('ReloadingHttpRequestClient', () => {
 		vi.mocked(built[0].request).mockRejectedValueOnce(new Error('connection reset'));
 		const running = client.request({ url: '/fails' });
 
-		client.reload();
+		fireReload();
 
 		await expect(running).rejects.toThrow('connection reset');
 		expect(built[0].close).toHaveBeenCalledOnce();
@@ -70,7 +74,7 @@ describe('ReloadingHttpRequestClient', () => {
 	it('closes the old clients that still run requests when closed', () => {
 		vi.mocked(built[0].request).mockReturnValueOnce(new Promise(() => {}));
 		void client.request({ url: '/never-settles' });
-		client.reload();
+		fireReload();
 
 		client.close();
 
@@ -88,7 +92,7 @@ describe('ReloadingHttpRequestClient', () => {
 	});
 
 	it('closes the current client when closed', () => {
-		client.reload();
+		fireReload();
 		client.close();
 
 		expect(built[1].close).toHaveBeenCalledOnce();

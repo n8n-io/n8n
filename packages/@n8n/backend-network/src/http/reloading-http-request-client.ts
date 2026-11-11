@@ -57,7 +57,7 @@ export class ReloadingHttpRequestClient implements HttpRequestClient {
 		throw new UnexpectedError('ReloadingHttpRequestClient does not support requestLegacy()');
 	}
 
-	reload(): void {
+	private reload(): void {
 		const old = this.current;
 		this.current = this.newGeneration();
 		old.retired = true;
