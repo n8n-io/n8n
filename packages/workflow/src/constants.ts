@@ -28,6 +28,8 @@ export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 export const CODE_LANGUAGES = ['javaScript', 'python', 'json', 'html'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
 
+export const WORKFLOW_ENGINE_TYPES = ['v1', 'v2'] as const;
+
 // Arbitrary value to represent an empty credential value
 export const CREDENTIAL_EMPTY_VALUE = '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da';
 

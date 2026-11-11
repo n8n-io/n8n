@@ -1,6 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import { z } from 'zod';
 
+import { WORKFLOW_ENGINE_TYPES } from './constants';
 import type { IWorkflowSettings } from './interfaces';
 
 /**
@@ -42,13 +43,11 @@ export type VersionedWorkflowSettingKey = {
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
 
-/** The value of a version-scoped setting that the workflow settings do not set. */
 const VERSIONED_SETTING_DEFAULTS: Required<VersionedWorkflowSettings> = { engineType: 'v1' };
 
-// The stored settings are plain JSON, so a value can be missing or invalid.
 const versionedSettingsSchema = z
 	.object({
-		engineType: z.enum(['v1', 'v2']).catch(VERSIONED_SETTING_DEFAULTS.engineType),
+		engineType: z.enum(WORKFLOW_ENGINE_TYPES).catch(VERSIONED_SETTING_DEFAULTS.engineType),
 	})
 	.catch(() => ({ ...VERSIONED_SETTING_DEFAULTS }));
 
