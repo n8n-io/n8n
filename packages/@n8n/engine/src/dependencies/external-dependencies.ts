@@ -40,6 +40,8 @@ export interface StepExecutionContext {
 	workflowId: string;
 	mode: ExecutionMode;
 	iteration: number;
+	/** Which run of the node at this iteration; 0 unless something upstream converged. */
+	branch: number;
 	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
 	callerContext: CallerContext;
 	/**

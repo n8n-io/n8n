@@ -16,6 +16,7 @@ const stepStarted = (executionId: string, stepId: string): LifecycleEvent => ({
 	nodeId: 'node-1',
 	nodeName: 'Node 1',
 	iteration: 0,
+	branch: 0,
 	at,
 });
 
@@ -30,6 +31,7 @@ const stepCompleted = (
 	nodeId: 'node-1',
 	nodeName: 'Node 1',
 	iteration: 0,
+	branch: 0,
 	at,
 	outputs: outputs as never,
 });

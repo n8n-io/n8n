@@ -75,6 +75,7 @@ const runEvents = (
 		nodeId: setNodeId,
 		nodeName: SET_NAME,
 		iteration: 0,
+		branch: 0,
 		at,
 	},
 	{
@@ -84,6 +85,7 @@ const runEvents = (
 		nodeId: setNodeId,
 		nodeName: SET_NAME,
 		iteration: 0,
+		branch: 0,
 		at,
 		outputs: [[{ json: { done: true } }]],
 	},

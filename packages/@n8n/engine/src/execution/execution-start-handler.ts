@@ -60,6 +60,7 @@ export class ExecutionStartHandler {
 			{
 				nodeId: trigger.id,
 				iteration: 0,
+				branch: 0,
 				status: 'completed',
 				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},

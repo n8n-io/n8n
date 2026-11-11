@@ -17,6 +17,7 @@ const stepEvent = {
 	nodeId: 'node-a',
 	nodeName: 'Edit Fields',
 	iteration: 0,
+	branch: 0,
 	at,
 };
 

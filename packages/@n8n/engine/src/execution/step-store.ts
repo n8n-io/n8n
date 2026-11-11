@@ -1,9 +1,12 @@
 import type {
+	NodePass,
+	NodePassId,
 	StepError,
 	StepKey,
 	StepKeyId,
 	ResumeCause,
 	StepSlots,
+	StepSources,
 	StepStatus,
 	WaitDeclaration,
 } from './execution.types';
@@ -19,11 +22,14 @@ import type {
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
  * output slot dead.
+ *
+ * `sources` is what the step reads, per input slot. The trigger reads nothing,
+ * so it has none.
  */
-export type NewStepRecord = { nodeId: string; iteration: number } & (
-	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
-	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
-);
+export type NewStepRecord = StepKey & { sources?: StepSources } & (
+		| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
+		| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
+	);
 
 /**
  * Type of what running and settling a step needs of its row
@@ -33,7 +39,10 @@ export interface StepRecord {
 	executionId: string;
 	nodeId: string;
 	iteration: number;
+	branch: number;
 	status: StepStatus;
+	/** What the step reads, per input slot; `null` for the trigger. */
+	sources: StepSources | null;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
 	/** The wait this step declared; `null` unless it has suspended. */
@@ -53,6 +62,7 @@ export interface StepSummary {
 	id: string;
 	nodeId: string;
 	iteration: number;
+	branch: number;
 	status: StepStatus;
 	/** Per output slot: whether the completed step put data there. Empty unless completed. */
 	filledOutputSlots: boolean[];
@@ -78,11 +88,17 @@ export interface StepStore {
 	 * Persist new step records for one execution, batched so planning a fan-out
 	 * costs a single round trip. Returns the rows actually created.
 	 *
-	 * If a step for a given `(executionId, nodeId, iteration)` already exists, it
-	 * is skipped and not returned. This allows multiple planners to race to enqueue
-	 * the same step without erroring or duplicating work. A further iteration of
-	 * the same node is a new row, not a duplicate. We return the actually created rows
-	 * so the caller knows which step creations it needs to publish.
+	 * If a step for a given `(executionId, nodeId, iteration, branch)` already
+	 * exists, it is skipped and not returned. This allows multiple planners to
+	 * race to enqueue the same step without erroring or duplicating work: a
+	 * node-pass's steps are a pure function of settled steps, so racing planners
+	 * compute the same rows. A further iteration or run of the same node is a new
+	 * row, not a duplicate. We return the actually created rows so the caller
+	 * knows which step creations it needs to publish.
+	 *
+	 * All steps of one node-pass are created in the same call. One statement
+	 * inserts them, so a node-pass either has all of its steps or none, and any
+	 * step of it proves that it was decided.
 	 *
 	 * Creates nothing once any step in the execution has failed (serialized with
 	 * `failStep`), so a planning insert cannot land after the failure's
@@ -207,20 +223,32 @@ export interface StepStore {
 	 * key with no row yet is absent from the result — absence always means
 	 * "not planned yet", never "forgotten".
 	 *
-	 * Full rows, outputs included — for gathering a ready step's inputs from its
-	 * direct predecessors. Planning reads `loadStepSummariesByKeys` instead.
+	 * Full rows, outputs included — for gathering a ready step's inputs from the
+	 * steps it records as its sources.
 	 */
 	loadStepsByKeys(executionId: string, keys: StepKey[]): Promise<Record<StepKeyId, StepRecord>>;
 
 	/**
-	 * Planning view of the given keys' rows, keyed by `stepKeyId`; absent as in
-	 * `loadStepsByKeys`. The per-slot booleans are computed in the database, so
-	 * planning never pulls the potentially large outputs over the wire.
+	 * Every step of the given node-passes, full rows, keyed by `nodePassId`, each
+	 * list ordered by branch. A node-pass with no step yet is absent. For a batch
+	 * node, which reads every run of its sources.
 	 */
-	loadStepSummariesByKeys(
+	loadStepsByPasses(
 		executionId: string,
-		keys: StepKey[],
-	): Promise<Record<StepKeyId, StepSummary>>;
+		passes: NodePass[],
+	): Promise<Record<NodePassId, StepRecord[]>>;
+
+	/**
+	 * Planning view of every step of the given node-passes, keyed by `nodePassId`,
+	 * each list ordered by branch. A node-pass with no step yet is absent, which
+	 * always means "not decided yet". The per-slot booleans are computed in the
+	 * database, so planning never pulls the potentially large outputs over the
+	 * wire.
+	 */
+	loadStepSummariesByPasses(
+		executionId: string,
+		passes: NodePass[],
+	): Promise<Record<NodePassId, StepSummary[]>>;
 
 	/**
 	 * Planning view of each named node's highest-iteration row, keyed by node id,
@@ -229,7 +257,7 @@ export interface StepStore {
 	 *
 	 * One query for every node asked about, since a settlement can span several
 	 * loops. The row ending a loop holds everything that loop accumulated, so this
-	 * returns the same slim view as `loadStepSummariesByKeys`, not the whole row.
+	 * returns the same slim view as `loadStepSummariesByPasses`, not the whole row.
 	 */
 	loadLatestStepSummaries(
 		executionId: string,
@@ -256,14 +284,15 @@ export interface StepStore {
 	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
 
 	/**
-	 * How many of the execution's steps have settled (completed, failed,
-	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
-	 * for reachable nodes, and never unsettle, so comparing this against the
-	 * number of rows the execution owes answers "has everything settled?" exactly.
-	 * A loop makes that number more than the node count, so the comparison runs
-	 * against `expectedSettledRows` rather than against the graph.
+	 * How many of the execution's node-passes have settled: decided, with every
+	 * one of their steps completed, failed, skipped, or cancelled. A node-pass
+	 * gets all of its steps at once, only exists for reachable nodes, and its
+	 * steps never unsettle, so comparing this against the number of node-passes
+	 * the execution owes answers "has everything settled?" exactly. Counting
+	 * steps instead would not work: how many runs a node-pass has depends on the
+	 * data.
 	 */
-	countSettledSteps(executionId: string): Promise<number>;
+	countSettledPasses(executionId: string): Promise<number>;
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;

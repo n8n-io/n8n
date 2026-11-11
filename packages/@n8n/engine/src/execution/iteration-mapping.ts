@@ -1,9 +1,10 @@
 import type { GraphEdge, WorkflowLoop } from '../graph';
-import type { StepKey } from './execution.types';
+import type { NodePass } from './execution.types';
 
 /**
- * Which rows an edge connects, given that a loop member has one row per
- * iteration. Each class fixes the iteration of the edge's source row (at
+ * Which node-passes an edge connects, given that a loop member has one per
+ * iteration. Which runs of those node-passes an edge connects is decided when
+ * the target is planned (`settlement.ts`), not here. Each class fixes the iteration of the edge's source row (at
  * `edge.from`) and of its target row (at `edge.to`):
  *
  * - `plain`: neither end is in a loop, so both rows sit at iteration 0.
@@ -30,7 +31,7 @@ export type EdgeClass = 'plain' | 'entry' | 'intra' | 'back' | 'exit';
  *   caller leaves the decision undecidable. Treating this as `none` would decide
  *   the done side of a loop that has not ended, and settled fates are immutable.
  */
-export type SourceRow = { kind: 'row'; key: StepKey } | { kind: 'none' } | { kind: 'pending' };
+export type SourceRow = { kind: 'row'; key: NodePass } | { kind: 'none' } | { kind: 'pending' };
 
 export function classifyEdge(edge: GraphEdge, loops: WorkflowLoop[]): EdgeClass {
 	if (edge.isBackEdge) return 'back';
@@ -48,7 +49,7 @@ export function classifyEdge(edge: GraphEdge, loops: WorkflowLoop[]): EdgeClass 
 }
 
 /** The target row, given the source row. */
-export function targetKey(edge: GraphEdge, edgeClass: EdgeClass, source: StepKey): StepKey {
+export function targetKey(edge: GraphEdge, edgeClass: EdgeClass, source: NodePass): NodePass {
 	switch (edgeClass) {
 		case 'back':
 			return { nodeId: edge.to, iteration: source.iteration + 1 };
@@ -64,7 +65,7 @@ export function targetKey(edge: GraphEdge, edgeClass: EdgeClass, source: StepKey
 export function sourceRow(
 	edge: GraphEdge,
 	edgeClass: EdgeClass,
-	target: StepKey,
+	target: NodePass,
 	terminalIteration?: number,
 ): SourceRow {
 	const row = (iteration: number): SourceRow => ({

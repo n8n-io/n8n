@@ -8,7 +8,7 @@ import {
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import { stepKeyId, type StepKey, type StepSlots, type StepStatus } from '../execution.types';
+import { nodePassId, type NodePass, type StepSlots, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
 
@@ -39,8 +39,11 @@ function summary(
 	status: StepStatus,
 	filledOutputSlots: boolean[] = [],
 ): StepSummary {
-	return { id: `step-${nodeId}`, nodeId, iteration: 0, status, filledOutputSlots };
+	return { id: `step-${nodeId}`, nodeId, iteration: 0, branch: 0, status, filledOutputSlots };
 }
+
+/** A source as the planner records it, at iteration 0 and run 0. */
+const src = (nodeId: string, outputIndex = 0) => ({ nodeId, iteration: 0, branch: 0, outputIndex });
 
 /** Both of a's output slots fired, so both branches are live by default. */
 const defaultSummaries = [
@@ -92,18 +95,26 @@ function makeStepStore(
 		executionId: 'exec-1',
 		nodeId: 'a',
 		iteration: 0,
+		branch: 0,
+		sources: null,
 		status: 'completed',
 		outputs: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
 	};
-	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
+	const summariesByPass: Record<string, StepSummary[]> = {};
+	for (const s of summaries) (summariesByPass[nodePassId(s)] ??= []).push(s);
 	return {
 		// ids derived from the node, so assertions can name the step they expect
 		createSteps: vi.fn().mockImplementation(async (_: string, records: NewStepRecord[]) => {
 			await Promise.resolve();
-			return records.map(({ nodeId, iteration }) => ({ id: `step-${nodeId}`, nodeId, iteration }));
+			return records.map(({ nodeId, iteration, branch }) => ({
+				id: `step-${nodeId}`,
+				nodeId,
+				iteration,
+				branch,
+			}));
 		}),
 		loadStep: vi.fn().mockResolvedValue(record),
 		claimStep: vi.fn(),
@@ -116,23 +127,24 @@ function makeStepStore(
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
-		// like the store: only requested keys that have rows appear
-		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
+		// like the store: only requested node-passes that have rows appear
+		loadStepSummariesByPasses: vi.fn().mockImplementation(async (_: string, passes: NodePass[]) => {
 			await Promise.resolve();
 			return Object.fromEntries(
-				keys
-					.map(stepKeyId)
-					.filter((key) => summariesByKey[key])
-					.map((key) => [key, summariesByKey[key]]),
+				passes
+					.map(nodePassId)
+					.filter((id) => summariesByPass[id])
+					.map((id) => [id, summariesByPass[id]]),
 			);
 		}),
+		loadStepsByPasses: vi.fn().mockResolvedValue({}),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
 		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
-		countSettledSteps: vi.fn().mockResolvedValue(0),
+		countSettledPasses: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		...overrides,
@@ -194,8 +206,8 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'queued' },
+			{ nodeId: 'b', iteration: 0, branch: 0, sources: [src('a', 0)], status: 'queued' },
+			{ nodeId: 'c', iteration: 0, branch: 0, sources: [src('a', 1)], status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 		expect(stepQueue.publish).toHaveBeenCalledWith({
@@ -222,7 +234,7 @@ describe('StepSettledHandler', () => {
 					loadSeededOutputs: vi
 						.fn()
 						.mockResolvedValue(
-							new Map([[stepKeyId({ nodeId: 'b', iteration: 0 }), seededOutputs]]),
+							new Map([[nodePassId({ nodeId: 'b', iteration: 0 }), seededOutputs]]),
 						),
 				},
 			);
@@ -239,11 +251,18 @@ describe('StepSettledHandler', () => {
 			await handler.handle(event);
 
 			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', [
-				{ nodeId: 'b', iteration: 0 },
+				{ nodeId: 'b', iteration: 0, branch: 0, sources: [src('a', 0)] },
 			]);
 			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-				{ nodeId: 'c', iteration: 0, status: 'queued' },
-				{ nodeId: 'b', iteration: 0, status: 'completed', outputs: seededOutputs },
+				{ nodeId: 'c', iteration: 0, branch: 0, sources: [src('a', 1)], status: 'queued' },
+				{
+					nodeId: 'b',
+					iteration: 0,
+					branch: 0,
+					sources: [src('a', 0)],
+					status: 'completed',
+					outputs: seededOutputs,
+				},
 			]);
 			expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 				type: 'step:ready',
@@ -271,8 +290,8 @@ describe('StepSettledHandler', () => {
 
 			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', []);
 			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-				{ nodeId: 'c', iteration: 0, status: 'queued' },
-				{ nodeId: 'b', iteration: 0, status: 'skipped' },
+				{ nodeId: 'c', iteration: 0, branch: 0, sources: [src('a', 1)], status: 'queued' },
+				{ nodeId: 'b', iteration: 0, branch: 0, sources: [null], status: 'skipped' },
 			]);
 		});
 
@@ -298,7 +317,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-trigger' });
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'a', iteration: 0, status: 'queued' },
+			{ nodeId: 'a', iteration: 0, branch: 0, sources: [src('trigger')], status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -320,7 +339,7 @@ describe('StepSettledHandler', () => {
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
+		expect(stepStore.loadStepSummariesByPasses).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
@@ -336,7 +355,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-b' });
 
 		// b's only successor is m; m reads from both b and c
-		expect(stepStore.loadStepSummariesByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
+		expect(stepStore.loadStepSummariesByPasses).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{ nodeId: 'b', iteration: 0 },
 			{ nodeId: 'm', iteration: 0 },
 			{ nodeId: 'c', iteration: 0 },
@@ -356,8 +375,8 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'skipped' },
+			{ nodeId: 'b', iteration: 0, branch: 0, sources: [src('a', 0)], status: 'queued' },
+			{ nodeId: 'c', iteration: 0, branch: 0, sources: [null], status: 'skipped' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -385,7 +404,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-c' });
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'm', iteration: 0, status: 'queued' },
+			{ nodeId: 'm', iteration: 0, branch: 0, sources: [src('b'), null], status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
@@ -491,13 +510,13 @@ describe('StepSettledHandler', () => {
 		// 'm' is terminal; with its row settled all five reachable nodes are done
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 		);
 		const { handler, executionStore } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(stepStore.countSettledSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.countSettledPasses).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
 	});
 
@@ -505,7 +524,7 @@ describe('StepSettledHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				countSettledSteps: vi.fn().mockResolvedValue(5),
+				countSettledPasses: vi.fn().mockResolvedValue(5),
 				hasFailedSteps: vi.fn().mockResolvedValue(true),
 			},
 		);
@@ -520,7 +539,7 @@ describe('StepSettledHandler', () => {
 		// four of five settled: a dead-branch cascade or a running step remains
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(4) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(4) },
 		);
 		const { handler, executionStore } = makeHandler(stepStore);
 
@@ -539,7 +558,7 @@ describe('StepSettledHandler', () => {
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
-		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
+		expect(stepStore.countSettledPasses).not.toHaveBeenCalled();
 	});
 
 	it('cancels queued steps again on a redelivered failure event', async () => {
@@ -586,8 +605,8 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'queued' },
+			{ nodeId: 'b', iteration: 0, branch: 0, sources: [src('a', 0)], status: 'queued' },
+			{ nodeId: 'c', iteration: 0, branch: 0, sources: [src('a', 1)], status: 'queued' },
 		]);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 	});
@@ -599,7 +618,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		// 'a' fanned out to b and c, so the execution is provably unfinished
-		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
+		expect(stepStore.countSettledPasses).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 });
@@ -618,6 +637,8 @@ describe('StepSettledHandler sub-executions', () => {
 			executionId: 'exec-1',
 			nodeId,
 			iteration,
+			branch: 0,
+			sources: null,
 			status,
 			outputs,
 			waitDeclaration: null,
@@ -629,7 +650,7 @@ describe('StepSettledHandler sub-executions', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				countSettledSteps: vi.fn().mockResolvedValue(5),
+				countSettledPasses: vi.fn().mockResolvedValue(5),
 				loadStepsByNodeIds: vi
 					.fn()
 					.mockResolvedValue([row('m', 'completed', [[{ json: { done: true } }]])]),
@@ -648,7 +669,7 @@ describe('StepSettledHandler sub-executions', () => {
 			kind: 'subExecution',
 			executionId: 'exec-1',
 			status: 'completed',
-			result: [{ nodeId: 'm', iteration: 0, outputs: [[{ json: { done: true } }]] }],
+			result: [{ nodeId: 'm', iteration: 0, branch: 0, outputs: [[{ json: { done: true } }]] }],
 		});
 		expect(stepQueue.publish).toHaveBeenCalledWith({
 			type: 'step:ready',
@@ -699,7 +720,7 @@ describe('StepSettledHandler sub-executions', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				countSettledSteps: vi.fn().mockResolvedValue(5),
+				countSettledPasses: vi.fn().mockResolvedValue(5),
 				// Clean at planning time, failed by the time the count is checked.
 				hasFailedSteps: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
 				loadFailedSteps: vi.fn().mockResolvedValue([{ ...row('b', 'failed', null), error }]),
@@ -722,7 +743,7 @@ describe('StepSettledHandler sub-executions', () => {
 	it('resumes nothing for a parent that does not await the sub-execution', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 		);
 		const { handler, stepQueue } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent: { ...parent, awaited: false } }),
@@ -738,7 +759,7 @@ describe('StepSettledHandler sub-executions', () => {
 	it('resumes nothing when finishExecution loses the compare-and-set', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 		);
 		const { handler } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore(
@@ -759,7 +780,7 @@ describe('StepSettledHandler lifecycle events', () => {
 	it('announces execution:completed when it records the completion', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 		);
 		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ responseExpectation: { kind: 'runEnd' } }),
@@ -822,7 +843,7 @@ describe('StepSettledHandler lifecycle events', () => {
 		const finishingStore = () =>
 			makeStepStore(
 				{ id: 'step-m', nodeId: 'm', outputs },
-				{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+				{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 			);
 
 		it('sends no ended message when the caller expects none', async () => {
@@ -887,7 +908,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			async (_name, overrides) => {
 				const stepStore = makeStepStore(
 					{ id: 'step-m', nodeId: 'm' },
-					{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+					{ countSettledPasses: vi.fn().mockResolvedValue(5) },
 				);
 				const { handler, executionStore, lifecycleEventPublisher, responseSender } = makeHandler(
 					stepStore,
@@ -950,7 +971,7 @@ describe('StepSettledHandler lifecycle events', () => {
 	it('announces nothing while any reachable node is unsettled', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
-			{ countSettledSteps: vi.fn().mockResolvedValue(4) },
+			{ countSettledPasses: vi.fn().mockResolvedValue(4) },
 		);
 		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
 

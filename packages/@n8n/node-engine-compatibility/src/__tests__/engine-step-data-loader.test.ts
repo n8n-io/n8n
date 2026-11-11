@@ -21,11 +21,50 @@ const context = {
 	workflowId: 'wf-1',
 	mode: 'production',
 	iteration: 0,
+	branch: 0,
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
 } as const;
 
 describe('createEngineStepDataLoader', () => {
+	const step = (
+		nodeId: string,
+		iteration: number,
+		branch: number,
+		status: string,
+		outputs: unknown,
+	) => ({
+		nodeId,
+		iteration,
+		branch,
+		status,
+		outputs,
+		sources: [{ nodeId: 't', iteration: 0, branch: 0, outputIndex: 0 }],
+	});
+
+	it('numbers runs across passes, so a pass with two runs shifts the next pass', async () => {
+		const executionStore = {
+			loadExecution: vi.fn().mockResolvedValue({ id: 'exec-1', graph }),
+		} as unknown as ExecutionStore;
+		const stepStore = {
+			loadAllSteps: vi
+				.fn()
+				.mockResolvedValue([
+					step('a', 0, 0, 'completed', [[{ json: { run: 'pass 0, branch 0' } }]]),
+					step('a', 0, 1, 'completed', [[{ json: { run: 'pass 0, branch 1' } }]]),
+					step('a', 1, 0, 'completed', [[{ json: { run: 'pass 1, branch 0' } }]]),
+				]),
+		} as unknown as StepStore;
+
+		const stepData = await createEngineStepDataLoader(executionStore, stepStore)(context);
+
+		expect(stepData.outputsByNode.a).toEqual({
+			0: [[{ json: { run: 'pass 0, branch 0' } }]],
+			1: [[{ json: { run: 'pass 0, branch 1' } }]],
+			2: [[{ json: { run: 'pass 1, branch 0' } }]],
+		});
+	});
+
 	it('loads the graph and the outputs of every completed step', async () => {
 		const executionStore = {
 			loadExecution: vi.fn().mockResolvedValue({ id: 'exec-1', graph }),
@@ -37,12 +76,14 @@ describe('createEngineStepDataLoader', () => {
 				{
 					nodeId: 't',
 					iteration: 0,
+					branch: 0,
+					sources: null,
 					status: 'completed',
 					outputs: [{ body: { hello: 'world' } }],
 				},
-				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { from: 'a' } }]] },
-				{ nodeId: 'a', iteration: 1, status: 'completed', outputs: [[{ json: { from: 'a2' } }]] },
-				{ nodeId: 'b', iteration: 0, status: 'running', outputs: null },
+				step('a', 0, 0, 'completed', [[{ json: { from: 'a' } }]]),
+				step('a', 1, 0, 'completed', [[{ json: { from: 'a2' } }]]),
+				step('b', 0, 0, 'running', null),
 			]),
 		} as unknown as StepStore;
 

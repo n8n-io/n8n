@@ -32,6 +32,15 @@ import {
 import { EXECUTE_WORKFLOW_TYPE } from '../constants';
 import type { SubWorkflowResolver, V1StepExecutorDeps } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
+
+/** Items as a node sees and passes them on: each linked to its position in the input. */
+function linked(slots: StepSlots): StepSlots {
+	return slots.map((items) =>
+		Array.isArray(items)
+			? items.map((item, index) => ({ ...(item as object), pairedItem: { item: index } }))
+			: items,
+	);
+}
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
 	items,
@@ -299,7 +308,7 @@ describe('V1StepExecutor', () => {
 		request.respond = respond;
 
 		const result = await testStepExecutor(graph).execute(request);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
 		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
@@ -359,7 +368,10 @@ describe('V1StepExecutor', () => {
 		);
 
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({ a: 1 })));
-		expect(result.outputs).toEqual([[{ json: { a: 1 } }], [{ json: { a: 1, second: true } }]]);
+		expect(result.outputs).toEqual([
+			[{ json: { a: 1 }, pairedItem: { item: 0 } }],
+			[{ json: { a: 1, second: true } }],
+		]);
 	});
 
 	it('rejects batch steps until the engine iterates loops natively', async () => {
@@ -483,7 +495,7 @@ describe('V1StepExecutor', () => {
 				expect(result).toEqual({
 					wait: {
 						resumeAt: '2026-10-01T12:00:00.000Z',
-						outputsAtDeadline: input,
+						outputsAtDeadline: linked(input),
 						...binding,
 					},
 				});
@@ -735,7 +747,7 @@ describe('V1StepExecutor', () => {
 		const result = await testStepExecutor(graph).execute(
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 	});
 });
 
@@ -803,7 +815,10 @@ describe('sub-workflows', () => {
 				node: { id: 'n', name: 'Subject', type: EXECUTE_WORKFLOW_TYPE, typeVersion: 1 },
 			},
 			context: { userId: undefined, projectId: undefined },
-			items: [{ json: { a: 1 } }, { json: { a: 2 } }],
+			items: [
+				{ json: { a: 1 }, pairedItem: { item: 0 } },
+				{ json: { a: 2 }, pairedItem: { item: 1 } },
+			],
 		});
 	});
 
@@ -827,10 +842,11 @@ describe('sub-workflows', () => {
 			executionId: 'sub-1',
 			status: 'completed' as const,
 			result: [
-				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'x' } }]] },
+				{ nodeId: 'x', iteration: 0, branch: 0, outputs: [[{ json: { from: 'x' } }]] },
 				{
 					nodeId: 'y',
 					iteration: 0,
+					branch: 0,
 					outputs: [[{ json: { from: 'y' } }], [{ json: { second: true } }]],
 				},
 			],
@@ -855,8 +871,8 @@ describe('sub-workflows', () => {
 			executionId: 'sub-1',
 			status: 'completed' as const,
 			result: [
-				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
-				{ nodeId: 'x', iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+				{ nodeId: 'x', iteration: 0, branch: 0, outputs: [[{ json: { pass: 0 } }]] },
+				{ nodeId: 'x', iteration: 1, branch: 0, outputs: [[{ json: { pass: 1 } }]] },
 			],
 		};
 
@@ -923,7 +939,7 @@ describe('sub-workflows', () => {
 
 		// The node's own outcome stands: its input passes through, and no sub-execution is owed.
 		expect(result.subExecution).toBeUndefined();
-		expect(result.outputs).toEqual(input);
+		expect(result.outputs).toEqual(linked(input));
 		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 });

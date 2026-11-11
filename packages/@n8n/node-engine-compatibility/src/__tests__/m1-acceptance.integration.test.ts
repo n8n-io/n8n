@@ -374,11 +374,23 @@ describe('M1 acceptance (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 
-		expect(at('one', 2)?.outputs).toEqual([[{ json: { n: 1 } }, { json: { n: 2 } }], null]);
+		expect(at('one', 2)?.outputs).toEqual([
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+			],
+			null,
+		]);
 
 		expect(at('body-two', 0)?.status).toBe('completed');
 		expect(at('body-two', 1)?.status).toBe('completed');
-		expect(at('two', 2)?.outputs).toEqual([[{ json: { n: 1 } }, { json: { n: 2 } }], null]);
+		expect(at('two', 2)?.outputs).toEqual([
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+			],
+			null,
+		]);
 		expect(at('after', 0)?.status).toBe('completed');
 	});
 
@@ -416,7 +428,11 @@ describe('M1 acceptance (integration)', () => {
 
 		// the last pass carries what the body returned across every pass
 		expect(at('loop', 3)?.outputs).toEqual([
-			[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }],
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+				{ json: { n: 3 }, pairedItem: { item: 0 } },
+			],
 			null,
 		]);
 	});
@@ -434,6 +450,70 @@ describe('M1 acceptance (integration)', () => {
 		expect(at('loop', 0)?.outputs).toEqual([null, null]);
 		expect(at('body', 0)).toBeUndefined();
 		expect(at('after', 0)?.status).toBe('skipped');
+	});
+
+	it('runs a node once per branch that converges on its input, and the tail once per run', async () => {
+		// Trigger fans out to A and B, which both feed C's only input. v1 runs C once
+		// per branch, and everything after it once per run of C.
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					setNode('node-a', 'A', [{ name: 'via', value: 'A', type: 'string' }]),
+					setNode('node-b', 'B', [{ name: 'via', value: 'B', type: 'string' }]),
+					setNode('node-c', 'C', [
+						{ name: 'via', value: '={{ $json.via }}', type: 'string' },
+						{ name: 'run', value: '={{ $runIndex }}', type: 'number' },
+						{
+							name: 'seed',
+							value: "={{ $('When clicking Execute').item.json.seed }}",
+							type: 'string',
+						},
+					]),
+					// paired items lead back through the run of C that fed this run of D
+					setNode('node-d', 'D', [
+						{ name: 'fromC', value: "={{ $('C').item.json.via }}", type: 'string' },
+					]),
+				],
+				{
+					'When clicking Execute': {
+						main: [
+							[
+								{ node: 'A', type: 'main', index: 0 },
+								{ node: 'B', type: 'main', index: 0 },
+							],
+						],
+					},
+					A: mainTo('C'),
+					B: mainTo('C'),
+					C: mainTo('D'),
+				},
+			),
+		);
+
+		const { execution, steps } = await runWorkflow(graph, [[{ json: { seed: 's' } }]]);
+
+		const runs = (nodeId: string) =>
+			steps
+				.filter((step) => step.nodeId === nodeId)
+				.sort((a, b) => a.branch - b.branch)
+				.map(({ branch, outputs }) => ({ branch, outputs }));
+
+		expect(execution.status).toBe('completed');
+		expect(runs('node-c')).toEqual([
+			{
+				branch: 0,
+				outputs: [[expect.objectContaining({ json: { via: 'A', run: 0, seed: 's' } })]],
+			},
+			{
+				branch: 1,
+				outputs: [[expect.objectContaining({ json: { via: 'B', run: 1, seed: 's' } })]],
+			},
+		]);
+		expect(runs('node-d')).toEqual([
+			{ branch: 0, outputs: [[expect.objectContaining({ json: { fromC: 'A' } })]] },
+			{ branch: 1, outputs: [[expect.objectContaining({ json: { fromC: 'B' } })]] },
+		]);
 	});
 
 	// No cancellation mechanism exists yet (discussed during CAT-2905, needs an

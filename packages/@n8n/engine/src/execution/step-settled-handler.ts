@@ -14,14 +14,17 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
+	nodePassId,
 	stepKeyId,
+	type NodePass,
+	type NodePassId,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import { decideSuccessors, decisionKeys } from './settlement';
+import { decideSuccessors, decisionPasses } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
@@ -137,15 +140,15 @@ export class StepSettledHandler {
 			execution.id,
 			exitSourcesInto(execution.graph, loops, candidates),
 		);
-		const steps = await this.stepStore.loadStepSummariesByKeys(
+		const passes = await this.stepStore.loadStepSummariesByPasses(
 			execution.id,
-			decisionKeys(execution.graph, loops, step, terminalIterations),
+			decisionPasses(execution.graph, loops, step, terminalIterations),
 		);
 		const { toQueue, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
-			steps,
+			passes,
 			terminalIterations,
 		);
 		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
@@ -162,13 +165,13 @@ export class StepSettledHandler {
 		// the rows forever; the reconciler re-announces stale queued steps and
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
-			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
-			...toSeed.map((key) => ({
-				...key,
+			...toQueue.map((planned) => ({ ...planned, status: 'queued' as const })),
+			...toSeed.map((planned) => ({
+				...planned,
 				status: 'completed' as const,
-				outputs: seededOutputsFor(execution.id, key, seededOutputs),
+				outputs: seededOutputsFor(execution.id, planned, seededOutputs),
 			})),
-			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
+			...toSkip.map((planned) => ({ ...planned, status: 'skipped' as const })),
 		]);
 
 		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
@@ -198,11 +201,11 @@ export class StepSettledHandler {
 	}
 
 	/**
-	 * Records the execution's outcome once every step it owes has settled: `failed`
-	 * if any step failed, `completed` otherwise. Steps are unique per
-	 * `(node, iteration)`, only exist for reachable nodes, and never unsettle, so
-	 * the count comparison cannot pass early — in-flight events and unplanned
-	 * successors both leave steps outstanding.
+	 * Records the execution's outcome once every node-pass it owes has settled:
+	 * `failed` if any step failed, `completed` otherwise. A node-pass gets all of
+	 * its steps in one insert, only exists for reachable nodes, and its steps never
+	 * unsettle, so the count comparison cannot pass early — in-flight events and
+	 * undecided successors both leave node-passes outstanding.
 	 */
 	private async finishExecutionIfDone(
 		execution: ExecutionRecord,
@@ -225,7 +228,7 @@ export class StepSettledHandler {
 		// to compare against yet.
 		if (expected === undefined) return;
 
-		const settled = await this.stepStore.countSettledSteps(execution.id);
+		const settled = await this.stepStore.countSettledPasses(execution.id);
 		if (settled < expected) return;
 
 		const failed = await this.stepStore.hasFailedSteps(execution.id);
@@ -326,10 +329,10 @@ export class StepSettledHandler {
  */
 function seededOutputsFor(
 	executionId: string,
-	key: StepKey,
-	seededOutputs: Map<StepKeyId, StepSlots>,
+	key: NodePass,
+	seededOutputs: Map<NodePassId, StepSlots>,
 ): StepSlots {
-	const outputs = seededOutputs.get(stepKeyId(key));
+	const outputs = seededOutputs.get(nodePassId(key));
 	if (outputs === undefined) {
 		throw new UnexpectedError(
 			`Execution ${executionId} marks node ${key.nodeId} as seeded but holds no outputs for iteration ${key.iteration}`,

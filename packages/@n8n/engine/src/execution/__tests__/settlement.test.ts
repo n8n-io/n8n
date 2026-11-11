@@ -1,34 +1,81 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph } from '../../graph';
+import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph, WorkflowLoop } from '../../graph';
 import { deriveLoops, getDescendantNodeIds } from '../../graph';
-import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
-import { decideSuccessors, type SuccessorDecisions } from '../settlement';
+import { nodePassId, type StepKey, type StepStatus } from '../execution.types';
+import {
+	decideSuccessors as decideWithSources,
+	type PlannedStep,
+	type SuccessorDecisions,
+} from '../settlement';
 import type { StepSummary } from '../step-store';
+
+type Passes = Record<string, StepSummary[]>;
+
+/** Decisions as step keys, for the tests that are not about what a step reads. */
+type KeyDecisions = { [K in keyof SuccessorDecisions]: StepKey[] };
+
+function toKeys(planned: PlannedStep[]): StepKey[] {
+	return planned.map(({ nodeId, iteration, branch }) => ({ nodeId, iteration, branch }));
+}
+
+function decideSuccessors(
+	graph: StoredWorkflowGraph,
+	loops: WorkflowLoop[],
+	settled: StepKey,
+	passes: Passes,
+	terminalIterations: Map<string, number>,
+): KeyDecisions {
+	const { toQueue, toSeed, toSkip } = decideWithSources(
+		graph,
+		loops,
+		settled,
+		passes,
+		terminalIterations,
+	);
+	return { toQueue: toKeys(toQueue), toSeed: toKeys(toSeed), toSkip: toKeys(toSkip) };
+}
 
 function summary(
 	nodeId: string,
 	status: StepStatus,
 	filledOutputSlots: boolean[] = [],
+	branch = 0,
 ): StepSummary {
-	return { id: `step-${nodeId}`, nodeId, iteration: 0, status, filledOutputSlots };
+	return {
+		id: `step-${nodeId}-${branch}`,
+		nodeId,
+		iteration: 0,
+		branch,
+		status,
+		filledOutputSlots,
+	};
 }
 
-function makeSteps(...summaries: StepSummary[]): Record<string, StepSummary> {
-	return Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
+/** Groups steps by node-pass, as the store returns them. */
+function makeSteps(...summaries: StepSummary[]): Passes {
+	const passes: Passes = {};
+	for (const step of summaries) (passes[nodePassId(step)] ??= []).push(step);
+	return passes;
 }
 
-function keyFor(nodeId: string): StepKey {
-	return { nodeId, iteration: 0 };
+/** Records a node-pass's steps, replacing any it had. */
+function put(passes: Passes, ...steps: StepSummary[]): void {
+	passes[nodePassId(steps[0])] = steps;
+}
+
+function keyFor(nodeId: string, branch = 0): StepKey {
+	return { nodeId, iteration: 0, branch };
 }
 
 /** No loops, so there is no loop set and no loop that could have ended. */
-function decideLoopless(
-	graph: WorkflowGraph,
-	settled: StepKey,
-	steps: Record<string, StepSummary>,
-): SuccessorDecisions {
+function decideLoopless(graph: WorkflowGraph, settled: StepKey, steps: Passes): KeyDecisions {
 	return decideSuccessors({ ...graph, seeded: [] }, [], settled, steps, new Map());
+}
+
+/** As `decideLoopless`, with what each planned step reads. */
+function planLoopless(graph: WorkflowGraph, settled: StepKey, steps: Passes): SuccessorDecisions {
+	return decideWithSources({ ...graph, seeded: [] }, [], settled, steps, new Map());
 }
 
 function makeGraph(
@@ -135,14 +182,14 @@ describe('decideSuccessors', () => {
 			toSkip: [keyFor('b')],
 		});
 
-		steps[stepKeyId(keyFor('b'))] = summary('b', 'skipped');
+		put(steps, summary('b', 'skipped'));
 		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
 			toSkip: [keyFor('c')],
 		});
 
-		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		put(steps, summary('c', 'skipped'));
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
@@ -173,7 +220,7 @@ describe('decideSuccessors', () => {
 			toSkip: [],
 		});
 
-		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		put(steps, summary('c', 'skipped'));
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
@@ -239,6 +286,163 @@ describe('decideSuccessors', () => {
 	});
 });
 
+describe('decideSuccessors with several runs', () => {
+	/** trigger -> if -> {a (out 0), b (out 1)} -> c, both into c's slot 0. */
+	const converging = makeGraph([
+		{ from: 'trigger', to: 'if' },
+		{ from: 'if', to: 'a', outputIndex: 0 },
+		{ from: 'if', to: 'b', outputIndex: 1 },
+		{ from: 'a', to: 'c' },
+		{ from: 'b', to: 'c' },
+		{ from: 'c', to: 'x' },
+	]);
+	const upToC = [summary('trigger', 'completed', [true]), summary('if', 'completed', [true, true])];
+	const source = (nodeId: string, branch = 0, outputIndex = 0) => ({
+		nodeId,
+		iteration: 0,
+		branch,
+		outputIndex,
+	});
+
+	it('runs a convergence once per live arrival, each run reading its own', () => {
+		const steps = makeSteps(
+			...upToC,
+			summary('a', 'completed', [true]),
+			summary('b', 'completed', [true]),
+		);
+
+		expect(planLoopless(converging, keyFor('b'), steps).toQueue).toEqual([
+			{ ...keyFor('c', 0), sources: [source('a')] },
+			{ ...keyFor('c', 1), sources: [source('b')] },
+		]);
+	});
+
+	it('waits for every edge into a convergence before deciding it', () => {
+		const steps = makeSteps(...upToC, summary('a', 'completed', [true]), summary('b', 'queued'));
+
+		expect(decideLoopless(converging, keyFor('a'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [],
+		});
+	});
+
+	it('runs a convergence once when only one arrival is live', () => {
+		const steps = makeSteps(...upToC, summary('a', 'skipped'), summary('b', 'completed', [true]));
+
+		expect(planLoopless(converging, keyFor('b'), steps).toQueue).toEqual([
+			{ ...keyFor('c', 0), sources: [source('b')] },
+		]);
+	});
+
+	it('skips a convergence once when no arrival is live', () => {
+		const steps = makeSteps(...upToC, summary('a', 'skipped'), summary('b', 'skipped'));
+
+		expect(decideLoopless(converging, keyFor('b'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [keyFor('c')],
+		});
+	});
+
+	it('gives a node after a convergence one run per run before it', () => {
+		const steps = makeSteps(
+			...upToC,
+			summary('c', 'completed', [true], 0),
+			summary('c', 'completed', [true], 1),
+		);
+
+		expect(planLoopless(converging, keyFor('c', 1), steps).toQueue).toEqual([
+			{ ...keyFor('x', 0), sources: [source('c', 0)] },
+			{ ...keyFor('x', 1), sources: [source('c', 1)] },
+		]);
+	});
+
+	it('waits for every run before it, not just the one that settled', () => {
+		const steps = makeSteps(
+			...upToC,
+			summary('c', 'completed', [true], 0),
+			summary('c', 'queued', [], 1),
+		);
+
+		expect(decideLoopless(converging, keyFor('c', 0), steps).toQueue).toEqual([]);
+	});
+
+	it('numbers runs by live arrivals only, so a dead run leaves no gap', () => {
+		const steps = makeSteps(
+			...upToC,
+			summary('c', 'completed', [false], 0),
+			summary('c', 'completed', [true], 1),
+		);
+
+		expect(planLoopless(converging, keyFor('c', 1), steps).toQueue).toEqual([
+			{ ...keyFor('x', 0), sources: [source('c', 1)] },
+		]);
+	});
+
+	it('pairs the runs of a join by rank, leaving a short input empty', () => {
+		// x has two runs, z has one: Merge run 1 has nothing on its second input.
+		const graph = makeGraph([
+			{ from: 'trigger', to: 'x' },
+			{ from: 'trigger', to: 'z' },
+			{ from: 'x', to: 'merge', inputIndex: 0 },
+			{ from: 'z', to: 'merge', inputIndex: 1 },
+		]);
+		const steps = makeSteps(
+			summary('trigger', 'completed', [true]),
+			summary('x', 'completed', [true], 0),
+			summary('x', 'completed', [true], 1),
+			summary('z', 'completed', [true]),
+		);
+
+		expect(planLoopless(graph, keyFor('z'), steps).toQueue).toEqual([
+			{ ...keyFor('merge', 0), sources: [source('x', 0), source('z')] },
+			{ ...keyFor('merge', 1), sources: [source('x', 1), null] },
+		]);
+	});
+
+	it('lists every run of every edge into a slot, edge by edge', () => {
+		// c and z have two runs each and both feed foo's slot 0: four runs.
+		const graph = makeGraph([
+			{ from: 'trigger', to: 'c' },
+			{ from: 'trigger', to: 'z' },
+			{ from: 'c', to: 'foo' },
+			{ from: 'z', to: 'foo' },
+		]);
+		const steps = makeSteps(
+			summary('trigger', 'completed', [true]),
+			summary('c', 'completed', [true], 0),
+			summary('c', 'completed', [true], 1),
+			summary('z', 'completed', [true], 0),
+			summary('z', 'completed', [true], 1),
+		);
+
+		expect(planLoopless(graph, keyFor('z', 1), steps).toQueue).toEqual([
+			{ ...keyFor('foo', 0), sources: [source('c', 0)] },
+			{ ...keyFor('foo', 1), sources: [source('c', 1)] },
+			{ ...keyFor('foo', 2), sources: [source('z', 0)] },
+			{ ...keyFor('foo', 3), sources: [source('z', 1)] },
+		]);
+	});
+
+	it('runs once per output when two outputs of one node feed the same slot', () => {
+		const graph = makeGraph([
+			{ from: 'trigger', to: 'if' },
+			{ from: 'if', to: 'c', outputIndex: 0 },
+			{ from: 'if', to: 'c', outputIndex: 1 },
+		]);
+		const steps = makeSteps(
+			summary('trigger', 'completed', [true]),
+			summary('if', 'completed', [true, true]),
+		);
+
+		expect(planLoopless(graph, keyFor('if'), steps).toQueue).toEqual([
+			{ ...keyFor('c', 0), sources: [source('if', 0, 0)] },
+			{ ...keyFor('c', 1), sources: [source('if', 0, 1)] },
+		]);
+	});
+});
+
 /**
  * Property test: the cascade is the event loop, so correctness is a property
  * of the whole loop, not one call. The simulation below models the engine —
@@ -298,7 +502,7 @@ function simulateExecution(
 	graph: WorkflowGraph,
 	outputs: Record<string, boolean[]>,
 	rand: () => number,
-): Record<string, StepSummary> {
+): Passes {
 	const steps = makeSteps(summary('trigger', 'completed', outputs.trigger));
 	const settledEvents = ['trigger'];
 	const queuedNodes: string[] = [];
@@ -310,16 +514,16 @@ function simulateExecution(
 			settledEvents.shift();
 			const { toQueue, toSkip } = decideLoopless(graph, keyFor(nodeId), steps);
 			for (const { nodeId: id } of toQueue) {
-				steps[stepKeyId(keyFor(id))] = summary(id, 'queued');
+				put(steps, summary(id, 'queued'));
 				queuedNodes.push(id);
 			}
 			for (const { nodeId: id } of toSkip) {
-				steps[stepKeyId(keyFor(id))] = summary(id, 'skipped');
+				put(steps, summary(id, 'skipped'));
 				settledEvents.push(id);
 			}
 		} else {
 			const [nodeId] = queuedNodes.splice(randomInt(rand, queuedNodes.length), 1);
-			steps[stepKeyId(keyFor(nodeId))] = summary(nodeId, 'completed', outputs[nodeId]);
+			put(steps, summary(nodeId, 'completed', outputs[nodeId]));
 			settledEvents.push(nodeId);
 		}
 	}
@@ -362,7 +566,7 @@ describe('the event loop over decideSuccessors matches the reference evaluator',
 
 			const reachable = ['trigger', ...getDescendantNodeIds(graph, 'trigger')];
 			const actual = Object.fromEntries(
-				reachable.map((id) => [id, terminal[stepKeyId(keyFor(id))]?.status ?? 'missing']),
+				reachable.map((id) => [id, terminal[nodePassId(keyFor(id))]?.[0]?.status ?? 'missing']),
 			);
 			// rule 1 (the finish predicate): every reachable node settled, and
 			// with exactly the fate the spec assigns
@@ -399,18 +603,25 @@ describe('decideSuccessors over loop iterations', () => {
 		status: StepStatus,
 		filledOutputSlots: boolean[] = [],
 	): StepSummary {
-		return { id: `step-${nodeId}-${iteration}`, nodeId, iteration, status, filledOutputSlots };
+		return {
+			id: `step-${nodeId}-${iteration}`,
+			nodeId,
+			iteration,
+			branch: 0,
+			status,
+			filledOutputSlots,
+		};
 	}
 
 	function decide(
 		settled: StepKey,
-		steps: Record<string, StepSummary>,
+		steps: Passes,
 		terminalIterations: Map<string, number> = new Map(),
-	): SuccessorDecisions {
+	): KeyDecisions {
 		return decideSuccessors({ ...graph, seeded: [] }, loops, settled, steps, terminalIterations);
 	}
 
-	const key = (nodeId: string, iteration: number): StepKey => ({ nodeId, iteration });
+	const key = (nodeId: string, iteration: number): StepKey => ({ nodeId, iteration, branch: 0 });
 
 	it('queues the body at the batch row iteration, and leaves the exit undecided', () => {
 		const steps = makeSteps(at('B', 0, 'completed', [false, true]));

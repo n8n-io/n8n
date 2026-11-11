@@ -129,7 +129,9 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
  * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
  *
  * Each node maps to its outputs per pass, iteration 0 first. A node outside a
- * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ * loop has one entry. Every run of a pass records the same outputs, as v1
+ * returns a node's pinned data on every run. TODO(CAT-4875): accept a loop's
+ * passes.
  */
 export type SeededSteps = Record<string, StepSlots[]>;
 
@@ -182,11 +184,16 @@ export type ResumeBinding = 'execution' | 'step';
 
 /**
  * What a sub-execution hands back to the step that waited for it: the
- * outputs of every terminal step that completed, in graph order and then by
- * pass. Kept apart per step, so the consumer decides how to combine them, and
- * the engine never reads into a slot.
+ * outputs of every terminal step that completed, in graph order, then by
+ * pass, then by run. Kept apart per step, so the consumer decides how to
+ * combine them, and the engine never reads into a slot.
  */
-export type SubExecutionResult = Array<{ nodeId: string; iteration: number; outputs: StepSlots }>;
+export type SubExecutionResult = Array<{
+	nodeId: string;
+	iteration: number;
+	branch: number;
+	outputs: StepSlots;
+}>;
 
 /**
  * A sub-execution ended, so its awaiting parent step resumes. Unlike the
@@ -247,14 +254,46 @@ export interface StepError {
 	details?: JsonValue;
 }
 
-export interface StepKey {
+/**
+ * One node at one loop pass, before runs are counted. A node-pass is decided
+ * once, and that decision creates all of its steps together: one for each live
+ * arrival, or a single skipped step when nothing arrived live.
+ */
+export interface NodePass {
 	nodeId: string;
 	iteration: number;
+}
+
+/** A node-pass in the string form that keys instance-keyed lookups. */
+export type NodePassId = string;
+
+export function nodePassId({ nodeId, iteration }: NodePass): NodePassId {
+	return `${nodeId}@${iteration}`;
+}
+
+/**
+ * One step: one run of a node-pass. `branch` is the run's position among the
+ * node-pass's runs, so it is 0 for a node that ran once, which is every node
+ * not downstream of a convergence.
+ */
+export interface StepKey extends NodePass {
+	branch: number;
 }
 
 /** A step key in the string form that keys instance-keyed lookups. */
 export type StepKeyId = string;
 
-export function stepKeyId({ nodeId, iteration }: StepKey): StepKeyId {
-	return `${nodeId}@${iteration}`;
+export function stepKeyId({ nodeId, iteration, branch }: StepKey): StepKeyId {
+	return `${nodeId}@${iteration}#${branch}`;
 }
+
+/**
+ * Which step fed one input slot of a step, and from which of its output slots.
+ * Recorded when the step is planned, so running it needs no routing.
+ */
+export interface StepSource extends StepKey {
+	outputIndex: number;
+}
+
+/** One entry per input slot. `null` marks a slot that nothing live fed. */
+export type StepSources = Array<StepSource | null>;

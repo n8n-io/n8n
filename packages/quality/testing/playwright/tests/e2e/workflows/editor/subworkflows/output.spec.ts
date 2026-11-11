@@ -96,10 +96,9 @@ test.describe(
 	'Sub-workflow output contract',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		// TODO(CET-315): the child's branches converge on one input, which engine v2
-		// refuses. Engine v2 does not run `each` mode at all.
+		// Engine v2 does not run `each` mode at all.
 		for (const { mode, engine } of [
-			{ mode: 'once', engine: '@engine:v2-pending' },
+			{ mode: 'once', engine: '@engine:v2' },
 			{ mode: 'each', engine: '@engine:v1-only' },
 		]) {
 			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {

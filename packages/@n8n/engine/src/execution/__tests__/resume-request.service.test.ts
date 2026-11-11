@@ -22,6 +22,8 @@ const accepting = (id: string): StepRecord => ({
 	executionId,
 	nodeId: `node-${id}`,
 	iteration: 0,
+	branch: 0,
+	sources: null,
 	status: 'waiting',
 	outputs: null,
 	waitDeclaration: { resumeBinding: 'execution' },

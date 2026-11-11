@@ -12,6 +12,7 @@ import type {
 	StepError,
 	ResumeCause,
 	StepSlots,
+	StepSources,
 	StepStatus,
 	WaitDeclaration,
 } from '../../execution/execution.types';
@@ -19,8 +20,8 @@ import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
 @Index(
-	'uniq_workflow_step_execution_execution_id_node_id_iteration',
-	['executionId', 'nodeId', 'iteration'],
+	'uniq_workflow_step_execution_node_iteration_branch',
+	['executionId', 'nodeId', 'iteration', 'branch'],
 	{ unique: true },
 )
 @Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
@@ -41,8 +42,15 @@ export class WorkflowStepExecution {
 	@Column('int', { default: 0 })
 	iteration!: number;
 
+	@Column('int', { default: 0 })
+	branch!: number;
+
 	@Column('varchar', { length: 32 })
 	status!: StepStatus;
+
+	/** What the step reads, per input slot, recorded when it was planned. */
+	@Column('jsonb', { nullable: true })
+	sources!: StepSources | null;
 
 	@Column('jsonb', { nullable: true })
 	outputs!: StepSlots | null;

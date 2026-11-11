@@ -141,6 +141,8 @@ function toStepDetail(record: StepView): StepDetail {
 		id: record.id,
 		nodeId: record.nodeId,
 		iteration: record.iteration,
+		branch: record.branch,
+		sources: record.sources,
 		status: record.status,
 		outputs: record.outputs,
 		error: record.error,

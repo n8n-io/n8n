@@ -5,13 +5,17 @@ import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
+	nodePassId,
 	stepKeyId,
+	type NodePass,
+	type NodePassId,
 	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type StepSources,
 	type StepStatus,
 } from '../execution/execution.types';
 import {
@@ -36,25 +40,29 @@ type StepSummaryRow = {
 	id: string;
 	nodeId: string;
 	iteration: number;
+	branch: number;
 	status: StepStatus;
 	filledOutputSlots: boolean[];
 };
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
-type InsertedStepRow = { id: string; node_id: string; iteration: number };
+type InsertedStepRow = { id: string; node_id: string; iteration: number; branch: number };
 type ClaimedStepRow = {
 	id: string;
 	execution_id: string;
 	node_id: string;
 	iteration: number;
+	branch: number;
+	sources: StepSources | null;
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
 };
 type DueStepRow = { id: string; execution_id: string };
 
 /**
- * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
- * the key filter is a row-value comparison no query-builder helper covers.
+ * `(node_id, iteration, branch) IN ((:n0, :i0, :b0), ...)` as a fragment +
+ * parameters, since the key filter is a row-value comparison no query-builder
+ * helper covers.
  */
 function stepKeyFilter(keys: StepKey[]): {
 	fragment: string;
@@ -62,12 +70,39 @@ function stepKeyFilter(keys: StepKey[]): {
 } {
 	const tuples: string[] = [];
 	const parameters: Record<string, string | number> = {};
-	keys.forEach(({ nodeId, iteration }, index) => {
+	keys.forEach(({ nodeId, iteration, branch }, index) => {
+		tuples.push(`(:n${index}, :i${index}, :b${index})`);
+		parameters[`n${index}`] = nodeId;
+		parameters[`i${index}`] = iteration;
+		parameters[`b${index}`] = branch;
+	});
+	return {
+		fragment: `(step.node_id, step.iteration, step.branch) IN (${tuples.join(', ')})`,
+		parameters,
+	};
+}
+
+/** `(node_id, iteration) IN (...)`: every run of the given node-passes. */
+function nodePassFilter(passes: NodePass[]): {
+	fragment: string;
+	parameters: Record<string, string | number>;
+} {
+	const tuples: string[] = [];
+	const parameters: Record<string, string | number> = {};
+	passes.forEach(({ nodeId, iteration }, index) => {
 		tuples.push(`(:n${index}, :i${index})`);
 		parameters[`n${index}`] = nodeId;
 		parameters[`i${index}`] = iteration;
 	});
 	return { fragment: `(step.node_id, step.iteration) IN (${tuples.join(', ')})`, parameters };
+}
+
+/** Groups rows by node-pass, each list in branch order. */
+function groupByPass<T extends StepKey>(rows: T[]): Record<NodePassId, T[]> {
+	const grouped: Record<NodePassId, T[]> = {};
+	for (const row of rows) (grouped[nodePassId(row)] ??= []).push(row);
+	for (const runs of Object.values(grouped)) runs.sort((a, b) => a.branch - b.branch);
+	return grouped;
 }
 
 /** TypeORM-backed `StepStore` adapter. */
@@ -110,14 +145,12 @@ export class TypeOrmStepStore implements StepStore {
 				.into(WorkflowStepExecution)
 				.values(rows)
 				.orIgnore()
-				.returning(['id', 'nodeId', 'iteration'])
+				.returning(['id', 'nodeId', 'iteration', 'branch'])
 				.execute();
 
-			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId, iteration }) => ({
-				id,
-				nodeId,
-				iteration,
-			}));
+			return (result.raw as InsertedStepRow[]).map(
+				({ id, node_id: nodeId, iteration, branch }) => ({ id, nodeId, iteration, branch }),
+			);
 		});
 	}
 
@@ -164,7 +197,16 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
+				.returning([
+					'id',
+					'executionId',
+					'nodeId',
+					'iteration',
+					'branch',
+					'sources',
+					'waitDeclaration',
+					'resumeCause',
+				])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -175,6 +217,8 @@ export class TypeOrmStepStore implements StepStore {
 				executionId: row.execution_id,
 				nodeId: row.node_id,
 				iteration: row.iteration,
+				branch: row.branch,
+				sources: row.sources,
 				status: 'running',
 				outputs: null,
 				waitDeclaration: row.wait_declaration,
@@ -321,25 +365,41 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadStepSummariesByKeys(
+	async loadStepsByPasses(
 		executionId: string,
-		keys: StepKey[],
-	): Promise<Record<StepKeyId, StepSummary>> {
-		if (keys.length === 0) return {};
+		passes: NodePass[],
+	): Promise<Record<NodePassId, StepRecord[]>> {
+		if (passes.length === 0) return {};
 
-		const { fragment, parameters } = stepKeyFilter(keys);
+		const { fragment, parameters } = nodePassFilter(passes);
+		const rows = await this.repo
+			.createQueryBuilder('step')
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere(fragment, parameters)
+			.getMany();
+		return groupByPass(rows);
+	}
+
+	async loadStepSummariesByPasses(
+		executionId: string,
+		passes: NodePass[],
+	): Promise<Record<NodePassId, StepSummary[]>> {
+		if (passes.length === 0) return {};
+
+		const { fragment, parameters } = nodePassFilter(passes);
 		const rows: StepSummaryRow[] = await this.repo
 			.createQueryBuilder('step')
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
 			.addSelect('step.iteration', 'iteration')
+			.addSelect('step.branch', 'branch')
 			.addSelect('step.status', 'status')
 			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
 			.andWhere(fragment, parameters)
 			.getRawMany();
 
-		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
+		return groupByPass(rows);
 	}
 
 	async loadLatestStepSummaries(
@@ -354,12 +414,14 @@ export class TypeOrmStepStore implements StepStore {
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
 			.addSelect('step.iteration', 'iteration')
+			.addSelect('step.branch', 'branch')
 			.addSelect('step.status', 'status')
 			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
 			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
 			.orderBy('step.node_id')
 			.addOrderBy('step.iteration', 'DESC')
+			.addOrderBy('step.branch', 'DESC')
 			.getRawMany();
 
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
@@ -368,7 +430,7 @@ export class TypeOrmStepStore implements StepStore {
 	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
 		return await this.repo.find({
 			where: { executionId },
-			order: { nodeId: 'ASC', iteration: 'ASC' },
+			order: { nodeId: 'ASC', iteration: 'ASC', branch: 'ASC' },
 		});
 	}
 
@@ -376,7 +438,7 @@ export class TypeOrmStepStore implements StepStore {
 		if (nodeIds.length === 0) return [];
 		return await this.repo.find({
 			where: { executionId, nodeId: In(nodeIds) },
-			order: { nodeId: 'ASC', iteration: 'ASC' },
+			order: { nodeId: 'ASC', iteration: 'ASC', branch: 'ASC' },
 		});
 	}
 
@@ -384,10 +446,17 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.repo.find({ where: { executionId, status: 'waiting' } });
 	}
 
-	async countSettledSteps(executionId: string): Promise<number> {
-		return await this.repo.count({
-			where: { executionId, status: In([...SETTLED_STEP_STATUSES]) },
-		});
+	async countSettledPasses(executionId: string): Promise<number> {
+		const [row] = await this.repo.manager.query<Array<{ settled: string }>>(
+			`SELECT COUNT(*) AS settled FROM (
+				SELECT 1 FROM workflow_step_execution
+				WHERE execution_id = $1
+				GROUP BY node_id, iteration
+				HAVING bool_and(status = ANY($2))
+			) AS settled_pass`,
+			[executionId, [...SETTLED_STEP_STATUSES]],
+		);
+		return Number(row?.settled ?? 0);
 	}
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
@@ -397,7 +466,7 @@ export class TypeOrmStepStore implements StepStore {
 	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
 		return await this.repo.find({
 			where: { executionId, status: 'failed' },
-			order: { nodeId: 'ASC', iteration: 'ASC' },
+			order: { nodeId: 'ASC', iteration: 'ASC', branch: 'ASC' },
 		});
 	}
 }
@@ -411,9 +480,15 @@ const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skippe
 function assertCreatableRecord(record: {
 	nodeId: string;
 	iteration: number;
+	branch: number;
 	status: StepStatus;
 	outputs?: StepSlots;
 }): void {
+	if (!Number.isInteger(record.branch) || record.branch < 0) {
+		throw new UnexpectedError(
+			`step for node ${record.nodeId} is created with branch ${record.branch}; branches are non-negative integers`,
+		);
+	}
 	if (!Number.isInteger(record.iteration) || record.iteration < 0) {
 		throw new UnexpectedError(
 			`step for node ${record.nodeId} is created with iteration ${record.iteration}; iterations are non-negative integers`,

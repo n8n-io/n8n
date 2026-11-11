@@ -58,18 +58,33 @@ import type {
 	V1Execution,
 	V1NodeStepConfig,
 } from './types';
-import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
+import {
+	emptyRun,
+	forwardEdgesByTarget,
+	lastRunIndexAt,
+	nodeNamesById,
+	runKey,
+	SINGLE_RUN_LAYOUT,
+	toRunSourceSlots,
+	toSourceSlots,
+	type RunLayout,
+} from './v1-run-data';
 
+/**
+ * @param outputsByNode Completed outputs by node id, then by v1 run index.
+ * @param layout Which v1 run each step is. The default has one run per pass.
+ */
 export function toV1Execution(
 	graph: WorkflowGraph,
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	layout: RunLayout = SINGLE_RUN_LAYOUT,
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration),
+		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration, layout),
 	};
 }
 
@@ -118,39 +133,42 @@ function toV1RunData(
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	layout: RunLayout,
 ): IRunData {
 	const namesById = nodeNamesById(graph);
 	const sourcesByNodeId = toV1Sources(graph);
 	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
 
 	const runData: IRunData = {};
-	for (const [completedNodeId, outputsByIteration] of Object.entries(outputsByNode)) {
+	for (const [completedNodeId, outputsByRun] of Object.entries(outputsByNode)) {
 		const nodeName = namesById.get(completedNodeId);
 		if (nodeName === undefined) continue;
 
-		const iterations = Object.keys(outputsByIteration).map(Number);
-		if (iterations.length === 0) continue;
+		const runs = Object.keys(outputsByRun).map(Number);
+		if (runs.length === 0) continue;
 
 		let lastShown: number;
 		if (!activeLoop) {
-			lastShown = Math.max(...iterations);
+			lastShown = Math.max(...runs);
 		} else if (activeLoop.memberIds.has(completedNodeId)) {
-			lastShown = activeIteration;
+			lastShown = lastRunIndexAt(layout, completedNodeId, activeIteration);
 		} else {
-			lastShown = 0;
+			lastShown = lastRunIndexAt(layout, completedNodeId, 0);
 		}
 
-		const source = sourcesByNodeId.get(completedNodeId) ?? [];
+		const graphSource = sourcesByNodeId.get(completedNodeId) ?? [];
 
 		// A pass the node was skipped on gets an empty run rather than a gap.
-		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
-			const outputs = outputsByIteration[iteration];
-			if (outputs === undefined) return emptyRun(iteration, source);
+		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, run) => {
+			const outputs = outputsByRun[run];
+			const sources = layout.sources[runKey(completedNodeId, run)];
+			const source = sources ? toRunSourceSlots(sources, namesById, layout) : graphSource;
+			if (outputs === undefined) return emptyRun(run, source);
 
 			return {
 				startTime: 0,
 				executionTime: 0,
-				executionIndex: iteration,
+				executionIndex: run,
 				source,
 				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
 			};
@@ -369,12 +387,14 @@ export function toV1ExecuteContext({
 	source,
 	additionalData,
 	stepContext,
+	runIndex = stepContext.iteration,
 	itemsByConnection,
 	resumeToken,
 	subWorkflowCalls,
 	subExecutionResume,
 	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
+	itemsByConnection = withPairedItemLineage(itemsByConnection);
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -408,7 +428,7 @@ export function toV1ExecuteContext({
 		additionalData,
 		mode,
 		runExecutionData,
-		stepContext.iteration,
+		runIndex,
 		connectionInputData,
 		inputData,
 		executeData,
@@ -417,4 +437,20 @@ export function toV1ExecuteContext({
 	context.subWorkflowCalls = subWorkflowCalls;
 	context.subExecutionResume = subExecutionResume;
 	return context;
+}
+
+/**
+ * Points every input item's `pairedItem` at its own position, as v1 does before it
+ * runs a node (`WorkflowExecute.addPairedItemLineage`). An item keeps the link its
+ * producer gave it, which points into the producer's input. A node that passes items
+ * through, like If, keeps a link that is already set, so without this the link
+ * would skip a node and name the wrong item.
+ */
+function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
+	return itemsByConnection.map((items, inputIndex) =>
+		items.map((item, itemIndex) => ({
+			...item,
+			pairedItem: inputIndex === 0 ? { item: itemIndex } : { item: itemIndex, input: inputIndex },
+		})),
+	);
 }

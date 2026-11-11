@@ -1,8 +1,10 @@
 import type { WorkflowLoop } from '../graph';
 
 /**
- * How many settled steps a finished execution owes, or `undefined` while a loop
- * the trigger reaches is still running.
+ * How many settled node-passes a finished execution owes, or `undefined` while
+ * a loop the trigger reaches is still running. Node-passes, not steps: how many
+ * runs a node-pass has depends on the data, but how many node-passes there are
+ * depends only on the graph and on how many passes each loop took.
  *
  * `undefined` rather than a number, because between two passes every step so far
  * has settled. Any total would make the execution look finished when the next

@@ -10,10 +10,10 @@ import {
 } from '../execution/execution-store';
 import {
 	LIVE_EXECUTION_STATUSES,
-	stepKeyId,
+	nodePassId,
 	type ExecutionStatus,
-	type StepKey,
-	type StepKeyId,
+	type NodePass,
+	type NodePassId,
 	type StepSlots,
 } from '../execution/execution.types';
 
@@ -43,8 +43,8 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 
 	async loadSeededOutputs(
 		executionId: string,
-		keys: StepKey[],
-	): Promise<Map<StepKeyId, StepSlots>> {
+		keys: NodePass[],
+	): Promise<Map<NodePassId, StepSlots>> {
 		if (keys.length === 0) return new Map();
 
 		const tuples: string[] = [];
@@ -62,7 +62,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.setParameters(parameters)
 			.getMany();
 
-		return new Map(rows.map((row) => [stepKeyId(row), row.outputs]));
+		return new Map(rows.map((row) => [nodePassId(row), row.outputs]));
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {

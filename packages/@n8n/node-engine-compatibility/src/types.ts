@@ -9,6 +9,7 @@ import type {
 
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import type { DurableWaitExecuteContext } from './v1-adapters';
+import type { RunLayout } from './v1-run-data';
 import type {
 	INode,
 	INodeCredentials,
@@ -46,8 +47,10 @@ export interface V1Execution extends Pick<IWorkflowBase, 'nodes' | 'connections'
 
 export interface StepData {
 	graph: WorkflowGraph;
-	/** Completed step outputs, by node id then by iteration. */
+	/** Completed step outputs, by node id then by v1 run index (see `RunLayout`). */
 	outputsByNode: Record<string, Record<number, StepSlots>>;
+	/** Which v1 run each step is, and what it read. Absent when every node ran once per pass. */
+	layout?: RunLayout;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;
@@ -145,6 +148,8 @@ export interface CreateExecuteContextParams {
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
 	stepContext: StepExecutionContext;
+	/** The step's v1 run index. Defaults to its iteration, which it is unless runs converged. */
+	runIndex?: number;
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;
 	subExecutionResume?: SubExecutionResumeCause;

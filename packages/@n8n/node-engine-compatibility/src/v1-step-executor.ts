@@ -45,6 +45,13 @@ import {
 	toV1Sources,
 	toV1Workflow,
 } from './v1-adapters';
+import {
+	nodeNamesById,
+	runIndexOf,
+	runKey,
+	SINGLE_RUN_LAYOUT,
+	toRunSourceSlots,
+} from './v1-run-data';
 
 /**
  * Turns what the node recorded into a wait declaration.
@@ -112,12 +119,20 @@ export class V1StepExecutor implements IStepExecutor {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
 
+		const layout = stepData.layout ?? SINGLE_RUN_LAYOUT;
+		const runIndex = runIndexOf(layout, { nodeId: node.id, ...request.context });
 		const execution = toV1Execution(
 			stepData.graph,
 			stepData.outputsByNode,
 			request.node.id,
 			request.context.iteration,
+			layout,
 		);
+		// What this run read, if the engine recorded it; the graph's edges otherwise.
+		const runSources = layout.sources[runKey(node.id, runIndex)];
+		const source = runSources
+			? toRunSourceSlots(runSources, nodeNamesById(stepData.graph), layout)
+			: (toV1Sources(stepData.graph).get(node.id) ?? []);
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
 		const additionalData = await this.deps.additionalDataFactory(
@@ -129,9 +144,10 @@ export class V1StepExecutor implements IStepExecutor {
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source,
 			additionalData,
 			stepContext: request.context,
+			runIndex,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),

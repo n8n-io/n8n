@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { UnimplementedError } from '../../common';
 import { GraphValidationError } from '../graph-validation.error';
 import { validateExecutableGraph } from '../validate-executable-graph';
 import type { WorkflowGraph } from '../workflow-graph';
@@ -121,7 +120,7 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
-	it('rejects two edges into the same input slot of one node as unimplemented', () => {
+	it('accepts two edges into the same input slot of one node', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
 			edges: [
@@ -131,8 +130,7 @@ describe('validateExecutableGraph', () => {
 			],
 		};
 
-		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
-		expect(() => validateExecutableGraph(graph)).toThrow('more than one edge');
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
 	it('accepts a well-formed loop', () => {
