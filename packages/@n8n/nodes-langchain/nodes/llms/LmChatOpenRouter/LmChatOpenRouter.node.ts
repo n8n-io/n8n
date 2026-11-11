@@ -15,10 +15,71 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+
+/**
+ * OpenRouter server tools that work on the Chat Completions API.
+ * Tools that only run on the Responses or Messages APIs are excluded.
+ * https://openrouter.ai/docs/guides/features/server-tools
+ */
+const SERVER_TOOLS = [
+	{
+		name: 'Web Search',
+		value: 'web_search',
+		description: 'Search the web for current information',
+	},
+	{
+		name: 'Datetime',
+		value: 'datetime',
+		description: 'Get the current date and time',
+	},
+	{
+		name: 'Image Generation',
+		value: 'image_generation',
+		description: 'Generate images from text prompts',
+	},
+	{
+		name: 'Web Fetch',
+		value: 'web_fetch',
+		description: 'Fetch and extract content from URLs',
+	},
+	{
+		name: 'Fusion',
+		value: 'fusion',
+		description: 'Run a panel of models and an analyst for multi-model analysis',
+	},
+	{
+		name: 'Advisor',
+		value: 'advisor',
+		description: 'Consult a stronger model for guidance mid-generation',
+	},
+	{
+		name: 'Subagent',
+		value: 'subagent',
+		description: 'Delegate self-contained tasks to a smaller, faster worker model',
+	},
+	{
+		name: 'Search Models',
+		value: 'experimental__search_models',
+		description: 'Search and filter the OpenRouter model catalog',
+	},
+	{
+		name: 'Files',
+		value: 'files',
+		description: 'Read, write, edit, and list text files in your workspace',
+	},
+] as const;
+
+type ServerToolName = (typeof SERVER_TOOLS)[number]['value'];
+
+interface OpenRouterServerTool {
+	type: `openrouter:${ServerToolName}`;
+}
 
 interface OpenAIToolCall {
 	function?: { arguments?: unknown };
@@ -38,16 +99,65 @@ function isOpenAIResponseWithChoices(json: unknown): json is { choices: OpenAICh
 }
 
 /**
+ * Adds the selected server tools to a Chat Completions request body.
+ *
+ * The tools are appended to `tools` so that function tools bound by an agent
+ * stay in the request. Returns the original body when there is nothing to add.
+ */
+function addServerToolsToRequestBody(body: string, serverTools: OpenRouterServerTool[]): string {
+	if (serverTools.length === 0) return body;
+
+	let json: unknown;
+	try {
+		json = JSON.parse(body);
+	} catch {
+		return body;
+	}
+
+	// Chat Completions bodies carry `messages`, Responses API bodies carry `input`.
+	if (!isRecord(json) || (!Array.isArray(json.messages) && json.input === undefined)) return body;
+
+	const existingTools = Array.isArray(json.tools) ? json.tools : [];
+	const existingTypes = new Set(
+		existingTools
+			.filter(isRecord)
+			.map((tool) => tool.type)
+			.filter((type): type is string => typeof type === 'string'),
+	);
+	const toolsToAdd = serverTools.filter((tool) => !existingTypes.has(tool.type));
+
+	if (toolsToAdd.length === 0) return body;
+
+	return JSON.stringify({ ...json, tools: [...existingTools, ...toolsToAdd] });
+}
+
+/**
  * Wraps fetch to fix empty tool call arguments in API responses.
  *
  * When Anthropic models are accessed through OpenRouter, tool calls for tools
  * with no parameters return empty string arguments ("") instead of "{}".
  * LangChain's parseToolCall does JSON.parse("") which throws, breaking the agent.
  * This wrapper normalizes empty arguments to "{}" before LangChain sees them.
+ *
+ * It also adds the configured server tools to every Chat Completions request.
  */
-function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globalThis.fetch {
+function createOpenRouterFetch(
+	baseFetch: typeof globalThis.fetch,
+	serverTools: OpenRouterServerTool[] = [],
+): typeof globalThis.fetch {
 	return async (input, init) => {
-		const response = await baseFetch(input, init);
+		let requestInit = init;
+
+		if (serverTools.length > 0 && typeof init?.body === 'string') {
+			const body = addServerToolsToRequestBody(init.body, serverTools);
+			if (body !== init.body) {
+				const headers = new Headers(init.headers);
+				headers.delete('content-length');
+				requestInit = { ...init, body, headers };
+			}
+		}
+
+		const response = await baseFetch(input, requestInit);
 
 		const contentType = response.headers.get('content-type') ?? '';
 		if (!contentType.includes('json')) return response;
@@ -199,6 +309,15 @@ export class LmChatOpenRouter implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
+					{
+						displayName: 'Server Tools',
+						name: 'serverTools',
+						type: 'multiOptions',
+						default: [],
+						description:
+							'Tools that OpenRouter runs on its servers. The model can call these tools during a request. <a href="https://openrouter.ai/docs/guides/features/server-tools">Learn more</a>.',
+						options: SERVER_TOOLS.map((tool) => ({ ...tool })),
+					},
 					{
 						displayName: 'Reasoning Effort',
 						name: 'reasoningEffort',
@@ -414,6 +533,7 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			serverTools?: ServerToolName[];
 			providerRouting?: {
 				order?: string;
 				allowFallbacks?: boolean;
@@ -426,10 +546,14 @@ export class LmChatOpenRouter implements INodeType {
 			};
 		};
 
+		const serverTools: OpenRouterServerTool[] = (options.serverTools ?? []).map((tool) => ({
+			type: `openrouter:${tool}`,
+		}));
+
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			fetch: createOpenRouterFetch(aiClientFetch),
+			fetch: createOpenRouterFetch(aiClientFetch, serverTools),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					credentials.url,
@@ -443,6 +567,7 @@ export class LmChatOpenRouter implements INodeType {
 		};
 
 		const { reasoningEffort, providerRouting, responseFormat, ...modelOptions } = options;
+		delete modelOptions.serverTools;
 		// Build provider routing object
 		const provider: Record<string, unknown> = {};
 		if (providerRouting) {
