@@ -20,7 +20,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
-import { ref, toValue } from 'vue';
+import { computed, toValue } from 'vue';
 import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
@@ -34,7 +34,9 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 });
 
 vi.mock('../../gatewayCreditsPromotion/useGatewayCreditsPromotion', () => ({
-	useGatewayCreditsPromotion: vi.fn(() => ({ promotionText: ref<string | undefined>() })),
+	useGatewayCreditsPromotion: vi.fn(() => ({
+		promotionText: computed<string | undefined>(() => undefined),
+	})),
 }));
 
 vi.mock('@n8n/i18n', async () => {
@@ -148,7 +150,7 @@ describe('CredentialConfig', () => {
 
 		it('looks up the promotion by the node that opened the modal and shows it', () => {
 			vi.mocked(useGatewayCreditsPromotion).mockReturnValueOnce({
-				promotionText: ref('Free until December 1, 2026.'),
+				promotionText: computed<string | undefined>(() => 'Free until December 1, 2026.'),
 			});
 			// Without `merge`, so the context node does not leak into the shared default props.
 			renderComponent({
