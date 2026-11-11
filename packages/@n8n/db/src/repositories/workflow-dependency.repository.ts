@@ -105,61 +105,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * How many workflows that are not archived hold a node of the given types with no
-	 * `referenceType` row for the same node in the same version (draft or published). The indexer
-	 * writes no reference row when it cannot read the target without running the workflow, for
-	 * example when an expression sets a sub-workflow ID.
-	 */
-	async countWorkflowsWithUnreferencedNodes(
-		nodeTypes: string[],
-		referenceType: 'workflowCall' | 'dataTableId',
-		filter: { workflowId?: string; excludeWorkflowId?: string } = {},
-	): Promise<number> {
-		if (nodeTypes.length === 0) return 0;
-
-		const nodeId = (alias: string) =>
-			this.databaseConfig.type === 'postgresdb'
-				? `${alias}.dependencyInfo ->> 'nodeId'`
-				: `JSON_EXTRACT(${alias}.dependencyInfo, '$.nodeId')`;
-
-		const qb = this.createQueryBuilder('node')
-			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = node.workflowId')
-			.leftJoin(
-				WorkflowDependency,
-				'reference',
-				[
-					'reference.workflowId = node.workflowId',
-					'reference.dependencyType = :referenceType',
-					// The same version: both draft rows, or both published rows.
-					'((reference.publishedVersionId IS NULL AND node.publishedVersionId IS NULL) OR ' +
-						'(reference.publishedVersionId IS NOT NULL AND node.publishedVersionId IS NOT NULL))',
-					`${nodeId('reference')} = ${nodeId('node')}`,
-				].join(' AND '),
-				{ referenceType },
-			)
-			.where('node.dependencyType = :nodeType', { nodeType: 'nodeType' })
-			.andWhere('node.dependencyKey IN (:...nodeTypes)', { nodeTypes })
-			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
-			.andWhere('reference.id IS NULL');
-
-		if (filter.workflowId) {
-			qb.andWhere('node.workflowId = :workflowId', { workflowId: filter.workflowId });
-		}
-		if (filter.excludeWorkflowId) {
-			qb.andWhere('node.workflowId != :excludeWorkflowId', {
-				excludeWorkflowId: filter.excludeWorkflowId,
-			});
-		}
-
-		const row = await qb
-			.select('COUNT(DISTINCT node.workflowId)', 'total')
-			.getRawOne<{ total: number | string }>();
-
-		// Postgres returns COUNT as a bigint string.
-		return Number(row?.total ?? 0);
-	}
-
-	/**
 	 * How many workflows in scope use each node type, most-used first.
 	 *
 	 * Answers "what does this project reach for" from the index instead of by fetching every

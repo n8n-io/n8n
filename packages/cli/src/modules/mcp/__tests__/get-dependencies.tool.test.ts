@@ -18,11 +18,10 @@ const ALL_GRANTED: GetDependenciesToolOptions = {
 	credentialGranted: true,
 	dataTableGranted: true,
 	agentGranted: true,
-	workflowWriteAvailable: true,
 };
 
 const workflowEntity = (attributes: Partial<WorkflowEntity>) =>
-	mock<WorkflowEntity>({ isArchived: false, settings: { availableInMCP: true }, ...attributes });
+	mock<WorkflowEntity>({ settings: { availableInMCP: true }, ...attributes });
 
 function harness(options: Partial<GetDependenciesToolOptions> = {}) {
 	const dependencies = mock<WorkflowDependencyQueryService>();
@@ -30,10 +29,8 @@ function harness(options: Partial<GetDependenciesToolOptions> = {}) {
 	const telemetry = mock<Telemetry>();
 
 	workflowFinder.findWorkflowForUser.mockResolvedValue(workflowEntity({ id: 'wf-1' }));
-	workflowFinder.findWorkflowsByIdsForUser.mockResolvedValue([]);
 	dependencies.canReadResource.mockResolvedValue(true);
 	dependencies.getResourceDependencies.mockResolvedValue({});
-	dependencies.getDependencyListGaps.mockResolvedValue([]);
 
 	const tool = createGetDependenciesTool(user, dependencies, workflowFinder, telemetry, {
 		...ALL_GRANTED,
@@ -54,8 +51,6 @@ type Payload = {
 	nextCursor: string | null;
 	inaccessibleCount: number;
 	withheldCount?: number;
-	mayBeIncomplete: boolean;
-	incompleteReasons: Array<{ code: string; message: string }>;
 	error?: string;
 };
 
@@ -63,7 +58,7 @@ const payloadOf = (result: unknown) => (result as { structuredContent: Payload }
 
 describe('get_dependencies', () => {
 	it('maps types to the public names and labels the versions', async () => {
-		const { tool, resolve, workflowFinder } = harness();
+		const { tool, resolve } = harness();
 		resolve(
 			[
 				{ type: 'workflowParent', id: 'wf-2', name: 'Caller', versions: ['published'] },
@@ -72,7 +67,6 @@ describe('get_dependencies', () => {
 			],
 			2,
 		);
-		workflowFinder.findWorkflowsByIdsForUser.mockResolvedValue([workflowEntity({ id: 'wf-2' })]);
 
 		const payload = payloadOf(
 			await tool.handler({ resourceType: 'workflow', resourceId: 'wf-1' }, mock()),
@@ -85,61 +79,10 @@ describe('get_dependencies', () => {
 			dependencies: [
 				{ type: 'agent', id: 'agent-1', name: 'Helper', projectId: 'p-1' },
 				{ type: 'credential', id: 'cred-1', name: 'Slack', versions: 'both' },
-				{
-					type: 'parentWorkflow',
-					id: 'wf-2',
-					name: 'Caller',
-					versions: 'published',
-					editableInMcp: true,
-				},
+				{ type: 'parentWorkflow', id: 'wf-2', name: 'Caller', versions: 'published' },
 			],
 			nextCursor: null,
 			inaccessibleCount: 2,
-			mayBeIncomplete: false,
-			incompleteReasons: [],
-		});
-	});
-
-	it('says why a workflow item is not editable', async () => {
-		const { tool, resolve, workflowFinder } = harness();
-		resolve([
-			{ type: 'workflowParent', id: 'wf-hidden', name: 'A' },
-			{ type: 'workflowParent', id: 'wf-archived', name: 'B' },
-			{ type: 'workflowParent', id: 'wf-no-update', name: 'C' },
-		]);
-		workflowFinder.findWorkflowsByIdsForUser.mockResolvedValue([
-			workflowEntity({ id: 'wf-hidden', settings: { availableInMCP: false } }),
-			workflowEntity({ id: 'wf-archived', isArchived: true }),
-		]);
-
-		const payload = payloadOf(
-			await tool.handler({ resourceType: 'workflow', resourceId: 'wf-1' }, mock()),
-		);
-
-		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
-			['wf-hidden', 'wf-archived', 'wf-no-update'],
-			user,
-			['workflow:update'],
-		);
-		expect(payload.dependencies.map((d) => [d.id, d.editableInMcp, d.notEditableReason])).toEqual([
-			['wf-hidden', false, 'not_available_in_mcp'],
-			['wf-archived', false, 'archived'],
-			['wf-no-update', false, 'no_permission'],
-		]);
-	});
-
-	it('marks workflows as not editable when the session has no write tools', async () => {
-		const { tool, resolve, workflowFinder } = harness({ workflowWriteAvailable: false });
-		resolve([{ type: 'workflowCall', id: 'wf-2', name: 'Sub' }]);
-
-		const payload = payloadOf(
-			await tool.handler({ resourceType: 'workflow', resourceId: 'wf-1' }, mock()),
-		);
-
-		expect(workflowFinder.findWorkflowsByIdsForUser).not.toHaveBeenCalled();
-		expect(payload.dependencies[0]).toMatchObject({
-			editableInMcp: false,
-			notEditableReason: 'write_tools_unavailable',
 		});
 	});
 
@@ -242,22 +185,6 @@ describe('get_dependencies', () => {
 		);
 
 		expect(payload.success).toBe(true);
-	});
-
-	it('says when the list may be incomplete, and why', async () => {
-		const { tool, dependencies } = harness();
-		dependencies.getDependencyListGaps.mockResolvedValue([
-			{ reason: 'runtimeCallers', workflowCount: 3 },
-			{ reason: 'indexBehind' },
-		]);
-
-		const payload = payloadOf(
-			await tool.handler({ resourceType: 'workflow', resourceId: 'wf-1' }, mock()),
-		);
-
-		expect(payload.mayBeIncomplete).toBe(true);
-		expect(payload.incompleteReasons.map((r) => r.code)).toEqual(['runtimeCallers', 'indexBehind']);
-		expect(payload.incompleteReasons[0].message).toContain('3 workflows pick a sub-workflow');
 	});
 
 	it('throws unexpected errors rather than returning them', async () => {

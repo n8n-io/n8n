@@ -470,65 +470,6 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('hasWorkflowsNeedingIndexing', () => {
-		const indexDraft = async (workflowId: string, workflowVersionId: number) => {
-			const dependencies = new WorkflowDependencies(workflowId, workflowVersionId);
-			dependencies.add({
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
-			});
-			await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
-				workflowId,
-				dependencies,
-			);
-		};
-
-		it('is false when the index has read every workflow', async () => {
-			const workflow = await createWorkflow({ versionCounter: 2, nodes: [] });
-			await indexDraft(workflow.id, 2);
-
-			await expect(Container.get(WorkflowRepository).hasWorkflowsNeedingIndexing()).resolves.toBe(
-				false,
-			);
-		});
-
-		it('is true when a workflow changed after it was indexed', async () => {
-			const workflow = await createWorkflow({ versionCounter: 3, nodes: [] });
-			await indexDraft(workflow.id, 2);
-
-			await expect(Container.get(WorkflowRepository).hasWorkflowsNeedingIndexing()).resolves.toBe(
-				true,
-			);
-		});
-
-		it('is true when an older indexer version wrote the draft rows', async () => {
-			const workflow = await createWorkflow({ versionCounter: 2, nodes: [] });
-			await Container.get(WorkflowDependencyRepository).insert({
-				workflowId: workflow.id,
-				workflowVersionId: 2,
-				publishedVersionId: null,
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
-				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
-			});
-
-			await expect(Container.get(WorkflowRepository).hasWorkflowsNeedingIndexing()).resolves.toBe(
-				true,
-			);
-		});
-
-		it('is true when a published workflow has no published rows', async () => {
-			const workflow = await createActiveWorkflow();
-			await indexDraft(workflow.id, workflow.versionCounter);
-
-			await expect(Container.get(WorkflowRepository).hasWorkflowsNeedingIndexing()).resolves.toBe(
-				true,
-			);
-		});
-	});
-
 	describe('findWorkflowsWithNodeType', () => {
 		it('should return workflows that have the specified node type in workflow_dependency', async () => {
 			//

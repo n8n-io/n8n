@@ -137,10 +137,7 @@ import { createUndoUserPreferenceTool } from './tools/undo-user-preference.tool'
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { createUpdateUserPreferenceTool } from './tools/update-user-preference.tool';
-import {
-	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
-	MCP_UPDATE_WORKFLOW_TOOL,
-} from './tools/workflow-builder/constants';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -814,9 +811,6 @@ export class McpService {
 						credentialGranted,
 						dataTableGranted: allowedToolNames?.has('search_data_tables') ?? true,
 						agentGranted: allowedToolNames?.has('search_agents') ?? true,
-						// `update_workflow` is a builder tool, so it exists only when the builder is on.
-						workflowWriteAvailable:
-							builderEnabled && (allowedToolNames?.has(MCP_UPDATE_WORKFLOW_TOOL.toolName) ?? true),
 					},
 				),
 			);

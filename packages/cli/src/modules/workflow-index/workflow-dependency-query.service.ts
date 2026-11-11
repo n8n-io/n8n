@@ -19,13 +19,6 @@ import { In, type FindManyOptions } from '@n8n/typeorm';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { DataTableRepository } from '@n8n/backend-module-data-table';
-import {
-	DATA_TABLE_NODE_TYPE,
-	DATA_TABLE_TOOL_NODE_TYPE,
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
-	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
-} from 'n8n-workflow';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
@@ -38,31 +31,6 @@ const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
  *  rarely reaches for more types than this — but it stays bounded, because an instance-wide read
  *  otherwise returns every type in use. */
 const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
-
-/** Nodes that call a sub-workflow. The indexer records a `workflowCall` row for each static call. */
-const WORKFLOW_SELECTOR_NODE_TYPES = [
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
-	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
-];
-
-/**
- * Nodes that read or write a data table. The evaluation nodes are not here: they also accept
- * other sources, so a missing `dataTableId` row on them does not mean a runtime reference.
- */
-const DATA_TABLE_SELECTOR_NODE_TYPES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
-
-/**
- * A reason why a dependency list can miss items. The index records only references it can
- * read without running the workflow.
- */
-export type DependencyListGap =
-	/** Other workflows pick a sub-workflow or data table at runtime, so they can use the resource. */
-	| { reason: 'runtimeCallers'; workflowCount: number }
-	/** The requested workflow picks a sub-workflow or data table at runtime. */
-	| { reason: 'runtimeReferences' }
-	/** The index has not read the current version of some workflow yet. */
-	| { reason: 'indexBehind' };
 
 const RESOURCE_DEPENDENCY_TYPES: Record<
 	DependencyResourceType,
@@ -347,55 +315,6 @@ export class WorkflowDependencyQueryService {
 	}
 
 	/**
-	 * Reasons why the dependency list of a resource can miss items. The index skips references it
-	 * cannot read without running the workflow, such as a sub-workflow ID set by an expression. A
-	 * node of a referencing type that has no reference row is such a node, or a node with no
-	 * target yet, so the result can over-report. Evaluation nodes are not checked. The list can
-	 * also miss items while the index has not read the current version of some workflow.
-	 *
-	 * The counts span every workflow on the instance, not only the ones the user can read: a
-	 * hidden workflow can still use the resource.
-	 */
-	async getDependencyListGaps(
-		resourceId: string,
-		resourceType: DependencyResourceType,
-	): Promise<DependencyListGap[]> {
-		const count = async (
-			nodeTypes: string[],
-			referenceType: 'workflowCall' | 'dataTableId',
-			filter?: { workflowId?: string; excludeWorkflowId?: string },
-		) =>
-			await this.dependencyRepository.countWorkflowsWithUnreferencedNodes(
-				nodeTypes,
-				referenceType,
-				filter,
-			);
-
-		const [indexBehind, callers, ownWorkflowCalls, ownDataTables] = await Promise.all([
-			// Any workflow can hold a link to the resource, so a lag anywhere can hide an item.
-			this.workflowRepository.hasWorkflowsNeedingIndexing(),
-			resourceType === 'workflow'
-				? count(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall', { excludeWorkflowId: resourceId })
-				: resourceType === 'dataTable'
-					? count(DATA_TABLE_SELECTOR_NODE_TYPES, 'dataTableId')
-					: 0,
-			resourceType === 'workflow'
-				? count(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall', { workflowId: resourceId })
-				: 0,
-			resourceType === 'workflow'
-				? count(DATA_TABLE_SELECTOR_NODE_TYPES, 'dataTableId', { workflowId: resourceId })
-				: 0,
-		]);
-
-		const gaps: DependencyListGap[] = [];
-		if (callers > 0) gaps.push({ reason: 'runtimeCallers', workflowCount: callers });
-		if (ownWorkflowCalls > 0 || ownDataTables > 0) gaps.push({ reason: 'runtimeReferences' });
-		if (indexBehind) gaps.push({ reason: 'indexBehind' });
-
-		return gaps;
-	}
-
-	/**
 	 * Resolved dependencies for every workflow in a folder, deduplicated. The folder filter is
 	 * recursive, so a subfolder's workflows count as the folder's own.
 	 */
@@ -457,8 +376,10 @@ export class WorkflowDependencyQueryService {
 
 	private buildDepMaps(
 		rawDeps: Array<
-			Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'> &
-				Partial<Pick<WorkflowDependency, 'publishedVersionId'>>
+			Pick<
+				WorkflowDependency,
+				'workflowId' | 'dependencyType' | 'dependencyKey' | 'publishedVersionId'
+			>
 		>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
 		resourceType: DependencyResourceType,

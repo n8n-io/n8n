@@ -4,9 +4,8 @@
  * resource that other workflows can depend on.
  *
  * Like `get_node_usage`, this lists workflows that are not available in MCP: their names and
- * links are visible, and the agent must know about them to warn the user. It marks them as not
- * editable instead. The requested workflow itself must be available in MCP, because its own
- * list describes its content.
+ * links are visible, and the agent must know about them to warn the user. The requested workflow
+ * itself must be available in MCP, because its own list describes its content.
  */
 import { DEPENDENCY_PUBLIC_TYPES } from '@n8n/api-types';
 import type {
@@ -20,10 +19,7 @@ import { UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
-import type {
-	DependencyListGap,
-	WorkflowDependencyQueryService,
-} from '@/modules/workflow-index/workflow-dependency-query.service';
+import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -36,21 +32,6 @@ export const GET_DEPENDENCIES_TOOL_NAME = 'get_dependencies';
 
 const MAX_RESULTS = 100;
 const DEFAULT_LIMIT = 50;
-
-const WORKFLOW_ITEM_TYPES: ReadonlySet<DependencyPublicType> = new Set([
-	'subWorkflow',
-	'parentWorkflow',
-	'errorWorkflow',
-	'errorWorkflowParent',
-]);
-
-const notEditableReasons = [
-	'not_available_in_mcp',
-	'archived',
-	'no_permission',
-	'write_tools_unavailable',
-] as const;
-type NotEditableReason = (typeof notEditableReasons)[number];
 
 const inputSchema = {
 	resourceType: z
@@ -93,18 +74,6 @@ const dependencySchema = z.object({
 				'"errorWorkflow", and the item for "parentWorkflow" and "errorWorkflowParent". ' +
 				'The published version is the one that runs in production.',
 		),
-	editableInMcp: z
-		.boolean()
-		.optional()
-		.describe('Set on workflow items. Whether you can change the workflow with the MCP tools.'),
-	notEditableReason: z
-		.enum(notEditableReasons)
-		.optional()
-		.describe(
-			'Why you cannot change the workflow. "not_available_in_mcp": the user must enable MCP access for it. ' +
-				'"archived": the workflow is archived. "no_permission": the user cannot edit it. ' +
-				'"write_tools_unavailable": this session has no workflow write tools.',
-		),
 });
 
 const outputSchema = {
@@ -129,14 +98,6 @@ const outputSchema = {
 		.describe(
 			'The number of linked credentials, data tables or agents that this session is not granted to read. They are not listed.',
 		),
-	mayBeIncomplete: z
-		.boolean()
-		.describe(
-			'True when the list can miss items. Then do not tell the user that nothing else uses the resource.',
-		),
-	incompleteReasons: z
-		.array(z.object({ code: z.string(), message: z.string() }))
-		.describe('Why the list can miss items. Empty when mayBeIncomplete is false.'),
 	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -154,16 +115,14 @@ type GetDependenciesParams = {
 };
 
 /**
- * What this session may read and change. A scoped OAuth token can carry `workflow:read`
- * without the scopes for credentials, data tables or agents, so the tool withholds those items,
- * as the activity tools do for credentials.
+ * What this session may read. A scoped OAuth token can carry `workflow:read` without the scopes
+ * for credentials, data tables or agents, so the tool withholds those items, as the activity
+ * tools do for credentials.
  */
 export type GetDependenciesToolOptions = {
 	credentialGranted: boolean;
 	dataTableGranted: boolean;
 	agentGranted: boolean;
-	/** Whether `update_workflow` is registered for this session. */
-	workflowWriteAvailable: boolean;
 };
 
 class InvalidCursorError extends UserError {
@@ -200,39 +159,6 @@ function toVersionsLabel(versions: DependencyVersion[] | undefined): DependencyI
 	if (!versions || versions.length === 0) return undefined;
 	if (versions.length > 1) return 'both';
 	return versions[0];
-}
-
-function describeGap(
-	gap: DependencyListGap,
-	resourceType: DependencyResourceType,
-): { code: string; message: string } {
-	switch (gap.reason) {
-		case 'runtimeCallers': {
-			const target = resourceType === 'dataTable' ? 'a data table' : 'a sub-workflow';
-			const subject =
-				gap.workflowCount === 1 ? '1 workflow picks' : `${gap.workflowCount} workflows pick`;
-			return {
-				code: gap.reason,
-				message:
-					`${subject} ${target} at runtime, for example through an expression. ` +
-					'They can use this resource, but they are not listed. The user may not be able to see all of them.',
-			};
-		}
-		case 'runtimeReferences':
-			return {
-				code: gap.reason,
-				message:
-					'This workflow picks a sub-workflow or data table at runtime, for example through an expression. ' +
-					'Those references are not listed.',
-			};
-		case 'indexBehind':
-			return {
-				code: gap.reason,
-				message:
-					'The dependency index has not read the latest version of some workflows yet. ' +
-					'The list can be out of date. Try again in a few seconds.',
-			};
-	}
 }
 
 export const createGetDependenciesTool = (
@@ -279,36 +205,6 @@ export const createGetDependenciesTool = (
 		}
 	};
 
-	/** Marks each workflow item on the page as editable or not, with one query for the page. */
-	const addEditability = async (items: DependencyItem[]): Promise<DependencyItem[]> => {
-		const workflowIds = items
-			.filter((item) => WORKFLOW_ITEM_TYPES.has(item.type))
-			.map((item) => item.id);
-		if (workflowIds.length === 0) return items;
-
-		const editable = options.workflowWriteAvailable
-			? await workflowFinderService.findWorkflowsByIdsForUser(workflowIds, user, [
-					'workflow:update',
-				])
-			: [];
-		const byId = new Map(editable.map((workflow) => [workflow.id, workflow]));
-
-		return items.map((item) => {
-			if (!WORKFLOW_ITEM_TYPES.has(item.type)) return item;
-
-			const workflow = byId.get(item.id);
-			let reason: NotEditableReason | undefined;
-			if (!options.workflowWriteAvailable) reason = 'write_tools_unavailable';
-			else if (!workflow) reason = 'no_permission';
-			else if (workflow.isArchived) reason = 'archived';
-			else if (!workflow.settings?.availableInMCP) reason = 'not_available_in_mcp';
-
-			return reason
-				? { ...item, editableInMcp: false, notEditableReason: reason }
-				: { ...item, editableInMcp: true };
-		});
-	};
-
 	return {
 		name: GET_DEPENDENCIES_TOOL_NAME,
 		config: {
@@ -316,9 +212,12 @@ export const createGetDependenciesTool = (
 				'List what uses a workflow, credential or data table, and what a workflow uses. ' +
 				'Call it before you archive, unpublish, rename or delete a workflow, or change its inputs, ' +
 				'and before you change or delete a credential or data table. ' +
-				'Each item says how it is linked, whether the draft, the published version or both hold the link, ' +
-				'and, for workflows, whether you can change it through MCP. If you cannot, ask the user. ' +
-				'If mayBeIncomplete is true, read incompleteReasons and do not say that nothing else uses the resource.',
+				'Each item says how it is linked and whether the draft, the published version or both hold the link. ' +
+				'The list holds only references that n8n can read without running a workflow. ' +
+				'It does not hold a sub-workflow or data table that a node picks through an expression or by name. ' +
+				'Recent changes can be missing. ' +
+				'So an empty list means that no known item uses the resource, not that nothing uses it. ' +
+				'Say this to the user before they archive or delete the resource.',
 			inputSchema,
 			outputSchema,
 			annotations: {
@@ -342,12 +241,12 @@ export const createGetDependenciesTool = (
 
 				await assertCanRead(resourceType, resourceId);
 
-				const [byResource, gaps] = await Promise.all([
-					workflowDependencyQueryService.getResourceDependencies([resourceId], resourceType, user, {
-						includeVersions: true,
-					}),
-					workflowDependencyQueryService.getDependencyListGaps(resourceId, resourceType),
-				]);
+				const byResource = await workflowDependencyQueryService.getResourceDependencies(
+					[resourceId],
+					resourceType,
+					user,
+					{ includeVersions: true },
+				);
 				const result = byResource[resourceId];
 
 				let withheldCount = 0;
@@ -374,20 +273,15 @@ export const createGetDependenciesTool = (
 						a.id.localeCompare(b.id),
 				);
 
-				const page = await addEditability(all.slice(offset, offset + pageSize));
 				const nextOffset = offset + pageSize;
-				const incompleteReasons = gaps.map((gap) => describeGap(gap, resourceType));
-
 				const output: GetDependenciesOutput = {
 					success: true,
 					resourceType,
 					resourceId,
-					dependencies: page,
+					dependencies: all.slice(offset, nextOffset),
 					nextCursor: nextOffset < all.length ? encodeCursor(nextOffset) : null,
 					inaccessibleCount: result?.inaccessibleCount ?? 0,
 					...(withheldCount > 0 ? { withheldCount } : {}),
-					mayBeIncomplete: incompleteReasons.length > 0,
-					incompleteReasons,
 				};
 
 				telemetryPayload.results = {
@@ -396,7 +290,6 @@ export const createGetDependenciesTool = (
 						resource_type: resourceType,
 						dependency_count: all.length,
 						inaccessible_count: output.inaccessibleCount,
-						may_be_incomplete: output.mayBeIncomplete,
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -426,8 +319,6 @@ export const createGetDependenciesTool = (
 					dependencies: [],
 					nextCursor: null,
 					inaccessibleCount: 0,
-					mayBeIncomplete: false,
-					incompleteReasons: [],
 					error: error.message,
 				};
 				return {
