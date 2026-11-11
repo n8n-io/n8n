@@ -32,7 +32,9 @@ const outputSchema = {
 	generatedAt: z
 		.string()
 		.optional()
-		.describe('ISO timestamp of the last complete scan. Left out until one completes.'),
+		.describe(
+			'ISO timestamp of the last complete scan of all workflows. Each workflow save updates the counts after that, so the counts can be newer. Left out until a scan completes.',
+		),
 	coverage: z
 		.enum(['instance', 'editableWorkflows'])
 		.describe(

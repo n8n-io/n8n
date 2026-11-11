@@ -10,6 +10,7 @@ import {
 import type { Logger } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
+import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -19,8 +20,11 @@ import type { RuleRegistry } from '@/modules/breaking-changes/breaking-changes.r
 import type { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
 import type { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import type { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
+import { isWorkflowLevelRule } from '@/modules/breaking-changes/types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { MCP_GET_MIGRATION_REPORT_TOOL_NAME } from '../../mcp.constants';
 
 /** The services the migration report tools read and write through. */
 export type MigrationReportToolDeps = {
@@ -58,6 +62,18 @@ export const impactSchema = breakingChangeRuleImpactSchema.describe(
 export const assistantActionSchema = breakingChangeAssistantActionSchema.describe(
 	'What to do with a finding of this rule when the rule is not migratable: fix (change the workflow so the finding no longer applies), review (the right change depends on what the user wants: explain what changes for the workflow, and change the workflow only after the user agrees), none (n8n offers no assisted fix for this rule: tell the user what the recommendations say, and change the workflow only when the user asks for it)',
 );
+
+export const assertWorkflowRule = (
+	deps: Pick<MigrationReportToolDeps, 'ruleRegistry' | 'targetVersion'>,
+	ruleId: string,
+) => {
+	const rule = deps.ruleRegistry.getRule(ruleId);
+	if (!rule || !isWorkflowLevelRule(rule) || rule.getMetadata().version !== deps.targetVersion) {
+		throw new UserError(
+			`No workflow rule with ID '${ruleId}' in the ${deps.targetVersion} migration report. Use a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME}.`,
+		);
+	}
+};
 
 export const workflowRuleAssistantAction = (ruleRegistry: RuleRegistry, ruleId: string) =>
 	ruleRegistry.getRule(ruleId)?.getMetadata().assistant ?? 'none';
@@ -127,7 +143,7 @@ export const workflowMigrationFindingsSchema = z
 			.int()
 			.min(0)
 			.describe(
-				'Findings fixed in the draft only. They are resolved when the workflow is published. Publish it only after the user agrees',
+				'Findings of a published workflow that are fixed in the draft only. They are resolved when the workflow is published again. Publish it only after the user agrees. A fix on a workflow with no published version is resolved at once and is not counted here',
 			),
 		wontFixFindings: z
 			.number()

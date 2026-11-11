@@ -14,6 +14,7 @@ import { trackAndReturnToolError } from '../tool-error.utils';
 import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import {
+	assertWorkflowRule,
 	getWorkflowUrl,
 	readWorkflowMigrationFindings,
 	workflowMigrationFindingsSchema,
@@ -90,6 +91,7 @@ export const createMigrateWorkflowTool = (
 			// The same gate every MCP write applies: access, not archived, available in MCP.
 			await getMcpWorkflow(workflowId, user, ['workflow:update'], deps.workflowFinderService);
 
+			assertWorkflowRule(deps, ruleId);
 			if (!deps.migrationRegistry.has(ruleId)) {
 				throw new UserError(
 					`Rule '${ruleId}' has no built-in fix. Fix the workflow with update_workflow, following the rule's recommendations.`,

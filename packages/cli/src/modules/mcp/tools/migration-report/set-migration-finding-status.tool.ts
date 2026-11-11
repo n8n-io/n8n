@@ -11,7 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { trackAndReturnToolError } from '../tool-error.utils';
 import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
-import type { MigrationReportToolDeps } from './migration-report.utils';
+import { assertWorkflowRule, type MigrationReportToolDeps } from './migration-report.utils';
 
 const inputSchema = {
 	ruleId: z
@@ -63,6 +63,7 @@ export const createSetMigrationFindingStatusTool = (
 		try {
 			// MCP only acts on workflows the user can edit and made available in MCP.
 			await getMcpWorkflow(workflowId, user, ['workflow:update'], deps.workflowFinderService);
+			assertWorkflowRule(deps, ruleId);
 			await deps.triageService.setStatus(ruleId, workflowId, status);
 
 			const output = { success: true, ruleId, workflowId, status };

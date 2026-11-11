@@ -395,7 +395,7 @@ describe('get_migration_findings', () => {
 				lastExecutedAt: '2026-10-02T00:00:00.000Z',
 				issues: [{ nodeId: 'n1', nodeName: 'Old' }],
 			});
-			expect(output.note).toContain('1 of these workflows are not available in MCP');
+			expect(output.note).toContain('MCP access is off for 1 of these workflows');
 			expect(output).not.toHaveProperty('incomplete');
 			expect(JSON.stringify(output)).not.toContain('Secret');
 		});
@@ -680,6 +680,7 @@ describe('migrate_workflow', () => {
 
 	const readyToMigrate = () => {
 		const deps = makeDeps();
+		withRules(deps, workflowRule('ai-transform-deprecated'));
 		deps.migrationRegistry.has.mockReturnValue(true);
 		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
 		deps.collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
@@ -687,8 +688,27 @@ describe('migrate_workflow', () => {
 		return deps;
 	};
 
+	it('refuses a rule that is not a workflow rule of the target version', async () => {
+		const deps = makeDeps();
+		withRules(deps, workflowRule('old-rule', { version: 'v2' }));
+		deps.migrationRegistry.has.mockReturnValue(true);
+		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
+		const tool = createMigrateWorkflowTool(owner, deps);
+
+		for (const ruleId of ['missing', 'old-rule']) {
+			const result = await tool.handler({ ruleId, workflowId: 'wf-1' });
+
+			expect(result.structuredContent).toMatchObject({
+				success: false,
+				error: expect.stringContaining('get_migration_report'),
+			});
+		}
+		expect(deps.migrationService.migrateWorkflow).not.toHaveBeenCalled();
+	});
+
 	it('refuses a rule without a built-in fix before changing the workflow', async () => {
 		const deps = makeDeps();
+		withRules(deps, workflowRule('removed-node'));
 		deps.migrationRegistry.has.mockReturnValue(false);
 		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
 
@@ -840,6 +860,7 @@ describe('migrate_workflow', () => {
 describe('set_migration_finding_status', () => {
 	it('sets the status of a finding on a workflow available in MCP', async () => {
 		const deps = makeDeps();
+		withRules(deps, workflowRule('always-output-data'));
 		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
 
 		const result = await createSetMigrationFindingStatusTool(owner, deps).handler({
@@ -859,6 +880,25 @@ describe('set_migration_finding_status', () => {
 			workflowId: 'wf-1',
 			status: 'wont_fix',
 		});
+	});
+
+	it('refuses a rule that is not a workflow rule of the target version', async () => {
+		const deps = makeDeps();
+		deps.ruleRegistry.getRule.mockImplementation((id) =>
+			id === 'env-rule' ? instanceRule('env-rule') : undefined,
+		);
+		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
+		const tool = createSetMigrationFindingStatusTool(owner, deps);
+
+		for (const ruleId of ['missing', 'env-rule']) {
+			const result = await tool.handler({ ruleId, workflowId: 'wf-1', status: 'wont_fix' });
+
+			expect(result.structuredContent).toMatchObject({
+				success: false,
+				error: expect.stringContaining('get_migration_report'),
+			});
+		}
+		expect(deps.triageService.setStatus).not.toHaveBeenCalled();
 	});
 
 	it('leaves the finding alone when the workflow is not available in MCP', async () => {

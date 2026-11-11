@@ -7,7 +7,6 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import { resolveReportScope } from '@/modules/breaking-changes/query/report-scope';
-import { isWorkflowLevelRule } from '@/modules/breaking-changes/types';
 
 import {
 	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
@@ -21,6 +20,7 @@ import { trackAndRethrowToolError } from '../tool-error.utils';
 import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import {
+	assertWorkflowRule,
 	byImpact,
 	getReportUrl,
 	getWorkflowUrl,
@@ -97,15 +97,6 @@ export const createGetMigrationFindingsTool = (
 	user: User,
 	deps: MigrationReportToolDeps,
 ): ToolDefinition<typeof inputSchema> => {
-	const assertWorkflowRule = (ruleId: string) => {
-		const rule = deps.ruleRegistry.getRule(ruleId);
-		if (!rule || !isWorkflowLevelRule(rule) || rule.getMetadata().version !== deps.targetVersion) {
-			throw new UserError(
-				`No workflow rule with ID '${ruleId}' in the ${deps.targetVersion} migration report. Use a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME}.`,
-			);
-		}
-	};
-
 	/** Every workflow one rule flags, within what the user may read. */
 	const findingsOfRule = async (ruleId: string, limit: number): Promise<Output> => {
 		// A partial scan is not recorded, so the next read scans again.
@@ -149,7 +140,7 @@ export const createGetMigrationFindingsTool = (
 			...(complete ? [] : [INCOMPLETE_REPORT_NOTE]),
 			...(unavailableCount > 0
 				? [
-						`${unavailableCount} of these workflows are not available in MCP, so their issues are hidden and MCP tools cannot edit them. Ask the user to turn on MCP access for them in the workflow settings, or to fix them in the n8n editor.`,
+						`MCP access is off for ${unavailableCount} of these workflows, so the issues are hidden and MCP tools cannot make the fix. Ask the user to turn on MCP access in the workflow settings, or to make the fix in the n8n editor.`,
 					]
 				: []),
 		];
@@ -248,7 +239,7 @@ export const createGetMigrationFindingsTool = (
 			};
 
 			try {
-				if (ruleId !== undefined) assertWorkflowRule(ruleId);
+				if (ruleId !== undefined) assertWorkflowRule(deps, ruleId);
 
 				let payload: Output;
 				if (workflowId !== undefined) {
