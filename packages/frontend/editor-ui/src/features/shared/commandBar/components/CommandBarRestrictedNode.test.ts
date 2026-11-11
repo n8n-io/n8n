@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import CommandBarRestrictedNode from './CommandBarRestrictedNode.vue';
 
@@ -74,5 +74,40 @@ describe('CommandBarRestrictedNode', () => {
 		(wrapper.vm as unknown as { activate: () => void }).activate();
 
 		expect(requestContactAdmin).toHaveBeenCalledOnce();
+	});
+
+	describe('when the list scrolls the active row out of view', () => {
+		let reportVisibility: (isIntersecting: boolean) => void = () => {};
+
+		afterEach(() => vi.unstubAllGlobals());
+
+		it('closes the popover until the row is visible again', async () => {
+			vi.stubGlobal(
+				'IntersectionObserver',
+				class {
+					constructor(onIntersect: IntersectionObserverCallback) {
+						reportVisibility = (isIntersecting) =>
+							onIntersect(
+								[{ isIntersecting, time: Date.now() } as IntersectionObserverEntry],
+								this as unknown as IntersectionObserver,
+							);
+					}
+
+					observe() {}
+
+					disconnect() {}
+				},
+			);
+			const { wrapper } = await render('instance');
+			const popover = () => wrapper.findComponent({ name: 'RestrictedNodePopover' });
+
+			reportVisibility(false);
+			await nextTick();
+			expect(popover().props('active')).toBe(false);
+
+			reportVisibility(true);
+			await nextTick();
+			expect(popover().props('active')).toBe(true);
+		});
 	});
 });

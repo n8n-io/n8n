@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
-import { useElementBounding } from '@vueuse/core';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useElementVisibility, useEventListener } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
@@ -23,9 +23,23 @@ const SPACE_FOR_CARD_ON_LEFT =
 const OFFSET_BELOW_ROW = 4;
 
 const i18n = useI18n();
-const { left: rowLeft } = useElementBounding(() => props.rowElement);
 
-const opensBelow = computed(() => rowLeft.value < SPACE_FOR_CARD_ON_LEFT);
+// Only the active row is watched: a list can hold many restricted rows.
+const activeRow = computed(() => (props.isActive ? props.rowElement : null));
+
+// The popover only hides when its row leaves the viewport, not when the list scrolls it out.
+const rowVisible = useElementVisibility(activeRow, { initialValue: true });
+
+const opensBelow = ref(false);
+function updatePlacement() {
+	if (activeRow.value) {
+		opensBelow.value = activeRow.value.getBoundingClientRect().left < SPACE_FOR_CARD_ON_LEFT;
+	}
+}
+watch(activeRow, updatePlacement, { immediate: true });
+useEventListener(() => (activeRow.value ? window : null), 'resize', updatePlacement, {
+	passive: true,
+});
 
 const popover = useTemplateRef('popover');
 
@@ -47,7 +61,7 @@ const scopeLabel = computed(() => {
 			:node-type-name="nodeTypeName"
 			:restriction="restriction"
 			:anchor="rowElement"
-			:active="isActive"
+			:active="isActive && rowVisible"
 			:side="opensBelow ? 'bottom' : 'left'"
 			:align="opensBelow ? 'end' : 'center'"
 			:side-offset="opensBelow ? OFFSET_BELOW_ROW : RESTRICTED_NODE_POPOVER_SIDE_OFFSET"
