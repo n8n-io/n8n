@@ -189,6 +189,32 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear the Collection/Tenant before inserting new data',
 			},
+			{
+				displayName: 'Batch Mode',
+				name: 'batchMode',
+				type: 'options',
+				default: 'auto',
+				description: 'How the node sends the documents to Weaviate',
+				options: [
+					{
+						name: 'Auto',
+						value: 'auto',
+						description:
+							'Use server-side batching when Weaviate supports it (v1.36 or later), else use the default mode',
+					},
+					{
+						name: 'Server-Side Batching',
+						value: 'serverSide',
+						description:
+							'Stream the documents, and let Weaviate control the batch size. Needs Weaviate v1.36 or later.',
+					},
+					{
+						name: 'Default',
+						value: 'default',
+						description: 'Send each batch of documents in one request',
+					},
+				],
+			},
 		],
 	},
 ];
