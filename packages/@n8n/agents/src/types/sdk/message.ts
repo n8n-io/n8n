@@ -150,15 +150,6 @@ export type ContentToolCall = ContentMetadata & {
 	 * assistant message. Breaks ties between results at the same position.
 	 */
 	resultOrder?: number;
-
-	/**
-	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
-	 * skill body can re-anchor to this result on a later turn instead of falling
-	 * back to the system prompt. Metadata only — never sent to the model.
-	 */
-	activatedSkillIds?: string[];
-	/** Versions delivered by this activation. Used by skills with append updates. */
-	activatedSkillVersions?: Record<string, string>;
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
@@ -259,16 +250,6 @@ export interface CustomAgentMessages {
 		toolCatalog: string;
 		/** The text the model sees, already wrapped. */
 		content: string;
-	};
-	runtimeSkillUpdate: {
-		type: 'n8n:runtime-skill-update';
-		skillUpdate: {
-			skillId: string;
-			version: string | null;
-			content: string;
-			name?: string;
-			change?: 'updated' | 'restored' | 'unavailable';
-		};
 	};
 	runtimeContextCue: {
 		type: 'n8n:runtime-context-cue';

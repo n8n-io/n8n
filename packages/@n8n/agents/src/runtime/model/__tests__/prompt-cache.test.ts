@@ -4,7 +4,6 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
-	buildSkillInstructionCacheOptions,
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 	getPromptCacheRetentionMs,
@@ -27,65 +26,6 @@ function makeUserMessage(text: string, providerOptions?: Record<string, unknown>
 function makeTool(providerOptions?: Record<string, unknown>): ToolSet[string] {
 	return { inputSchema: {}, providerOptions } as ToolSet[string];
 }
-
-describe('buildSkillInstructionCacheOptions', () => {
-	it('reuses the instruction cache options', () => {
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, { a: makeTool() }, [
-				makeUserMessage('hi'),
-			]),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-	});
-
-	it('returns undefined when the instructions carry no Anthropic breakpoint', () => {
-		expect(buildSkillInstructionCacheOptions(undefined, {}, [])).toBeUndefined();
-		expect(
-			buildSkillInstructionCacheOptions({ openai: { promptCacheKey: 'key' } }, {}, []),
-		).toBeUndefined();
-	});
-
-	it('keeps a slot for the conversation breakpoint next to caller tool breakpoints', () => {
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[],
-			),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL), b: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[],
-			),
-		).toBeUndefined();
-	});
-
-	it('counts caller breakpoints on messages and content parts', () => {
-		const markedPart = {
-			role: 'user',
-			content: [{ type: 'text', text: 'b', providerOptions: ANTHROPIC_CACHE_CONTROL }],
-		} as ModelMessage;
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
-				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
-			]),
-		).toEqual(ANTHROPIC_CACHE_CONTROL);
-		expect(
-			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
-				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
-				markedPart,
-			]),
-		).toBeUndefined();
-		expect(
-			buildSkillInstructionCacheOptions(
-				ANTHROPIC_CACHE_CONTROL,
-				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
-				[makeUserMessage('a', ANTHROPIC_CACHE_CONTROL)],
-			),
-		).toBeUndefined();
-	});
-});
 
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 	it.each([

@@ -36,7 +36,7 @@ export interface ContextCueSet {
 	id: string;
 	/**
 	 * Retrieval scores the set only when this returns true. Omit to score it
-	 * before every model call. See `whileSkillActive` and `whenSkillLoads`.
+	 * before every model call. See `whileSkillLoaded` and `whenSkillLoads`.
 	 */
 	isActive?: ContextCueSetPredicate;
 	cues: readonly ContextCue[];

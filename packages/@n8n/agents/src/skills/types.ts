@@ -50,19 +50,9 @@ export interface RuntimeSkillInterfaceContract {
 	brandColor?: string;
 }
 
-export const RUNTIME_SKILL_LIFETIMES = ['thread', 'turn'] as const;
-
-/**
- * How long a loaded skill stays active. `thread` (the default) keeps it for the
- * rest of the conversation. `turn` keeps it until the next user turn starts, for
- * skills that guide one decision and are dead weight in context afterwards.
- */
-export type RuntimeSkillLifetime = (typeof RUNTIME_SKILL_LIFETIMES)[number];
-
 export interface RuntimeSkillPolicyContract {
 	allowImplicitInvocation?: boolean;
 	product?: string;
-	lifetime?: RuntimeSkillLifetime;
 }
 
 export interface RuntimeSkillMcpServerDependency {
@@ -74,7 +64,7 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
-	/** Keep matching deferred tools active for the whole run, so activating the skill never changes the tool list. Tools must be registered on the agent. */
+	/** Keep matching deferred tools active for the whole run, so loading the skill never changes the tool list. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];
@@ -89,7 +79,7 @@ export interface RuntimeSkillReferenceLocation {
 /**
  * A reference skill is a `references/*.md` file with skill frontmatter. It is
  * hidden from the catalog and listed, with its description, when a parent
- * skill loads. It activates like any other skill.
+ * skill loads. It loads like any other skill.
  */
 export interface RuntimeSkillReferenceContract {
 	/** Skills that list this reference. The owner comes first. */
@@ -170,15 +160,7 @@ export interface RuntimeSkillContent extends RuntimeSkillIndexEntry, RuntimeSkil
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export type RuntimeSkillLoader = (
-	skillId: string,
-	/**
-	 * Tool result the activation rides on. The skill body is appended to this
-	 * result so the top-level system prompt stays byte-identical (no cache
-	 * invalidation). Defaults to the calling tool's own result when omitted.
-	 */
-	anchor?: { toolCallId: string },
-) => Promise<RuntimeSkillContent | null>;
+export type RuntimeSkillLoader = (skillId: string) => Promise<RuntimeSkillContent | null>;
 
 export interface RuntimeSkillFileContent {
 	skillId: string;
@@ -197,7 +179,7 @@ export type RuntimeSkillFileLoader = (
 
 export interface RuntimeSkillLoadError {
 	message: string;
-	/** Preserve an active selection when content is temporarily unavailable. */
+	/** The content is temporarily unavailable, so a later load can succeed. */
 	retryable: boolean;
 }
 
@@ -209,10 +191,6 @@ export interface RuntimeSkillSource {
 		/** Current availability and loading guidance for these skills. */
 		notice?: string;
 	};
-	/** Observe applied revocations and skill context prepared for model calls. */
-	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
-	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
-	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
@@ -223,30 +201,6 @@ export interface RuntimeSkillSource {
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
 	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
-}
-
-export interface RuntimeSkillContextUsage {
-	skillId: string;
-	version?: string;
-	kind: 'carried' | 'refreshed' | 'revoked' | 'unavailable';
-}
-
-export interface RuntimeSkillStateScope {
-	threadId: string;
-	resourceId: string;
-	agentName: string;
-}
-
-export interface RuntimeSkillState {
-	skillIds: string[];
-	/** Last loaded versions. Null keeps a revocation effective after compaction. */
-	versions?: Record<string, string | null>;
-}
-
-/** Stores active selections separately from conversation text that memory can compact. */
-export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<RuntimeSkillState | undefined>;
-	save(scope: RuntimeSkillStateScope, state: RuntimeSkillState): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

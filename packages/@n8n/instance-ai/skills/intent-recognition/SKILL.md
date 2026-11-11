@@ -14,8 +14,6 @@ description: >-
   chosen. An explicit Agent request routes to agent-builder before ask_user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
-policy:
-  lifetime: turn
 ---
 
 # Intent recognition

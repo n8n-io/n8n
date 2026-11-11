@@ -2,7 +2,6 @@ import {
 	SKILL_LOAD_TOOL_NAME,
 	findRuntimeSkillEntry,
 	isMainSkillFilePath,
-	type RuntimeSkillContextUsage,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
@@ -18,12 +17,11 @@ export class InstanceAiSkillTelemetry {
 		private readonly agentId: string,
 		saved?: HubSkillTelemetryState,
 	) {
-		this.state = saved ? structuredClone(saved) : { sequence: 0, calls: [], context: [] };
+		this.state = saved ? structuredClone(saved) : { sequence: 0, calls: [] };
 	}
 
 	bind(source?: RuntimeSkillSource): void {
 		this.source = source;
-		if (source) source.onContext = (usage) => this.observeContext(usage);
 	}
 
 	observe(event: InstanceAiEvent): void {
@@ -68,41 +66,6 @@ export class InstanceAiSkillTelemetry {
 			code === 'temporarily_unavailable' || code === 'invalid_reference' ? code : 'unavailable';
 	}
 
-	private observeContext(usage: RuntimeSkillContextUsage[]): void {
-		for (const item of usage) {
-			if (!this.isHubSkill(item.skillId)) continue;
-			// Rebuilding a paused runtime must not turn an initial load or refresh into reuse.
-			if (
-				item.kind === 'carried' &&
-				(this.state.calls.some(
-					(call) =>
-						call.runtimeSkillId === item.skillId &&
-						call.kind === 'main' &&
-						call.outcome === 'success',
-				) ||
-					this.state.context.some(
-						(context) => context.runtimeSkillId === item.skillId && context.kind === 'refreshed',
-					))
-			)
-				continue;
-			if (
-				this.state.context.some(
-					(context) =>
-						context.runtimeSkillId === item.skillId &&
-						context.kind === item.kind &&
-						context.version === item.version,
-				)
-			)
-				continue;
-			this.state.context.push({
-				runtimeSkillId: item.skillId,
-				skillId: this.hubId(item.skillId),
-				kind: item.kind,
-				version: item.version,
-			});
-		}
-	}
-
 	private hubId(runtimeId: string): string | undefined {
 		const id = this.source?.registry.skills.find(({ id }) => id === runtimeId)?.metadata
 			?.hubSkillId;
@@ -127,8 +90,6 @@ export class InstanceAiSkillTelemetry {
 			[...new Set(values.flatMap(({ skillId }) => skillId ?? []))].sort();
 		const loads = this.state.calls.filter(({ kind }) => kind === 'main');
 		const references = this.state.calls.filter(({ kind }) => kind === 'reference');
-		const count = (kind: RuntimeSkillContextUsage['kind']) =>
-			this.state.context.filter((item) => item.kind === kind).length;
 		const failures = this.state.calls.filter(({ outcome }) => outcome === 'failure');
 		return {
 			hub_skill_snapshot_sequence: this.state.sequence,
@@ -137,12 +98,6 @@ export class InstanceAiSkillTelemetry {
 			hub_skill_load_count: loads.filter(({ outcome }) => outcome === 'success').length,
 			hub_skill_loaded_ids: ids(loads.filter(({ outcome }) => outcome === 'success')),
 			hub_skill_failure_count: loads.filter(({ outcome }) => outcome === 'failure').length,
-			hub_skill_carried_count: count('carried'),
-			hub_skill_carried_ids: ids(this.state.context.filter(({ kind }) => kind === 'carried')),
-			hub_skill_refresh_count: count('refreshed'),
-			hub_skill_refreshed_ids: ids(this.state.context.filter(({ kind }) => kind === 'refreshed')),
-			hub_skill_revocation_count: count('revoked'),
-			hub_skill_unavailable_count: count('unavailable'),
 			hub_skill_reference_attempt_count: references.length,
 			hub_skill_reference_read_count: references.filter(({ outcome }) => outcome === 'success')
 				.length,

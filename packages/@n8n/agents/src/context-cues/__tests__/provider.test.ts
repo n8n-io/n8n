@@ -9,7 +9,7 @@ import {
 	createContextCueProvider,
 	parseAblatedContextCues,
 	whenSkillLoads,
-	whileSkillActive,
+	whileSkillLoaded,
 } from '../provider';
 import type { ContextCueRetrievalTrace, ContextCueSet } from '../types';
 
@@ -18,7 +18,14 @@ const user = (text: string): AgentMessage => ({ role: 'user', content: [{ type: 
 const toolCall = (toolName: string, input: Record<string, string>): AgentMessage => ({
 	role: 'assistant',
 	content: [
-		{ type: 'tool-call', toolCallId: toolName, toolName, input, state: 'resolved', output: {} },
+		{
+			type: 'tool-call',
+			toolCallId: toolName,
+			toolName,
+			input,
+			state: 'resolved',
+			output: { type: 'content', value: [{ type: 'text', text: 'Skill body' }] },
+		},
 	],
 });
 
@@ -103,7 +110,7 @@ describe('createContextCueProvider', () => {
 	const sets: ContextCueSet[] = [
 		{
 			id: 'builder',
-			isActive: whileSkillActive('builder'),
+			isActive: whileSkillLoaded('builder'),
 			cues: [
 				{ id: 'a', text: 'Rule A', appliesWhen: 'alpha' },
 				{ id: 'b', text: 'Rule B', appliesWhen: 'beta' },
@@ -124,12 +131,14 @@ describe('createContextCueProvider', () => {
 
 	const request = (
 		overrides: Partial<ContextCueRequest> = {},
-		activeSkillIds: readonly string[] = ['builder'],
+		loadedSkillIds: readonly string[] = ['builder'],
 	): ContextCueRequest => ({
-		messages: [user('about alpha')],
-		isSkillActive: (skillId) => activeSkillIds.includes(skillId),
 		sentCueIds: new Set(),
 		...overrides,
+		messages: [
+			...loadedSkillIds.map((skillId) => toolCall('load_skill', { skillId })),
+			...(overrides.messages ?? [user('about alpha')]),
+		],
 	});
 
 	it('returns cues above the threshold', async () => {
@@ -139,9 +148,62 @@ describe('createContextCueProvider', () => {
 		]);
 	});
 
-	it('returns nothing when the skill is not active', async () => {
+	it('returns nothing when the skill is not loaded', async () => {
 		const provider = createContextCueProvider({ sets, embeddingModel: model });
 		expect(await provider(request({}, []))).toEqual([]);
+	});
+
+	it.each<[string, AgentMessage]>([
+		[
+			'failed',
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'l1',
+						toolName: 'load_skill',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output: { success: false, error: 'Skill not found' },
+					},
+				],
+			},
+		],
+		[
+			'pending',
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'l1',
+						toolName: 'load_skill',
+						input: { skillId: 'builder' },
+						state: 'pending',
+					},
+				],
+			},
+		],
+		[
+			'linked file',
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'l1',
+						toolName: 'load_skill',
+						input: { skillId: 'builder', filePath: 'scripts/a.py' },
+						state: 'resolved',
+						output: { success: true, content: 'print(1)' },
+					},
+				],
+			},
+		],
+	])('does not treat a %s load as a loaded skill', async (_, load) => {
+		const provider = createContextCueProvider({ sets, embeddingModel: model, threshold: 0 });
+		expect(await provider(request({ messages: [load, user('about alpha')] }, []))).toEqual([]);
 	});
 
 	it('scores a set without a predicate before every model call', async () => {
@@ -214,7 +276,16 @@ describe('createContextCueProvider', () => {
 			},
 		];
 		const detectPhases = (messages: readonly AgentMessage[]) =>
-			new Set(messages.some((m) => 'role' in m && m.role === 'assistant') ? ['after-build'] : []);
+			new Set(
+				messages.some(
+					(m) =>
+						'role' in m &&
+						m.role === 'assistant' &&
+						m.content.some((part) => part.type === 'tool-call' && part.toolName === 'build'),
+				)
+					? ['after-build']
+					: [],
+			);
 		const provider = createContextCueProvider({
 			sets: phased,
 			embeddingModel: model,

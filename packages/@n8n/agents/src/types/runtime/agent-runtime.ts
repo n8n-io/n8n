@@ -50,11 +50,6 @@ export interface ContextCueEntry {
 export interface ContextCueRequest {
 	/** Messages the model sees, oldest first, before this model call. */
 	messages: readonly AgentMessage[];
-	/**
-	 * Whether a skill is active in this run. The runtime state is the source,
-	 * because compaction can hide the `load_skill` call from `messages`.
-	 */
-	isSkillActive(skillId: string): boolean;
 	/** Ids of the cues that the conversation already contains. */
 	sentCueIds: ReadonlySet<string>;
 	persistence?: AgentPersistenceOptions;

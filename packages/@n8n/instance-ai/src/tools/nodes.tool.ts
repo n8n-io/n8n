@@ -685,10 +685,13 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 				'pass the object form with `resource` and `operation` (or `mode`) discriminators.',
 		)
 		.input(getNodeTypesInputSchema)
-		.handler(async (input, ctx) => {
+		.handler(async (input) => {
 			const result = await resolveNodeTypeDefinitions(context, input.nodeTypes);
-			if (ctx.loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
-				await ctx.loadSkill('model-selection');
+			if (await needsModelSelection(context.nodeService, result.definitions)) {
+				return {
+					...result,
+					hint: 'Call load_skill with skillId "model-selection" before you choose a model.',
+				};
 			}
 			return result;
 		})

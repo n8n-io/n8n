@@ -52,6 +52,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import { isRuntimeContextCue } from '../../sdk/message';
+import { detectLoadedSkills } from '../../context-cues/provider';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
@@ -62,8 +63,7 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
-import { ActiveSkills } from '../skills/active-skills';
+import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
@@ -226,20 +226,13 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
-	private activeSkills?: ActiveSkills;
+	/** The message list of the current loop. The tool catalog reads it to find loaded skills. */
+	private loopList?: AgentMessageList;
 
 	constructor(runtimeConfig: AgentRuntimeConfig) {
 		// Copied: the deferral choice below writes `nativeToolDeferral`.
 		const config = { ...activateSkillDependencyTools(runtimeConfig) };
 		this.config = config;
-		// Keep full tool results when the memory backend cannot persist active skill IDs.
-		if (config.skillSource && (!config.memory || config.memory.skillState)) {
-			this.activeSkills = new ActiveSkills(
-				config.skillSource,
-				config.name,
-				config.memory?.skillState,
-			);
-		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
@@ -258,14 +251,11 @@ export class AgentRuntime {
 					toolGroupDescriptions: config.deferredToolGroupDescriptions,
 					// A lookup for an always-available tool says to call it directly.
 					activeTools: config.tools,
-					// Without active-skill state the runtime cannot tell which skills are loaded.
 					unloadedSkillsForGroup: (group) => {
-						const activeSkills = this.activeSkills;
-						if (!activeSkills) return [];
+						const loaded = detectLoadedSkills(this.loopList?.llmVisibleMessages() ?? []);
 						return (config.skillSource?.registry.skills ?? [])
 							.filter(
-								(skill) =>
-									skill.recommendedToolGroups?.includes(group) && !activeSkills.isLoaded(skill.id),
+								(skill) => skill.recommendedToolGroups?.includes(group) && !loaded.has(skill.id),
 							)
 							.map((skill) => skill.id);
 					},
@@ -289,7 +279,6 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
-			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -861,6 +850,16 @@ export class AgentRuntime {
 	 * those throws into their terminal contract.
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
+		this.loopList = ctx.list;
+		try {
+			return await this.runAgentLoopBody(ctx, sink);
+		} finally {
+			// Do not let a finished run's messages leak into a later run's tool catalog.
+			if (this.loopList === ctx.list) this.loopList = undefined;
+		}
+	}
+
+	private async runAgentLoopBody<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { prepared, state } = await this.prepareLoop(ctx);
 		if (prepared.pendingResume) {
 			const settlement = await this.resumePendingTools(
@@ -957,10 +956,6 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence, {
-			freshRun: ctx.isFreshRun,
-			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
-		});
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
@@ -1076,9 +1071,6 @@ export class AgentRuntime {
 			threadId: ctx.options?.persistence?.threadId,
 		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
-		for (const update of this.activeSkills?.takeUpdates() ?? []) {
-			await sink.emitMessage?.(update);
-		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -1143,7 +1135,6 @@ export class AgentRuntime {
 			instructionProviderOptions: ctx.instructionProviderOptions,
 			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
-			activeSkills: this.activeSkills,
 		});
 		const modelCallContext: ModelCallContext = {
 			model: staticContext.model,
@@ -1214,7 +1205,6 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			this.activeSkills?.reportContext();
 			let turn: ModelTurnResult;
 			try {
 				turn = await sink.callModel(modelCallContext);
@@ -1357,10 +1347,8 @@ export class AgentRuntime {
 		const sentCueIds = new Set(
 			messages.filter(isRuntimeContextCue).flatMap((message) => message.data.cueIds),
 		);
-		const activeSkillIds = new Set(list.activeSkillIds);
 		const request = {
 			messages,
-			isSkillActive: (skillId: string) => activeSkillIds.has(skillId),
 			sentCueIds,
 			persistence: options?.persistence,
 			abortSignal: abortScope.signal,

@@ -4,7 +4,6 @@ import {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '@n8n/agents';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -79,8 +78,6 @@ describe('Assistant Hub runtime skills', () => {
 		else provider.isEnabled.mockResolvedValue(false);
 		const { source } = await load(provider, builtIns);
 		expect(source.registry).toEqual(builtIns.registry);
-		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
-		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(await source.loadSkill('hub-previously-loaded')).toBeNull();
 		if (flag === 'unavailable') {
 			expect(source.dynamicCatalog?.skillIds).toEqual([]);
@@ -116,7 +113,7 @@ describe('Assistant Hub runtime skills', () => {
 			],
 		});
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
+		const { source } = await load(provider);
 		const [entry] = hubEntries(source);
 		expect(source.dynamicCatalog?.skillIds).toEqual(hubEntries(source).map(({ id }) => id));
 		expect(source.dynamicCatalog?.notice).toContain('Load by exact skillId');
@@ -126,30 +123,12 @@ describe('Assistant Hub runtime skills', () => {
 		expect(provider.readSkill).not.toHaveBeenCalled();
 
 		const tool = createSkillLoadTool(source);
-		const call: InstanceAiEvent = {
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: { toolCallId: 'load-1', toolName: 'load_skill', args: { skillId: entry.id } },
-		};
-		expect(mapSkillEventForDisplay?.(call)).toBe(call);
-		const activation = await tool.handler?.({ skillId: entry.id }, { loadSkill: source.loadSkill });
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: call.runId,
-			agentId: call.agentId,
-			payload: { toolCallId: 'load-1', result: activation },
-		};
-		const originalEvent = structuredClone(event);
-		expect(mapSkillEventForDisplay?.(event)).toMatchObject({
-			payload: { result: { content: expect.stringContaining(saved.instructions) } },
-		});
+		const activation = await tool.handler?.({ skillId: entry.id }, {});
 		expect(activation).toMatchObject({
-			success: true,
-			content: expect.stringContaining(saved.instructions),
-			linkedFiles: { references: saved.files.map(({ path }) => ({ path })) },
+			type: 'content',
+			value: [{ type: 'text', text: expect.stringContaining(saved.instructions) }],
 		});
-		expect(event).toEqual(originalEvent);
+		for (const { path } of saved.files) expect(JSON.stringify(activation)).toContain(path);
 		expect(JSON.stringify(activation)).not.toContain('Detailed guide.');
 		expect(provider.readFile).not.toHaveBeenCalled();
 		expect(
@@ -163,48 +142,6 @@ describe('Assistant Hub runtime skills', () => {
 			'references/guide.md',
 		);
 		expect(await source.loadSkill(builtIn.id)).toMatchObject(builtIn);
-	});
-
-	it.each([
-		'built-in',
-		'unloaded',
-		'version mismatch',
-		'reference',
-		'failed',
-		'other tool',
-		'other agent',
-	])('preserves %s results in the display stream', async (scenario) => {
-		const provider = providerFor([content()]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
-		const [entry] = hubEntries(source);
-		if (scenario !== 'unloaded') await source.loadSkill(entry.id);
-		mapSkillEventForDisplay?.({
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				toolName: scenario === 'other tool' ? 'skills' : 'load_skill',
-				args: { skillId: entry.id },
-			},
-		});
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: 'run-1',
-			agentId: scenario === 'other agent' ? 'custom-agent' : 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				result: {
-					success: scenario !== 'failed',
-					skillId: scenario === 'built-in' ? builtIn.id : entry.id,
-					hash: scenario === 'version mismatch' ? 'other-version' : entry.hash,
-					content: 'Original output.',
-					...(scenario === 'reference' ? { filePath: 'references/guide.md' } : {}),
-				},
-			},
-		};
-		expect(mapSkillEventForDisplay?.(event)).toBe(event);
-		expect(provider.readSkill).toHaveBeenCalledTimes(scenario === 'unloaded' ? 0 : 1);
 	});
 
 	it('retains the selected version for instructions and references throughout the turn', async () => {
@@ -516,7 +453,7 @@ describe('Hub load telemetry outcomes', () => {
 				agentId: 'orchestrator-1',
 				payload: { toolCallId: key, toolName: 'load_skill', args },
 			});
-			const result = await tool.handler?.(args, { loadSkill: source.loadSkill });
+			const result = await tool.handler?.(args, {});
 			telemetry.observe({
 				type: 'tool-result',
 				runId: 'run-1',

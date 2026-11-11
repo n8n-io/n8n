@@ -2,7 +2,7 @@ export {
 	createContextCueProvider,
 	parseAblatedContextCues,
 	whenSkillLoads,
-	whileSkillActive,
+	whileSkillLoaded,
 } from './provider';
 export type {
 	ContextCue,
