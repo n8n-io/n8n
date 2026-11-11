@@ -35,7 +35,7 @@ vi.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => ({
 
 vi.mock('src/adapters/langchain-chat-model', () => ({
 	LangchainChatModelAdapter: vi.fn(function () {
-		return mockLangchainAdapterInstance;
+		return { ...mockLangchainAdapterInstance };
 	}),
 }));
 

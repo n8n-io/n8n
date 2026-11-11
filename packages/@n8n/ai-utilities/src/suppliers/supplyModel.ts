@@ -87,15 +87,42 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
-	if (isOpenAiModel(model)) {
-		const openAiModel = getOpenAiModel(ctx, model);
-		return {
-			response: openAiModel,
-		};
+// `Symbol.for` resolves to the same key from the ESM and the CJS build, so the
+// source is found even when both copies of this package are loaded.
+const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
+
+function isSupplyModelOptions(value: unknown): value is SupplyModelOptions {
+	if (typeof value !== 'object' || value === null) return false;
+	if ('type' in value && value.type === 'openai') {
+		return 'baseUrl' in value && 'model' in value && 'apiKey' in value;
 	}
-	const adapter = new LangchainChatModelAdapter(model, ctx);
-	return {
-		response: adapter,
-	};
+	return 'generate' in value && typeof value.generate === 'function';
+}
+
+/**
+ * Non-enumerable, so object spread, `Object.assign` and `util.inspect` skip the
+ * source, which can hold an API key.
+ */
+function recordSource(response: object, source: SupplyModelOptions) {
+	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: source });
+}
+
+/**
+ * Returns the options that `supplyModel` received to create `response`.
+ * Only the object that `supplyModel` returned carries the source: models
+ * derived from it, for example by `bindTools`, return `undefined`.
+ */
+export function getSuppliedModelSource(response: unknown): SupplyModelOptions | undefined {
+	if (typeof response !== 'object' || response === null) return undefined;
+	if (!(SUPPLIED_MODEL_SOURCE in response)) return undefined;
+	const source = response[SUPPLIED_MODEL_SOURCE];
+	return isSupplyModelOptions(source) ? source : undefined;
+}
+
+export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
+	const response = isOpenAiModel(model)
+		? getOpenAiModel(ctx, model)
+		: new LangchainChatModelAdapter(model, ctx);
+	recordSource(response, model);
+	return { response };
 }
