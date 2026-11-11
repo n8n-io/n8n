@@ -296,6 +296,106 @@ describe('ExecutionListV2Service', () => {
 		});
 	});
 
+	describe('engine filter', () => {
+		const uuid3 = '01992380-0000-7000-8000-000000000003';
+
+		beforeEach(() => {
+			// Both stores hold rows, so a leak from the skipped store would show.
+			executions.findManyByRangeQuery.mockResolvedValue([v1Row('10'), v1Row('9'), v1Row('8')]);
+			executions.fetchCount.mockResolvedValue(5);
+			dataPlane.searchExecutions.mockResolvedValue({
+				items: [v2Item(uuid3), v2Item(uuid2), v2Item(uuid)],
+				nextCursor: { createdAt: time, id: uuid },
+				total: 4,
+			});
+		});
+
+		describe('v1', () => {
+			it('pages and counts the control plane alone, without the data plane', async () => {
+				const result = await service.findPageWithCount(query({ engine: 'v1' }));
+
+				expect(result.results.map((r) => r.id)).toEqual(['10', '9']);
+				expect(result).toMatchObject({ count: 5, estimated: false });
+				expect(parseExecutionCursor(result.nextCursor!)).toMatchObject({ v1: { id: '9' } });
+				expect(parseExecutionCursor(result.nextCursor!).v2).toBeUndefined();
+				expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+				expect(workflows.findWorkflowIdsForExecutionList).not.toHaveBeenCalled();
+			});
+
+			it('leaves engine v2 rows out of the current block', async () => {
+				executions.findManyByRangeQuery.mockImplementation(async (q) =>
+					q.status?.includes('running') ? [v1Row('20', 'running')] : [v1Row('10')],
+				);
+
+				const result = await service.findCurrentAndCompleted(completedPageQuery({ engine: 'v1' }));
+
+				expect(result.results.map((r) => r.id)).toEqual(['20', '10']);
+				expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('v2', () => {
+			it('pages and counts the data plane alone, without the control plane', async () => {
+				const result = await service.findPageWithCount(query({ engine: 'v2' }));
+
+				expect(result.results.map((r) => r.id)).toEqual([uuid3, uuid2]);
+				expect(result).toMatchObject({ count: 4, estimated: false });
+				expect(parseExecutionCursor(result.nextCursor!)).toMatchObject({ v2: { id: uuid2 } });
+				expect(parseExecutionCursor(result.nextCursor!).v1).toBeUndefined();
+				expect(executions.findManyByRangeQuery).not.toHaveBeenCalled();
+				expect(executions.fetchCount).not.toHaveBeenCalled();
+			});
+
+			it('continues the engine v2 rows on the next page', async () => {
+				const first = await service.findPageWithCount(query({ engine: 'v2' }));
+				dataPlane.searchExecutions.mockResolvedValue({
+					items: [v2Item(uuid)],
+					nextCursor: null,
+					total: 4,
+				});
+
+				const second = await service.findPageWithCount(
+					query({ engine: 'v2' }),
+					parseExecutionCursor(first.nextCursor!),
+				);
+
+				expect(searchRequests()[1]).toMatchObject({ before: { id: uuid2 } });
+				expect(second.results.map((r) => r.id)).toEqual([uuid]);
+				expect(second.nextCursor).toBeNull();
+			});
+
+			it('reports an exact count, even when the control plane would estimate', async () => {
+				databaseConfig.type = 'postgresdb';
+				executions.getLiveExecutionRowsOnPostgres.mockResolvedValue(200_000);
+
+				const result = await service.findPageWithCount(query({ engine: 'v2' }));
+
+				expect(result).toMatchObject({ count: 4, estimated: false });
+				expect(executions.getLiveExecutionRowsOnPostgres).not.toHaveBeenCalled();
+			});
+
+			it('leaves engine v1 rows out of the current block', async () => {
+				dataPlane.searchExecutions.mockImplementation(async (request) =>
+					request.status?.includes('running')
+						? { items: [v2Item(uuid3, 'running')], nextCursor: null, total: 0 }
+						: { items: [v2Item(uuid)], nextCursor: null, total: 1 },
+				);
+
+				const result = await service.findCurrentAndCompleted(completedPageQuery({ engine: 'v2' }));
+
+				expect(result.results.map((r) => r.id)).toEqual([uuid3, uuid]);
+				expect(executions.findManyByRangeQuery).not.toHaveBeenCalled();
+			});
+		});
+
+		it('merges both stores without an engine filter', async () => {
+			const result = await service.findPageWithCount(query({ range: { limit: 6 } }));
+
+			expect(result.results).toHaveLength(6);
+			expect(result.count).toBe(9);
+		});
+	});
+
 	describe('scope wider than one data plane search', () => {
 		it('fails rather than reporting a list missing engine v2 rows', async () => {
 			workflows.findWorkflowIdsForExecutionList.mockResolvedValue(

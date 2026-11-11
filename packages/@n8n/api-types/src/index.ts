@@ -1017,6 +1017,10 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+export {
+	EXECUTION_ENGINES,
+	type ExecutionEngine,
+} from './dto/executions/execution-engine';
 
 export type * from './workflow-suggestions';
 export * from './self-healing-results';

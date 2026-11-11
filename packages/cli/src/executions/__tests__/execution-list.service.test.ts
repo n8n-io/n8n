@@ -86,6 +86,24 @@ describe('ExecutionListService', () => {
 		});
 	});
 
+	describe('engine filter while the data plane is down', () => {
+		// The v1 provider reads only the fields it knows, so the list stays as it was
+		// before the engine filter existed.
+		it('passes the query to v1 alone and returns its result unchanged', async () => {
+			dataPlane.isAvailable.mockReturnValue(false);
+			const v1Result = { results: [], nextCursor: null, count: 7, estimated: false };
+			v1Service.findCurrentAndCompleted.mockResolvedValue(v1Result);
+
+			const result = await service.listExecutionsForUI(query({ engine: 'v2' }));
+
+			expect(result).toBe(v1Result);
+			expect(v1Service.findCurrentAndCompleted).toHaveBeenCalledWith(
+				completedPageQuery({ engine: 'v2' }),
+			);
+			expect(v2Service.findCurrentAndCompleted).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('listExecutionsForUI', () => {
 		it('prepends the current block on the first page of a status-less list', async () => {
 			await service.listExecutionsForUI(query());

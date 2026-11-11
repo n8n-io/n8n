@@ -1303,6 +1303,57 @@ describe('ExecutionService', () => {
 				}),
 			);
 		});
+
+		describe('engine filter', () => {
+			const deleteBefore = '2026-01-01T00:00:00.000Z';
+
+			// A delete by date reaches only the engine v1 table, so a v2 filter must not
+			// fall through to deleting the v1 rows that match the other filters.
+			it('should delete nothing by date for the engine v2 filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('should delete nothing by date for the engine v2 filter when another field is invalid', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v2', status: 123 } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+			});
+
+			it('should keep the engine v1 filter when deleting by date', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ deleteBefore, filters: { engine: 'v1', mode: 'manual' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ filters: { engine: 'v1', mode: 'manual' } }),
+				);
+			});
+
+			it('should delete by ids whatever the engine filter', async () => {
+				await executionService.delete(
+					user,
+					DeleteExecutionsDto.parse({ ids: ['1'], filters: { engine: 'v2' } }),
+					['wf-1'],
+				);
+
+				expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+					expect.objectContaining({ deleteConditions: { deleteBefore: undefined, ids: ['1'] } }),
+				);
+			});
+		});
 	});
 
 	describe('deleteOne', () => {
