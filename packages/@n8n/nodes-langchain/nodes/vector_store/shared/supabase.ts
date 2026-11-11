@@ -4,32 +4,42 @@ import { UserError } from 'n8n-workflow';
 
 import { aiClientFetch } from '@n8n/ai-utilities';
 
-// PostgreSQL unquoted identifier syntax, restricted to ASCII for HTTP header safety (RFC 7230).
-const VALID_SCHEMA_REGEX = /^[A-Za-z_][A-Za-z0-9_$]*$/;
+// PostgreSQL unquoted identifier syntax, plus hyphens. PostgREST accepts
+// hyphenated schema names (it quotes the identifier when it builds the
+// search_path) and the core Supabase node passes the schema through unvalidated.
+const VALID_SCHEMA_REGEX = /^[A-Za-z_][A-Za-z0-9_$-]*$/;
 
 /**
  * Resolves the effective schema name from the node's useCustomSchema toggle and schema input.
  *
  * - Toggle off → always returns 'public', no validation.
- * - Toggle on + valid identifier → returns the schema name.
+ * - Toggle on + valid identifier → returns the trimmed schema name.
  * - Toggle on + invalid identifier → throws UserError.
  *
- * The allow-list regex covers every practical PostgreSQL unquoted identifier and is
- * valid HTTP header field content per RFC 7230. Non-ASCII schema names are rejected
- * by design; they cannot be transmitted in Accept-Profile without encoding.
+ * The regex matches PostgreSQL unquoted identifiers plus hyphens. It is the ASCII
+ * subset that can be transmitted in the `Accept-Profile`/`Content-Profile` header
+ * and matched by PostgREST: `@supabase/postgrest-js` writes the header value raw
+ * (no percent-encoding), PostgREST decodes it as UTF-8 and compares it literally
+ * against the exposed schema name, and Node encodes non-ASCII header values as
+ * Latin-1 bytes that do not survive PostgREST's UTF-8 decode. Non-ASCII schema
+ * names are rejected, and no supported encoding path exists around this.
  */
 export function resolveSchema(useCustomSchema: boolean, schema: string): string {
 	if (!useCustomSchema) return 'public';
 
 	// RegExp.test coerces its argument, so `undefined`/`null`/booleans would
-	// otherwise pass as "undefined"/"null"/"true". Reject non-strings first.
-	if (typeof schema !== 'string' || !VALID_SCHEMA_REGEX.test(schema)) {
+	// otherwise pass as "undefined"/"null"/"true". Reject non-strings first,
+	// then trim: a header parser strips leading/trailing OWS anyway, so a
+	// schema with surrounding whitespace can only be addressed trimmed.
+	const trimmed = typeof schema === 'string' ? schema.trim() : schema;
+
+	if (typeof trimmed !== 'string' || !VALID_SCHEMA_REGEX.test(trimmed)) {
 		throw new UserError(
-			`Schema name "${schema}" is invalid. Use only letters, digits, underscores, and dollar signs; must start with a letter or underscore.`,
+			`Schema name "${schema}" is invalid. Use only letters, digits, hyphens, underscores, and dollar signs; must start with a letter or underscore.`,
 		);
 	}
 
-	return schema;
+	return trimmed;
 }
 
 // supabase-js arms a 30s token-refresh interval per client that keeps the

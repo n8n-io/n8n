@@ -61,6 +61,10 @@ describe('resolveSchema', () => {
 		[true, 'my_schema_v2', 'my_schema_v2'],
 		[true, '_private', '_private'],
 		[true, 'my$schema', 'my$schema'],
+		[true, 'my-schema', 'my-schema'],
+		[true, ' myschema ', 'myschema'],
+		[true, 'schema\r', 'schema'], // surrounding whitespace is trimmed
+		[true, 'schema\n', 'schema'],
 	] as Array<[boolean, string, string]>)(
 		'resolveSchema(%s, %j) returns %j',
 		(useCustomSchema, schema, expected) => {
@@ -75,8 +79,8 @@ describe('resolveSchema', () => {
 		[true, '1schema'],
 		[true, 'my schema'],
 		[true, 'sch"ma'],
-		[true, 'schema\r'],
-		[true, 'schema\n'],
+		[true, 'sch\r\nema'], // internal CRLF is not trimmed
+		[true, 'schema\rx'], // internal CR is not trimmed
 		[true, 'sch\u00e9ma'], // é — non-ASCII
 	] as Array<[boolean, string]>)(
 		'resolveSchema(%s, %j) throws UserError',
