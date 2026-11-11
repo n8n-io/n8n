@@ -4737,7 +4737,7 @@ describe('useAgentChatStream — queued submissions', () => {
 		);
 	});
 
-	it('keeps the last queue and shows no error when background queue refreshes fail', async () => {
+	it('keeps the last queue without an error while queue refreshes fail and reloads it on reconnect', async () => {
 		const queued = {
 			id: '1',
 			message: 'A',
@@ -4745,10 +4745,13 @@ describe('useAgentChatStream — queued submissions', () => {
 			steeringExecutionId: null,
 		};
 		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		connectionState.isConnected = true;
 		const hook = buildHook('thread-1');
 		await hook.loadHistory();
 		expect(hook.queuedMessages.value).toEqual([queued]);
 
+		connectionState.isConnected = false;
+		await flushPromises();
 		getAgentChatQueueMock.mockRejectedValue(new Error("Can't connect to n8n."));
 		for (let i = 0; i < 3; i++) {
 			for (const listener of [...pushListeners])
@@ -4765,6 +4768,12 @@ describe('useAgentChatStream — queued submissions', () => {
 			'agents.chat.queue.loadError',
 		);
 		expect(hook.queuedMessages.value).toEqual([queued]);
+
+		const refreshed = { ...queued, id: '2', message: 'B' };
+		getAgentChatQueueMock.mockResolvedValue({ items: [refreshed] });
+		connectionState.isConnected = true;
+		await flushPromises();
+		expect(hook.queuedMessages.value).toEqual([refreshed]);
 	});
 
 	it('keeps an accepted steer reserved when the queue refresh fails', async () => {
