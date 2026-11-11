@@ -74,6 +74,17 @@ export function eagerTools(tools: ToolSet): ToolSet {
 	);
 }
 
+/**
+ * Provider tool search reads a name such as `my-workflow-3` as one word, so a
+ * search for "My workflow 3" does not find it. Add the words of the name to
+ * the description, which the search splits into words.
+ */
+function searchableDescription(name: string, description: string | undefined) {
+	const words = name.replace(/[^a-zA-Z0-9]+/g, ' ').trim();
+	if (words === name) return description;
+	return description ? `${description} (${words})` : `(${words})`;
+}
+
 export function deferLocalTools(
 	tools: ToolSet,
 	provider: NativeToolDeferralProvider,
@@ -94,6 +105,9 @@ export function deferLocalTools(
 		hasDeferredTools ||= deferLoading;
 		nativeTools[name] = {
 			...tool,
+			...(deferLoading && typeof tool.description !== 'function'
+				? { description: searchableDescription(name, tool.description) }
+				: {}),
 			providerOptions: mergeProviderOptions(tool.providerOptions, {
 				[provider]: { deferLoading },
 			}),
