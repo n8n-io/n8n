@@ -715,15 +715,14 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							nodeStaticData.noProgressTicks = noProgressTicks;
 							return null;
 						}
-						// Clear old IDs only if the cursor advanced. A clock rollback can
-						// keep the cursor held, so its boundary IDs must stay tracked.
+						// Preserve the cursor on clock rollbacks. Keep handled IDs because
+						// an incomplete scan cannot rule out future-dated mail.
 						if (+now > +startDate) {
 							this.logger.warn(
 								"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
 								{ node: node.name },
 							);
 							nodeStaticData.lastTimeChecked = +now;
-							nodeStaticData.possibleDuplicates = [];
 						}
 						nodeStaticData.noProgressTicks = 0;
 					} else if (nodeStaticData.noProgressTicks) {

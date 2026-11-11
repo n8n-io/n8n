@@ -756,6 +756,117 @@ describe('GmailTrigger', () => {
 				expect.soft(Math.max(...cursorLeadSeconds)).toBeLessThanOrEqual(0);
 			},
 		);
+
+		it.each(['inclusive', 'strict'])(
+			'should deliver each message once after three incomplete no-progress scans (%s boundary)',
+			async (boundary) => {
+				const firstPollTime = Date.parse('2026-10-26T12:00:00.000Z');
+				const workflowStaticData: GmailWorkflowStaticDataDictionary = {
+					'Gmail Trigger': { lastTimeChecked: firstPollTime / 1000 - 60 },
+				};
+				const futureMessages = Array.from({ length: 149 }, (_, index) =>
+					createMessage({
+						id: `future-${index}`,
+						internalDate: String(firstPollTime + (600 - index) * 1000),
+					}),
+				);
+				const futureIds = futureMessages.map(({ id }) => id);
+				const mailbox = [
+					...futureMessages.map((message) => ({ visibleAt: firstPollTime, message })),
+					...[330, 630, 690].map((offset, index) => ({
+						visibleAt: firstPollTime + offset * 1000,
+						message: createMessage({
+							id: `normal-${index}`,
+							internalDate: String(firstPollTime + offset * 1000),
+						}),
+					})),
+				];
+				let pollIndex = 0;
+				const scannedPagesByPoll = Array<number>(14).fill(0);
+				nock(baseUrl)
+					.persist()
+					.get('/gmail/v1/users/me/labels')
+					.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+				nock(baseUrl)
+					.persist()
+					.get('/gmail/v1/users/me/messages')
+					.query((query) => typeof query.q === 'string' && /\bafter:\d+\b/.test(query.q))
+					.reply(200, (uri) => {
+						const query = new URL(uri, baseUrl).searchParams;
+						const after = Number(query.get('q')?.match(/\bafter:(\d+)\b/)?.[1]);
+						const pageStart = Number(query.get('pageToken') ?? 0);
+						const messages = mailbox
+							.filter(({ visibleAt, message }) => {
+								const date = Number(message.internalDate) / 1000;
+								return (
+									visibleAt <= Date.now() &&
+									(boundary === 'inclusive' ? date >= after : date > after)
+								);
+							})
+							.sort((a, b) => Number(b.message.internalDate) - Number(a.message.internalDate))
+							.map(({ message }) => createListMessage({ id: message.id }));
+						scannedPagesByPoll[pollIndex] += 1;
+						return {
+							messages: messages.slice(pageStart, pageStart + 100),
+							resultSizeEstimate: messages.length,
+							nextPageToken:
+								pageStart + 100 < messages.length ? String(pageStart + 100) : undefined,
+						} satisfies MessageListResponse;
+					});
+				for (const { message } of mailbox) {
+					nock(baseUrl)
+						.persist()
+						.get(`/gmail/v1/users/me/messages/${message.id}`)
+						.query(true)
+						.reply(200, message);
+				}
+
+				const emittedIdsByPoll = [];
+				for (pollIndex = 0; pollIndex < scannedPagesByPoll.length; pollIndex++) {
+					vi.setSystemTime(firstPollTime + pollIndex * 60_000);
+					const { response } = await testPollingTriggerNode(GmailTrigger, {
+						node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 50 } },
+						workflowStaticData,
+						// Stop after page one only on the three no-progress polls.
+						pollBudgetMs: pollIndex >= 3 && pollIndex <= 5 ? 0 : undefined,
+					});
+					emittedIdsByPoll.push(response?.[0].map(({ json }) => json.id) ?? []);
+					if (pollIndex === 2) {
+						expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual([]);
+						expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(futureIds);
+					}
+					if (pollIndex >= 3 && pollIndex <= 5) {
+						expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe((pollIndex - 2) % 3);
+					}
+					if (pollIndex === 5) {
+						expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(
+							firstPollTime / 1000 + 300,
+						);
+					}
+				}
+
+				expect(scannedPagesByPoll.slice(0, 7)).toEqual([2, 0, 2, 1, 1, 1, 2]);
+				expect(emittedIdsByPoll).toEqual([
+					futureIds.slice(0, 50),
+					futureIds.slice(50, 100),
+					futureIds.slice(100),
+					[],
+					[],
+					[],
+					['normal-0'],
+					[],
+					[],
+					[],
+					[],
+					['normal-1'],
+					['normal-2'],
+					[],
+				]);
+				expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).not.toEqual(
+					expect.arrayContaining([expect.stringMatching(/^future-/)]),
+				);
+			},
+		);
 	});
 
 	describe.each(['inclusive', 'strict'])('clock rollback with %s query boundaries', (boundary) => {
@@ -2683,7 +2794,7 @@ describe('GmailTrigger', () => {
 			// Every id the cap can reach is already tracked, so re-scanning the same
 			// pages can never progress past them. Holding on would repeat this poll
 			// forever: no backlog progress, no new mail, no warning. Two polls already
-			// found nothing, so this one must give up — advance and start fresh.
+			// found nothing, so this one must advance past the unscanned mail.
 			const initialTimestamp = 1000000;
 			const pages = Array.from({ length: 20 }, (_, page) => [`h${page}a`, `h${page}b`]);
 			const handledIds = pages.flat();
@@ -2711,8 +2822,8 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked as number).toBeGreaterThan(
 				initialTimestamp,
 			);
-			// A fresh boundary has no handled ids to remember.
-			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
+			// Handled IDs can still be in the query if their dates are in the future.
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(handledIds);
 		});
 
 		it('should ignore the page token and the poll budget on versions before 1.4', async () => {
@@ -3132,7 +3243,7 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked as number).toBeGreaterThan(
 				initialTimestamp,
 			);
-			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['A']);
 			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(0);
 		});
 
