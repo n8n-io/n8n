@@ -121,10 +121,16 @@ export function createClientCredentialsTokenSource(
 
 	const request = async (): Promise<CachedToken> => {
 		const { timeout, ...init } = clientCredentialsTokenRequest(login);
-		const response = await fetchToken(login.tokenUrl, {
-			...init,
-			signal: AbortSignal.timeout(timeout),
-		});
+		const deadline = AbortSignal.timeout(timeout);
+		const response = await fetchToken(login.tokenUrl, { ...init, signal: deadline }).catch(
+			(error: unknown) => {
+				if (!deadline.aborted) throw error;
+				throw new UserError(
+					`Could not sign in to the gateway: the login server did not answer within ${timeout / 1000} seconds`,
+					{ description: 'Check that the token URL is reachable from this n8n instance.' },
+				);
+			},
+		);
 		const text = await response.text();
 		if (!response.ok) {
 			const reason = reasonFor(text, response.status, login);
