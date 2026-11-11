@@ -185,6 +185,11 @@ export async function loadReplayedMessages(
 	]);
 	const from = validResumeState(saved, cursor)?.resumeFrom;
 	if (!from) return await memory.getMessages(threadId, { resourceId });
+	// The scope query does not filter by resource, so shared threads read through getMessages.
+	if (resourceId) {
+		const messages = await memory.getMessages(threadId, { resourceId });
+		return messages.filter((m) => isAfterPoint(m, from));
+	}
 	// Read only the messages after the resume point, so long threads stay cheap to check.
 	return await memory.getMessagesForObservationScope(threadId, {
 		since: {

@@ -179,7 +179,7 @@ describe('MemoryBudget', () => {
 			200_000,
 		)!;
 		expect(budget.modelWindow).toBe(200_000);
-		expect(budget.hardLimit).toBeLessThanOrEqual(200_000);
+		expect(budget.hardLimit).toBe(180_000);
 	});
 
 	it('lets requests up to the memory window through', () => {
