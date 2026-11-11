@@ -21,7 +21,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-	<N8nTooltip placement="top-start" as-child :content-class="$style.tooltip">
+	<N8nTooltip placement="top-start" as-child focus-content :content-class="$style.tooltip">
 		<N8nBadge variant="outline" :size="size" :class="$style.badge" tabindex="0">
 			{{ t('enterpriseReadinessBadge.limited') }}
 		</N8nBadge>
