@@ -171,6 +171,7 @@ describe('CustomModelEndpointApi Credential', () => {
 		);
 
 		expect(slot?.name).toBe('sessionToken');
+		expect(slot?.typeOptions?.password).toBe(true);
 	});
 
 	describe('preAuthentication', () => {
