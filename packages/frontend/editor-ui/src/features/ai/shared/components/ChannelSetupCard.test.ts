@@ -755,10 +755,17 @@ describe('ChannelSetupCard', () => {
 			mocks.getAgent.mockResolvedValue({
 				name: 'Agent',
 				id: 'agent-1',
-				schema: {
+				config: {
+					name: 'Agent',
 					personalisation: {
 						icon: 'zap',
-						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+						gradient: {
+							from: '#2563EB',
+							to: '#7C3AED',
+							angle: 135,
+							fromStop: 0,
+							toStop: 100,
+						},
 					},
 				},
 			});

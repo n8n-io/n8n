@@ -73,7 +73,7 @@ export class AgentRunnableStateService {
 			skills,
 			skillHashes,
 			outdatedSkillIds,
-			skillVersions: skillVersions ?? {},
+			skillVersions,
 		};
 		if (draftValidation) {
 			const [hasPublishHistory, hasVersionHistory] = await Promise.all([

@@ -1,3 +1,4 @@
+import type { AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,11 +10,17 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const updatedAt = new Date('2026-01-02T00:00:00.000Z');
 const publishedIntegrations = [{ type: 'n8n_chat' as const, credentialId: '' }];
+const triageBody: AgentSkill = {
+	name: 'Triage',
+	description: 'Triage incoming tickets',
+	instructions: 'Sort tickets by urgency',
+};
 
 function agentFixture(schema: Agent['schema']): Agent {
 	return {
@@ -45,7 +52,7 @@ function agentFixture(schema: Agent['schema']): Agent {
 
 describe('AgentResponseMapper', () => {
 	function makeMapper() {
-		const skillRefs = createAgentSkillRefsService();
+		const skillRefs = createAgentSkillRefsService({ triage: triageBody });
 		const validation = mock<AgentValidationService>();
 		validation.validateLoadedAgentConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
 		const publish = mock<AgentPublishService>();
@@ -85,6 +92,12 @@ describe('AgentResponseMapper', () => {
 		expect(dto.isRunnable).toBe(true);
 		expect(dto.hasPublishHistory).toBe(true);
 		expect(dto.hasVersionHistory).toBe(false);
+		expect(dto.skills).toEqual({ triage: triageBody });
+		expect(dto.skillHashes).toEqual({ triage: getAgentSkillHash(triageBody) });
+		expect(dto.outdatedSkillIds).toEqual([]);
+		expect(dto.skillVersions).toEqual({
+			triage: { draft: 1, published: null, latest: 1, pinned: false },
+		});
 		for (const key of [
 			'schema',
 			'integrations',
@@ -108,6 +121,10 @@ describe('AgentResponseMapper', () => {
 		expect(dto.config).toBeNull();
 		expect(dto.configHash).toBeNull();
 		expect(dto.activeVersion).toBeNull();
+		expect(dto.skills).toEqual({});
+		expect(dto.skillHashes).toEqual({});
+		expect(dto.outdatedSkillIds).toEqual([]);
+		expect(dto.skillVersions).toEqual({});
 	});
 
 	it('copies personalisation onto a list item and omits config', () => {

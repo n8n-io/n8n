@@ -19,10 +19,12 @@ export interface CustomToolEntry {
 }
 
 /** Single-agent response. `config` is the document a PUT writes back. */
-export type Agent = AgentDto;
+export type Agent = Omit<{ [K in keyof AgentDto]: AgentDto[K] }, 'tools'> & {
+	tools: Record<string, CustomToolEntry>;
+};
 
 /** Project and overview list row. It has no `config`, so it is not a PUT body. */
-export type AgentListItem = AgentListItemDto;
+export type AgentListItem = { [K in keyof AgentListItemDto]: AgentListItemDto[K] };
 
 /**
  * List rows omit `config`. A full agent response is projected so the list

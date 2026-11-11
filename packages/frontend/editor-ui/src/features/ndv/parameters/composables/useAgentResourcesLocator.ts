@@ -6,7 +6,7 @@ import {
 	getAgent,
 	type ListAgentsOptions,
 } from '@/features/agents/composables/useAgentApi';
-import type { AgentListItem } from '@/features/agents/agent.types';
+import { toAgentListItem, type AgentListItem } from '@/features/agents/agent.types';
 
 const PAGE_SIZE = 40;
 
@@ -139,7 +139,7 @@ export function useAgentResourcesLocator(
 		if (!projectId.value) return null;
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
-			return agentToResourceMapper(agent).name;
+			return agentToResourceMapper(toAgentListItem(agent)).name;
 		} catch {
 			return null;
 		}

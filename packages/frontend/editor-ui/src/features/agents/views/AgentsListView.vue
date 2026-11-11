@@ -28,6 +28,7 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import type { AgentTemplate } from '../agentTemplates';
 import { toAgentListItem, type Agent, type AgentListItem } from '../agent.types';
+import type { AgentListRowResource } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 import AgentsListIntro from '../components/AgentsListIntro.vue';
@@ -72,6 +73,10 @@ const { canCreate: canCreateAgent } = useAgentPermissions(
 );
 
 const allAgents = ref<AgentListItem[]>([]);
+/** The shared list layout only accepts resource-typed rows; the wrapper is added at render time. */
+const agentRows = computed<AgentListRowResource[]>(() =>
+	allAgents.value.map((agent) => ({ ...agent, resourceType: 'agent' })),
+);
 const filters = ref<BaseFilters>({ search: '', homeProject: '' });
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -288,7 +293,7 @@ onMounted(async () => {
 		v-model:filters="filters"
 		resource-key="agents"
 		type="list-paginated"
-		:resources="allAgents"
+		:resources="agentRows"
 		:initialize="fetchAgents"
 		:loading="false"
 		:resources-refreshing="loading"
