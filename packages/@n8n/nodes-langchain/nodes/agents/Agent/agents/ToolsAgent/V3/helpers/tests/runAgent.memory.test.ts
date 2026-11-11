@@ -2,7 +2,7 @@ import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import { BufferWindowMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type {
 	EngineRequest,
 	EngineResponse,
@@ -75,6 +75,17 @@ const engineResponse = (
 	metadata: request.metadata,
 });
 
+/** The stream events a chat model emits for one round, as processEventStream reads them. */
+const streamEvents = async function* (round: Round) {
+	if (Array.isArray(round)) {
+		yield { event: 'on_chat_model_end', data: { output: round[0].messageLog?.[0] } };
+		return;
+	}
+	const { output } = round.returnValues;
+	yield { event: 'on_chat_model_stream', data: { chunk: new AIMessageChunk(output) } };
+	yield { event: 'on_chat_model_end', data: { output: new AIMessage(output) } };
+};
+
 const describeMessages = (messages: BaseMessage[]) =>
 	messages.map((m) => {
 		const toolCalls = (m as AIMessage).tool_calls ?? [];
@@ -110,12 +121,18 @@ describe('runAgent - chat memory across tool-calling rounds', () => {
 		onRequest: (
 			request: EngineRequest<RequestResponseMetadata>,
 		) => EngineResponse<RequestResponseMetadata> = (request) => engineResponse(request),
+		{ streaming = false } = {},
 	) => {
 		const invoke = vi.fn();
-		for (const round of rounds) invoke.mockResolvedValueOnce(round);
+		const stream = vi.fn();
+		for (const round of rounds) {
+			invoke.mockResolvedValueOnce(round);
+			stream.mockReturnValueOnce(streamEvents(round));
+		}
 		const executor = mock<AgentRunnableSequence>({
-			withConfig: vi.fn().mockReturnValue({ invoke }),
+			withConfig: vi.fn().mockReturnValue({ invoke, streamEvents: stream }),
 		});
+		ctx.isStreaming.mockReturnValue(streaming);
 
 		let response: EngineResponse<RequestResponseMetadata> | undefined;
 		for (let i = 0; i < rounds.length + 2; i++) {
@@ -130,7 +147,7 @@ describe('runAgent - chat memory across tool-calling rounds', () => {
 				steps: buildSteps(hitl.processedResponse, 0),
 				tools,
 				prompt: mock(),
-				options: { maxIterations: 10, returnIntermediateSteps: false, enableStreaming: false },
+				options: { maxIterations: 10, returnIntermediateSteps: false, enableStreaming: streaming },
 				outputParser: undefined,
 			};
 			const result = await runAgent(
@@ -159,6 +176,31 @@ describe('runAgent - chat memory across tool-calling rounds', () => {
 			'ai:call_a',
 			'tool:call_a',
 			// Without provider signatures, buildSteps gives each parallel call its own AI message
+			'ai:call_b',
+			'tool:call_b',
+			'ai:call_c',
+			'tool:call_c',
+			'ai:Done',
+		]);
+	});
+
+	it('should store every tool-calling round of a streamed turn', async () => {
+		const { invoke } = await runTurn(
+			'Do the thing',
+			[
+				toolRound(['tool_a', 'call_a']),
+				toolRound(['tool_b', 'call_b'], ['tool_c', 'call_c']),
+				finalAnswer('Done'),
+			],
+			undefined,
+			{ streaming: true },
+		);
+
+		expect(invoke).not.toHaveBeenCalled();
+		expect(await storedMessages()).toEqual([
+			'human:Do the thing',
+			'ai:call_a',
+			'tool:call_a',
 			'ai:call_b',
 			'tool:call_b',
 			'ai:call_c',
