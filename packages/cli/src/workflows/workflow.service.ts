@@ -1318,7 +1318,7 @@ export class WorkflowService {
 		// races — accepted, because both outcomes degrade gracefully (the approval
 		// stands and auto-publish reports `failed`).`.
 		if (versionIdToActivate !== previousActiveVersionId) {
-			await this.workflowPublishGuard.assertCanPublish(workflowId);
+			await this.workflowPublishGuard.assertCanPublish(workflowId, versionIdToActivate);
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {

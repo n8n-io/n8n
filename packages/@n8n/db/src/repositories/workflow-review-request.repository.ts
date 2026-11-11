@@ -1,6 +1,8 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
+import { chunkIds } from '../utils/chunk-ids';
+
 import { BaseRepository } from './base-repository';
 import { WorkflowHistory } from '../entities/workflow-history';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
@@ -167,5 +169,59 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.andWhere('request.state = :state', { state })
 			.orderBy('request.createdAt', 'DESC')
 			.getOne();
+	}
+
+	/**
+	 * Keys of `workflowId:versionId` that an approved review already covers.
+	 * An approved review satisfies publishing or promotion of that exact version.
+	 */
+	async findApprovedVersionKeys(
+		workflowIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Set<string>> {
+		const keys = new Set<string>();
+		if (workflowIds.length === 0) return keys;
+
+		const decision: WorkflowReviewRequestDecision = 'approved';
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.managerFor(ctx)
+				.createQueryBuilder(WorkflowReviewRequestWorkflow, 'requestWorkflow')
+				.innerJoin(
+					WorkflowReviewRequest,
+					'request',
+					'request.id = requestWorkflow.workflowReviewRequestId',
+				)
+				.select('requestWorkflow.workflowId', 'workflowId')
+				.addSelect('requestWorkflow.workflowVersionId', 'workflowVersionId')
+				.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+				.andWhere('request.decision = :decision', { decision })
+				.andWhere('requestWorkflow.workflowVersionId IS NOT NULL')
+				.getRawMany<{ workflowId: string; workflowVersionId: string }>();
+			for (const row of rows) keys.add(`${row.workflowId}:${row.workflowVersionId}`);
+		}
+		return keys;
+	}
+
+	/** Workflows in the set that have an open review. */
+	async findWorkflowIdsWithOpenReview(workflowIds: string[]): Promise<Set<string>> {
+		const open = new Set<string>();
+		if (workflowIds.length === 0) return open;
+
+		const state: WorkflowReviewRequestState = 'open';
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.managerFor({})
+				.createQueryBuilder(WorkflowReviewRequest, 'request')
+				.innerJoin(
+					WorkflowReviewRequestWorkflow,
+					'requestWorkflow',
+					'requestWorkflow.workflowReviewRequestId = request.id',
+				)
+				.select('requestWorkflow.workflowId', 'workflowId')
+				.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+				.andWhere('request.state = :state', { state })
+				.getRawMany<{ workflowId: string }>();
+			for (const row of rows) open.add(row.workflowId);
+		}
+		return open;
 	}
 }

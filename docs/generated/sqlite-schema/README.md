@@ -118,7 +118,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
-| [project](project.md) | 9 |  | table |
+| [project](project.md) | 11 |  | table |
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
@@ -167,7 +167,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [webhook_entity](webhook_entity.md) | 6 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
-| [workflow_entity](workflow_entity.md) | 20 |  | table |
+| [workflow_entity](workflow_entity.md) | 22 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
 | [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
@@ -1613,6 +1613,8 @@ erDiagram
   TEXT icon
   varchar_36_ id PK
   varchar_255_ name
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -2118,6 +2120,8 @@ erDiagram
   TEXT nodes
   varchar_36_ parentFolderId FK
   TEXT pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   TEXT settings
   varchar sourceWorkflowId
   TEXT staticData

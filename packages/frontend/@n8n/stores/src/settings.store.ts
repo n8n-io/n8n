@@ -327,7 +327,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		inbox.availableTypes = inbox.availableTypes.filter((type) => type !== 'workflow_review');
 		inbox.failedTypes = inbox.failedTypes.filter((type) => type !== 'workflow_review');
 		if (
-			policy.enabled &&
+			(policy.enabled || policy.promotionReviewsEnabled) &&
 			isEnterpriseFeatureEnabled.value.workflowReviews &&
 			isModuleActive('workflow-reviews')
 		) {

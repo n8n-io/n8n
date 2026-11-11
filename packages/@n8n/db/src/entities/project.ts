@@ -34,6 +34,14 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ type: 'json', nullable: false, default: '[]' })
 	customTelemetryTags: Array<{ key: string; value: string }>;
 
+	/** When true, workflows in this project need an approved review before publishing. */
+	@Column({ default: false })
+	publishingNeedsApproval: boolean;
+
+	/** When true, workflows in this project need an approved review before promotion. */
+	@Column({ default: false })
+	promotingNeedsApproval: boolean;
+
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];
 

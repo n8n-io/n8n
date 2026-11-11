@@ -45,6 +45,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
+import type { WorkflowReviewEnforcementService } from '@/modules/workflow-reviews.ee/workflow-review-enforcement.service';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -236,6 +237,7 @@ beforeEach(async () => {
 		Container.get(PromotionReviewsService),
 		mock<EventService>(),
 		logger,
+		mock<WorkflowReviewEnforcementService>(),
 	);
 	Container.set(PromotionsService, service);
 });

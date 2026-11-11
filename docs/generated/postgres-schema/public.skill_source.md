@@ -127,6 +127,8 @@ erDiagram
   json icon
   varchar_36_ id
   varchar_255_ name
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }

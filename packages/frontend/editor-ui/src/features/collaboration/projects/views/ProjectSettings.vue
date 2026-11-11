@@ -28,6 +28,7 @@ import type { TableOptions } from '@n8n/design-system';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectReviewPolicySection from '../components/ProjectReviewPolicySection.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -806,6 +807,11 @@ onMounted(async () => {
 					/>
 				</fieldset>
 			</template>
+
+			<ProjectReviewPolicySection
+				v-if="canUpdateProject"
+				:project-id="projectsStore.currentProjectId"
+			/>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 

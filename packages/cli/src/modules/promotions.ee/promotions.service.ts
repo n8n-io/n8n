@@ -28,6 +28,7 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { WorkflowReviewEnforcementService } from '@/modules/workflow-reviews.ee/workflow-review-enforcement.service';
 
 import {
 	PackageDirectoryInventoryReader,
@@ -172,6 +173,7 @@ export class PromotionsService {
 		private readonly reviewsService: PromotionReviewsService,
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
+		private readonly reviewEnforcement: WorkflowReviewEnforcementService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -229,6 +231,10 @@ export class PromotionsService {
 		actor: User,
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
+		await this.reviewEnforcement.assertCanPromoteWhenAvailable(async () => {
+			const projectIds = await this.projectRepository.findTeamProjectIds();
+			return await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects(projectIds);
+		});
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		return await this.trackPromote(
 			input,
@@ -607,6 +613,7 @@ export class PromotionsService {
 	): Promise<PromotePackageResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
+		await this.reviewEnforcement.assertCanPromote(workflowIds);
 
 		// Resolve like the change preview does, so the promote pushes to the environment
 		// the user previewed. resolveForProject validates the project and environment too.

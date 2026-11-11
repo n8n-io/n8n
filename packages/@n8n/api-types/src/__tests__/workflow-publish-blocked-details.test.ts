@@ -28,6 +28,13 @@ describe('workflow publication blocker details', () => {
 		},
 	);
 
+	test('accepts approval_required without a review request ID', () => {
+		const details = { reason: 'approval_required' as const };
+
+		expect(workflowPublishBlockedDetailsSchema.parse(details)).toEqual(details);
+		expect(isWorkflowPublishBlockedDetails(details)).toBe(true);
+	});
+
 	test.each(['insufficient_api_key_scope', 'insufficient_permissions'] as const)(
 		'accepts the "%s" reason on its own, and with the saved version',
 		(reason) => {

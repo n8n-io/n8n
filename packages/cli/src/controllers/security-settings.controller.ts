@@ -62,13 +62,11 @@ export class SecuritySettingsController {
 				req.user,
 			);
 
-		if (dto.workflowReviews?.enabled !== undefined) {
-			const before = (await this.workflowReviewPolicyService.get()).enabled;
-			const after = dto.workflowReviews.enabled;
-			updatedSettings.workflowReviews = { enabled: after };
-			if (before !== after) {
-				const workflowReviews = await this.workflowReviewPolicyService.set(after);
-				updatedSettings.workflowReviews = workflowReviews;
+		if (dto.workflowReviews !== undefined) {
+			const before = await this.workflowReviewPolicyService.get();
+			const workflowReviews = await this.workflowReviewPolicyService.update(dto.workflowReviews);
+			updatedSettings.workflowReviews = workflowReviews;
+			if (before.enabled !== workflowReviews.enabled) {
 				this.securitySettingsService.emitInstancePolicyUpdated(req.user, {
 					settingName: 'workflow_reviews',
 					value: workflowReviews.enabled,

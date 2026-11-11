@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 const REVIEW_REASONS = ['review_pending', 'changes_requested'] as const;
+const APPROVAL_REASONS = ['approval_required'] as const;
 const PERMISSION_REASONS = ['insufficient_api_key_scope', 'insufficient_permissions'] as const;
 
 /** Exposed separately because the refined schema below is a `ZodEffects` and has no `shape`. */
 export const workflowPublishBlockedDetailsShape = {
-	reason: z.enum([...REVIEW_REASONS, ...PERMISSION_REASONS]),
+	reason: z.enum([...REVIEW_REASONS, ...APPROVAL_REASONS, ...PERMISSION_REASONS]),
 	workflowReviewRequestId: z.string().min(1).optional(),
 	/** The version that was saved as a draft but not published, when the caller wrote one. */
 	versionId: z.string().min(1).optional(),

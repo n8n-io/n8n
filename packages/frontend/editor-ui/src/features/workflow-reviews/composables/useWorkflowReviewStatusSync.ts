@@ -14,12 +14,12 @@ import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/review
 export function useWorkflowReviewStatusSync(workflowId: MaybeRefOrGetter<string | undefined>) {
 	const pushStore = usePushConnectionStore();
 	const reviewStatusStore = useWorkflowReviewStatusStore();
-	const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+	const { isWorkflowReviewsEnabled, isPromotionReviewsEnabled } = useWorkflowReviewsFeature();
 	const { onDocumentVisible } = useDocumentVisibility();
 
 	async function refetch() {
 		// Re-check the feature gate on every call — it can be disabled mid-session.
-		if (!isWorkflowReviewsEnabled.value) return;
+		if (!isWorkflowReviewsEnabled.value && !isPromotionReviewsEnabled.value) return;
 
 		const id = toValue(workflowId);
 		if (!id) return;

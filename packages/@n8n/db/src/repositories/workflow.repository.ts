@@ -2234,4 +2234,85 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		return !!workflow?.activeVersionId;
 	}
+
+	/**
+	 * Approval flags for the workflows and their owning projects.
+	 * A workflow without an owner row is omitted.
+	 */
+	async findReviewRequirementRows(workflowIds: string[]): Promise<WorkflowReviewRequirementRow[]> {
+		if (workflowIds.length === 0) return [];
+
+		const rows: WorkflowReviewRequirementRow[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			const batch = await this.createQueryBuilder('workflow')
+				.innerJoin('workflow.shared', 'shared', 'shared.role = :ownerRole', {
+					ownerRole: 'workflow:owner',
+				})
+				.innerJoin('shared.project', 'project')
+				.select('workflow.id', 'id')
+				.addSelect('workflow.versionId', 'versionId')
+				.addSelect('workflow.publishingNeedsApproval', 'publishingNeedsApproval')
+				.addSelect('workflow.promotingNeedsApproval', 'promotingNeedsApproval')
+				.addSelect('project.id', 'projectId')
+				.addSelect('project.publishingNeedsApproval', 'projectPublishingNeedsApproval')
+				.addSelect('project.promotingNeedsApproval', 'projectPromotingNeedsApproval')
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.getRawMany<WorkflowReviewRequirementRawRow>();
+			for (const row of batch) rows.push(toReviewRequirementRow(row));
+		}
+		return rows;
+	}
+
+	async setReviewRequirements(
+		workflowId: string,
+		patch: { publishingNeedsApproval?: boolean; promotingNeedsApproval?: boolean },
+	): Promise<void> {
+		const update: { publishingNeedsApproval?: boolean; promotingNeedsApproval?: boolean } = {};
+		if (patch.publishingNeedsApproval !== undefined) {
+			update.publishingNeedsApproval = patch.publishingNeedsApproval;
+		}
+		if (patch.promotingNeedsApproval !== undefined) {
+			update.promotingNeedsApproval = patch.promotingNeedsApproval;
+		}
+		if (Object.keys(update).length === 0) return;
+		await this.update({ id: workflowId }, update);
+	}
+}
+
+export type WorkflowReviewRequirementRow = {
+	id: string;
+	versionId: string;
+	projectId: string;
+	publishingNeedsApproval: boolean;
+	promotingNeedsApproval: boolean;
+	projectPublishingNeedsApproval: boolean;
+	projectPromotingNeedsApproval: boolean;
+};
+
+type WorkflowReviewRequirementRawRow = {
+	id: string;
+	versionId: string;
+	projectId: string;
+	publishingNeedsApproval: boolean | number | string | null;
+	promotingNeedsApproval: boolean | number | string | null;
+	projectPublishingNeedsApproval: boolean | number | string | null;
+	projectPromotingNeedsApproval: boolean | number | string | null;
+};
+
+function reviewFlag(value: boolean | number | string | null): boolean {
+	return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function toReviewRequirementRow(
+	row: WorkflowReviewRequirementRawRow,
+): WorkflowReviewRequirementRow {
+	return {
+		id: row.id,
+		versionId: row.versionId,
+		projectId: row.projectId,
+		publishingNeedsApproval: reviewFlag(row.publishingNeedsApproval),
+		promotingNeedsApproval: reviewFlag(row.promotingNeedsApproval),
+		projectPublishingNeedsApproval: reviewFlag(row.projectPublishingNeedsApproval),
+		projectPromotingNeedsApproval: reviewFlag(row.projectPromotingNeedsApproval),
+	};
 }

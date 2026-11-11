@@ -73,6 +73,8 @@ erDiagram
   TEXT nodes
   varchar_36_ parentFolderId FK
   TEXT pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   TEXT settings
   varchar sourceWorkflowId
   TEXT staticData

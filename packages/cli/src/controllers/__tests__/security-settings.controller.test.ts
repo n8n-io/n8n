@@ -142,7 +142,7 @@ describe('SecuritySettingsController', () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
+			workflowReviewPolicyService.update.mockResolvedValue({ enabled: true });
 
 			const result = await controller.updateSecuritySettings(
 				req,
@@ -150,7 +150,7 @@ describe('SecuritySettingsController', () => {
 				dto({ workflowReviews: { enabled: true } }),
 			);
 
-			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({ enabled: true });
 			expect(result).toMatchObject({ workflowReviews: { enabled: true } });
 			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(req.user, {
 				settingName: 'workflow_reviews',
@@ -162,7 +162,7 @@ describe('SecuritySettingsController', () => {
 			await expect(
 				controller.updateSecuritySettings(req, mock(), dto({ workflowReviews: { enabled: true } })),
 			).rejects.toThrow(ForbiddenError);
-			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
+			expect(workflowReviewPolicyService.update).not.toHaveBeenCalled();
 		});
 	});
 });

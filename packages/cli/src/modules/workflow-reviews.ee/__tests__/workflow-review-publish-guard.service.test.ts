@@ -1,37 +1,50 @@
-import type { WorkflowReviewRequest, WorkflowReviewRequestRepository } from '@n8n/db';
+import type {
+	WorkflowRepository,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 
+import type { WorkflowReviewEnforcementService } from '../workflow-review-enforcement.service';
 import type { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewPublishGuard } from '../workflow-review-publish-guard.service';
 
 describe('WorkflowReviewPublishGuard', () => {
 	const featureGate = mock<WorkflowReviewFeatureGate>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
-	const guard = new WorkflowReviewPublishGuard(featureGate, requestRepository);
+	const enforcement = mock<WorkflowReviewEnforcementService>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const guard = new WorkflowReviewPublishGuard(
+		featureGate,
+		requestRepository,
+		enforcement,
+		workflowRepository,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		enforcement.publishingRequired.mockResolvedValue(false);
 	});
 
-	test('does not query reviews when workflow reviews are unavailable', async () => {
-		featureGate.isAvailable.mockResolvedValue(false);
+	test('does not query reviews when publishing reviews are off', async () => {
+		featureGate.isPublishingEnabled.mockResolvedValue(false);
 
 		await expect(guard.assertCanPublish('workflow-1')).resolves.toBeUndefined();
 
 		expect(requestRepository.findOpenRequestForWorkflow).not.toHaveBeenCalled();
 	});
 
-	test('allows publication when the workflow has no open review', async () => {
-		featureGate.isAvailable.mockResolvedValue(true);
+	test('allows publication when the workflow has no open review and approval is not required', async () => {
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
 		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
 
 		await expect(guard.assertCanPublish('workflow-1')).resolves.toBeUndefined();
 	});
 
 	test('blocks publication while a review is waiting for a decision', async () => {
-		featureGate.isAvailable.mockResolvedValue(true);
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
 		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(
 			mock<WorkflowReviewRequest>({ id: 'review-1', decision: 'pending' }),
 		);
@@ -46,7 +59,7 @@ describe('WorkflowReviewPublishGuard', () => {
 	});
 
 	test('explains when requested changes are blocking publication', async () => {
-		featureGate.isAvailable.mockResolvedValue(true);
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
 		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(
 			mock<WorkflowReviewRequest>({ id: 'review-2', decision: 'changes_requested' }),
 		);
@@ -61,7 +74,7 @@ describe('WorkflowReviewPublishGuard', () => {
 	});
 
 	test('treats an unfamiliar open-review decision as still waiting for review', async () => {
-		featureGate.isAvailable.mockResolvedValue(true);
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
 		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(
 			mock<WorkflowReviewRequest>({
 				id: 'review-3',
@@ -77,5 +90,27 @@ describe('WorkflowReviewPublishGuard', () => {
 				},
 			}),
 		);
+	});
+
+	test('blocks publication when this version has no approved review', async () => {
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
+		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
+		enforcement.publishingRequired.mockResolvedValue(true);
+		enforcement.hasApprovedReview.mockResolvedValue(false);
+
+		await expect(guard.assertCanPublish('workflow-1', 'version-1')).rejects.toMatchObject({
+			httpStatusCode: 409,
+			details: { reason: 'approval_required' },
+		});
+	});
+
+	test('allows publication when an approved review covers this version', async () => {
+		featureGate.isPublishingEnabled.mockResolvedValue(true);
+		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
+		enforcement.publishingRequired.mockResolvedValue(true);
+		enforcement.hasApprovedReview.mockResolvedValue(true);
+
+		await expect(guard.assertCanPublish('workflow-1', 'version-1')).resolves.toBeUndefined();
+		expect(enforcement.hasApprovedReview).toHaveBeenCalledWith('workflow-1', 'version-1');
 	});
 });

@@ -118,7 +118,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
-| [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project](public.project.md) | 11 |  | BASE TABLE |
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
@@ -167,7 +167,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
-| [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
+| [public.workflow_entity](public.workflow_entity.md) | 22 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
 | [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
@@ -1627,6 +1627,8 @@ erDiagram
   json icon
   varchar_36_ id
   varchar_255_ name
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -2130,6 +2132,8 @@ erDiagram
   json nodes
   varchar_36_ parentFolderId FK
   json pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   json settings
   varchar sourceWorkflowId
   json staticData

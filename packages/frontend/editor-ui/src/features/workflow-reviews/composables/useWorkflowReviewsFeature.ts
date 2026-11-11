@@ -18,8 +18,16 @@ export const useWorkflowReviewsFeature = () => {
 		);
 	});
 
+	const isPromotionReviewsEnabled = computed(() => {
+		return (
+			isWorkflowReviewsAvailable.value &&
+			settingsStore.settings.workflowReviews?.promotionReviewsEnabled === true
+		);
+	});
+
 	return {
 		isWorkflowReviewsAvailable,
 		isWorkflowReviewsEnabled,
+		isPromotionReviewsEnabled,
 	};
 };

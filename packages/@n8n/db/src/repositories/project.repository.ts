@@ -416,6 +416,36 @@ export class ProjectRepository extends BaseRepository<Project> {
 		if (!row?.email) return null;
 		return { email: row.email, firstName: row.firstName ?? null };
 	}
+
+	/** The project's own approval flags, or null when the project does not exist. */
+	async getReviewRequirements(
+		projectId: string,
+	): Promise<{ publishingNeedsApproval: boolean; promotingNeedsApproval: boolean } | null> {
+		const project = await this.findOne({
+			select: ['id', 'publishingNeedsApproval', 'promotingNeedsApproval'],
+			where: { id: projectId },
+		});
+		if (!project) return null;
+		return {
+			publishingNeedsApproval: project.publishingNeedsApproval,
+			promotingNeedsApproval: project.promotingNeedsApproval,
+		};
+	}
+
+	async setReviewRequirements(
+		projectId: string,
+		patch: { publishingNeedsApproval?: boolean; promotingNeedsApproval?: boolean },
+	): Promise<void> {
+		const update: { publishingNeedsApproval?: boolean; promotingNeedsApproval?: boolean } = {};
+		if (patch.publishingNeedsApproval !== undefined) {
+			update.publishingNeedsApproval = patch.publishingNeedsApproval;
+		}
+		if (patch.promotingNeedsApproval !== undefined) {
+			update.promotingNeedsApproval = patch.promotingNeedsApproval;
+		}
+		if (Object.keys(update).length === 0) return;
+		await this.update({ id: projectId }, update);
+	}
 }
 
 export interface ProjectListOptions {

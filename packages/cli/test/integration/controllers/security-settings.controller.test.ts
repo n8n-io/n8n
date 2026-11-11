@@ -138,7 +138,7 @@ describe('SecuritySettingsController', () => {
 			testServer.license.enable('feat:workflowReviews');
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
+			workflowReviewPolicyService.update.mockResolvedValue({ enabled: true });
 		});
 
 		it('GET should include workflowReviews when licensed', async () => {
@@ -156,7 +156,7 @@ describe('SecuritySettingsController', () => {
 				.expect(200);
 
 			expect(response.body.data).toEqual({ workflowReviews: { enabled: true } });
-			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({ enabled: true });
 			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(
 				expect.objectContaining({ id: expect.any(String) }),
 				{ settingName: 'workflow_reviews', value: true },
@@ -171,7 +171,7 @@ describe('SecuritySettingsController', () => {
 				.send({ workflowReviews: { enabled: true } })
 				.expect(403);
 
-			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
+			expect(workflowReviewPolicyService.update).not.toHaveBeenCalled();
 		});
 	});
 });

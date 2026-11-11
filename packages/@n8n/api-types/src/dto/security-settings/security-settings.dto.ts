@@ -10,6 +10,16 @@ const redactionEnforcementFieldSchema = z.object({
 
 const workflowReviewsFieldSchema = workflowReviewsPolicySchema;
 
+/** Update body. Defaults must not fill omitted flags, or a partial update would turn them off. */
+const workflowReviewsUpdateSchema = z
+	.object({
+		enabled: z.boolean().optional(),
+		publishingNeedsApproval: z.boolean().optional(),
+		promotionReviewsEnabled: z.boolean().optional(),
+		promotingNeedsApproval: z.boolean().optional(),
+	})
+	.strict();
+
 export class SecuritySettingsDto extends Z.class({
 	personalSpacePublishing: z.boolean(),
 	personalSpaceSharing: z.boolean(),
@@ -25,5 +35,5 @@ export class UpdateSecuritySettingsDto extends Z.class({
 	personalSpacePublishing: z.boolean().optional(),
 	personalSpaceSharing: z.boolean().optional(),
 	redactionEnforcement: redactionEnforcementFieldSchema.optional(),
-	workflowReviews: workflowReviewsFieldSchema.partial().optional(),
+	workflowReviews: workflowReviewsUpdateSchema.optional(),
 }) {}

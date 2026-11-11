@@ -17,6 +17,8 @@
 | nodes | json |  | false |  |  |  |
 | parentFolderId | varchar(36) | NULL::character varying | true |  | [public.folder](public.folder.md) |  |
 | pinData | json |  | true |  |  |  |
+| promotingNeedsApproval | boolean | false | false |  |  | When true, this workflow needs an approved review before it can be promoted. |
+| publishingNeedsApproval | boolean | false | false |  |  | When true, this workflow needs an approved review before it can be published. |
 | settings | json |  | true |  |  |  |
 | sourceWorkflowId | varchar |  | true |  |  |  |
 | staticData | json |  | true |  |  |  |
@@ -40,6 +42,8 @@
 | workflow_entity_nodeGroups_not_null | n | NOT NULL "nodeGroups" |
 | workflow_entity_nodes_not_null | n | NOT NULL nodes |
 | workflow_entity_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| workflow_entity_promotingNeedsApproval_not_null | n | NOT NULL "promotingNeedsApproval" |
+| workflow_entity_publishingNeedsApproval_not_null | n | NOT NULL "publishingNeedsApproval" |
 | workflow_entity_triggerCount_not_null | n | NOT NULL "triggerCount" |
 | workflow_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_entity_versionCounter_not_null | n | NOT NULL "versionCounter" |
@@ -110,6 +114,8 @@ erDiagram
   json nodes
   varchar_36_ parentFolderId FK
   json pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   json settings
   varchar sourceWorkflowId
   json staticData

@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
  * to block. With no provider registered, publishing is allowed.
  */
 export interface WorkflowPublishGuard {
-	assertCanPublish(workflowId: string): Promise<void>;
+	assertCanPublish(workflowId: string, versionId?: string): Promise<void>;
 }
 
 @Service()
@@ -17,7 +17,7 @@ export class WorkflowPublishGuardProxy implements WorkflowPublishGuard {
 		this.provider = provider;
 	}
 
-	async assertCanPublish(workflowId: string): Promise<void> {
-		await this.provider?.assertCanPublish(workflowId);
+	async assertCanPublish(workflowId: string, versionId?: string): Promise<void> {
+		await this.provider?.assertCanPublish(workflowId, versionId);
 	}
 }

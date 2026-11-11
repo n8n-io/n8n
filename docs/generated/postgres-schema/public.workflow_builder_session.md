@@ -87,6 +87,8 @@ erDiagram
   json nodes
   varchar_36_ parentFolderId FK
   json pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   json settings
   varchar sourceWorkflowId
   json staticData

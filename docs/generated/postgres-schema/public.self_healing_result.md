@@ -141,6 +141,8 @@ erDiagram
   json icon
   varchar_36_ id
   varchar_255_ name
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -176,6 +178,8 @@ erDiagram
   json nodes
   varchar_36_ parentFolderId FK
   json pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   json settings
   varchar sourceWorkflowId
   json staticData

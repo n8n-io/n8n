@@ -75,6 +75,8 @@ erDiagram
   TEXT icon
   varchar_36_ id PK
   varchar_255_ name
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -92,6 +94,8 @@ erDiagram
   TEXT nodes
   varchar_36_ parentFolderId FK
   TEXT pinData
+  boolean promotingNeedsApproval
+  boolean publishingNeedsApproval
   TEXT settings
   varchar sourceWorkflowId
   TEXT staticData

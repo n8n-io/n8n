@@ -49,6 +49,14 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: false })
 	isArchived: boolean;
 
+	/** When true, this workflow needs an approved review before it can be published. */
+	@Column({ default: false })
+	publishingNeedsApproval: boolean;
+
+	/** When true, this workflow needs an approved review before it can be promoted. */
+	@Column({ default: false })
+	promotingNeedsApproval: boolean;
+
 	@JsonColumn()
 	nodes: INode[];
 

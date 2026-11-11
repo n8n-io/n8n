@@ -31,6 +31,7 @@ import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -39,6 +40,7 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
+const { isEnabled: promotionsEnabled } = usePromotionsEnabled();
 const posthogStore = usePostHog();
 
 const isRateLimitSettingsEnabled = computed(() =>
@@ -91,6 +93,9 @@ const { state, isReady, error } = useAsyncState(async () => {
 		managedByEnv: settings.managedByEnv,
 		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
 		workflowReviewsEnabled: settings.workflowReviews?.enabled ?? false,
+		publishingNeedsApproval: settings.workflowReviews?.publishingNeedsApproval === true,
+		promotionReviewsEnabled: settings.workflowReviews?.promotionReviewsEnabled === true,
+		promotingNeedsApproval: settings.workflowReviews?.promotingNeedsApproval === true,
 	};
 }, undefined);
 
@@ -395,14 +400,17 @@ const sharingCountText = computed(() => {
 		<N8nSettingsSection
 			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
+			:description="i18n.baseText('settings.security.workflowReviews.description')"
 			data-test-id="security-workflow-reviews-section"
 		>
-			<N8nSettingsRowGroup>
-				<WorkflowReviewsSection
-					:initial-enabled="state.workflowReviewsEnabled"
-					:managed-by-env="isManagedByEnv"
-				/>
-			</N8nSettingsRowGroup>
+			<WorkflowReviewsSection
+				:initial-enabled="state.workflowReviewsEnabled"
+				:initial-publishing-needs-approval="state.publishingNeedsApproval"
+				:initial-promotion-reviews-enabled="state.promotionReviewsEnabled"
+				:initial-promoting-needs-approval="state.promotingNeedsApproval"
+				:show-promotion="promotionsEnabled"
+				:managed-by-env="isManagedByEnv"
+			/>
 		</N8nSettingsSection>
 
 		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />

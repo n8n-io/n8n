@@ -59,6 +59,7 @@ responses:
               enum:
                 - review_pending
                 - changes_requested
+                - approval_required
             workflowReviewRequestId:
               type: string
           required:

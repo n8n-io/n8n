@@ -53,14 +53,17 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
 import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
+import { PROMOTION_PREVIEW_VIEWS } from '@n8n/frontend-module-promotions';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
+import WorkflowApprovalRequestDialog from '@/features/workflow-reviews/components/WorkflowApprovalRequestDialog.vue';
+import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
 import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
 import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
 import WorkflowUpdateReviewDialog from '@/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue';
 import WorkflowReviewStatusBanner from '@/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue';
-import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
@@ -104,13 +107,24 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
-const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
-const reviewRequiredStore = useReviewRequiredStore();
+const { isWorkflowReviewsEnabled, isPromotionReviewsEnabled } = useWorkflowReviewsFeature();
+const { isEnabled: promotionsEnabled } = usePromotionsEnabled();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 
-const effectiveReviewRequired = computed(
-	() => reviewStatusStore.hasOpenReview(props.id) || reviewRequiredStore.isReviewRequired(props.id),
+const publishingNeedsApproval = computed(
+	() =>
+		isWorkflowReviewsEnabled.value &&
+		(settingsStore.settings.workflowReviews?.publishingNeedsApproval === true ||
+			reviewPrototypeState.projectPublishing ||
+			reviewPrototypeState.workflowPublishing[props.id] === true),
+);
+const promotingNeedsApproval = computed(
+	() =>
+		isPromotionReviewsEnabled.value &&
+		(settingsStore.settings.workflowReviews?.promotingNeedsApproval === true ||
+			reviewPrototypeState.projectPromoting ||
+			reviewPrototypeState.workflowPromoting[props.id] === true),
 );
 
 const isNamedVersionsEnabled = computed(
@@ -118,8 +132,18 @@ const isNamedVersionsEnabled = computed(
 );
 
 const showWorkflowReviewControls = computed(
-	() => isWorkflowReviewsEnabled.value && !props.isNewWorkflow,
+	() =>
+		!props.isNewWorkflow &&
+		(isWorkflowReviewsEnabled.value ||
+			(isPromotionReviewsEnabled.value && promotionsEnabled.value)),
 );
+
+const showReviewDialogs = computed(
+	() => isWorkflowReviewsEnabled.value || isPromotionReviewsEnabled.value,
+);
+
+const showApprovalDialog = ref(false);
+const approvalIntent = ref<'publish' | 'promote'>('publish');
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
@@ -416,8 +440,9 @@ const onPublishButtonClick = async () => {
 			return;
 		}
 
-		if (effectiveReviewRequired.value) {
-			showSubmitForReviewDialog.value = true;
+		if (publishingNeedsApproval.value) {
+			approvalIntent.value = 'publish';
+			showApprovalDialog.value = true;
 			return;
 		}
 
@@ -572,6 +597,14 @@ const publishButtonConfig = computed(() => {
 	return configs[workflowPublishState.value];
 });
 
+const publishButtonLabel = computed(() => {
+	const text = publishButtonConfig.value.text;
+	if (publishingNeedsApproval.value && text === i18n.baseText('workflows.publish')) {
+		return i18n.baseText('workflowReviews.requestToPublish');
+	}
+	return text;
+});
+
 const shouldHidePublishButton = computed(() => {
 	if (props.isNewWorkflow) return false;
 	return props.isArchived || (!hasUpdatePermission.value && !hasPublishPermission.value);
@@ -637,6 +670,7 @@ const latestPublishDate = computed(() => {
 
 const enum VERSION_ACTIONS {
 	PUBLISH = 'publish',
+	PROMOTE = 'promote',
 	NAME_VERSION = 'name-version',
 	PUBLISH_TIMELINE = 'publish-timeline',
 	UNPUBLISH = 'unpublish',
@@ -646,11 +680,23 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	const actions: Array<ActionDropdownItem<VERSION_ACTIONS>> = [
 		{
 			id: VERSION_ACTIONS.PUBLISH,
-			label: i18n.baseText('workflows.publish'),
+			label: publishingNeedsApproval.value
+				? i18n.baseText('workflowReviews.requestToPublish')
+				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
 		},
 	];
+
+	if (promotionsEnabled.value) {
+		actions.push({
+			id: VERSION_ACTIONS.PROMOTE,
+			label: promotingNeedsApproval.value
+				? i18n.baseText('workflowReviews.requestToPromote')
+				: i18n.baseText('workflowReviews.promoteChanges'),
+			disabled: props.isNewWorkflow || !hasUpdatePermission.value || collaborationReadOnly.value,
+		});
+	}
 
 	if (isNamedVersionsEnabled.value) {
 		actions.push({
@@ -771,10 +817,36 @@ const onUnpublish = () => {
 	});
 };
 
+const onPromote = async () => {
+	if (!(await ensureWorkflowSaved())) return;
+
+	if (isPromotionReviewsEnabled.value && reviewStatusStore.hasOpenReview(props.id)) {
+		if (reviewContainsSavedVersion.value) return;
+		showUpdateReviewDialog.value = true;
+		return;
+	}
+
+	if (promotingNeedsApproval.value) {
+		approvalIntent.value = 'promote';
+		showApprovalDialog.value = true;
+		return;
+	}
+
+	const projectId = projectStore.currentProjectId;
+	if (!projectId) return;
+	await router.push({
+		name: PROMOTION_PREVIEW_VIEWS.promote,
+		params: { projectId },
+	});
+};
+
 const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 	switch (action) {
 		case VERSION_ACTIONS.PUBLISH:
 			await onPublishButtonClick();
+			break;
+		case VERSION_ACTIONS.PROMOTE:
+			await onPromote();
 			break;
 		case VERSION_ACTIONS.NAME_VERSION:
 			await onNameVersion();
@@ -906,7 +978,7 @@ onBeforeUnmount(() => {
 									workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
 								]"
 							>
-								{{ publishButtonConfig.text }}
+								{{ publishButtonLabel }}
 							</span>
 						</div>
 					</N8nButton>
@@ -929,12 +1001,23 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 					<template v-if="showWorkflowReviewControls" #footer>
-						<WorkflowReviewRequiredToggle :workflow-id="props.id" />
+						<WorkflowReviewRequiredToggle
+							:workflow-id="props.id"
+							:can-edit="hasUpdatePermission && !collaborationReadOnly"
+						/>
 					</template>
 				</N8nActionDropdown>
 			</div>
 		</div>
-		<template v-if="isWorkflowReviewsEnabled">
+		<template v-if="showReviewDialogs">
+			<WorkflowApprovalRequestDialog
+				v-model:open="showApprovalDialog"
+				:intent="approvalIntent"
+				:workflow-id="props.id"
+				:flush-save="flushSaveForReview"
+				@submitted="onReviewSubmitted"
+				@conflict="onReviewConflict"
+			/>
 			<WorkflowPublishChoiceDialog
 				v-model:open="showPublishChoiceDialog"
 				@publish="openPublishModal"

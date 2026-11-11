@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { WorkflowReviewEnforcementService } from '@/modules/workflow-reviews.ee/workflow-review-enforcement.service';
 
 import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 
@@ -207,6 +208,7 @@ describe('PromotionsService', () => {
 			reviewsService,
 			eventService,
 			logger,
+			mock<WorkflowReviewEnforcementService>(),
 		);
 		runRepository.insertRun.mockResolvedValue(mock<PromotionRun>({ id: 'run-1' }));
 		reviewsService.openMergeRequest.mockResolvedValue({ warnings: [] });
