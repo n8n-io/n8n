@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
+
 ## Configuration add actions
 
 Show a leading `plus` icon beside empty-state configuration add labels. Use

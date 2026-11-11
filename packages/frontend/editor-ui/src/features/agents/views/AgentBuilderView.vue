@@ -1104,15 +1104,6 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
-// Knowledge, Executions and Settings all read agent-scoped endpoints, so they
-// have nothing to show until the agent exists. Configuring the agent is what
-// creates it, so that is the only tab worth offering first.
-const visibleMainTabOptions = computed(() =>
-	isUnsaved.value
-		? mainTabOptions.value.filter((tab) => tab.value === 'agent')
-		: mainTabOptions.value,
-);
-
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 // Without n8n Chat in the known trigger types, the baseline drops its chip.
 const { withN8nChat } = useN8nChatChannel();
@@ -1208,7 +1199,7 @@ function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boo
 async function onGenerateEvalCases() {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	if (!targetProjectId || !targetAgentId) return;
+	if (!targetProjectId || !targetAgentId || isUnsaved.value) return;
 
 	try {
 		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
@@ -2742,17 +2733,13 @@ const removeAgentUpdateListener = pushConnectionStore.addEventListener(onAgentPu
 // this builder mounted is still honoured — which is the normal case, since the
 // assistant reveals the agent artifact as part of accepting the suggestion.
 watch(
-	[() => agentEvalsStore.pendingEvalsFocus, agentId, visibleMainTabOptions, initialized],
+	[() => agentEvalsStore.pendingEvalsFocus, agentId, mainTabOptions, initialized, isUnsaved],
 	() => {
 		if (!agentEvalsStore.pendingEvalsFocus) return;
-		// Hold the request until initialize() resolves: `isUnsaved` — and so the tab
-		// row — isn't settled before then, so deciding earlier would honour a
-		// request for an agent whose Evals tab turns out to be hidden.
-		if (!initialized.value) return;
-		// Checked against the rendered tab row rather than the flag, so the request
-		// can't select a tab the user has no way to see — `visibleMainTabOptions`
-		// also drops everything but Agent while the agent is still unsaved.
-		if (!visibleMainTabOptions.value.some((option) => option.value === 'evals')) return;
+		// Assistant requests can generate cases, which requires a saved Agent.
+		if (!initialized.value || isUnsaved.value) return;
+		// Keep focus requests pending while the Evals feature flag is off.
+		if (!mainTabOptions.value.some((option) => option.value === 'evals')) return;
 
 		const request = agentEvalsStore.consumeEvalsFocus(agentId.value);
 		if (!request) return;
@@ -3775,7 +3762,7 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:main-tab-options="visibleMainTabOptions"
+					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:saved-description="localConfig?.description ?? ''"
