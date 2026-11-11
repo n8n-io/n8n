@@ -447,7 +447,7 @@ overrides:
   minimatch@9.0.1: 9.0.9
   minimatch@10: 10.2.3
   '@hono/node-server': 1.19.15
-  follow-redirects: 1.16.1
+  follow-redirects: 1.16.0
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   flatted: 3.4.2
