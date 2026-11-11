@@ -101,7 +101,9 @@ const attachments = computed(() =>
 	}),
 );
 
-const resourceAttachments = computed(() => attachments.value.filter((item) => item.type !== 'file'));
+const resourceAttachments = computed(() =>
+	attachments.value.filter((item) => item.type !== 'file'),
+);
 const fileAttachments = computed(() => attachments.value.filter((item) => item.type === 'file'));
 
 /**

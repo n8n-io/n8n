@@ -104,5 +104,4 @@ onBeforeUnmount(() => {
 .attachments {
 	justify-content: inherit;
 }
-
 </style>
