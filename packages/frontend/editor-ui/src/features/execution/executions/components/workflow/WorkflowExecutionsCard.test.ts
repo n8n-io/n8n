@@ -8,6 +8,8 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { computed } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -332,6 +334,37 @@ describe('WorkflowExecutionsCard', () => {
 			const executionTimeInStatus = queryByTestId('execution-time-in-status');
 			expect(executionTimeInStatus).toBeVisible();
 			expect(executionTimeInStatus?.textContent).toContain('for');
+		});
+	});
+
+	describe('engine badge', () => {
+		const renderWithId = (id: string) =>
+			renderComponent({
+				props: {
+					execution: { id, mode: 'manual', status: 'success' } as unknown as ExecutionSummary,
+					workflowPermissions: { execute: true },
+				},
+			});
+
+		test.each([
+			['123', 'v1'],
+			['019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b', 'v2'],
+		])('shows the engine of execution %s with the engine-v2 module active', (id, label) => {
+			mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+				(name) => name === 'engine-v2',
+			);
+
+			const { getByTestId } = renderWithId(id);
+
+			expect(getByTestId('execution-engine-badge')).toHaveTextContent(label);
+		});
+
+		test('shows no engine with the engine-v2 module inactive', () => {
+			mockedStore(useSettingsStore).isModuleActive.mockReturnValue(false);
+
+			const { queryByTestId } = renderWithId('019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b');
+
+			expect(queryByTestId('execution-engine-badge')).not.toBeInTheDocument();
 		});
 	});
 });

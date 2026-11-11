@@ -63,6 +63,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		metadata: [],
 		vote: 'all',
 		workflowVersionId: 'all',
+		engine: 'all',
 	};
 }
 
@@ -84,6 +85,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.workflowVersionId !== 'all') {
 		queryFilter.workflowVersionId = filter.workflowVersionId;
+	}
+
+	if (filter.engine && filter.engine !== 'all') {
+		queryFilter.engine = filter.engine;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -242,6 +247,13 @@ export function hasTrimmedRunData(runData: IRunData) {
  */
 export function isEngineV2ExecutionId(executionId: string): boolean {
 	return UUID_V7_PATTERN.test(executionId);
+}
+
+/** The label of the engine that ran an execution, read from its ID. */
+export function getExecutionEngineLabel(executionId: string): string {
+	return isEngineV2ExecutionId(executionId)
+		? i18n.baseText('executionsList.engine.v2')
+		: i18n.baseText('executionsList.engine.v1');
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

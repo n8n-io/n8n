@@ -47,6 +47,7 @@ const defaultFilterState: ExecutionFilterType = {
 	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
 	workflowVersionId: 'all',
+	engine: 'all',
 };
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({
@@ -193,6 +194,43 @@ describe('ExecutionsFilter', () => {
 		expect(emitted().filterChanged).toEqual([
 			[{ ...defaultFilterState, status: 'error', vote: 'up' }],
 		]);
+	});
+
+	describe('engine', () => {
+		test('filters by engine with the engine-v2 module active', async () => {
+			settingsStore.isModuleActive.mockImplementation((name) => name === 'engine-v2');
+			const { getByTestId, emitted } = renderComponent();
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			const select = getByTestId('executions-filter-engine-select');
+			await userEvent.click(select);
+			const options = Array.from(select.querySelectorAll('li'));
+
+			expect(options.map((option) => option.textContent?.trim())).toEqual([
+				'Any engine',
+				'v1',
+				'v2',
+			]);
+
+			await userEvent.click(options[2]);
+
+			expect(emitted().filterChanged).toEqual([[{ ...defaultFilterState, engine: 'v2' }]]);
+			expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
+
+			await userEvent.click(getByTestId('executions-filter-reset-button'));
+
+			expect(emitted().filterChanged[1]).toEqual([defaultFilterState]);
+		});
+
+		test('hides the engine filter with the engine-v2 module inactive', async () => {
+			settingsStore.isModuleActive.mockReturnValue(false);
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			expect(getByTestId('execution-filter-form')).toBeInTheDocument();
+			expect(queryByTestId('executions-filter-engine-select')).not.toBeInTheDocument();
+		});
 	});
 
 	test('shows annotation filters when advanced filters are enabled', async () => {

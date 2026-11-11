@@ -1,9 +1,13 @@
 import { vi } from 'vitest';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { mockedStore, hoverTooltipTrigger, getTooltip, queryTooltip } from '@/__tests__/utils';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -31,6 +35,14 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 });
 
 describe('GlobalExecutionsListItem', () => {
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isModuleActive.mockReturnValue(false);
+	});
+
 	it('should render the status text for an execution', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -207,6 +219,61 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(globalExecutionsListItemQueuedTooltipRenderSpy).toHaveBeenCalled();
+	});
+
+	describe('engine', () => {
+		const v1Id = '123';
+		const v2Id = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+		const renderWithId = (id: string) =>
+			renderComponent({
+				props: {
+					execution: {
+						status: 'success',
+						id,
+						workflowName: 'Test Workflow',
+					} as unknown as ExecutionSummary,
+					workflowPermissions: {},
+					concurrencyCap: 5,
+				},
+			});
+
+		describe('with the engine-v2 module active', () => {
+			beforeEach(() => {
+				settingsStore.isModuleActive.mockImplementation((name) => name === 'engine-v2');
+			});
+
+			it.each([
+				[v1Id, 'v1'],
+				[v2Id, 'v2'],
+			])('shows the engine badge for execution %s', (id, label) => {
+				const { getByTestId } = renderWithId(id);
+
+				expect(getByTestId('execution-engine-badge')).toHaveTextContent(label);
+			});
+
+			it.each([
+				[v1Id, 'Ran on engine v1'],
+				[v2Id, 'Ran on engine v2'],
+			])('names the engine in the tooltip of execution %s', async (id, text) => {
+				const { getByTestId } = renderWithId(id);
+
+				await hoverTooltipTrigger(getByTestId('execution-id'));
+
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(text));
+			});
+		});
+
+		describe('with the engine-v2 module inactive', () => {
+			it('shows the execution ID without a badge or a tooltip', async () => {
+				const { getByText, queryByTestId } = renderWithId(v2Id);
+
+				await hoverTooltipTrigger(getByText(v2Id));
+
+				expect(queryByTestId('execution-engine-badge')).not.toBeInTheDocument();
+				expect(queryByTestId('execution-id')).not.toBeInTheDocument();
+				expect(queryTooltip()).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	afterEach(() => {

@@ -22,6 +22,9 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import ExecutionEngineBadge from '../ExecutionEngineBadge.vue';
+import { getExecutionEngineLabel } from '../../executions.utils';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -53,6 +56,15 @@ const props = withDefaults(
 const style = useCssModule();
 const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
+const settingsStore = useSettingsStore();
+
+// The engine select in the workflow settings uses the same gate.
+const isEngineV2Active = computed(() => settingsStore.isModuleActive('engine-v2'));
+const engineTooltip = computed(() =>
+	locale.baseText('executionsList.engine.tooltip', {
+		interpolate: { version: getExecutionEngineLabel(props.execution.id) },
+	}),
+);
 
 const isStopping = ref(false);
 
@@ -286,7 +298,13 @@ async function handleActionItemClick(commandData: Command) {
 			<ExecutionsTime v-else :start-time="execution.startedAt ?? execution.createdAt" />
 		</td>
 		<td>
-			<span v-if="execution.id">{{ execution.id }}</span>
+			<template v-if="execution.id && isEngineV2Active">
+				<N8nTooltip :content="engineTooltip" placement="top">
+					<span data-test-id="execution-id">{{ execution.id }}</span>
+				</N8nTooltip>
+				<ExecutionEngineBadge :execution-id="execution.id" class="ml-3xs" />
+			</template>
+			<span v-else-if="execution.id">{{ execution.id }}</span>
 			<span v-if="execution.retryOf">
 				<br />
 				<small> ({{ locale.baseText('executionsList.retryOf') }} {{ execution.retryOf }}) </small>
