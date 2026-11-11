@@ -1,4 +1,4 @@
-import type { PineconeStoreParams } from '@langchain/pinecone';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type {
@@ -11,6 +11,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { getPineconeVectorStore } from '../shared/pinecone';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import {
@@ -104,7 +105,7 @@ async function deleteDocuments(
 	return null;
 }
 
-export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeStore>({
+export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStore>({
 	meta: {
 		displayName: 'ChatHub Pinecone Vector Store',
 		name: 'chatHubVectorStorePinecone',
@@ -138,16 +139,12 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 		);
 		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
-		const client = new Pinecone({ apiKey: credentials.apiKey });
-		const pineconeIndex = client.Index(credentials.pineconeIndex);
-
-		const config: PineconeStoreParams = {
+		const store = await getPineconeVectorStore(embeddings, {
+			apiKey: credentials.apiKey,
+			indexName: credentials.pineconeIndex,
 			namespace: namespaceName,
-			pineconeIndex,
 			filter,
-		};
-
-		const store = await PineconeStore.fromExistingIndex(embeddings, config);
+		});
 
 		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
 		store.similaritySearchVectorWithScore = async (...args) => {

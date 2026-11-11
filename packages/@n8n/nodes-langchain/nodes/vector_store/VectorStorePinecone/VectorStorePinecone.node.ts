@@ -1,4 +1,4 @@
-import type { PineconeStoreParams } from '@langchain/pinecone';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
@@ -7,6 +7,7 @@ import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
+import { getPineconeVectorStore } from '../shared/pinecone';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
@@ -26,7 +27,18 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [pineconeNamespaceField, metadataFilterField],
+		options: [
+			pineconeNamespaceField,
+			metadataFilterField,
+			{
+				displayName: 'Text Field',
+				name: 'textField',
+				type: 'string',
+				default: '',
+				description:
+					'For an index with a document schema: the document field that holds the text. Leave empty to use the "text" field, or else the first text field.',
+			},
+		],
 	},
 ];
 
@@ -50,7 +62,7 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
+export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',
@@ -71,27 +83,26 @@ export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
+	// Document indexes with integrated embedding need the query text. Classic indexes embed
+	// it with the connected model, as before
+	searchByText: true,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
 			extractValue: true,
 		}) as string;
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			pineconeNamespace?: string;
+			textField?: string;
 		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new Pinecone({
+		return await getPineconeVectorStore(embeddings, {
 			apiKey: credentials.apiKey as string,
-		});
-
-		const pineconeIndex = client.Index(index);
-		const config: PineconeStoreParams = {
+			indexName: index,
 			namespace: options.pineconeNamespace ?? undefined,
-			pineconeIndex,
 			filter,
-		};
-
-		return await PineconeStore.fromExistingIndex(embeddings, config);
+			textField: options.textField,
+		});
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {

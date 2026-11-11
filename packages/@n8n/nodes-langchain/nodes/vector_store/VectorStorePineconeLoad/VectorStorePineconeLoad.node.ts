@@ -1,7 +1,4 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { PineconeStoreParams } from '@langchain/pinecone';
-import { PineconeStore } from '@langchain/pinecone';
-import { Pinecone } from '@pinecone-database/pinecone';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -14,6 +11,7 @@ import { logWrapper, getMetadataFiltersValues, metadataFilterField } from '@n8n/
 
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
+import { getPineconeVectorStore } from '../shared/pinecone';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
@@ -97,18 +95,12 @@ export class VectorStorePineconeLoad implements INodeType {
 			itemIndex,
 		)) as Embeddings;
 
-		const client = new Pinecone({
+		const vectorStore = await getPineconeVectorStore(embeddings, {
 			apiKey: credentials.apiKey as string,
-		});
-
-		const pineconeIndex = client.Index(index);
-		const config: PineconeStoreParams = {
+			indexName: index,
 			namespace: namespace || undefined,
-			pineconeIndex,
 			filter: getMetadataFiltersValues(this, itemIndex),
-		};
-
-		const vectorStore = await PineconeStore.fromExistingIndex(embeddings, config);
+		});
 
 		return {
 			response: logWrapper(vectorStore, this),
