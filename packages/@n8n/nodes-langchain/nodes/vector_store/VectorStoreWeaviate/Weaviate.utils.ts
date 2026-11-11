@@ -82,7 +82,12 @@ type WeaviateFilterUnit = {
 	valueGeoCoordinates?: GeoRangeFilter;
 };
 
-export type WeaviateCompositeFilter = { AND: WeaviateFilterUnit[] } | { OR: WeaviateFilterUnit[] };
+type WeaviateFilter = WeaviateFilterUnit | WeaviateCompositeFilter;
+
+export type WeaviateCompositeFilter =
+	| { AND: WeaviateFilter[] }
+	| { OR: WeaviateFilter[] }
+	| { NOT: WeaviateFilter };
 
 function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 	const { path, operator } = filter;
@@ -143,18 +148,26 @@ function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 	throw new OperationalError(`No valid filter value provided for operator: ${operator}`);
 }
 
-export function parseCompositeFilter(
-	filter: WeaviateCompositeFilter | WeaviateFilterUnit,
-): FilterValue {
-	// Handle composite filters (AND/OR)
-	if (typeof filter === 'object' && ('AND' in filter || 'OR' in filter)) {
-		if ('AND' in filter) {
-			return Filters.and(...filter.AND.map(buildFilter));
-		} else if ('OR' in filter) {
-			return Filters.or(...filter.OR.map(buildFilter));
+export function parseCompositeFilter(filter: WeaviateFilter): FilterValue {
+	// AND, OR and NOT can contain other groups, so parse their members recursively
+	if ('AND' in filter) {
+		if (!Array.isArray(filter.AND)) {
+			throw new UserError("'AND' must contain an array of filters.");
 		}
+		return Filters.and(...filter.AND.map(parseCompositeFilter));
+	}
+	if ('OR' in filter) {
+		if (!Array.isArray(filter.OR)) {
+			throw new UserError("'OR' must contain an array of filters.");
+		}
+		return Filters.or(...filter.OR.map(parseCompositeFilter));
+	}
+	if ('NOT' in filter) {
+		if (typeof filter.NOT !== 'object' || filter.NOT === null || Array.isArray(filter.NOT)) {
+			throw new UserError("'NOT' must contain exactly one filter.");
+		}
+		return Filters.not(parseCompositeFilter(filter.NOT));
 	}
 
-	// Handle individual filter units
 	return buildFilter(filter);
 }
