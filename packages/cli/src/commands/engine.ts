@@ -24,6 +24,7 @@ export class Engine extends BaseCommand {
 
 	// The data plane runs the nodes, so it hosts the task broker the Code node's
 	// runners connect to. Same module and env as `n8n start`.
+	// TODO(CET-332): remove once Code nodes run on the sandbox service.
 	override needsTaskRunner = true;
 
 	override needsExpressionEngine = true;
