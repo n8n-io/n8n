@@ -55,6 +55,12 @@ concurrency:
 jobs:
   gate:
     name: 'Check for relevant changes'
+    if: >-
+      github.event_name != 'pull_request' || !(
+        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/')
+      )
     runs-on: ubuntu-slim
     outputs:
       build: ${{ steps.gate.outputs.build }}

@@ -140,6 +140,32 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('automated release PR CI bypass', () => {
+	const assertSkipsReleasePr = (condition) => {
+		assert.match(condition, /github\.event\.pull_request\.user\.login == 'n8n-assistant\[bot\]'/);
+		assert.match(condition, /startsWith\(github\.event\.pull_request\.head\.ref, 'release-pr\/'\)/);
+		assert.match(condition, /startsWith\(github\.event\.pull_request\.base\.ref, 'release\/'\)/);
+	};
+
+	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
+		const ci = workflowFile('ci-pull-requests.yml');
+		assertSkipsReleasePr(ci.jobs['install-and-build'].if);
+		assertSkipsReleasePr(ci.jobs['format-check'].if);
+		assert.equal(ci.jobs['required-checks'].if, 'always()');
+
+		const quality = workflowFile('ci-pr-quality.yml');
+		assertSkipsReleasePr(quality.jobs.changes.if);
+		assertSkipsReleasePr(quality.jobs['check-knip'].if);
+		assertSkipsReleasePr(quality.jobs['check-do-not-merge'].if);
+		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+	});
+
+	it('skips standalone workflows for automated release PRs', () => {
+		assertSkipsReleasePr(workflowFile('docker-build-smoke.yml').jobs.gate.if);
+		assertSkipsReleasePr(workflowFile('ci-owners-validation.yml').jobs.validate.if);
+	});
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');

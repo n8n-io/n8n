@@ -79,7 +79,10 @@ jobs:
     if: |
       (github.event_name == 'pull_request' &&
        github.event.action != 'labeled' &&
-       github.event.action != 'unlabeled') ||
+       github.event.action != 'unlabeled' &&
+       !(github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+         startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+         startsWith(github.event.pull_request.base.ref, 'release/'))) ||
       github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -132,7 +135,12 @@ jobs:
     name: Unused Dependencies
     # Runs on every PR, not only on manifest changes: a PR that deletes the last
     # import of a dependency also makes that dependency unused.
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    if: >-
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+       !(github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+         startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+         startsWith(github.event.pull_request.base.ref, 'release/')))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -155,7 +163,11 @@ jobs:
   check-do-not-merge:
     name: Do Not Merge
     # Read current labels because concurrent PR events can have stale labels.
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      !(github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

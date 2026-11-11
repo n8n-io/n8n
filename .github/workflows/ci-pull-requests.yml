@@ -11,6 +11,12 @@ concurrency:
 jobs:
   install-and-build:
     name: Install & Build
+    if: >-
+      github.event_name != 'pull_request' || !(
+        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/')
+      )
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
@@ -296,6 +302,12 @@ jobs:
 
   format-check:
     name: Format check
+    if: >-
+      github.event_name != 'pull_request' || !(
+        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/')
+      )
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
