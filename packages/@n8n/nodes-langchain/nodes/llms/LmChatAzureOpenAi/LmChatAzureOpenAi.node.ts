@@ -322,6 +322,8 @@ export class LmChatAzureOpenAi implements INodeType {
 				model: modelName,
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
+				// An explicit '' keeps LangChain from reading AZURE_OPENAI_API_KEY when Entra ID is used
+				azureOpenAIApiKey: modelConfig.azureOpenAIApiKey ?? '',
 				...options,
 				azureOpenAIEndpoint,
 				timeout,

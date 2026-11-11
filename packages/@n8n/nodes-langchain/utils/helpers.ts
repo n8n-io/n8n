@@ -328,15 +328,10 @@ export function getCustomCredentialHeader(
 
 /**
  * Returns the API key of a credential. Throws when the key is missing or blank.
- * Some SDKs read a process environment variable when they get an empty key,
+ * Some SDKs read a process environment variable when they get no key,
  * so always pass the result of this function to the client.
  */
-export function getRequiredApiKey(
-	node: INode,
-	credentials: ICredentialDataDecryptedObject,
-	field = 'apiKey',
-): string {
-	const apiKey = credentials[field];
+export function getRequiredApiKey(node: INode, apiKey: unknown): string {
 	if (typeof apiKey !== 'string' || apiKey.trim() === '') {
 		throw new NodeOperationError(node, 'The credential has no API key', {
 			description: 'Add an API key to the credential and try again.',

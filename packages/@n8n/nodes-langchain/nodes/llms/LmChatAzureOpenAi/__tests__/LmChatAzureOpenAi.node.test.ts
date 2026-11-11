@@ -153,6 +153,24 @@ describe('LmChatAzureOpenAi', () => {
 		}
 	});
 
+	it('should pass an empty API key to the classic client when Entra ID is used', async () => {
+		const ctx = setupMockContext('azureEntraCognitiveServicesOAuth2Api', entraCredential);
+
+		await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+		expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({ azureOpenAIApiKey: '' });
+	});
+
+	it('should pass the credential API key to the classic client', async () => {
+		const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential);
+
+		await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+		expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
+			azureOpenAIApiKey: 'test-key',
+		});
+	});
+
 	describe('Use Responses API', () => {
 		const foundry = {
 			...apiKeyCredential,

@@ -139,7 +139,7 @@ export class LmChatGroq implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('groqApi');
-		const apiKey = getRequiredApiKey(this.getNode(), credentials);
+		const apiKey = getRequiredApiKey(this.getNode(), credentials.apiKey);
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {

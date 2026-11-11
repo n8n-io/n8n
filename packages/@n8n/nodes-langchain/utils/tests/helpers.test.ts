@@ -1006,14 +1006,10 @@ describe('getRequiredApiKey', () => {
 	const node = mock<INode>();
 
 	it('should return the API key', () => {
-		expect(getRequiredApiKey(node, { apiKey: 'key' })).toBe('key');
+		expect(getRequiredApiKey(node, 'key')).toBe('key');
 	});
 
-	it('should read a custom field', () => {
-		expect(getRequiredApiKey(node, { token: 'key' }, 'token')).toBe('key');
-	});
-
-	it.each([[''], ['   '], [undefined], [123]])('should throw for %j', (apiKey) => {
-		expect(() => getRequiredApiKey(node, { apiKey })).toThrow(NodeOperationError);
+	it.each([[''], ['   '], [undefined], [null], [123]])('should throw for %j', (apiKey) => {
+		expect(() => getRequiredApiKey(node, apiKey)).toThrow(NodeOperationError);
 	});
 });
