@@ -8,6 +8,7 @@ import type {
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
+	AgentSessionFilesResponse,
 	SystemAgentThreadSummary,
 	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
@@ -40,6 +41,7 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	UpdateAgentVersionDto,
+	PublishAgentDto,
 	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
@@ -656,12 +658,13 @@ export const publishAgent = async (
 	agentId: string,
 	versionId?: string,
 	metadata?: UpdateAgentVersionDto,
+	draft?: PublishAgentDto['draft'],
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		{ versionId, ...metadata },
+		{ versionId, ...metadata, draft },
 	);
 };
 
@@ -1112,6 +1115,20 @@ export const deleteSystemAgentThread = async (
 		`${agentChatPath('', agentId, 'system')}/${encodeURIComponent(threadId)}`,
 	);
 };
+
+/** Files of a preview or n8n Chat session, for the session files list. */
+export const getSessionFiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	channel: 'chat' | 'n8n-chat' = 'chat',
+): Promise<AgentSessionFilesResponse> =>
+	await makeRestApiRequest<AgentSessionFilesResponse>(
+		context,
+		'GET',
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/files`,
+	);
 
 /**
  * Builds the download/thumbnail URL for a chat attachment on either channel.

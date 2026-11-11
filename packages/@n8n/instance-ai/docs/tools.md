@@ -1237,14 +1237,23 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse-file`
 
-Parse an attachment from the current user message. The registry adds this tool
-only when the current turn contains a parseable attachment.
+Parse a user file. The registry adds the tool on every turn, with or without
+files, so the tool list stays the same and the prompt cache stays valid. It
+adds one of two versions:
+
+- When the host sets `storedFiles` on the context, the tool reads a stored file
+  of the thread by `fileId`. The Assistant on the Agents runtime uses this
+  version. The model gets each `fileId` from the file attachment label in the
+  conversation.
+- Otherwise, the tool reads an attachment of the current user message by
+  `attachmentIndex`. On a turn without files, it returns an error.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `attachmentIndex` | number | no | 0 | Zero-based attachment index |
+| `fileId` | string | yes (stored-file version) | — | Id of a stored file of the thread |
+| `attachmentIndex` | number | no (current-message version) | 0 | Zero-based attachment index |
 | `format` | enum | no | detected | `csv`, `tsv`, `json`, `xlsx`, `text`, `markdown`, `html`, `pdf`, or `docx` |
 | `hasHeader` | boolean | no | true | Treat the first CSV or TSV row as headers |
 | `delimiter` | string | no | — | One-character CSV delimiter override |
@@ -1309,8 +1318,8 @@ carries *what* it does.
 Build n8n Apps. Present only when the apps module is active, the run has a
 bound project and the sandbox is available. The adapter wires `appService`, and
 the turn setup removes it without a sandbox, so the tool, the `app-builder`
-skill and the `<app-targets>` block share one gate. Deferred: the skill lists
-the tool in `recommended_tools`.
+skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
+default `tools` tool group, which the skill lists in `recommended_tool_groups`.
 
 | Action | Scope | Description |
 |--------|-------|-------------|
@@ -1580,7 +1589,9 @@ The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
 full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
-native tools active for the current request.
+native tools active for the current request. "Always allow" on their approval cards
+saves a thread grant, the same grant that built-in tools use
+(`createThreadApprovalContext`).
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
 through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It
@@ -1614,7 +1625,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
+   that set is listed by name in the tool catalog and run through `call_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

@@ -13,11 +13,10 @@ import { mock } from 'vitest-mock-extended';
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@n8n/backend-services';
+import type { WorkflowSharingService, Publisher } from '@n8n/backend-services';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();

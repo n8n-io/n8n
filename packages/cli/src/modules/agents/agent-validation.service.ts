@@ -36,7 +36,7 @@ import {
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import {
 	toPolicedMcpNodes,
 	toPolicedNodes,
@@ -143,7 +143,7 @@ export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly definitionService: AgentDefinitionService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,

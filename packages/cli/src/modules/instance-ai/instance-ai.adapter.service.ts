@@ -10,8 +10,6 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -38,6 +36,7 @@ import {
 	FolderFinderService,
 	InstanceWriteAccessService,
 	AiPreferenceService,
+	NodeTypesProxy,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -120,6 +119,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
@@ -163,6 +163,7 @@ import {
 	createRunExecutionData,
 	calculateWorkflowChecksum,
 	isMcpAiGatewayAuthentication,
+	type INodeTypes,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -190,7 +191,11 @@ import {
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
-import { type CredentialRefusal, findCredentialRefusal } from '@/executions/pre-execution-checks';
+import {
+	type CredentialRefusal,
+	findCredentialRefusal,
+	findOwnAccessCredentialRefusal,
+} from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
@@ -221,7 +226,6 @@ import {
 } from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
@@ -284,6 +288,7 @@ import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
+import { toUserLike } from '@/utils/to-user-like';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -327,7 +332,7 @@ function resolveDisplayedDefaults(
  * the same way they will. A node type that does not load is not a tool here:
  * the run fails on the missing type either way.
  */
-function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+function isToolNode(nodeTypes: INodeTypes, node: INode): boolean {
 	try {
 		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		return NodeHelpers.isTool(description, node.parameters);
@@ -432,8 +437,6 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
-	/** Saved AI preferences on every user turn. */
-	aiPreferencesEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
@@ -490,7 +493,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -586,9 +589,6 @@ export class InstanceAiAdapterService {
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
-			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
-			aiPreferencesEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
@@ -617,7 +617,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch,
@@ -699,7 +698,10 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
-			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			// Absent only in test contexts constructed without DI.
+			...(this.aiPreferenceService
+				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -853,7 +855,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -2489,6 +2490,12 @@ export class InstanceAiAdapterService {
 					});
 				};
 
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackBuilderExecutedWorkflow('error', refused.telemetryError);
+					return refused.result;
+				}
+
 				try {
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
@@ -2623,7 +2630,7 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
-					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
+					pinData: workflow.pinData,
 				});
 
 				// The caller asked to keep the nodes above the target out of the run and
@@ -2852,6 +2859,11 @@ export class InstanceAiAdapterService {
 				};
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackStepRun('error', refused.telemetryError);
+					return describe(refused.result);
+				}
 
 				try {
 					const executionId = await workflowRunner.run(runData);
@@ -3010,11 +3022,11 @@ export class InstanceAiAdapterService {
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
-				// project's usable set (project-shared + global) — the same intersection
-				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// project's usable set, narrowed to the user's own access. `preventTampering`
+				// (workflow.service.ee.ts) accepts all of it. A caller-supplied
 				// workflowId/projectId must not broaden it.
 				if (boundProjectId) {
-					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+					const scoped = await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
@@ -3033,10 +3045,10 @@ export class InstanceAiAdapterService {
 				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
-						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						? await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								workflowId: options.workflowId,
 							})
-						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						: await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								projectId: options.projectId!,
 							});
 
@@ -3572,11 +3584,17 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				return await apps.createApp(
-					projectId,
-					CreateAppDto.parse({ name, namespace, visibility }),
-					{ id, actor },
-				);
+				try {
+					return await apps.createApp(
+						projectId,
+						CreateAppDto.parse({ name, namespace, visibility }),
+						{ id, actor },
+					);
+				} catch (error) {
+					// The namespace is the only unique field that the user picks.
+					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
+					throw error;
+				}
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
@@ -4735,13 +4753,7 @@ export class InstanceAiAdapterService {
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
-					user: {
-						id: user.id,
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-					},
+					user: toUserLike(user),
 					executionIds: ids,
 					deleteBefore: cutoff,
 				});
@@ -5090,7 +5102,7 @@ function extractNodeErrors(
 export async function extractExecutionResult(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionResult> {
 	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
 }
@@ -5107,7 +5119,7 @@ function withCredentialRefusal<T extends ExecutionResult>(
 ): { result: T; telemetryError?: string } {
 	const { result } = outcome;
 	if (!refusal || result.status !== 'error') return outcome;
-	const message = [refusal.message, refusal.description].filter(Boolean).join('. ');
+	const message = refusalMessage(refusal);
 	return {
 		result: {
 			...result,
@@ -5118,6 +5130,30 @@ function withCredentialRefusal<T extends ExecutionResult>(
 		},
 		telemetryError: refusal.message,
 	};
+}
+
+function refusalMessage(refusal: CredentialRefusal) {
+	return [refusal.message, refusal.description].filter(Boolean).join('. ');
+}
+
+/**
+ * The project check lets an Owner or Admin use any personal credential in their
+ * personal project, but redaction would hide the result of such a run. So a run
+ * that needs a credential the user cannot use through their own access never
+ * starts, and has no execution. Telemetry gets the message only, because the
+ * description can name a project.
+ */
+async function refuseWithoutOwnAccess(
+	nodes: INode[],
+	userId: string,
+): Promise<{ result: ExecutionResult; telemetryError: string } | undefined> {
+	const refusal = await findOwnAccessCredentialRefusal(nodes, userId);
+	return (
+		refusal && {
+			result: { executionId: '', status: 'error', error: refusalMessage(refusal) },
+			telemetryError: refusal.message,
+		}
+	);
 }
 
 /** Output branches of a run that a non-main connection carried. */
@@ -5177,7 +5213,7 @@ function foldToolExecutorRun(
 export async function extractExecutionOutcome(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 	/**
 	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
 	 * the result has to be told which node the caller actually asked for.
@@ -5488,7 +5524,7 @@ function capItem(item: unknown): unknown {
  */
 function buildExecutionWorkflow(
 	workflowData: IWorkflowBase | undefined,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Workflow | undefined {
 	if (!workflowData || !nodeTypes) return undefined;
 	try {
@@ -5536,7 +5572,7 @@ export async function extractNodeOutput(
 	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
 	const executionId = execution.id;
 	const runData = execution.data?.resultData?.runData;
@@ -5740,7 +5776,7 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 export async function extractExecutionDebugInfo(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const baseResult = await extractExecutionResult(execution, includeOutputData, nodeTypes);
 
