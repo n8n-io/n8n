@@ -173,6 +173,15 @@ describe('MemoryBudget', () => {
 		expect(budget.isOverModelWindow(200_000)).toBe(true);
 	});
 
+	it('keeps the looked-up model window when contextWindowTokens is zero', () => {
+		const budget = MemoryBudget.resolve(
+			{ observerThresholdTokens: 300_000, windowShares: { contextWindowTokens: 0 } },
+			200_000,
+		)!;
+		expect(budget.modelWindow).toBe(200_000);
+		expect(budget.hardLimit).toBeLessThanOrEqual(200_000);
+	});
+
 	it('lets requests up to the memory window through', () => {
 		const budget = MemoryBudget.resolve(
 			{ windowShares: { maxContextWindowTokens: 200_000 } },

@@ -65,7 +65,8 @@ export class MemoryBudget {
 		modelWindowTokens: number | undefined,
 	): MemoryBudget | undefined {
 		const shares = config.windowShares;
-		const modelWindow = positive(shares?.contextWindowTokens ?? modelWindowTokens);
+		// Normalize each source first: a zero override must not hide the looked-up window.
+		const modelWindow = positive(shares?.contextWindowTokens) ?? positive(modelWindowTokens);
 		const memoryWindow = resolveMemoryWindow(shares, modelWindow);
 		const thresholds =
 			shares && memoryWindow

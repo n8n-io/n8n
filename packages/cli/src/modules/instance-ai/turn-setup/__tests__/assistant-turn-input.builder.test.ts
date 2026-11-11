@@ -20,17 +20,31 @@ type ThreadMemoryMock = {
 	getCursor: Mock;
 	getActiveObservationLog: Mock;
 	getMessagesForObservationScope: Mock;
+	getResumeState: Mock;
 };
 
-/** A thread memory with an observation log, so the replay reads the post-cursor window. */
+/** The resume state the runtime saves when it replaces the history up to `messageId` with notes. */
+function resumeAt(messageId: string, at: Date) {
+	return {
+		observationScopeId: 'thread-1',
+		resumeFrom: { lastObservedMessageId: messageId, lastObservedAt: at },
+		resumeNotes: 'Notes.',
+		lastRequestTokens: null,
+		lastModelId: null,
+	};
+}
+
+/** A thread memory with an observation log, so the replay reads the post-resume window. */
 function createThreadMemory(): ThreadMemoryMock {
 	return {
 		getMessages: vi.fn().mockResolvedValue([]),
 		getCursor: vi.fn().mockResolvedValue(null),
 		getActiveObservationLog: vi.fn().mockResolvedValue([]),
 		getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		getResumeState: vi.fn().mockResolvedValue(null),
 		...Object.fromEntries(
 			[
+				'saveResumeState',
 				'commitObservationLogBatch',
 				'appendObservationLogEntries',
 				'getObservationLog',
@@ -160,6 +174,9 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 			lastObservedMessageId: 'message-1',
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt('message-1', new Date('2026-09-01T00:00:00.000Z')),
+		);
 		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
 
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
@@ -184,6 +201,9 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 			lastObservedMessageId: 'message-1',
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt('message-1', new Date('2026-09-01T00:00:00.000Z')),
+		);
 		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
 
 		expect(await resolve(service, { artifacts: [digest] })).toContain('Workflow "Digest"');
@@ -503,7 +523,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		);
 	});
 
-	it('re-injects when the observation cursor has compacted the turn that carried the block', async () => {
+	it('re-injects when the resume point has compacted the turn that carried the block', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
 		const block = renderAiPreferencesBlock(applicable);
@@ -518,6 +538,9 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
 		service.agentMemory.getCursor.mockResolvedValue(cursor);
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'obs-1' }]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt(cursor.lastObservedMessageId, cursor.lastObservedAt),
+		);
 		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([
 			storedUserTurn(undefined, 'Thanks'),
 		]);
@@ -535,7 +558,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		});
 	});
 
-	it('reads the full history when a cursor exists without an active observation, like the runtime', async () => {
+	it('reads the full history when a cursor exists without a resume point, like the runtime', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
 		const block = renderAiPreferencesBlock(applicable);

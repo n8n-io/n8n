@@ -286,7 +286,10 @@ export class AssistantAgentFactory {
 			logPlacement: config.observationLogPlacement,
 			failurePolicy: config.observationFailurePolicy,
 			// 0 means no limit, so it must reach the SDK instead of its default.
-			maxObserverBatchesAfterTurn: config.observerMaxBatches,
+			// A negative value would skip every batch, so the SDK default applies.
+			...(config.observerMaxBatches >= 0 && {
+				maxObserverBatchesAfterTurn: config.observerMaxBatches,
+			}),
 			reflectionMode: config.reflectionMode,
 			historyRecall: config.historyRecall,
 		};

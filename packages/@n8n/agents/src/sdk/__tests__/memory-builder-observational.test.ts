@@ -206,6 +206,16 @@ describe('Memory builder — observation log memory', () => {
 		);
 	});
 
+	it.each(['getResumeState', 'saveResumeState', 'getCursor', 'getMessagesForObservationScope'])(
+		'rejects an observation-log backend without %s',
+		(method) => {
+			const backend = Object.assign(new InMemoryMemory(), { [method]: undefined });
+			expect(() => new Memory().storage(backend).observationalMemory().build()).toThrow(
+				/BuiltObservationResumeStore/,
+			);
+		},
+	);
+
 	describe('agent.snapshot.hasObservationalMemory', () => {
 		it('is false when no memory is configured', () => {
 			const agent = new Agent('a').model('openai/gpt-4o-mini');

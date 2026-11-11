@@ -16,7 +16,7 @@ import {
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from '../runtime/memory/observation-log-defaults';
 import { DEFAULT_MEMORY_POLICY } from '../runtime/memory/observation-policy';
-import { hasObservationLogStore } from '../runtime/memory/observation-log-store';
+import { assertObservationalMemoryStore } from '../runtime/memory/observation-log-store';
 import { createEmbeddingModel } from '../runtime/model/model-factory';
 import type {
 	BuiltMemory,
@@ -118,11 +118,7 @@ export function resolveMemoryConfigDefaults(
 		});
 	}
 
-	if (!hasObservationLogStore(config.memory)) {
-		throw new Error(
-			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
-		);
-	}
+	assertObservationalMemoryStore(config.memory);
 
 	const observationalMemoryConfig =
 		config.observationLog?.renderTokenBudget !== undefined &&
@@ -153,11 +149,7 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
 		return config;
 	}
 
-	if (!hasObservationLogStore(config.memory)) {
-		throw new Error(
-			'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
-		);
-	}
+	assertObservationalMemoryStore(config.memory);
 
 	return {
 		...config,
@@ -265,11 +257,7 @@ export class Memory {
 			return normalizeMemoryConfig(baseConfig);
 		}
 
-		if (!hasObservationLogStore(memory)) {
-			throw new Error(
-				'Observational memory requires a storage backend that implements BuiltObservationLogStore.',
-			);
-		}
+		assertObservationalMemoryStore(memory);
 
 		return normalizeMemoryConfig({
 			...baseConfig,

@@ -8,12 +8,15 @@ import { compareKeyset, saveMessagesToThread } from './memory-store';
 import {
 	readObservationState,
 	runObservationLogObserver,
-	type ObservationLogObserverMemory,
 	type RunObservationLogObserverResult,
 } from './observation-log-observer';
 import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
-import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
+import {
+	hasObservationLogObserverMemory,
+	hasObservationLogStore,
+	hasObservationLogTaskLockStore,
+} from './observation-log-store';
 import {
 	ScopedMemoryTaskRunner,
 	type ScopedMemoryTaskHandle,
@@ -50,6 +53,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
+import type { ObservationResumeState } from '../../types/sdk/observation';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { promptSizeOf } from '../loop/prompt-size-usage';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -84,11 +88,14 @@ function latestActivityAt(messages: AgentDbMessage[]): number | undefined {
 	return latest;
 }
 
+/** Renders the current observation log instead of saved notes. */
+const LIVE_NOTES: unique symbol = Symbol('liveNotes');
+
 /**
- * Notes for the list. `'live'` renders the current observation log. A string
- * or `undefined` is sent as is.
+ * Notes for the list. `LIVE_NOTES` renders the current observation log. A
+ * string or `undefined` is sent as is.
  */
-type ListNotes = string | undefined | 'live';
+type ListNotes = string | undefined | typeof LIVE_NOTES;
 
 /** History and notes for a new run. */
 interface RunHistory {
@@ -117,11 +124,26 @@ function hasSuccessfulMemoryFlag(list: AgentMessageList): boolean {
 		);
 }
 
-function hasFunctionProperty<K extends PropertyKey>(
-	value: object,
-	property: K,
-): value is Record<K, (...args: never[]) => unknown> {
-	return property in value && typeof Reflect.get(value, property) === 'function';
+/**
+ * The saved resume state, or `undefined` when it no longer matches the log.
+ * A resume point needs a cursor at or past it: the notes must cover every
+ * message the view drops. A reset or missing log makes the point stale, and
+ * the thread is sent in full again.
+ */
+function validResumeState(
+	state: ObservationResumeState | null | undefined,
+	cursor: ObservationPoint | null | undefined,
+): ObservationResumeState | undefined {
+	if (!state) return undefined;
+	const from = state.resumeFrom;
+	if (!from) return state;
+	if (!cursor) return undefined;
+	const resumeIsAhead =
+		compareKeyset(
+			{ createdAt: new Date(from.lastObservedAt), id: from.lastObservedMessageId },
+			{ createdAt: new Date(cursor.lastObservedAt), id: cursor.lastObservedMessageId },
+		) > 0;
+	return resumeIsAhead ? undefined : state;
 }
 
 interface MidRunObserverTask {
@@ -143,18 +165,6 @@ function didAdvanceObserver(
 	return result.status === 'ran' && result.cursorAdvanced;
 }
 
-function hasObservationLogObserverMemory(
-	memory: BuiltMemory,
-): memory is ObservationLogObserverMemory {
-	return (
-		hasObservationLogStore(memory) &&
-		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
-		hasFunctionProperty(memory, 'getCursor') &&
-		hasFunctionProperty(memory, 'getResumeState') &&
-		hasFunctionProperty(memory, 'saveResumeState')
-	);
-}
-
 /**
  * The persisted messages that the runtime replays to the model on the next
  * turn (see `resumeView`). A host that checks what the model already sees
@@ -166,9 +176,22 @@ export async function loadReplayedMessages(
 	options: { observationalMemory: boolean },
 ): Promise<AgentDbMessage[]> {
 	const { threadId, resourceId } = persistence;
-	const all = await memory.getMessages(threadId, { resourceId });
-	if (!options.observationalMemory || !hasObservationLogObserverMemory(memory)) return all;
-	return resumeView(all, await memory.getResumeState(threadId)).messages;
+	if (!options.observationalMemory || !hasObservationLogObserverMemory(memory)) {
+		return await memory.getMessages(threadId, { resourceId });
+	}
+	const [saved, cursor] = await Promise.all([
+		memory.getResumeState(threadId),
+		memory.getCursor(threadId),
+	]);
+	const from = validResumeState(saved, cursor)?.resumeFrom;
+	if (!from) return await memory.getMessages(threadId, { resourceId });
+	// Read only the messages after the resume point, so long threads stay cheap to check.
+	return await memory.getMessagesForObservationScope(threadId, {
+		since: {
+			sinceCreatedAt: new Date(from.lastObservedAt),
+			sinceMessageId: from.lastObservedMessageId,
+		},
+	});
 }
 
 /**
@@ -310,17 +333,25 @@ export class MemoryOrchestrator {
 		const { memory, observationalMemory } = this.config;
 		const { persistence } = options;
 		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
-			return { messages: await this.loadHistoryMessages(persistence, telemetry), notes: 'live' };
+			return {
+				messages: await this.loadHistoryMessages(persistence, telemetry),
+				notes: LIVE_NOTES,
+			};
 		}
 		const { threadId, resourceId } = persistence;
 		const resume = new ResumeStateStore(memory, threadId);
 		this.resume = resume;
-		const [{ cursor }, state, all] = await Promise.all([
+		const [{ cursor }, saved, all] = await Promise.all([
 			readObservationState(memory, threadId),
 			resume.load(),
 			memory.getMessages(threadId, { resourceId }),
 		]);
 		this.knownCursor = cursor ?? undefined;
+		const state = validResumeState(saved, cursor);
+		if (saved && !state) {
+			logger.debug('Ignoring stale observation resume point', { threadId });
+			resume.forget();
+		}
 		const view = resumeView(all, state);
 		const budget = cursor ? await this.resolveBudget() : undefined;
 		if (!cursor || !budget) return view;
@@ -349,6 +380,9 @@ export class MemoryOrchestrator {
 		if (reason === 'over-limit')
 			resumeAt = (await this.observeBacklog(options, telemetry)) ?? cursor;
 		const notes = await this.renderLiveNotes(persistence);
+		// Without notes, a resume would drop earlier messages with nothing in their
+		// place. Only an over-limit thread must shrink at that cost.
+		if (!notes && reason !== 'over-limit') return view;
 		await resume.moveTo(resumeAt, notes, modelId);
 		logger.debug('Observation resume point moved at turn start', { threadId, reason });
 		return resumeView(all, resume.current);
@@ -493,7 +527,7 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * Put notes into the list. `notes: 'live'` (the default) renders the
+	 * Put notes into the list. `notes: LIVE_NOTES` (the default) renders the
 	 * current log; a string or `undefined` is used as is. Returns the notes set.
 	 */
 	async setListObservationLogMemory(
@@ -502,14 +536,14 @@ export class MemoryOrchestrator {
 		opts: { notes?: ListNotes } = {},
 	): Promise<string | undefined> {
 		// An explicit `notes: undefined` means no notes, not the default.
-		const notes = 'notes' in opts ? opts.notes : 'live';
+		const notes = 'notes' in opts ? opts.notes : LIVE_NOTES;
 		const memory = this.config.memory;
 		if (!memory || !options?.threadId || !hasObservationLogStore(memory)) return undefined;
 		const observations = await memory.getActiveObservationLog({
 			...this.getObservationLogScope(options),
 			order: 'asc',
 		});
-		const rendered = notes === 'live' ? this.renderNotes(observations) : notes;
+		const rendered = notes === LIVE_NOTES ? this.renderNotes(observations) : notes;
 		this.setListNotes(list, this.config.observationalMemory, rendered);
 		// Empty batches can move the cursor beyond the latest observation.
 		// Seed both timestamps to keep new messages after the trusted cursor.
@@ -941,11 +975,13 @@ export class MemoryOrchestrator {
 		if (!memory || !persistence || !hasObservationLogObserverMemory(memory)) return;
 		const resume = new ResumeStateStore(memory, persistence.threadId);
 		this.resume = resume;
-		const [{ cursor }, state] = await Promise.all([
+		const [{ cursor }, saved] = await Promise.all([
 			readObservationState(memory, persistence.threadId),
 			resume.load(),
 		]);
 		this.knownCursor = cursor ?? undefined;
+		const state = validResumeState(saved, cursor);
+		if (saved && !state) resume.forget();
 		// Without a resume point the window holds the full thread, so notes
 		// would duplicate it. An oversized window is swapped at the next step
 		// by the hard-limit check.

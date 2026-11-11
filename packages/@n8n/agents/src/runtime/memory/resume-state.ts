@@ -61,6 +61,11 @@ export class ResumeStateStore {
 		return this.state;
 	}
 
+	/** Drop a stale state, so later writes do not save its resume point again. */
+	forget(): void {
+		this.state = undefined;
+	}
+
 	/**
 	 * Move the resume point and freeze the notes the model resumes from. Later
 	 * turns send these notes until the next resume, so the prompt prefix stays
