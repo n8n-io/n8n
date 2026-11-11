@@ -585,7 +585,7 @@ describe('personal project', () => {
 
 		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
 		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
-		expect(view.queryByText(/who hears about it/)).not.toBeInTheDocument();
+		expect(view.queryByText(/who reviews its fixes/)).not.toBeInTheDocument();
 		await fireEvent.click(button);
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
