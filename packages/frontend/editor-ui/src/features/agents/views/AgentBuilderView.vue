@@ -131,6 +131,7 @@ import {
 	PENDING_AGENT_ID_STATE,
 	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
+import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	agentsEventBus,
@@ -306,9 +307,15 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+function historyMarksAgentPending(targetAgentId: string): boolean {
+	return (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE] === targetAgentId;
+}
 function readPendingAgentIdFromHistory(): string | null {
 	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
-	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+	if (typeof pendingAgentId === 'string') return pendingAgentId;
+	// A fresh history entry for the same URL (e.g. the Settings back link) has
+	// no marker, so fall back to the ids this tab minted and has not saved yet.
+	return unsavedAgentIds.has(agentId.value) ? agentId.value : null;
 }
 function readPendingStarterFromHistory(): AgentStarter | null {
 	const starter = (history.state as Record<string, unknown>)[PENDING_AGENT_STARTER_STATE];
@@ -1651,11 +1658,12 @@ const persistedAgentsByTarget = new Map<string, PersistedAgent>();
 
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
+	unsavedAgentIds.delete(targetAgentId);
+	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 	const historyState = history.state as Record<string, unknown>;
 	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
 	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
-	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
 
 /**
@@ -3157,9 +3165,14 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// drafting. Only artifacts need this: a route-backed draft's id is minted
 		// milliseconds earlier by the entry point and no other writer can reach it,
 		// so the probe would be a guaranteed 404 on every "New agent" click.
-		const probedAgent = targetArtifactPending
-			? await probePendingAgentRow(targetProjectId, targetAgentId)
-			: null;
+		// A route draft recovered from `unsavedAgentIds` (no history marker) was
+		// left at some point, and the assistant may have saved it meanwhile.
+		const recoveredRouteDraft =
+			targetAgentPending && !targetArtifactPending && !historyMarksAgentPending(targetAgentId);
+		const probedAgent =
+			targetArtifactPending || recoveredRouteDraft
+				? await probePendingAgentRow(targetProjectId, targetAgentId)
+				: null;
 		if (!isCurrentInitialization()) return;
 
 		// An agent that does not exist yet has nothing to fetch: stand up the same
@@ -3203,6 +3216,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Hand the host the row the stale marker pointed at so it can retire the
 			// pending state.
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
+			if (recoveredRouteDraft) clearRoutePendingState(targetAgentId);
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState && canEditAgent.value && agent.value?.activeVersionId === null) {

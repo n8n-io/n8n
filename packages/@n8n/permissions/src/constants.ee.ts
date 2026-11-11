@@ -123,6 +123,7 @@ export const RESOURCES = {
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
+	workflowSettings: ['manage'] as const,
 	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 

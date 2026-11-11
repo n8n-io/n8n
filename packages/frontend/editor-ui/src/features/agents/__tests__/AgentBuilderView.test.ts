@@ -10,6 +10,7 @@ import {
 	type PushMessage,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nToggle } from '@n8n/design-system';
 import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
@@ -935,6 +936,7 @@ function resetViewMocks() {
 	fetchedPreviewThreads.length = 0;
 	previewSessionsLoading.value = false;
 	history.replaceState({}, '');
+	unsavedAgentIds.clear();
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
 	intendedConfig = {
@@ -1058,6 +1060,28 @@ describe('AgentBuilderView — preview routing', () => {
 		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
 		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
+	it('keeps a new agent as a draft when it is re-entered without its history marker', async () => {
+		// The Settings back link pushes a fresh history entry, which has no marker.
+		unsavedAgentIds.add('a1');
+		getAgentMock.mockRejectedValue(notFoundError());
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(editor.props('agentUnsaved')).toBe(true);
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('loads a re-entered new agent that was saved while the user was away', async () => {
+		unsavedAgentIds.add('a1');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(editor.props('agentUnsaved')).toBe(false);
+		expect(unsavedAgentIds.has('a1')).toBe(false);
 	});
 
 	it('does not persist a pending agent for an auto-applied default model', async () => {
