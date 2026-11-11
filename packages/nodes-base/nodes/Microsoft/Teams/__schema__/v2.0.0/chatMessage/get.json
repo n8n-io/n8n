@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "attachments": {
             "type": "array",
             "items": {
@@ -71,9 +68,6 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "@odata.type": {
-                            "type": "string"
-                        },
                         "displayName": {
                             "type": "string"
                         },
@@ -131,9 +125,6 @@
                             "user": {
                                 "type": "object",
                                 "properties": {
-                                    "@odata.type": {
-                                        "type": "string"
-                                    },
                                     "displayName": {
                                         "type": "string"
                                     },
@@ -191,9 +182,6 @@
                             "user": {
                                 "type": "object",
                                 "properties": {
-                                    "@odata.type": {
-                                        "type": "string"
-                                    },
                                     "displayName": {
                                         "type": "null"
                                     },
@@ -223,5 +211,5 @@
             "type": "null"
         }
     },
-    "version": 2
+    "version": 3
 }

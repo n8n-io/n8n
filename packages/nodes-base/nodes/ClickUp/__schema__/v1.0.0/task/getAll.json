@@ -44,7 +44,18 @@
                             "type": "object",
                             "properties": {
                                 "assignee": {
-                                    "type": "null"
+                                    "type": "object",
+                                    "properties": {
+                                        "email": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "initials": {
+                                            "type": "string"
+                                        }
+                                    }
                                 },
                                 "date_created": {
                                     "type": "string"
@@ -241,7 +252,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "email": {
                         "type": "string"
@@ -442,5 +453,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
@@ -24,9 +21,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "@odata.type": {
-                        "type": "string"
-                    },
                     "accountEnabled": {
                         "type": "boolean"
                     },
@@ -52,5 +46,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

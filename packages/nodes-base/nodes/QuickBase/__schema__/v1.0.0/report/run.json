@@ -1,9 +1,5 @@
 {
     "type": "object",
-    "properties": {
-        "Record ID#": {
-            "type": "integer"
-        }
-    },
-    "version": 1
+    "properties": {},
+    "version": 2
 }

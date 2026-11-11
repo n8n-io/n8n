@@ -161,20 +161,7 @@
                                             },
                                             "avatarUrls": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
-                                                    "24x24": {
-                                                        "type": "string"
-                                                    },
-                                                    "32x32": {
-                                                        "type": "string"
-                                                    },
-                                                    "48x48": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "displayName": {
                                                 "type": "string"
@@ -219,20 +206,7 @@
                                             },
                                             "avatarUrls": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
-                                                    "24x24": {
-                                                        "type": "string"
-                                                    },
-                                                    "32x32": {
-                                                        "type": "string"
-                                                    },
-                                                    "48x48": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "displayName": {
                                                 "type": "string"
@@ -339,92 +313,15 @@
                                         "properties": {
                                             "issuetype": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "avatarId": {
-                                                        "type": "integer"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "entityId": {
-                                                        "type": "string"
-                                                    },
-                                                    "hierarchyLevel": {
-                                                        "type": "integer"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "subtask": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "priority": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "status": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "statusCategory": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "colorName": {
-                                                                "type": "string"
-                                                            },
-                                                            "id": {
-                                                                "type": "integer"
-                                                            },
-                                                            "key": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "self": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "summary": {
                                                 "type": "string"
@@ -450,89 +347,15 @@
                                         "properties": {
                                             "issuetype": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "avatarId": {
-                                                        "type": "integer"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "hierarchyLevel": {
-                                                        "type": "integer"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "subtask": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "priority": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "status": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "statusCategory": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "colorName": {
-                                                                "type": "string"
-                                                            },
-                                                            "id": {
-                                                                "type": "integer"
-                                                            },
-                                                            "key": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "self": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "summary": {
                                                 "type": "string"
@@ -868,23 +691,7 @@
                                             },
                                             "statusCategory": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "colorName": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "key": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             }
                                         }
                                     },
@@ -979,20 +786,7 @@
                                             },
                                             "avatarUrls": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
-                                                    "24x24": {
-                                                        "type": "string"
-                                                    },
-                                                    "32x32": {
-                                                        "type": "string"
-                                                    },
-                                                    "48x48": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "displayName": {
                                                 "type": "string"
@@ -1046,20 +840,7 @@
                                             },
                                             "avatarUrls": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
-                                                    "24x24": {
-                                                        "type": "string"
-                                                    },
-                                                    "32x32": {
-                                                        "type": "string"
-                                                    },
-                                                    "48x48": {
-                                                        "type": "string"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "displayName": {
                                                 "type": "string"
@@ -1098,5 +879,5 @@
             "type": "string"
         }
     },
-    "version": 12
+    "version": 13
 }
