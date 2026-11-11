@@ -29,9 +29,11 @@
   },
   "dependencies": {
     "@n8n/utils": "workspace:*",
+    "@resvg/resvg-js": "2.6.2",
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
+    "culori": "^4.0.2",
     "fastest-levenshtein": "catalog:",
     "pluralize": "^8.0.0"
   },
@@ -39,6 +41,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/culori": "^4.0.1",
     "@types/pluralize": "^0.0.33",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
