@@ -1,0 +1,32 @@
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_cd6bf4fe71a5af::t_b95a1580b71f7a 399-402
+  s_cd6bf4fe71a5af::t_fc129a31e1372c 2,368-398,403-462
+  s_cd6bf4fe71a5af::t_07716181169182 463-464
+packages/frontend/editor-ui/src/main.ts
+  s_cd6bf4fe71a5af::t_2e57312ea41943 29,73-74
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_cd6bf4fe71a5af::t_b43d09ac3d298a 256-260,262-271,273-275
+  s_cd6bf4fe71a5af::t_ecceb1c6d937a6 261,272
+packages/frontend/@n8n/stores/src/shims.d.ts
+  s_cd6bf4fe71a5af::t_e2e5b235284561 3,18-19
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_cd6bf4fe71a5af::t_b95a1580b71f7a 381
+  s_cd6bf4fe71a5af::t_e2e5b235284561 8,304,306-311,362,415,417-436,442-450,578
+  s_cd6bf4fe71a5af::t_c1f1ed6cf4a0bb 363,366-367,373,380,382-401,403,405-408,410,416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3927000aab46df80c3ab4367316b4612f3fa5335",
+  "prompts": {},
+  "sessions": {
+    "s_cd6bf4fe71a5af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c702170f-fcca-4850-ad70-b348fdc80b85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

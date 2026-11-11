@@ -1,0 +1,115 @@
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_8ac3ccee0e6ce8::t_d62120fd00409f 3,5,79-91,94,96,98-117,156
+packages/modules/otel/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16,57
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.ts
+  s_8ac3ccee0e6ce8::t_7a0a265fa47aee 21
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_8ac3ccee0e6ce8::t_d2fdbec882c728 108-109,434-435,442-443,666-667,670,672-676,678-679,681,749
+packages/modules/mcp/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/modules/otel/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_8ac3ccee0e6ce8::t_bb14a5977833fa 34,69
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.test.ts
+  s_8ac3ccee0e6ce8::t_8eeab5b2d97e71 78-95,129-145
+  s_8ac3ccee0e6ce8::t_53531a3e0261e6 96-128
+  s_8ac3ccee0e6ce8::t_0c0f82e791521f 1-3,5,8-11
+  s_8ac3ccee0e6ce8::t_6703ed06af1fcd 62
+packages/@n8n/module-cli/src/templates/frontend/vize-lint.config.mjs.template
+  s_8ac3ccee0e6ce8::t_868f59e626d9d1 1-3
+packages/modules/otel/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 42
+packages/modules/instance-registry/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 27
+packages/modules/insights/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 16-17,70
+packages/modules/apps/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/modules/instance-registry/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16
+packages/modules/insights/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/modules/self-healing/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16,56
+packages/modules/mcp/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 32
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.ts
+  s_8ac3ccee0e6ce8::t_9e427d4be942eb 1,3-11,18-19,21-26,28-30,33,36-37,39-59,61-65,68-70,72-76,88-89,95,97-112,114-119,121-127,129
+  s_8ac3ccee0e6ce8::t_53531a3e0261e6 16
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 33
+packages/modules/type-availability-policies/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/@n8n/module-cli/src/frontend.mjs
+  s_8ac3ccee0e6ce8::t_868f59e626d9d1 46
+packages/@n8n/oxlint-config/package.json
+  s_8ac3ccee0e6ce8::t_55165e348db915 19-22
+packages/modules/inbox/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16,60
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_8ac3ccee0e6ce8::t_868f59e626d9d1 111,148,153-156,162
+  s_8ac3ccee0e6ce8::t_d8e700be67f579 159-161
+pnpm-workspace.yaml
+  s_8ac3ccee0e6ce8::t_b79db22f275184 296,328
+packages/modules/apps/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16,59
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.test.ts
+  s_8ac3ccee0e6ce8::t_53531a3e0261e6 18-21,68-69
+  s_8ac3ccee0e6ce8::t_ec45d20f36076f 1-17,22-67,70-78
+packages/modules/type-availability-policies/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 16-17,55
+scripts/lint-parity/oxlint-gap.json
+  s_8ac3ccee0e6ce8::t_12bd87424b559b 8-11,66,80-145,147-172,174-199
+  s_8ac3ccee0e6ce8::t_1878638da06d96 200-227,229,232-234
+packages/modules/self-healing/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_8ac3ccee0e6ce8::t_344d129c2da727 22-48,51-59,64-71,96-102
+  s_8ac3ccee0e6ce8::t_82d9971dace9d5 49-50
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_8ac3ccee0e6ce8::t_5c3e830a15d87b 28-29
+packages/modules/inbox/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 67
+scripts/lint-parity/oxlint-parity.mjs
+  s_8ac3ccee0e6ce8::t_82d9971dace9d5 228,230-250,256,263-267
+  s_8ac3ccee0e6ce8::t_11ae832348d828 14-18,43,47,78,81-92,112,208-227,299,313,332-335,348
+  s_8ac3ccee0e6ce8::t_0e7b5a46439db2 229
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 15-16
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_8ac3ccee0e6ce8::t_868f59e626d9d1 15-16,56
+packages/modules/apps/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 33
+scripts/lint-parity/samples.json
+  s_8ac3ccee0e6ce8::t_de6c8a8b328c45 383-388
+packages/modules/mcp/frontend/package.json
+  s_8ac3ccee0e6ce8::t_c1f34acc3777a4 16-17,70
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.ts
+  s_8ac3ccee0e6ce8::t_4a68d8071040ff 1-70
+packages/modules/insights/frontend/README.md
+  s_8ac3ccee0e6ce8::t_9a58a3dfdcb3d4 43
+packages/modules/inbox/frontend/vize-lint.config.mjs
+  s_8ac3ccee0e6ce8::t_e34c99dce1e435 1-3
+packages/@n8n/oxlint-config/src/configs/vize.ts
+  s_8ac3ccee0e6ce8::t_c5a52c845620c9 1-132
+pnpm-lock.yaml
+  s_8ac3ccee0e6ce8::t_5fb84a8d359118 809-811,865-867,6030-6032,7307-7309,7635-7637,7865-7867,8077-8079,8183-8185,8492-8494,8595-8597,13837-13958,16608-16663,22153-22156,24914-24926,30904-30960,33808-33842,40479-40500,43918-43930
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4506576a41d654182c806c61ce952376b74b94b8",
+  "prompts": {},
+  "sessions": {
+    "s_8ac3ccee0e6ce8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e35438a-dee8-4247-87ca-0c4c57102d3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

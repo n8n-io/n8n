@@ -1,0 +1,29 @@
+packages/cli/src/license.ts
+  s_971164a06e94dc::t_bc7795cc2f6602 39-41,46-49
+  s_971164a06e94dc::t_83af1fd9c93108 515-517,519,521,524,527,539,550-552,556,558-561,563,565-568
+  s_971164a06e94dc::t_87cd25d6c176ac 42-45,50-51
+  s_971164a06e94dc::t_fd31e6948862ec 518,522-523,525-526,528-538,540-549,553-554,557,562,564
+  s_971164a06e94dc::t_ec8f7b8994b337 62-63
+  s_971164a06e94dc::t_311082ded292b0 473,555
+packages/cli/src/__tests__/license.test.ts
+  s_971164a06e94dc::t_477fadb02a276b 5
+  s_971164a06e94dc::t_305b26193cd6da 319-413
+  s_971164a06e94dc::t_67668abe6ca210 27-60
+  s_971164a06e94dc::t_6b9fa1e5586b3b 61-62,414-441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3752a769075d6bd601c00bc22af0559a98453cbd",
+  "prompts": {},
+  "sessions": {
+    "s_971164a06e94dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29d7b611-e2a7-4f34-9dbb-f96d0155c965",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jessie Auguste <jessie.auguste@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_69f4cc3b345b0a::t_74a5bf68ea7401 12,3201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3abe6c61545d58be36ca5204a2c632552a9d875f",
+  "prompts": {},
+  "sessions": {
+    "s_69f4cc3b345b0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a393806-9b92-44b9-b788-dffc75be88c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
