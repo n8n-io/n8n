@@ -2,7 +2,10 @@ operationId: getDataTable
 tags:
   - DataTable
 summary: Get a data table
-description: Retrieve a specific data table by ID.
+description: |-
+  Retrieve a specific data table by ID.
+
+  Requires the `dataTable:read` API key scope.
 x-required-scope: dataTable:read
 parameters:
   - schema:

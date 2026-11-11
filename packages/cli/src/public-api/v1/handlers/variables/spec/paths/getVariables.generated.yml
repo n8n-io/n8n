@@ -2,7 +2,10 @@ operationId: getVariables
 tags:
   - Variables
 summary: Retrieve variables
-description: Retrieve variables from your instance.
+description: |-
+  Retrieve variables from your instance.
+
+  Requires the `variable:list` API key scope.
 x-required-scope: variable:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

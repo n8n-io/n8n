@@ -462,12 +462,14 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
+	/** Lets n8n register the OAuth2 client at the `serverUrl` property, so users need no app of their own. */
+	dynamicClientRegistration?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
-	test?: ICredentialTestRequest;
+	test?: ICredentialTestRequest | ICredentialTestFunction;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];

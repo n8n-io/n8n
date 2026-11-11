@@ -2034,6 +2034,31 @@ describe('McpAgentToolsService', () => {
 			expect(linear).not.toHaveProperty('setupGuidance');
 		});
 
+		it('describes the required webhook settings in kind=integrations', async () => {
+			integrationPersistenceService.listChatIntegrations.mockReturnValue([
+				{
+					type: 'webhook',
+					label: 'Webhook',
+					icon: 'webhook',
+					credentialTypes: ['httpHeaderAuth', 'jwtAuth'],
+				},
+			] as never);
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'integrations',
+			});
+
+			const [webhook] = result.structuredContent.data as Array<Record<string, unknown>>;
+			expect(webhook).toMatchObject({
+				settingsRequired: true,
+				settingsSchema: {
+					properties: { authentication: { enum: ['none', 'headerAuth', 'jwtAuth'] } },
+				},
+				settingsGuidance: expect.stringContaining('Omit credentialId'),
+			});
+		});
+
 		it('lists MCP registry servers for kind=mcpServers without a query', async () => {
 			mcpRegistryService.list.mockResolvedValue([{ name: 'github' }] as never);
 
@@ -2510,6 +2535,62 @@ describe('McpAgentToolsService', () => {
 				replaces: { type: 'slack', credentialId: 'cred-0' },
 				modifiedBy: 'mcp',
 			});
+		});
+
+		it('connects a channel that runs without a credential', async () => {
+			const settings = { authentication: 'none' };
+
+			await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'webhook',
+				settings,
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'webhook', credentialId: '', settings },
+				modifiedBy: 'mcp',
+			});
+		});
+
+		it('leaves the webhook settings check to the integration', async () => {
+			integrationManagementService.connect.mockRejectedValueOnce(
+				new Error('This webhook authentication needs a credential'),
+			);
+
+			const result = await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'webhook',
+				settings: { authentication: 'headerAuth' },
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integration: {
+						type: 'webhook',
+						credentialId: '',
+						settings: { authentication: 'headerAuth' },
+					},
+				}),
+			);
+			expect(result.structuredContent).toMatchObject({
+				error: 'This webhook authentication needs a credential',
+			});
+		});
+
+		it('connects no other channel without a credential', async () => {
+			const result = await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'n8n_chat',
+				settings: { authentication: 'none' },
+			});
+
+			expect(result.isError).toBe(true);
+			expect(integrationManagementService.connect).not.toHaveBeenCalled();
 		});
 
 		it('requires settings for telegram integrations', async () => {
@@ -3034,6 +3115,44 @@ describe('McpAgentToolsService', () => {
 			const result = await callTool('update_agent_integration', withoutCredential);
 
 			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'credentialId is required to disconnect',
+			});
+			expect(integrationManagementService.disconnect).not.toHaveBeenCalled();
+		});
+
+		it('disconnects a channel that has no credential', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					integrations: [
+						{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+					],
+				}),
+			);
+			const { credentialId: _credentialId, ...withoutCredential } = input;
+
+			await callTool('update_agent_integration', { ...withoutCredential, type: 'webhook' });
+
+			expect(integrationManagementService.disconnect).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'webhook', credentialId: '' }),
+			);
+		});
+
+		it('requires a credential to disconnect a webhook that has one', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					integrations: [
+						{ type: 'webhook', credentialId: 'cred-1', settings: { authentication: 'headerAuth' } },
+					],
+				}),
+			);
+			const { credentialId: _credentialId, ...withoutCredential } = input;
+
+			const result = await callTool('update_agent_integration', {
+				...withoutCredential,
+				type: 'webhook',
+			});
+
 			expect(result.structuredContent).toMatchObject({
 				error: 'credentialId is required to disconnect',
 			});
