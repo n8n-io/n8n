@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, nextTick } from 'vue';
@@ -189,6 +189,74 @@ describe('attach-only composer', () => {
 		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
 		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
+	});
+});
+
+describe('InstanceAiInput — file attachments', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	function stubObjectUrls() {
+		const createObjectURL = vi.fn((_file: Blob) => 'blob:preview');
+		const revokeObjectURL = vi.fn();
+		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+		return { createObjectURL, revokeObjectURL };
+	}
+
+	it('creates a preview URL for image files and revokes it when a file is removed', async () => {
+		const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+		const { container, findByAltText, findByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+
+		await userEvent.upload(fileInput, file);
+
+		expect(createObjectURL).toHaveBeenCalledWith(file);
+		expect(await findByAltText('preview.png')).toHaveAttribute('src', 'blob:preview');
+
+		await userEvent.click(await findByTestId('attachment-remove'));
+		await waitFor(() =>
+			expect(document.body.querySelector('img[role="presentation"]')).toBeInTheDocument(),
+		);
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+
+		await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview'));
+	});
+
+	it('blocks submission until image removal finishes', async () => {
+		stubObjectUrls();
+		const { emitted, container, getByRole, getByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Send this message');
+
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, file);
+
+		const sendButton = getByTestId('instance-ai-send-button');
+		await userEvent.click(getByTestId('attachment-remove'));
+		expect(sendButton).toBeDisabled();
+
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{Enter}');
+		expect(emitted().submit).toBeUndefined();
+
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+		await waitFor(() => expect(sendButton).toBeEnabled());
+		await userEvent.click(sendButton);
+		await waitFor(() => expect(emitted().submit).toHaveLength(1));
 	});
 });
 
