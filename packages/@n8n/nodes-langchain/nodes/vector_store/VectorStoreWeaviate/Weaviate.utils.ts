@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from '@n8n/errors';
 import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
@@ -148,26 +149,48 @@ function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 	throw new OperationalError(`No valid filter value provided for operator: ${operator}`);
 }
 
-export function parseCompositeFilter(filter: WeaviateFilter): FilterValue {
+function isFilterUnit(value: Record<string, unknown>): value is WeaviateFilterUnit {
+	return (
+		Array.isArray(value.path) &&
+		value.path.length > 0 &&
+		value.path.every((part) => typeof part === 'string') &&
+		typeof value.operator === 'string'
+	);
+}
+
+/** Parses one member of a filter. The members come from user JSON, so check each shape. */
+function parseFilterMember(value: unknown): FilterValue {
+	if (!isRecord(value)) {
+		throw new UserError('Each filter must be an object.');
+	}
 	// AND, OR and NOT can contain other groups, so parse their members recursively
-	if ('AND' in filter) {
-		if (!Array.isArray(filter.AND)) {
+	if ('AND' in value) {
+		if (!Array.isArray(value.AND)) {
 			throw new UserError("'AND' must contain an array of filters.");
 		}
-		return Filters.and(...filter.AND.map(parseCompositeFilter));
+		return Filters.and(...value.AND.map(parseFilterMember));
 	}
-	if ('OR' in filter) {
-		if (!Array.isArray(filter.OR)) {
+	if ('OR' in value) {
+		if (!Array.isArray(value.OR)) {
 			throw new UserError("'OR' must contain an array of filters.");
 		}
-		return Filters.or(...filter.OR.map(parseCompositeFilter));
+		return Filters.or(...value.OR.map(parseFilterMember));
 	}
-	if ('NOT' in filter) {
-		if (typeof filter.NOT !== 'object' || filter.NOT === null || Array.isArray(filter.NOT)) {
+	if ('NOT' in value) {
+		if (!isRecord(value.NOT)) {
 			throw new UserError("'NOT' must contain exactly one filter.");
 		}
-		return Filters.not(parseCompositeFilter(filter.NOT));
+		return Filters.not(parseFilterMember(value.NOT));
+	}
+	if (!isFilterUnit(value)) {
+		throw new UserError(
+			"Each filter must have a 'path' and an 'operator', or be an 'AND', 'OR' or 'NOT' group.",
+		);
 	}
 
-	return buildFilter(filter);
+	return buildFilter(value);
+}
+
+export function parseCompositeFilter(filter: WeaviateFilter): FilterValue {
+	return parseFilterMember(filter);
 }

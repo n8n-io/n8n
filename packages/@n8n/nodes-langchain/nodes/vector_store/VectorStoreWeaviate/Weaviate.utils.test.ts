@@ -301,6 +301,12 @@ describe('parseCompositeFilter', () => {
 		],
 		[{ NOT: null }, "'NOT' must contain exactly one filter."],
 		[{ NOT: 'Elis' }, "'NOT' must contain exactly one filter."],
+		[{ NOT: {} }, "Each filter must have a 'path' and an 'operator'"],
+		[{ AND: [null] }, 'Each filter must be an object.'],
+		[{ OR: ['Elis'] }, 'Each filter must be an object.'],
+		[{ AND: [{ operator: 'Equal', valueString: 'Elis' }] }, "Each filter must have a 'path'"],
+		[{ AND: [{ path: [], operator: 'Equal' }] }, "Each filter must have a 'path'"],
+		[{ AND: [{ path: ['author'], operator: 5 }] }, "Each filter must have a 'path'"],
 	])('should throw a user error for the malformed group %j', (filter, message) => {
 		const parse = () => parseCompositeFilter(filter as unknown as WeaviateCompositeFilter);
 
