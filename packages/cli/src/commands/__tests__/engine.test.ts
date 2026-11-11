@@ -3,6 +3,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,6 +14,7 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { EngineTlsMaterial } from '@/modules/engine-v2/engine-tls-material';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
@@ -58,6 +60,13 @@ mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
+/** The real boot check, over files this test does not need to write. */
+const useTls = (value: EngineTlsMaterial['tls']) => {
+	const material = new EngineTlsMaterial(Container.get(EngineConfig));
+	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
+	Container.set(EngineTlsMaterial, material);
+};
+
 describe('Engine', () => {
 	const originalEnv = process.env;
 	let engineConfig: EngineConfig;
@@ -80,7 +89,9 @@ describe('Engine', () => {
 		engineConfig = mockInstance(EngineConfig, {
 			authSecret: 'a'.repeat(32),
 			controlPlaneBaseUrl: 'http://n8n-main:3001',
+			tlsInsecureAllowPlainHttp: true,
 		});
+		useTls(undefined);
 	});
 
 	afterEach(() => {
@@ -162,6 +173,22 @@ describe('Engine', () => {
 			engineConfig.controlPlaneBaseUrl = '';
 
 			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
+		});
+
+		it('refuses to boot over plain HTTP without the opt-out', async () => {
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+			);
+		});
+
+		it('refuses an http control plane address when TLS is on', async () => {
+			useTls({ cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') });
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
+			);
 		});
 
 		it('never opens, migrates or reads the control plane database', async () => {

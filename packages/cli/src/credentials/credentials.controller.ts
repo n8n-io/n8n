@@ -52,6 +52,9 @@ import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
+/** Ids per `credentials-list-data-read` event: keeps each audit message small enough for a syslog line. */
+const AUDITED_CREDENTIAL_IDS_CHUNK_SIZE = 100;
+
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
@@ -109,6 +112,29 @@ export class CredentialsController {
 			// though. So to avoid leaking the information we just delete it.
 			delete c.shared;
 		});
+
+		// Audit what the response carries, not what the request asked for. One event per chunk
+		// of ids, not per credential: the editor asks for the data of every editable credential
+		// on each app load, so per-credential events would flood a SIEM, and one unbounded
+		// event would not fit a syslog line.
+		const idsWithData = credentials
+			.filter((c) => 'data' in c && c.data !== undefined)
+			.map((c) => c.id);
+		const chunkCount = Math.ceil(idsWithData.length / AUDITED_CREDENTIAL_IDS_CHUNK_SIZE);
+		for (let chunk = 0; chunk < chunkCount; chunk++) {
+			this.eventService.emit('credentials-list-data-read', {
+				user: req.user,
+				credentialIds: idsWithData.slice(
+					chunk * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+					(chunk + 1) * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+				),
+				credentialCount: idsWithData.length,
+				chunk: chunk + 1,
+				chunkCount,
+				publicApi: false,
+			});
+		}
+
 		return credentials;
 	}
 
@@ -165,6 +191,18 @@ export class CredentialsController {
 		);
 
 		await this.credentialDescriptions.stripIfDisabled(credential);
+
+		// Audit what the response carries, not what the request asked for, and only once the
+		// response is complete: a failure above must not log a read that never happened.
+		if ('data' in credential && credential.data !== undefined) {
+			this.eventService.emit('credentials-data-read', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				publicApi: false,
+			});
+		}
+
 		return { ...credential, scopes };
 	}
 

@@ -51,6 +51,7 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
+import { isRuntimeContextCue } from '../../sdk/message';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
@@ -89,6 +90,9 @@ import type {
 
 export type {
 	AgentRuntimeConfig,
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from '../../types/runtime/agent-runtime';
@@ -1130,6 +1134,7 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		await this.addContextCues(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
 			tools,
@@ -1335,6 +1340,56 @@ export class AgentRuntime {
 				state.iterationCount + 1,
 			);
 		}
+	}
+
+	/**
+	 * Ask the context cue providers for cues and append the new ones as one
+	 * message. Cues already in the visible conversation are not sent again. After
+	 * compaction hides a cue, a provider can send it again.
+	 */
+	private async addContextCues(ctx: PreparedLoopContext): Promise<void> {
+		const providers = this.config.contextCueProviders;
+		if (!providers?.length) return;
+		const { list, options, abortScope } = ctx;
+		const messages = list.llmVisibleMessages();
+		const sentCueIds = new Set(
+			messages.filter(isRuntimeContextCue).flatMap((message) => message.data.cueIds),
+		);
+		const activeSkillIds = new Set(list.activeSkillIds);
+		const request = {
+			messages,
+			isSkillActive: (skillId: string) => activeSkillIds.has(skillId),
+			sentCueIds,
+			persistence: options?.persistence,
+			abortSignal: abortScope.signal,
+		};
+		const results = await Promise.all(
+			providers.map(async (provider) => {
+				try {
+					return await provider(request);
+				} catch (error) {
+					// Cues are optional guidance: a failed provider must not fail the run.
+					logger.warn('Failed to resolve context cues', { runId: this.runId, error });
+					return [];
+				}
+			}),
+		);
+		const cues = new Map<string, string>();
+		for (const cue of results.flat()) {
+			if (sentCueIds.has(cue.id) || cues.has(cue.id) || !cue.content.trim()) continue;
+			cues.set(cue.id, cue.content.trim());
+		}
+		if (cues.size === 0) return;
+		list.addInput([
+			{
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-context-cue',
+					cueIds: [...cues.keys()],
+					content: [...cues.values()].join('\n'),
+				},
+			},
+		]);
 	}
 
 	private async resolveVolatileInstructions(
