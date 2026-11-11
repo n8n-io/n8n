@@ -279,7 +279,8 @@ function formatDuration(ms: number): string {
 					v-if="assistantAvailable && row.thread.status === 'error'"
 					:class="$style.fixButton"
 					size="xsmall"
-					variant="solid"
+					icon-size="small"
+					variant="outline"
 					icon="n8n-assistant"
 					:loading="fixingThreadId === row.thread.id"
 					:disabled="fixingThreadId !== null"
@@ -395,6 +396,7 @@ function formatDuration(ms: number): string {
 .listStart {
 	flex: 1;
 	min-width: 0;
+	max-width: 65%;
 	align-self: stretch;
 }
 
