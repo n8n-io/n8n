@@ -98,6 +98,19 @@ describe('TypeormPersistenceBoundaryRule', () => {
 		expect(await analyze()).toHaveLength(1);
 	});
 
+	it('does not infer persistence from a local BaseRepository import', async () => {
+		writePackage();
+		write('packages/example/src/base-repository.ts', 'export class BaseRepository {}\n');
+		write(
+			'packages/example/src/workflow.service.ts',
+			"import { In } from '@n8n/typeorm';\nimport { BaseRepository } from './base-repository';\nexport class WorkflowService extends BaseRepository {}\n",
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('workflow.service.ts:1 Business logic imports TypeORM directly.'),
+		]);
+	});
+
 	it('always rejects guarded TypeORM re-exports from @n8n/db', async () => {
 		writePackage();
 		write(
@@ -181,5 +194,38 @@ describe('TypeormPersistenceBoundaryRule', () => {
 		);
 
 		expect(await analyze()).toEqual([]);
+	});
+
+	// IAM-1417: Check the current API key source without the repository baseline.
+	describe('public API key persistence', () => {
+		const repositoryRoot = path.resolve(__dirname, '../../../../../..');
+
+		it('allows TypeORM in ApiKeyRepository', async () => {
+			writePackage();
+			write(
+				'packages/example/src/api-key.repository.ts',
+				fs
+					.readFileSync(
+						path.join(repositoryRoot, 'packages/@n8n/db/src/repositories/api-key.repository.ts'),
+						'utf8',
+					)
+					.replace("from './base-repository'", "from '@n8n/db'"),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
+		it('keeps TypeORM imports out of PublicApiKeyService', async () => {
+			writePackage();
+			write(
+				'packages/example/src/public-api-key.service.ts',
+				fs.readFileSync(
+					path.join(repositoryRoot, 'packages/cli/src/services/public-api-key.service.ts'),
+					'utf8',
+				),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
 	});
 });

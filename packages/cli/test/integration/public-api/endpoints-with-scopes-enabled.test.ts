@@ -331,7 +331,7 @@ describe('Public API endpoints with API key scopes', () => {
 					 */
 					expect(response.status).toBe(204);
 
-					const formerAdminApiKey = await apiKeyRepository.findOneByOrFail({ userId: admin.id });
+					const [formerAdminApiKey] = await apiKeyRepository.findByUserId(admin.id);
 					for (const ownerScope of ownerOnlyScopes) {
 						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
 					}
@@ -360,8 +360,7 @@ describe('Public API endpoints with API key scopes', () => {
 					 */
 					expect(response.status).toBe(204);
 
-					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
-					expect(formerAdminApiKey).toBeNull();
+					expect(await apiKeyRepository.findByUserId(admin.id)).toHaveLength(0);
 				});
 			});
 

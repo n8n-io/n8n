@@ -49,7 +49,7 @@ describe('MCP discovery enrollment', () => {
 			return value === undefined ? null : mock<Settings>({ key, value });
 		});
 		consents.findConnectedClients.mockResolvedValue({ rows: [], total: 0 });
-		apiKeys.find.mockResolvedValue([]);
+		apiKeys.findAllForUser.mockResolvedValue([]);
 		service = new McpDiscoveryEnrollmentService(
 			settings,
 			config,
@@ -222,9 +222,9 @@ describe('MCP discovery enrollment', () => {
 
 	it('requires a new Claude connection after an API key rotation', async () => {
 		rows.set(discoveryUserKey('owner', 'claudeApiKey.old-key'), '1000');
-		apiKeys.find.mockResolvedValue([mock<ApiKey>({ id: 'old-key' })]);
+		apiKeys.findAllForUser.mockResolvedValue([mock<ApiKey>({ id: 'old-key' })]);
 		expect((await visit('owner')).hasConnectedClaude).toBe(true);
-		apiKeys.find.mockResolvedValue([mock<ApiKey>({ id: 'new-key' })]);
+		apiKeys.findAllForUser.mockResolvedValue([mock<ApiKey>({ id: 'new-key' })]);
 		expect((await visit('owner')).hasConnectedClaude).toBe(false);
 	});
 
@@ -274,7 +274,7 @@ describe('MCP discovery enrollment', () => {
 
 	it('does not count an unfinished credential observation as a connection', async () => {
 		vi.setSystemTime(start + 31 * 60 * 1000);
-		apiKeys.find.mockResolvedValue([mock<ApiKey>({ id: 'key' })]);
+		apiKeys.findAllForUser.mockResolvedValue([mock<ApiKey>({ id: 'key' })]);
 		rows.set(discoveryUserKey('owner', 'claudeApiKey.key'), '');
 		expect(await visit('owner')).toMatchObject({ hasConnectedClaude: false });
 	});

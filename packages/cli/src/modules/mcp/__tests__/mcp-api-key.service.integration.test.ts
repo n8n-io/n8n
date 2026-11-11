@@ -2,6 +2,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
@@ -123,7 +124,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 				token: async () => {
 					const owner = await createOwner();
 					const apiKey = await createMcpApiKey(owner);
-					await Container.get(ApiKeyRepository).delete({ apiKey });
+					await Container.get(DataSource).manager.delete(ApiKey, { apiKey });
 					return apiKey;
 				},
 			},
@@ -174,14 +175,13 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 			jti: 'tampered',
 		});
 
-		const entity = Container.get(ApiKeyRepository).create({
+		await Container.get(ApiKeyRepository).createKey({
 			userId: owner.id,
 			apiKey: jwt,
 			audience: 'mcp-server-api',
 			scopes: [],
 			label: `Tampered ${randomString(6)}`,
 		});
-		await Container.get(ApiKeyRepository).manager.insert(ApiKey, entity);
 
 		const result = await service.verifyApiKey(jwt);
 

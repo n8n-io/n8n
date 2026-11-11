@@ -1,4 +1,3 @@
-import type { TransactionRunner } from '@n8n/db';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -11,12 +10,15 @@ import {
 	Person,
 	type PersonRepository,
 	ProjectRelation,
+	ProjectRelationRepository,
 	ProjectRepository,
 	Role,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	User,
 	UserRepository,
+	type OperationContext,
+	type TransactionRunner,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
@@ -70,10 +72,12 @@ describe('UserService', () => {
 	});
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	const ctx: OperationContext = {};
 	const personRepository = mock<PersonRepository>();
 	const scimSwitchReader = mock<ScimSwitchReader>();
-	const transactions = mock<TransactionRunner>();
-	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -91,9 +95,10 @@ describe('UserService', () => {
 		externalHooks,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
+		projectRelationRepository,
+		txRunner,
 		personRepository,
 		scimSwitchReader,
-		transactions,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -380,12 +385,7 @@ describe('UserService', () => {
 			// The new license guard calls isRoleLicensed; default it to licensed so the
 			// existing branch tests below exercise the role-change logic, not the guard.
 			roleService.isRoleLicensed.mockReturnValue(true);
-			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
-				const runInTransaction = (arg2 ?? arg1) as (
-					entityManager: EntityManager,
-				) => Promise<unknown>;
-				return await runInTransaction(manager);
-			});
+			txRunner.run.mockImplementation(async (_ctx, run) => await run(ctx));
 		});
 
 		it('throws an error if provided user role does not exist', async () => {
@@ -407,11 +407,7 @@ describe('UserService', () => {
 
 			await userService.changeUserRole(user, { newRoleName: 'global:admin' });
 
-			expect(manager.update).toHaveBeenCalledWith(
-				User,
-				{ id: user.id },
-				{ role: { slug: 'global:admin' } },
-			);
+			expect(userRepository.changeGlobalRole).toHaveBeenCalledWith(user.id, 'global:admin', ctx);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
 			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
 		});
@@ -437,12 +433,8 @@ describe('UserService', () => {
 
 			await userService.changeUserRole(user, { newRoleName: 'global:member' });
 
-			expect(manager.update).toHaveBeenCalledWith(
-				User,
-				{ id: user.id },
-				{ role: { slug: 'global:member' } },
-			);
-			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalled();
+			expect(userRepository.changeGlobalRole).toHaveBeenCalledWith(user.id, 'global:member', ctx);
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalledWith(user, ctx);
 			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
 		});
 
@@ -459,7 +451,7 @@ describe('UserService', () => {
 			personalProject.creatorId = user.id;
 
 			const projectId = uuid();
-			manager.find.mockResolvedValueOnce([
+			projectRelationRepository.findSharedProjectRelationsForUser.mockResolvedValueOnce([
 				Object.assign(new ProjectRelation(), {
 					userId: user.id,
 					role: Object.assign(new Role(), { slug: PROJECT_VIEWER_ROLE_SLUG }),
@@ -471,25 +463,24 @@ describe('UserService', () => {
 
 			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
 
-			expect(manager.delete).toHaveBeenCalledTimes(1);
-			expect(manager.delete).toHaveBeenCalledWith(ProjectRelation, {
-				userId: user.id,
+			expect(projectRelationRepository.deleteUserFromProject).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.deleteUserFromProject).toHaveBeenCalledWith(
 				projectId,
-			});
+				user.id,
+				ctx,
+			);
 
-			expect(manager.update).toHaveBeenCalledWith(
-				ProjectRelation,
-				{
-					userId: user.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: personalProject.id,
-				},
-				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			expect(projectRelationRepository.changeRoleForUserInProject).toHaveBeenCalledWith(
+				personalProject.id,
+				user.id,
+				PROJECT_OWNER_ROLE_SLUG,
+				PROJECT_VIEWER_ROLE_SLUG,
+				ctx,
 			);
 
 			// Ensure all their API keys are revoked
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
-			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, ctx);
 		});
 
 		it('assigns chat user project:viewer on their personal project when demoted from member', async () => {
@@ -504,24 +495,22 @@ describe('UserService', () => {
 			personalProject.type = 'personal';
 			personalProject.creatorId = user.id;
 
-			manager.find.mockResolvedValueOnce([]);
+			projectRelationRepository.findSharedProjectRelationsForUser.mockResolvedValueOnce([]);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
 
 			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
 
-			expect(manager.update).toHaveBeenCalledWith(
-				ProjectRelation,
-				{
-					userId: user.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: personalProject.id,
-				},
-				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			expect(projectRelationRepository.changeRoleForUserInProject).toHaveBeenCalledWith(
+				personalProject.id,
+				user.id,
+				PROJECT_OWNER_ROLE_SLUG,
+				PROJECT_VIEWER_ROLE_SLUG,
+				ctx,
 			);
 
 			// Ensure all their API keys are revoked
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
-			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, ctx);
 		});
 
 		it('assigns chat user project:viewer on their personal project when demoted from admin', async () => {
@@ -536,24 +525,22 @@ describe('UserService', () => {
 			personalProject.type = 'personal';
 			personalProject.creatorId = user.id;
 
-			manager.find.mockResolvedValueOnce([]);
+			projectRelationRepository.findSharedProjectRelationsForUser.mockResolvedValueOnce([]);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
 
 			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
 
-			expect(manager.update).toHaveBeenCalledWith(
-				ProjectRelation,
-				{
-					userId: user.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: personalProject.id,
-				},
-				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			expect(projectRelationRepository.changeRoleForUserInProject).toHaveBeenCalledWith(
+				personalProject.id,
+				user.id,
+				PROJECT_OWNER_ROLE_SLUG,
+				PROJECT_VIEWER_ROLE_SLUG,
+				ctx,
 			);
 
 			// Ensure all their API keys are revoked.
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
-			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, ctx);
 		});
 
 		it('assigns chat user project:personalOwner when upgraded to member', async () => {
@@ -572,14 +559,12 @@ describe('UserService', () => {
 
 			await userService.changeUserRole(user, { newRoleName: 'global:member' });
 
-			expect(manager.update).toHaveBeenCalledWith(
-				ProjectRelation,
-				{
-					userId: user.id,
-					role: { slug: PROJECT_VIEWER_ROLE_SLUG },
-					projectId: personalProject.id,
-				},
-				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+			expect(projectRelationRepository.changeRoleForUserInProject).toHaveBeenCalledWith(
+				personalProject.id,
+				user.id,
+				PROJECT_VIEWER_ROLE_SLUG,
+				PROJECT_OWNER_ROLE_SLUG,
+				ctx,
 			);
 		});
 
@@ -593,10 +578,10 @@ describe('UserService', () => {
 			await userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' });
 
 			expect(roleService.isRoleLicensed).toHaveBeenCalledWith('global:custom-role-abc');
-			expect(manager.update).toHaveBeenCalledWith(
-				User,
-				{ id: user.id },
-				{ role: { slug: 'global:custom-role-abc' } },
+			expect(userRepository.changeGlobalRole).toHaveBeenCalledWith(
+				user.id,
+				'global:custom-role-abc',
+				ctx,
 			);
 		});
 
@@ -612,7 +597,7 @@ describe('UserService', () => {
 				userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' }),
 			).rejects.toThrow(ForbiddenError);
 
-			expect(manager.update).not.toHaveBeenCalled();
+			expect(userRepository.changeGlobalRole).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1058,7 +1043,7 @@ describe('UserService', () => {
 			).rejects.toThrow(violation);
 
 			expect(ownershipTransferService.transferAllResources).not.toHaveBeenCalled();
-			expect(transactions.run).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('skips the policy check when the user is deleted without a transferee', async () => {
@@ -1089,7 +1074,7 @@ describe('UserService', () => {
 				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
-				).toBeLessThan(transactions.run.mock.invocationCallOrder[0]);
+				).toBeLessThan(txRunner.run.mock.invocationCallOrder[0]);
 			},
 		);
 
@@ -1158,7 +1143,7 @@ describe('UserService', () => {
 
 				await expect(result).rejects.toThrow(ForbiddenError);
 				await expect(result).rejects.toThrow('Instance owner cannot be deleted.');
-				expect(transactions.run).not.toHaveBeenCalled();
+				expect(txRunner.run).not.toHaveBeenCalled();
 			});
 		});
 	});
