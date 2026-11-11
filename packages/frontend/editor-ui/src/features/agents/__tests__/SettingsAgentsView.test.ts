@@ -124,7 +124,14 @@ it('keeps the saved choice when the update fails', async () => {
 	expect(useSettingsStore().moduleSettings.agents?.enabled).toBe(false);
 });
 
-it('configures the shared sandbox while Assistant and Agents are off', async () => {
+it('hides the sandbox settings while Agents is off', async () => {
+	const { findByRole, queryByRole } = render();
+	await findByRole('switch', { name: 'Enable Agents' });
+	expect(queryByRole('button', { name: 'Add sandbox' })).not.toBeInTheDocument();
+});
+
+it('configures the shared sandbox while Assistant is off', async () => {
+	vi.mocked(getAgentsSettings).mockResolvedValue({ enabled: true });
 	vi.mocked(updateSettings).mockResolvedValue(
 		sharedSettings({
 			sandboxEnabled: true,
@@ -164,6 +171,7 @@ it('configures the shared sandbox while Assistant and Agents are off', async () 
 });
 
 it('shows Retry after a failed sandbox reload with cached settings', async () => {
+	vi.mocked(getAgentsSettings).mockResolvedValue({ enabled: true });
 	useInstanceAiSettingsStore().settings = sharedSettings({
 		sandboxEnabled: true,
 		n8nSandboxCredentialId: 'cached-sandbox',
@@ -184,6 +192,7 @@ it('shows Retry after a failed sandbox reload with cached settings', async () =>
 it.each(['cloud', 'environment'] as const)(
 	'keeps %s-managed connections read-only',
 	async (source) => {
+		vi.mocked(getAgentsSettings).mockResolvedValue({ enabled: true });
 		if (source === 'cloud') {
 			useSettingsStore().$patch({ settings: { deployment: { type: 'cloud' } } });
 		} else {
@@ -208,6 +217,7 @@ it.each(['cloud', 'environment'] as const)(
 );
 
 it('shows server setup guidance when the Assistant module is not loaded', async () => {
+	vi.mocked(getAgentsSettings).mockResolvedValue({ enabled: true });
 	useSettingsStore().$patch({ settings: { activeModules: ['agents'] } });
 	const { findByText, queryByRole } = render();
 	await findByText(/The Assistant module is disabled/);

@@ -523,7 +523,7 @@ async function handleDataSharingToggle(value: boolean) {
 						@update:model-value="onEnabledChange"
 					/>
 				</N8nSettingsRowGroup>
-				<N8nSettingsRowGroup v-if="showCredentialsRows || showSandboxRow">
+				<N8nSettingsRowGroup v-if="isEnabled && (showCredentialsRows || showSandboxRow)">
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
@@ -576,9 +576,10 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-			<DefaultEditorSetting />
+			<DefaultEditorSetting v-if="isEnabled" />
 
 			<N8nSettingsSection
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
@@ -648,6 +649,7 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
@@ -671,6 +673,7 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
 				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
 			>
@@ -727,7 +730,10 @@ async function handleDataSharingToggle(value: boolean) {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
-			<N8nSettingsSection :title="i18n.baseText('settings.n8nAgent.dataSharing.title')">
+			<N8nSettingsSection
+				v-if="isEnabled"
+				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
+			>
 				<template #description>
 					<N8nText size="small" color="text-base">
 						{{ i18n.baseText('settings.n8nAgent.dataSharing.description') }}
@@ -793,7 +799,7 @@ async function handleDataSharingToggle(value: boolean) {
 
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
 		none of the admin sections above, so they get the row on its own. -->
-		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured && isEnabled" />
 
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"

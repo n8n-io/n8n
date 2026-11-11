@@ -328,9 +328,9 @@ describe('SettingsInstanceAiView', () => {
 			});
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
-			const { getByTestId, getByText } = renderComponent();
+			const { getByTestId, queryByText } = renderComponent();
 			expect(getByTestId('n8n-agent-enabled-switch')).not.toBeChecked();
-			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
 		});
 	});
 
