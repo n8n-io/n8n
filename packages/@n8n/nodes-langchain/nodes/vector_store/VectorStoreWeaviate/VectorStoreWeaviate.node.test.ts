@@ -438,7 +438,7 @@ describe('VectorStoreWeaviate.node', () => {
 			deleteCollection.mockReset();
 			removeTenants.mockReset();
 			closeClient.mockClear();
-			collectionExists.mockReset().mockResolvedValue(false);
+			collectionExists.mockReset().mockResolvedValue(true);
 			createFromJson.mockReset();
 			vi.mocked(WeaviateStore.fromDocuments).mockClear();
 		});
@@ -480,6 +480,8 @@ describe('VectorStoreWeaviate.node', () => {
 		});
 
 		it('should create the collection from the schema for each item in node version 1', async () => {
+			collectionExists.mockResolvedValue(false);
+
 			await insert({ jsonSchema: '{ "vectorizer": "none" }' }, 1);
 
 			expect(createFromJson).toHaveBeenCalledWith({ class: 'TestCollection', vectorizer: 'none' });
@@ -516,6 +518,15 @@ describe('VectorStoreWeaviate.node', () => {
 				expect(deleteCollection).not.toHaveBeenCalled();
 			});
 
+			it('should skip the clear step when the collection does not exist', async () => {
+				collectionExists.mockResolvedValue(false);
+
+				await clear({ clearStore: true, tenant: 'tenantA' });
+
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
 			it('should close the client after the clear step', async () => {
 				await clear({ clearStore: true });
 
@@ -535,6 +546,10 @@ describe('VectorStoreWeaviate.node', () => {
 					vectorizer: 'none',
 					properties: [{ name: 'text', dataType: ['text'] }],
 				};
+
+				beforeEach(() => {
+					collectionExists.mockResolvedValue(false);
+				});
 
 				it('should create the collection from a JSON string when it does not exist', async () => {
 					await clear({ jsonSchema: JSON.stringify(schema) });
@@ -569,6 +584,8 @@ describe('VectorStoreWeaviate.node', () => {
 				});
 
 				it('should clear the store first, and then create the collection', async () => {
+					collectionExists.mockResolvedValueOnce(true);
+
 					await clear({ clearStore: true, jsonSchema: schema });
 
 					expect(deleteCollection.mock.invocationCallOrder[0]).toBeLessThan(
@@ -586,6 +603,36 @@ describe('VectorStoreWeaviate.node', () => {
 
 					expect(deleteCollection).not.toHaveBeenCalled();
 					expect(createFromJson).not.toHaveBeenCalled();
+				});
+
+				it('should create a missing collection when Clear Data is on and a tenant is set', async () => {
+					await clear({ clearStore: true, tenant: 'tenantA', jsonSchema: schema });
+
+					expect(removeTenants).not.toHaveBeenCalled();
+					expect(createFromJson).toHaveBeenCalledWith(schema);
+				});
+
+				it('should remove the tenant and keep an existing collection', async () => {
+					collectionExists.mockResolvedValue(true);
+
+					await clear({ clearStore: true, tenant: 'tenantA', jsonSchema: schema });
+
+					expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+					expect(createFromJson).not.toHaveBeenCalled();
+				});
+
+				it('should accept a collection that another execution created at the same time', async () => {
+					collectionExists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+					createFromJson.mockRejectedValueOnce(new Error('class name already exists'));
+
+					await expect(clear({ jsonSchema: schema })).resolves.toBeUndefined();
+				});
+
+				it('should throw the creation error when the collection still does not exist', async () => {
+					createFromJson.mockRejectedValueOnce(new Error('invalid schema'));
+
+					await expect(clear({ jsonSchema: schema })).rejects.toThrow('invalid schema');
+					expect(closeClient).toHaveBeenCalledTimes(1);
 				});
 			});
 		});

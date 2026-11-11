@@ -184,11 +184,21 @@ async function prepareCollection(
 	// Parse first, so that an invalid schema does not clear the store
 	const schema = parseCollectionSchema(context, collectionName, options.jsonSchema, itemIndex);
 
-	if (options.clearStore) {
+	if (!options.clearStore && !schema) return;
+
+	let exists = await client.collections.exists(collectionName);
+	// A missing collection has nothing to clear, and a tenant remove on it fails
+	if (options.clearStore && exists) {
 		await clearCollection(client, collectionName, options.tenant);
+		if (!options.tenant) exists = false;
 	}
-	if (schema && !(await client.collections.exists(collectionName))) {
+	if (!schema || exists) return;
+
+	try {
 		await client.collections.createFromJson(schema);
+	} catch (error) {
+		// Another execution can create the collection between the check and this call
+		if (!(await client.collections.exists(collectionName))) throw error;
 	}
 }
 
