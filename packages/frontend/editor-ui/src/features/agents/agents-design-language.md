@@ -25,6 +25,11 @@ that order. Hide zero counts. Keep timestamps visible for empty folders.
 Hide Created on narrow screens. Keep count labels together when the subtitle
 wraps. Show search paths on a separate line.
 
+## Agent card subtitles
+
+Use a separate element for each separator between metadata fields, as workflow
+cards do. Use the row gap to give each separator equal space on both sides.
+
 ## History entry points
 
 Put `Version history` in the Agent actions menu. Put `View timeline` in the

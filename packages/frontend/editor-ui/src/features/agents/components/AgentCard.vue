@@ -272,10 +272,11 @@ async function toggleMCPAccess(enabled: boolean) {
 		<div :class="$style.cardDescription">
 			<span>
 				{{ locale.baseText('agents.list.updated') }}
-				<TimeAgo :date="String(agent.updatedAt)" /> |
+				<TimeAgo :date="String(agent.updatedAt)" />
 			</span>
-			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
-			<span v-if="showMcpIndicator">|</span>
+			<span :class="$style.divider">|</span>
+			<span>{{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }}</span>
+			<span v-if="showMcpIndicator" :class="$style.divider">|</span>
 			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
 				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
@@ -384,6 +385,10 @@ async function toggleMCPAccess(enabled: boolean) {
 .mcpIndicator {
 	display: inline-flex;
 	align-items: center;
+}
+
+.divider {
+	user-select: none;
 }
 
 .cardActions {
