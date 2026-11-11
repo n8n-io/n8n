@@ -5,7 +5,7 @@ import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { createSupabaseClient } from '../shared/supabase';
+import { createSupabaseClient, resolveSchema } from '../shared/supabase';
 
 const queryNameField: INodeProperties = {
 	displayName: 'Query Name',
@@ -15,7 +15,30 @@ const queryNameField: INodeProperties = {
 	description: 'Name of the query to use for matching documents',
 };
 
-const sharedFields: INodeProperties[] = [supabaseTableNameRLC];
+const useCustomSchemaField: INodeProperties = {
+	displayName: 'Use Custom Schema',
+	name: 'useCustomSchema',
+	type: 'boolean',
+	default: false,
+	noDataExpression: true,
+	description:
+		'Whether to use a database schema different from the default "public" schema ' +
+		'(requires schema exposure in the ' +
+		'<a href="https://supabase.com/docs/guides/api/using-custom-schemas?' +
+		'queryGroups=language&language=curl#exposing-custom-schemas">Supabase API</a>)',
+};
+
+const schemaField: INodeProperties = {
+	displayName: 'Schema',
+	name: 'schema',
+	type: 'string',
+	default: 'public',
+	description: 'Name of database schema to use for table',
+	noDataExpression: false,
+	displayOptions: { show: { useCustomSchema: [true] } },
+};
+
+const sharedFields: INodeProperties[] = [useCustomSchemaField, schemaField, supabaseTableNameRLC];
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -72,7 +95,15 @@ export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorSto
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
-		const client = createSupabaseClient(credentials);
+
+		const useCustomSchema = context.getNodeParameter(
+			'useCustomSchema',
+			itemIndex,
+			false,
+		) as boolean;
+		const rawSchema = context.getNodeParameter('schema', itemIndex, 'public') as string;
+		const schema = resolveSchema(useCustomSchema, rawSchema);
+		const client = createSupabaseClient(credentials, schema);
 
 		return await SupabaseVectorStore.fromExistingIndex(embeddings, {
 			client,
@@ -89,7 +120,15 @@ export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorSto
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
-		const client = createSupabaseClient(credentials);
+
+		const useCustomSchema = context.getNodeParameter(
+			'useCustomSchema',
+			itemIndex,
+			false,
+		) as boolean;
+		const rawSchema = context.getNodeParameter('schema', itemIndex, 'public') as string;
+		const schema = resolveSchema(useCustomSchema, rawSchema);
+		const client = createSupabaseClient(credentials, schema);
 
 		try {
 			await SupabaseVectorStore.fromDocuments(documents, embeddings, {

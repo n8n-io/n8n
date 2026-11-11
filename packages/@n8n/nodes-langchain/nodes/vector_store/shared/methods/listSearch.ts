@@ -6,6 +6,7 @@ import type { QdrantCredential } from '../../VectorStoreQdrant/Qdrant.utils';
 import { createQdrantClient } from '../../VectorStoreQdrant/Qdrant.utils';
 import type { WeaviateCredential } from '../../VectorStoreWeaviate/Weaviate.utils';
 import { createWeaviateClient } from '../../VectorStoreWeaviate/Weaviate.utils';
+import { resolveSchema } from '../supabase';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -33,10 +34,21 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 		throw new UserError('Expected Supabase credentials host to be a string');
 	}
 
+	const headers: IDataObject = { Prefer: 'return=representation' };
+	let useCustomSchema = false;
+	try {
+		useCustomSchema = this.getNodeParameter('useCustomSchema', false) as boolean;
+	} catch {
+		// Parameter absent on deprecated node versions — stay on default
+	}
+	if (useCustomSchema) {
+		const rawSchema = this.getNodeParameter('schema', 'public') as string;
+		const schema = resolveSchema(true, rawSchema); // UserError propagates to the UI
+		headers['Accept-Profile'] = schema;
+	}
+
 	const { paths } = (await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
-		headers: {
-			Prefer: 'return=representation',
-		},
+		headers,
 		method: 'GET',
 		uri: `${credentials.host}/rest/v1/`,
 		json: true,
