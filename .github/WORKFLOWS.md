@@ -430,11 +430,15 @@ CALLER                             REUSABLE WORKFLOW
 ───────────────────────────────────────────────────────────────────────────────
 
 ci-pull-requests.yml
+    ├──────────────────────────▶  ci-pr-policy-reusable.yml
     ├──────────────────────────▶  test-unit-reusable.yml
     ├──────────────────────────▶  test-linting-reusable.yml
     ├──────────────────────────▶  test-e2e-reusable.yml
     └──────────────────────────▶  sec-ci-reusable.yml
-                                      └──────────▶  sec-poutine-reusable.yml
+                                       └──────────▶  sec-poutine-reusable.yml
+
+ci-pr-quality.yml
+    └──────────────────────────▶  ci-pr-policy-reusable.yml
 
 ci-master.yml
     ├──────────────────────────▶  test-unit-reusable.yml
@@ -794,6 +798,7 @@ Workflows with `workflow_call` trigger:
 
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
+| `ci-pr-policy-reusable.yml`        | none                                          | Classify automated release PRs |
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
