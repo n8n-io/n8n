@@ -1633,6 +1633,11 @@ export type RelayEventMap = ModuleEventMap & {
 		serverSlug: string;
 	};
 
+	/** A self-healing result closed because one of its workflows changed. Emitted after commit. */
+	'self-healing-result-outdated': {
+		selfHealingResultId: string;
+	};
+
 	// #endregion
 
 	// #region Server CLI

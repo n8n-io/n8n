@@ -87,6 +87,6 @@ export class SelfHealingConfigurationsController {
 
 	@Delete('/:configurationId')
 	async remove(req: ConfigurationRequest) {
-		await this.configurations.remove(req.params.projectId, configurationId(req));
+		await this.configurations.remove(req.user, req.params.projectId, configurationId(req));
 	}
 }

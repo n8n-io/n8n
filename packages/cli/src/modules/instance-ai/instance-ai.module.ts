@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -78,6 +78,10 @@ export class InstanceAiModule implements ModuleInterface {
 			Container.get(WorkflowMutationHooksProxy).registerProvider(
 				Container.get(WorkflowSuggestionEventRelay),
 			);
+			const { SelfHealingTelemetryEventRelay } = await import(
+				'./self-healing/self-healing-telemetry.event-relay.js'
+			);
+			Container.get(SelfHealingTelemetryEventRelay).init();
 		}
 
 		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
@@ -148,16 +152,28 @@ export class InstanceAiModule implements ModuleInterface {
 	async systemTasks() {
 		if (!this.isMain()) return [];
 
-		const { InstanceAiConfig } = await import('@n8n/config');
+		const { GlobalConfig, InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
 			'./self-healing/self-healing-reconciliation.task.js'
 		);
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [SelfHealingReconciliationTask];
+		const config = Container.get(InstanceAiConfig);
+		const tasks: SystemTaskClass[] = [SelfHealingReconciliationTask];
 
-		const { InstanceAiCheckpointPruningTask } = await import(
-			'./instance-ai-checkpoint-pruning.task.js'
-		);
-		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (config.workflowSuggestionsEnabled && Container.get(GlobalConfig).diagnostics.enabled) {
+			const { SelfHealingConfigurationSnapshotTask } = await import(
+				'./self-healing/self-healing-configuration-snapshot.task.js'
+			);
+			tasks.push(SelfHealingConfigurationSnapshotTask);
+		}
+
+		if (config.pruneInterval > 0) {
+			const { InstanceAiCheckpointPruningTask } = await import(
+				'./instance-ai-checkpoint-pruning.task.js'
+			);
+			tasks.push(InstanceAiCheckpointPruningTask);
+		}
+		return tasks;
 	}
 
 	async settings() {
