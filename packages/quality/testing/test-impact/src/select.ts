@@ -95,18 +95,19 @@ function parseSpecList(raw: string): string[] {
  * dependency keeps its resolved version, so its code runs as before.
  *
  * Returns undefined (scope every declaring package) when the lockfile signal is
- * unknown, or when the root manifest changed: any package can load the root's
- * dependencies.
+ * unknown, or when the root's resolved runtime dependencies changed: any
+ * package can load them. `selectTests` runs every spec when the root manifest
+ * changed a runtime dependency.
  */
 export function runtimeDepScopeDirs(
 	manifests: FileDiffs | undefined,
 	lockfileImpactedDirs: string[] | null | undefined,
 ): string[] | undefined {
 	if (!manifests || !lockfileImpactedDirs) return undefined;
+	if (lockfileImpactedDirs.includes('.')) return undefined;
 	const manifestDirs = Object.entries(manifests)
 		.filter(([, { before, after }]) => changedRuntimeDeps(before, after).length > 0)
-		.map(([file]) => (file === 'package.json' ? '.' : file.replace(/\/package\.json$/, '')));
-	if (manifestDirs.includes('.') || lockfileImpactedDirs.includes('.')) return undefined;
+		.map(([file]) => file.replace(/\/?package\.json$/, '') || '.');
 	return [...new Set([...manifestDirs, ...lockfileImpactedDirs])].sort();
 }
 
@@ -192,6 +193,13 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const strategies: SelectionStrategy[] = [];
 	if (input.lockfileImporters && input.manifests) {
 		const runtimeDeps = changedRuntimeDepsFromManifests(input.manifests);
+		// Any package can load the root's runtime dependencies, and a removed one
+		// is no longer listed for the root in the lockfile, so the walk cannot
+		// scope it.
+		const rootManifest = input.manifests['package.json'];
+		if (rootManifest && changedRuntimeDeps(rootManifest.before, rootManifest.after).length > 0) {
+			return broad(['package.json']);
+		}
 		if (runtimeDeps.length > 0) {
 			// Stripping the lockfile is intentional: the dep-graph scopes each changed
 			// declared dep to its importers, which covers that dep's transitive subtree

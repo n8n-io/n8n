@@ -325,14 +325,35 @@ describe('selectTests — fail-open contract', () => {
 			]);
 		});
 
-		it('scopes every declaring package when the root manifest changed a runtime dep', () => {
-			const root = {
-				'package.json': {
+		it('scopes every declaring package when the lockfile reports a root change', () => {
+			const apps = {
+				'packages/modules/apps/backend/package.json': {
 					before: JSON.stringify({ dependencies: {} }),
 					after: JSON.stringify({ dependencies: { semver: '7' } }),
 				},
 			};
-			expect(runtimeDepScopeDirs(root, [])).toBeUndefined();
+			expect(runtimeDepScopeDirs(apps, ['.'])).toBeUndefined();
+		});
+
+		it('runs every spec when the root manifest changed a runtime dep', () => {
+			const mapPath = path.join(tempDir, 'map-dep-root.json');
+			fs.writeFileSync(mapPath, JSON.stringify(map));
+			const result = selectTests({
+				changedFiles: ['package.json', 'pnpm-lock.yaml'],
+				mapFile: mapPath,
+				allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+				manifests: {
+					// A removed root dependency is no longer listed for the root in the lockfile.
+					'package.json': {
+						before: JSON.stringify({ dependencies: { semver: '7' } }),
+						after: JSON.stringify({ dependencies: {} }),
+					},
+				},
+				lockfileImporters: importers,
+				lockfileImpactedDirs: [],
+			});
+			expect(result.mode).toBe('broad');
+			expect(result.specs).toEqual([...ALL_SPECS].sort());
 		});
 	});
 

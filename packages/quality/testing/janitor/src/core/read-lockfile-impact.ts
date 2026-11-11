@@ -108,6 +108,21 @@ export function readRuntimeLockfileImpactDirs(baseRef: string): string[] | null 
 }
 
 /**
+ * The `lockfileImpactedDirs` input of `select`. A PR that did not change the
+ * lockfile changed no resolved version. Without a base commit the impact is
+ * unknown (undefined), and a failed read is unknown too (null).
+ */
+export function selectLockfileImpactedDirs(
+	changedFiles: string[],
+	lockfileBase: string | undefined,
+	read: (base: string) => string[] | null = readRuntimeLockfileImpactDirs,
+): string[] | null | undefined {
+	if (!lockfileBase) return undefined;
+	if (!changedFiles.includes(LOCKFILE)) return [];
+	return read(lockfileBase);
+}
+
+/**
  * Parse the `LOCKFILE_IMPACTED_PACKAGES` value that `janitor lockfile-impact`
  * prints: `ALL` or empty → null (no signal), `NONE` → [], else the names.
  */
