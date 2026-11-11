@@ -151,7 +151,7 @@ describe('createFrontend', () => {
 			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
 
 			expect(manifest.scripts.lint).toBe(
-				"oxlint src --quiet && vize lint -c vize-lint.config.mjs 'src/**/*.vue'",
+				'oxlint src --quiet && vize lint -c vize-lint.config.mjs "src/**/*.vue"',
 			);
 			for (const dependency of ['@n8n/oxlint-config', 'oxlint', 'oxlint-tsgolint', 'vize']) {
 				expect(Object.keys(manifest.devDependencies)).toContain(dependency);

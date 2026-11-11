@@ -17,13 +17,17 @@ const VARIABLE_NAME_BY_MACRO: Record<string, string> = {
 	useAttrs: 'attrs',
 };
 
-const SCRIPT_BLOCK = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+// A quoted attribute value can hold `>`, as in `generic="T extends Record<string, unknown>"`.
+const SCRIPT_BLOCK = /<script\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/script>/gi;
+const QUOTED_VALUE = /"[^"]*"|'[^']*'/g;
+const SETUP_ATTRIBUTE = /(?:^|\s)setup(?=[\s=]|$)/;
 
 /** Exported for tests. */
 export const isScriptSetupBlock = (sfc: string, scriptText: string) =>
 	[...sfc.matchAll(SCRIPT_BLOCK)].some(
 		([, attributes, content]) =>
-			/\bsetup\b/.test(attributes) && content.trim() === scriptText.trim(),
+			SETUP_ATTRIBUTE.test(attributes.replace(QUOTED_VALUE, '""')) &&
+			content.trim() === scriptText.trim(),
 	);
 
 export const RequireMacroVariableNameRule = ESLintUtils.RuleCreator.withoutDocs({

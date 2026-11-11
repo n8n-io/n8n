@@ -10,11 +10,11 @@
  * `vize lint -c <file>`. Vize does not read a file named `vize.config.*` as a
  * `-c` file, so do not use that name.
  *
- * Rule set and options come from the N8N-435 audit of Vize 0.715.0. Raise the
- * `vize` pin only after a rerun of the audit's fixtures. Two rules that ESLint
- * enforced are not listed, because Vize 0.715.0 maps them but reports nothing:
- * `vue/valid-attribute-name` and `vue/valid-template-root`. See
- * `scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`.
+ * The rule set and options were measured with Vize 0.715.0. Two rules that
+ * ESLint enforced are not listed, because Vize 0.715.0 maps them but reports
+ * nothing: `vue/valid-attribute-name` and `vue/valid-template-root`. Before you
+ * raise the `vize` pin, do the checks in
+ * `scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`, "Raise the Vize pin".
  */
 
 type Severity = 'off' | 'warn' | 'error';

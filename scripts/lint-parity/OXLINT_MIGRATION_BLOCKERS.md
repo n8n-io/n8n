@@ -83,7 +83,7 @@ The frontend packages that dropped ESLint run two tools:
 - Oxlint lints the TypeScript files and the `<script>` blocks of each SFC, through `@n8n/oxlint-config/frontend`.
 - Native `vize lint` lints the Vue templates and the SFC structure, through `@n8n/oxlint-config/vize`. Each package passes a config file to `vize lint -c`. Vize does not read a file named `vize.config.*` as a `-c` file.
 
-Vize is pinned exactly (`vize: 0.715.0` in the catalog). Raise the pin only after a rerun of the N8N-435 audit fixtures.
+Vize is pinned exactly (`vize: 0.715.0` in the catalog), because Vize is alpha software and releases often.
 
 Run the parity check of such a package with its Vize config:
 
@@ -93,9 +93,18 @@ node scripts/lint-parity/oxlint-parity.mjs --pkg packages/<package> --eslint /tm
 
 `--vize` counts the rules that the Vize config turns on as enforced, under their ESLint ids. A Vize rule that no ESLint rule maps onto fails the check, as an Oxlint one does.
 
+#### Raise the Vize pin
+
+Do these checks for each package that runs `vize lint`, before you change the `vize` version in the catalog:
+
+1. Run `pnpm lint` in the package. It must pass.
+2. Add an SFC with no `<script>` block that breaks a rule, for example `<template><ul><li v-for="x in [1]">{{ x }}</li></ul></template>`. Run `pnpm lint`. It must fail and report the rule (`vue/require-v-for-key`). Do this for each rule in `@n8n/oxlint-config/vize` that you want to prove. Then delete the file.
+3. Run `oxlint-parity.mjs` with `--vize`, as above. It must pass.
+4. Try `vue/valid-attribute-name` and `vue/valid-template-root` the same way. If the new version reports them, turn them on in `@n8n/oxlint-config/vize` and remove their entries from `oxlint-gap.json`.
+
 ### Frontend: rules dropped in the move to Oxlint and Vize
 
-Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit). ESLint enforced these rules at `error` in the frontend packages. They have no home, or only a partial one, after the move. Each was dropped on purpose. Each row has an entry in `oxlint-gap.json`.
+Measured with Oxlint 1.78.0 and Vize 0.715.0. ESLint enforced these rules at `error` in the frontend packages. They have no home, or only a partial one, after the move. Each was dropped on purpose. Each row has an entry in `oxlint-gap.json`.
 
 | Rule | Where it applied | Why it has no home | `oxlint-gap.json` |
 | --- | --- | --- | --- |
@@ -153,7 +162,7 @@ The main exceptions are:
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
 5. Migrate the remaining package-specific AST selector restrictions.
-6. Move the remaining frontend packages to Oxlint and Vize (N8N-435).
+6. Move the remaining frontend packages to Oxlint and Vize.
 
 ## Validation commands
 

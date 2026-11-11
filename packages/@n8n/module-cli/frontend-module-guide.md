@@ -669,8 +669,9 @@ pnpm --filter @n8n/frontend-module-my-feature lint:fix        # oxlint --fix, th
 
 A module does not use ESLint. Two tools lint it:
 
-- **Oxlint** lints the TypeScript files and the `<script>` blocks of the SFCs, type-aware.
-  `oxlint.config.mts` extends `@n8n/oxlint-config/frontend`.
+- **Oxlint** lints the TypeScript files and the `<script>` blocks of the SFCs.
+  `oxlint.config.mts` extends `@n8n/oxlint-config/frontend`. Its type-aware rules run on
+  `.ts` files only, not on SFC scripts.
 - **Vize** (`vize lint`) lints the Vue templates and the SFC structure. `vize-lint.config.mjs`
   exports the shared config from `@n8n/oxlint-config/vize`. Do not rename this file to
   `vize.config.*`: Vize does not read that name as a `-c` file.

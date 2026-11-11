@@ -13,14 +13,16 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 let count = 0;
 /** Writes an SFC whose `<script setup>` holds `code`, and returns a test case for that block. */
-const setup = (code: string) => {
+const setup = (code: string, attributes = 'setup lang="ts"') => {
 	const filename = join(dir, `Component${count++}.vue`);
 	writeFileSync(
 		filename,
-		`<script setup lang="ts">\n${code}\n</script>\n<template><div /></template>\n`,
+		`<script ${attributes}>\n${code}\n</script>\n<template><div /></template>\n`,
 	);
 	return { code, filename };
 };
+
+const generic = 'setup lang="ts" generic="T extends Record<string, unknown>"';
 
 /** Writes an SFC whose plain `<script>` holds `code`, and returns a test case for that block. */
 const plain = (code: string) => {
@@ -50,6 +52,14 @@ ruleTester.run('require-macro-variable-name', RequireMacroVariableNameRule, {
 		{ name: 'an unrelated call', ...setup('const value = compute();') },
 		{ name: 'a plain script block', ...plain('const s = useSlots();') },
 		{ name: 'a non-SFC file', code: 'const p = defineProps();', filename: 'util.ts' },
+		{
+			name: 'a generic setup block',
+			...setup('const props = defineProps<{ item: T }>();', generic),
+		},
+		{
+			name: 'a plain block with `setup` in a quoted value',
+			...setup('const p = defineProps();', 'lang="ts" data-note="setup"'),
+		},
 	],
 	invalid: [
 		{ ...setup('const p = defineProps();'), errors: [error('defineProps', 'props')] },
@@ -61,6 +71,11 @@ ruleTester.run('require-macro-variable-name', RequireMacroVariableNameRule, {
 		{ ...setup('const s = defineSlots();'), errors: [error('defineSlots', 'slots')] },
 		{ ...setup('const $slots = useSlots();'), errors: [error('useSlots', 'slots')] },
 		{ ...setup('const a = useAttrs();'), errors: [error('useAttrs', 'attrs')] },
+		{
+			name: 'a generic setup block whose attribute holds `>`',
+			...setup('const p = defineProps<{ item: T }>();', generic),
+			errors: [error('defineProps', 'props')],
+		},
 	],
 });
 

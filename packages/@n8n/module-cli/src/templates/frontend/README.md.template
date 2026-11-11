@@ -29,8 +29,8 @@ yet. Turbo builds them first; the bare pnpm form does not.
   `@n8n/stores/settings.store`, not `@n8n/stores`.
 - The no-cross-module rule is currently a convention: the shared tsconfig base
   omits sibling modules from `paths`, which blocks an accidental import but not
-  a deliberate one (declaring the dependency makes it typecheck clean). The
-  Oxlint rule that actually enforces it is CAT-3692.
+  a deliberate one (declaring the dependency makes it typecheck clean). No
+  rule enforces it yet. CAT-3692 tracks the Oxlint rule that will.
 
 ## Adding UI
 

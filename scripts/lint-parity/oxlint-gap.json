@@ -77,57 +77,57 @@
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "Vize lints the other template rules. Vize 0.715.0 maps these two, but reports nothing on fixtures that ESLint reports. They are not turned on, so that the Vize config does not claim coverage it lacks. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "Vize lints the other template rules. Vize 0.715.0 maps these two, but reports nothing on fixtures that ESLint reports. They are not turned on, so that the Vize config does not claim coverage it lacks. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"rules": ["vue/valid-attribute-name", "vue/valid-template-root"],
 		"impact": "An invalid attribute name, or a `<template>` root that is empty or has `src` and content, is not reported by a linter.",
-		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports the audit fixtures."
+		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports them. See `OXLINT_MIGRATION_BLOCKERS.md`, \"Raise the Vize pin\"."
 	},
 	"vue/valid-attribute-name": {
 		"layer": "frontend",
 		"native": null,
 		"reason": "See `frontend/vue-template-rules`: Vize maps the rule, but reports nothing.",
 		"impact": "An invalid attribute name, or a `<template>` root that is empty or has `src` and content, is not reported by a linter.",
-		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports the audit fixtures."
+		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports them. See `OXLINT_MIGRATION_BLOCKERS.md`, \"Raise the Vize pin\"."
 	},
 	"vue/valid-template-root": {
 		"layer": "frontend",
 		"native": null,
 		"reason": "See `frontend/vue-template-rules`: Vize maps the rule, but reports nothing.",
 		"impact": "An invalid attribute name, or a `<template>` root that is empty or has `src` and content, is not reported by a linter.",
-		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports the audit fixtures."
+		"replacement": "Turn them on in `@n8n/oxlint-config/vize` when a Vize release reports them. See `OXLINT_MIGRATION_BLOCKERS.md`, \"Raise the Vize pin\"."
 	},
 	"vue/multi-word-component-names": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"impact": "Component objects in `.ts` files, most of them test stubs, are not checked for this rule.",
 		"replacement": "None planned."
 	},
 	"vue/no-mutating-props": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"impact": "Component objects in `.ts` files, most of them test stubs, are not checked for this rule.",
 		"replacement": "None planned."
 	},
 	"vue/no-v-text-v-html-on-component": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "ESLint enforced this rule only on `defineComponent` objects in `.ts` files: it is `warn` or `off` for `.vue`. Vize lints `.vue` files only, and Oxlint has no native rule. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"impact": "Component objects in `.ts` files, most of them test stubs, are not checked for this rule.",
 		"replacement": "None planned."
 	},
 	"no-dupe-args": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "No Oxlint rule. ESLint enforced it in `.vue` script blocks only. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "No Oxlint rule. ESLint enforced it in `.vue` script blocks only. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"impact": "Near zero: duplicate parameter names are a syntax error in strict mode, and every SFC script is a module.",
 		"replacement": "No action."
 	},
 	"no-undef": {
 		"layer": "frontend",
 		"native": "no-undef",
-		"reason": "Native but `nursery` in Oxlint 1.78. With Vue's compiler macros declared as globals, it reports 5 false positives in 3 editor-ui SFCs that have both `<script>` and `<script setup>`, because Oxlint does not share scope between the two blocks. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "Native but `nursery` in Oxlint 1.78. With Vue's compiler macros declared as globals, it reports 5 false positives in 3 editor-ui SFCs that have both `<script>` and `<script setup>`, because Oxlint does not share scope between the two blocks. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"impact": "An undefined name in an SFC script is not reported by a linter. TypeScript (`vue-tsc`) still reports it.",
 		"replacement": "Enable the native rule when it leaves nursery and shares scope between the two script blocks."
 	},
@@ -142,7 +142,7 @@
 	"frontend/sfc-type-aware-rules": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "Oxlint's type-aware rules (tsgolint) skip `.vue` files. ESLint ran these rules on SFC `<script>` blocks through vue-eslint-parser and `projectService`. They still run on `.ts` files. editor-ui and the frontend modules that ran Oxlint first already lacked them on `.vue`. Measured with Oxlint 1.78.0 and Vize 0.715.0 (N8N-435 audit).",
+		"reason": "Oxlint's type-aware rules (tsgolint) skip `.vue` files. ESLint ran these rules on SFC `<script>` blocks through vue-eslint-parser and `projectService`. They still run on `.ts` files. editor-ui and the frontend modules that ran Oxlint first already lacked them on `.vue`. Measured with Oxlint 1.78.0 and Vize 0.715.0.",
 		"rules": [
 			"@typescript-eslint/await-thenable",
 			"@typescript-eslint/consistent-type-exports",
@@ -201,35 +201,35 @@
 	"vue/no-deprecated-dollar-listeners-api": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-deprecated-dollar-listeners-api`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe), which the N8N-435 audit did not test.",
+		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-deprecated-dollar-listeners-api`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe).",
 		"impact": "Composables and `defineComponent` objects in `.ts` files are not checked for this rule. SFC scripts still are.",
 		"replacement": "Pass `.ts` files to `vize lint` as well, after a run that shows no false positives."
 	},
 	"vue/no-deprecated-dollar-scopedslots-api": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-deprecated-dollar-scopedslots-api`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe), which the N8N-435 audit did not test.",
+		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-deprecated-dollar-scopedslots-api`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe).",
 		"impact": "Composables and `defineComponent` objects in `.ts` files are not checked for this rule. SFC scripts still are.",
 		"replacement": "Pass `.ts` files to `vize lint` as well, after a run that shows no false positives."
 	},
 	"vue/no-ref-as-operand": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-ref-as-operand`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe), which the N8N-435 audit did not test.",
+		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-ref-as-operand`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe).",
 		"impact": "Composables and `defineComponent` objects in `.ts` files are not checked for this rule. SFC scripts still are.",
 		"replacement": "Pass `.ts` files to `vize lint` as well, after a run that shows no false positives."
 	},
 	"vue/no-use-computed-property-like-method": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-use-computed-property-like-method`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe), which the N8N-435 audit did not test.",
+		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/no-use-computed-property-like-method`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe).",
 		"impact": "Composables and `defineComponent` objects in `.ts` files are not checked for this rule. SFC scripts still are.",
 		"replacement": "Pass `.ts` files to `vize lint` as well, after a run that shows no false positives."
 	},
 	"vue/require-valid-default-prop": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/require-valid-default-prop`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe), which the N8N-435 audit did not test.",
+		"reason": "ESLint ran this rule on every file, `.ts` included. Oxlint has no native rule. Vize runs it as `script/require-valid-default-prop`, but the lint scripts pass only `src/**/*.vue` to `vize lint`. Vize 0.715.0 also reports it in `.ts` files (probe).",
 		"impact": "Composables and `defineComponent` objects in `.ts` files are not checked for this rule. SFC scripts still are.",
 		"replacement": "Pass `.ts` files to `vize lint` as well, after a run that shows no false positives."
 	}
