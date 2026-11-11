@@ -63,6 +63,7 @@ describe('WorkflowDependencyQueryService', () => {
 				mock({
 					id: 'wf-1',
 					name: 'Test Workflow',
+					isArchived: false,
 					shared: [mock({ role: 'workflow:owner', project: mock({ id: 'project-1' }) })],
 				}),
 			]);
@@ -83,7 +84,12 @@ describe('WorkflowDependencyQueryService', () => {
 		it("omits the project id when the workflow's owning project cannot be resolved", async () => {
 			mockCredentialDep();
 			workflowRepository.find.mockResolvedValue([
-				mock({ id: 'wf-1', name: 'Test Workflow', shared: [] as SharedWorkflow[] }),
+				mock({
+					id: 'wf-1',
+					name: 'Test Workflow',
+					isArchived: false,
+					shared: [] as SharedWorkflow[],
+				}),
 			]);
 
 			const result = await service.getResourceDependencies(['cred-1'], 'credential', user);
@@ -111,7 +117,7 @@ describe('WorkflowDependencyQueryService', () => {
 			await service.getResourceDependencies(['wf-1'], 'workflow', user);
 
 			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: ['id', 'name'] }),
+				expect.objectContaining({ select: ['id', 'name', 'isArchived'] }),
 			);
 			expect(workflowRepository.find).not.toHaveBeenCalledWith(
 				expect.objectContaining({ relations: expect.anything() }),
@@ -282,6 +288,21 @@ describe('WorkflowDependencyQueryService', () => {
 					expect.objectContaining({ id: 'cred-1', type: 'credentialId', versions: ['draft'] }),
 				]),
 			);
+		});
+
+		it('marks a workflow item whose workflow is archived', async () => {
+			workflowRepository.find.mockResolvedValue([
+				mock({ id: 'wf-1', name: 'Target', isArchived: false, shared: [] as SharedWorkflow[] }),
+				mock({ id: 'wf-2', name: 'Caller A', isArchived: false, shared: [] as SharedWorkflow[] }),
+				mock({ id: 'wf-3', name: 'Caller B', isArchived: true, shared: [] as SharedWorkflow[] }),
+			]);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
+
+			const byId = Object.fromEntries(result['wf-1'].dependencies.map((d) => [d.id, d]));
+			expect(byId['wf-3']).toMatchObject({ archived: true });
+			expect(byId['wf-2']).not.toHaveProperty('archived');
+			expect(byId['cred-1']).not.toHaveProperty('archived');
 		});
 
 		it('leaves the versions out unless asked', async () => {

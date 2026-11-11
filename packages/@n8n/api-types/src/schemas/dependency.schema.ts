@@ -24,6 +24,8 @@ export interface ResolvedDependency {
 	 * links read from the workflow dependency index (not on agent usage).
 	 */
 	versions?: DependencyVersion[];
+	/** Set only on a workflow item whose workflow is archived. */
+	archived?: true;
 }
 
 export interface ResolvedDependenciesResult {

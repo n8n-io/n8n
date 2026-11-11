@@ -62,6 +62,13 @@ describe('get_dependencies', () => {
 		resolve(
 			[
 				{ type: 'workflowParent', id: 'wf-2', name: 'Caller', versions: ['published'] },
+				{
+					type: 'workflowParent',
+					id: 'wf-3',
+					name: 'Old caller',
+					archived: true,
+					versions: ['draft'],
+				},
 				{ type: 'credentialId', id: 'cred-1', name: 'Slack', versions: ['draft', 'published'] },
 				{ type: 'agentUsage', id: 'agent-1', name: 'Helper', projectId: 'p-1' },
 			],
@@ -80,6 +87,13 @@ describe('get_dependencies', () => {
 				{ type: 'agent', id: 'agent-1', name: 'Helper', projectId: 'p-1' },
 				{ type: 'credential', id: 'cred-1', name: 'Slack', versions: 'both' },
 				{ type: 'parentWorkflow', id: 'wf-2', name: 'Caller', versions: 'published' },
+				{
+					type: 'parentWorkflow',
+					id: 'wf-3',
+					name: 'Old caller',
+					versions: 'draft',
+					archived: true,
+				},
 			],
 			nextCursor: null,
 			inaccessibleCount: 2,

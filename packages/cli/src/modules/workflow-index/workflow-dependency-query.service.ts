@@ -191,12 +191,17 @@ export class WorkflowDependencyQueryService {
 		const workflowFindOptions: FindManyOptions<WorkflowEntity> = needsWorkflowProject
 			? {
 					where: { id: In([...maps.allWfIds]) },
-					select: { id: true, name: true, shared: { role: true, project: { id: true } } },
+					select: {
+						id: true,
+						name: true,
+						isArchived: true,
+						shared: { role: true, project: { id: true } },
+					},
 					relations: { shared: { project: true } },
 				}
 			: {
 					where: { id: In([...maps.allWfIds]) },
-					select: ['id', 'name'],
+					select: ['id', 'name', 'isArchived'],
 				};
 
 		// Load all referenced resources (not just accessible ones) so that ids whose
@@ -226,7 +231,7 @@ export class WorkflowDependencyQueryService {
 		const accessibleDtIdSet = new Set(accessibleDtIds);
 
 		const agentNames = new Map<string, { name: string; projectId: string }>();
-		const wfNames = new Map<string, { name: string; projectId?: string }>();
+		const wfNames = new Map<string, { name: string; projectId?: string; archived: boolean }>();
 		const credNames = new Map<string, string>();
 		const unavailableCredNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
@@ -271,6 +276,7 @@ export class WorkflowDependencyQueryService {
 				wfNames.set(w.id, {
 					name: w.name ?? w.id,
 					projectId: ownerShare?.project?.id,
+					archived: w.isArchived,
 				});
 			}
 		}
@@ -470,7 +476,7 @@ export class WorkflowDependencyQueryService {
 		maps: RawDepMaps,
 		accessMaps: {
 			agentNames: Map<string, { name: string; projectId: string }>;
-			wfNames: Map<string, { name: string; projectId?: string }>;
+			wfNames: Map<string, { name: string; projectId?: string; archived: boolean }>;
 			credNames: Map<string, string>;
 			unavailableCredNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
@@ -552,6 +558,7 @@ export class WorkflowDependencyQueryService {
 							name: workflow.name,
 							type,
 							projectId: workflow.projectId,
+							...(workflow.archived ? { archived: true as const } : {}),
 							...versionsOf(type, id),
 						});
 					} else {

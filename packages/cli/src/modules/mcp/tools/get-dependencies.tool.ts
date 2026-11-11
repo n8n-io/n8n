@@ -74,6 +74,10 @@ const dependencySchema = z.object({
 				'"errorWorkflow", and the item for "parentWorkflow" and "errorWorkflowParent". ' +
 				'The published version is the one that runs in production.',
 		),
+	archived: z
+		.literal(true)
+		.optional()
+		.describe('Set when the item is an archived workflow. An archived workflow does not run.'),
 });
 
 const outputSchema = {
@@ -263,6 +267,7 @@ export const createGetDependenciesTool = (
 						name: dependency.name,
 						...(dependency.projectId ? { projectId: dependency.projectId } : {}),
 						...(versions ? { versions } : {}),
+						...(dependency.archived ? { archived: true as const } : {}),
 					});
 				}
 				// A stable order, so offset cursors return the same items across calls.
