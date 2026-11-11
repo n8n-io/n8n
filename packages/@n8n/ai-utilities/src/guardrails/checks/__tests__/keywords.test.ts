@@ -1,4 +1,4 @@
-import { createKeywordsCheckFn } from '../../actions/checks/keywords';
+import { createKeywordsCheckFn } from '../keywords';
 
 describe('keywordsCheck', () => {
 	it('should return the correct result', async () => {

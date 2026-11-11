@@ -1,5 +1,5 @@
-import { createLLMCheckFn } from '../../helpers/model';
-import type { CreateCheckFn, LLMConfig } from '../types';
+import { createLLMCheckFn } from '../llm';
+import type { CreateCheckFn, LlmGuardrailConfig } from '../types';
 
 export const NSFW_SYSTEM_PROMPT = `
 You are a content moderation assistant.
@@ -23,5 +23,5 @@ Focus on detecting ALL types of NSFW content, including:
 Flag any content that matches these criteria.
 `;
 
-export const createNSFWCheckFn: CreateCheckFn<LLMConfig> = (config) =>
+export const createNSFWCheckFn: CreateCheckFn<LlmGuardrailConfig> = (config) =>
 	createLLMCheckFn('nsfw', config);
