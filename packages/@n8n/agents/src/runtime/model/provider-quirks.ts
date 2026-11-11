@@ -27,6 +27,8 @@ export interface ProviderQuirks {
 	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
+	/** Drop reasoning blocks before the last user message: replay them only on the current tool chain. */
+	replayReasoningOnlyInToolChain?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -163,6 +165,12 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// request fail with "function_call was provided without its required
 		// 'reasoning' item" — regression fixed 2026-07-02.
 		reasoningReplayKeys: ['itemId', 'reasoningEncryptedContent'],
+		// QUIRK(openai): encrypted reasoning only decrypts in the OpenAI org that
+		// produced it. A session that changes key (for example from Gateway
+		// credits to an own key) fails with `invalid_encrypted_content`. The model
+		// needs reasoning only next to the function calls of the current turn and
+		// ignores it from earlier turns, so earlier turns drop it.
+		replayReasoningOnlyInToolChain: true,
 		// QUIRK(openai): defaults to strict JSON Schema validation, which rejects
 		// hand-written schemas that don't list every property in `required` or use
 		// keywords it doesn't allow. See relaxStrictJsonSchemaIfNeeded's docstring
