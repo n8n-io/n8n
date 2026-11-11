@@ -619,21 +619,6 @@ export class AgentValidationService {
 	 * re-check covers configs that reached the entity through other paths
 	 * (e.g. history restore).
 	 */
-	private collectToolGuardrailRefIssues(
-		config: AgentJsonConfig,
-		issues: AgentConfigValidationIssue[],
-	) {
-		const guardrails = config.config?.guardrails?.tools ?? [];
-		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
-			issues.push(
-				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
-					kind: 'guardrail',
-					id: guardrails[guardrailIndex].id,
-				}),
-			);
-		}
-	}
-
 	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
 		const collisions = new Set(findVectorStoreToolNameCollisions(config));
 		const stores = config.vectorStores ?? [];
@@ -645,6 +630,22 @@ export class AgentValidationService {
 					kind: 'vectorStore',
 					id: store.name,
 					index,
+				}),
+			);
+		}
+	}
+
+	/** A dangling guardrail tool ref blocks publish and run, never the draft save. */
+	private collectToolGuardrailRefIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
+			issues.push(
+				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
+					kind: 'guardrail',
+					id: guardrails[guardrailIndex].id,
 				}),
 			);
 		}

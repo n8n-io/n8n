@@ -975,6 +975,21 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			]).success,
 		).toBe(false);
 	});
+
+	it.each(['[A-Z', '(', '*'])('rejects a customRegex value of %s that does not parse', (value) => {
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value }] }])
+				.success,
+		).toBe(false);
+	});
+
+	it('accepts a customRegex value in /pattern/flags literal form', () => {
+		expect(
+			parseGuardrails([
+				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: '/ticket-\\d+/gi' }] },
+			]).success,
+		).toBe(true);
+	});
 });
 
 describe('findToolGuardrailRefIssues', () => {
