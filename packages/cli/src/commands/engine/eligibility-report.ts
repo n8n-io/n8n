@@ -11,14 +11,19 @@ import { BaseCommand } from '../base-command';
 const PAGE_SIZE = 100;
 
 const flagsSchema = z.object({
-	json: z.boolean().default(false).describe('Print the report as JSON'),
+	json: z
+		.boolean()
+		.default(false)
+		.describe(
+			'Print the report as JSON. Set N8N_LOG_LEVEL=silent to keep log lines out of the output.',
+		),
 });
 
 interface EligibilityReport {
 	total: number;
 	eligible: number;
 	eligiblePercent: number;
-	published: { total: number; eligible: number };
+	published: { total: number; eligible: number; eligiblePercent: number };
 	/** Number of workflows with at least one reason of this code, highest count first. */
 	reasons: Partial<Record<EngineV2ReasonCode, number>>;
 }
@@ -80,7 +85,7 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 			total,
 			eligible,
 			eligiblePercent: toPercent(eligible, total),
-			published,
+			published: { ...published, eligiblePercent: toPercent(published.eligible, published.total) },
 			reasons: Object.fromEntries([...reasonCounts].sort(([, a], [, b]) => b - a)),
 		};
 	}
@@ -99,7 +104,7 @@ function toPercent(part: number, total: number) {
 function formatTable(report: EligibilityReport) {
 	const lines = [
 		`Eligible for engine v2: ${report.eligible} of ${report.total} workflows (${report.eligiblePercent}%)`,
-		`Published workflows: ${report.published.eligible} of ${report.published.total} eligible (${toPercent(report.published.eligible, report.published.total)}%)`,
+		`Published workflows: ${report.published.eligible} of ${report.published.total} eligible (${report.published.eligiblePercent}%)`,
 	];
 
 	const reasons = Object.entries(report.reasons);

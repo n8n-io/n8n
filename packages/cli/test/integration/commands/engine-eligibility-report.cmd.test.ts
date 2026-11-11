@@ -46,8 +46,11 @@ beforeEach(async () => {
 	});
 });
 
-test('counts eligible workflows and the workflows for each reason code, without archived workflows', async () => {
+test('counts eligible workflows and each workflow once per reason code, without archived workflows', async () => {
 	await createWorkflow({ nodes: [manualTrigger] });
+	await createWorkflow({
+		nodes: [oauthWebhook, { ...oauthWebhook, id: 'webhook-2', name: 'Webhook 2' }],
+	});
 	await createWorkflow({ nodes: [manualTrigger], settings: { redactionPolicy: 'all' } });
 	await createWorkflow({
 		nodes: [manualTrigger],
@@ -62,11 +65,11 @@ test('counts eligible workflows and the workflows for each reason code, without 
 	await command.run(['--json']);
 
 	expect(JSON.parse(stdout)).toEqual({
-		total: 3,
+		total: 4,
 		eligible: 1,
-		eligiblePercent: 33.3,
-		published: { total: 0, eligible: 0 },
-		reasons: { REDACTION_POLICY: 2, ERROR_WORKFLOW: 1 },
+		eligiblePercent: 25,
+		published: { total: 0, eligible: 0, eligiblePercent: 0 },
+		reasons: { REDACTION_POLICY: 2, ERROR_WORKFLOW: 1, TRIGGER_EXTERNAL_IDENTITY: 1 },
 	});
 });
 
@@ -81,7 +84,7 @@ test('checks the published version of a published workflow instead of its draft'
 	expect(JSON.parse(stdout)).toMatchObject({
 		total: 2,
 		eligible: 1,
-		published: { total: 1, eligible: 0 },
+		published: { total: 1, eligible: 0, eligiblePercent: 0 },
 		reasons: { TRIGGER_EXTERNAL_IDENTITY: 1 },
 	});
 });
