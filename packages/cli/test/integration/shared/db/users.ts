@@ -10,6 +10,7 @@ import {
 	ProjectRelation,
 	type Role,
 	type ServiceAccount,
+	PersonRepository,
 	ServiceAccountRepository,
 	UserRepository,
 	type User,
@@ -62,7 +63,7 @@ export async function newUser(attributes: DeepPartial<User> = {}): Promise<User>
 /** Store a user object in the DB */
 export async function createUser(attributes: DeepPartial<User> = {}): Promise<User> {
 	const userInstance = await newUser(attributes);
-	const { user } = await Container.get(UserRepository).createUserWithProject(userInstance);
+	const { user } = await Container.get(PersonRepository).createPersonWithProject(userInstance);
 	return user;
 }
 
@@ -169,7 +170,7 @@ export async function createUserShell(role: Role): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	const { user } = await Container.get(UserRepository).createUserWithProject(shell);
+	const { user } = await Container.get(PersonRepository).createPersonWithProject(shell);
 	return user;
 }
 
@@ -209,7 +210,7 @@ export async function createManyUsers(
 			.fill(0)
 			.map(async () => {
 				const userInstance = await newUser(attributes);
-				return await Container.get(UserRepository).createUserWithProject(userInstance);
+				return await Container.get(PersonRepository).createPersonWithProject(userInstance);
 			}),
 	);
 	return result.map((result) => result.user);
