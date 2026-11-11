@@ -83,7 +83,7 @@ describe('createClientCredentialsTokenSource', () => {
 			['the same lifetime written as a string', '600', 1],
 			['one the wait outlives, so the token is minted again', 20, 2],
 			['a token that is already dead on arrival', 0, 2],
-			['a lifetime no server can mean, which falls back to the assumption', -1, 1],
+			['a lifetime below zero, which is at least as dead as zero', -1, 2],
 			['no lifetime at all, which falls back to the assumption', undefined, 1],
 			['one that is not a number, which falls back to the assumption', 'soon', 1],
 		])('mints %s', async (_name, expires_in, mints) => {
