@@ -141,6 +141,12 @@ unauthenticated and serves the whole table: keep it on loopback.
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
 
+### Docker images
+
+`docker/docker-bake.hcl` holds every base image pin. Images that n8n publishes
+(`n8nio/base`, `n8nio/node-pc`) change in two PRs: inputs first, then the pin
+of the digest that master published. See [docker/AGENTS.md](docker/AGENTS.md).
+
 ## Architecture Overview
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
@@ -283,6 +289,9 @@ baseline. A new business-logic import fails CI.
   - A repository that `extends BaseRepository` / `extends Repository`, or that
     exposes its table (public property, getter, or a `find(options)`
     passthrough) — the inherited TypeORM surface must stay private to the table.
+- **Account kinds:** the `user` table holds people and service accounts. Before
+  you load or type an account, read "Account kinds" in
+  [packages/@n8n/db/AGENTS.md](packages/@n8n/db/AGENTS.md).
 
 ### ESLint configuration layers
 
@@ -338,7 +347,7 @@ extends one of those layers):
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use the `design-system` skill in reviews
+- Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes
 
@@ -376,6 +385,7 @@ extends one of those layers):
 | Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
 | Add editor hot reload | `pnpm dev:fe:editor` |
 | Start a Codespace backend and share its port | `pnpm dev:up` |
+| See the telemetry events of a local instance | `pnpm telemetry:sink`, then `pnpm dev:be:telemetry` |
 
 The root `pnpm dev` command does not start a server. See the
 [Playwright guide](packages/quality/testing/playwright/README.md) and the

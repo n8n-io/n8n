@@ -36,12 +36,17 @@ async function resolveBuiltTelemetry(
 export async function generateTitleForRun(
 	modelId: ModelConfig,
 	userMessage: string,
-	options?: { telemetry?: BuiltTelemetry | Telemetry; modelFetch?: FetchFn },
+	options?: {
+		telemetry?: BuiltTelemetry | Telemetry;
+		modelFetch?: FetchFn;
+		requestLabels?: boolean;
+	},
 ): Promise<string | null> {
 	try {
 		const model = createModel(modelId, options?.modelFetch);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
 		return await generateTitleFromMessage(model, userMessage, {
+			...(options?.requestLabels ? { functionId: 'instance-ai.thread_title' } : {}),
 			...(telemetry ? { telemetry } : {}),
 		});
 	} catch {

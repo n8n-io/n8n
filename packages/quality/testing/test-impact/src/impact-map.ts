@@ -15,6 +15,8 @@
  * git diff resolves straight to the spec files that cover the touched functions.
  */
 
+import { resolveSpans, type LineScope } from './line-scope.js';
+
 export interface FileCoverage {
 	/** function name → { definition line, summed hit count } */
 	fns: Map<string, { line: number; hits: number }>;
@@ -40,6 +42,8 @@ export type ImpactMap = Record<string, Record<string, string[]>>;
  * would otherwise dominate the artifact. See `scripts/impact-map.md`.
  */
 export interface InternedImpactMap {
+	/** The commit that the coverage ran on. The map's line numbers refer to it. */
+	sha?: string;
 	specs: string[];
 	files: Record<string, Record<string, number[] | string>>;
 }
@@ -132,6 +136,7 @@ export function parseLcov(text: string, fallbackSpec = ''): LcovRecord[] {
 /**
  * Merge per-spec lcovs into one unified lcov + the impact map. Hit counts sum;
  * the map records, per function, the SET of specs that executed it (hits > 0).
+ * A function that no spec executed keeps an entry with an empty set.
  * Output is deterministic (sorted) so the merge is order-independent.
  */
 export function buildImpactMap(inputs: LcovInput[]): MergeResult {
@@ -153,12 +158,12 @@ export function buildImpactMap(inputs: LcovInput[]): MergeResult {
 				const cur = f.fns.get(fn.name) ?? { line: fn.line, hits: 0 };
 				cur.hits += fn.hits;
 				f.fns.set(fn.name, cur);
-				if (fn.hits > 0) {
-					const key = `${rec.file}#${fn.line}`;
-					let specs = funcToSpecs.get(key);
-					if (!specs) funcToSpecs.set(key, (specs = new Set()));
-					specs.add(rec.spec);
-				}
+				// Keep functions that no spec ran, with an empty spec set: line-level
+				// selection uses them to tell an unrun function from a parse mismatch.
+				const key = `${rec.file}#${fn.line}`;
+				let specs = funcToSpecs.get(key);
+				if (!specs) funcToSpecs.set(key, (specs = new Set()));
+				if (fn.hits > 0) specs.add(rec.spec);
 			}
 			for (const ln of rec.lines) {
 				f.lines.set(ln.line, (f.lines.get(ln.line) ?? 0) + ln.hits);
@@ -216,7 +221,7 @@ function assembleImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 }
 
 /** Intern spec paths into an index — the lossless on-disk form (see {@link InternedImpactMap}). */
-export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
+export function encodeImpactMap(map: ImpactMap, sha?: string): InternedImpactMap {
 	const index = new Map<string, number>();
 	const specs: string[] = [];
 	const internSpec = (s: string): number => {
@@ -242,7 +247,7 @@ export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
 			files[file][line] = encodeSpecSet(indices, specs.length);
 		}
 	}
-	return { specs, files };
+	return { ...(sha ? { sha } : {}), specs, files };
 }
 
 /**
@@ -268,6 +273,11 @@ export interface ChangedFile {
 	file: string;
 	/** Changed source line numbers. Omit for file-level (whole-file) resolution. */
 	lines?: number[];
+	/**
+	 * Changed spans and function ranges, both in the lines of the commit that the
+	 * map was built from. Takes precedence over `lines`. See {@link resolveSpans}.
+	 */
+	scope?: LineScope;
 }
 
 export interface ResolveResult {
@@ -291,15 +301,52 @@ const parentDir = (p: string): string => {
 };
 
 /**
+ * The spec id of the code that ran while the server started. Every spec depends
+ * on it, so selection reads it as every spec in the map. It is never a spec to run.
+ */
+export const BOOT_SPEC = '<boot>';
+
+function specsInMap(map: ImpactMap): Set<string> {
+	const all = new Set<string>();
+	for (const file of Object.keys(map)) {
+		for (const line of Object.keys(map[file])) for (const s of map[file][line]) all.add(s);
+	}
+	all.delete(BOOT_SPEC);
+	return all;
+}
+
+/**
+ * The specs for a change that cannot be pinned to one function (module-level
+ * code, an insertion between functions, or no line data): the specs that ran
+ * one of the file's functions during their own test. Code that ran at boot is
+ * left out, so that a fallback does not select every spec for each file that
+ * loads at boot. This matches file-level selection before boot was recorded.
+ * If only boot ran the file, every spec is selected.
+ */
+function fileSpecs(fileMap: Record<string, string[]>): string[] {
+	const own = new Set<string>();
+	let boot = false;
+	for (const line of Object.keys(fileMap)) {
+		for (const s of fileMap[line]) {
+			if (s === BOOT_SPEC) boot = true;
+			else own.add(s);
+		}
+	}
+	return own.size || !boot ? [...own] : [BOOT_SPEC];
+}
+
+/**
  * Index every ancestor directory of every mapped file to the union of specs
  * under it. Lets an unmapped (new/never-covered) file fall back to the specs
- * that exercise its directory, instead of forcing the whole suite.
+ * that exercise its directory, instead of forcing the whole suite. Boot code is
+ * left out: it would make every new backend file select every spec.
  */
 function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
 	const dirSpecs = new Map<string, Set<string>>();
 	for (const file of Object.keys(map)) {
 		const fileSpecs = new Set<string>();
 		for (const line of Object.keys(map[file])) for (const s of map[file][line]) fileSpecs.add(s);
+		fileSpecs.delete(BOOT_SPEC);
 		for (let dir = parentDir(file); dir !== ''; dir = parentDir(dir)) {
 			let set = dirSpecs.get(dir);
 			if (!set) dirSpecs.set(dir, (set = new Set()));
@@ -328,6 +375,8 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * when the map is known function-complete for the file. The default-safe usage —
  * and what the CLI does — is FILE-LEVEL (omit `lines`): a changed file selects
  * every spec covering any part of it. Treat `lines` as an opt-in optimisation.
+ * A `scope` (changed spans plus parsed function ranges) avoids this gap: see
+ * {@link resolveSpans}. The CLI passes a scope when it can build one.
  *
  * SIBLING FALLBACK (`opts.siblingFallback`): an unmapped file (new / never-
  * covered) otherwise forces 'broad' — counterintuitive for a new file in a
@@ -345,6 +394,10 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * specs verifies nothing (theater) and only slows the loop. The change is still
  * covered by its unit tests + the always-on sanity spec; the gap is surfaced.
  * Reserve `'broad'` for genuine fail-open (an unusable map) — the caller decides.
+ *
+ * BOOT ({@link BOOT_SPEC}): a changed function that ran at boot selects every
+ * spec. A change that falls back to the whole file selects only the specs that
+ * ran the file's functions in their own tests (see {@link fileSpecs}).
  */
 export function resolveImpact(
 	changed: ChangedFile[],
@@ -357,8 +410,16 @@ export function resolveImpact(
 	const uncovered: string[] = [];
 	const declare = opts.onUncovered === 'declare';
 	const dirIndex = opts.siblingFallback && !declare ? buildDirIndex(map) : undefined;
+	let everySpec: Set<string> | undefined;
+	/** Add specs. {@link BOOT_SPEC} stands for every spec in the map. */
+	const addSpecs = (list: Iterable<string>) => {
+		for (const s of list) {
+			if (s !== BOOT_SPEC) specs.add(s);
+			else for (const e of (everySpec ??= specsInMap(map))) specs.add(e);
+		}
+	};
 
-	for (const { file, lines } of changed) {
+	for (const { file, lines, scope } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
 			if (declare) {
@@ -384,11 +445,27 @@ export function resolveImpact(
 		const fnStarts = Object.keys(fileMap)
 			.map(Number)
 			.sort((a, b) => a - b);
-		const addFile = () => {
-			for (const fnLine of fnStarts) for (const s of fileMap[String(fnLine)]) specs.add(s);
-		};
+		const addFile = () => addSpecs(fileSpecs(fileMap));
+		const noSpecRanFile = () => fnStarts.every((line) => fileMap[String(line)].length === 0);
+		if (scope) {
+			const scoped = resolveSpans(fileMap, scope.ranges, scope.spans);
+			if (scoped === null) {
+				addFile();
+				if (declare && noSpecRanFile()) uncovered.push(file);
+				continue;
+			}
+			const selected = scoped.moduleLevel ? [...scoped.specs, ...fileSpecs(fileMap)] : scoped.specs;
+			addSpecs(selected);
+			// Only functions that no spec ran changed: no E2E checks this change.
+			if (declare && selected.length === 0) uncovered.push(file);
+			continue;
+		}
 		if (!lines || lines.length === 0) {
 			addFile();
+			// The map lists the file, but no spec ran any of its functions.
+			if (declare && noSpecRanFile()) {
+				uncovered.push(file);
+			}
 			continue;
 		}
 		for (const line of lines) {
@@ -403,7 +480,7 @@ export function resolveImpact(
 				addFile();
 				break;
 			}
-			for (const s of fileMap[String(owner)]) specs.add(s);
+			addSpecs(fileMap[String(owner)]);
 		}
 	}
 

@@ -1,29 +1,37 @@
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { SkillFile } from '@/modules/skills/skill-file.entity';
-import { SkillVersion } from '@/modules/skills/skill-version.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { fromAgentDocument } from '@/modules/agents/json-config/agent-document';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import {
+	createSkill,
+	createSkillVersion,
+	deleteSkill,
+	readSkillTables,
+	toSkillContent,
+} from '@/modules/skills/testing';
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
+import { saveCredential } from '@test-integration/db/credentials';
+import { createOwner } from '@test-integration/db/users';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
 import { AgentExporter } from '../entities/agent/agent.exporter';
@@ -32,36 +40,45 @@ import { DirectoryPackageReader } from '../io/directory/directory-package-reader
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
+import { N8nPackagesService } from '../n8n-packages.service';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { ExportVersionPolicy } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
+import { serializedSkillSchema } from '../spec/serialized/skill.schema';
+import { SkillExporter } from '../entities/skill/skill.exporter';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const sources: Array<{ agent: Agent; draft: SerializedAgent; published: SerializedAgent }> = [];
 let project: Project;
+let owner: User;
 let exporter: AgentExporter;
 let agentRepository: AgentRepository;
 let historyRepository: AgentHistoryRepository;
 let taskRepository: AgentTaskRepository;
 let taskSnapshotRepository: AgentTaskSnapshotRepository;
-let skillRepository: SkillRepository;
 let directory: string;
 
 async function readSourceRecords() {
-	const { manager } = skillRepository;
+	const { manager } = agentRepository;
 	return await Promise.all([
 		agentRepository.find({ order: { id: 'ASC' } }),
-		historyRepository.find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
-		// The skills hub rows of the agents, so an export that changes them fails too.
-		skillRepository.find({ order: { id: 'ASC' } }),
-		manager.find(SkillVersion, { order: { id: 'ASC' } }),
-		manager.find(SkillFile, { order: { skillVersionId: 'ASC', path: 'ASC' } }),
+		// The skill rows of the agents, so an export that changes them fails too.
+		readSkillTables(),
 		manager.find(AgentSkillDependency, { order: { agentId: 'ASC', skillId: 'ASC' } }),
 		manager.find(AgentVersionSkillDependency, {
 			order: { agentVersionId: 'ASC', skillId: 'ASC' },
@@ -70,24 +87,25 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['skills', 'agents']);
+	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
-	skillRepository = Container.get(SkillRepository);
 	taskRepository = Container.get(AgentTaskRepository);
 	taskSnapshotRepository = Container.get(AgentTaskSnapshotRepository);
 	exporter = Container.get(AgentExporter);
 	project = await createTeamProject('Operations');
+	owner = await createOwner();
 	const fixture = looseAgentsFixture();
 	for (const entry of fixture.manifest.agents) {
 		const draft = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
-		// A skill of a saved agent is a skills hub skill: it has its own id, no
+		// A skill of a saved agent is a skill of the skills module: it has its own id, no
 		// `enabled` flag on the ref, and no `allowedTools`.
 		const skillId = `${draft.id}_skill`;
-		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
-		draft.skills = { [skillId]: draftSkill };
+		const { skill: draftSkill, frontmatter } = serializedSkillSchema.parse(
+			fixture.files[`skills/${skillId}/skill.json`],
+		);
 		draft.config = {
 			...AgentJsonConfigSchema.parse(draft.config),
 			skills: [{ type: 'skill', id: skillId }],
@@ -98,20 +116,14 @@ beforeAll(async () => {
 			instructions: 'Published configuration',
 			integrations: [{ type: 'n8n_chat', credentialId: '' }],
 		};
-		published.skills[skillId].instructions = 'Published skill';
+		const publishedSkill = { ...draftSkill, instructions: 'Published skill' };
 		// v1 is the published text, v2 the text the draft follows.
-		await skillRepository.createSkill(
-			{
-				id: skillId,
-				target: { projectId: project.id, agentId: null },
-				source: 'ui',
-				createdById: null,
-			},
-			toSkillContent(published.skills[skillId]),
-		);
-		const publishedSkillVersionId = (await skillRepository.findLatestSaved([skillId])).get(skillId)!
-			.version.id;
-		await skillRepository.insertSavedVersion(skillId, 2, toSkillContent(draftSkill), null);
+		const { versionId: publishedSkillVersionId } = await createSkill({
+			id: skillId,
+			projectId: project.id,
+			content: toSkillContent(publishedSkill, frontmatter),
+		});
+		await createSkillVersion(skillId, toSkillContent(draftSkill, frontmatter));
 		published.tools.shared_tool.code = 'throw new Error("Published tool must not run");';
 		published.tasks[`${entry.id}_task`] = {
 			name: 'Published schedule',
@@ -138,13 +150,16 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		const history = await historyRepository.saveVersion({
-			versionId: `${agent.id}_published`,
-			agentId: agent.id,
-			schema: fromAgentDocument(published.config).config,
-			tools: published.tools,
-			publishedBy: 'Package test',
-		});
+		const history = await historyRepository.saveVersion(
+			{
+				versionId: `${agent.id}_published`,
+				agentId: agent.id,
+				schema: fromAgentDocument(published.config).config,
+				tools: published.tools,
+				publishedBy: 'Package test',
+			},
+			{},
+		);
 		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 		await Container.get(AgentSkillRepository).insertPins([
 			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },
@@ -157,10 +172,11 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		await agentRepository.setActiveVersionFenced(agent.id, agent.revision, {
-			activeVersionId: history.versionId,
-			versionId: agent.versionId!,
-		});
+		await agentRepository.setActiveVersionFenced(
+			agent.id,
+			agent.publicationRevision,
+			history.versionId,
+		);
 		sources.push({ agent: (await agentRepository.findById(agent.id))!, draft, published });
 	}
 });
@@ -193,16 +209,39 @@ it.each([
 		const archive = new TarPackageWriter();
 		const loose = new DirectoryPackageWriter(directory);
 		const entries: ManifestEntry[] = [];
+		const skillUsers: Array<{ agentId: string; projectId: string; skillIds: string[] }> = [];
 		for (const { agent } of sources) {
 			const snapshot = (await exporter.prepare(agent, policy))!;
 			expect(snapshot.projectId).toBe(project.id);
 			const entry = await exporter.write(snapshot, archive, prefix);
 			expect(await exporter.write(snapshot, loose, prefix)).toEqual(entry);
 			entries.push(entry);
+			skillUsers.push({
+				agentId: agent.id,
+				projectId: project.id,
+				skillIds: (snapshot.content.config?.skills ?? []).map(({ id }) => id),
+			});
 		}
+		const projectTargetsById = prefix ? new Map([[project.id, prefix]]) : undefined;
+		const skillExporter = Container.get(SkillExporter);
+		const skillEntries = await skillExporter.export({
+			user: owner,
+			writer: archive,
+			agents: skillUsers,
+			projectTargetsById,
+		});
+		expect(
+			await skillExporter.export({
+				user: owner,
+				writer: loose,
+				agents: skillUsers,
+				projectTargetsById,
+			}),
+		).toEqual(skillEntries);
 		const manifest: PackageManifest = {
 			...looseAgentsFixture().manifest,
 			agents: entries,
+			skills: skillEntries,
 			requirements: undefined,
 			projects: prefix ? [{ id: project.id, name: project.name, target: prefix }] : undefined,
 		};
@@ -223,7 +262,7 @@ it.each([
 		expect(parsed).toHaveLength(2);
 		for (const [index, source] of sources.entries()) {
 			const { id, ...content } = source[selected];
-			const integrations = [{ type: 'slack', credentialId: 'current-slack' }];
+			const integrations = [{ type: 'slack', credentialId: '' }];
 			if (selected === 'published') integrations.push({ type: 'n8n_chat', credentialId: '' });
 			expect(parsed[index]).toEqual({
 				...content,
@@ -235,13 +274,87 @@ it.each([
 				},
 			});
 		}
+		// Every policy exports the latest saved skill version, with its frontmatter.
+		const skills = await parser.getSkills(archiveReader);
+		expect(await parser.getSkills(directoryReader)).toEqual(skills);
+		expect(skillEntries.every(({ target }) => target.startsWith(`${basePrefix}skills/`))).toBe(
+			true,
+		);
+		expect(skills).toEqual(
+			sources.map(({ agent }) => ({
+				id: `${agent.id}_skill`,
+				scope: 'project',
+				skill: expect.objectContaining({ instructions: 'Read references/guide.md.' }),
+				frontmatter: { license: 'MIT' },
+			})),
+		);
 		expect(await readSourceRecords()).toEqual(before);
 	},
 );
+
+it('exports a skill whose ID contains hyphens', async () => {
+	const body = { name: 'Release notes', description: 'Notes.', instructions: 'Write notes.' };
+	await createSkill({
+		id: 'release-notes',
+		projectId: project.id,
+		source: 'agent',
+		content: toSkillContent(body),
+	});
+	const writer = new DirectoryPackageWriter(directory);
+	const entries = await Container.get(SkillExporter).export({
+		user: owner,
+		writer,
+		agents: [{ agentId: sources[0].agent.id, projectId: project.id, skillIds: ['release-notes'] }],
+	});
+	expect(entries).toEqual([
+		{ id: 'release-notes', name: 'Release notes', target: 'skills/release-notes-release-notes' },
+	]);
+	await deleteSkill('release-notes');
+});
 
 it('rejects a stale draft through the definition service', async () => {
 	const agent = sources[0].agent;
 	await expect(exporter.prepare({ ...agent, revision: agent.revision - 1 })).rejects.toThrow(
 		ConflictError,
 	);
+});
+
+it('exports channels without credential IDs and requires no channel-only credential', async () => {
+	const model = await saveCredential(
+		{ name: 'Model', type: 'openAiApi', data: { apiKey: 'key' } },
+		{ project, role: 'credential:owner' },
+	);
+	const slack = await saveCredential(
+		{ name: 'Slack', type: 'slackApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const config = AgentJsonConfigSchema.parse({
+		name: 'Channels',
+		model: 'openai/gpt-4o',
+		credential: model.id,
+		instructions: '',
+	});
+	const agent = await agentRepository.save({
+		id: 'channels_agent',
+		name: 'Channels',
+		projectId: project.id,
+		schema: fromAgentDocument(config).config,
+		integrations: [{ type: 'slack', credentialId: slack.id }],
+		versionId: 'channels_draft',
+	});
+	const writer = new CapturingWriter();
+
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: owner, agentIds: [agent.id] },
+		writer,
+	);
+
+	expect(manifest.requirements?.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(manifest.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(writer.files.filter(({ path }) => path.endsWith('/credential.json'))).toHaveLength(1);
+	const content = serializedAgentSchema.parse(
+		JSON.parse(writer.files.find(({ path }) => path.endsWith('/agent.json'))!.content),
+	);
+	expect(content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	await agentRepository.delete(agent.id);
 });

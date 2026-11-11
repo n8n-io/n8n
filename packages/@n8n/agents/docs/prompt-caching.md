@@ -91,8 +91,10 @@ does not guarantee support for every future model.
 The runtime checks the model version, API route, and effective endpoint before
 the request. Older versions, excluded variants, unknown model ID formats, other
 providers, Chat Completions, and custom endpoints use the complete eager catalog.
-Gateway credits also stays eager. Direct SDK callers keep the existing
-`search_tools` and `load_tool` behavior unless they enable this policy.
+Gateway credits also stays eager. When native search is not available, or the
+agent sets `.toolDeferral({ mode: 'tool-catalog' })`, deferred tools go behind the
+tool catalog: the prompt lists their names, and the model uses `find_tools` and
+`call_tool`.
 
 Discovered definitions stay at their original history positions. OpenAI appends
 search results to the conversation. Anthropic expands tool references in the
@@ -120,26 +122,13 @@ prefix byte-stable, which both OpenAI's automatic caching and Anthropic's
 enabled.
 
 Tools can attach a `systemInstruction` fragment (`Tool.systemInstruction(...)`)
-that gets merged into the system prompt. Native deferral includes all catalog
-fragments from the first request and keeps them stable after discovery. Legacy
-deferred tools loaded mid-conversation
-via `load_tool` are a special case: if a newly loaded tool has a
-`systemInstruction`, merging it into the same cached instructions string the
-moment it loads would change that string's bytes — a full-prefix cache miss
-for OpenAI, and an invalidated breakpoint for Anthropic, for the rest of the
-conversation.
-
-`RuntimeContextBuilder.composeEffectiveInstructions()` avoids this by
-splitting fragments by stability:
-
-- **Stable** (base tools, the deferred-tool controllers `search_tools` /
-  `load_tool`, the episodic-memory tools) stay in the cached instructions
-  message — this set never changes for the life of a run.
-- **Volatile** (tools loaded via `load_tool` during the conversation) are
-  routed into the same uncached second system message that observation-log
-  memory uses (see `buildSystemMessages`), not dropped — the model still
-  sees the instruction the moment the tool loads, just outside the cached
-  prefix.
+that gets merged into the system prompt. Native deferral and the tool catalog both include all deferred-tool
+fragments from the first request. Neither mode adds tools mid-run, so
+`RuntimeContextBuilder.composeEffectiveInstructions()` keeps every fragment
+(base tools, the tool catalog controllers `find_tools` / `call_tool`, deferred
+tools, the episodic-memory tools) in the cached instructions message. The
+uncached second system message carries only host volatile instructions and
+observation-log memory (see `buildSystemMessages`).
 
 Runtime skills follow the same principle. `ActiveSkills.modelMessages()`
 appends the current skill body to the tool result that activated it: a
@@ -183,6 +172,33 @@ mirrored into `write_todos` via `createWriteTodosTool({ delegateToolName })`),
 but those values are fixed at tool-build time, so the instructions prefix stays
 byte-stable for the life of a run.
 
+## Dynamic skill catalogues
+
+A host can set `RuntimeSkillSource.dynamicCatalog` with `skillIds` and an
+optional `notice`. The SDK keeps these entries out of the system catalogue.
+Other entries retain their existing order and loading protocol. The source
+still owns all skill and reference reads, including access checks.
+
+Before each model call, the runtime checks the latest visible catalogue
+snapshot. It appends a `n8n:runtime-skill-catalog` custom message when the
+catalogue or notice changes. The model receives this as a user message inside
+`<system-reminder>`. The runtime also appends an empty snapshot when all dynamic
+skills become unavailable. A new snapshot replaces earlier dynamic catalogues.
+It does not change the static catalogue or rewrite older messages.
+
+Snapshots persist with the conversation and checkpoints. An unchanged snapshot
+is reused across calls and turns. After observation masking hides it, the
+runtime appends the current snapshot again. Each change adds context tokens
+until compaction. The reminder uses user-role priority. It does not grant the
+catalogue system-role priority.
+
+The Assistant opts Hub skills into this path, including its availability
+notice. Other SDK callers retain the system catalogue unless they opt in.
+No additional cache marker is required. The change preserves the old built-in
+prefix when the tools and other instructions match. A prefix that previously
+contained custom skills needs a new cache write after migration. Model, tool,
+prompt-profile, and provider cache changes can still cause misses.
+
 ## Anthropic: instruction-level cache breakpoint
 
 `.promptCaching()` attaches `providerOptions.anthropic.cacheControl` to the
@@ -218,13 +234,14 @@ back to memory, checkpoints, or `AgentMessageList`):
   read the cached prefix instead of reprocessing the whole transcript on
   every call.
 - **Tool-definitions breakpoint.** The runtime puts a `cacheControl` marker on
-  the last eligible local tool when the catalog is static. This includes the
-  complete eager catalog and native tool search. In native mode, the selected
+  the last eligible local tool when the toolset is static. This includes a
+  complete eager toolset, native tool search, and the tool catalog. The tool
+  catalog sends the eager tools and the fixed `find_tools` / `call_tool`
+  controllers. It does not send the deferred tools. In native mode, the selected
   tool must be non-deferred. The runtime never puts a generated cache marker on
   a deferred tool. A caller-supplied marker makes that tool eager and stays
-  unchanged. Legacy `load_tool` catalogs have no automatic tool breakpoint
-  because their definitions can change during the conversation. Runtime memory
-  tools do not change this rule. Their definitions stay stable within a run.
+  unchanged. Runtime memory tools do not change this rule. Their definitions
+  stay stable within a run.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 
@@ -320,8 +337,7 @@ rate in the estimate.
 
 ## What this does not do
 
-- The tool-definitions breakpoint covers one static catalog. Legacy
-  `search_tools` / `load_tool` catalogs have no automatic tool caching. In native
+- The tool-definitions breakpoint covers one static catalog. In native
   mode, a caller cache marker keeps the marked tool eager.
 - Only one moving conversation-history breakpoint is added per call — there
   is no second/dual breakpoint for splitting "older, stable" history from

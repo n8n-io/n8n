@@ -564,41 +564,49 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded workflow_builder_ask_user block as an workflow_builder_ask_user step with the chosen answers', () => {
-		const turns = transcriptPrefixFromSeed([
-			{
-				id: 'a1',
-				type: 'llm',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'workflow_builder_ask_user',
-						state: 'resolved',
-						input: {
-							introMessage: 'A couple of questions',
-							questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+	it.each(['ask_user', 'workflow_builder_ask_user', 'agent_builder_ask_questions'])(
+		'renders a seeded %s block as an ask_user step with the chosen answers',
+		(toolName) => {
+			const turns = transcriptPrefixFromSeed([
+				{
+					id: 'a1',
+					type: 'llm',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName,
+							state: 'resolved',
+							input: {
+								introMessage: 'A couple of questions',
+								questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+							},
+							// Resume block carries the user's answers in its output.
+							output: {
+								answered: true,
+								answers: [{ questionId: 'q1', selectedOptions: ['#growth'], skipped: false }],
+							},
 						},
-						// Resume block carries the user's answers in its output.
-						output: {
-							answered: true,
-							answers: [{ questionId: 'q1', selectedOptions: ['#growth'], skipped: false }],
+					],
+					createdAt: '2026-01-01T00:00:00Z',
+				},
+			]);
+			expect(turns[0].steps).toEqual([
+				{
+					kind: 'ask-user',
+					questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+					answers: [
+						{
+							questionId: 'q1',
+							selectedOptions: ['#growth'],
+							customText: undefined,
+							skipped: false,
 						},
-					},
-				],
-				createdAt: '2026-01-01T00:00:00Z',
-			},
-		]);
-		expect(turns[0].steps).toEqual([
-			{
-				kind: 'ask-user',
-				questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
-				answers: [
-					{ questionId: 'q1', selectedOptions: ['#growth'], customText: undefined, skipped: false },
-				],
-			},
-		]);
-	});
+					],
+				},
+			]);
+		},
+	);
 
 	it('renders a seeded setup-card block as a setup-card step from output.payload.setupRequests', () => {
 		const turns = transcriptPrefixFromSeed([

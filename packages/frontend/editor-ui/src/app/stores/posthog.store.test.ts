@@ -11,9 +11,15 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
+import {
+	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
+	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT as WIDTH,
+	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT as TOGGLE,
+} from '@/app/constants/experiments';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -26,7 +32,6 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -214,6 +219,55 @@ describe('Posthog store', () => {
 
 			posthog.reset();
 			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
+		it('enables autocapture when the server-evaluated flag is on', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					autocapture: {
+						element_attribute_ignorelist: expect.arrayContaining([
+							'data-node-name',
+							'title',
+							'alt',
+							'data-value',
+						]),
+					},
+				}),
+			);
+		});
+
+		it('masks the text of captured elements', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ mask_all_text: true }),
+			);
+		});
+
+		it('keeps autocapture off when the flag is off', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
+		});
+
+		it('keeps autocapture off when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
 		});
 
 		it('disables client-side flag refetch when flags are bootstrapped', () => {
@@ -580,6 +634,40 @@ describe('Posthog store', () => {
 			});
 		});
 		// EOF Experiment cleanup
+
+		it.each([COHORT.chatWidth, COHORT.testToggle, COHORT.outside])(
+			'tracks only the agent experiment assigned by cohort %s',
+			async (cohort) => {
+				vi.useFakeTimers();
+				try {
+					usePostHog().init({
+						[COHORT.name]: cohort,
+						[WIDTH.name]: WIDTH.wide,
+						[TOGGLE.name]: TOGGLE.current,
+					});
+					await vi.advanceTimersByTimeAsync(2000);
+					for (const [key, expectedCohort] of [
+						[WIDTH.name, COHORT.chatWidth],
+						[TOGGLE.name, COHORT.testToggle],
+					]) {
+						const assertion = expect(useTelemetry().track);
+						if (cohort === expectedCohort) {
+							assertion.toHaveBeenCalledWith(
+								TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+								expect.objectContaining({ name: key }),
+							);
+						} else {
+							assertion.not.toHaveBeenCalledWith(
+								TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+								expect.objectContaining({ name: key }),
+							);
+						}
+					}
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		describe('taxonomy inspiration eligibility', () => {

@@ -8,6 +8,7 @@
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | error | text |  | true |  |  |  |
+| files | json |  | true |  |  | Output files that the job stored for the parent thread |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
 | notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
@@ -20,12 +21,14 @@
 | planTaskId | uuid |  | true |  |  | Task ID in the saved plan document |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
+| skippedFiles | json |  | true |  |  | Output files that were too large to store |
 | sourceExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution that dispatched this job |
 | status | varchar(16) |  | false |  |  | running: child works; suspended: child awaits approval; paused: user stopped the child; completed, failed, cancelled: terminal |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
 | title | varchar(255) |  | false |  |  | Task name or workflow name, echoed in status-check listings |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| wakeAttemptId | uuid |  | true |  |  | Wake attempt that started with this result. Recovery marks the result consumed instead of running the wake again. |
 | workflowId | varchar(36) |  | true |  |  | Workflow jobs only; scopes cancellation |
 
 ## Constraints
@@ -77,6 +80,7 @@ erDiagram
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt
@@ -89,12 +93,14 @@ erDiagram
   uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  json skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agents" {
@@ -105,6 +111,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope

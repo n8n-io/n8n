@@ -34,12 +34,12 @@ export const exportPackageRequestFieldDocs = {
 	},
 	versionPolicy: {
 		description:
-			'Which version of each workflow and agent travels in the package. `latest` exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Dependencies that cannot be included cause the export to fail only when `dependencyPolicy` is `fail` or `include-in-package`. With `reference-only`, the export records them as external requirements. The selected version supplies the definition and its references. Workflow names, settings, and tags always use their current values. Agent IDs, names, and MCP availability always use their current values.',
+			'Which version of each workflow and agent travels in the package. `latest` exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Dependencies that cannot be included cause the export to fail only when `dependencyPolicy` is `fail` or `include-in-package`. With `reference-only`, the export records them as external requirements. The selected version supplies the definition and its references. Workflow names, settings, and tags always use their current values. Agent IDs, names, and MCP availability always use their current values. Skills have no published versions. The package always contains the latest saved version of each skill, also under `published-strict`. The package does not pin skill versions.',
 		example: 'latest' as const,
 	},
 	credentialExportPolicy: {
 		description:
-			'Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); literal values never travel either way. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.',
+			'Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`). A literal value travels only when it decides whether another credential field shows (a toggle or an auth type, for example) and an exported expression sits in that field. No other literal value travels. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.',
 		example: 'expression-values-only' as const,
 	},
 	includeArchivedWorkflows: {

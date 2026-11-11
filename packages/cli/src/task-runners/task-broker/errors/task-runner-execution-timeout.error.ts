@@ -1,5 +1,5 @@
 import type { TaskRunnerMode } from '@n8n/config';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 export class TaskRunnerExecutionTimeoutError extends OperationalError {
 	description: string;

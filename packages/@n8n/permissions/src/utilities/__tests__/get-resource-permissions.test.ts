@@ -37,7 +37,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -60,6 +60,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		});
@@ -148,7 +149,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {
 				create: true,
 				list: true,
@@ -201,6 +202,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		};

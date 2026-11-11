@@ -1,17 +1,5 @@
 import { z } from 'zod';
 
-import { AGENT_BUILDER_TOOL_NAMES } from './builder-tool-names';
-
-/**
- * Canonical names of the interactive agent-builder tools.
- *
- * `toolName` is the discriminator on the wire: SSE `toolSuspended` events,
- * persisted tool-call parts, and the FE InteractivePayload union all dispatch
- * by it. There is no separate `interactionType` field — the tool name IS the
- * interaction kind.
- */
-export const ASK_CREDENTIAL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL;
-export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL;
 /**
  * Frontend-only discriminator for generic approval cards.
  *

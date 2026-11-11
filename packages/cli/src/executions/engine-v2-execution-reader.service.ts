@@ -14,13 +14,13 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
 import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
+import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**
@@ -58,7 +58,7 @@ export type EngineV2LatestQuery = Pick<
 const MAX_SCOPE_SIZE = 10_000;
 
 /**
- * Reads an engine v2 execution for display. The data plane is its only store:
+ * Reads an engine v2 execution. The data plane is its only store:
  * the workflow comes from the copy captured when the run started, so an edit
  * after the run does not change what the execution reports.
  */
@@ -206,8 +206,12 @@ export class EngineV2ExecutionReader {
 		return await this.fromSnapshot(snapshot);
 	}
 
-	/** `undefined` when the stored workflow document cannot be read as one. */
-	private async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
+	/**
+	 * The v1 shape of a snapshot that the caller already holds, or `undefined`
+	 * when the run's document lacks what the v1 paths read. It checks no workflow
+	 * access, so the caller must authorize the read.
+	 */
+	async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
@@ -218,13 +222,13 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
 		);
 	}
 
 	private toExecutionResponse(
 		snapshot: ExecutionSnapshot,
-		workflow: WorkflowSnapshot,
+		workflow: WorkflowRunDocument,
 		data: IRunExecutionData,
 	): IExecutionResponse {
 		// No real run timing yet (CAT-4234), so both come from the row.
@@ -257,9 +261,9 @@ export class EngineV2ExecutionReader {
  * without — redaction walks it unguarded — so a document without it reads as no
  * execution at all rather than as a 500.
  */
-function asWorkflowSnapshot(document: unknown): WorkflowSnapshot | undefined {
+export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | undefined {
 	if (typeof document !== 'object' || document === null) return undefined;
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
-	return document as unknown as WorkflowSnapshot;
+	return document as unknown as WorkflowRunDocument;
 }

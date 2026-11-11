@@ -82,6 +82,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 				privateKey: 'private-key',
 				...(sdk !== undefined && { sdk }),
 			});
+			expect(getCachedCatalog).toHaveBeenCalledWith({ fetch: expect.any(Function) });
 		},
 	);
 

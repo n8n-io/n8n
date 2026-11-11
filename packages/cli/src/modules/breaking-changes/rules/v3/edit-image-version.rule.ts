@@ -23,11 +23,11 @@ export class EditImageVersionRule implements IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v3',
-			title: 'Edit Image versions below 2 are deprecated',
+			title: 'Edit Image versions below 2 are removed',
 			description:
-				'Edit Image versions 1 and 1.1 are deprecated. Upgrade each node to version 2. Version 2 uses a different image library, so some operations can change output shape or appearance.',
+				'n8n 3.0 removes Edit Image versions 1 and 1.1, so workflows that use them fail. Upgrade each node to version 2. Version 2 uses a different image library, so some operations can change output shape or appearance.',
 			category: BreakingChangeCategory.workflow,
-			impact: 'behaviorChanges',
+			impact: 'executionsFail',
 		};
 	}
 
@@ -52,18 +52,13 @@ export class EditImageVersionRule implements IBreakingChangeWorkflowRule {
 
 		return reportAffectedNodes(affectedNodes, (node) => {
 			const warnings = collectEditImageWarnings(node.parameters);
-			if (warnings.length === 0) {
-				return {
-					title: `Node '${node.name}' uses Edit Image version ${node.typeVersion}`,
-					description: `Upgrade this node to version ${EDIT_IMAGE_TARGET_VERSION}.`,
-					level: 'info',
-				};
-			}
-
 			return {
 				title: `Node '${node.name}' uses Edit Image version ${node.typeVersion}`,
-				description: `Upgrade this node to version ${EDIT_IMAGE_TARGET_VERSION}. ${warnings.join(' ')}`,
-				level: 'warning',
+				description: [
+					`Upgrade this node to version ${EDIT_IMAGE_TARGET_VERSION}.`,
+					...warnings,
+				].join(' '),
+				level: 'error',
 			};
 		});
 	}

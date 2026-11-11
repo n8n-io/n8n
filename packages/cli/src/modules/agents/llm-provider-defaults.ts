@@ -33,11 +33,11 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	ollamaApi: { provider: 'ollama' },
 	anthropicApi: {
 		provider: 'anthropic',
-		defaultModel: 'claude-sonnet-5',
+		defaultModel: 'claude-sonnet-5-5',
 	},
 	openAiApi: {
 		provider: 'openai',
-		defaultModel: 'gpt-5.6-terra',
+		defaultModel: 'gpt-6.1-terra',
 	},
 	googlePalmApi: {
 		provider: 'google',
@@ -70,7 +70,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	openRouterApi: {
 		provider: 'openrouter',
-		defaultModel: 'anthropic/claude-sonnet-5',
+		defaultModel: 'anthropic/claude-sonnet-5.5',
 	},
 	nvidiaApi: {
 		provider: 'nvidia',
@@ -78,7 +78,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	vercelAiGatewayApi: {
 		provider: 'vercel',
-		defaultModel: 'anthropic/claude-sonnet-5',
+		defaultModel: 'anthropic/claude-sonnet-5.5',
 	},
 	moonshotApi: {
 		provider: 'moonshotai',

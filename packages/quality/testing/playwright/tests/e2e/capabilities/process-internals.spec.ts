@@ -1,5 +1,8 @@
+import flatted from 'flatted';
+import { readFileSync } from 'fs';
 import { nanoid } from 'nanoid';
 import type { N8NProcessUrl } from 'n8n-containers/stack';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
 import {
@@ -8,6 +11,7 @@ import {
 	probeMissingHeapSnapshot,
 	readProcessInternals,
 } from '../../../utils/process-internals';
+import { resolveFromRoot } from '../../../utils/path-helper';
 
 test.use({ capability: { env: { TEST_ISOLATION: 'process-internals' } } });
 
@@ -15,7 +19,7 @@ test.use({ capability: { env: { TEST_ISOLATION: 'process-internals' } } });
 const REQUIRED_COLLECTIONS: Record<N8NProcessUrl['role'], string[]> = {
 	main: ['activeExecutions.executions', 'triggers.workflows', 'push.connections'],
 	webhook: ['activeExecutions.executions', 'scaling.jobResults'],
-	worker: ['scaling.runningJobs'],
+	worker: ['activeExecutions.executions', 'scaling.runningJobs'],
 };
 
 test.describe(
@@ -120,6 +124,48 @@ test.describe(
 						jobResults: 0,
 					})),
 				);
+		});
+
+		test('should return in-memory execution state to baseline after a waiting sub-workflow resumes', async ({
+			api,
+			processUrls,
+		}) => {
+			// The child sets its resume URL, then waits on a webhook call.
+			const { workflowId: childWorkflowId } =
+				await api.workflows.importWorkflowFromFile('cat-1801-child.json');
+			const parentDefinition = JSON.parse(
+				readFileSync(resolveFromRoot('workflows', 'cat-1801-parent.json'), 'utf8'),
+			) as IWorkflowBase;
+			parentDefinition.nodes.find(
+				(node) => node.type === 'n8n-nodes-base.executeWorkflow',
+			)!.parameters.workflowId = { value: childWorkflowId, mode: 'list' };
+			const {
+				webhookPath,
+				workflowId: parentWorkflowId,
+				createdWorkflow: { versionId },
+			} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
+			await api.workflows.activate(parentWorkflowId, versionId!);
+
+			const before = await readProcessInternals(processUrls);
+			expect((await api.webhooks.trigger(`/webhook/${webhookPath}`)).ok()).toBe(true);
+
+			const child = await api.workflows.waitForWorkflowStatus(childWorkflowId, 'waiting', 10000);
+			const childData = flatted.parse((await api.workflows.getExecution(child.id)).data);
+			const resumeUrl = childData.resultData.runData['Edit Fields'][0].data.main[0][0].json
+				.webhook as string;
+			expect((await api.webhooks.trigger(resumeUrl)).ok()).toBe(true);
+			await api.workflows.waitForWorkflowStatus(parentWorkflowId, 'success', 15000);
+
+			await expect
+				.poll(async () => {
+					const deltas = diffProcessInternals(before, await readProcessInternals(processUrls));
+					return deltas.map(({ name, collections }) => ({
+						name,
+						executions: collections['activeExecutions.executions'] ?? 0,
+						responseModes: collections['activeExecutions.responseModes'] ?? 0,
+					}));
+				})
+				.toEqual(processUrls.map(({ name }) => ({ name, executions: 0, responseModes: 0 })));
 		});
 	},
 );

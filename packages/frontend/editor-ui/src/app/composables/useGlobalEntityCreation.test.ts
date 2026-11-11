@@ -11,6 +11,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { computed } from 'vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -27,10 +29,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
-
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 
 const promptMock = vi.hoisted(() => vi.fn());
+const createAppMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(false),
@@ -53,6 +55,12 @@ function expectAgentCreated(projectId: string) {
 		params: { projectId, agentId: mintedAgentId },
 		state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
 	});
+}
+
+function expectAppCreated(projectId: string) {
+	const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
+	expect(appId).toEqual(expect.any(String));
+	expect(createAppMock).toHaveBeenCalledWith({ projectId, appId });
 }
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
@@ -109,6 +117,12 @@ beforeEach(() => {
 	promptMock.mockReset();
 	trackMock.mockReset();
 	vi.mocked(hasPermission).mockReturnValue(false);
+	capabilityRegistry.clear();
+	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+		available: computed(() => true),
+		openApp: vi.fn(),
+		createApp: createAppMock,
+	}));
 });
 
 describe('useGlobalEntityCreation', () => {
@@ -625,6 +639,59 @@ describe('useGlobalEntityCreation', () => {
 		});
 	});
 
+	describe('apps module', () => {
+		it('omits the app entry when the module is inactive', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'app')).toBeUndefined();
+		});
+
+		it('creates an app in the personal project from the flat entry', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAppsEnabled = true;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				scopes: ['app:create'],
+			} as Project;
+			const { menu, handleSelect } = useGlobalEntityCreation();
+
+			expect(menu.value).toContainEqual(
+				expect.objectContaining({ id: 'app', title: 'New app', disabled: false }),
+			);
+			handleSelect('app');
+
+			expectAppCreated('personal-project');
+		});
+
+		it('offers personal and team projects in the app submenu', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAppsEnabled = true;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				scopes: ['app:create'],
+			} as Project;
+			projectsStore.myProjects = [
+				{ id: 'team-1', name: 'Team', type: 'team', scopes: ['app:create'] },
+			] as ProjectListItem[];
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'app')?.submenu).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: 'app-personal', disabled: false }),
+					expect.objectContaining({ id: 'app-team-1', disabled: false }),
+				]),
+			);
+		});
+	});
+
 	describe('variables', () => {
 		const enableVariables = () => {
 			const settingsStore = mockedStore(useSettingsStore);
@@ -836,6 +903,7 @@ describe('useGlobalEntityCreation', () => {
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
 			workflowSuggestionsEnabled: false,
+			assistantAgentEnabled: false,
 		};
 
 		const enableInstanceAi = () => {

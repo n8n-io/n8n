@@ -2,7 +2,10 @@ operationId: updateTag
 tags:
   - Tags
 summary: Update a tag
-description: Update a tag.
+description: |-
+  Update a tag.
+
+  Requires the `tag:update` API key scope.
 x-required-scope: tag:update
 parameters:
   - schema:
@@ -74,3 +77,5 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

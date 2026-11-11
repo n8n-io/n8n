@@ -1,17 +1,13 @@
-import { computeCost, fetchProviderCatalog, getModelCost } from '../catalog';
+import { computeCost, fetchProviderCatalog, getCachedCatalog, getModelCost } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
-	const originalFetch = global.fetch;
-
 	afterEach(() => {
-		global.fetch = originalFetch;
 		vi.restoreAllMocks();
 	});
 
 	it('does not fetch or infer a token price for an Ollama model', async () => {
 		const fetchMock = vi.fn();
-		global.fetch = fetchMock;
-		expect(await getModelCost('ollama/gemma4:latest')).toBeUndefined();
+		expect(await getModelCost('ollama/gemma4:latest', fetchMock)).toBeUndefined();
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
@@ -83,9 +79,11 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
+		const catalog = await fetchProviderCatalog({
+			signal: abortController.signal,
+			fetch: fetchMock as typeof fetch,
+		});
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
 		expect(catalog.openai.models['gpt-5'].sdk).toBe('@ai-sdk/openai');
@@ -114,14 +112,26 @@ describe('fetchProviderCatalog', () => {
 		});
 	});
 
+	it('uses an injected fetch', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve({}),
+		});
+
+		await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
+		await getCachedCatalog({ fetch: fetchMock as typeof fetch });
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', { signal: undefined });
+	});
+
 	it('rejects a malformed catalog response', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () => await Promise.resolve([]),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		await expect(fetchProviderCatalog()).rejects.toThrow();
+		await expect(fetchProviderCatalog({ fetch: fetchMock as typeof fetch })).rejects.toThrow();
 	});
 
 	it('omits malformed providers and models while retaining valid entries', async () => {
@@ -154,9 +164,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.invalidProvider).toBeUndefined();
 		expect(catalog.openai.models).toEqual({
@@ -197,9 +206,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
 		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
@@ -233,9 +241,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.anthropic.models).toEqual({});
 		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
@@ -267,9 +274,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.openai.models['gpt-5-mini'].temperature).toBe(false);
 		expect(catalog.openai.models['gpt-4.1-mini'].temperature).toBe(true);
@@ -314,9 +320,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		// Alias keeps its id but loses the "(latest)" tag
 		expect(catalog.anthropic.models['claude-opus-4-5'].name).toBe('Claude Opus 4.5');

@@ -16,6 +16,8 @@ export interface WorkflowSetupSection {
 	setupHint?: InstanceAiCredentialSetupHint;
 	/** The user asked for a fresh credential: don't preselect an existing one. */
 	preferNewCredential?: boolean;
+	/** The credentials the server offers for this card: the ones the user can use through their own access. */
+	existingCredentials?: InstanceAiWorkflowSetupNode['existingCredentials'];
 }
 
 export interface WorkflowSetupApplyPayload {
@@ -27,3 +29,13 @@ export interface WorkflowSetupApplyPayload {
 }
 
 export type TerminalState = 'applying' | 'applied' | 'partial' | 'deferred';
+
+/**
+ * How the parent settled the card's answer. `failed` opens the wizard again,
+ * with the user's selections. `result` is the setup tool result, when the
+ * parent has one.
+ */
+export interface WorkflowSetupOutcome {
+	state: TerminalState | 'failed';
+	result?: Record<string, unknown>;
+}

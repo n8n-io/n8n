@@ -9,15 +9,17 @@ import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { toOverrideCredentials } from '@/features/credentials/credentials.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiConfirmRequest,
 	type InstanceAiCredentialFlow,
 	type InstanceAiCredentialRequest,
 } from '@n8n/api-types';
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -25,7 +27,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
@@ -34,18 +35,30 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 type CredentialSetupChoice = 'ai' | 'manual';
 
 const props = defineProps<{
-	requestId: string;
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 	requireUserSelection?: boolean;
+	/** The thread that the telemetry reports. */
+	threadId: string;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId?: string;
+	/**
+	 * Raised by the parent when it could not send the answer. The card shows the
+	 * form again, with the user's selections, so the user can try again.
+	 */
+	failedAttempts?: number;
+}>();
+
+const emit = defineEmits<{
+	/** The user's answer and how it resolves the card. The parent sends it. */
+	decide: [body: InstanceAiConfirmRequest, resolution: 'approved' | 'deferred'];
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -76,6 +89,14 @@ const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
+
+watch(
+	() => props.failedAttempts,
+	() => {
+		isSubmitted.value = false;
+		isDeferred.value = false;
+	},
+);
 
 const selections = ref<Record<string, string | null>>({});
 /** Credential types the user explicitly skipped via "Later" on their step, distinct from never-visited types. */
@@ -272,7 +293,7 @@ watch(
 		if (nowReady && !wasReady) {
 			if (requiresExplicitContinue.value) return;
 			await nextTick();
-			await handleContinue();
+			handleContinue();
 		}
 	},
 	{ immediate: true },
@@ -291,7 +312,10 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({
+						projectId: props.projectId,
+						forAssistant: true,
+					})
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
@@ -350,19 +374,11 @@ const hasExistingCredentials = computed(() => {
 const dropdownCredentials = computed<ICredentialsResponse[] | undefined>(() => {
 	const req = currentRequest.value;
 	if (!req?.existingCredentials?.length) return undefined;
-	return req.existingCredentials.map((c) => {
-		const stored = credentialsStore.getCredentialById(c.id);
-		return stored && stored.type === req.credentialType
-			? stored
-			: {
-					id: c.id,
-					name: c.name,
-					type: req.credentialType,
-					isManaged: false,
-					createdAt: '',
-					updatedAt: '',
-				};
-	});
+	return toOverrideCredentials(
+		req.existingCredentials,
+		req.credentialType,
+		credentialsStore.getCredentialById,
+	);
 });
 
 function hasEasySetup(credentialType: string): boolean {
@@ -497,8 +513,6 @@ function onCredentialSelected(
 }
 
 function trackCredentialInput() {
-	const tc = thread.findToolCallByRequestId(props.requestId);
-	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const req of props.credentialRequests) {
@@ -510,8 +524,8 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
-		input_thread_id: inputThreadId,
+		thread_id: props.threadId,
+		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
 		provided_inputs: provided,
@@ -520,7 +534,7 @@ function trackCredentialInput() {
 	});
 }
 
-async function handleContinue() {
+function handleContinue() {
 	// Guards against a double submit when a per-step skip in handleLater and
 	// the allHandled/anySelected watcher both become ready from the same tick.
 	if (isSubmitted.value) return;
@@ -533,33 +547,14 @@ async function handleContinue() {
 	trackCredentialInput();
 
 	isSubmitted.value = true;
-
-	const success = await thread.confirmAction(props.requestId, {
-		kind: 'credentialSelection',
-		credentials,
-	});
-	if (success) {
-		thread.resolveConfirmation(props.requestId, 'approved');
-	} else {
-		isSubmitted.value = false;
-	}
+	emit('decide', { kind: 'credentialSelection', credentials }, 'approved');
 }
 
 /** Whole-card deferral: every step is left unresolved and the card resolves as deferred. */
-async function deferWholeCard() {
+function deferWholeCard() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-
-	const success = await thread.confirmAction(props.requestId, {
-		kind: 'approval',
-		approved: false,
-	});
-	if (success) {
-		thread.resolveConfirmation(props.requestId, 'deferred');
-	} else {
-		isSubmitted.value = false;
-		isDeferred.value = false;
-	}
+	emit('decide', { kind: 'approval', approved: false }, 'deferred');
 }
 
 async function handleLater() {
@@ -571,7 +566,7 @@ async function handleLater() {
 		if (showSetupChoice.value) {
 			trackSetupChoiceClicked('skip');
 		}
-		await deferWholeCard();
+		deferWholeCard();
 		return;
 	}
 
@@ -607,12 +602,12 @@ async function handleLater() {
 			}
 			return;
 		}
-		await handleContinue();
+		handleContinue();
 		return;
 	}
 
 	trackCredentialInput();
-	await deferWholeCard();
+	deferWholeCard();
 }
 
 const browserConnectionState = computed(() =>
@@ -658,18 +653,9 @@ function handleSetupManually() {
 	openCreateCredential();
 }
 
-async function submitAutoSetup(credentialType: string, attemptId: string) {
+function submitAutoSetup(credentialType: string, attemptId: string) {
 	isSubmitted.value = true;
-	const success = await thread.confirmAction(props.requestId, {
-		kind: 'credentialAutoSetup',
-		credentialType,
-		attemptId,
-	});
-	if (success) {
-		thread.resolveConfirmation(props.requestId, 'approved');
-	} else {
-		isSubmitted.value = false;
-	}
+	emit('decide', { kind: 'credentialAutoSetup', credentialType, attemptId }, 'approved');
 }
 
 async function handleSetupAutomatically() {
@@ -680,146 +666,153 @@ async function handleSetupAutomatically() {
 	trackSetupChoiceClicked('ai', attemptId);
 
 	if (!(await ensureBrowserConnected('credential_setup'))) return;
-	await submitAutoSetup(credentialType, attemptId);
+	submitAutoSetup(credentialType, attemptId);
 }
 </script>
 
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
-				<!-- Header -->
-				<header :class="$style.header">
-					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
-					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-						{{ getDisplayName(currentRequest) }}
-					</N8nText>
-
-					<N8nText
-						v-if="isStepComplete(currentRequest.credentialType)"
-						data-test-id="instance-ai-credential-step-check"
-						:class="$style.completeLabel"
-						size="medium"
-						color="success"
-					>
-						<N8nIcon icon="check" size="large" />
-						{{ i18n.baseText('generic.complete') }}
-					</N8nText>
-				</header>
-
-				<!-- Content -->
-				<div :class="$style.content">
-					<N8nText v-if="currentRequest.reason" size="small" color="text-light">
-						{{ currentRequest.reason }}
-					</N8nText>
-
-					<div :class="$style.credentialContainer">
-						<NodeCredentials
-							v-if="hasExistingCredentials"
-							:node="syntheticNodeUi(currentRequest)"
-							:override-cred-type="currentRequest.credentialType"
-							:project-id="projectId"
-							:suggested-credential-name="currentRequest.suggestedName"
-							standalone
-							hide-issues
-							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="
-								GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
-								currentRequest.preferNew === true
-							"
-							:prefer-new-credential="currentRequest.preferNew === true"
-							:credential-setup-hint="currentRequest.setupHint"
-							:credentials-field-label="credentialsFieldLabel"
-							:credentials="dropdownCredentials"
-							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
-						/>
-						<N8nActionDropdown
-							v-else-if="showSetupChoice"
-							:items="setupChoiceOptions"
-							placement="bottom-start"
-							data-test-id="instance-ai-credential-setup-choice"
-							@select="onSetupChoiceSelected"
-						>
-							<template #activator>
-								<N8nButton data-test-id="instance-ai-credential-setup-button">
-									{{ i18n.baseText('instanceAi.credential.setupCredentialButton') }}
-									<N8nIcon icon="chevron-down" size="xsmall" />
-								</N8nButton>
-							</template>
-							<template #menuItem="item">
-								<div :class="$style.setupChoiceItem">
-									<N8nText size="small" color="text-dark" bold>{{ item.label }}</N8nText>
-									<N8nText size="xsmall" color="text-light">{{ item.description }}</N8nText>
-								</div>
-							</template>
-						</N8nActionDropdown>
-						<N8nButton
-							v-else
-							:label="i18n.baseText('instanceAi.credential.setupButton')"
-							data-test-id="instance-ai-credential-setup-button"
-							@click="openCreateCredential"
-						/>
-					</div>
-				</div>
-
-				<!-- Footer -->
-				<ConfirmationFooter layout="row-between">
-					<div :class="$style.footerNav">
-						<N8nButton
-							v-if="showArrows"
-							variant="ghost"
-							size="medium"
-							icon-only
-							:disabled="isPrevDisabled"
-							data-test-id="instance-ai-credential-prev"
-							aria-label="Previous step"
-							@click="wrappedGoToPrev"
-						>
-							<N8nIcon icon="chevron-left" size="xsmall" />
-						</N8nButton>
-						<N8nText size="small" color="text-light">
-							{{ currentStepIndex + 1 }} of {{ totalSteps }}
+			<N8nCard
+				v-if="currentRequest"
+				data-test-id="instance-ai-credential-card"
+				:class="$style.card"
+			>
+				<div :class="$style.layout">
+					<!-- Header -->
+					<header :class="$style.header">
+						<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
+						<N8nText :class="$style.title" size="medium" color="text-dark" bold>
+							{{ getDisplayName(currentRequest) }}
 						</N8nText>
-						<N8nButton
-							v-if="showArrows"
-							variant="ghost"
+
+						<N8nText
+							v-if="isStepComplete(currentRequest.credentialType)"
+							data-test-id="instance-ai-credential-step-check"
+							:class="$style.completeLabel"
 							size="medium"
-							icon-only
-							:disabled="isNextDisabled"
-							data-test-id="instance-ai-credential-next"
-							aria-label="Next step"
-							@click="wrappedGoToNext"
+							color="success"
 						>
-							<N8nIcon icon="chevron-right" size="xsmall" />
-						</N8nButton>
+							<N8nIcon icon="check" size="large" />
+							{{ i18n.baseText('generic.complete') }}
+						</N8nText>
+					</header>
+
+					<!-- Content -->
+					<div :class="$style.content">
+						<N8nText v-if="currentRequest.reason" size="small" color="text-light">
+							{{ currentRequest.reason }}
+						</N8nText>
+
+						<div :class="$style.credentialContainer">
+							<NodeCredentials
+								v-if="hasExistingCredentials"
+								:node="syntheticNodeUi(currentRequest)"
+								:override-cred-type="currentRequest.credentialType"
+								:project-id="projectId"
+								:suggested-credential-name="currentRequest.suggestedName"
+								standalone
+								for-assistant
+								hide-issues
+								:instance-ai-credential-help="instanceAiCredentialHelp"
+								:skip-auto-select="
+									GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
+									currentRequest.preferNew === true
+								"
+								:prefer-new-credential="currentRequest.preferNew === true"
+								:credential-setup-hint="currentRequest.setupHint"
+								:credentials-field-label="credentialsFieldLabel"
+								:credentials="dropdownCredentials"
+								@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
+							/>
+							<N8nActionDropdown
+								v-else-if="showSetupChoice"
+								:items="setupChoiceOptions"
+								placement="bottom-start"
+								data-test-id="instance-ai-credential-setup-choice"
+								@select="onSetupChoiceSelected"
+							>
+								<template #activator>
+									<N8nButton data-test-id="instance-ai-credential-setup-button">
+										{{ i18n.baseText('instanceAi.credential.setupCredentialButton') }}
+										<N8nIcon icon="chevron-down" size="xsmall" />
+									</N8nButton>
+								</template>
+								<template #menuItem="item">
+									<div :class="$style.setupChoiceItem">
+										<N8nText size="small" color="text-dark" bold>{{ item.label }}</N8nText>
+										<N8nText size="xsmall" color="text-light">{{ item.description }}</N8nText>
+									</div>
+								</template>
+							</N8nActionDropdown>
+							<N8nButton
+								v-else
+								:label="i18n.baseText('instanceAi.credential.setupButton')"
+								data-test-id="instance-ai-credential-setup-button"
+								@click="openCreateCredential"
+							/>
+						</div>
 					</div>
 
-					<div :class="$style.footerActions">
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:class="$style.actionButton"
-							:label="
-								i18n.baseText(
-									isFinalize
-										? 'instanceAi.credential.finalize.later'
-										: 'instanceAi.credential.deny',
-								)
-							"
-							@click="handleLater"
-						/>
+					<!-- Footer -->
+					<ConfirmationFooter layout="row-between">
+						<div :class="$style.footerNav">
+							<N8nButton
+								v-if="showArrows"
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="isPrevDisabled"
+								data-test-id="instance-ai-credential-prev"
+								aria-label="Previous step"
+								@click="wrappedGoToPrev"
+							>
+								<N8nIcon icon="chevron-left" size="xsmall" />
+							</N8nButton>
+							<N8nText size="small" color="text-light">
+								{{ currentStepIndex + 1 }} of {{ totalSteps }}
+							</N8nText>
+							<N8nButton
+								v-if="showArrows"
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="isNextDisabled"
+								data-test-id="instance-ai-credential-next"
+								aria-label="Next step"
+								@click="wrappedGoToNext"
+							>
+								<N8nIcon icon="chevron-right" size="xsmall" />
+							</N8nButton>
+						</div>
 
-						<N8nButton
-							size="medium"
-							:class="$style.actionButton"
-							:label="i18n.baseText('instanceAi.credential.continueButton')"
-							:disabled="!canContinue"
-							data-test-id="instance-ai-credential-continue-button"
-							@click="handleContinue"
-						/>
-					</div>
-				</ConfirmationFooter>
-			</div>
+						<div :class="$style.footerActions">
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:class="$style.actionButton"
+								:label="
+									i18n.baseText(
+										isFinalize
+											? 'instanceAi.credential.finalize.later'
+											: 'instanceAi.credential.deny',
+									)
+								"
+								@click="handleLater"
+							/>
+
+							<N8nButton
+								size="medium"
+								:class="$style.actionButton"
+								:label="i18n.baseText('instanceAi.credential.continueButton')"
+								:disabled="!canContinue"
+								data-test-id="instance-ai-credential-continue-button"
+								@click="handleContinue"
+							/>
+						</div>
+					</ConfirmationFooter>
+				</div>
+			</N8nCard>
 		</template>
 
 		<div v-else :class="$style.submitted">
@@ -838,13 +831,17 @@ async function handleSetupAutomatically() {
 <style lang="scss" module>
 .card {
 	width: 100%;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
+	border: 0;
 	padding: 0;
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	box-shadow: var(--shadow--sm), var(--shadow--outline);
+}
+
+.layout {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .header {

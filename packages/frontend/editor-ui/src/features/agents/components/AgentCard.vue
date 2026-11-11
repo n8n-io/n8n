@@ -24,6 +24,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
@@ -55,10 +56,7 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
-// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
-const hasUnpublishedChanges = computed(
-	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
-);
+const hasUnpublishedChanges = computed(() => hasAgentUnpublishedChanges(props.agent));
 const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
@@ -238,12 +236,12 @@ async function toggleMCPAccess(enabled: boolean) {
 					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
-				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newTest')">
 					<N8nIconButton
-						icon="message-circle-plus"
+						icon="flask-conical"
 						variant="ghost"
 						size="medium"
-						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						:aria-label="locale.baseText('agents.list.actions.newTest')"
 						data-test-id="agent-card-new-chat"
 						@click="emit('new-chat', agent.id, projectId)"
 					/>

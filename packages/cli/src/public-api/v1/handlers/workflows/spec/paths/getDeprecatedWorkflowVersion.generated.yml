@@ -2,7 +2,10 @@ operationId: getDeprecatedWorkflowVersion
 tags:
   - Workflow
 summary: Retrieves a specific version of a workflow
-description: 'Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId} instead. Retrieves a specific version of a workflow from workflow history.'
+description: |-
+  Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId} instead. Retrieves a specific version of a workflow from workflow history.
+
+  Requires the `workflow:read` API key scope.
 x-required-scope: workflow:read
 deprecated: true
 parameters:
@@ -170,3 +173,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

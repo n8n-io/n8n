@@ -20,12 +20,14 @@ import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
 import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
+import AgentChannelWebhookSetup from './webhook/AgentChannelWebhookSetup.vue';
 import type {
 	AgentChannelPlatform,
 	AgentChannelRuntime,
 	AgentChannelRuntimeContext,
 } from './types';
 import AgentChannelWhatsAppEditView from './whatsapp/AgentChannelWhatsAppEditView.vue';
+import AgentChannelWhatsAppRemoveConfirmation from './whatsapp/AgentChannelWhatsAppRemoveConfirmation.vue';
 import AgentChannelWhatsAppSetup from './whatsapp/AgentChannelWhatsAppSetup.vue';
 
 function createDefaultRuntime(): AgentChannelRuntime {
@@ -50,6 +52,17 @@ const isSlackNotDeletedWarning = (
 	return (
 		warning.integrationType === 'slack' &&
 		warning.code === 'app_not_deleted' &&
+		warning.action?.type === 'open_url' &&
+		!!warning.action?.url
+	);
+};
+
+const isWhatsAppNumberStillConnectedWarning = (
+	warning: AgentIntegrationDisconnectWarning,
+): warning is AgentIntegrationDisconnectWarning & { action: { url: string } } => {
+	return (
+		warning.integrationType === 'whatsapp' &&
+		warning.code === 'number_still_connected' &&
 		warning.action?.type === 'open_url' &&
 		!!warning.action?.url
 	);
@@ -123,6 +136,43 @@ const platforms = {
 		editComponent: AgentChannelWhatsAppEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
+		disconnectConfirmationComponent: AgentChannelWhatsAppRemoveConfirmation,
+		shouldConfirmDisconnect: () => true,
+		// Meta keeps sending the number's messages here after the channel is gone.
+		presentDisconnectWarning: (warning, { text }) => {
+			if (!isWhatsAppNumberStillConnectedWarning(warning)) {
+				return null;
+			}
+			const number = warning.details?.displayPhoneNumber;
+			return {
+				title: number
+					? text('agents.channels.whatsapp.removed.title', { number })
+					: text('agents.channels.whatsapp.removed.titleNoNumber'),
+				message: h(
+					'div',
+					{
+						style: {
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'flex-start',
+							gap: 'var(--spacing--2xs)',
+						},
+					},
+					[
+						h('span', text('agents.channels.whatsapp.removed.message')),
+						h(
+							'a',
+							{
+								href: warning.action.url,
+								target: '_blank',
+								rel: 'noopener noreferrer',
+							},
+							text('agents.channels.whatsapp.removed.link'),
+						),
+					],
+				),
+			};
+		},
 	},
 	teams: {
 		type: 'teams',
@@ -168,6 +218,13 @@ const platforms = {
 				),
 			};
 		},
+	},
+	// One view for setup and edit: whether the channel holds a credential depends on its authentication.
+	webhook: {
+		type: 'webhook',
+		setupComponent: AgentChannelWebhookSetup,
+		editComponent: AgentChannelWebhookSetup,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 	},
 	[N8N_CHAT_INTEGRATION_TYPE]: {
 		type: N8N_CHAT_INTEGRATION_TYPE,

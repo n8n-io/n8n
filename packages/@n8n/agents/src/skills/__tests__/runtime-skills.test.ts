@@ -30,12 +30,28 @@ function skillLoadText(output: unknown): string {
 }
 
 describe('runtime skills', () => {
+	it('loads a SKILL.md that still uses the deprecated recommended_tools key', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: legacy-skill
+description: Written before the tool group rename.
+recommended_tools:
+  - list_workflows
+---
+
+Do the thing.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('recommendedToolGroups');
+		expect(result.skill).not.toHaveProperty('recommendedTools');
+	});
+
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: workflow-builder
 description: Build workflows.
-recommended_tools:
-  - bash
+recommended_tool_groups:
+  - workflows
 allowed_tools: workflow
 interface:
   display_name: Workflow Builder
@@ -74,7 +90,7 @@ Follow the workflow-building process.`);
 				name: 'workflow-builder',
 				description: 'Build workflows.',
 				instructions: 'Follow the workflow-building process.',
-				recommendedTools: ['bash'],
+				recommendedToolGroups: ['workflows'],
 				allowedTools: ['workflow'],
 				interface: {
 					displayName: 'Workflow Builder',
@@ -128,6 +144,36 @@ Body`);
 				expect.objectContaining({ code: 'unknown_field', field: 'interface.unknown' }),
 			]),
 		);
+	});
+
+	it('parses a turn lifetime from the skill policy', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Pick a route.`);
+
+		expect(result.ok && result.skill.policy).toEqual({ lifetime: 'turn' });
+	});
+
+	it('rejects an unknown skill lifetime', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: forever
+---
+
+Pick a route.`);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('Expected skill validation to fail');
+		expect(result.errors).toEqual([
+			expect.objectContaining({ code: 'invalid_field', field: 'policy.lifetime' }),
+		]);
 	});
 
 	it('rejects SKILL.md files without instruction content', () => {
@@ -520,7 +566,7 @@ Use the workflow SDK.`,
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
 				category: 'productivity',
-				recommendedTools: ['data-tables'],
+				recommendedToolGroups: ['data_tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -531,7 +577,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
-		expect(prompt).toContain('recommendedTools: ["data-tables"]');
+		expect(prompt).toContain('recommendedToolGroups: ["data_tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('list_skills');
 		expect(prompt).not.toContain('Extract private decisions.');
@@ -845,7 +891,11 @@ Use the workflow SDK.`,
 			bytes: 15,
 			sha256: 'abc123',
 		});
-		expect(loadFile).toHaveBeenCalledWith('summarize_notes', 'references/guide.md');
+		expect(loadFile).toHaveBeenCalledWith(
+			'summarize_notes',
+			'references/guide.md',
+			expect.any(Function),
+		);
 	});
 
 	it('adds runtime skills to agents through one shared load path', () => {

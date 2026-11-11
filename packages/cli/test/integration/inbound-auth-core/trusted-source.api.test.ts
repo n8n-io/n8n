@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -44,7 +45,7 @@ let bindings: Repository<TrustedSourceIdentityEntity>;
 let emit: MockInstance;
 
 const minimalConfig = (): TrustedSourceConfigInput => ({
-	version: 1,
+	version: 2,
 	authentication: { type: 'oauth2' },
 	surfaces: { 'public-api': {} },
 });
@@ -115,7 +116,84 @@ beforeEach(async () => {
 	discoveryClient.fetchJwks.mockReset();
 });
 
+const jitIdentity = {
+	provision: { person: 'jit' },
+	roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+};
+
 describe('POST /trusted-sources', () => {
+	it('lets an admin save v2 person provisioning', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: { ...minimalConfig(), identity: jitIdentity },
+			}),
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		const row = await rows.findOneByOrFail({ id: response.body.data.id });
+		expect(row.configVersion).toBe(2);
+		expect(
+			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
+		).toEqual({ person: 'jit' });
+	});
+
+	it.each(['post', 'patch'] as const)(
+		'rejects person provisioning without email linking on %s',
+		async (method) => {
+			const path =
+				method === 'post' ? '/trusted-sources' : `/trusted-sources/${(await createSource()).id}`;
+			const response = await adminAgent[method](path).send(
+				body({
+					config: { ...minimalConfig(), identity: { ...jitIdentity, linkByEmail: 'off' } },
+				}),
+			);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toMatchObject({
+				path: ['config', 'identity', 'linkByEmail'],
+				message: 'jit provisioning requires email linking',
+			});
+		},
+	);
+
+	it('rejects the v1 provisioning key in a v2 write', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: { ...minimalConfig(), identity: { provision: { human: 'jit' } } },
+			}),
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toMatchObject({ path: ['config', 'identity', 'provision'] });
+	});
+
+	it('stores a v1 write as v2 with person provisioning', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: {
+					...minimalConfig(),
+					version: 1,
+					identity: { ...jitIdentity, provision: { human: 'jit' } },
+				},
+			}),
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		const row = await rows.findOneByOrFail({ id: response.body.data.id });
+		expect(row.configVersion).toBe(2);
+		expect(
+			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
+		).toEqual({ person: 'jit' });
+	});
+
 	it('creates an admin source with defaults applied and returns it without the secret', async () => {
 		const response = await ownerAgent
 			.post('/trusted-sources')
@@ -131,7 +209,7 @@ describe('POST /trusted-sources', () => {
 			lastError: null,
 			lastCheckedAt: null,
 			config: {
-				version: 1,
+				version: 2,
 				authentication: {
 					type: 'oauth2',
 					clockSkewSeconds: 60,
@@ -143,7 +221,7 @@ describe('POST /trusted-sources', () => {
 		expect(JSON.stringify(response.body)).not.toContain('s3cret');
 
 		const row = await rows.findOneByOrFail({ id: response.body.data.id });
-		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 1 });
+		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 2 });
 		expect(await storedClient(row.id)).toEqual({
 			kind: 'registered',
 			clientId: 'n8n',
@@ -213,13 +291,22 @@ describe('POST /trusted-sources', () => {
 		expect(await rows.countBy({ managedBy: 'admin' })).toBe(1);
 	});
 
-	it('emits trusted-source-created with the actor and the source', async () => {
-		const { id } = await createSource();
+	it('emits trusted-source-created with the actor, the source and the config facets', async () => {
+		const { id } = await createSource({ config: withClient('top-secret') });
 
 		expect(emit).toHaveBeenCalledWith('trusted-source-created', {
 			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
+			facets: {
+				discoveryMode: 'auto',
+				clientKind: 'registered',
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionPerson: 'off',
+				roleMappingMode: 'off',
+			},
 		});
 	});
 
@@ -292,6 +379,28 @@ describe('GET /trusted-sources', () => {
 });
 
 describe('GET /trusted-sources/:id', () => {
+	it('returns a stored v1 source as v2 with person provisioning', async () => {
+		const { id } = await createSource();
+		await rows.update(id, {
+			configVersion: 1,
+			config: await Container.get(Cipher).encryptV2({
+				...minimalConfig(),
+				version: 1,
+				identity: { ...jitIdentity, provision: { human: 'jit' } },
+			}),
+		});
+		await cacheService.reset();
+
+		const response = await ownerAgent.get(`/trusted-sources/${id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		expect(response.body.data.config.identity.provision).not.toHaveProperty('human');
+	});
+
 	it('returns the full source with the secret blanked for an owner', async () => {
 		const { id } = await createSource({ config: withClient('s3cret') });
 
@@ -351,7 +460,30 @@ describe('PATCH /trusted-sources/:id', () => {
 			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
+			facets: {
+				discoveryMode: 'auto',
+				clientKind: null,
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionPerson: 'off',
+				roleMappingMode: 'off',
+			},
 		});
+	});
+
+	it('emits trusted-source-updated with the facets of the config after the change', async () => {
+		const { id } = await createSource();
+
+		const response = await ownerAgent
+			.patch(`/trusted-sources/${id}`)
+			.send({ config: withClient('s3cret') });
+
+		expect(response.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'trusted-source-updated',
+			expect.objectContaining({ facets: expect.objectContaining({ clientKind: 'registered' }) }),
+		);
 	});
 
 	it('answers an empty body with the current source, writes nothing and emits nothing', async () => {
@@ -513,6 +645,27 @@ describe('DELETE /trusted-sources/:id', () => {
 		});
 	});
 
+	it('deletes a source whose config cannot be read', async () => {
+		const { id } = await createSource();
+		await bind(id, 'alice');
+		await rows.update(id, { config: 'unreadable' });
+		// A cached copy from before the change would hide the unreadable row.
+		await cacheService.reset();
+		expect(await store.getById(id)).toBeUndefined();
+
+		const response = await ownerAgent.delete(`/trusted-sources/${id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(await rows.findOneBy({ id })).toBeNull();
+		expect(await bindings.countBy({ sourceId: id })).toBe(0);
+		expect(await store.getById(id)).toBeUndefined();
+		expect(emit).toHaveBeenCalledWith('trusted-source-deleted', {
+			user: expect.objectContaining({ id: owner.id }),
+			sourceId: id,
+			issuer: ISSUER,
+		});
+	});
+
 	it('works without the license', async () => {
 		const { id } = await createSource();
 		testServer.license.disable(LICENSE);
@@ -530,6 +683,23 @@ describe('DELETE /trusted-sources/:id', () => {
 		expect(response.body.message).toMatch(/system-managed/);
 		expect(await rows.findOneBy({ id: SYSTEM_ID })).not.toBeNull();
 		expect(emit).not.toHaveBeenCalledWith('trusted-source-deleted', expect.anything());
+	});
+
+	it('refuses the system source when its config cannot be read', async () => {
+		const { config } = await rows.findOneByOrFail({ id: SYSTEM_ID });
+		await rows.update(SYSTEM_ID, { config: 'unreadable' });
+
+		try {
+			const response = await ownerAgent.delete(`/trusted-sources/${SYSTEM_ID}`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(/system-managed/);
+			expect(await rows.findOneBy({ id: SYSTEM_ID })).not.toBeNull();
+			expect(emit).not.toHaveBeenCalledWith('trusted-source-deleted', expect.anything());
+		} finally {
+			// Later tests share the system row.
+			await rows.update(SYSTEM_ID, { config });
+		}
 	});
 
 	it('answers 404 for an unknown id', async () => {

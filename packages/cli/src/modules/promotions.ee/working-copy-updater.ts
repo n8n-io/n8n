@@ -20,6 +20,7 @@ const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
+	folderIds: z.array(z.string().min(1)),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -80,10 +81,6 @@ export class WorkingCopyUpdater {
 			throw new BadRequestError(`Invalid selection: ${parsed.error.issues[0].message}`);
 		}
 
-		if (selection.workflowIds.length === 0 && selection.deletedWorkflowIds.length === 0) {
-			throw new BadRequestError('At least one workflow must be selected or deleted');
-		}
-
 		const addSet = new Set(selection.workflowIds);
 		if (addSet.size !== selection.workflowIds.length) {
 			throw new BadRequestError('workflowIds contains duplicates');
@@ -91,6 +88,9 @@ export class WorkingCopyUpdater {
 		const deleteSet = new Set(selection.deletedWorkflowIds);
 		if (deleteSet.size !== selection.deletedWorkflowIds.length) {
 			throw new BadRequestError('deletedWorkflowIds contains duplicates');
+		}
+		if (new Set(selection.folderIds).size !== selection.folderIds.length) {
+			throw new BadRequestError('folderIds contains duplicates');
 		}
 
 		const overlap = selection.deletedWorkflowIds.filter((id) => addSet.has(id));
@@ -100,14 +100,18 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * The exporter must write exactly the selected workflows. Extra or missing
-	 * ids mean the overlay would change the branch in a way the caller did not
-	 * ask for, so stop before any file work.
+	 * The exporter must write exactly the selected workflows, and every selected
+	 * folder. Extra or missing ids mean the overlay would change the branch in a
+	 * way the caller did not ask for, so stop before any file work.
 	 */
 	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
-		const missing = selection.workflowIds.filter((id) => !stagedIds.has(id));
+		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
+		const missing = [
+			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
+			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;
 
@@ -154,7 +158,13 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					collected[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+					const { entry, isArchived } = await this.readEntityFile(fullPath, target, relativeFile);
+					// Only a workflow entry carries the flag; the other kinds list id, name and target.
+					if (kind === 'workflows') {
+						collected.workflows.push({ ...entry, isArchived });
+						continue;
+					}
+					collected[kind].push(entry);
 					continue;
 				}
 
@@ -223,7 +233,7 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
-	): Promise<ManifestEntry> {
+	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
 			raw = await fs.readFile(file, 'utf-8');
@@ -250,7 +260,8 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
+		const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
+		return { entry: { id, name, target }, isArchived: isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(

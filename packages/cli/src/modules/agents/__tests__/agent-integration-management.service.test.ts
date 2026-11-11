@@ -16,6 +16,7 @@ import type {
 	ChatIntegrationRegistry,
 } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { WebhookIntegration } from '../integrations/platforms/webhook/webhook-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentIntegrationManagementService', () => {
@@ -49,6 +50,7 @@ describe('AgentIntegrationManagementService', () => {
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
 		});
+		implementation.acceptedCredentialTypes.mockReturnValue(['slackApi']);
 		registry.require.mockReturnValue(implementation);
 		registry.get.mockReturnValue(implementation);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
@@ -72,6 +74,7 @@ describe('AgentIntegrationManagementService', () => {
 			credentialsService,
 			chatService,
 			implementation,
+			registry,
 			agentRepository,
 			agentUpdateBroadcaster,
 		};
@@ -330,6 +333,49 @@ describe('AgentIntegrationManagementService', () => {
 
 			// Nothing was running, so there is nothing to put back.
 			expect(chatService.connect).not.toHaveBeenCalled();
+		});
+
+		it('keeps the settings and approval of the draft it completes', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...draft, credentialId: integration.credentialId } },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('prefers the settings in the request over the draft settings', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+			const settings = { messagingExperience: 'assistant' as const };
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: { ...integration, settings },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...integration, settings, approval: draft.approval } },
+				{ user, modifiedBy: 'user' },
+			);
 		});
 	});
 
@@ -877,4 +923,52 @@ describe('AgentIntegrationManagementService', () => {
 			});
 		},
 	);
+
+	describe('webhook channel', () => {
+		function makeWebhookService() {
+			const deps = makeService();
+			const webhook = new WebhookIntegration();
+			deps.registry.require.mockReturnValue(webhook);
+			deps.registry.get.mockReturnValue(webhook);
+			stubRow(deps.agentRepository, []);
+			return deps;
+		}
+
+		it('connects authentication none without a credential lookup or a runtime', async () => {
+			const { service, credentialsService, chatService, persistenceService } = makeWebhookService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue(deltaResult(agent, true));
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: { type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled();
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential that does not match the authentication', async () => {
+			const { service, credentialsService, persistenceService } = makeWebhookService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-jwt', type: 'jwtAuth' },
+			] as never);
+
+			await expect(
+				service.connect({
+					agent: makeAgent(),
+					user: user as never,
+					integration: {
+						type: 'webhook',
+						credentialId: 'cred-jwt',
+						settings: { authentication: 'headerAuth' },
+					},
+				}),
+			).rejects.toBeInstanceOf(BadRequestError);
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+	});
 });

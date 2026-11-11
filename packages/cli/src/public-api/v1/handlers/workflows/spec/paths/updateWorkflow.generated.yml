@@ -2,7 +2,10 @@ operationId: updateWorkflow
 tags:
   - Workflow
 summary: Update a workflow
-description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.'
+description: |-
+  Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.
+
+  Requires the `workflow:update` API key scope.
 x-required-scope: workflow:update
 parameters:
   - schema:
@@ -202,7 +205,7 @@ requestBody:
               engineType:
                 type: string
                 nullable: true
-                description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                description: The execution engine that runs this workflow. n8n sets it on new workflows when the instance runs new workflows on engine v2 (`N8N_ENGINE_DEFAULT_TYPE=v2` with the `engine-v2` module enabled). It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 example: v1
               callerPolicy:
                 type: string
@@ -789,7 +792,7 @@ responses:
                   type: string
                   nullable: true
                   example: v1
-                  description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                  description: The execution engine that runs this workflow. n8n sets it on new workflows when the instance runs new workflows on engine v2 (`N8N_ENGINE_DEFAULT_TYPE=v2` with the `engine-v2` module enabled). It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                 callerPolicy:
                   type: string
                   enum:
@@ -1158,3 +1161,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

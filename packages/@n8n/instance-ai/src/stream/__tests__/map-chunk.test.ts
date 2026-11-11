@@ -86,6 +86,34 @@ describe('mapAgentChunkToEvent', () => {
 		expect(map({ type: 'tool-call-delta', argumentsDelta: '{"x"' })).toBeNull();
 	});
 
+	it('reports the tool that a tool catalog call_tool call runs', () => {
+		expect(
+			map({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'data_tables', arguments: { action: 'list' } },
+			}),
+		).toEqual({
+			type: 'tool-call',
+			runId,
+			agentId,
+			payload: { toolCallId: 'tc-1', toolName: 'data_tables', args: { action: 'list' } },
+		});
+
+		const confirmation = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-2',
+			toolName: 'call_tool',
+			input: { tool: 'workflows', arguments: { action: 'delete' } },
+			suspendPayload: { message: 'Delete it?' },
+		});
+		expect(confirmation).toMatchObject({
+			type: 'confirmation-request',
+			payload: { toolName: 'workflows', args: { action: 'delete' } },
+		});
+	});
+
 	it('maps native text deltas', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' })).toEqual({
 			type: 'text-delta',
@@ -102,6 +130,46 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: { text: 'thinking...' },
 		});
+	});
+
+	it('maps the skill update content delivered for the response', () => {
+		const update = {
+			skillId: 'hub-example',
+			name: 'Writing style',
+			version: 'v2',
+			change: 'updated',
+			content: 'Private skill instructions.',
+		};
+		expect(
+			map(
+				{
+					type: 'message',
+					message: {
+						type: 'custom',
+						data: {
+							type: 'n8n:runtime-skill-update',
+							skillUpdate: update,
+						},
+					},
+				},
+				'response-1',
+			),
+		).toEqual({
+			type: 'skill-update',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: {
+				skillId: update.skillId,
+				name: update.name,
+				version: update.version,
+				change: update.change,
+				content: update.content,
+			},
+		});
+		expect(
+			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
+		).toBeNull();
 	});
 
 	it('preserves responseId when provided', () => {
@@ -296,7 +364,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -350,7 +418,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -572,6 +640,68 @@ describe('mapAgentChunkToEvent', () => {
 				projectId: 'project-1',
 				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
 			},
+		});
+	});
+
+	it('maps confirmations with an app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				inputType: 'app-blueprint',
+				appBlueprint,
+			},
+		});
+	});
+
+	it('maps the field errors of a reopened app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-2',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+					appBlueprintErrors: { namespace: 'taken' },
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: { appBlueprint, appBlueprintErrors: { namespace: 'taken' } },
 		});
 	});
 

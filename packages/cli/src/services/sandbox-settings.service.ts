@@ -9,7 +9,7 @@ import type { AgentsConfig, DeploymentConfig, InstanceAiConfig } from '@n8n/conf
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
@@ -17,7 +17,7 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { UnprocessableRequestError } from '@n8n/errors';
+import { UnprocessableRequestError, OperationalError } from '@n8n/errors';
 
 import { AiService } from './ai.service';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';

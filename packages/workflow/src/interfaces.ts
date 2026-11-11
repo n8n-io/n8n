@@ -462,12 +462,14 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
+	/** Lets n8n register the OAuth2 client at the `serverUrl` property, so users need no app of their own. */
+	dynamicClientRegistration?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
-	test?: ICredentialTestRequest;
+	test?: ICredentialTestRequest | ICredentialTestFunction;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
@@ -641,7 +643,7 @@ export interface IHttpRequestOptions {
 	abortSignal?: GenericAbortSignal;
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -700,7 +702,7 @@ export interface IRequestOptions {
 
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -1196,6 +1198,14 @@ export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
+export interface ExpressionIsolateFunctions {
+	/**
+	 * Runs `fn` with an expression isolate held, so it can resolve node parameters.
+	 * Reuses an isolate already held and releases only one it acquired.
+	 */
+	withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T>;
+}
+
 export type NodeTypeAndVersion = {
 	/**
 	 * Stable canvas node ID. Unlike `name`, it survives a rename.
@@ -1420,8 +1430,18 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 * a restart. Without the option the engine suspends and persists the execution.
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
+		/**
+		 * Builds the signed reference that an approval button carries, for example
+		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
+		 * decision. The node never reads the secret that signs it.
+		 */
+		getApprovalCallbackReference(decision: 'approve' | 'decline'): string;
 		sendMessageToUI(message: any): void;
-		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		/**
+		 * Whether the run's resolved redaction policy redacts output that leaves the
+		 * execution-data pipeline (console output, AI event payloads) for this
+		 * execution's mode
+		 */
 		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
@@ -1642,7 +1662,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		ExpressionIsolateFunctions;
 }
 
 export interface IHookFunctions
@@ -2365,6 +2386,13 @@ export interface INodePropertyOptions {
 	// When set, the option is hidden in the editor unless the matching
 	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
 	envFeatureFlag?: Uppercase<string>;
+	annotations?: Partial<NodeOperationAnnotations>;
+}
+
+export interface NodeOperationAnnotations {
+	effect: 'read' | 'write';
+	destructive: boolean;
+	idempotent: boolean;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -3214,6 +3242,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	outputs: Array<NodeConnectionType | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
+	annotations?: Partial<NodeOperationAnnotations>;
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
@@ -3527,6 +3556,9 @@ export interface IRun {
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
 	jobId?: string;
+
+	/** Total minutes of time saved that nodes report. Only in scaling mode. */
+	nodeTimeSavedMinutes?: number;
 }
 
 export type SchemaType =
@@ -3847,7 +3879,22 @@ export type WorkflowExecutionMockDataSource =
 
 export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
+	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
+	personalCredentialsCount?: number;
 }
+
+/**
+ * W3C trace context and caller baggage carried with an execution, persisted so
+ * any process (e.g. a queue-mode worker) can continue the same trace.
+ *
+ * @see https://www.w3.org/TR/trace-context/#traceparent-header
+ */
+export type ExecutionTracingContext = {
+	traceparent?: string;
+	tracestate?: string;
+	identity?: Record<string, string>;
+	baggage?: string;
+};
 
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
@@ -3946,8 +3993,8 @@ export interface IWorkflowExecutionDataProcess {
 	mcpToolInput?: IDataObject;
 	/** Key to uniquely identify this execution, generated by the trigger. */
 	deduplicationKey?: string;
-	/** W3C trace context extracted from inbound webhook headers. */
-	tracingContext?: { traceparent: string; tracestate?: string };
+	/** W3C trace context and caller baggage extracted from inbound webhook headers. */
+	tracingContext?: Omit<ExecutionTracingContext, 'identity'>;
 	/** Encrypted credential context for a triggered execution. */
 	encryptedRunnerIdentity?: string;
 	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
@@ -4144,6 +4191,8 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeName: string | undefined,
 			headers: Record<string, string>,
 		) => void;
+		/** Returns the caller's sanitized `baggage` header. Undefined when outbound headers are off. */
+		extractInboundBaggage: (header: string | string[] | undefined) => string | undefined;
 	};
 }
 

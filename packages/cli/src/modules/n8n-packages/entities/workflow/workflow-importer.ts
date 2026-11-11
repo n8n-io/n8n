@@ -15,7 +15,6 @@ import {
 	decideWorkflowArchiveTransition,
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
-import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -30,8 +29,9 @@ import type {
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
-	WorkflowPlannedAction,
+	WorkflowImportDecision,
 } from './workflow-import.types';
+import { decidePlannedPublishingAction } from './workflow-publishing-policy';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
@@ -41,6 +41,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportConflictAction, type ImportDecision } from '../import-conflict-policy';
 import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
@@ -92,18 +93,22 @@ export class WorkflowImporter {
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
 			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
-				items.push({ action: 'skip', ...workflow, existing });
+				items.push({ action: 'skip', ...workflow, existing, publishingAction: 'noop' });
 				continue;
 			}
-			const { action, blocked } = decideWorkflowConflictAction(
-				options.workflowConflictPolicy,
-				existing,
+			const { action, blocked } = decideImportConflictAction(
+				options.conflictPolicy,
+				existing !== null,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			const decision = toPlanItem(workflow, existing, action, options.idPolicy);
+			const item: WorkflowPlanItem = {
+				...decision,
+				publishingAction: decidePlannedPublishingAction(options.publishingPolicy, decision),
+			};
 			items.push(item);
 
-			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+			if (item.action === 'create' && !blocked) {
 				sourceCreateIds.push(item.decidedId);
 			}
 
@@ -394,9 +399,9 @@ function applyCredentialBindingsInPlace(
 function toPlanItem(
 	prepared: PreparedWorkflow,
 	existing: WorkflowEntity | null,
-	action: WorkflowPlannedAction,
+	action: ImportDecision['action'],
 	idPolicy: WorkflowIdPolicy,
-): WorkflowPlanItem {
+): WorkflowImportDecision {
 	if (existing === null) {
 		return {
 			action: 'create',

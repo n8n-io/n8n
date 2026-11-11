@@ -63,10 +63,15 @@ export class DataTableDetails extends BasePage {
 			.filter({ has: this.page.getByTestId('data-table-column-header-text').getByText(name) });
 	}
 
-	async getColumnIdByName(name: string): Promise<string> {
-		const columnHeader = this.page
+	/** The AG Grid header cell (`.ag-header-cell`) that holds the column with this name. */
+	getColumnHeaderCellByName(name: string) {
+		return this.page
 			.getByRole('columnheader')
 			.filter({ has: this.page.getByTestId('data-table-column-header-text').getByText(name) });
+	}
+
+	async getColumnIdByName(name: string): Promise<string> {
+		const columnHeader = this.getColumnHeaderCellByName(name);
 
 		const colId = await columnHeader.getAttribute('col-id');
 		if (!colId) {

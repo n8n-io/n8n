@@ -151,6 +151,7 @@ async function twoProjectPackage(
 
 let owner: User;
 let project: Project;
+let credentialTypes: ReturnType<typeof mockInstance<CredentialTypes>>;
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
@@ -161,7 +162,7 @@ beforeAll(async () => {
 		features: ['feat:projectRole:admin', 'feat:folders'],
 		quotas: { 'quota:maxTeamProjects': 100 },
 	});
-	const credentialTypes = mockInstance(CredentialTypes);
+	credentialTypes = mockInstance(CredentialTypes);
 	credentialTypes.recognizes.mockReturnValue(true);
 	credentialTypes.getParentTypes.mockReturnValue([]);
 });
@@ -686,6 +687,10 @@ describe('credentialConflictPolicy', () => {
 });
 
 describe('credentialConflictPolicy=overwrite writes', () => {
+	afterEach(() => {
+		credentialTypes.getByName.mockReset();
+	});
+
 	it('writes the package name and values, and keeps everything else', async () => {
 		const credential = await saveOwnedCredential(
 			githubCredentialPayload({
@@ -733,6 +738,55 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 		expect(await Container.get(WorkflowRepository).count()).toBe(1);
 	});
 
+	it('applies conditional display values next to the expression', async () => {
+		// `user` shows only when `authentication` is on. A package carries the toggle with the expression.
+		credentialTypes.getByName.mockReturnValue({
+			name: 'githubApi',
+			displayName: 'GitHub',
+			properties: [
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+				},
+				{ displayName: 'Authentication', name: 'authentication', type: 'boolean', default: false },
+				{
+					displayName: 'User',
+					name: 'user',
+					type: 'string',
+					displayOptions: { show: { authentication: [true] } },
+					default: '',
+				},
+			],
+		});
+		const credential = await saveOwnedCredential(
+			githubCredentialPayload({
+				name: 'GitHub',
+				data: { accessToken: 'stored-secret', authentication: false },
+			}),
+			{ project },
+		);
+
+		const result = await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, {
+				name: 'GitHub',
+				data: { user: EXPRESSION, authentication: true },
+			}),
+		});
+
+		expect(result.credentials.updated).toEqual([credential.id]);
+		expect((await storedCredential(credential.id)).data).toEqual({
+			accessToken: 'stored-secret',
+			authentication: true,
+			user: EXPRESSION,
+		});
+	});
+
 	it('emits credentials-updated once for each written credential', async () => {
 		const credential = await saveOwnedCredential(
 			githubCredentialPayload({ name: 'GitHub', data: { accessToken: 'stored-secret' } }),
@@ -743,7 +797,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			user: owner,
 			projectId: project.id,
 			credentialConflictPolicy: 'overwrite' as const,
-			workflowConflictPolicy: 'new-version' as const,
+			conflictPolicy: 'new-version' as const,
 			packageBuffer: await workflowPackage(credential, {
 				name: 'Renamed',
 				data: { accessToken: EXPRESSION },
@@ -822,7 +876,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			user: owner,
 			projectId: project.id,
 			credentialConflictPolicy: 'overwrite' as const,
-			workflowConflictPolicy: 'new-version' as const,
+			conflictPolicy: 'new-version' as const,
 			packageBuffer: await workflowPackage(credential, {
 				name: 'Renamed',
 				data: { accessToken: EXPRESSION },

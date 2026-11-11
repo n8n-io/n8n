@@ -15,7 +15,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
@@ -33,7 +33,7 @@ import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
-import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
@@ -58,13 +58,16 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	chatFirst?: boolean;
 	isPreviewOpen?: boolean;
+	hidePreviewButton?: boolean;
 	preventScroll?: boolean;
 	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 	/** n8n Chat's saved description, forwarded to the channel modal. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -91,14 +94,7 @@ watch(
 	},
 );
 
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
-watch(
-	() => props.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(() => props.projectId);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -179,7 +175,13 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="[
+			$style.editorColumn,
+			{
+				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+				[$style.chatFirst]: props.chatFirst,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -187,11 +189,14 @@ defineExpose({ onSetupTaskAction });
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<div :class="$style.identityHeader">
 					<AgentIdentityHeader
+						:class="$style.identityContent"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentPreviewButton
+					<AgentTestButton
+						v-if="!props.hidePreviewButton"
+						:disabled-reason="props.previewDisabledReason"
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
@@ -245,7 +250,8 @@ defineExpose({ onSetupTaskAction });
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
 						<template #header-actions>
-							<AgentPreviewButton
+							<AgentTestButton
+								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
@@ -254,6 +260,7 @@ defineExpose({ onSetupTaskAction });
 							/>
 						</template>
 						<AgentTriggersSection
+							:preview-disabled-reason="props.previewDisabledReason"
 							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
@@ -574,6 +581,12 @@ defineExpose({ onSetupTaskAction });
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.chatFirst .identityContent {
+	flex-direction: column;
+	text-align: center;
+	gap: var(--spacing--xs);
 }
 
 .tabsRow {

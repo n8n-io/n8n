@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
@@ -93,21 +94,17 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(64)
 		.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
-		.describe('The user-facing server name; it is normalized for model-facing tool names'),
-	url: z.string().min(1).describe('The MCP server endpoint URL'),
-	transport: z
-		.enum(['sse', 'streamableHttp'])
-		.default('streamableHttp')
-		.describe('Transport type. Defaults to streamableHttp'),
+		.describe('User-facing server name'),
+	url: z.string().min(1).describe('Endpoint URL'),
+	transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
 	authentication: z
 		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
-		.default('none')
-		.describe('Authentication scheme'),
+		.default('none'),
 	credential: z
 		.string()
 		.optional()
 		.describe(
-			'Credential id returned by setup_credentials(target: "agent"). Required when authentication is not "none"',
+			'credentialId from setup_credentials(target: "agent"); required unless authentication is "none"',
 		),
 	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
@@ -116,29 +113,33 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(120_000)
 		.optional()
-		.describe(
-			'Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms',
-		),
+		.describe('Timeout for connect and list tools. Defaults to 10000'),
 });
 
 type VerifyMcpServerInput = z.infer<typeof verifyMcpServerInputSchema>;
+
+/** What the model must do with a verification result. The tool description stays short. */
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result) || result.credentialApplied !== true) return result;
+	return {
+		...result,
+		nextStep:
+			'The credential is saved in the mcpServers entry. Do not patch it. Treat `config` as ' +
+			'the current state and use its configHash as baseConfigHash.',
+	};
+}
 
 export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.VERIFY_MCP_SERVER)
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.VERIFY_MCP_SERVER))
 		.description(
-			'Test connectivity to an MCP server before adding it to the agent config. ' +
-				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
-				'Returns { ok: true, tools: [{ name, description, category }] } on success, or ' +
-				'{ ok: false, error: string } on failure. ' +
-				'Tool names are the original MCP names without the model-facing server prefix. ' +
-				'When a credential is provided and a matching mcpServers entry already exists, ' +
-				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no ' +
-				'agent-context/agent_builder_patch_config follow-up. Treat the returned config as the current state and use ' +
-				'its configHash as baseConfigHash for your next config write. ' +
-				'Call this after setup_credentials(target: "agent") when authentication is not "none".',
+			'Connect to an MCP server, list its tools, and close the connection. Call it before you ' +
+				'add the server to the config, after setup_credentials(target: "agent") when authentication ' +
+				'is not "none". Result tool names have no server prefix. With a credential, a ' +
+				'successful call also writes it into a matching mcpServers entry. Results that need ' +
+				'an action carry `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {
 			const timeoutMs = input.connectionTimeoutMs ?? DEFAULT_MCP_VERIFICATION_TIMEOUT_MS;

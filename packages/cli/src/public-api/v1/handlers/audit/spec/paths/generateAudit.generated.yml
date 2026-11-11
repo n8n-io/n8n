@@ -2,7 +2,10 @@ operationId: generateAudit
 tags:
   - Audit
 summary: Generate an audit
-description: Generate a security audit for your n8n instance.
+description: |-
+  Generate a security audit for your n8n instance.
+
+  Requires the `securityAudit:generate` API key scope.
 x-required-scope: securityAudit:generate
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -641,5 +644,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '500':
     $ref: ../../../../shared/spec/responses/internalServerError.yml

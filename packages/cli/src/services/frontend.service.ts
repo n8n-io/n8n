@@ -257,7 +257,6 @@ export class FrontendService {
 				enabled: this.globalConfig.diagnostics.enabled,
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
-				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
@@ -828,6 +827,10 @@ export class FrontendService {
 			if (credential.name in credentialsOverwrites) {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
+
+			overwrittenProperties.push(
+				...this.credentialsOverwrites.getNewerAppProperties(credential.name),
+			);
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);

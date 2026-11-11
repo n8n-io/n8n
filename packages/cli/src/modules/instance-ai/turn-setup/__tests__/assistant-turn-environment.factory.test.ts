@@ -47,7 +47,6 @@ function createSetupFactory() {
 				setupPanelVariant: 'control',
 				folderExplorationEnabled: false,
 				credentialDescriptionsEnabled: false,
-				aiPreferencesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 			})),
@@ -60,7 +59,6 @@ function createSetupFactory() {
 		},
 		browserSessionService: { findMcpServer: vi.fn() },
 		aiService: { isProxyEnabled: vi.fn(() => false) },
-		dbIterationLogStorage: {},
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
 		evalCredentialAllowlists: {},
@@ -91,9 +89,9 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 	return {
 		memory: mock<AssistantTurnRuntime['memory']>({
 			getThread: vi.fn(async () => null),
-			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
 		resourceId: 'user-1',
+		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
@@ -164,6 +162,33 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		it('gives the trace of the turn to the error reports of the setup', async () => {
+			const { factory, fields } = createSetupFactory();
+			const report = vi.fn();
+			Object.assign(fields.instanceAiErrorReporter, { report });
+			fields.creditService.claimRunUsage.mockRejectedValue(new Error('negative quota'));
+			const tracing = { rootRun: { traceId: 'ls-trace-1' } } as unknown as NonNullable<
+				Parameters<AssistantTurnEnvironmentFactory['create']>[0]['tracing']
+			>;
+
+			const { orchestrationContext } = await factory.create(
+				{ ...params, tracing },
+				createRuntime(),
+			);
+			await orchestrationContext.claimSubAgentUsage?.('dedupe-1', [], 'completed');
+
+			expect(orchestrationContext.tracing).toBe(tracing);
+			expect(fields.instanceAiErrorReporter.withBoundary).toHaveBeenCalledWith(
+				'instance-ai-sandbox-setup',
+				expect.objectContaining({ runId: 'run-1', tracing }),
+				expect.any(Function),
+			);
+			expect(report).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({ component: 'instance-ai-agent-builder-usage', tracing }),
+			);
+		});
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 
@@ -172,6 +197,54 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.cancelBackgroundTask).toBeUndefined();
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
+
+		it.each([
+			{ workflowBuilderAvailable: true, sandboxEnabled: true, expected: true },
+			{ workflowBuilderAvailable: true, sandboxEnabled: false, expected: false },
+			{ workflowBuilderAvailable: false, sandboxEnabled: true, expected: false },
+		])(
+			'keeps the app service, tool and skill only with a sandbox workspace (%o)',
+			async ({ workflowBuilderAvailable, sandboxEnabled, expected }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.createContext.mockReturnValue(
+					mock<InstanceAiContext>({ appService: mock() }),
+				);
+				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: sandboxEnabled, provider: 'local' }) as unknown as SandboxConfig,
+				);
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ appBuildingEnabled: expected }),
+					expect.anything(),
+				);
+				expect(context.appService !== undefined).toBe(expected);
+				expect(context.workspace !== undefined).toBe(expected);
+			},
+		);
+
+		it.each(['n8n-sandbox', 'daytona'])(
+			'gives the prompt the same workspace root for the %s provider',
+			async (provider) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getSandboxStatus.mockReturnValue({
+					workflowBuilderAvailable: true,
+				});
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: true, provider }) as unknown as SandboxConfig,
+				);
+
+				const { context, orchestrationContext } = await factory.create(params, runtime);
+
+				expect(context.workspaceRoot).toBe('/home/user/workspace');
+				expect(context.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
+				expect(orchestrationContext.workspaceRoot).toBe('/home/user/workspace');
+			},
+		);
 
 		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
 			const { factory } = createSetupFactory();
@@ -201,7 +274,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const runtime = createRuntime({
 				memory: mock<AssistantTurnRuntime['memory']>({
 					getThread: vi.fn(async () => ({ resourceId: 'user-2' }) as never),
-					getThreadProjectId: vi.fn(),
 				}),
 			});
 
@@ -300,7 +372,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
-				mock(),
 				mock(),
 				mock(),
 				mock(),

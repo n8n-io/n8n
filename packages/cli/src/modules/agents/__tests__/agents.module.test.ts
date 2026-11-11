@@ -10,7 +10,8 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
+import { SkillUsageProxy } from '@/modules/skills';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
@@ -23,7 +24,6 @@ import { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';
@@ -37,7 +37,8 @@ import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.r
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { AgentSkillUsageService } from '../agent-skill-usage.service';
+import { AgentSkillUsage } from '../agent-skill-usage';
+import { AgentKnowledgeSandboxProvider } from '../knowledge-sandbox-provider.adapter';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -57,7 +58,6 @@ function setUpContainerForInit() {
 	Container.set(AgentDependencyIndexListener, mock<AgentDependencyIndexListener>());
 	Container.set(AgentExecutionService, mock<AgentExecutionService>());
 	Container.set(AgentExecutionLogStore, mock<AgentExecutionLogStore>());
-	Container.set(AgentKnowledgeFileStore, mock<AgentKnowledgeFileStore>());
 	Container.set(ExecutionDataJsonStore, mock<ExecutionDataJsonStore>());
 	Container.set(AgentRuntimeCacheService, mock<AgentRuntimeCacheService>());
 	Container.set(AgentHistoryRepository, mock<AgentHistoryRepository>());
@@ -65,8 +65,12 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
-	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
+	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
+	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
+	const knowledgeSandboxProviderRegistry = mock<KnowledgeSandboxProviderRegistry>();
+	const knowledgeSandboxProvider = mock<AgentKnowledgeSandboxProvider>();
+	Container.set(KnowledgeSandboxProviderRegistry, knowledgeSandboxProviderRegistry);
+	Container.set(AgentKnowledgeSandboxProvider, knowledgeSandboxProvider);
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
 	Container.set(AgentWorkflowDependencyRepository, mock<AgentWorkflowDependencyRepository>());
@@ -105,6 +109,8 @@ function setUpContainerForInit() {
 		discordIntegration,
 		whatsAppIntegration,
 		n8nChatIntegration,
+		knowledgeSandboxProviderRegistry,
+		knowledgeSandboxProvider,
 	};
 }
 
@@ -203,6 +209,17 @@ describe('AgentsModule', () => {
 			expect(registry.get('linear')).toBe(linearIntegration);
 			expect(registry.get('discord')).toBe(discordIntegration);
 			expect(registry.get(N8N_CHAT_INTEGRATION_TYPE)).toBe(n8nChatIntegration);
+		});
+
+		it('registers the knowledge sandbox provider with the knowledge module', async () => {
+			const { knowledgeSandboxProviderRegistry, knowledgeSandboxProvider } =
+				setUpContainerForInit();
+
+			await module.init();
+
+			expect(knowledgeSandboxProviderRegistry.register).toHaveBeenCalledWith(
+				knowledgeSandboxProvider,
+			);
 		});
 	});
 });

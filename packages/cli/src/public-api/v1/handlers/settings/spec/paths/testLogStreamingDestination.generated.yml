@@ -2,7 +2,10 @@ operationId: testLogStreamingDestination
 tags:
   - LogStreaming
 summary: Send a test message to a log streaming destination
-description: Send a test message to the destination to verify it is reachable and configured correctly. Requires the `eventBusDestination:test` scope and the Log Streaming feature to be licensed.
+description: |-
+  Send a test message to the destination to verify it is reachable and configured correctly. Requires the Log Streaming feature to be licensed.
+
+  Requires the `eventBusDestination:test` API key scope.
 x-required-scope: eventBusDestination:test
 parameters:
   - schema:
@@ -32,3 +35,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

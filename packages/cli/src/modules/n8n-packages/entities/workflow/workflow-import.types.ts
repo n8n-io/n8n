@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import type { WorkflowArchiveTransition } from './workflow-archive-transition';
 import type { WorkflowIdConflict, WorkflowLineageConflict } from './workflow-import-match.service';
 import type {
+	PublishingAction,
 	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
@@ -37,17 +38,6 @@ export interface PreparedWorkflow {
 	tagIds?: string[];
 }
 
-export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
-
-/**
- * A conflict policy's verdict for one workflow. `blocked` aborts the import and
- * is set only by the `fail` policy.
- */
-export interface WorkflowDecision {
-	action: WorkflowPlannedAction;
-	blocked: boolean;
-}
-
 /**
  * The decided plan for one workflow. Discriminated by `action` so that
  * `update`/`skip` carry the pre-existing workflow they operate on, while
@@ -57,7 +47,7 @@ export interface WorkflowDecision {
  * `update` carries the archive step needed when the package and the target
  * disagree on the archived state.
  */
-export type WorkflowPlanItem =
+export type WorkflowImportDecision =
 	| ({ action: 'create'; decidedId: string } & PreparedWorkflow)
 	| ({
 			action: 'update';
@@ -70,6 +60,9 @@ export type WorkflowPlanItem =
 			moveToFolderId?: string | null;
 	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
+
+/** The publication action stays fixed from preflight through the publish sweep. */
+export type WorkflowPlanItem = WorkflowImportDecision & { publishingAction: PublishingAction };
 
 /** A plan item whose content is written to the database (i.e. not skipped). */
 export type PersistedWorkflowPlanItem = Extract<WorkflowPlanItem, { action: 'create' | 'update' }>;
