@@ -1,0 +1,10 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "SubWorkflow",
+	"description": "A webhook receives 100 items and sends them to a sub-workflow with an Execute Workflow node. The sub-workflow adds fields with a Set node. The data is returned with RespondToWebhook Node.",
+	"scenarioData": {
+		"workflowFiles": ["sub-workflow-child.json", "sub-workflow.json"]
+	},
+	"scriptPath": "sub-workflow.script.js",
+	"supportedEngines": ["v1", "v2"]
+}

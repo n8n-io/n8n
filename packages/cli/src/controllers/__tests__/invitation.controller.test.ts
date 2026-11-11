@@ -4,7 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService, PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PersonRepository, UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
+import type { Person, PublicUser, AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -50,16 +50,16 @@ describe('InvitationController', () => {
 			vi.mocked(userService.inviteUser).mockResolvedValue(usersInvited as never);
 
 			const invitationController = defaultInvitationController();
-			const user = mock<User>({ id: '123', email: 'valid@email.com' });
+			const person = mock<Person>({ id: '123', email: 'valid@email.com' });
 			const payload = new InviteUsersRequestDto({
 				email: 'valid@email.com',
 				role: 'global:member',
 			});
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const res = mock<Response>();
 
 			expect(await invitationController.inviteUser(req, res, payload)).toEqual(usersInvited);
-			expect(userService.inviteUser).toHaveBeenCalledWith(user, payload);
+			expect(userService.inviteUser).toHaveBeenCalledWith(person, payload);
 		});
 	});
 
@@ -115,12 +115,12 @@ describe('InvitationController', () => {
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
-			const inviter = mock<User>({
+			const inviter = mock<Person>({
 				id: inviterId,
 				email: 'valid@email.com',
 				role: GLOBAL_OWNER_ROLE,
 			});
-			const invitee = mock<User>({
+			const invitee = mock<Person>({
 				id: inviteeId,
 				email: 'valid@email.com',
 				password: null,
@@ -237,12 +237,12 @@ describe('InvitationController', () => {
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
-			const inviter = mock<User>({
+			const inviter = mock<Person>({
 				id: inviterId,
 				email: 'valid@email.com',
 				role: GLOBAL_OWNER_ROLE,
 			});
-			const invitee = mock<User>({
+			const invitee = mock<Person>({
 				id: inviteeId,
 				email: 'valid@email.com',
 				password: 'Password123!',

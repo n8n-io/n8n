@@ -94,6 +94,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.credentials.userDisconnected',
+	'n8n.audit.user.credentials.data.read',
+	'n8n.audit.user.credentials.list.data.read',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.api.rotated',
@@ -178,6 +180,12 @@ export const eventNamesAudit = [
 	'n8n.audit.trusted-source.created',
 	'n8n.audit.trusted-source.updated',
 	'n8n.audit.trusted-source.deleted',
+	'n8n.audit.promotions.provider.created',
+	'n8n.audit.promotions.provider.updated',
+	'n8n.audit.promotions.provider.deleted',
+	'n8n.audit.promotions.environment.created',
+	'n8n.audit.promotions.environment.updated',
+	'n8n.audit.promotions.environment.deleted',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload

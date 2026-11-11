@@ -525,6 +525,18 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('keeps the Assistant scope in the credentials fetch', () => {
+		renderComponent(
+			{ props: { node: httpNode, standalone: true, workflowId: 'wf-setup', forAssistant: true } },
+			{ merge: true },
+		);
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf-setup',
+			forAssistant: true,
+		});
+	});
+
 	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = null;

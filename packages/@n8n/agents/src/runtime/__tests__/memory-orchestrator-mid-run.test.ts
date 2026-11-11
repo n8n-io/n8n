@@ -583,6 +583,60 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 			}),
 		);
 	});
+
+	it('does not tell the observer that a live offloaded result is unavailable', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const inputs: ObservationLogObserverInput[] = [];
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			observationLogTailLimit: 20,
+			observe: async (input) => {
+				inputs.push(input);
+				return await Promise.resolve('* CRITICAL (14:30) Search done.');
+			},
+		});
+		const path = `tool-results/runs/${'a'.repeat(43)}/${'r'.repeat(43)}.result.json`;
+		const list = new AgentMessageList();
+		list.addInput([userMsg('search something big')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'search',
+						input: {},
+						state: 'resolved',
+						output: {
+							_offloaded: true,
+							path,
+							originalCharCount: 250_000,
+							estimatedTokenCount: 60_000,
+							requiredAction: {
+								toolName: 'workspace_read_tool_result',
+								input: { path, view: 'json', pointer: '' },
+							},
+							message: 'Stored in workspace',
+						},
+					},
+				],
+			},
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(inputs).toHaveLength(1);
+		const { transcript } = inputs[0];
+		expect(transcript).not.toMatch(/expired|unavailable/i);
+		expect(transcript).toContain('stored only for its originating run');
+		expect(transcript).toContain('250000');
+		// The durable log must not point at a run-scoped file.
+		expect(transcript).not.toContain(path);
+		// The live run keeps the readable reference.
+		expect(JSON.stringify(list.messages())).toContain(path);
+	});
 });
 
 describe('MemoryOrchestrator.saveToMemory observer gating', () => {

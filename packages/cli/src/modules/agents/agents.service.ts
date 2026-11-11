@@ -4,6 +4,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
+	toDraftIntegration,
 	type AgentCapabilitySummary,
 	type AgentActor,
 	type AgentCreationState,
@@ -476,9 +477,7 @@ export class AgentsService {
 		// The credential-claim check ignores publish state, so a copy holding the
 		// source's channel credentialId would block the original from republishing
 		// or reconnecting (and the reconciler records that 409 on the source's row).
-		const draftIntegrations = integrations.map((integration) =>
-			integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
-		);
+		const draftIntegrations = integrations.map(toDraftIntegration);
 		return { schemaConfig, integrations: draftIntegrations };
 	}
 
@@ -490,7 +489,9 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
+		);
 	}
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
@@ -727,7 +728,19 @@ export class AgentsService {
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated(projectIds, options),
+		);
+	}
+
+	private async addListSkillVersions(result: AgentListResult): Promise<AgentListResult> {
+		const versions = await this.agentSkillRefs.findSkillVersionsForAgents(result.data, {});
+		return {
+			...result,
+			data: result.data.map((agent) =>
+				Object.assign(agent, { skillVersions: versions.get(agent.id) ?? {} }),
+			),
+		};
 	}
 
 	/**

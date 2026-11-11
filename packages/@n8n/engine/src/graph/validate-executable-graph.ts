@@ -2,7 +2,7 @@ import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
 import { validateLoops } from './loops';
 import type { WorkflowGraph } from './workflow-graph';
-import { getDescendantNodeIds } from './workflow-graph-queries';
+import { createNodeLabeler, getDescendantNodeIds } from './workflow-graph-queries';
 
 export const MAX_SLOT_INDEX = 100;
 
@@ -25,12 +25,14 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 
 	validateLoops(graph);
 
+	const name = createNodeLabeler(graph);
+
 	const [trigger] = triggers;
 	const reachable = new Set([trigger.id, ...getDescendantNodeIds(graph, trigger.id)]);
 	for (const edge of graph.edges) {
 		if (reachable.has(edge.to) && !reachable.has(edge.from)) {
 			throw new GraphValidationError(
-				`Edge ${edge.from} -> ${edge.to} feeds a node the trigger reaches from one it cannot reach, so ${edge.to} would wait on ${edge.from} forever`,
+				`Edge ${name(edge.from)} -> ${name(edge.to)} feeds a node the trigger reaches from one it cannot reach, so ${name(edge.to)} would wait on ${name(edge.from)} forever`,
 			);
 		}
 	}
@@ -41,12 +43,12 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		for (const index of [edge.outputIndex, edge.inputIndex]) {
 			if (!Number.isInteger(index) || index < 0) {
 				throw new GraphValidationError(
-					`Edge ${edge.from} -> ${edge.to} has slot index ${index}; slot indices are non-negative integers`,
+					`Edge ${name(edge.from)} -> ${name(edge.to)} has slot index ${index}; slot indices are non-negative integers`,
 				);
 			}
 			if (index > MAX_SLOT_INDEX) {
 				throw new GraphValidationError(
-					`Edge ${edge.from} -> ${edge.to} has slot index ${index}; slot indices above ${MAX_SLOT_INDEX} are not supported yet`,
+					`Edge ${name(edge.from)} -> ${name(edge.to)} has slot index ${index}; slot indices above ${MAX_SLOT_INDEX} are not supported yet`,
 				);
 			}
 		}
@@ -60,7 +62,7 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		const slot = `${edge.to}#${edge.inputIndex}`;
 		if (seenInputSlots.has(slot)) {
 			throw new UnimplementedError(
-				`Node ${edge.to} has more than one edge into input slot ${edge.inputIndex}; converging branches on one slot is not supported yet`,
+				`Node ${name(edge.to)} has more than one edge into input slot ${edge.inputIndex}; converging branches on one slot is not supported yet`,
 			);
 		}
 		seenInputSlots.add(slot);
