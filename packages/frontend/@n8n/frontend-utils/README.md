@@ -18,8 +18,8 @@ Vue composables.
 
 ## Contributing
 
-For more details, please read our [CONTRIBUTING.md](CONTRIBUTING.md).
+For more details, please read our [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
 
 ## License
 
-For more details, please read our [LICENSE.md](LICENSE.md).
+For more details, please read our [LICENSE.md](../../../../LICENSE.md).
