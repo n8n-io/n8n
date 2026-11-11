@@ -1187,6 +1187,16 @@ describe('AgentTaskService', () => {
 			);
 		});
 
+		it('rejects an archived agent before the run starts', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ isArchived: true }));
+
+			await expect(service.runNow(AGENT_ID, 'task-1', requestingUser)).rejects.toThrow(
+				'Agent is archived. Restore the agent before running it.',
+			);
+			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
+		});
+
 		it('throws NotFoundError when the task does not exist', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 
