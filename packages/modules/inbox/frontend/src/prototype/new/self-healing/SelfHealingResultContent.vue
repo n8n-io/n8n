@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
-import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
-	N8nChatInput,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nMarkdown,
@@ -14,19 +12,18 @@ import {
 } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import PrototypeDirectionLine from '../../PrototypeDirectionLine.vue';
 import PrototypeEditableBody from '../../PrototypeEditableBody.vue';
 import PrototypeEditableTitle from '../../PrototypeEditableTitle.vue';
 import {
-	addPrototypeComment,
 	prototypeDescription,
 	prototypeSession,
 	prototypeState,
 	prototypeTitle,
 } from '../../prototype.session';
+import PrototypeMenuItemLabel from '../components/PrototypeMenuItemLabel.vue';
 import SelfHealingResultActivity from './SelfHealingResultActivity.vue';
 import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
 import type {
@@ -53,8 +50,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
-const commentDraft = ref('');
 const reportOptions = {
 	markdown: { html: false, linkify: true, breaks: true },
 	linkAttributes: { attrs: { target: '_blank', rel: 'noopener noreferrer' } },
@@ -186,38 +181,64 @@ function onMenuSelect(action: MenuAction) {
 function onTabChange(tab: string) {
 	if (tab === 'activity' || tab === 'changes') emit('update:tab', tab);
 }
-
-const commentSubmitDisabled = computed(
-	() =>
-		commentDraft.value.trim().length === 0 ||
-		commentDraft.value.length > WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
-);
-
-function onCommentSubmit() {
-	const body = commentDraft.value.trim();
-	if (!body) return;
-	const user = usersStore.currentUser;
-	addPrototypeComment(props.detail.resultId, {
-		id: `prototype-comment-${Date.now()}`,
-		body,
-		createdAt: new Date().toISOString(),
-		firstName: user?.firstName ?? '',
-		lastName: user?.lastName ?? '',
-	});
-	commentDraft.value = '';
-}
 </script>
 
 <template>
 	<section :class="$style.detail" data-test-id="self-healing-result-content">
 		<div :class="$style.columnTitle">
-			<PrototypeDirectionLine :actor="fixActor" :direction="fixDirection">
-				<PrototypeEditableTitle
-					:item-id="detail.resultId"
-					:text="displayTitle"
-					test-id="self-healing-result-title"
-				/>
-			</PrototypeDirectionLine>
+			<div :class="$style.reviewTitle">
+				<PrototypeDirectionLine :actor="fixActor" :direction="fixDirection">
+					<PrototypeEditableTitle
+						:item-id="detail.resultId"
+						:text="displayTitle"
+						test-id="self-healing-result-title"
+					/>
+				</PrototypeDirectionLine>
+			</div>
+			<div v-if="isOpen" :class="$style.actions">
+				<N8nDropdownMenu
+					:items="menuItems"
+					placement="bottom-end"
+					:disabled="pending"
+					destructive-at-rest
+					content-test-id="self-healing-review-menu"
+					sub-menu-width="var(--spacing--5xl)"
+					@select="onMenuSelect"
+				>
+					<template #trigger>
+						<N8nButton size="small" :disabled="pending" data-test-id="self-healing-review-trigger">
+							{{
+								i18n.baseText(
+									isFixReady
+										? 'inbox.selfHealing.action.review'
+										: 'inbox.selfHealing.action.continueWith',
+								)
+							}}
+							<N8nIcon :icon="continuing ? 'loader' : 'chevron-down'" :spin="continuing" />
+						</N8nButton>
+					</template>
+					<template #item-label="{ item, ui }">
+						<PrototypeMenuItemLabel
+							:label="item.label"
+							:label-class="ui.class"
+							:disabled="item.disabled"
+							:destructive="item.destructive"
+							:tooltip="
+								item.id === 'dismiss'
+									? i18n.baseText('inbox.prototype.closeReview.tooltip')
+									: undefined
+							"
+						/>
+					</template>
+					<template v-if="menuNotes.length" #footer>
+						<div :class="$style.menuNotes">
+							<N8nText v-for="note in menuNotes" :key="note" size="small" color="text-light">
+								{{ note }}
+							</N8nText>
+						</div>
+					</template>
+				</N8nDropdownMenu>
+			</div>
 		</div>
 		<slot name="notice" />
 		<div :class="$style.container">
@@ -229,41 +250,6 @@ function onCommentSubmit() {
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
-				<div v-if="isOpen" :class="$style.actions">
-					<N8nDropdownMenu
-						:items="menuItems"
-						placement="bottom-end"
-						:disabled="pending"
-						destructive-at-rest
-						content-test-id="self-healing-review-menu"
-						sub-menu-width="var(--spacing--5xl)"
-						@select="onMenuSelect"
-					>
-						<template #trigger>
-							<N8nButton
-								size="small"
-								:disabled="pending"
-								data-test-id="self-healing-review-trigger"
-							>
-								{{
-									i18n.baseText(
-										isFixReady
-											? 'inbox.selfHealing.action.review'
-											: 'inbox.selfHealing.action.continueWith',
-									)
-								}}
-								<N8nIcon :icon="continuing ? 'loader' : 'chevron-down'" :spin="continuing" />
-							</N8nButton>
-						</template>
-						<template v-if="menuNotes.length" #footer>
-							<div :class="$style.menuNotes">
-								<N8nText v-for="note in menuNotes" :key="note" size="small" color="text-light">
-									{{ note }}
-								</N8nText>
-							</div>
-						</template>
-					</N8nDropdownMenu>
-				</div>
 			</div>
 			<div
 				:class="[
@@ -320,21 +306,6 @@ function onCommentSubmit() {
 							{{ i18n.baseText('inbox.selfHealing.needsAttention.body') }}
 						</N8nCallout>
 					</div>
-					<label v-if="isOpen" :class="$style.composer">
-						<span :class="$style.srOnly">
-							{{ i18n.baseText('workflowReviews.detail.activity.composer.label') }}
-						</span>
-						<N8nChatInput
-							v-model="commentDraft"
-							layout="adaptive"
-							:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
-							:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
-							refocus-after-send
-							:submit-disabled="commentSubmitDisabled"
-							data-test-id="self-healing-comment-composer"
-							@submit="onCommentSubmit"
-						/>
-					</label>
 				</div>
 				<div v-else :class="$style.changesPanel" data-test-id="self-healing-changes-panel">
 					<div v-if="splitChanges" :class="$style.splitHost">
@@ -384,11 +355,21 @@ function onCommentSubmit() {
 
 .columnTitle {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	/* The Review button sits at the top, level with the top of the title. */
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
-	overflow-wrap: anywhere;
+}
+
+/* The title takes the space left of the button and cuts long text. */
+.reviewTitle {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 /* Match the tab row of workflow reviews. */
@@ -433,8 +414,6 @@ function onCommentSubmit() {
 	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	/* The tab label sits above the row center, clear of the underline. Match that. */
-	margin-bottom: calc(var(--spacing--xs) + 2px - var(--spacing--4xs));
 }
 
 .menuNotes {
@@ -467,31 +446,6 @@ function onCommentSubmit() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xl);
-}
-
-.composer {
-	position: sticky;
-	bottom: 0;
-	z-index: 1;
-	display: block;
-	flex-shrink: 0;
-	margin-top: var(--spacing--md);
-	padding-bottom: var(--spacing--sm);
-	/* The outline is drawn outside the input. The scroll area clips it without this inset. */
-	padding-inline: var(--focus--border-width);
-	background-color: var(--color--background--light-2);
-}
-
-.srOnly {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
 }
 
 .reportCard {
@@ -566,17 +520,6 @@ function onCommentSubmit() {
 
 /* Match the detail breakpoint of workflow reviews. Container queries cannot use CSS variables. */
 @container assistant-detail (max-width: 44rem) {
-	.tabRow {
-		flex-wrap: wrap;
-	}
-
-	/* A full row above the tabs keeps the active-tab indicator on the row border. */
-	.actions {
-		order: -1;
-		width: 100%;
-		justify-content: flex-end;
-	}
-
 	.detailBody {
 		flex-direction: column;
 	}

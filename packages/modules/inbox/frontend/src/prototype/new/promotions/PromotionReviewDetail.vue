@@ -29,6 +29,7 @@ import {
 import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, provide, ref, useId, useTemplateRef, watch } from 'vue';
 
 import InboxAvatarTooltip from '../../../components/InboxAvatarTooltip.vue';
@@ -37,12 +38,15 @@ import PrototypeDirectionLine from '../../PrototypeDirectionLine.vue';
 import PrototypeEditableBody from '../../PrototypeEditableBody.vue';
 import PrototypeEditableTitle from '../../PrototypeEditableTitle.vue';
 import {
+	addPrototypeComment,
 	prototypeDescription,
 	prototypeSession,
 	prototypeState,
 	prototypeTitle,
 	setPrototypeState,
 } from '../../prototype.session';
+import PrototypeMenuItemLabel from '../components/PrototypeMenuItemLabel.vue';
+import PrototypeRequestChangesPopover from '../components/PrototypeRequestChangesPopover.vue';
 import WorkflowReviewActivityFeed from '../reviews/components/WorkflowReviewActivityFeed.vue';
 import WorkflowReviewCommentComposer from '../../../reviews/components/WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDetailMetadata from '../reviews/components/WorkflowReviewDetailMetadata.vue';
@@ -66,6 +70,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const disabledReasonId = useId();
 const newCommitsId = useId();
 
@@ -245,7 +250,13 @@ const approveDescribedBy = computed(() => {
 	return hasNewCommits.value ? newCommitsId : undefined;
 });
 
-type ReviewMenuAction = 'approve' | 'gitlab' | 'close';
+type ReviewMenuAction = 'approve' | 'request-changes' | 'gitlab' | 'close';
+
+// The note opens on the Review button.
+const reviewMenuOpen = ref(false);
+const requestingChanges = ref(false);
+const reviewAnchor = useTemplateRef<HTMLElement>('reviewAnchor');
+const reviewAnchorElement = computed(() => reviewAnchor.value ?? undefined);
 
 const promotionOpen = computed(() => prototypeState(props.item.id, props.item.state) === 'open');
 
@@ -257,6 +268,14 @@ const reviewMenuItems = computed<Array<DropdownMenuItemProps<ReviewMenuAction>>>
 			icon: { type: 'icon', value: 'check' },
 			disabled: approveDisabled.value,
 			testId: 'inbox-promotion-review-approve',
+		},
+		{
+			id: 'request-changes',
+			label: i18n.baseText('workflowReviews.detail.decision.requestChanges'),
+			icon: { type: 'icon', value: 'refresh-cw' },
+			// The note popover takes focus when this item closes the menu.
+			suppressCloseAutoFocus: true,
+			testId: 'inbox-promotion-review-request-changes',
 		},
 	];
 	if (props.item.webUrl) {
@@ -278,9 +297,25 @@ const reviewMenuItems = computed<Array<DropdownMenuItemProps<ReviewMenuAction>>>
 	return items;
 });
 
+watch(
+	() => props.item.id,
+	() => {
+		requestingChanges.value = false;
+	},
+);
+
+// Close the note when the menu opens. The two stay apart.
+watch(reviewMenuOpen, (open) => {
+	if (open) requestingChanges.value = false;
+});
+
 function onReviewSelect(action: ReviewMenuAction) {
 	if (action === 'approve') {
 		openApproval();
+		return;
+	}
+	if (action === 'request-changes') {
+		requestingChanges.value = true;
 		return;
 	}
 	if (action === 'close') {
@@ -289,6 +324,21 @@ function onReviewSelect(action: ReviewMenuAction) {
 	}
 	if (!props.item.webUrl) return;
 	window.open(props.item.webUrl, '_blank', 'noopener');
+}
+
+// Front end only. The note shows in the activity as a request for changes.
+function onSubmitChanges(note: string) {
+	const user = usersStore.currentUser;
+	addPrototypeComment(props.activityReview?.id ?? props.item.id, {
+		id: `prototype-changes-${Date.now()}`,
+		body: note,
+		createdAt: new Date().toISOString(),
+		firstName: user?.firstName ?? '',
+		lastName: user?.lastName ?? '',
+		kind: 'changes_requested',
+	});
+	requestingChanges.value = false;
+	detailTab.value = 'activity';
 }
 
 function openApproval() {
@@ -333,6 +383,59 @@ async function onApprove() {
 				<PrototypeDirectionLine :actor="promoteActor" :direction="promoteDirection">
 					<PrototypeEditableTitle :item-id="item.id" :text="displayTitle" />
 				</PrototypeDirectionLine>
+			</div>
+			<div v-if="promotionOpen" :class="$style.reviewActions">
+				<N8nDropdownMenu
+					v-model="reviewMenuOpen"
+					:items="reviewMenuItems"
+					placement="bottom-end"
+					:disabled="approving"
+					destructive-at-rest
+					content-test-id="inbox-promotion-review-review-menu"
+					@select="onReviewSelect"
+				>
+					<template #trigger>
+						<span ref="reviewAnchor" :class="$style.reviewAnchor">
+							<N8nButton
+								size="small"
+								:disabled="approving"
+								data-test-id="inbox-promotion-review-review"
+							>
+								{{ i18n.baseText('inbox.selfHealing.action.review') }}
+								<N8nIcon :icon="approving ? 'loader' : 'chevron-down'" :spin="approving" />
+							</N8nButton>
+						</span>
+					</template>
+					<template #item-label="{ item: menuItem, ui }">
+						<PrototypeMenuItemLabel
+							:label="menuItem.label"
+							:label-class="ui.class"
+							:disabled="menuItem.disabled"
+							:destructive="menuItem.destructive"
+							:tooltip="
+								menuItem.id === 'close'
+									? i18n.baseText('inbox.prototype.closeReview.tooltip')
+									: undefined
+							"
+						/>
+					</template>
+					<template v-if="disabledReason" #footer>
+						<N8nText
+							:id="disabledReasonId"
+							size="small"
+							color="text-light"
+							:class="$style.menuNote"
+							data-test-id="inbox-promotion-review-approve-reason"
+						>
+							{{ disabledReason }}
+						</N8nText>
+					</template>
+				</N8nDropdownMenu>
+				<PrototypeRequestChangesPopover
+					v-model:open="requestingChanges"
+					:reference="reviewAnchorElement"
+					@submit="onSubmitChanges"
+				/>
 			</div>
 		</div>
 		<header v-else :class="$style.header">
@@ -409,41 +512,8 @@ async function onApprove() {
 				data-test-id="inbox-promotion-review-tab-bar"
 				@update:model-value="detailTab = $event === 'activity' ? 'activity' : 'changes'"
 			/>
-			<div :class="$style.tabActions">
-				<template v-if="activityReview">
-					<N8nDropdownMenu
-						v-if="promotionOpen"
-						:items="reviewMenuItems"
-						placement="bottom-end"
-						:disabled="approving"
-						destructive-at-rest
-						content-test-id="inbox-promotion-review-review-menu"
-						@select="onReviewSelect"
-					>
-						<template #trigger>
-							<N8nButton
-								size="small"
-								:disabled="approving"
-								data-test-id="inbox-promotion-review-review"
-							>
-								{{ i18n.baseText('inbox.selfHealing.action.review') }}
-								<N8nIcon :icon="approving ? 'loader' : 'chevron-down'" :spin="approving" />
-							</N8nButton>
-						</template>
-						<template v-if="disabledReason" #footer>
-							<N8nText
-								:id="disabledReasonId"
-								size="small"
-								color="text-light"
-								:class="$style.menuNote"
-								data-test-id="inbox-promotion-review-approve-reason"
-							>
-								{{ disabledReason }}
-							</N8nText>
-						</template>
-					</N8nDropdownMenu>
-				</template>
-				<div v-else-if="item.state === 'open'" :class="$style.approve">
+			<div v-if="!activityReview" :class="$style.tabActions">
+				<div v-if="item.state === 'open'" :class="$style.approve">
 					<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
 					<N8nText
 						v-if="disabledReason"
@@ -604,16 +674,32 @@ async function onApprove() {
 
 .columnTitle {
 	display: flex;
-	align-items: center;
+	/* The Review button sits at the top, level with the top of the title. */
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
 }
 
+/* The title takes the space left of the button and cuts long text. */
 .reviewTitle {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.reviewActions {
+	position: relative;
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+}
+
+.reviewAnchor {
+	display: inline-flex;
 }
 
 .tabRow {

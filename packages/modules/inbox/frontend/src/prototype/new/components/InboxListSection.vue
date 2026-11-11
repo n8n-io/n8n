@@ -3,9 +3,11 @@ import type { InboxItem } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { computed } from 'vue';
 
 import type { CollapsibleReviewInboxSection } from '../../../composables/useReviewInboxSectionCollapse';
 import type { InboxSectionKey } from '../../../inbox.constants';
+import { prototypeSession } from '../../prototype.session';
 import InboxListItem from './InboxListItem.vue';
 
 export type InboxListSection = {
@@ -33,6 +35,9 @@ const emit = defineEmits<{
 }>();
 const i18n = useI18n();
 const usersStore = useUsersStore();
+
+// Every style but Cards draws a thin line between rows, not a gap.
+const divided = computed(() => prototypeSession.listVariant !== 'cards');
 
 function sectionTitle(key: 'waiting' | 'authored') {
 	return key === 'waiting' && usersStore.isAdminOrOwner
@@ -62,7 +67,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 		</button>
 		<div
 			:id="`inbox-section-${section.key}`"
-			:class="$style.group"
+			:class="[$style.group, { [$style.divided]: divided }]"
 			role="list"
 			:aria-labelledby="
 				section.key !== 'closed' ? `inbox-section-header-${section.key}` : undefined
@@ -70,7 +75,12 @@ function sectionTitle(key: 'waiting' | 'authored') {
 			:aria-label="section.key === 'closed' ? i18n.baseText('inbox.tabs.closed') : undefined"
 		>
 			<template v-if="!collapsed">
-				<div v-for="item in section.items" :key="`${item.type}:${item.id}`" role="listitem">
+				<div
+					v-for="item in section.items"
+					:key="`${item.type}:${item.id}`"
+					:class="$style.item"
+					role="listitem"
+				>
 					<InboxListItem
 						:item="item"
 						:selected="selectedKey === `${item.type}:${item.id}`"
@@ -123,6 +133,18 @@ function sectionTitle(key: 'waiting' | 'authored') {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.divided {
+	gap: 0;
+}
+.divided .item:not(:last-child) {
+	border-bottom: var(--border);
+}
+// The line stays out of the highlight of the open row.
+.divided .item:has([aria-current='true']),
+.divided .item:has(+ .item [aria-current='true']) {
+	border-bottom-color: transparent;
 }
 
 .sectionHeader {

@@ -22,7 +22,7 @@ import {
 	type Inclusion,
 	type ResourceKey,
 } from '../../../promotionPreview.selection';
-import { buildPreviewTree, cardOrder } from '../../../promotionPreview.tree';
+import { buildPreviewTree, cardOrder, isContainer } from '../../../promotionPreview.tree';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../../../promotionPreview.workflow';
 import { httpUrl } from '../../../promotionResult';
 import { getPromotionReviewChanges, getPromotionReviewDetails } from '../../../promotions.api';
@@ -135,6 +135,15 @@ const tree = computed(() =>
 		: [],
 );
 const order = computed(() => (graph.value ? cardOrder(tree.value, graph.value.resources) : []));
+// One change with nothing around it needs no tree. Other changes or dependencies keep it.
+// An unchanged project or folder only gives structure, so it does not count.
+const showTree = computed(() => {
+	if (!changes.value) return true;
+	const entries = changes.value.resources.filter(
+		(resource) => !isContainer(resource) || resource.change !== 'unchanged',
+	);
+	return entries.length > 1 || changes.value.dependencies.length > 0;
+});
 const totalChanges = computed(() => (graph.value ? totalChangeCount(graph.value) : 0));
 
 // One workflow diff is open at a time. Each load opens the inspected or the first changed workflow.
@@ -236,6 +245,7 @@ const treeResizer = useResizablePanel({
 			/>
 			<div v-else ref="panes" :class="$style.panes">
 				<N8nResizeWrapper
+					v-if="showTree"
 					:class="$style.tree"
 					:style="{ width: `${treeResizer.width.value}px` }"
 					:resizer="treeResizer"
@@ -257,7 +267,7 @@ const treeResizer = useResizablePanel({
 						@inspect="inspect"
 					/>
 				</N8nResizeWrapper>
-				<section :class="$style.cards">
+				<section :class="[$style.cards, { [$style.cardsFull]: !showTree }]">
 					<PromotionChangeCards
 						ref="cards"
 						v-model:active-workflow="activeWorkflowKey"
@@ -291,16 +301,16 @@ const treeResizer = useResizablePanel({
 }
 
 .state {
-	/* The empty states draw their own border, so the space goes outside them. The right space
-	   matches the gutter of the inbox detail. */
-	margin: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) 0;
+	/* The empty states draw their own border, so the space goes outside them. No right space,
+	   so they end where the Review button ends. */
+	margin: var(--spacing--sm) 0;
 }
 
 .notices {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--sm) var(--spacing--md) 0 0;
+	padding: var(--spacing--sm) 0 0;
 }
 
 .panes {
@@ -323,7 +333,21 @@ const treeResizer = useResizablePanel({
 	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
-	/* The scroll bar stays at the edge, and the cards end where the tab row divider ends. */
-	padding: var(--spacing--sm) var(--spacing--md) var(--spacing--sm) var(--spacing--sm);
+	/* The query below uses this to see when the cards scroll. */
+	container-type: scroll-state;
+	/* No right space. Without a scroll bar the cards end where the Review button ends. */
+	padding: var(--spacing--sm) 0 var(--spacing--sm) var(--spacing--sm);
+}
+
+/* The gap shows only when the cards scroll, so the cards never touch the scroll bar. */
+@container scroll-state(scrollable: y) {
+	.cards > * {
+		margin-inline-end: var(--spacing--md);
+	}
+}
+
+/* With no tree, the cards start at the edge of the tab row. */
+.cardsFull {
+	padding-left: 0;
 }
 </style>

@@ -52,21 +52,33 @@ function cancel() {
 		data-test-id="inbox-prototype-title"
 		@click="start"
 	>
-		<N8nHeading bold tag="h2" size="xlarge" :data-test-id="testId">{{ text }}</N8nHeading>
+		<N8nHeading bold tag="h2" size="xlarge" :class="$style.text" :data-test-id="testId">{{
+			text
+		}}</N8nHeading>
 	</button>
-	<N8nHeading v-else bold tag="h2" size="xlarge" :data-test-id="testId">{{ text }}</N8nHeading>
+	<N8nHeading v-else bold tag="h2" size="xlarge" :class="$style.text" :data-test-id="testId">{{
+		text
+	}}</N8nHeading>
 </template>
 
 <style module lang="scss">
 .button {
 	flex: 1;
 	min-width: 0;
+	max-width: 100%;
 	padding: 0;
 	border: 0;
 	background: transparent;
 	color: inherit;
 	text-align: start;
 	cursor: text;
+}
+
+/* A long title ends with an ellipsis. It never runs under the Review button. */
+.text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .input {

@@ -10,6 +10,7 @@ import type { InboxItemChange } from '../../../inbox.constants';
 import PrototypeDirectionLine from '../../PrototypeDirectionLine.vue';
 import PrototypeEditableTitle from '../../PrototypeEditableTitle.vue';
 import { prototypeSession, prototypeTitle } from '../../prototype.session';
+import WorkflowReviewDetailActions from './components/WorkflowReviewDetailActions.vue';
 import WorkflowReviewDetailTabs from './components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from './components/WorkflowReviewDetailTabs.vue';
 import { useReviewActivityStore } from '../../../reviews/reviewActivity.store';
@@ -222,6 +223,12 @@ onBeforeUnmount(() => {
 					/>
 				</PrototypeDirectionLine>
 			</div>
+			<WorkflowReviewDetailActions
+				v-if="review"
+				:review="review"
+				:deciding="deciding"
+				@decide="onDecide"
+			/>
 		</div>
 		<div :class="[$style.mainBody, { [$style.mainBodyLocked]: splitChanges && tab === 'changes' }]">
 			<div
@@ -243,10 +250,8 @@ onBeforeUnmount(() => {
 				v-else-if="review"
 				:review="review"
 				:tab="tab"
-				:deciding="deciding"
 				:split-changes="splitChanges"
 				@update:tab="emit('update:tab', $event)"
-				@decide="onDecide"
 			/>
 			<slot v-else />
 		</div>
@@ -263,13 +268,18 @@ onBeforeUnmount(() => {
 
 .columnTitle {
 	display: flex;
-	align-items: center;
+	/* The Review button sits at the top, level with the top of the title. */
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
 }
 
+/* The title takes the space left of the button and cuts long text. */
 .reviewTitle {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;

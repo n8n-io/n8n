@@ -1,19 +1,44 @@
 <script setup lang="ts">
+import type { WorkflowReviewActivityEntry } from '@n8n/api-types';
 import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useResizeObserver } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { inject, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useIntersectionObserver } from '@n8n/composables/useIntersectionObserver';
 
+import { prototypeComments } from '../../../prototype.session';
 import { ReviewDetailScrollContainerKey } from '../../../../reviews/constants';
 import { useReviewActivityStore } from '../../../../reviews/reviewActivity.store';
 import { resolveActivityComponent } from './activityEntryRegistry';
 
 const i18n = useI18n();
 const store = useReviewActivityStore();
+const usersStore = useUsersStore();
 const { entries, loading, loadingMore, hasMore, error } = storeToRefs(store);
+
+// Prototype only. A request for changes of this session has no server entry. It shows after
+// the entries of the server, in the shape of a decision.
+const sessionEntries = computed<WorkflowReviewActivityEntry[]>(() =>
+	prototypeComments(store.currentReviewId ?? '')
+		.filter((comment) => comment.kind === 'changes_requested')
+		.map((comment) => ({
+			id: comment.id,
+			typeVersion: 1,
+			type: 'review.changes_requested',
+			createdBy: {
+				id: usersStore.currentUser?.id ?? comment.id,
+				email: usersStore.currentUser?.email ?? '',
+				firstName: comment.firstName || null,
+				lastName: comment.lastName || null,
+			},
+			createdAt: comment.createdAt,
+			data: { workflowVersions: [], note: comment.body },
+		})),
+);
+const shownEntries = computed(() => [...entries.value, ...sessionEntries.value]);
 
 const scrollContainer = inject(ReviewDetailScrollContainerKey, ref(null));
 const feed = ref<HTMLElement | null>(null);
@@ -83,6 +108,15 @@ watch(
 		if (next.at(-1)?.id !== previous.at(-1)?.id) scrollToBottom();
 	},
 	{ flush: 'post' },
+);
+
+// A new request for changes shows at the end of the feed.
+watch(
+	() => sessionEntries.value.length,
+	async () => {
+		await nextTick();
+		scrollToBottom();
+	},
 );
 
 // Ids, not positions: a refetch can replace the first entries and still add new ones.
@@ -199,7 +233,7 @@ onMounted(() => {
 				:class="$style.list"
 			>
 				<div
-					v-for="entry in entries"
+					v-for="entry in shownEntries"
 					:key="entry.id"
 					role="listitem"
 					:class="[$style.item, { [$style.itemEntering]: enteringIds.has(entry.id) }]"
