@@ -35,6 +35,14 @@ function makeService(credentials: TestCredential[] = [], inaccessibleIds: string
 }
 
 describe('AgentDefaultModelResolverService', () => {
+	it('leaves the model for selection when only an Ollama credential exists', async () => {
+		const { service, aiGatewayService } = makeService([
+			{ id: 'ollama-1', name: 'Local Ollama', type: 'ollamaApi' },
+		]);
+		await expect(service.resolve(user, 'project-1')).resolves.toBeNull();
+		expect(aiGatewayService.getCredentialTypeForProvider).not.toHaveBeenCalled();
+		expect(service.resolveFromVerifiedModelIds('ollama', 'ollama-1', ['gemma4:latest'])).toBeNull();
+	});
 	it('uses a provider default only when live discovery confirms it', async () => {
 		const { service, modelLookupService } = makeService([
 			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },
@@ -53,10 +61,10 @@ describe('AgentDefaultModelResolverService', () => {
 		const own = { id: 'own', name: 'My OpenAI', type: 'openAiApi' };
 		const colleague = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
 		const { service, modelLookupService } = makeService([own, colleague], [colleague.id]);
-		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-6.1 Terra', value: 'gpt-6.1-terra' }]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'openai/gpt-5.6-terra',
+			model: 'openai/gpt-6.1-terra',
 			credential: 'own',
 		});
 	});

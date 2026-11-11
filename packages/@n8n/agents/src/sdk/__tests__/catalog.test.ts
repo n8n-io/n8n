@@ -1,8 +1,14 @@
-import { computeCost, fetchProviderCatalog, getCachedCatalog } from '../catalog';
+import { computeCost, fetchProviderCatalog, getCachedCatalog, getModelCost } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('does not fetch or infer a token price for an Ollama model', async () => {
+		const fetchMock = vi.fn();
+		expect(await getModelCost('ollama/gemma4:latest', fetchMock)).toBeUndefined();
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {

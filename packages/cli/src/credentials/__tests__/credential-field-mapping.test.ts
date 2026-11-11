@@ -5,6 +5,17 @@ import {
 } from '../credential-field-mapping';
 
 describe('mapCredentialForProvider', () => {
+	it('maps the Ollama server URL and optional proxy key', () => {
+		expect(
+			mapCredentialForProvider('ollama', { apiKey: '', baseUrl: 'http://localhost:11434' }),
+		).toEqual({ apiKey: '', baseURL: 'http://localhost:11434' });
+		expect(
+			mapCredentialForProvider('ollama', {
+				apiKey: 'proxy-key',
+				baseUrl: 'https://models.example.com',
+			}),
+		).toEqual({ apiKey: 'proxy-key', baseURL: 'https://models.example.com' });
+	});
 	it.each([
 		'https://ai-gateway.vercel.sh/v4/ai',
 		'https://gateway.example.com/v4/ai',

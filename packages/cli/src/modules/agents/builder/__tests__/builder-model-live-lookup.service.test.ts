@@ -165,6 +165,37 @@ describe('BuilderModelLiveLookupService', () => {
 	});
 
 	describe('lookup', () => {
+		it.each([
+			{ models: [] },
+			{
+				models: [
+					{
+						id: 'gemma4:latest',
+						name: 'gemma4:latest',
+						metadata: { toolCall: true, reasoning: true, limits: { context: 262144 } },
+					},
+				],
+			},
+		])('discovers the connected Ollama server models: $models', async ({ models }) => {
+			const { service, credentialsService, credentialsHelper } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('ollama-1', 'ollamaApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				baseUrl: 'http://localhost:11434',
+				apiKey: '',
+			});
+			listModelsForProvider.mockResolvedValue(models);
+			expect(await service.lookup(user, projectId, 'ollama-1', 'ollamaApi', 'ollama')).toEqual({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: models.map(({ id, name, metadata }) => ({ name, value: id, metadata })),
+			});
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'ollama',
+				expect.objectContaining({ apiKey: '', baseURL: 'http://localhost:11434' }),
+			);
+		});
 		it('returns a deterministic catalog for an eval credential without using its secret', async () => {
 			const { service, credentialsService, credentialsHelper, aiGatewayService } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(

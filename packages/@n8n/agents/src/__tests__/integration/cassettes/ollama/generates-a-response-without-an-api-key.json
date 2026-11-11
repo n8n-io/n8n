@@ -1,0 +1,53 @@
+[
+	{
+		"scope": "http://localhost:11434",
+		"method": "POST",
+		"path": "/v1/chat/completions",
+		"body": {
+			"model": "gemma4:latest",
+			"reasoning_effort": "none",
+			"messages": [
+				{
+					"role": "system",
+					"content": "Reply with exactly OK."
+				},
+				{
+					"role": "user",
+					"content": "Acknowledge."
+				}
+			]
+		},
+		"status": 200,
+		"response": {
+			"id": "chatcmpl-483",
+			"object": "chat.completion",
+			"created": 1792601630,
+			"model": "gemma4:latest",
+			"system_fingerprint": "fp_ollama",
+			"choices": [
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "OK"
+					},
+					"finish_reason": "stop"
+				}
+			],
+			"usage": {
+				"prompt_tokens": 23,
+				"prompt_tokens_details": {
+					"cached_tokens": 0
+				},
+				"completion_tokens": 1,
+				"total_tokens": 24
+			}
+		},
+		"rawHeaders": {
+			"content-length": "333",
+			"content-type": "application/json",
+			"date": "Wed, 21 Oct 2026 16:53:50 GMT"
+		},
+		"responseIsBinary": false
+	}
+]

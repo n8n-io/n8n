@@ -123,7 +123,7 @@ vi.mock('../composables/useAgentModelCredentials', () => ({
 
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
-		catalog: modelCatalog,
+		getModelInfo: (provider: string, model: string) => modelCatalog.value[provider]?.models[model],
 		ensureLoaded: ensureLoadedMock,
 		getModelsForPicker: () => ({
 			anthropic: {

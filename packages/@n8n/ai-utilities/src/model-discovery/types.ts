@@ -6,6 +6,12 @@ export interface ProviderModel {
 	name: string;
 	/** Pickers list models with a priority first, highest first. Only the AI Gateway reports one. */
 	priority?: number;
+	/** Capabilities reported by the endpoint, without inferred pricing. */
+	metadata?: {
+		toolCall?: boolean;
+		reasoning?: boolean;
+		limits?: { context?: number; output?: number };
+	};
 }
 
 export interface ListModelsOptions {

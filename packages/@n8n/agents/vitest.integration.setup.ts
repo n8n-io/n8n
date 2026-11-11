@@ -42,14 +42,17 @@ const originalFetch = globalThis.fetch;
 // nock uses @mswjs/interceptors internally which calls request.clone() on every request,
 // request.clone() is not stable and may break requests in some cases leading to hanging responses.
 // This custom proxy fetch is a workaround to bypass the nock interceptors for local requests.
-function applyCustomProxyFetch() {
+function applyCustomProxyFetch(recordOllama: boolean) {
 	const originalProxyFetch = globalThis.fetch;
 	if (originalFetch === originalProxyFetch) {
 		throw new Error('Original fetch matches proxied fetch. This should not happen.');
 	}
 	Object.defineProperty(globalThis, 'fetch', {
 		value: (input: RequestInfo | URL, init?: RequestInit) => {
-			if (URL_PASSTHROUGH.test(input.toString())) {
+			if (
+				URL_PASSTHROUGH.test(input.toString()) &&
+				!(recordOllama && input.toString().startsWith('http://localhost:11434/'))
+			) {
 				return originalFetch(input, init);
 			}
 			return originalProxyFetch(input, init);
@@ -133,12 +136,13 @@ const SENSITIVE_RESPONSE_HEADERS = [
 ];
 const ENCODING_RESPONSE_HEADERS = ['content-encoding', 'content-length', 'transfer-encoding'];
 
-function sanitizeCassette(defs: nock.Definition[]): nock.Definition[] {
+function sanitizeCassette(defs: nock.Definition[], recordOllama: boolean): nock.Definition[] {
 	return defs
 		.filter((def) => {
 			const scope = def.scope as string;
 			if (scope === 'https://models.dev:443') return false;
-			if (/localhost|127\.0\.0\.1/.test(scope)) return false;
+			if (/localhost|127\.0\.0\.1/.test(scope))
+				return recordOllama && scope === 'http://localhost:11434';
 			return true;
 		})
 		.map((def) => {
@@ -187,6 +191,7 @@ if (IS_RECORD_MODE || IS_REPLAY_MODE) {
 
 	beforeEach(async (ctx) => {
 		const name = cassetteName(ctx);
+		const recordOllama = name.startsWith('ollama/');
 
 		const subDir = path.join(CASSETTES_DIR, path.dirname(name));
 		await fs.promises.mkdir(subDir, { recursive: true });
@@ -196,13 +201,13 @@ if (IS_RECORD_MODE || IS_REPLAY_MODE) {
 		}
 
 		const { nockDone } = await nockBack(name, {
-			afterRecord: sanitizeCassette,
+			afterRecord: (defs) => sanitizeCassette(defs, recordOllama),
 		});
 		// apply our patch
-		applyCustomProxyFetch();
+		applyCustomProxyFetch(recordOllama);
 
 		nock.disableNetConnect();
-		nock.enableNetConnect(/localhost|127\.0\.0\.1/);
+		if (!recordOllama) nock.enableNetConnect(/localhost|127\.0\.0\.1/);
 		nock('https://models.dev').get('/api.json').reply(200, MODELS_DEV_FIXTURE).persist();
 
 		nockDoneMap.set(ctx.task.id, nockDone);

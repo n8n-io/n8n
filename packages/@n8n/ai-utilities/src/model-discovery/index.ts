@@ -8,6 +8,7 @@ import { listMiniMaxModels } from './providers/minimax';
 import { listMistralModels } from './providers/mistral';
 import { listMoonshotAiModels } from './providers/moonshotai';
 import { listNvidiaModels } from './providers/nvidia';
+import { listOllamaModels } from './providers/ollama';
 import { listOpenAiModels } from './providers/openai';
 import { listOpenRouterModels } from './providers/openrouter';
 import { listVercelModels } from './providers/vercel';
@@ -36,6 +37,7 @@ export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	mistral: listMistralModels,
 	moonshotai: listMoonshotAiModels,
 	nvidia: listNvidiaModels,
+	ollama: listOllamaModels,
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
 	vercel: listVercelModels,
@@ -87,6 +89,7 @@ export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';
 export { listMoonshotAiModels } from './providers/moonshotai';
 export { listNvidiaModels } from './providers/nvidia';
+export { listOllamaModels } from './providers/ollama';
 export {
 	listOpenAiModels,
 	shouldIncludeOpenAiModel,

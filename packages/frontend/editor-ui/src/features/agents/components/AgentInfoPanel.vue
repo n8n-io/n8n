@@ -67,7 +67,7 @@ const i18n = useI18n();
 const instructionsEditorId = useId();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
+const { getModelInfo, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
 	useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
@@ -159,7 +159,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
 	const reasoningChanges = normalizeReasoningForModelChange(
 		normalizedConfig,
-		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+		getModelInfo(selection.provider, modelName, credentialId)?.reasoning,
 	);
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.

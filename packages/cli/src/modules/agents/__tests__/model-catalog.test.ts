@@ -7,6 +7,7 @@ describe('filterOfferedAgentModelProviders', () => {
 		const catalog = {
 			openai: { id: 'openai', name: 'OpenAI', models: {} },
 			groq: { id: 'groq', name: 'Groq', models: {} },
+			ollama: { id: 'ollama', name: 'Ollama', models: { 'uninstalled:latest': {} } },
 			'google-vertex': {
 				id: 'google-vertex',
 				name: 'Google Vertex AI',
@@ -34,6 +35,8 @@ describe('filterOfferedAgentModelProviders', () => {
 				.map((provider) => [provider, { id: provider, name: provider, models: {} }]),
 		);
 
-		expect(Object.keys(filterOfferedAgentModelProviders(catalog))).toEqual(AGENT_MODEL_PROVIDERS);
+		expect(Object.keys(filterOfferedAgentModelProviders(catalog))).toEqual(
+			AGENT_MODEL_PROVIDERS.filter((provider) => provider !== 'ollama'),
+		);
 	});
 });

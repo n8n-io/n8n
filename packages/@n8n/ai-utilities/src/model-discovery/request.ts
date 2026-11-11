@@ -2,16 +2,18 @@ import { UserError } from 'n8n-workflow';
 
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
 
-/** GET a provider endpoint and parse JSON, treating rejected credentials as user errors. */
+/** Request provider JSON. Treat rejected credentials as user errors. */
 export async function getJson(
 	url: string,
 	headers: Record<string, string>,
 	options: ListModelsOptions,
 	provider: string,
+	request: Pick<RequestInit, 'method' | 'body' | 'signal'> = {},
 ): Promise<unknown> {
 	const fetchFn = options.fetch ?? globalThis.fetch;
 	const response = await fetchFn(url, {
 		method: 'GET',
+		...request,
 		headers: { ...headers, ...options.headers },
 	});
 	if (!response.ok) {

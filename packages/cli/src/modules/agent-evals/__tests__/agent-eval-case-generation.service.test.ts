@@ -165,7 +165,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	});
 
 	it('rejects an unsupported model provider', async () => {
-		agentConfigService.getConfig.mockResolvedValue(makeConfig({ model: 'ollama/llama3' }));
+		agentConfigService.getConfig.mockResolvedValue(makeConfig({ model: 'unsupported/model' }));
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
 			/not supported for case generation/,

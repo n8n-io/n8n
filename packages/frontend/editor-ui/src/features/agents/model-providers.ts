@@ -46,6 +46,7 @@ export interface AgentModelSelection {
 export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	openai: { displayName: 'OpenAI' },
 	anthropic: { displayName: 'Anthropic' },
+	ollama: { displayName: 'Ollama' },
 	google: { displayName: 'Google' },
 	'google-vertex': { displayName: 'Google Vertex AI' },
 	'azure-openai': { displayName: 'Microsoft Foundry' },

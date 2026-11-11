@@ -9,6 +9,7 @@ import {
 } from './useAgentApi';
 import {
 	AGENT_MODEL_PROVIDERS,
+	isAgentModelProvider,
 	type AgentCredentialsByProvider,
 	type AgentModelOption,
 	type AgentModelProvider,
@@ -100,6 +101,21 @@ export function useModelCatalog() {
 		const p = catalog.value[provider];
 		if (!p) return [];
 		return Object.values(p.models).sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/** Prefer metadata from the selected server over the public catalog. */
+	function getModelInfo(
+		provider: string,
+		modelId: string,
+		credentialId?: string,
+	): ModelInfo | undefined {
+		const projectId = activeProjectId.value;
+		if (projectId && credentialId && isAgentModelProvider(provider)) {
+			ensureVerifiedModels(projectId, provider, credentialId);
+			const models = verifiedModelsByKey.value[`${projectId}|${provider}|${credentialId}`];
+			if (models) return models.find((model) => model.id === modelId);
+		}
+		return provider === 'ollama' ? undefined : catalog.value[provider]?.models[modelId];
 	}
 
 	/**
@@ -224,6 +240,7 @@ export function useModelCatalog() {
 		ensureLoaded,
 		getVerificationStatus,
 		getModelsForProvider,
+		getModelInfo,
 		getModelsForPicker,
 		getDefaultModelForPicker,
 	};
