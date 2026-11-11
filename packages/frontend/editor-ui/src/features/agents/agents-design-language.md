@@ -25,6 +25,12 @@ that order. Hide zero counts. Keep timestamps visible for empty folders.
 Hide Created on narrow screens. Keep count labels together when the subtitle
 wraps. Show search paths on a separate line.
 
+## Folder pagination
+
+List folders before Agents, as workflow lists do. Use one total, page size, and
+pager for both resource types. Fill the remaining page slots with Agents when a
+page contains the last folders. Keep the global overview flat.
+
 ## Agent card subtitles
 
 Use a separate element for each separator between metadata fields, as workflow

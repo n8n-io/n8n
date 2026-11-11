@@ -3,6 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { computed, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
+import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import AgentsListView from '../views/AgentsListView.vue';
 import {
@@ -16,10 +18,14 @@ import {
 const templatesEnabled = ref(false);
 const experimentVariant = ref<'control' | 'test' | undefined>('control');
 const trackTemplatesExposure = vi.fn();
+const foldersEnabled = ref(false);
+const folderReadAllowed = ref(true);
+const navigation = ref<{ projectId?: string; folderId?: string }>({});
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
+	getProjectFolders: vi.fn(),
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	setTitle: vi.fn(),
@@ -31,6 +37,7 @@ const mocks = vi.hoisted(() => ({
 	upsertProjectAgentsListCache: vi.fn(),
 	routeProjectId: undefined as string | undefined,
 	routeQuery: {} as Record<string, string>,
+	routeFolderId: undefined as string | undefined,
 	toastShowMessage: vi.fn(),
 	toastShowError: vi.fn(),
 	openModalWithData: vi.fn(),
@@ -42,6 +49,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	duplicateAgent: mocks.duplicateAgent,
 }));
 
+vi.mock('@/features/core/folders/folders.api', () => ({
+	getProjectFolders: mocks.getProjectFolders,
+}));
+
 vi.mock('../composables/useProjectAgentsList', () => ({
 	upsertProjectAgentsListCache: mocks.upsertProjectAgentsListCache,
 }));
@@ -50,13 +61,33 @@ vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
-		useRoute: () => ({ params: { projectId: mocks.routeProjectId }, query: mocks.routeQuery }),
+		useRoute: () => ({
+			params: {
+				get projectId() {
+					return navigation.value.projectId;
+				},
+			},
+			get query() {
+				return {
+					...mocks.routeQuery,
+					...(navigation.value.folderId ? { folderId: navigation.value.folderId } : {}),
+				};
+			},
+		}),
 		useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 	};
 });
 
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: () => ({ isFoldersFeatureEnabled: false }),
+	useSettingsStore: () => ({
+		get isFoldersFeatureEnabled() {
+			return foldersEnabled.value;
+		},
+	}),
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => ({ currentUser: { globalScopes: [] } }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -79,6 +110,14 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		currentProject: { id: 'project-1' },
 		personalProject: { id: 'personal-project' },
+		myProjects: [
+			{
+				id: 'project-1',
+				get scopes() {
+					return folderReadAllowed.value ? ['folder:list'] : [];
+				},
+			},
+		],
 	}),
 }));
 
@@ -144,10 +183,11 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 				<div data-test-id="resources-list-layout">
 					<div data-test-id="resources-refreshing">{{ String(resourcesRefreshing) }}</div>
 					<div data-test-id="resources-total">{{ totalItems }}</div>
+					<slot name="list-prepend" />
 					<div v-for="(item, index) in resources" :key="item.id">
 						<slot name="item" :item="item" :index="index" />
 					</div>
-					<slot v-if="resources.length === 0" name="empty" />
+					<slot v-if="resources.length === 0 && !$slots['list-prepend']" name="empty" />
 				</div>
 			`,
 		}),
@@ -176,14 +216,36 @@ const agent = (id: string, name: string, projectId = 'project-1'): AgentResource
 		updatedAt: '2026-01-02T00:00:00Z',
 	}) as AgentResource;
 
+const folder = (id: string): ChangeLocationSearchResponseItem => ({
+	id,
+	name: `Folder ${id}`,
+	createdAt: '2026-01-01T00:00:00Z',
+	updatedAt: '2026-01-02T00:00:00Z',
+	agentCount: 0,
+	workflowCount: 0,
+	subFolderCount: 0,
+	path: [],
+});
+
 // Mounted views are unmounted after each test. Without this, watchers from
 // earlier tests stay alive and react to shared refs mutated by later tests.
 const activeWrappers: Array<ReturnType<typeof mount>> = [];
 
 const mountView = async () => {
+	navigation.value = { projectId: mocks.routeProjectId, folderId: mocks.routeFolderId };
+
 	const wrapper = mount(AgentsListView, {
 		global: {
 			stubs: {
+				AgentFolderBrowser: {
+					name: 'AgentFolderBrowser',
+					props: ['folders'],
+					data: () => ({ breadcrumbs: [], folderPermissions: { create: true } }),
+					template:
+						'<div><div v-for="folder in folders" :key="folder.id" data-test-id="agent-folder-card">{{ folder.name }}</div></div>',
+				},
+				AgentFolderToolbar: true,
+				AgentFolderDialog: true,
 				ProjectHeader: { template: '<div><slot /></div>' },
 				InsightsSummary: true,
 				N8nEmptyState: { template: '<div />' },
@@ -218,6 +280,184 @@ beforeEach(() => {
 afterEach(() => {
 	let wrapper: (typeof activeWrappers)[number] | undefined;
 	while ((wrapper = activeWrappers.shift())) wrapper.unmount();
+});
+
+beforeEach(() => {
+	foldersEnabled.value = false;
+	folderReadAllowed.value = true;
+	mocks.routeFolderId = undefined;
+	mocks.getProjectFolders.mockResolvedValue({ data: [], count: 0 });
+});
+
+describe('AgentsListView — folder pagination', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+		mocks.routeProjectId = 'project-1';
+		foldersEnabled.value = true;
+		templatesEnabled.value = false;
+		mocks.listAgentsPage.mockResolvedValue({ count: 75, data: [agent('a1', 'Support Agent')] });
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('shares one page limit and total across folder-only, mixed, and Agent-only pages', async () => {
+		const firstFolders = Array.from({ length: 50 }, (_, index) => folder(`f${index}`));
+		const lastFolders = Array.from({ length: 5 }, (_, index) => folder(`f${index + 50}`));
+		mocks.getProjectFolders
+			.mockResolvedValueOnce({ data: firstFolders, count: 55 })
+			.mockResolvedValueOnce({ data: lastFolders, count: 55 })
+			.mockResolvedValueOnce({ data: [], count: 55 });
+		const firstAgents = Array.from({ length: 45 }, (_, index) =>
+			agent(`a${index}`, `Agent ${index}`),
+		);
+		const lastAgents = Array.from({ length: 30 }, (_, index) =>
+			agent(`a${index + 45}`, `Agent ${index + 45}`),
+		);
+		mocks.listAgentsPage
+			.mockResolvedValueOnce({ count: 75, data: firstAgents.slice(0, 1) })
+			.mockResolvedValueOnce({ count: 75, data: firstAgents })
+			.mockResolvedValueOnce({ count: 75, data: lastAgents });
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(50);
+		expect(wrapper.findAll('[data-test-id="agent-card"]')).toHaveLength(0);
+		expect(layout.props('totalItems')).toBe(130);
+		expect(mocks.getProjectFolders).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			{ resourceType: 'agent', skip: 0, take: 50, sortBy: 'updatedAt:desc' },
+			{ parentFolderId: PROJECT_ROOT },
+			expect.arrayContaining(['agentCount', 'subFolderCount', 'createdAt', 'updatedAt']),
+		);
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({
+			skip: 0,
+			take: 1,
+			filter: { parentFolderId: null },
+		});
+
+		layout.vm.$emit('update:pagination-and-sort', { page: 2 });
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(mocks.getProjectFolders.mock.lastCall?.[2]).toMatchObject({ skip: 50, take: 50 });
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({ skip: 0, take: 45 });
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(5);
+		expect(wrapper.findAll('[data-test-id="agent-card"]')).toHaveLength(45);
+		expect(
+			wrapper.findAll('[data-test-id="agent-folder-card"], [data-test-id="agent-card"]')[5].text(),
+		).toBe('Agent 0');
+
+		layout.vm.$emit('update:pagination-and-sort', { page: 3 });
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(mocks.getProjectFolders.mock.lastCall?.[2]).toMatchObject({ skip: 100, take: 50 });
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({ skip: 45, take: 50 });
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(0);
+		expect(wrapper.findAll('[data-test-id="agent-card"]')).toHaveLength(30);
+		expect(layout.props('totalItems')).toBe(130);
+	});
+
+	it('uses the selected page size and sort for both resources, then resets search to page one', async () => {
+		mocks.routeFolderId = 'support';
+		mocks.getProjectFolders.mockResolvedValue({ data: [folder('f1')], count: 12 });
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		layout.vm.$emit('update:pagination-and-sort', { page: 2, pageSize: 10, sort: 'nameDesc' });
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(mocks.getProjectFolders.mock.lastCall?.[2]).toEqual({
+			resourceType: 'agent',
+			skip: 10,
+			take: 10,
+			sortBy: 'name:desc',
+		});
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({
+			skip: 0,
+			take: 9,
+			sortBy: 'name:desc',
+			filter: { parentFolderId: 'support' },
+		});
+
+		layout.vm.$emit('update:search', 'Triage');
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(mocks.getProjectFolders.mock.lastCall?.[2]).toMatchObject({ skip: 0, take: 10 });
+		expect(mocks.getProjectFolders.mock.lastCall?.[3]).toEqual({
+			parentFolderId: 'support',
+			name: 'Triage',
+		});
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({
+			skip: 0,
+			take: 9,
+			filter: { query: 'Triage', parentFolderId: 'support', includeDescendants: true },
+		});
+	});
+
+	it.each(['license', 'permission', 'overview'])(
+		'keeps the list flat without folder access: %s',
+		async (reason) => {
+			if (reason === 'license') foldersEnabled.value = false;
+			if (reason === 'permission') folderReadAllowed.value = false;
+			if (reason === 'overview') mocks.routeProjectId = undefined;
+			mocks.listAgentsPageGlobal.mockResolvedValue({
+				count: 75,
+				data: [agent('a1', 'Support Agent')],
+			});
+			const wrapper = await mountView();
+
+			expect(mocks.getProjectFolders).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'AgentFolderBrowser' }).exists()).toBe(false);
+			const list = reason === 'overview' ? mocks.listAgentsPageGlobal : mocks.listAgentsPage;
+			expect(list.mock.lastCall?.at(-1)).toMatchObject({ skip: 0, take: 50, filter: undefined });
+		},
+	);
+
+	it('clears folder rows and refetches a flat list when folder access is removed', async () => {
+		mocks.getProjectFolders.mockResolvedValue({ data: [folder('f1')], count: 1 });
+		const wrapper = await mountView();
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(1);
+
+		folderReadAllowed.value = false;
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(0);
+		expect(mocks.listAgentsPage.mock.lastCall?.[2]).toMatchObject({
+			skip: 0,
+			take: 50,
+			filter: undefined,
+		});
+		expect(wrapper.findComponent({ name: 'ResourcesListLayout' }).props('totalItems')).toBe(75);
+	});
+
+	it('ignores a folder response from the previous project', async () => {
+		let resolveFolders!: (result: {
+			data: ChangeLocationSearchResponseItem[];
+			count: number;
+		}) => void;
+		mocks.getProjectFolders.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveFolders = resolve;
+			}),
+		);
+		const wrapper = await mountView();
+
+		navigation.value = { projectId: 'project-2' };
+		await flushPromises();
+		resolveFolders({ data: [folder('old')], count: 1 });
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-test-id="agent-folder-card"]')).toHaveLength(0);
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(1);
+		expect(mocks.listAgentsPage.mock.lastCall?.[1]).toBe('project-2');
+	});
 });
 
 describe('AgentsListView — project page', () => {

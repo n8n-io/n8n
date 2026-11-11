@@ -5,6 +5,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -38,6 +41,8 @@ import AgentFolderBrowser from '../components/AgentFolderBrowser.vue';
 import AgentFolderToolbar from '../components/AgentFolderToolbar.vue';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { N8nText } from '@n8n/design-system';
+import { getProjectFolders } from '@/features/core/folders/folders.api';
+import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 
 function isAgentResource(value: unknown): value is AgentResource {
 	return typeof value === 'object' && value !== null && 'id' in value;
@@ -57,8 +62,9 @@ const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 const folderBrowser = ref<InstanceType<typeof AgentFolderBrowser>>();
-const folderCount = ref(0);
+const folders = ref<ChangeLocationSearchResponseItem[]>([]);
 const moveAction = ref<AgentFolderAction | null>(null);
 const moveProjectId = ref('');
 const folderId = computed(() =>
@@ -94,13 +100,22 @@ const filters = ref<BaseFilters>({
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
-const totalAgents = ref(0);
+const totalItems = ref(0);
 const loading = ref(true);
 
-const projectId = computed(() => route.params.projectId as string | undefined);
-const showFolders = computed(() =>
-	Boolean(projectId.value && settingsStore.isFoldersFeatureEnabled),
+const projectId = computed(() =>
+	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
 );
+const showFolders = computed(() => {
+	const global = getResourcePermissions(usersStore.currentUser?.globalScopes).folder;
+	const project = getResourcePermissions(
+		projectsStore.myProjects.find((item) => item.id === projectId.value)?.scopes,
+	).folder;
+
+	return Boolean(
+		projectId.value && settingsStore.isFoldersFeatureEnabled && (global.list || project.list),
+	);
+});
 
 // Exposure covers both arms: control users see the default empty state, test users
 // the templates intro. The source mirrors the layout's empty-state condition, so a
@@ -109,8 +124,7 @@ const showFolders = computed(() =>
 watch(
 	() =>
 		!loading.value &&
-		allAgents.value.length === 0 &&
-		folderCount.value === 0 &&
+		totalItems.value === 0 &&
 		!filters.value.search &&
 		templatesVariant.value !== undefined,
 	(surfaceVisible) => {
@@ -129,10 +143,10 @@ const sortFns = {
 
 function buildListFilter() {
 	const folderFilter = filters.value.search
-		? projectId.value && folderId.value
+		? showFolders.value && folderId.value
 			? { parentFolderId: folderId.value, includeDescendants: true }
 			: {}
-		: projectId.value && settingsStore.isFoldersFeatureEnabled
+		: showFolders.value
 			? { parentFolderId: folderId.value }
 			: {};
 	const filter = {
@@ -147,7 +161,15 @@ let fetchGeneration = 0;
 
 async function fetchAgents() {
 	const requestGeneration = ++fetchGeneration;
-	const shouldDelayLoading = allAgents.value.length > 0;
+	const requestProjectId = projectId.value;
+	const requestFolderId = folderId.value;
+	const search = filters.value.search;
+	const skip = (currentPage.value - 1) * pageSize.value;
+	const take = pageSize.value;
+	const sortBy = currentSort.value;
+	const includeFolders = showFolders.value;
+	const filter = buildListFilter();
+	const shouldDelayLoading = allAgents.value.length > 0 || folders.value.length > 0;
 	const delayedLoading = debounce(() => {
 		if (requestGeneration === fetchGeneration) loading.value = true;
 	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
@@ -159,21 +181,52 @@ async function fetchAgents() {
 	}
 
 	try {
+		const folderPage =
+			requestProjectId && includeFolders
+				? await getProjectFolders(
+						rootStore.restApiContext,
+						requestProjectId,
+						{ resourceType: 'agent', skip, take, sortBy },
+						{
+							parentFolderId: requestFolderId ?? PROJECT_ROOT,
+							...(search ? { name: search } : {}),
+						},
+						[
+							'id',
+							'name',
+							'parentFolder',
+							'agentCount',
+							'subFolderCount',
+							'path',
+							'updatedAt',
+							'createdAt',
+						],
+					)
+				: { data: [], count: 0 };
+
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
+		// Workflows list folders first. Share the remaining page slots with Agents.
+		const agentSlots = take - folderPage.data.length;
 		const fetchOptions = {
-			skip: (currentPage.value - 1) * pageSize.value,
-			take: pageSize.value,
-			sortBy: currentSort.value,
-			filter: buildListFilter(),
+			skip: Math.max(0, skip - folderPage.count),
+			// The API requires a positive take. Folder-only pages still need the Agent count.
+			take: Math.max(1, agentSlots),
+			sortBy,
+			filter,
 		};
-		const { count, data } = projectId.value
-			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
+		const { count, data } = requestProjectId
+			? await listAgentsPage(rootStore.restApiContext, requestProjectId, fetchOptions)
 			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
 		if (requestGeneration !== fetchGeneration) {
 			return;
 		}
 
-		allAgents.value = data;
-		totalAgents.value = count;
+		folders.value = folderPage.data;
+		allAgents.value = agentSlots > 0 ? data : [];
+		totalItems.value = folderPage.count + count;
 	} finally {
 		delayedLoading.cancel();
 		if (requestGeneration === fetchGeneration) loading.value = false;
@@ -255,12 +308,15 @@ function openMove(agent: AgentResource) {
 }
 
 function foldersChanged() {
-	void folderBrowser.value?.refresh();
 	void fetchAgents();
 }
 
-watch(folderId, () => {
+watch([projectId, folderId, showFolders], () => {
 	currentPage.value = 1;
+	folders.value = [];
+	allAgents.value = [];
+	totalItems.value = 0;
+
 	void fetchAgents();
 });
 
@@ -271,8 +327,9 @@ function onAgentUnpublished(updated: AgentResource) {
 
 function onAgentDeleted(agentId: string) {
 	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
-	totalAgents.value = Math.max(0, totalAgents.value - 1);
-	if (allAgents.value.length === 0 && currentPage.value > 1) {
+	totalItems.value = Math.max(0, totalItems.value - 1);
+
+	if (allAgents.value.length === 0 && folders.value.length === 0 && currentPage.value > 1) {
 		currentPage.value -= 1;
 	}
 	void fetchAgents();
@@ -379,7 +436,7 @@ onMounted(async () => {
 			:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
 			:type-props="{ itemSize: 80 }"
 			:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-			:total-items="totalAgents"
+			:total-items="totalItems"
 			:has-empty-state="!showFolders"
 			:dont-perform-sorting-and-filtering="true"
 			:shareable="false"
@@ -417,13 +474,12 @@ onMounted(async () => {
 					ref="folderBrowser"
 					:project-id="projectId"
 					:folder-id="folderId"
+					:folders="folders"
 					:search="filters.search"
-					:sort-by="currentSort"
 					hide-toolbar
 					@changed="foldersChanged"
-					@count="folderCount = $event"
 				/>
-				<template v-if="!loading && totalAgents === 0 && folderCount === 0">
+				<template v-if="!loading && totalItems === 0">
 					<N8nText v-if="filters.search" color="text-base" size="medium">
 						{{ locale.baseText('agents.noResults') }}
 					</N8nText>
@@ -445,14 +501,14 @@ onMounted(async () => {
 
 			<template #empty>
 				<AgentsListIntro
-					v-if="showTemplatesIntro && folderCount === 0"
+					v-if="showTemplatesIntro"
 					:disabled="!canCreateAgent"
 					@create-blank="onCreateBlank"
 					@submit="onCreateFromPrompt"
 					@select="onCreateFromTemplate"
 				/>
 				<ResourcesListEmptyState
-					v-else-if="folderCount === 0"
+					v-else
 					resource-key="agents"
 					:button-disabled="!canCreateAgent"
 					@click:button="onCreateAgentClick"
@@ -471,7 +527,7 @@ onMounted(async () => {
 			<template #item="{ item: data }">
 				<div
 					v-if="isAgentResource(data)"
-					:draggable="Boolean(projectId && settingsStore.isFoldersFeatureEnabled)"
+					:draggable="showFolders"
 					@dragstart="folderBrowser?.startAgentDrag(data.id)"
 					@dragend="folderBrowser?.endDrag()"
 				>

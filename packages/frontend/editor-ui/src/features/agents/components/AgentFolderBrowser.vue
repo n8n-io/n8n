@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-	N8nActionToggle,
-	N8nCard,
-	N8nIcon,
-	N8nPagination,
-	N8nText,
-	type PathItem,
-} from '@n8n/design-system';
+import { N8nActionToggle, N8nCard, N8nIcon, N8nText, type PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -17,7 +10,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import FolderCardSubtitle from '@/features/core/folders/components/FolderCardSubtitle.vue';
-import { getFolderPath, getProjectFolders, moveFolder } from '@/features/core/folders/folders.api';
+import { getFolderPath, moveFolder } from '@/features/core/folders/folders.api';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { invalidateProjectAgentsListCache } from '../composables/useProjectAgentsList';
@@ -30,11 +23,11 @@ import AgentFolderToolbar from './AgentFolderToolbar.vue';
 const props = defineProps<{
 	projectId: string;
 	folderId: string | null;
+	folders: ChangeLocationSearchResponseItem[];
 	search: string;
-	sortBy: string;
 	hideToolbar?: boolean;
 }>();
-const emit = defineEmits<{ changed: []; count: [value: number] }>();
+const emit = defineEmits<{ changed: [] }>();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
@@ -44,13 +37,9 @@ const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const { canUpdate, canDelete } = useAgentPermissions(() => props.projectId);
-const folders = ref<ChangeLocationSearchResponseItem[]>([]);
 const path = ref<PathItem[]>([]);
-const count = ref(0);
-const page = ref(1);
 const action = ref<AgentFolderAction | null>(null);
 const dragged = ref<{ type: 'agent' | 'folder'; id: string } | null>(null);
-const pageSize = 20;
 let generation = 0;
 
 const folderPermissions = computed(() => {
@@ -73,39 +62,11 @@ const breadcrumbs = computed<PathItem[]>(() => [
 
 async function refresh() {
 	const requestGeneration = ++generation;
+	path.value = [];
 
 	if (!folderPermissions.value.list) return;
 
 	try {
-		const response = await getProjectFolders(
-			rootStore.restApiContext,
-			props.projectId,
-			{
-				resourceType: 'agent',
-				skip: (page.value - 1) * pageSize,
-				take: pageSize,
-				sortBy: props.sortBy,
-			},
-			props.search
-				? { name: props.search, parentFolderId: props.folderId ?? PROJECT_ROOT }
-				: { parentFolderId: props.folderId ?? PROJECT_ROOT },
-			[
-				'id',
-				'name',
-				'parentFolder',
-				'agentCount',
-				'subFolderCount',
-				'path',
-				'updatedAt',
-				'createdAt',
-			],
-		);
-
-		if (requestGeneration !== generation) return;
-
-		folders.value = response.data;
-		count.value = response.count;
-		emit('count', response.count);
 		const tree = props.folderId
 			? await getFolderPath(rootStore.restApiContext, props.projectId, props.folderId)
 			: [];
@@ -119,21 +80,19 @@ async function refresh() {
 
 		if (requestGeneration === generation) path.value = items;
 	} catch (cause) {
-		toast.showError(cause, i18n.baseText('agents.folders.error'));
+		if (requestGeneration === generation) {
+			toast.showError(cause, i18n.baseText('agents.folders.error'));
+		}
 	}
 }
 
 watch(
-	() => [props.projectId, props.folderId, props.search, props.sortBy],
+	() => [props.projectId, props.folderId, folderPermissions.value.list],
 	() => {
-		page.value = 1;
 		void refresh();
 	},
 	{ immediate: true },
 );
-watch(page, () => {
-	void refresh();
-});
 
 function createFolder() {
 	action.value = { mode: 'create', parentFolderId: props.folderId };
@@ -299,13 +258,6 @@ defineExpose({
 					@keydown.stop
 			/></template>
 		</N8nCard>
-		<N8nPagination
-			v-if="count > pageSize"
-			v-model:page="page"
-			:total="count"
-			:items-per-page="pageSize"
-			:show-sizes="false"
-		/>
 		<AgentFolderDialog
 			:project-id="projectId"
 			:action="action"
