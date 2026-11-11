@@ -139,7 +139,7 @@ describe('a rejected login', () => {
 			{
 				endpoint,
 				egressFilter: allowAll,
-				baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+				baseFetch,
 			},
 		);
 		const response = await authFetch(BASE_URL);
