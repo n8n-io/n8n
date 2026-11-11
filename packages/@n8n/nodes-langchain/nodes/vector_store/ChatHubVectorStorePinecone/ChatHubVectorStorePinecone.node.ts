@@ -1,3 +1,4 @@
+import type { Document } from '@langchain/core/documents';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -133,6 +134,8 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStor
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
+	// Document indexes with integrated embedding need the query text
+	searchByText: true,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
 			'chatHubVectorStorePineconeApi',
@@ -146,14 +149,18 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStor
 			filter,
 		});
 
-		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
-		store.similaritySearchVectorWithScore = async (...args) => {
-			const results = await originalSearch(...args);
-			return results.map(([doc, score]) => [
+		// Both entry points filter, because a document index with integrated embedding searches by
+		// text only. The filter is idempotent, so a text search that delegates to the vector search is fine
+		const sanitize = (results: Array<[Document, number]>): Array<[Document, number]> =>
+			results.map(([doc, score]) => [
 				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
 				score,
 			]);
-		};
+		const vectorSearch = store.similaritySearchVectorWithScore.bind(store);
+		store.similaritySearchVectorWithScore = async (...args) =>
+			sanitize(await vectorSearch(...args));
+		const textSearch = store.similaritySearchWithScore.bind(store);
+		store.similaritySearchWithScore = async (...args) => sanitize(await textSearch(...args));
 
 		return store;
 	},
