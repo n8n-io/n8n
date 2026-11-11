@@ -335,7 +335,7 @@ catalogs:
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
-    vue-i18n: ^11.4.4
+    vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
