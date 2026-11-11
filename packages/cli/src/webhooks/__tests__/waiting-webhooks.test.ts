@@ -396,7 +396,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: '123', suffix: nodeId },
 				method: 'GET',
-				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				url: `/webhook/123/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
 			});
 
@@ -460,7 +460,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: '123', suffix: 'wait-node-id' },
 				method: 'GET',
-				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
+				url: `/webhook/123/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-signature`,
 				headers: { host: 'example.com' },
 			});
 
@@ -554,7 +554,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				url: `/webhook-waiting/execution-id?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}%2F${nodeId}`,
+				url: `/webhook-waiting/123?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}%2F${nodeId}`,
 				headers: { host: 'example.com' },
 			});
 
@@ -593,7 +593,7 @@ describe('WaitingWebhooks', () => {
 				);
 
 			const res = buildRes();
-			const signedPath = `/webhook-waiting/execution-id/${nodeId}?approved=true`;
+			const signedPath = `/webhook-waiting/123/${nodeId}?approved=true`;
 			const signature = require('crypto')
 				.createHmac('sha256', TEST_HMAC_SECRET)
 				.update(signedPath)
@@ -696,7 +696,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: '123', suffix: undefined },
 				method: 'GET',
-				url: `/webhook-waiting/execution-id?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}&foo=bar`,
+				url: `/webhook-waiting/123?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}&foo=bar`,
 				headers: { host: 'example.com' },
 			});
 			req.query = { [WAITING_TOKEN_QUERY_PARAM]: resumeToken, foo: 'bar' };
@@ -710,7 +710,7 @@ describe('WaitingWebhooks', () => {
 			expect((calledReq as express.Request).query).not.toHaveProperty(WAITING_TOKEN_QUERY_PARAM);
 			expect((calledReq as express.Request).query).toEqual({ foo: 'bar' });
 			expect((calledReq as express.Request).url).not.toContain(resumeToken);
-			expect((calledReq as express.Request).url).toBe('/webhook-waiting/execution-id?foo=bar');
+			expect((calledReq as express.Request).url).toBe('/webhook-waiting/123?foo=bar');
 		});
 	});
 
