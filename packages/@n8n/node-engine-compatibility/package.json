@@ -34,6 +34,7 @@
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@n8n/workflow-engine-check": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
     "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",
