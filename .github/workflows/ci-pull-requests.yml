@@ -9,8 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-policy:
+    uses: ./.github/workflows/ci-pr-policy-reusable.yml
+
   install-and-build:
     name: Install & Build
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
@@ -149,6 +154,7 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               .github/workflows/ci-pull-requests.yml
+              .github/workflows/ci-pr-policy-reusable.yml
               .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
@@ -296,6 +302,8 @@ jobs:
 
   format-check:
     name: Format check
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
@@ -612,6 +620,7 @@ jobs:
     name: Required Checks
     needs:
       [
+        pr-policy,
         install-and-build,
         format-check,
         unit-test,
@@ -631,15 +640,21 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+      - name: Checkout CI filter
+        if: needs.pr-policy.outputs.skip-ci != 'true'
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
       - name: Validate required checks
+        if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+      - name: Pass automated release PR
+        if: needs.pr-policy.outputs.skip-ci == 'true'
+        run: echo 'CI is not required for automated release PRs.'
 
   # A red `chore: Bundle/*` PR blocks publishing every fix batched into it, so the
   # failure is announced instead of waiting to be noticed. Only fires in n8n-private,

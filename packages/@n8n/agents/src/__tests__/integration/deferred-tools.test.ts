@@ -28,20 +28,19 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-generate-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math.',
+				'You are testing deferred tool discovery. For arithmetic requests, first call find_tools, then call call_tool with the exact returned tool name. Do not answer from mental math.',
 			)
+			.toolDeferral({ mode: 'tool-catalog' })
 			.deferredTool(multiplyTool, { search: { topK: 2 } });
 
 		const result = await agent.generate(
-			'Use deferred tools to multiply 6 and 7. Search for the tool, load it, call it, then answer with the product.',
+			'Use deferred tools to multiply 6 and 7. Find the tool, call it, then answer with the product.',
 		);
 
 		const toolNames = result.toolCalls?.map((toolCall) => toolCall.tool) ?? [];
-		expect(toolNames).toEqual(
-			expect.arrayContaining(['search_tools', 'load_tool', 'multiply_numbers']),
-		);
+		expect(toolNames).toEqual(expect.arrayContaining(['find_tools', 'call_tool']));
 
-		const multiplyCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'multiply_numbers');
+		const multiplyCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'call_tool');
 		expect(multiplyCall?.output).toEqual({ product: 42 });
 	});
 
@@ -55,25 +54,22 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-stream-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually.',
+				'You are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually.',
 			)
+			.toolDeferral({ mode: 'tool-catalog' })
 			.deferredTool(countCharactersTool);
 
 		const { stream } = await agent.stream(
-			'Use deferred tools to count the characters in the text "n8n". Search for the tool, load it, call it, then answer with the length.',
+			'Use deferred tools to count the characters in the text "n8n". Find the tool, call it, then answer with the length.',
 		);
 
 		const chunks = await collectStreamChunks(stream);
 		const toolResults = chunksOfType(chunks, 'tool-result');
 		const toolNames = toolResults.map((toolResult) => toolResult.toolName);
 
-		expect(toolNames).toEqual(
-			expect.arrayContaining(['search_tools', 'load_tool', 'count_characters']),
-		);
+		expect(toolNames).toEqual(expect.arrayContaining(['find_tools', 'call_tool']));
 
-		const countResult = toolResults.find(
-			(toolResult) => toolResult.toolName === 'count_characters',
-		);
+		const countResult = toolResults.find((toolResult) => toolResult.toolName === 'call_tool');
 		expect(countResult?.output).toEqual({ length: 3 });
 		expect(collectTextDeltas(chunks)).toMatch(/3/);
 	});
@@ -100,13 +96,14 @@ describe('deferred tools integration', () => {
 		const agent = new Agent('deferred-suspend-test')
 			.model(getModel('anthropic'))
 			.instructions(
-				'You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool.',
+				'You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call find_tools, then call call_tool with delete_temp_file. Do not skip the tool.',
 			)
+			.toolDeferral({ mode: 'tool-catalog' })
 			.deferredTool(deleteTool)
 			.checkpoint('memory');
 
 		const firstResult = await agent.generate(
-			'Use deferred tools to delete /tmp/deferred-tool-test.txt. Search for the tool, load it, and call it with that exact path.',
+			'Use deferred tools to delete /tmp/deferred-tool-test.txt. Find the tool and call it with that exact path.',
 		);
 
 		expect(firstResult.pendingSuspend).toHaveLength(1);
@@ -125,7 +122,7 @@ describe('deferred tools integration', () => {
 		expect(resumeResult.toolCalls).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					tool: 'delete_temp_file',
+					tool: 'call_tool',
 					output: { deleted: true, path: '/tmp/deferred-tool-test.txt' },
 				}),
 			]),

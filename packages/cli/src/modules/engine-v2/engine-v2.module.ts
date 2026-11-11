@@ -28,6 +28,9 @@ export class EngineV2Module implements ModuleInterface {
 
 	async init() {
 		const engineConfig = Container.get(EngineConfig);
+		const logger = Container.get(Logger).scoped('engine-v2');
+		const { EngineMtls } = await import('./engine-mtls.js');
+		const mtls = Container.get(EngineMtls);
 
 		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
 			throw new UserError('The in-process engine does not support queue mode.');
@@ -35,17 +38,21 @@ export class EngineV2Module implements ModuleInterface {
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);
+			mtls.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl });
+		} else if (mtls.enabled) {
+			throw new UserError(
+				'N8N_ENGINE_TLS_* applies only to N8N_ENGINE_MODE=remote. Both planes run in this process and talk over loopback, so remove the TLS settings.',
+			);
 		} else if (!engineConfig.authSecret) {
 			// Both planes live in this process, so a generated secret is enough and the
 			// integrated engine is never unauthenticated. A separate DP must be given one.
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
-		// Before the engine, so nothing is reported with no server to receive it.
+		// Before the engine, so its first step can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
-		const logger = Container.get(Logger).scoped('engine-v2');
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
@@ -153,9 +160,12 @@ export class EngineV2Module implements ModuleInterface {
 			await Promise.all([this.channelPublisher?.stop(), this.channelSubscriber?.stop()]);
 		}
 
-		// After the engine, so its final flush still has somewhere to land.
+		// After the engine, so a step that still runs can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
+
+		const { EngineMtls } = await import('./engine-mtls.js');
+		Container.get(EngineMtls).close();
 	}
 }
 

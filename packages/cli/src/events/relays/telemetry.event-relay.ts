@@ -298,6 +298,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-probed': (event) => this.credentialsProbed(event),
+			'oauth-client-registered': (event) => this.oauthClientRegistered(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -388,7 +389,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
-			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'memory-guard-execution-stopped': async (event) =>
+				await this.memoryGuardExecutionStopped(event),
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
@@ -1331,6 +1333,19 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			credential_id: credentialId,
 			outcome,
+		});
+	}
+
+	private oauthClientRegistered(event: RelayEventMap['oauth-client-registered']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT, {
+			user_id: event.userId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			method: event.method,
+			success: event.success,
+			cimd_enabled: event.cimdEnabled,
+			server_supports_cimd: event.serverSupportsCimd,
+			server_supports_dcr: event.serverSupportsDcr,
 		});
 	}
 
@@ -2289,6 +2304,23 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	/**
+	 * Owner of the workflow's personal project, or the instance owner for a team project.
+	 * `undefined` when a lookup fails, so the event still goes out, without a user.
+	 */
+	private async getWorkflowOwnerId(workflowId: string) {
+		try {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+			if (project.type === 'personal') {
+				const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+				return owner?.id;
+			}
+			return await this.getInstanceOwnerId();
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
 	private async getInstanceOwnerId() {
 		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
@@ -2382,8 +2414,11 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
-	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+	private async memoryGuardExecutionStopped(
+		event: RelayEventMap['memory-guard-execution-stopped'],
+	) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			user_id: await this.getWorkflowOwnerId(event.workflowId),
 			workflow_id: event.workflowId,
 			execution_mode: event.mode,
 			reason: event.reason,

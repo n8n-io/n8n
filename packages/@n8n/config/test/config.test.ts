@@ -88,6 +88,7 @@ describe('GlobalConfig', () => {
 		},
 		editorBaseUrl: '',
 		webhookUrl: '',
+		agentWebhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -309,6 +310,7 @@ describe('GlobalConfig', () => {
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
+			agentWebhook: 'agent-webhook',
 			disableProductionWebhooksOnMainProcess: false,
 			disableUi: false,
 			form: 'form',
@@ -769,6 +771,7 @@ describe('GlobalConfig', () => {
 			maxTotalMb: 1536,
 			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 300,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
