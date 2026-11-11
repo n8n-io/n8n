@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import {
@@ -153,12 +155,14 @@ function renderModal({
 	skillId,
 	existingSkillNames,
 	settings,
+	realMenu = false,
 	...skillRefOptions
 }: {
 	onConfirm?: AgentSkillModalData['onConfirm'];
 	skill?: AgentSkill;
 	skillId?: string;
 	existingSkillNames?: string[];
+	realMenu?: boolean;
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
 		AgentSkillModalData,
@@ -199,6 +203,10 @@ function renderModal({
 		global: {
 			stubs: {
 				AgentModal: AgentModalTestStub,
+				I18nT: {
+					props: ['keypath'],
+					template: '<span>{{ keypath }} <slot name="repo" /></span>',
+				},
 				MarkdownEditor: {
 					props: ['modelValue'],
 					emits: ['update:modelValue'],
@@ -212,10 +220,10 @@ function renderModal({
 				N8nCallout: {
 					template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
 				},
-				N8nActionDropdown: ActionDropdownStub,
-				ActionDropdown: ActionDropdownStub,
+				N8nActionDropdown: realMenu ? false : ActionDropdownStub,
+				ActionDropdown: realMenu ? false : ActionDropdownStub,
 				N8nHeading: { template: '<h2><slot /></h2>' },
-				N8nIcon: { template: '<i />' },
+				N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
 				N8nText: { template: '<span><slot /></span>' },
 			},
 		},
@@ -1095,8 +1103,10 @@ describe('AgentSkillModal', () => {
 					'Use for research',
 				);
 				await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
-				expect(getByTestId(`agent-skill-scope-option-${availableTo}`)).toHaveTextContent(label);
-				await fireEvent.click(getByTestId(`agent-skill-scope-option-${availableTo}`));
+				expect(getByTestId(`agent-skill-menu-scope-option-${availableTo}`)).toHaveTextContent(
+					label,
+				);
+				await fireEvent.click(getByTestId(`agent-skill-menu-scope-option-${availableTo}`));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 				expect(onConfirm).toHaveBeenCalledWith(
@@ -1115,7 +1125,7 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-skill-picker-create'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-			expect(await findByTestId('agent-skill-scope-option-project')).toHaveTextContent(
+			expect(await findByTestId('agent-skill-menu-scope-option-project')).toHaveTextContent(
 				'agents.builder.skills.availableTo.project',
 			);
 		});
@@ -1189,8 +1199,8 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-skill-picker-create'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-			expect(await findByTestId('agent-skill-scope-option-project')).toBeInTheDocument();
-			expect(queryByTestId('agent-skill-scope-option-instance')).not.toBeInTheDocument();
+			expect(await findByTestId('agent-skill-menu-scope-option-project')).toBeInTheDocument();
+			expect(queryByTestId('agent-skill-menu-scope-option-instance')).not.toBeInTheDocument();
 		});
 
 		it('keeps a skill read-only and reports the error when its access check fails', async () => {
@@ -1257,7 +1267,7 @@ describe('AgentSkillModal', () => {
 					onRemove: vi.fn(),
 					...extra,
 				});
-				await result.findByTestId('agent-skill-scope');
+				await result.findByTestId('agent-skill-scope-badge');
 				return result;
 			}
 
@@ -1299,7 +1309,7 @@ describe('AgentSkillModal', () => {
 					{ canCreateInstanceSkills: true },
 				);
 
-				await fireEvent.click(getByTestId('agent-skill-scope-option-instance'));
+				await fireEvent.click(getByTestId('agent-skill-menu-scope-option-instance'));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 				expect(onConfirm).toHaveBeenCalledWith(
@@ -1326,7 +1336,7 @@ describe('AgentSkillModal', () => {
 				label: string,
 			): Promise<void> {
 				const option = result
-					.getAllByTestId(/^agent-skill-scope-option-/)
+					.getAllByTestId(/^agent-skill-menu-scope-option-/)
 					.find((element) => element.textContent?.trim() === label);
 				if (!option) throw new Error(`Expected the ${label} option`);
 				await fireEvent.click(option);
@@ -1582,15 +1592,23 @@ describe('AgentSkillModal from Settings', () => {
 					sourceId: 'src-1',
 					type: 'github',
 					label: 'acme/skills',
+					ref: 'main',
 					webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
 					canStopSyncing: false,
 				},
 			},
 		});
 
-		expect(getByTestId('agent-skill-synced-banner')).toHaveTextContent(
-			'settings.context.skills.synced.banner acme/skills',
+		const banner = getByTestId('agent-skill-synced-banner');
+		expect(banner).toHaveTextContent('settings.context.skills.synced.banner acme/skills · main');
+		const sourceLink = within(banner).getByRole('link', { name: 'acme/skills · main' });
+		expect(sourceLink).toHaveAttribute(
+			'href',
+			'https://github.com/acme/skills/tree/main/brand-voice',
 		);
+		expect(sourceLink).toHaveAttribute('target', '_blank');
+		expect(within(banner).getByTestId('agent-skill-open-in-github')).toBeInTheDocument();
+		expect(getByTestId('agent-skill-open-in-github').closest('footer')).toBeNull();
 		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-open-in-github')).toHaveAttribute(
 			'href',
@@ -1611,6 +1629,7 @@ describe('AgentSkillModal from Settings', () => {
 					sourceId: 'src-1',
 					type: 'github',
 					label: 'acme/skills',
+					ref: 'main',
 					webUrl: 'https://github.com/acme/skills',
 					canStopSyncing: true,
 				},
@@ -1618,7 +1637,10 @@ describe('AgentSkillModal from Settings', () => {
 			},
 		});
 
-		const button = getByTestId('agent-skill-stop-syncing');
+		const button = within(getByTestId('agent-skill-synced-banner')).getByTestId(
+			'agent-skill-stop-syncing',
+		);
+		expect(button.closest('footer')).toBeNull();
 		expect(button).toHaveTextContent('settings.context.skills.stopSyncing.action');
 		await userEvent.click(button);
 
@@ -1639,6 +1661,7 @@ describe('AgentSkillModal from Settings', () => {
 					sourceId: 'src-1',
 					type: 'github',
 					label: 'acme/skills',
+					ref: 'main',
 					webUrl: 'https://github.com/acme/skills',
 					canStopSyncing: true,
 				},
@@ -1666,6 +1689,7 @@ describe('AgentSkillModal from Settings', () => {
 					sourceId: 'src-1',
 					type: 'github',
 					label: 'acme/skills',
+					ref: 'main',
 					webUrl: 'https://github.com/acme/skills',
 					canStopSyncing: false,
 				},
@@ -1684,6 +1708,7 @@ describe('AgentSkillModal from Settings', () => {
 				sourceId: 'src-1',
 				type: 'github',
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills',
 				canStopSyncing: true,
 			},
@@ -1695,7 +1720,7 @@ describe('AgentSkillModal from Settings', () => {
 		});
 
 		expect(await findByTestId('agent-skill-synced-banner')).toHaveTextContent(
-			'settings.context.skills.synced.banner acme/skills',
+			'settings.context.skills.synced.banner acme/skills · main',
 		);
 		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
@@ -1750,6 +1775,59 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge).toHaveTextContent('Global');
 		// A locked scope is a plain badge, not a button that opens the scope menu.
 		expect(badge.tagName).toBe('SPAN');
+	});
+
+	it('shows the project icon in a display-only scope badge', async () => {
+		mockedStore(useProjectsStore).myProjects = [
+			{ id: 'p1', name: 'Marketing', type: 'team', icon: { type: 'emoji', value: '🚀' } },
+		] as ProjectListItem[];
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'project:p1', label: 'Marketing', icon: 'layers' }],
+				initialScope: 'project:p1',
+			},
+		});
+
+		const badge = getByTestId('agent-skill-scope-badge');
+		expect(badge).toHaveTextContent(/🚀\s*Marketing/);
+		expect(badge.tagName).toBe('SPAN');
+		await userEvent.click(badge);
+		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
+		expect(badge.querySelector('button')).toBeNull();
+	});
+
+	it('keeps a synced skill scope locked without a badge dropdown', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			onConfirm,
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' },
+					{ value: 'project:p1', label: 'Marketing', icon: 'layers' },
+				],
+				initialScope: 'instance',
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					ref: 'release/next',
+					webUrl: 'https://github.com/acme/skills/tree/release/next',
+					canStopSyncing: false,
+				},
+			},
+		});
+
+		expect(getByTestId('agent-skill-source-link')).toHaveTextContent('acme/skills · release/next');
+		expect(getByTestId('agent-skill-menu-change-scope')).toBeDisabled();
+		await userEvent.click(getByTestId('agent-skill-scope-badge'));
+		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-skill-menu-scope-option-project:p1'));
+		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Global');
+		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
 	describe('moving a saved skill from Settings', () => {
@@ -1937,7 +2015,7 @@ describe('AgentSkillModal from Settings', () => {
 
 		expect(getByText('settings.context.skills.modal.mcp.toggle')).toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
-		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await userEvent.click(getByTestId('agent-skill-menu-mcp'));
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 		expect(onConfirm).toHaveBeenCalledWith(
@@ -1984,10 +2062,10 @@ function makeDetail(
 	};
 }
 
-/** Picks a scope from the scope badge menu by its label. */
+/** Picks a scope from the header menu by its label. */
 async function chooseScopeOption(label: string) {
 	const option = screen
-		.getAllByTestId(/^agent-skill-scope-option-/)
+		.getAllByTestId(/^agent-skill-menu-scope-option-/)
 		.find((element) => element.textContent?.trim() === label);
 	if (!option) throw new Error(`Expected the ${label} option`);
 	await userEvent.click(option);
@@ -2036,7 +2114,7 @@ describe('Assistant availability', () => {
 			},
 		});
 		await selectScope(label);
-		await userEvent.click(getByTestId('skill-assistant-availability'));
+		await userEvent.click(getByTestId('agent-skill-menu-assistant'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(
@@ -2064,7 +2142,7 @@ describe('Assistant availability', () => {
 			},
 		});
 		await selectScope(label);
-		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await userEvent.click(getByTestId('agent-skill-menu-mcp'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(
@@ -2083,7 +2161,7 @@ describe('Assistant availability', () => {
 		});
 		const save = getByTestId('agent-skill-create-save');
 		expect(save).toBeDisabled();
-		await userEvent.click(getByTestId('skill-assistant-availability'));
+		await userEvent.click(getByTestId('agent-skill-menu-assistant'));
 		expect(save).not.toBeDisabled();
 		await userEvent.click(save);
 		await waitFor(() =>
@@ -2129,6 +2207,61 @@ describe('header and footer', () => {
 		const { getByTestId } = renderModal({ skill: savedSkill, skillId: 'tone', settings });
 
 		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-fixed-size', 'true');
+	});
+
+	it('edits Assistant and MCP availability from the menu', async () => {
+		const onConfirm = vi.fn();
+		const { container, getByTestId, getByRole, queryByRole } = renderModal({
+			realMenu: true,
+			skill: savedSkill,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, availableToAssistant: false, availableToMCP: true },
+		});
+
+		expect(container.querySelector('header [role="switch"]')).toBeNull();
+		expect(queryByRole('menu')).not.toBeInTheDocument();
+		const openMenu = async () =>
+			await userEvent.click(getByTestId('agent-skill-header-menu').querySelector('button')!);
+		await openMenu();
+		expect(getByTestId('skill-assistant-availability')).not.toBeChecked();
+		expect(getByTestId('skill-available-to-mcp')).toBeChecked();
+		await userEvent.click(
+			getByRole('menuitem', { name: 'settings.context.skills.assistant.toggle' }),
+		);
+		await openMenu();
+		expect(getByTestId('skill-assistant-availability')).toBeChecked();
+		await userEvent.click(
+			getByRole('menuitem', { name: 'settings.context.skills.modal.mcp.toggle' }),
+		);
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				availableToAssistant: true,
+				availableToMCP: false,
+			}),
+		);
+	});
+
+	it('disables availability menu items while saving', async () => {
+		let finish: (value?: undefined) => void = () => {};
+		const onConfirm = vi.fn(
+			async () => await new Promise<undefined>((resolve) => (finish = resolve)),
+		);
+		const { getByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, availableToAssistant: false, availableToMCP: false },
+		});
+		await userEvent.click(getByTestId('agent-skill-menu-assistant'));
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(getByTestId('agent-skill-menu-assistant')).toBeDisabled();
+		expect(getByTestId('agent-skill-menu-mcp')).toBeDisabled();
+		finish();
+		await waitFor(() => expect(getByTestId('agent-skill-menu-mcp')).not.toBeDisabled());
 	});
 
 	it('detaches a hub skill with the agent toggle in the header menu', async () => {

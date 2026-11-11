@@ -201,6 +201,16 @@ describe('SkillSourceConnectDialog', () => {
 		showErrorMock.mockClear();
 	});
 
+	it('shows the project scope and its icon in the review', async () => {
+		mockedStore(useProjectsStore).myProjects[0].icon = { type: 'emoji', value: '🚀' };
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render();
+		await selectScope(view, 'project:team-1');
+		await review(view);
+
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
+	});
+
 	describe('the connect form', () => {
 		it('asks for the scope, the credential and the repository in one modal', async () => {
 			const view = render();

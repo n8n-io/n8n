@@ -3,6 +3,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { I18nT } from 'vue-i18n';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -20,7 +21,6 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionDropdown,
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nFormInput,
@@ -37,6 +37,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
+import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
+import { parseScope } from '@/features/settings/context/skills.utils';
+import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -299,7 +302,8 @@ function onAddManually() {
 
 const showScope = computed(() => !!props.data.scopeOptions?.length && step.value !== 'preview');
 const canChangeScope = computed(
-	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
+	() =>
+		showScope.value && !syncedFrom.value && !props.data.scopeLockedReason && !props.data.readOnly,
 );
 const availableTo = ref<AgentSkillAvailability>('project');
 /**
@@ -415,7 +419,7 @@ const cannotEdit = computed(
 const editorLocked = computed(() => isReadOnly.value || isSaving.value);
 const savedTarget = computed<AgentSkillAvailability | undefined>(() => skillAccess.value?.scope);
 const showAvailabilitySelect = computed(() => {
-	if (!props.data.skillRefsEnabled || step.value === 'preview') return false;
+	if (!props.data.skillRefsEnabled || step.value === 'preview' || syncedFrom.value) return false;
 	if (!isEditing.value) return true;
 	return !!savedTarget.value && !cannotEdit.value;
 });
@@ -458,6 +462,17 @@ const selectedScopeValue = computed(() => (showScope.value ? scope.value : avail
 const selectedScope = computed(() =>
 	scopeChoices.value.find((choice) => choice.value === selectedScopeValue.value),
 );
+const selectedScopeSkill = computed(() => {
+	const target = showScope.value
+		? parseScope(scope.value)
+		: { scope: availableTo.value, projectId: props.data.projectId };
+	return {
+		scope: target.scope,
+		projectId: target.scope === 'project' ? (target.projectId ?? null) : null,
+		projectName: selectedScope.value?.label ?? null,
+		projectType: skillAccess.value?.projectType ?? null,
+	};
+});
 const showScopeBadge = computed(
 	() =>
 		isFormStep.value &&
@@ -486,7 +501,6 @@ function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {
 		testId: `${testIdPrefix}${choice.value}`,
 	}));
 }
-const scopeBadgeItems = computed(() => scopeItems('agent-skill-scope-option-'));
 
 /** "Add to <agent>" toggles the attachment of a hub skill to the agent it was opened from. */
 const showAttachToggle = computed(
@@ -511,6 +525,26 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			// The row draws a switch that is on: the skill is attached.
 			customClass: $style.menuItem,
 			testId: 'agent-skill-menu-attach',
+		});
+	}
+	if (showAssistantToggle.value) {
+		items.push({
+			id: 'assistant',
+			label: i18n.baseText('settings.context.skills.assistant.toggle'),
+			icon: 'sparkles',
+			disabled: editorLocked.value,
+			customClass: $style.menuItem,
+			testId: 'agent-skill-menu-assistant',
+		});
+	}
+	if (showMcpToggle.value) {
+		items.push({
+			id: 'mcp',
+			label: i18n.baseText('settings.context.skills.modal.mcp.toggle'),
+			icon: 'mcp',
+			disabled: editorLocked.value,
+			customClass: $style.menuItem,
+			testId: 'agent-skill-menu-mcp',
 		});
 	}
 	if (showScopeBadge.value) {
@@ -543,6 +577,14 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 });
 
 function onHeaderMenuSelect(action: string) {
+	if (action === 'assistant' && showAssistantToggle.value && !editorLocked.value) {
+		availableToAssistant.value = !availableToAssistant.value;
+		return;
+	}
+	if (action === 'mcp' && showMcpToggle.value && !editorLocked.value) {
+		availableToMCP.value = !availableToMCP.value;
+		return;
+	}
 	if (action.startsWith('scope:')) {
 		onScopeChoice(action.slice('scope:'.length));
 		return;
@@ -1214,27 +1256,11 @@ function onRemove() {
 				:content="data.scopeLockedReason"
 				placement="bottom"
 			>
-				<N8nActionDropdown
-					:items="scopeBadgeItems"
-					:disabled="!scopeEditable"
-					placement="bottom-start"
-					data-testid="agent-skill-scope"
-					@select="onHeaderMenuSelect"
-				>
-					<template #activator>
-						<N8nBadge
-							variant="outline"
-							:clickable="scopeEditable"
-							:class="$style.scopeBadge"
-							data-testid="agent-skill-scope-badge"
-						>
-							<template #leading>
-								<N8nIcon :icon="selectedScope.icon" size="small" />
-							</template>
-							{{ selectedScope.label }}
-						</N8nBadge>
-					</template>
-				</N8nActionDropdown>
+				<SkillScopeBadge
+					:skill="selectedScopeSkill"
+					:label="selectedScope.label"
+					data-testid="agent-skill-scope-badge"
+				/>
 			</N8nTooltip>
 		</template>
 		<template v-if="isFormStep && headerMenuItems.length > 0" #titleSuffix>
@@ -1243,6 +1269,7 @@ function onRemove() {
 				placement="bottom-start"
 				activator-icon="ellipsis"
 				activator-size="small"
+				:teleported="false"
 				data-testid="agent-skill-header-menu"
 				@select="onHeaderMenuSelect"
 			>
@@ -1258,6 +1285,34 @@ function onRemove() {
 							data-testid="agent-skill-menu-attach-switch"
 						/>
 					</span>
+					<span
+						v-else-if="item.id === 'assistant' || item.id === 'mcp'"
+						:class="$style.menuSwitchRow"
+					>
+						<span>
+							{{ item.label }}
+							<N8nTooltip
+								v-if="item.id === 'mcp'"
+								:content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')"
+							>
+								<N8nIcon
+									icon="circle-help"
+									size="small"
+									data-testid="skill-available-to-mcp-help"
+								/>
+							</N8nTooltip>
+						</span>
+						<N8nSwitch
+							:model-value="item.id === 'assistant' ? availableToAssistant : availableToMCP"
+							:disabled="editorLocked"
+							:class="$style.menuSwitch"
+							tabindex="-1"
+							aria-hidden="true"
+							:data-testid="
+								item.id === 'assistant' ? 'skill-assistant-availability' : 'skill-available-to-mcp'
+							"
+						/>
+					</span>
 					<N8nTooltip
 						v-else-if="item.id === 'delete' && data.deleteDisabledReason"
 						:content="data.deleteDisabledReason"
@@ -1269,33 +1324,7 @@ function onRemove() {
 				</template>
 			</N8nActionDropdown>
 		</template>
-		<template
-			v-if="isFormStep && (showAssistantToggle || showMcpToggle || latestVersion)"
-			#headerActions
-		>
-			<N8nSwitch
-				v-if="showAssistantToggle"
-				id="skill-assistant-availability"
-				v-model="availableToAssistant"
-				:label="i18n.baseText('settings.context.skills.assistant.toggle')"
-				:disabled="editorLocked"
-				data-testid="skill-assistant-availability"
-			/>
-			<N8nSwitch
-				v-if="showMcpToggle"
-				id="skill-available-to-mcp"
-				v-model="availableToMCP"
-				:label="i18n.baseText('settings.context.skills.modal.mcp.toggle')"
-				:disabled="editorLocked"
-				data-testid="skill-available-to-mcp"
-			>
-				<template #label="{ label }">
-					{{ label }}
-					<N8nTooltip :content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')">
-						<N8nIcon icon="circle-help" size="small" data-testid="skill-available-to-mcp-help" />
-					</N8nTooltip>
-				</template>
-			</N8nSwitch>
+		<template v-if="isFormStep && latestVersion" #headerActions>
 			<N8nButton
 				v-if="latestVersion"
 				variant="ghost"
@@ -1366,19 +1395,50 @@ function onRemove() {
 			/>
 		</div>
 		<template v-else-if="step !== 'select'">
-			<N8nCallout
+			<div
 				v-if="syncedFrom && step === 'edit'"
-				theme="info"
-				icon="git-branch"
-				:class="[$style.callout, isFormStep && $style.calloutInset]"
+				:class="$style.syncedBar"
 				data-testid="agent-skill-synced-banner"
 			>
-				{{
-					i18n.baseText('settings.context.skills.synced.banner', {
-						interpolate: { repo: syncedFrom.label },
-					})
-				}}
-			</N8nCallout>
+				<N8nText size="small" :class="$style.syncedInfo">
+					<N8nIcon icon="git-branch" :size="14" />
+					<I18nT keypath="settings.context.skills.synced.banner" scope="global" tag="span">
+						<template #repo>
+							<a
+								:href="syncedFrom.webUrl"
+								target="_blank"
+								rel="noopener noreferrer"
+								:class="$style.sourceLink"
+								data-testid="agent-skill-source-link"
+								>{{ sourceLineOf(syncedFrom) }}</a
+							>
+						</template>
+					</I18nT>
+				</N8nText>
+				<div :class="$style.syncedActions">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:href="syncedFrom.webUrl"
+						target="_blank"
+						data-testid="agent-skill-open-in-github"
+					>
+						<template #icon><N8nIcon icon="external-link" :size="16" /></template>
+						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
+					</N8nButton>
+					<N8nButton
+						v-if="canStopSyncing"
+						variant="ghost"
+						size="small"
+						:disabled="isSaving || isStoppingSync"
+						data-testid="agent-skill-stop-syncing"
+						@click="onStopSyncing"
+					>
+						<template #icon><N8nIcon icon="unlink" :size="16" /></template>
+						{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
+					</N8nButton>
+				</div>
+			</div>
 			<N8nCallout
 				v-else-if="data.readOnly"
 				theme="info"
@@ -1587,27 +1647,6 @@ function onRemove() {
 				{{ removeLabel }}
 			</N8nButton>
 		</template>
-		<template v-else-if="syncedFrom && step === 'edit'" #footerLeft>
-			<N8nButton
-				variant="ghost"
-				:href="syncedFrom?.webUrl"
-				target="_blank"
-				data-testid="agent-skill-open-in-github"
-			>
-				<template #icon><N8nIcon icon="external-link" :size="16" /></template>
-				{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-			</N8nButton>
-			<N8nButton
-				v-if="canStopSyncing"
-				variant="ghost"
-				:disabled="isSaving || isStoppingSync"
-				data-testid="agent-skill-stop-syncing"
-				@click="onStopSyncing"
-			>
-				<template #icon><N8nIcon icon="unlink" :size="16" /></template>
-				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
-			</N8nButton>
-		</template>
 		<template v-else-if="step === 'select'" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills">
 				<template #icon><N8nIcon icon="settings" :size="16" /></template>
@@ -1714,6 +1753,7 @@ function onRemove() {
 
 .menuSwitchRow {
 	display: flex;
+	width: 100%;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--lg);
@@ -1721,6 +1761,8 @@ function onRemove() {
 
 .menuSwitch {
 	pointer-events: none;
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 /* A pinned skill: a warning strip over the file list and the form, as the design does. */
@@ -1758,13 +1800,39 @@ function onRemove() {
 	color: var(--color--text--shade-1);
 }
 
-.compareBar {
+.compareBar,
+.syncedBar {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--lg);
 	border-bottom: var(--border);
 	background-color: var(--color--background--light-2);
+}
+
+.syncedBar {
+	flex-wrap: wrap;
+}
+
+.syncedInfo {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.sourceLink {
+	color: var(--color--text--shade-1);
+	text-decoration: underline;
+	overflow-wrap: anywhere;
+}
+
+.syncedActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .compareSelect {
@@ -1819,15 +1887,13 @@ function onRemove() {
 	}
 }
 
-/* Geist sits high in its line box, as in the Settings scope badge. */
-.scopeBadge > :global(.n8n-text) {
-	line-height: 1;
-	padding-block: var(--spacing--5xs);
-}
-
 @media (max-width: 480px) {
 	.content {
 		flex-direction: column;
+	}
+
+	.syncedInfo {
+		flex-basis: 100%;
 	}
 }
 </style>

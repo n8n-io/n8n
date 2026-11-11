@@ -215,6 +215,8 @@ export type SkillSyncedFrom = {
 	type: 'github';
 	/** Such as `owner/repository`. */
 	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
 	/** The page of the skill in the source. */
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */

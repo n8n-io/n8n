@@ -33,6 +33,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import SkillSourceReview from './SkillSourceReview.vue';
+import SkillScopeBadge from './SkillScopeBadge.vue';
 import { useSkillsStore } from '../skills.store';
 import { isSelectableSkill, sourceLineOf } from '../skillSourceReview.utils';
 import { parseScope, useSkillSourceReasons } from '../skills.utils';
@@ -171,6 +172,15 @@ watch([scope, credentialId, repository], () => {
 const selectedScope = computed(() =>
 	props.scopeOptions.find((option) => option.value === scope.value),
 );
+const scopeSkill = computed(() => {
+	const target = parseScope(scope.value);
+	return {
+		scope: target.scope,
+		projectId: target.projectId ?? null,
+		projectName: selectedScope.value?.label ?? null,
+		projectType: null,
+	};
+});
 
 const scopeItems = computed<SelectItem[]>(() =>
 	props.scopeOptions.map((option) => ({
@@ -709,6 +719,7 @@ function onInteractOutside(event: Event) {
 		<N8nDialogBody v-else-if="discovery" :class="$style.body">
 			<div :class="$style.source">
 				<N8nText bold data-test-id="skill-source-summary">{{ sourceLine }}</N8nText>
+				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
 				<N8nText
 					v-if="alsoConnected"
 					size="small"
@@ -784,6 +795,7 @@ function onInteractOutside(event: Event) {
 .source {
 	display: flex;
 	flex-direction: column;
+	align-items: flex-start;
 	gap: var(--spacing--5xs);
 }
 
