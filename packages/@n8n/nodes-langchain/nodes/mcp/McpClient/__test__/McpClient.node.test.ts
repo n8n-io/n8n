@@ -1,5 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -333,34 +334,113 @@ describe('McpClient', () => {
 		});
 
 		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
-			'simulated tool-level error',
+			'MCP server returned an error for tool "get_weather"',
 		);
 	});
 
-	it('should return an error as json if the tool result has isError: true and continueOnFail is true (version 1.1+)', async () => {
-		executeFunctions.getNode.mockReturnValue({
-			id: '123',
-			name: 'MCP Client',
-			type: '@n8n/n8n-nodes-langchain.mcpClient',
-			typeVersion: 1.1,
-			position: [0, 0],
-			parameters: {},
+	describe('tool-call error context (version 1.1)', () => {
+		beforeEach(() => {
+			executeFunctions.getNode.mockReturnValue({
+				...executeFunctions.getNode(),
+				typeVersion: 1.1,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
 		});
-		executeFunctions.getNodeParameter.mockImplementation(
-			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
-		);
-		client.callTool.mockResolvedValue({
-			isError: true,
-			content: [{ type: 'text', text: 'simulated tool-level error' }],
+
+		it('should return a successful tool result after connecting', async () => {
+			const content = [{ type: 'text' as const, text: 'Weather in Berlin is sunny' }];
+			client.callTool.mockResolvedValue({ isError: false, content });
+
+			await expect(new McpClient().execute.call(executeFunctions)).resolves.toEqual([
+				[{ json: { content }, pairedItem: { item: 0 } }],
+			]);
 		});
-		executeFunctions.continueOnFail.mockReturnValue(true);
 
-		const result = await new McpClient().execute.call(executeFunctions);
+		it('should identify the MCP server and failed tool and preserve the remote error as a description', async () => {
+			// NODE-5528: A tool can deny an operation after the connection succeeds.
+			const remoteMessage = 'The caller does not have permission';
+			client.callTool.mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: remoteMessage }],
+			});
 
-		expect(result).toEqual([
-			[{ json: { error: { message: 'simulated tool-level error' } }, pairedItem: { item: 0 } }],
-		]);
+			const execution = new McpClient().execute.call(executeFunctions);
+
+			await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+			expect(client.callTool).toHaveBeenCalledWith(
+				{ name: defaultParams['tool.value'], arguments: defaultParams.jsonInput },
+				undefined,
+				{ timeout: defaultParams.options.timeout },
+			);
+			await expect(execution).rejects.toMatchObject({
+				message: expect.stringMatching(/MCP server/i),
+				description: expect.stringContaining(remoteMessage),
+				context: { itemIndex: 0 },
+			});
+			await expect(execution).rejects.toHaveProperty(
+				'message',
+				expect.stringContaining(defaultParams['tool.value']),
+			);
+		});
 	});
+
+	it.each([
+		{
+			scenario: 'remote text',
+			content: [{ type: 'text' as const, text: 'The caller does not have permission' }],
+			message: 'The caller does not have permission',
+		},
+		{
+			scenario: 'no text content',
+			content: [],
+			message: 'Tool "get_weather" returned an error',
+		},
+	])(
+		'should preserve the error message with $scenario when continuing on fail (version 1.1+)',
+		async ({ content, message }) => {
+			executeFunctions.getNode.mockReturnValue({
+				id: '123',
+				name: 'MCP Client',
+				type: '@n8n/n8n-nodes-langchain.mcpClient',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: {},
+			});
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+			client.callTool.mockResolvedValue({
+				isError: true,
+				content,
+			});
+			executeFunctions.continueOnFail.mockReturnValue(true);
+
+			const result = await new McpClient().execute.call(executeFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							error: {
+								message,
+								description: expect.stringContaining(
+									'MCP server returned an error for tool "get_weather"',
+								),
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(result).toMatchObject([
+				[{ json: { error: { description: expect.stringContaining(message) } } }],
+			]);
+		},
+	);
 
 	it('should throw a generic error if isError: true with no text content (version 1.1+)', async () => {
 		executeFunctions.getNode.mockReturnValue({
@@ -379,9 +459,10 @@ describe('McpClient', () => {
 			content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
 		});
 
-		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
-			'Tool "get_weather" returned an error',
-		);
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toMatchObject({
+			message: 'MCP server returned an error for tool "get_weather"',
+			description: expect.stringContaining('Tool "get_weather" returned an error'),
+		});
 	});
 
 	it('should throw an error if the tool call fails', async () => {

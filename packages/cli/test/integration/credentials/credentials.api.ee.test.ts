@@ -8,7 +8,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, ListQueryDb } from '@n8n/db';
+import type { Person, Project, User, ListQueryDb } from '@n8n/db';
 import {
 	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -54,7 +54,7 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-let owner: User;
+let owner: Person;
 let admin: User;
 let ownerPersonalProject: Project;
 let member: User;
