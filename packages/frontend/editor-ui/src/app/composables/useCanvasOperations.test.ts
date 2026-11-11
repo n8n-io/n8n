@@ -160,7 +160,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 
 /** Merge v3 computes its main inputs from the `numberInputs` parameter. */
 function createMergeNodeTypeDescription() {
@@ -450,7 +450,7 @@ describe('useCanvasOperations', () => {
 			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
 				workflowDocumentStoreInstance.workflowId,
 				result.id,
-				result.position[1] + AGENT_NODE_SIZE[1] / 2,
+				result.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
 		});
 
@@ -787,7 +787,7 @@ describe('useCanvasOperations', () => {
 			expect(position).toEqual([
 				lastInteracted.position[0] +
 					HORIZONTAL_NODE_STEP +
-					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+					(DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0]),
 				lastInteracted.position[1],
 			]);
 		});

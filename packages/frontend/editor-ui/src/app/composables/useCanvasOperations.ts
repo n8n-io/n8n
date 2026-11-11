@@ -113,7 +113,8 @@ import {
 	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
 import {
-	AGENT_NODE_SIZE,
+	DEFAULT_AGENT_HEIGHT,
+	DEFAULT_AGENT_WIDTH,
 	getAgentNodeHandleOffset,
 	isAgentNodeV2,
 } from '@/features/agents/utils/agentNode';
@@ -1321,7 +1322,7 @@ export function useCanvasOperations() {
 			agentNodeCanvasGeometryStore.setPendingCenterY(
 				workflowDocumentStore.value.workflowId,
 				nodeData.id,
-				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+				nodeData.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
 		}
 
@@ -1913,7 +1914,7 @@ export function useCanvasOperations() {
 					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
 						// The agent card is wider than a default node, so offset by its width
 						// to keep the standard gap to its right edge
-						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+						pushOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
@@ -1926,11 +1927,11 @@ export function useCanvasOperations() {
 								agentNodeCanvasGeometryStore.getNodeHeight(
 									workflowDocumentStore.value.workflowId,
 									lastInteractedWithNodeObject.id,
-								) ?? AGENT_NODE_SIZE[1],
+								) ?? DEFAULT_AGENT_HEIGHT,
 							)
 						: DEFAULT_NODE_SIZE[1] / 2;
 					const targetHandleY = isAgentNodeV2(node)
-						? getAgentNodeHandleOffset(AGENT_NODE_SIZE[1])
+						? getAgentNodeHandleOffset(DEFAULT_AGENT_HEIGHT)
 						: nodeSize[1] / 2;
 					const centeredY =
 						lastInteractedWithNode.value.position[1] + sourceHandleY - targetHandleY;
@@ -1975,7 +1976,7 @@ export function useCanvasOperations() {
 	/**
 	 * Gets the size of a node as the canvas renders it, from its ports. Placement does
 	 * not read the Vue Flow size, because nodes that are not mounted yet have none.
-	 * An agent card uses its measured height when it has one, else AGENT_NODE_SIZE.
+	 * An agent card uses its measured height when it has one, else DEFAULT_AGENT_HEIGHT.
 	 * A node that is not in the workflow yet evaluates its port expressions in a
 	 * workflow of its own, so `$parameter` cannot read another node with the same name.
 	 */
@@ -1993,11 +1994,11 @@ export function useCanvasOperations() {
 
 		if (isAgentNodeV2(node)) {
 			return [
-				AGENT_NODE_SIZE[0],
+				DEFAULT_AGENT_WIDTH,
 				agentNodeCanvasGeometryStore.getNodeHeight(
 					workflowDocumentStore.value.workflowId,
 					node.id,
-				) ?? AGENT_NODE_SIZE[1],
+				) ?? DEFAULT_AGENT_HEIGHT,
 			];
 		}
 
@@ -2385,7 +2386,7 @@ export function useCanvasOperations() {
 		// including the wider agent card offset applied in resolveNodePosition
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
 		}
 		const insertPosition: XYPosition = [
 			sourceNode.position[0] + insertOffset,

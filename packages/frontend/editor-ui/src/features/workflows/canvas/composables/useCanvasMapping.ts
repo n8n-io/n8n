@@ -27,7 +27,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import {
 	isEmptyGroupAnchor,
 	NodeConnectionTypes,
@@ -136,8 +136,8 @@ export function useCanvasMapping({
 				);
 			} else if (render?.type === CanvasNodeRenderType.Agent) {
 				dimensionsById[node.id] = {
-					width: AGENT_NODE_SIZE[0],
-					height: getAgentNodeHeight?.(node.id) ?? AGENT_NODE_SIZE[1],
+					width: DEFAULT_AGENT_WIDTH,
+					height: getAgentNodeHeight?.(node.id) ?? DEFAULT_AGENT_HEIGHT,
 				};
 			}
 		}

@@ -21,7 +21,7 @@ import {
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import type { INodeUi } from '@/Interface';
 import {
 	computeGroupFrameRects,
@@ -365,10 +365,10 @@ describe('useCanvasLayout', () => {
 		expect(result.boundingBox).toEqual({
 			x: 0,
 			y: 0,
-			width: DEFAULT_NODE_SIZE[0] + GRID_SIZE * 8 + AGENT_NODE_SIZE[0],
-			height: AGENT_NODE_SIZE[1],
+			width: DEFAULT_NODE_SIZE[0] + GRID_SIZE * 8 + DEFAULT_AGENT_WIDTH,
+			height: DEFAULT_AGENT_HEIGHT,
 		});
-		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
+		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + DEFAULT_AGENT_HEIGHT / 2);
 	});
 
 	test('should keep a measured agent card on the grid with its handle on the row axis', () => {
@@ -377,7 +377,7 @@ describe('useCanvasLayout', () => {
 			createCanvasGraphNode({
 				id: 'agent',
 				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
-				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				dimensions: { width: DEFAULT_AGENT_WIDTH, height: 356 },
 			}),
 		];
 
@@ -662,7 +662,7 @@ describe('useCanvasLayout', () => {
 			const agent = createCanvasGraphNode({
 				id: 'm1',
 				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
-				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				dimensions: { width: DEFAULT_AGENT_WIDTH, height: 356 },
 				position: { x: 1008, y: 1008 },
 				hidden: true,
 			});
@@ -1529,7 +1529,7 @@ describe('useCanvasLayout', () => {
 				data: agentData,
 			});
 			const merge = createCanvasGraphNode({ id: 'merge', position: { x: 800, y: 64 } });
-			const memberSize = { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+			const memberSize = { width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT };
 			const topNodesRect = { x: 384, y: 0, ...memberSize };
 			const bottomNodesRect = { x: 384, y: 128, ...memberSize };
 			const topFrame = computeGroupFrameRects(topNodesRect).expanded;
