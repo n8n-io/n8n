@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
-import {
-	N8nAssistantAvatar,
-	N8nCard,
-	N8nIcon,
-	N8nLink,
-	N8nText,
-	N8nTimeAgo,
-} from '@n8n/design-system';
+import { N8nAssistantAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -95,7 +88,7 @@ const usageRows = computed(() => {
 			</template>
 			<N8nText size="medium">{{ statusLabel }}</N8nText>
 		</N8nCard>
-		<N8nCard :class="[$style.card, $style.peopleCard]">
+		<N8nCard :class="$style.card">
 			<div :class="$style.section">
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.createdBy')
@@ -106,16 +99,6 @@ const usageRows = computed(() => {
 						i18n.baseText('inbox.selfHealing.metadata.assistant')
 					}}</N8nText>
 				</div>
-			</div>
-			<div :class="$style.section">
-				<N8nText bold color="text-light" size="medium">{{
-					i18n.baseText('inbox.selfHealing.metadata.completed')
-				}}</N8nText>
-				<N8nText size="medium">
-					<time :datetime="detail.completedAt"
-						><N8nTimeAgo :date="detail.completedAt" :locale="rootStore.defaultLocale"
-					/></time>
-				</N8nText>
 			</div>
 		</N8nCard>
 		<N8nCard :class="$style.card">
@@ -159,7 +142,7 @@ const usageRows = computed(() => {
 					</span>
 				</N8nLink>
 			</div>
-			<div :class="$style.section">
+			<div :class="[$style.section, $style.executionSection]">
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.execution')
 				}}</N8nText>
@@ -175,19 +158,23 @@ const usageRows = computed(() => {
 					:class="$style.plainLink"
 					data-test-id="self-healing-execution-link"
 				>
-					{{
-						i18n.baseText('inbox.selfHealing.metadata.executionLink', {
-							interpolate: { id: detail.execution.id },
-						})
-					}}
+					<span :class="$style.link">
+						<N8nIcon icon="flag-hole" size="medium" :class="$style.workflowIcon" />
+						<span :class="$style.workflowName">{{
+							i18n.baseText('inbox.selfHealing.metadata.executionLink', {
+								interpolate: { id: detail.execution.id },
+							})
+						}}</span>
+					</span>
 				</N8nLink>
 				<N8nText
 					v-else
-					size="small"
-					color="text-light"
+					size="medium"
+					:class="$style.link"
 					data-test-id="self-healing-execution-unavailable"
 				>
-					{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}
+					<N8nIcon icon="flag-hole" size="medium" :class="$style.workflowIcon" />
+					<span>{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}</span>
 				</N8nText>
 			</div>
 		</N8nCard>
@@ -204,8 +191,8 @@ const usageRows = computed(() => {
 					:class="$style.measurement"
 					:data-test-id="`self-healing-usage-${row.key}`"
 				>
-					<N8nText tag="dt" size="small" color="text-light">{{ row.label }}</N8nText>
-					<N8nText tag="dd" size="small">{{ row.value }}</N8nText>
+					<N8nText tag="dt" size="medium">{{ row.label }}</N8nText>
+					<N8nText tag="dd" size="medium">{{ row.value }}</N8nText>
 				</div>
 			</dl>
 		</N8nCard>
@@ -231,13 +218,10 @@ const usageRows = computed(() => {
 	border-color: var(--border-color);
 	background-color: transparent;
 
+	/* Match the title-to-value gap of the sections inside the card body. */
 	> div {
-		gap: var(--spacing--4xs);
+		gap: var(--spacing--2xs);
 	}
-}
-
-.peopleCard {
-	--n8n--card-body--gap: var(--spacing--sm);
 }
 
 .section {
@@ -245,6 +229,10 @@ const usageRows = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.executionSection {
+	margin-top: var(--spacing--2xs);
 }
 
 .person,
@@ -257,7 +245,12 @@ const usageRows = computed(() => {
 
 .link {
 	align-items: flex-start;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
+}
+
+/* The text link theme uses a lighter shade. Values in this rail use the regular text color. */
+.plainLink .link {
+	color: var(--text-color);
 }
 
 .plainLink:hover,
@@ -279,7 +272,7 @@ const usageRows = computed(() => {
 .usage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	margin: 0;
 }
 
