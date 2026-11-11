@@ -18,7 +18,7 @@ import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
-import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
+import { billingPreview, billingResources, COMMIT_SHA } from '../__tests__/preview.fixtures';
 import { registerDiffSlotStubs } from '../__tests__/slots';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
@@ -315,24 +315,43 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
 			git: { branchName: 'main', commitSha: COMMIT_SHA },
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+		// Extra cards add render and style work under CI load. This case only needs a folder,
+		// two workflows inside it, and one outside it to check partial selection.
+		const { project, payments, reconciliation, reminders, kpiReport } = billingResources;
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			billingPreview({
+				resources: [
+					project,
+					payments,
+					reconciliation,
+					reminders,
+					{ ...kpiReport, parentKey: project.key },
+				],
+				dependencies: [],
+			}),
+		);
 		const { getAllByTestId, getByTestId } = await render();
 		const cardCheckbox = (key: string) =>
 			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 3');
 
 		// The folder card clears the workflows inside the folder, and the card stays open.
 		await userEvent.click(cardCheckbox('folder:f1'));
 		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
 		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
 		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('2 of 5');
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('1 of 3');
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		expect(cardCheckbox('workflow:w1')).toBeChecked();
 		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
+		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 3');
 
 		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
-			workflowIds: ['w1', 'w3', 'w4'],
+			workflowIds: ['w1', 'w3'],
+			folderIds: [],
 		});
 	});
 
@@ -516,7 +535,6 @@ describe('PromotionPreviewView', () => {
 		const blocked = () =>
 			billingPreview({
 				resources: [],
-				changes: [],
 				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
 			});
 
@@ -592,6 +610,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 		});
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
@@ -627,6 +646,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 		});
 	});
 
@@ -640,6 +660,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 			commitMessage: 'Route leads by region',
 		});
 	});
@@ -745,10 +766,40 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledTimes(1);
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should report only the folder and project changes after an Apply that changes no workflow', async () => {
+		confirm.mockResolvedValue('confirm');
+		const { counts } = applied;
+		vi.mocked(api.applyProjectSelection).mockResolvedValue({
+			...applied,
+			counts: {
+				...counts,
+				projects: { ...counts.projects, updated: 1 },
+				folders: { ...counts.folders, created: 1 },
+				workflows: {
+					...counts.workflows,
+					created: 0,
+					updated: 0,
+					publishing: { ...counts.workflows.publishing, blocked: 0, failed: 0 },
+				},
+			},
+		});
+
+		const { getByTestId } = await renderApply();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await waitAllPromises();
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Changes applied',
+			message: 'Created: 1 folder. Updated the project name and details.',
+			type: 'success',
+		});
 	});
 
 	it('should confirm a data table change only when the selection imports it, and keep the selection when the branch moves', async () => {
@@ -777,6 +828,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -791,6 +843,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 			confirmDestructiveChanges: true,
