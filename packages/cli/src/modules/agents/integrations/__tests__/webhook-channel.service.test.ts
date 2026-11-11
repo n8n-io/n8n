@@ -437,6 +437,102 @@ describe('WebhookChannelService', () => {
 		});
 	});
 
+	describe('when new input arrives while an approval waits', () => {
+		function makePendingService() {
+			const service = makeService();
+			service.executionService.findThreadById.mockResolvedValue(mock<AgentExecutionThread>());
+			service.executionService.findLatestSuspendedRun.mockResolvedValue(
+				mock<AgentExecution>({ id: 'execution-1' }),
+			);
+			service.orchestrator.resumeForChat.mockImplementation(() =>
+				streamOf({ type: 'text-delta', id: 't0', delta: 'I did not send it.' }),
+			);
+			return service;
+		}
+		const continueConversation = { input: 'Never mind', conversation: 'c-1' };
+
+		it('declines the action, then runs the input and replies to it only', async () => {
+			const { respond, orchestrator, checkpointStorage, chatExecution } = makePendingService();
+			checkpointStorage.findSuspendedForThread
+				.mockResolvedValueOnce(pendingCheckpoint())
+				.mockResolvedValue(null);
+
+			await expect(respond(continueConversation)).resolves.toMatchObject({
+				status: 200,
+				body: { output: [{ content: [{ text: 'Hello' }] }] },
+			});
+			expect(orchestrator.resumeForChat).toHaveBeenCalledTimes(1);
+			expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					resumeData: { approved: false },
+					expectedMemory: {
+						threadId: 'agent-1:webhook:c-1',
+						resourceId: 'integration:webhook:c-1',
+					},
+				}),
+			);
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+			expect(chatExecution.cancelSessionSuspension).not.toHaveBeenCalled();
+		});
+
+		it('declines each action that the declined run asks for next', async () => {
+			const { respond, orchestrator, checkpointStorage } = makePendingService();
+			const next = pendingCheckpoint();
+			next.pendingToolCalls = {
+				'call-2': { ...next.pendingToolCalls['call-1'], toolCallId: 'call-2', runId: 'run-2' },
+			};
+			checkpointStorage.findSuspendedForThread
+				.mockResolvedValueOnce(pendingCheckpoint())
+				.mockResolvedValueOnce(next)
+				.mockResolvedValue(null);
+
+			await respond(continueConversation);
+
+			expect(orchestrator.resumeForChat.mock.calls.map(([call]) => call.toolCallId)).toEqual([
+				'call-1',
+				'call-2',
+			]);
+		});
+
+		it('cancels the run when the model keeps asking for approval', async () => {
+			const { respond, orchestrator, checkpointStorage, chatExecution } = makePendingService();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(pendingCheckpoint());
+
+			await respond(continueConversation);
+
+			expect(orchestrator.resumeForChat).toHaveBeenCalledTimes(5);
+			expect(chatExecution.cancelSessionSuspension).toHaveBeenCalledWith(
+				'agent-1',
+				'agent-1:webhook:c-1',
+				'execution-1',
+			);
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('cancels a run that waits for other input without a resume', async () => {
+			const { respond, orchestrator, checkpointStorage, chatExecution } = makePendingService();
+			const other = pendingCheckpoint();
+			other.pendingToolCalls['call-1'].resumeSchema = { type: 'object' };
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(other);
+
+			await respond(continueConversation);
+
+			expect(orchestrator.resumeForChat).not.toHaveBeenCalled();
+			expect(chatExecution.cancelSessionSuspension).toHaveBeenCalled();
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('looks for no approval in a new conversation', async () => {
+			const { respond, checkpointStorage } = makePendingService();
+
+			await respond();
+
+			expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('decide', () => {
 		function makeDecideService(agent?: ProjectAgent) {
 			const service = makeService(agent);

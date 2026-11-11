@@ -6,17 +6,8 @@ import {
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { z } from 'zod';
 
-/**
- * The resume schemas of a standard approval. The second one adds the optional
- * `reason` that the schema had for a short time, so an approval that a run
- * suspended on then still counts.
- */
-const approvalResumeJsonSchemas = [
-	zodToJsonSchema(APPROVAL_RESUME_SCHEMA),
-	zodToJsonSchema(APPROVAL_RESUME_SCHEMA.extend({ reason: z.string().optional() })),
-];
+const approvalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
 
 /**
  * Returns the payload of a plain approval: approve or deny, and nothing else to
@@ -27,10 +18,7 @@ export function parseStandardApprovalSuspension(suspension: {
 	resumeSchema?: unknown;
 }): ApprovalSuspendPayload | undefined {
 	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
-	if (
-		!payload.success ||
-		!approvalResumeJsonSchemas.some((schema) => isDeepStrictEqual(suspension.resumeSchema, schema))
-	) {
+	if (!payload.success || !isDeepStrictEqual(suspension.resumeSchema, approvalResumeJsonSchema)) {
 		return undefined;
 	}
 	return payload.data;

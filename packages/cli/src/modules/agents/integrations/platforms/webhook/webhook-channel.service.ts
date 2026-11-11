@@ -45,6 +45,9 @@ import { authenticateWebhookRequest } from './webhook-auth';
 
 const MAX_LOGGED_ERROR_LENGTH = 500;
 
+/** A model that keeps calling actions that need approval stops after this many declines. */
+const MAX_APPROVAL_DECLINES = 5;
+
 export interface WebhookChannelReply {
 	status: number;
 	body: unknown;
@@ -72,7 +75,8 @@ const approvalNotFound = () =>
  * Runs the published agent for one webhook request and returns the reply. The
  * run has no queue: the caller holds the connection, and the admission check
  * rejects a second turn while one runs in the same conversation. An action that
- * needs approval stops the run, and the reply gives a URL for the decision.
+ * needs approval stops the run, and the reply gives a URL for the decision. New
+ * input in the conversation declines the action instead.
  */
 @Service()
 export class WebhookChannelService {
@@ -100,6 +104,7 @@ export class WebhookChannelService {
 			await this.authenticate(agent, channel, request.headers);
 			const { input, conversationId } = parseResponsesRequest(request.body);
 			const conversation = await this.resolveConversation(agent.id, conversationId);
+			await this.declinePendingApprovals(agent, conversation, request.abortSignal);
 			const stream = this.orchestrator.executeForChatPublished({
 				agentId: agent.id,
 				projectId: agent.projectId,
@@ -372,6 +377,48 @@ export class WebhookChannelService {
 			if (!(error instanceof UserError)) throw error;
 		}
 		return findPendingStandardApproval(checkpoint, { runId, toolCallId, ...conversation.memory });
+	}
+
+	/**
+	 * Declines the actions that wait for approval, so new input can run. A caller
+	 * that lost the reply has no approval URL, so it could not unblock the
+	 * conversation otherwise.
+	 */
+	private async declinePendingApprovals(
+		agent: ProjectAgent,
+		conversation: WebhookConversation,
+		abortSignal: AbortSignal,
+	) {
+		if (conversation.sessionMode === 'new') return;
+		for (let declines = 0; declines < MAX_APPROVAL_DECLINES; declines++) {
+			const checkpoint = await this.checkpointStorage.findSuspendedForThread(
+				agent.id,
+				conversation.threadId,
+			);
+			const pending = Object.values(checkpoint?.pendingToolCalls ?? {}).find(
+				(call) => call.suspended,
+			);
+			if (!checkpoint || !pending?.suspended) return;
+			const { toolCallId, runId } = pending;
+			const expected = { runId, toolCallId, ...conversation.memory };
+			if (!findPendingStandardApproval(checkpoint, expected)) break;
+			// The declined run can answer, but the reply is for the new input only.
+			await this.readSegment(
+				this.orchestrator.resumeForChat({
+					agentId: agent.id,
+					projectId: agent.projectId,
+					runId,
+					toolCallId,
+					resumeData: { approved: false },
+					integrationType: WEBHOOK_INTEGRATION_TYPE,
+					expectedMemory: conversation.memory,
+					allowBackgroundTasks: false,
+					abortSignal,
+				}),
+			);
+		}
+		// The run waits for other input, or the model keeps asking for approval.
+		await this.cancelSuspension(agent.id, conversation.threadId);
 	}
 
 	/**

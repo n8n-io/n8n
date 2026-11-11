@@ -1,7 +1,6 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { z } from 'zod';
 
 import { findPendingStandardApproval, parseStandardApprovalSuspension } from '../standard-approval';
 
@@ -13,16 +12,6 @@ describe('parseStandardApprovalSuspension', () => {
 		expect(parseStandardApprovalSuspension({ suspendPayload: payload, resumeSchema })).toEqual(
 			payload,
 		);
-	});
-
-	it('accepts the resume schema that had an optional reason', () => {
-		const withReason = zodToJsonSchema(
-			APPROVAL_RESUME_SCHEMA.extend({ reason: z.string().optional() }),
-		);
-
-		expect(
-			parseStandardApprovalSuspension({ suspendPayload: payload, resumeSchema: withReason }),
-		).toEqual(payload);
 	});
 
 	it.each([
