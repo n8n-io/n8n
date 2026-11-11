@@ -152,6 +152,12 @@ describe('createClientCredentialsTokenSource', () => {
 	it.each([
 		['the field is missing', { token_type: 'Bearer' }],
 		['the field is empty', { access_token: '' }],
+		[
+			'the field holds nothing but whitespace, which is sent as nothing at all',
+			{
+				access_token: '  ',
+			},
+		],
 	])('fails when %s', async (_name, grant) => {
 		const { fetchImpl } = granting(grant);
 
@@ -199,5 +205,15 @@ describe('createClientCredentialsTokenSource', () => {
 		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
 
 		expect(redirectOf(calls)).toBe('manual');
+	});
+
+	it('sends the token as the wire carries it, not as the login server padded it', async () => {
+		const { calls, fetchImpl } = granting({ access_token: '  at-55119a7bd3c8e2066fab  ' });
+		const source = createClientCredentialsTokenSource(login(), fetchImpl);
+
+		const token = await source.getToken();
+
+		expect(calls).toHaveLength(1);
+		expect(token).toBe('at-55119a7bd3c8e2066fab');
 	});
 });

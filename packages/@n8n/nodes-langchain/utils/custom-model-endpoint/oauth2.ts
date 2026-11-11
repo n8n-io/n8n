@@ -71,11 +71,13 @@ function reasonFor(text: string, status: number, login: OAuth2Login): string {
 	return truncateMessage(stated);
 }
 
+/** Trimmed because `Headers` trims it anyway, and a padded token is not worth sending. */
 export function accessTokenIn(parsed: unknown): string {
-	if (!isRecord(parsed) || typeof parsed.access_token !== 'string' || !parsed.access_token) {
-		throw new OperationalError('The login server returned no access token');
-	}
-	return parsed.access_token;
+	const stated =
+		isRecord(parsed) && typeof parsed.access_token === 'string' ? parsed.access_token : '';
+	const token = stated.trim();
+	if (token.length === 0) throw new OperationalError('The login server returned no access token');
+	return token;
 }
 
 function statedLifetime(parsed: unknown): number {
