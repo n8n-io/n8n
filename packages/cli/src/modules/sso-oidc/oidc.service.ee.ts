@@ -8,9 +8,9 @@ import {
 	isPerson,
 	isValidEmail,
 	GLOBAL_MEMBER_ROLE,
+	type Person,
 	PersonRepository,
 	SettingsRepository,
-	type User,
 	UserRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -290,7 +290,7 @@ export class OidcService {
 		callbackUrl: URL,
 		storedState: string,
 		storedNonce: string,
-	): Promise<{ user: User; idToken?: string }> {
+	): Promise<{ user: Person; idToken?: string }> {
 		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
@@ -385,7 +385,7 @@ export class OidcService {
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
+			const { user: newUser } = await this.personRepository.createPersonWithProject(
 				{
 					firstName: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
 					lastName: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,
@@ -597,13 +597,13 @@ export class OidcService {
 	}
 
 	private async applySsoProvisioning(
-		user: User,
+		person: Person,
 		claims: Record<string, unknown>,
 		userInfo: Record<string, unknown>,
 	) {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildOidcClaimsContext(claims, userInfo);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(person, context);
 			return;
 		}
 
@@ -611,9 +611,9 @@ export class OidcService {
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
 		// Called even when the claim is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
+		await this.provisioningService.provisionInstanceRoleForUser(person, instanceRole);
 		if (projectRoleMapping) {
-			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
+			await this.provisioningService.provisionProjectRolesForUser(person.id, projectRoleMapping);
 		}
 	}
 

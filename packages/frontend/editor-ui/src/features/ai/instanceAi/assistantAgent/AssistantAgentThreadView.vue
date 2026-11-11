@@ -310,15 +310,16 @@ function dismissFixWithAiOffer(): void {
 	if (offer) dismissedExecutionId.value = offer.executionId;
 }
 
-function handleFixWithAiFromOffer(): void {
+async function handleFixWithAiFromOffer(): Promise<void> {
 	const offer = activeFixWithAiOffer.value;
-	if (!offer) return;
+	if (!offer || !panel.value) return;
+	// Hidden before the send settles, so a second click cannot send it twice.
 	dismissedExecutionId.value = offer.executionId;
-	// Names the failed run, so the agent reads that execution instead of
-	// guessing from the list. A run that n8n did not save has no list entry.
-	panel.value?.sendMessageFromOutside(
+	// Sent past the composer, so the user's draft and staged chips stay. Names the
+	// failed run, so the agent reads that execution instead of guessing from the
+	// list. A run that n8n did not save has no list entry.
+	const result = await panel.value.sendHostMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		[],
 		{
 			attachments: [
 				{
@@ -330,6 +331,10 @@ function handleFixWithAiFromOffer(): void {
 			],
 		},
 	);
+	// A refused send leaves the user nothing to retry with, so offer it again.
+	if (result !== 'sent' && dismissedExecutionId.value === offer.executionId) {
+		dismissedExecutionId.value = null;
+	}
 }
 
 const activeAgentHref = computed(() => {
@@ -599,7 +604,11 @@ function removeStagedNodes(chipId: string): void {
 						</template>
 						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
 						<template #footer-start="{ disabled }">
-							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
+							<InstanceAiInputMenu
+								:disabled="disabled"
+								:project-id="props.projectId"
+								@attach-files="panel?.openFilePicker()"
+							/>
 						</template>
 					</AgentChatPanel>
 				</div>

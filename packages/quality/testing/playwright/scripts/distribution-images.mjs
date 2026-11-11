@@ -21,6 +21,7 @@ const SERVICE_IMAGES = {
 	kafka: ['kafka'],
 	kent: [],
 	keycloak: ['keycloak'],
+	litellm: ['litellm', 'caddy'],
 	loadBalancer: ['caddy'],
 	localstack: ['localstack'],
 	mailpit: ['mailpit'],
