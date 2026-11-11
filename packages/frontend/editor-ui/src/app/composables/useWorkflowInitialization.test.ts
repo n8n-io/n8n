@@ -5,7 +5,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
+import { VIEWS } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -107,9 +112,13 @@ const mockWorkflowDocumentStore = vi.hoisted(() => ({
 	setHomeProject: vi.fn(),
 	setScopes: vi.fn(),
 	setParentFolder: vi.fn(),
+	setHydrated: vi.fn(),
 	onNameChange: vi.fn(),
 }));
-vi.mock('@/app/stores/workflowDocument.store', () => ({
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	// Keeps the real `deriveHomeProject` so the recovery-path test below
+	// exercises actual derivation logic, not a hand-rolled stand-in.
+	...(await importOriginal<typeof import('@/app/stores/workflowDocument.store')>()),
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn((id: string) => id),
 	disposeWorkflowDocumentStore: vi.fn(),
@@ -121,20 +130,24 @@ const mockRoute = vi.hoisted(() => ({
 	query: {} as Record<string, unknown>,
 	meta: {} as Record<string, unknown>,
 }));
+const mockRouter = vi.hoisted(() => ({
+	replace: vi.fn(),
+	push: vi.fn(),
+}));
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useRoute: vi.fn(() => mockRoute),
-		useRouter: vi.fn(() => ({
-			replace: vi.fn().mockResolvedValue(undefined),
-			push: vi.fn().mockResolvedValue(undefined),
-		})),
+		useRouter: vi.fn(() => mockRouter),
 	};
 });
 
 function renderWithComposable(
 	callback: (init: ReturnType<typeof useWorkflowInitialization>) => void,
+	workflowDocumentStoreRef = shallowRef<typeof mockWorkflowDocumentStore | null>(
+		mockWorkflowDocumentStore,
+	),
 ) {
 	const TestComponent = defineComponent({
 		setup() {
@@ -147,7 +160,7 @@ function renderWithComposable(
 	return render(TestComponent, {
 		global: {
 			provide: {
-				[WorkflowDocumentStoreKey as symbol]: shallowRef(mockWorkflowDocumentStore),
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 			},
 		},
 	});
@@ -162,6 +175,8 @@ describe('useWorkflowInitialization', () => {
 		mockRoute.params = {};
 		mockRoute.query = {};
 		mockRoute.meta = {};
+		mockRouter.replace.mockResolvedValue(undefined);
+		mockRouter.push.mockResolvedValue(undefined);
 	});
 
 	describe('document title', () => {
@@ -199,6 +214,221 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockSetDocumentTitle).toHaveBeenCalledWith('New Workflow', 'IDLE');
+		});
+
+		it('marks a fresh workflow document hydrated after initialization', async () => {
+			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkspaceForNewWorkflow = init.initializeWorkspaceForNewWorkflow;
+			});
+
+			await initializeWorkspaceForNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('new workflow home project', () => {
+		function initializeNewWorkflow() {
+			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkspaceForNewWorkflow = init.initializeWorkspaceForNewWorkflow;
+			});
+			return initializeWorkspaceForNewWorkflow();
+		}
+
+		it('uses the project that refreshCurrentProject resolves', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = { id: 'personal-project-id' } as Project;
+			// A `?projectId=` deep link only lands in the store when this call resolves.
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				projectsStore.currentProject = { id: 'team-project-id' } as Project;
+			});
+
+			await initializeNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'team-project-id' }),
+			);
+		});
+
+		it('falls back to the personal project when no project is current', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = { id: 'personal-project-id' } as Project;
+			projectsStore.currentProject = null;
+
+			await initializeNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'personal-project-id' }),
+			);
+		});
+	});
+
+	describe('existing workflow route', () => {
+		async function openExistingWorkflow(query: Record<string, string>) {
+			mockRoute.name = VIEWS.WORKFLOW;
+			mockRoute.params = { workflowId: 'wf-1' };
+			mockRoute.query = query;
+			const workflowsListStore = mockedStore(useWorkflowsListStore);
+			workflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-1' } as IWorkflowDb);
+
+			let init!: ReturnType<typeof useWorkflowInitialization>;
+			renderWithComposable((composable) => {
+				init = composable;
+			});
+			await init.initializeWorkspaceForExistingWorkflow('wf-1');
+
+			return workflowsListStore.fetchWorkflow;
+		}
+
+		it('removes the query of a new workflow from the URL before it loads', async () => {
+			const fetchWorkflow = await openExistingWorkflow({ projectId: 'former-project', foo: 'bar' });
+
+			expect(mockRouter.replace).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: 'wf-1' },
+				query: { new: undefined, projectId: undefined, parentFolderId: undefined, foo: 'bar' },
+			});
+			expect(mockRouter.replace.mock.invocationCallOrder[0]).toBeLessThan(
+				fetchWorkflow.mock.invocationCallOrder[0],
+			);
+		});
+	});
+
+	describe('template import permissions', () => {
+		function importTemplate() {
+			mockRoute.name = VIEWS.TEMPLATE_IMPORT;
+			mockRoute.params = { id: '11204' };
+
+			let handleTemplateImportRoute!: () => Promise<boolean>;
+			renderWithComposable((init) => {
+				handleTemplateImportRoute = init.handleTemplateImportRoute;
+			});
+			return handleTemplateImportRoute();
+		}
+
+		it('populates scopes and home project on the document store', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update', 'workflow:publish'],
+			} as Project;
+			projectsStore.currentProject = null;
+
+			const handled = await importTemplate();
+
+			expect(handled).toBe(true);
+			expect(mockOpenWorkflowTemplate).toHaveBeenCalledWith('11204');
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'personal-project-id' }),
+			);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith([
+				'workflow:update',
+				'workflow:publish',
+			]);
+		});
+
+		it('prefers the project that refreshCurrentProject resolves', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:read'],
+			} as Project;
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				projectsStore.currentProject = {
+					id: 'team-project-id',
+					scopes: ['workflow:update'],
+				} as Project;
+			});
+
+			await importTemplate();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'team-project-id' }),
+			);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith(['workflow:update']);
+		});
+
+		it('falls back to the loaded projects when the project refresh fails', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update'],
+			} as Project;
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockRejectedValue(new Error('network error'));
+
+			const handled = await importTemplate();
+
+			expect(handled).toBe(true);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith(['workflow:update']);
+		});
+
+		it('does not stamp a store that was replaced during the project refresh', async () => {
+			mockRoute.name = VIEWS.TEMPLATE_IMPORT;
+			mockRoute.params = { id: '11204' };
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update'],
+			} as Project;
+			const storeRef = shallowRef<typeof mockWorkflowDocumentStore | null>(
+				mockWorkflowDocumentStore,
+			);
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				storeRef.value = null;
+			});
+
+			let handleTemplateImportRoute!: () => Promise<boolean>;
+			renderWithComposable((init) => {
+				handleTemplateImportRoute = init.handleTemplateImportRoute;
+			}, storeRef);
+			await handleTemplateImportRoute();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).not.toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.setScopes).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('recovery path (initializeWorkspace failure)', () => {
+		it('derives homeProject from the shared relation when the license-gated field is absent', async () => {
+			mockInitializeWorkspace.mockRejectedValueOnce(new Error('boom'));
+
+			let openWorkflow!: (data: IWorkflowDb) => Promise<void>;
+			renderWithComposable((init) => {
+				openWorkflow = init.openWorkflow;
+			});
+
+			const ownerProject = { id: 'proj-1', name: 'Acme', type: 'team' };
+			await openWorkflow({
+				id: 'wf-1',
+				name: 'My Test Workflow',
+				shared: [{ role: 'workflow:owner', project: ownerProject }],
+			} as unknown as IWorkflowDb);
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(ownerProject);
+		});
+
+		it('prefers the license-gated homeProject when present', async () => {
+			mockInitializeWorkspace.mockRejectedValueOnce(new Error('boom'));
+
+			let openWorkflow!: (data: IWorkflowDb) => Promise<void>;
+			renderWithComposable((init) => {
+				openWorkflow = init.openWorkflow;
+			});
+
+			const homeProject = { id: 'proj-2', name: 'Direct', type: 'team' };
+			await openWorkflow({
+				id: 'wf-1',
+				name: 'My Test Workflow',
+				homeProject,
+			} as unknown as IWorkflowDb);
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(homeProject);
 		});
 	});
 });

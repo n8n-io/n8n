@@ -1,5 +1,6 @@
 export * from './types.ee';
 export * from './constants.ee';
+export type * from './principal.ee';
 
 export * from './roles/scopes/global-scopes.ee';
 export * from './scope-information';
@@ -23,6 +24,7 @@ export { combineScopes } from './utilities/combine-scopes.ee';
 export * from './roles/custom-role-scopes.ee';
 export { staticRolesWithScope } from './utilities/static-roles-with-scope.ee';
 export { getGlobalScopes } from './utilities/get-global-scopes.ee';
+export { isReservedGlobalRole } from './utilities/is-reserved-global-role.ee';
 export { getRoleScopes, getAuthPrincipalScopes } from './utilities/get-role-scopes.ee';
 export { getResourcePermissions } from './utilities/get-resource-permissions.ee';
 export type { PermissionsRecord } from './utilities/get-resource-permissions.ee';

@@ -95,7 +95,7 @@ describe('createScopedWorkspace', () => {
 
 		await expect(
 			workspace.filesystem?.readFile('/workspace/builders/agent-2/src/workflow.ts'),
-		).rejects.toThrow('Path escapes workspace root');
+		).rejects.toThrow('is outside the workspace root');
 		expect(filesystem.readFile).not.toHaveBeenCalled();
 	});
 
@@ -126,7 +126,7 @@ describe('createScopedWorkspace', () => {
 			workspace.sandbox?.executeCommand?.('npm test', [], {
 				cwd: '/workspace/builders/agent-2',
 			}),
-		).rejects.toThrow('Path escapes workspace root');
+		).rejects.toThrow('is outside the workspace root');
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 

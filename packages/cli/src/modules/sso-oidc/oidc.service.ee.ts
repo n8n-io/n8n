@@ -5,28 +5,29 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	isPerson,
 	isValidEmail,
 	GLOBAL_MEMBER_ROLE,
+	type Person,
+	PersonRepository,
 	SettingsRepository,
-	type User,
 	UserRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { inspect } from 'util';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import {
 	assertAuthenticationMethodCanBeEnabled,
+	emitSsoLoginDisabled,
 	getCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
@@ -102,6 +103,7 @@ export class OidcService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly personRepository: PersonRepository,
 	) {}
 
 	async init() {
@@ -131,25 +133,34 @@ export class OidcService {
 		};
 	}
 
-	generateState(testMode = false) {
+	/**
+	 * The signed state also carries the in-app destination the user asked for
+	 * before the login, so the callback can send them there instead of `/`.
+	 */
+	generateState(testMode = false, redirectUrl?: string) {
 		const state = `n8n_state:${randomUUID()}`;
 		const payload: Record<string, unknown> = { state };
 		if (testMode) {
 			payload.testMode = true;
 		}
+		if (redirectUrl && redirectUrl !== '/') {
+			payload.redirectUrl = redirectUrl;
+		}
 		return {
-			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcState', payload, { expiresIn: '15m' }),
 			plaintext: state,
 		};
 	}
 
-	verifyState(signedState: string): { state: string; testMode?: boolean } {
+	verifyState(signedState: string): { state: string; testMode?: boolean; redirectUrl?: string } {
 		let state: string;
 		let testMode: boolean | undefined;
+		let redirectUrl: unknown;
 		try {
-			const decodedState = this.jwtService.verify(signedState);
+			const decodedState = this.jwtService.verify('oidcState', signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
+			redirectUrl = decodedState?.redirectUrl;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -175,13 +186,17 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return { state, testMode };
+		return {
+			state,
+			testMode,
+			...(typeof redirectUrl === 'string' && { redirectUrl }),
+		};
 	}
 
 	generateNonce() {
 		const nonce = `n8n_nonce:${randomUUID()}`;
 		return {
-			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcNonce', { nonce }, { expiresIn: '15m' }),
 			plaintext: nonce,
 		};
 	}
@@ -189,7 +204,7 @@ export class OidcService {
 	verifyNonce(signedNonce: string) {
 		let nonce: string;
 		try {
-			const decodedNonce = this.jwtService.verify(signedNonce);
+			const decodedNonce = this.jwtService.verify('oidcNonce', signedNonce);
 			nonce = decodedNonce?.nonce;
 		} catch (error) {
 			this.logger.error('Failed to verify nonce', { error });
@@ -219,11 +234,20 @@ export class OidcService {
 		return nonce;
 	}
 
-	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+	assertOidcLoginEnabled(): void {
+		if (!this.oidcConfig.loginEnabled || !isOidcCurrentAuthenticationMethod()) {
+			throw new ForbiddenError('OIDC login is not enabled');
+		}
+	}
+
+	async generateLoginUrl(
+		redirectUrl?: string,
+	): Promise<{ url: URL; state: string; nonce: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const state = this.generateState();
+		const state = this.generateState(false, redirectUrl);
 		const nonce = this.generateNonce();
 
 		const prompt = this.oidcConfig.prompt;
@@ -266,7 +290,8 @@ export class OidcService {
 		callbackUrl: URL,
 		storedState: string,
 		storedNonce: string,
-	): Promise<{ user: User; idToken?: string }> {
+	): Promise<{ user: Person; idToken?: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -298,11 +323,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
@@ -312,14 +335,12 @@ export class OidcService {
 			throw new BadRequestError('An email is required');
 		}
 
-		if (!isValidEmail(userInfo.email)) {
+		if (typeof userInfo.email !== 'string' || !isValidEmail(userInfo.email)) {
 			throw new BadRequestError('Invalid email format');
 		}
+		const email = userInfo.email;
 
-		await this.assertProvisioningLoginAllowed(
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
@@ -331,21 +352,18 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(
-				openidUser.user,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			if (!isPerson(openidUser.user)) {
+				throw new ForbiddenError('A service account cannot log in with OIDC');
+			}
+
+			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
 
-		const foundUser = await this.userRepository.findOne({
-			where: { email: userInfo.email },
-			relations: ['authIdentities', 'role'],
-		});
+		const foundPerson = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-		if (foundUser) {
+		if (foundPerson) {
 			// Linking to an existing account uses the email as the key, so only do it
 			// when the IdP says the email is verified.
 			this.assertEmailVerified(userInfo.email_verified);
@@ -357,25 +375,21 @@ export class OidcService {
 			const id = this.authIdentityRepository.create({
 				providerId: claims.sub,
 				providerType: 'oidc',
-				userId: foundUser.id,
+				userId: foundPerson.id,
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(
-				foundUser,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(foundPerson, claims, userInfo);
 
-			return { user: foundUser, idToken: tokens.id_token };
+			return { user: foundPerson, idToken: tokens.id_token };
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
+			const { user: newUser } = await this.personRepository.createPersonWithProject(
 				{
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
+					firstName: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
+					lastName: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,
+					email,
 					authIdentities: [],
 					role: GLOBAL_MEMBER_ROLE,
 					password: 'no password set',
@@ -394,11 +408,7 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(
-			user,
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.applySsoProvisioning(user, claims, userInfo);
 
 		return { user, idToken: tokens.id_token };
 	}
@@ -551,11 +561,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
@@ -589,13 +597,13 @@ export class OidcService {
 	}
 
 	private async applySsoProvisioning(
-		user: User,
+		person: Person,
 		claims: Record<string, unknown>,
 		userInfo: Record<string, unknown>,
 	) {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildOidcClaimsContext(claims, userInfo);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(person, context);
 			return;
 		}
 
@@ -603,9 +611,9 @@ export class OidcService {
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
 		// Called even when the claim is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
+		await this.provisioningService.provisionInstanceRoleForUser(person, instanceRole);
 		if (projectRoleMapping) {
-			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
+			await this.provisioningService.provisionProjectRolesForUser(person.id, projectRoleMapping);
 		}
 	}
 
@@ -626,7 +634,7 @@ export class OidcService {
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
 		}
 	}
@@ -776,6 +784,8 @@ export class OidcService {
 
 		Container.get(GlobalConfig).sso.oidc.loginEnabled = enabled;
 		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
+
+		if (!enabled && currentAuthenticationMethod === 'oidc') await emitSsoLoginDisabled('oidc');
 	}
 
 	private cachedOidcConfiguration:
@@ -801,7 +811,7 @@ export class OidcService {
 				// token/userinfo endpoints reached with the same `customFetch`) is
 				// admin-configured and may legitimately point at an internal IdP, so enabling
 				// SSRF protection here would block valid internal setups
-				ssrf: 'disabled',
+				useDefaultSsrfPolicy: 'unsafe',
 				// `proxy` defaults = `'env'`
 			})
 			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;

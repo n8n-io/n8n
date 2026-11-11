@@ -10,25 +10,31 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
-import { WorkflowIdPolicy, type ImportPackageRequest } from '../n8n-packages.types';
+import {
+	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
+	type ImportPackageRequest,
+} from '../n8n-packages.types';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 	serializedWorkflowWithSubWorkflow,
 	subWorkflowRefOf,
+	WIRE_VERSION_ID,
 	workflowRequirementsFromWorkflows,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import { executeWorkflowNode } from './utils/test-builders';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
-	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy'>>;
+	Partial<Pick<ImportPackageRequest, 'idPolicy' | 'publishingPolicy' | 'conflictPolicy'>>;
 
 async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage(importPackageRequest(params));
 }
 
 /** Builds a package where `workflows` carry Execute Sub-workflow refs + the derived requirements. */
-async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
+async function buildSubWorkflowPackage(workflows: PackageWorkflow[]) {
 	return await buildImportPackageBuffer(workflows, {
 		manifestExtras: {
 			requirements: { workflows: workflowRequirementsFromWorkflows(workflows) },
@@ -36,10 +42,22 @@ async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
 	});
 }
 
+/** Trigger node, needed so a workflow can be published. */
+function scheduleTriggerNode() {
+	return {
+		id: 'schedule-trigger',
+		name: 'Schedule Trigger',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+}
+
 const licenseMocker = new LicenseMocker();
 
-// Import never activates these workflows (they are unpublished), but the publisher
-// path touches the active workflow manager — mock it so no real infra is needed.
+// The publisher path touches the active workflow manager — mock it so no real
+// infra is needed.
 mockInstance(ActiveWorkflowManager);
 
 beforeAll(async () => {
@@ -67,34 +85,6 @@ describe('Package import of workflows with sub-workflows', () => {
 		return await Container.get(WorkflowRepository).findOneByOrFail({ id: summary.localId });
 	}
 
-	it('rewrites the sub-workflow reference to the imported id under the `new` policy', async () => {
-		const owner = await createOwner();
-
-		// Parent listed before its sub-workflow to prove ordering does not matter.
-		const parent = serializedWorkflowWithSubWorkflow({
-			id: 'CHEDDAR',
-			name: 'Parent',
-			subWorkflowId: 'BRIE',
-		});
-		const subWorkflow = serializedWorkflow({ id: 'BRIE', name: 'Sub-workflow' });
-
-		const result = await importPackage({
-			user: owner,
-			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
-		});
-
-		const importedParent = await findImported(result, 'CHEDDAR');
-		const importedSub = await findImported(result, 'BRIE');
-
-		expect(importedSub.id).not.toBe('BRIE');
-		expect(subWorkflowRefOf(importedParent)).toBe(importedSub.id);
-		expect(result.bindings.workflows).toMatchObject({
-			CHEDDAR: importedParent.id,
-			BRIE: importedSub.id,
-		});
-	});
-
 	it('keeps the reference pointing at the imported sub-workflow under the `source` policy', async () => {
 		const owner = await createOwner();
 
@@ -108,7 +98,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.Source,
+			idPolicy: WorkflowIdPolicy.Source,
 		});
 
 		const importedParent = await findImported(result, 'CHEDDAR');
@@ -118,7 +108,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		expect(subWorkflowRefOf(importedParent)).toBe('BRIE');
 	});
 
-	it('remaps `settings.callerIds` to the imported caller ids under the `new` policy', async () => {
+	it('preserves `settings.callerIds` and the caller policy', async () => {
 		const owner = await createOwner();
 
 		const parent = serializedWorkflowWithSubWorkflow({
@@ -137,19 +127,17 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
+			idPolicy: WorkflowIdPolicy.Source,
 		});
 
-		const importedParent = await findImported(result, 'CHEDDAR');
 		const importedSub = await findImported(result, 'BRIE');
 
-		// In-package caller id is remapped; the unknown id (EDAM) is left as-is.
-		expect(importedSub.settings?.callerIds).toBe(`${importedParent.id},EDAM`);
+		expect(importedSub.settings?.callerIds).toBe('CHEDDAR,EDAM');
 		// Caller policy is preserved so the allowlist intent survives the import.
 		expect(importedSub.settings?.callerPolicy).toBe('workflowsFromAList');
 	});
 
-	it('remaps `settings.errorWorkflow` to the imported id under the `new` policy', async () => {
+	it('preserves `settings.errorWorkflow` when importing its workflow', async () => {
 		const owner = await createOwner();
 
 		// The main workflow runs BRIE as its error workflow.
@@ -163,13 +151,47 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([main, errorHandler]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
+			idPolicy: WorkflowIdPolicy.Source,
 		});
 
 		const importedMain = await findImported(result, 'CHEDDAR');
 		const importedError = await findImported(result, 'BRIE');
 
-		expect(importedError.id).not.toBe('BRIE');
+		expect(importedError.id).toBe('BRIE');
+		expect(importedMain.settings?.errorWorkflow).toBe(importedError.id);
+	});
+
+	// A later package version can add an error handler for a workflow that is
+	// already imported. The parent is then an update that points at a handler this
+	// same import creates, so the handler is neither present nor published while
+	// the parent is written — publishing is a package-wide sweep that runs after.
+	it('remaps `settings.errorWorkflow` when the parent is an update and the handler is new', async () => {
+		const owner = await createOwner();
+
+		const v1 = serializedWorkflow({ id: 'CHEDDAR', name: 'Main' });
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([v1]),
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const v2 = serializedWorkflow({
+			id: 'CHEDDAR',
+			name: 'Main',
+			settings: { errorWorkflow: 'BRIE' },
+		});
+		const errorHandler = serializedWorkflow({ id: 'BRIE', name: 'Error handler' });
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([v2, errorHandler]),
+			idPolicy: WorkflowIdPolicy.Source,
+			conflictPolicy: 'new-version',
+		});
+
+		const importedMain = await findImported(result, 'CHEDDAR');
+		const importedError = await findImported(result, 'BRIE');
+
 		expect(importedMain.settings?.errorWorkflow).toBe(importedError.id);
 	});
 
@@ -191,5 +213,47 @@ describe('Package import of workflows with sub-workflows', () => {
 
 		const imported = await findImported(result, 'GORGONZOLA');
 		expect(imported.name).toBe('Malformed caller ids');
+	});
+
+	it('does not publish an archived sub-workflow, and leaves the parent that calls it unpublished', async () => {
+		const owner = await createOwner();
+
+		// An export always carries the sub-workflows a parent calls, archived ones
+		// included, so this package is what a normal export produces.
+		const parent = serializedWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			publishedVersionId: WIRE_VERSION_ID,
+			nodes: [scheduleTriggerNode(), executeWorkflowNode('BRIE')],
+		});
+		const subWorkflow = serializedWorkflow({
+			id: 'BRIE',
+			name: 'Sub-workflow',
+			isArchived: true,
+			publishedVersionId: WIRE_VERSION_ID,
+			nodes: [scheduleTriggerNode()],
+		});
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
+			idPolicy: WorkflowIdPolicy.Source,
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		const importedSub = await findImported(result, 'BRIE');
+		expect(importedSub.isArchived).toBe(true);
+		expect(importedSub.activeVersionId).toBeNull();
+
+		// A parent cannot publish while a sub-workflow it calls is unpublished, so
+		// "publish-all" reports the parent as failed instead of publishing it.
+		const parentSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'CHEDDAR',
+		);
+		expect(parentSummary?.publishing.state).toBe('failed');
+		expect(parentSummary?.publishing.error).toMatch(/BRIE.*not published/);
+
+		const importedParent = await findImported(result, 'CHEDDAR');
+		expect(importedParent.activeVersionId).toBeNull();
 	});
 });

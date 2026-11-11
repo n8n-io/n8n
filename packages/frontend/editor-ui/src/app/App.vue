@@ -12,18 +12,26 @@ import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
+import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useMcpDiscoveryEnrollment } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import WorkflowErrorNudge from '@/experiments/surfaceAssistantOnWorkflowError/components/WorkflowErrorNudge.vue';
+// EOF Experiment cleanup
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
+import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
@@ -35,6 +43,7 @@ import type {
 } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 
@@ -67,7 +76,12 @@ useTelemetryInitializer();
 // Initialize global backend status tracking
 useBackendStatus();
 
+useModulePushDispatcher({ router });
+
 useTrialIntroModalAutoOpen();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+useMcpDiscoveryEnrollment();
+// EOF Experiment cleanup
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -108,6 +122,7 @@ watch(
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 
 		void locale.use(newLocale);
+		registerTimeAgoLocale(newLocale);
 	},
 	{ immediate: true },
 );
@@ -137,6 +152,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
+			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
+			<WorkflowErrorNudge />
+			<!-- EOF Experiment cleanup -->
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

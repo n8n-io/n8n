@@ -10,6 +10,7 @@ import {
 	type WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { accountSummary } from '@n8n/db';
 import type {
 	User,
 	WorkflowReviewActivity,
@@ -24,18 +25,14 @@ import type { z } from 'zod';
  * inbox and detail payloads cannot drift apart.
  */
 export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
-	return {
-		id: user.id,
-		email: user.email,
-		firstName: user.firstName ?? null,
-		lastName: user.lastName ?? null,
-	};
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName, lastName };
 }
 
 /**
- * The minimal review summary every status-bearing response is built from — the
- * lifecycle mutations and the status batch share it so id, state, decision,
- * pin, and timestamp serialization cannot drift apart.
+ * The minimal review summary every mutation response is built from — create,
+ * update-version, and decide share it so id, state, decision, pin, and
+ * timestamp serialization cannot drift apart.
  */
 export function toRequestSummary(
 	request: WorkflowReviewRequest,

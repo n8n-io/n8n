@@ -3,6 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import BrowserUseConnectStep from '../BrowserUseConnectStep.vue';
+import { resetExtensionDirectConnect } from '../../../composables/useExtensionDirectConnect';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -34,6 +35,7 @@ const CONNECT_URL = `chrome-extension://testextensionid/connect.html?mcpRelayUrl
 
 function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	return {
+		browserConnectUrl: null,
 		browserConnectUrlExpiresAt: null,
 		fetchBrowserConnectUrl: vi.fn().mockResolvedValue(CONNECT_URL),
 		clearBrowserConnectUrl: vi.fn(),
@@ -63,6 +65,7 @@ const renderComponent = createComponentRenderer(BrowserUseConnectStep, {
 describe('BrowserUseConnectStep', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resetExtensionDirectConnect();
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
 	});
 
@@ -107,6 +110,30 @@ describe('BrowserUseConnectStep', () => {
 		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not point at a popup when the host connects without one', async () => {
+		installExtensionMock({ connect: { accepted: true, confirmationRequired: false } });
+		const { getByTestId } = renderComponent();
+		await flushPromises();
+
+		const status = getByTestId('browser-use-direct-connect-waiting');
+		expect(status).toHaveTextContent('instanceAi.browserUse.directConnect.connecting');
+		expect(status).not.toHaveTextContent('instanceAi.browserUse.directConnect.waiting');
+	});
+
+	it('does not inherit the status of a flow that already finished', async () => {
+		// A successful connect leaves the shared status at 'waiting'.
+		installExtensionMock({ connect: { accepted: true }, connectResult: { connected: true } });
+		const first = renderComponent();
+		await flushPromises();
+		first.unmount();
+
+		const { getByTestId, queryByTestId } = createComponentRenderer(BrowserUseConnectStep)();
+		await flushPromises();
+
+		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
+		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
+	});
+
 	it('offers a retry when the connect did not succeed', async () => {
 		installExtensionMock({ connect: { accepted: true }, connectResult: { connected: false } });
 		const { getByTestId } = renderComponent();
@@ -120,6 +147,7 @@ describe('BrowserUseConnectStep', () => {
 
 	it('shows the manual connect link when the extension stops responding on retry', async () => {
 		installExtensionMock({ connect: { accepted: true }, connectResult: { connected: false } });
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { getByTestId } = renderComponent();
 		await flushPromises();
 
@@ -128,9 +156,27 @@ describe('BrowserUseConnectStep', () => {
 		await flushPromises();
 
 		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
+
+		openSpy.mockRestore();
 	});
 
-	it('opens the connect page as a popup on the manual connect button', async () => {
+	it('lets the extension own the confirmation instead of opening a window', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { getByTestId } = createComponentRenderer(BrowserUseConnectStep)();
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('browser-use-open-connect-page'));
+		await flushPromises();
+
+		expect(openSpy).not.toHaveBeenCalled();
+		expect(telemetryMock.trackDirectConnectRequested).toHaveBeenCalledTimes(1);
+		expect(getByTestId('browser-use-direct-connect-waiting')).toBeVisible();
+
+		openSpy.mockRestore();
+	});
+
+	it('falls back to opening the connect page when the extension cannot be messaged', async () => {
 		const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { getByTestId } = renderComponent();
 		await flushPromises();
@@ -145,6 +191,35 @@ describe('BrowserUseConnectStep', () => {
 		);
 
 		openSpy.mockRestore();
+	});
+
+	it('reuses a live connect URL rather than minting one', async () => {
+		// Minting rotates the relay token, killing a connect an outer caller already started.
+		const store = makeSettingsStore({
+			browserConnectUrl: CONNECT_URL,
+			browserConnectUrlExpiresAt: new Date(Date.now() + 600_000).toISOString(),
+		});
+		settingsStoreMock.mockReturnValue(store);
+		installExtensionMock({ connect: { accepted: true } });
+
+		const { getByTestId } = renderComponent();
+		await flushPromises();
+
+		expect(store.fetchBrowserConnectUrl).not.toHaveBeenCalled();
+		expect(getByTestId('browser-use-direct-connect-waiting')).toBeVisible();
+	});
+
+	it('mints a connect URL when the stored one is about to expire', async () => {
+		const store = makeSettingsStore({
+			browserConnectUrl: CONNECT_URL,
+			browserConnectUrlExpiresAt: new Date(Date.now() + 5_000).toISOString(),
+		});
+		settingsStoreMock.mockReturnValue(store);
+
+		renderComponent();
+		await flushPromises();
+
+		expect(store.fetchBrowserConnectUrl).toHaveBeenCalledTimes(1);
 	});
 
 	it('clears the stored connect URL when unmounted', async () => {

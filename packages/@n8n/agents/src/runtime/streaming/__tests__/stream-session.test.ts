@@ -16,6 +16,36 @@ async function drain(stream: ReadableStream<StreamChunk>): Promise<StreamChunk[]
 }
 
 describe('startStreamSession', () => {
+	it('emits only the provider error when a wrapper error follows', async () => {
+		const bus = new AgentEventBus();
+		const abortScope = bus.createAbortScope();
+		const providerError = new Error('Thinking blocks cannot be modified');
+
+		const readable = startStreamSession({
+			eventBus: bus,
+			abortScope,
+			runId: 'run-1',
+			options: undefined,
+			withRootSpan: async <T>(_op: unknown, _opts: unknown, _rid: unknown, fn: () => Promise<T>) =>
+				await fn(),
+			runLoop: async (guard) => {
+				await guard.write({ type: 'error', error: providerError });
+				throw new Error('No output generated. Check the stream for errors.');
+			},
+			flushTelemetry: vi.fn(),
+			cleanupRun: vi.fn(),
+			updateState: vi.fn(),
+			emitError: vi.fn(),
+		});
+
+		const chunks = await drain(readable);
+
+		expect(chunks.filter((chunk) => chunk.type === 'error')).toEqual([
+			{ type: 'error', error: providerError },
+		]);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'error' });
+	});
+
 	it('completes shutdown even when the abort persistence throws', async () => {
 		const bus = new AgentEventBus();
 		const abortScope = bus.createAbortScope();
@@ -51,6 +81,10 @@ describe('startStreamSession', () => {
 
 		expect(cleanupRun).toHaveBeenCalledTimes(1);
 		expect(flushTelemetry).toHaveBeenCalledTimes(1);
+		expect(chunks.find((chunk) => chunk.type === 'error')?.error).toMatchObject({
+			name: 'AbortError',
+			message: 'Agent run was aborted',
+		});
 		// guard.fail still ran, so the consumer receives a terminal finish chunk.
 		expect(chunks.some((c) => c.type === 'finish')).toBe(true);
 	});

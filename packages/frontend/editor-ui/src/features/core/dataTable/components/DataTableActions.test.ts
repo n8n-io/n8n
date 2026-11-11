@@ -79,7 +79,7 @@ const mockDataTable: DataTable = {
 const renderComponent = createComponentRenderer(DataTableActions, {
 	props: {
 		dataTable: mockDataTable,
-		isReadOnly: false,
+		schemaReadOnly: false,
 		location: 'breadcrumbs',
 	},
 });
@@ -113,15 +113,48 @@ describe('DataTableActions', () => {
 		expect(actionToggle).toBeInTheDocument();
 	});
 
-	it('should render actions when read-only', () => {
+	it('should render actions when the table structure is locked', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				isReadOnly: true,
+				schemaReadOnly: true,
 			},
 		});
 
 		const actionToggle = getByTestId('data-table-card-actions');
 		expect(actionToggle).toBeInTheDocument();
+	});
+
+	it('should keep row actions and disable rename and delete when the table structure is locked', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				schemaReadOnly: true,
+			},
+		});
+
+		await openActionsDropdown(getByTestId);
+
+		expect(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.IMPORT_CSV}`)).not.toHaveAttribute(
+			'data-disabled',
+		);
+		expect(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.RENAME}`)).toHaveAttribute(
+			'data-disabled',
+		);
+		expect(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DELETE}`)).toHaveAttribute(
+			'data-disabled',
+		);
+	});
+
+	it('should enable rename and delete when the table structure is not locked', async () => {
+		const { getByTestId } = renderComponent();
+
+		await openActionsDropdown(getByTestId);
+
+		expect(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.RENAME}`)).not.toHaveAttribute(
+			'data-disabled',
+		);
+		expect(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.DELETE}`)).not.toHaveAttribute(
+			'data-disabled',
+		);
 	});
 
 	it('should emit rename event when rename action is triggered', async () => {
@@ -229,7 +262,7 @@ describe('DataTableActions', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					dataTable: mockDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'card',
 				},
 			});
@@ -248,7 +281,7 @@ describe('DataTableActions', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					dataTable: mockDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'card',
 				},
 			});
@@ -269,7 +302,7 @@ describe('DataTableActions', () => {
 			const { getByTestId, unmount } = renderComponent({
 				props: {
 					dataTable: mockDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'card',
 				},
 			});
@@ -282,7 +315,7 @@ describe('DataTableActions', () => {
 			const { getByTestId: getByTestId2 } = renderComponent({
 				props: {
 					dataTable: anotherDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'card',
 				},
 			});
@@ -301,7 +334,7 @@ describe('DataTableActions', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					dataTable: mockDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'breadcrumbs',
 				},
 			});
@@ -317,7 +350,7 @@ describe('DataTableActions', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					dataTable: mockDataTable,
-					isReadOnly: false,
+					schemaReadOnly: false,
 					location: 'card',
 				},
 			});

@@ -9,9 +9,19 @@ name: 'Prepare n8n Docker (reusable)'
 
 on:
   workflow_call:
+    secrets:
+      QA_METRICS_WEBHOOK_URL:
+        description: 'QA metrics webhook URL.'
+        required: false
+      QA_METRICS_WEBHOOK_USER:
+        description: 'QA metrics webhook username.'
+        required: false
+      QA_METRICS_WEBHOOK_PASSWORD:
+        description: 'QA metrics webhook password.'
+        required: false
     inputs:
       build-variant:
-        description: 'standard or coverage'
+        description: 'standard, coverage, or pc'
         required: false
         default: 'standard'
         type: string
@@ -34,7 +44,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1

@@ -99,6 +99,19 @@ describe('Node Builder', () => {
 			expect(n.config.executeOnce).toBe(true);
 		});
 
+		it('should open the error output port when a route is declared on a node without one', () => {
+			const handler = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { onError: 'continueRegularOutput' },
+			});
+
+			n.onError(handler);
+
+			expect(n.config.onError).toBe('continueErrorOutput');
+		});
+
 		it('should auto-generate a unique ID', () => {
 			const n1 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
 			const n2 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });

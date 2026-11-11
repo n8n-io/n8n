@@ -16,17 +16,26 @@ export const GROUP_DESCRIPTION_MIN_ZOOM = 0.66;
  * Canvas stacking contract (VueFlow resolves `node.zIndex ?? style.zIndex ?? 0`
  * per node; `elevateNodesOnSelect` additionally adds +1000 to selected nodes):
  *
- *   expanded frame + title bar (-10000)
- *     < sticky notes (-100 + i, see `useWorkflowDocumentRenderData`)
+ *   free sticky notes (-10100 + i)
+ *     < expanded frame + title bar (-5000)
+ *     < sticky notes in a group (-100 + i)
  *     < collapsed group chip (-1)
- *     < edges / regular nodes (0)
+ *     < edges / regular nodes (0) / collapsed empty-group chip (0)
  *     < sticky in edit mode (1) / unconnected-node hover (2, see `_vueflow.scss`)
  *
- * The expanded frame sits below stickies so sticky members render crisp inside
- * the group (the frame fill would otherwise tint them). The collapsed chip
- * stays above stickies: members are hidden while collapsed (no tint concern)
- * and the chip is the group's only handle, so it keeps interaction priority
- * over free stickies parked on top of it.
+ * `useWorkflowDocumentRenderData` gives every sticky `-100 + i` (overlap
+ * order). The canvas mapping moves stickies that are not in a group down by
+ * `FREE_STICKY_Z_INDEX_OFFSET`, so an expanded group paints over a free sticky
+ * placed on it. Sticky members stay above the frame so they render crisp
+ * inside the group (the frame fill would otherwise tint them). The collapsed
+ * chip stays above all stickies: members are hidden while collapsed (no tint
+ * concern) and the chip is the group's only handle.
  */
-export const GROUP_NODE_Z_INDEX_EXPANDED = -10000;
+export const FREE_STICKY_Z_INDEX_OFFSET = -10000;
+export const GROUP_NODE_Z_INDEX_EXPANDED = -5000;
 export const GROUP_NODE_Z_INDEX_COLLAPSED = -1;
+/**
+ * Empty collapsed groups expose handles, which must paint above their edges.
+ * Keep them in the regular node layer instead of below the edge layer.
+ */
+export const GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED = 0;

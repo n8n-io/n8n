@@ -2,6 +2,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
+	databricksApiRequest,
 	detectInputFormat,
 	generateExampleFromSchema,
 	getActiveCredentialType,
@@ -28,16 +29,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let exampleRequestBody = '';
 
 	try {
-		const openApiResponse = (await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			credentialType,
-			{
-				method: 'GET',
-				url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
-				headers: { Accept: 'application/json' },
-				json: true,
-			},
-		)) as OpenAPISchema[];
+		const openApiResponse = (await databricksApiRequest(this, credentialType, {
+			method: 'GET',
+			url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
+			headers: { Accept: 'application/json' },
+			json: true,
+		})) as OpenAPISchema[];
 
 		if (openApiResponse?.length > 0) {
 			const schemaInfo = detectInputFormat(openApiResponse[0]);
@@ -91,7 +88,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	// Step 2: Make the request using the URL from schema
 	try {
-		const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+		const response = await databricksApiRequest(this, credentialType, {
 			method: 'POST',
 			url: invocationUrl,
 			body: requestBody,

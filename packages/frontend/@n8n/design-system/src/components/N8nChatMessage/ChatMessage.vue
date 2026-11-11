@@ -33,6 +33,8 @@ useResizeObserver(message, shrinkWrapUserMessage);
 defineSlots<{
 	default(): unknown;
 	actions?(): unknown;
+	/** Content below the actions row, outside the area whose hover shows the actions. */
+	'after-actions'?(): unknown;
 }>();
 </script>
 
@@ -43,16 +45,34 @@ defineSlots<{
 	>
 		<div ref="userBubble" :class="role === 'user' ? $style.userBubble : $style.assistantContent">
 			<slot />
-			<div v-if="$slots.actions" :class="$style.actions">
-				<slot name="actions" />
-			</div>
 		</div>
+		<div v-if="$slots.actions" :class="$style.actions">
+			<slot name="actions" />
+		</div>
+		<slot name="after-actions" />
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/breakpoints';
+
 .message {
+	display: block;
 	width: 100%;
+}
+
+.userBubble,
+.assistantContent {
+	--n8n-markdown--font-size--base: var(--font-size--sm);
+	font-size: var(--n8n-markdown--font-size--base);
+}
+
+/** Use larger text only on large desktop screens. */
+@include breakpoints.breakpoint('xl-only') {
+	.userBubble,
+	.assistantContent {
+		--n8n-markdown--font-size--base: var(--font-size--md);
+	}
 }
 
 .userMessage {
@@ -62,13 +82,15 @@ defineSlots<{
 }
 
 .userBubble {
-	max-width: 90%;
+	max-width: 80%;
+	width: fit-content;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	background: var(--assistant--color--background--user-bubble);
-	color: var(--assistant--color--text--user-bubble);
+	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	white-space: pre-wrap;
 	word-break: break-word;
+	line-height: var(--line-height--xl);
 }
 
 .assistantMessage {
@@ -79,19 +101,25 @@ defineSlots<{
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	padding-inline: var(--spacing--sm);
 
-	&:hover .actions,
-	&:focus-within .actions {
+	&:hover ~ .actions,
+	&:focus-within ~ .actions {
 		opacity: 1;
 	}
 }
 
 .actions {
-	position: absolute;
-	top: 0;
-	right: 0;
+	margin-top: var(--spacing--xs);
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+	/** Use smaller padding so icon aligns vertically with text block in assistant message **/
+	padding-inline: var(--spacing--xs);
+
+	&:hover,
+	&:focus-within {
+		opacity: 1;
+	}
 
 	@media (hover: none) {
 		opacity: 1;

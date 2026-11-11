@@ -1,4 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -7,9 +7,12 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import { License } from '@/license';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
@@ -17,6 +20,7 @@ import {
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '@/modules/instance-ai/instance-ai-settings.service';
+import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/instance-ai-thread.repository';
 
 import { createOwner } from './shared/db/users';
 import { initCredentialsTypes } from './shared/utils';
@@ -26,6 +30,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	let credentialsRepository: CredentialsRepository;
 	let assignmentRepository: InstanceCredentialAssignmentRepository;
 	let settingsRepository: SettingsRepository;
+	let threadRepository: InstanceAiThreadRepository;
 	let owner: User;
 
 	const modelUpdate = {
@@ -34,6 +39,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	};
 
 	beforeAll(async () => {
+		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		await initCredentialsTypes();
 
@@ -48,12 +54,14 @@ describe('InstanceAiSettingsService (integration)', () => {
 		credentialsRepository = Container.get(CredentialsRepository);
 		assignmentRepository = Container.get(InstanceCredentialAssignmentRepository);
 		settingsRepository = Container.get(SettingsRepository);
+		threadRepository = Container.get(InstanceAiThreadRepository);
 		owner = await createOwner();
 	});
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
 		await testDb.truncate(['InstanceCredentialAssignment', 'CredentialsEntity', 'Settings']);
+		await threadRepository.delete({});
 	});
 
 	afterAll(async () => {
@@ -94,7 +102,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	it('keeps the previous credential when a replacing update fails at the settings write', async () => {
 		const credential = await Container.get(CredentialsService).createInstanceCredential(
 			{
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'test-key' },
 				usageScope: 'instance',
@@ -171,6 +179,16 @@ describe('InstanceAiSettingsService (integration)', () => {
 			}),
 		);
 
+		// A real clearance, so the row is protected by its usage scope alone, not by the seal.
+		const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave(
+			{
+				credential: { id: workflowCredential.id, type: workflowCredential.type },
+				storedCredential: { id: workflowCredential.id, type: workflowCredential.type },
+				projectId: null,
+			},
+			{ kind: 'system', reason: 'integration' },
+		);
+
 		const updated = await credentialsRepository.updateInstanceCredential(
 			workflowCredential.id,
 			{
@@ -179,12 +197,31 @@ describe('InstanceAiSettingsService (integration)', () => {
 				type: workflowCredential.type,
 				data: 'other-encrypted',
 			},
-			{},
+			{ policyCleared },
 		);
 
 		expect(updated).toBeNull();
 		await expect(
 			credentialsRepository.findOneByOrFail({ id: workflowCredential.id }),
 		).resolves.toMatchObject({ name: 'Workflow credential', data: 'workflow-encrypted' });
+	});
+
+	it('saves enabled on Enterprise only once a thread exists', async () => {
+		vi.spyOn(Container.get(License), 'getPlanName').mockReturnValue('Enterprise');
+
+		await service.loadFromDb();
+
+		expect(service.isInstanceAiEnabled()).toBe(false);
+		await expect(settingsRepository.findByKey('instanceAi.settings')).resolves.toBeNull();
+
+		const project = await getPersonalProject(owner);
+		await threadRepository.save(
+			threadRepository.create({ id: randomUUID(), resourceId: owner.id, projectId: project.id }),
+		);
+		await service.loadFromDb();
+
+		const persisted = await settingsRepository.findByKey('instanceAi.settings');
+		expect(persisted?.value).toContain('"enabled":true');
+		expect(service.isInstanceAiEnabled()).toBe(true);
 	});
 });

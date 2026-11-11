@@ -11,7 +11,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -56,9 +56,7 @@ export const Default: Story = {
 			return { args };
 		},
 		template: `
-		<div style="display: grid; place-items: center;">
 			<N8nButton v-bind="args">{{ args.default || 'Button' }}</N8nButton>
-		</div>
 		`,
 	}),
 	args: {
@@ -69,30 +67,27 @@ export const Default: Story = {
 	},
 };
 
-export const Variant: Story = {
+export const Variants: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="medium">Solid</N8nButton>
-				<N8nButton variant="subtle" size="medium">Subtle</N8nButton>
+				<N8nButton variant="brand" size="medium">Brand</N8nButton>
 				<N8nButton variant="outline" size="medium">Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium">Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium">Destructive</N8nButton>
 				<N8nButton variant="success" size="medium">Success</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
 };
 
-export const Size: Story = {
+export const Sizes: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="xsmall">XSmall</N8nButton>
 				<N8nButton variant="solid" size="small">Small</N8nButton>
@@ -100,7 +95,6 @@ export const Size: Story = {
 				<N8nButton variant="solid" size="large">Large</N8nButton>
 				<N8nButton variant="solid" size="xlarge">XLarge</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -110,7 +104,6 @@ export const WithIcons: Story = {
 	render: () => ({
 		components: { N8nButton, N8nIcon },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="medium">
 					<N8nIcon icon="plus" size="medium" />
@@ -126,7 +119,6 @@ export const WithIcons: Story = {
 					<N8nIcon icon="chevron-down" size="medium" />
 				</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -136,16 +128,14 @@ export const Loading: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="medium" loading>Solid</N8nButton>
-				<N8nButton variant="subtle" size="medium" loading>Subtle</N8nButton>
+				<N8nButton variant="brand" size="medium" loading>Brand</N8nButton>
 				<N8nButton variant="outline" size="medium" loading>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" loading>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" loading>Destructive</N8nButton>
 				<N8nButton variant="success" size="medium" loading>Success</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -155,16 +145,14 @@ export const Link: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="medium" href="https://n8n.io">Link</N8nButton>
-				<N8nButton variant="subtle" size="medium" href="https://n8n.io">Link</N8nButton>
+				<N8nButton variant="brand" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="outline" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="ghost" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="destructive" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="success" size="medium" href="https://n8n.io">Link</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -174,7 +162,6 @@ export const IconOnly: Story = {
 	render: () => ({
 		components: { N8nButton, N8nIcon },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="xsmall" icon="plus" icon-only aria-label="Add" />
 				<N8nButton variant="solid" size="small" icon="plus" icon-only aria-label="Add" />
@@ -183,7 +170,6 @@ export const IconOnly: Story = {
 					<N8nIcon icon="plus" size="medium" />
 				</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -193,16 +179,14 @@ export const Disabled: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
-		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nButton variant="solid" size="medium" disabled>Solid</N8nButton>
-				<N8nButton variant="subtle" size="medium" disabled>Subtle</N8nButton>
+				<N8nButton variant="brand" size="medium" disabled>Brand</N8nButton>
 				<N8nButton variant="outline" size="medium" disabled>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" disabled>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" disabled>Destructive</N8nButton>
 				<N8nButton variant="success" size="medium" disabled>Success</N8nButton>
 			</div>
-		</div>
 		`,
 	}),
 	args: {},
@@ -216,7 +200,7 @@ export const Disabled: Story = {
  * | Legacy `type` | Current `variant` |
  * |---------------|-------------------|
  * | `primary`     | `solid`           |
- * | `secondary`   | `subtle`          |
+ * | `secondary`   | `outline`          |
  * | `tertiary`    | `ghost`           |
  * | `danger`      | `destructive`     |
  * | `success`     | `success`         |
@@ -240,8 +224,8 @@ export const TypeToVariantMapping: Story = {
 				<N8nButton variant="solid">Solid</N8nButton>
 
 				<code>type="secondary"</code>
-				<code>variant="subtle"</code>
-				<N8nButton variant="subtle">Subtle</N8nButton>
+				<code>variant="outline"</code>
+				<N8nButton variant="outline">Outline</N8nButton>
 
 				<code>type="tertiary"</code>
 				<code>variant="ghost"</code>
@@ -277,7 +261,6 @@ export const IconButtonPatterns: Story = {
 			<N8nIconButton icon="plus" title="Create" variant="solid" size="xlarge" />
 			<N8nIconButton icon="plus" title="Create" variant="solid" size="large" />
 			<N8nIconButton icon="plus" title="Create" variant="solid" size="medium" />
-			<N8nIconButton icon="plus" title="Create" variant="subtle" size="medium" />
 			<N8nIconButton icon="plus" title="Create" variant="ghost" size="medium" />
 			<N8nIconButton icon="plus" title="Create" variant="outline" size="medium" />
 			<N8nIconButton icon="plus" title="Create" variant="solid" :loading="true" size="medium" />

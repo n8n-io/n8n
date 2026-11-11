@@ -11,13 +11,12 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
+import { toUserLike } from '@/utils/to-user-like';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {
 	'variable:list': 'projectVariable:list',
@@ -159,13 +158,7 @@ export class VariablesService {
 		await this.delete(id);
 
 		this.eventService.emit('variable-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: id,
 			variableKey: existingVariable?.key ?? '',
 			...(existingVariable?.project?.id && { projectId: existingVariable.project.id }),
@@ -247,13 +240,7 @@ export class VariablesService {
 			{ transaction: false },
 		);
 		this.eventService.emit('variable-created', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: saveResult.id,
 			variableKey: saveResult.key,
 			...(variable.projectId && { projectId: variable.projectId }),
@@ -324,13 +311,7 @@ export class VariablesService {
 				: {}),
 		});
 		this.eventService.emit('variable-updated', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: id,
 			variableKey: variable.key ?? existingVariable.key,
 			...(newProjectId && { projectId: newProjectId }),

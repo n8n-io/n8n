@@ -1,0 +1,841 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, nextTick, provide, reactive } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import { fireEvent } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import {
+	createThreadComponentRenderer,
+	defaultModuleSettings,
+	InstanceAiInputStub,
+	inputFocusSpy,
+	makeThread,
+} from '../../__tests__/createThreadComponentRenderer';
+import InstanceAiConversation from '../InstanceAiConversation.vue';
+import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
+import {
+	getPendingWorkflowAttachment,
+	stashPendingAgentAttachment,
+	stashPendingRedirectLanding,
+	stashPendingWorkflowAttachment,
+} from '../../composables/useInstanceAiHandoff';
+import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
+import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
+import { USER_TYPED_MESSAGE } from '../../prefills';
+
+const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const showMessageSpy = vi.hoisted(() => vi.fn());
+const showErrorSpy = vi.hoisted(() => vi.fn());
+const handleRedirectLandingSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackSpy }),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
+}));
+
+vi.mock('@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store', () => ({
+	useOpenWorkflowInAssistantStore: () => ({
+		handleRedirectLanding: handleRedirectLandingSpy,
+	}),
+}));
+
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
+}));
+
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
+	useScroll: () => ({ arrivedState: { bottom: true } }),
+}));
+
+describe('InstanceAiConversation', () => {
+	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let thread: ThreadRuntime;
+
+	beforeEach(() => {
+		// Prevent stashed hand-off state from leaking between test cases.
+		localStorage.clear();
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
+		// Auto-stubbed push-store actions return undefined by default; the confirmation
+		// panel unsubscribes with addEventListener's return value, so return a no-op.
+		mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
+
+		thread = makeThread();
+		store = mockedStore(useInstanceAiStore);
+		store.getRuntime.mockReturnValue(thread);
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Test thread',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.threads;
+		store.getThreadMetadata.mockImplementation(
+			(threadId) => store.threads.find((item) => item.id === threadId)?.metadata ?? undefined,
+		);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.clearAllMocks();
+		localStorage.clear();
+	});
+
+	// `createThreadComponentRenderer` wraps the component in a plain provider — it
+	// doesn't re-emit the child's events, so DOM-only assertions use it, while emit
+	// assertions mount a small host directly with `@vue/test-utils` and read the
+	// child wrapper's own `emitted()`.
+	function mountConversation(
+		props: { mentionsEnabled?: boolean; autofocus?: boolean } = {},
+		showMentionedWorkflow = vi.fn(),
+	) {
+		const Host = defineComponent({
+			setup() {
+				provideThread(thread);
+				provide('showMentionedWorkflow', showMentionedWorkflow);
+				return () => h(InstanceAiConversation, props);
+			},
+		});
+		return mount(Host, {
+			global: {
+				stubs: { InstanceAiInput: InstanceAiInputStub, InstanceAiConfirmationPanel: true },
+			},
+		});
+	}
+
+	/**
+	 * A submit from the composer with the mention bookkeeping of one workflow
+	 * mention. Returns the composer's restore callback, which a refused send
+	 * must call to give the draft back.
+	 */
+	function emitMentionSubmit(wrapper: ReturnType<typeof mountConversation>) {
+		const restoreDraft = vi.fn(() => true);
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit(
+			'submit',
+			'Compare orders',
+			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+			restoreDraft,
+			USER_TYPED_MESSAGE,
+			Date.now(),
+			{
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
+			},
+			['wf-1'],
+		);
+		return { restoreDraft };
+	}
+
+	it('focuses the embedded composer on load when another control has focus', async () => {
+		const button = document.createElement('button');
+		document.body.append(button);
+		button.focus();
+		const wrapper = mountConversation({ autofocus: true });
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		button.remove();
+	});
+
+	it('focuses the composer when its panel becomes visible', async () => {
+		const props = reactive({ autofocus: false });
+		const wrapper = mountConversation(props);
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		externalInput.focus();
+		await nextTick();
+		expect(inputFocusSpy).not.toHaveBeenCalled();
+		props.autofocus = true;
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		externalInput.remove();
+	});
+
+	it.each([true, false])(
+		'only focuses a revealed composer when focus is idle (idle: %s)',
+		async (focusIsIdle) => {
+			const wrapper = mountConversation({ autofocus: true });
+			const externalInput = document.createElement('input');
+			document.body.append(externalInput);
+			try {
+				await flushPromises();
+				const composer = wrapper.findComponent(InstanceAiInputStub);
+				thread.pendingConfirmations = [
+					{
+						messageId: 'approval-message',
+						agentNode: {
+							agentId: 'agent-1',
+							role: 'orchestrator',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+						},
+						toolCall: {
+							toolCallId: 'approval-tool',
+							toolName: 'run_workflow',
+							args: {},
+							isLoading: true,
+							confirmationStatus: 'pending',
+							confirmation: { requestId: 'approval-1', severity: 'info', message: 'Run?' },
+						},
+					},
+				];
+				await nextTick();
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).toContain('display: none;');
+				externalInput.focus();
+				if (focusIsIdle) externalInput.blur();
+				inputFocusSpy.mockClear();
+
+				thread.pendingConfirmations = [];
+				await nextTick();
+				await nextTick();
+
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).not.toContain('display: none;');
+				expect(inputFocusSpy).toHaveBeenCalledTimes(focusIsIdle ? 1 : 0);
+				if (!focusIsIdle) expect(document.activeElement).toBe(externalInput);
+			} finally {
+				wrapper.unmount();
+				externalInput.remove();
+			}
+		},
+	);
+
+	it('keeps external focus when a greeting ends and remounts the composer', async () => {
+		vi.useFakeTimers();
+		const wrapper = mountConversation({ autofocus: true });
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		try {
+			await flushPromises();
+			store.isOnboardingChromeHidden.mockReturnValue(true);
+			thread.messages = [
+				{
+					id: 'greeting',
+					role: 'assistant',
+					content: 'Hi there',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+			];
+			await nextTick();
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+			externalInput.focus();
+			inputFocusSpy.mockClear();
+
+			await vi.advanceTimersByTimeAsync(5000);
+
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+			expect(inputFocusSpy).not.toHaveBeenCalled();
+			expect(document.activeElement).toBe(externalInput);
+		} finally {
+			wrapper.unmount();
+			externalInput.remove();
+		}
+	});
+
+	it('forwards draft content changes to the embedded host', () => {
+		const wrapper = mountConversation();
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit('content-change', true);
+		expect(wrapper.findComponent(InstanceAiConversation).emitted('content-change')).toEqual([
+			[true],
+		]);
+		wrapper.unmount();
+	});
+
+	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
+		const creditsStore = mockedStore(useAssistantCreditsStore);
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
+
+		const wrapper = mountConversation();
+
+		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
+		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
+			"You've run out of AI credits",
+		);
+		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
+	});
+
+	it('offers the workflow tabs of the thread, with their origin, as mention artifacts', () => {
+		thread.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Orders' });
+		thread.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Leads' });
+		thread.producedArtifactOrigins.set('wf-2', 'mentioned');
+		const wrapper = mountConversation({ mentionsEnabled: true });
+		const input = wrapper.findComponent(InstanceAiInputStub);
+
+		expect(input.props('mentionArtifacts')).toEqual([
+			{ id: 'wf-1', name: 'Orders' },
+			{ id: 'wf-2', name: 'Leads', origin: 'mentioned' },
+		]);
+	});
+
+	it('shows the mentioned workflow only once the message is admitted', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
+		let admit!: (sent: boolean) => void;
+		vi.mocked(thread.sendMessage).mockReturnValueOnce(
+			new Promise<boolean>((resolve) => {
+				admit = resolve;
+			}),
+		);
+
+		const { restoreDraft } = emitMentionSubmit(wrapper);
+		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Compare orders',
+			expect.objectContaining({
+				mentionCounts: {
+					total: 1,
+					workflow: 1,
+					node: 0,
+					group: 0,
+				},
+				mentionedWorkflowIds: ['wf-1'],
+			}),
+		);
+		// The pick itself moved nothing: the tab comes with the sent message.
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
+
+		admit(true);
+		await vi.waitFor(() => expect(showMentionedWorkflow).toHaveBeenCalledExactlyOnceWith('wf-1'));
+		expect(restoreDraft).not.toHaveBeenCalled();
+	});
+
+	it('gives the draft back and shows no mentioned workflow when the send is refused', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
+
+		const { restoreDraft } = emitMentionSubmit(wrapper);
+		await vi.waitFor(() => expect(restoreDraft).toHaveBeenCalledOnce());
+
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('renders visible messages from the thread', () => {
+		thread.messages = [
+			{ id: 'm1', role: 'user', content: 'Hello', createdAt: '2026-04-01T00:00:00.000Z' },
+		] as InstanceAiMessage[];
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByText } = renderer();
+		expect(getByText('Hello')).toBeInTheDocument();
+	});
+
+	it('renders the above-input and inline-offers slots', () => {
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				slots: {
+					'above-input': () => h('div', { 'data-test-id': 'above-input-slot' }),
+					'inline-offers': () => h('div', { 'data-test-id': 'inline-offers-slot' }),
+				},
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+		expect(getByTestId('above-input-slot')).toBeInTheDocument();
+		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
+	});
+
+	it('keeps the chat input while the onboarding follow-up is held', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		// Past the greeting's lines and thinking beats.
+		await vi.advanceTimersByTimeAsync(5000);
+
+		thread.messages = [
+			...thread.messages,
+			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt },
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Got it.');
+		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+	});
+
+	it('emits thread-missing when the thread cannot be found', async () => {
+		store.threads = [];
+		const notFound = new ResponseError('Not found');
+		notFound.httpStatusCode = 404;
+		store.loadThread.mockRejectedValue(notFound);
+		const wrapper = mountConversation();
+		const conversation = wrapper.findComponent(InstanceAiConversation);
+		await vi.waitFor(() => expect(conversation.emitted('thread-missing')).toBeTruthy());
+	});
+
+	it('emits agent-attachment-restored when a pending attachment is restored', async () => {
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+
+		const wrapper = mountConversation();
+		const conversation = wrapper.findComponent(InstanceAiConversation);
+		await vi.waitFor(() => expect(conversation.emitted('agent-attachment-restored')).toBeTruthy());
+		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
+			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
+		]);
+	});
+
+	describe('composer context chip label', () => {
+		// Wraps the subject in `reactive` and returns it alongside the render
+		// result, so a test can mutate `subject.name` after mount and assert the
+		// chip follows the live value — the actual AGENT-954 scenario (a rename in
+		// the builder while the panel stays open). The stashed agent is a saved
+		// one: a pending (brand-new) agent shows no chip at all.
+		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Stashed Name',
+			});
+			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					props: { subject: reactiveSubject },
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return { ...renderer(), subject: reactiveSubject };
+		}
+
+		it('prefers the live subject name over the stashed name when agent ids match', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Live'),
+			);
+		});
+
+		it('updates the chip when the live subject is renamed after mount', async () => {
+			const { getByTestId, subject } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Initial Name',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Initial Name'),
+			);
+
+			// A rename in the builder mutates the reactive subject's name; the chip
+			// must follow it without a re-stash or remount.
+			subject!.name = 'Renamed Mid-Session';
+			await nextTick();
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Mid-Session');
+		});
+
+		it('falls back to the stashed name when the subject refers to a different agent', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-other',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+
+		it('falls back to the stashed name when no subject is provided', async () => {
+			const { getByTestId } = mountWithSubject(undefined);
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+	});
+
+	describe('pending agent composer', () => {
+		function mountWithPendingAgent() {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				pending: true,
+			});
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return renderer();
+		}
+
+		it('shows no context chip, but keeps the new-agent placeholder', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-placeholder-key').textContent).toBe(
+					'instanceAi.input.newAgentPlaceholder',
+				),
+			);
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('');
+		});
+
+		it('still attaches the pending agent to the first message', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				expect.objectContaining({
+					attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+				}),
+			);
+		});
+	});
+
+	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
+		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		// The stub only passes a `restoreDraft` callback with an attachment queued.
+		await fireEvent.click(getByTestId('instance-ai-input-add-attachment'));
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-draft').textContent).toBe('Normal message');
+		expect(getByTestId('instance-ai-input-attachments').textContent).toBe('attached');
+	});
+
+	it('sends the message once beforeSend resolves', async () => {
+		let resolveBeforeSend: () => void = () => {};
+		const beforeSend = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveBeforeSend = resolve;
+				}),
+		);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		resolveBeforeSend();
+		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalledTimes(1));
+		expect(thread.sendMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not send once beforeSend resolves if the panel disposed this runtime meanwhile', async () => {
+		let resolveBeforeSend: () => void = () => {};
+		const beforeSend = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveBeforeSend = resolve;
+				}),
+		);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		// Simulate the host disposing/replacing the runtime while `beforeSend` was pending.
+		const replacementThread = makeThread();
+		store.getRuntime.mockReturnValue(replacementThread);
+		resolveBeforeSend();
+
+		await vi.waitFor(() => expect(beforeSend).toHaveResolved());
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replacementThread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('exposes pendingComposerContext for panels beside the conversation', () => {
+		const wrapper = mountConversation();
+		const conversation = wrapper.findComponent(InstanceAiConversation);
+		expect(conversation.vm.pendingComposerContext).toBeNull();
+	});
+
+	describe('exposed contract', () => {
+		it('exposes isDirty, resetScroll and dismissPendingComposerContext', () => {
+			const wrapper = mountConversation();
+			const conversation = wrapper.findComponent(InstanceAiConversation);
+
+			expect(typeof conversation.vm.isDirty).toBe('function');
+			expect(conversation.vm.isDirty()).toBe(false);
+			expect(typeof conversation.vm.resetScroll).toBe('function');
+			expect(typeof conversation.vm.dismissPendingComposerContext).toBe('function');
+			expect(conversation.vm.dismissPendingComposerContext('missing-key')).toBe(false);
+		});
+
+		it('applyHandoff stashes the context and binds the agent-preview-view metadata', () => {
+			const wrapper = mountConversation();
+			const conversation = wrapper.findComponent(InstanceAiConversation);
+			const context: InstanceAiHandoffContext = {
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-1',
+			};
+
+			conversation.vm.applyHandoff(context);
+
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+				instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' },
+			});
+		});
+	});
+
+	describe('workflow handoff without opening turn', () => {
+		it('restores a pending workflow attachment and shows the static greeting', async () => {
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await vi.waitFor(() =>
+				expect(thread.setPendingWorkflowAttachment).toHaveBeenCalledWith({
+					type: 'workflow',
+					id: 'wf-1',
+					name: 'FAQ Responder',
+				}),
+			);
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-workflow-handoff-greeting')).toBeInTheDocument(),
+			);
+			expect(getByTestId('instance-ai-workflow-handoff-attachment')).toBeInTheDocument();
+			expect(getByTestId('attachment-preview-resource')).toHaveTextContent('FAQ Responder');
+			expect(getByTestId('instance-ai-workflow-handoff-greeting')).toHaveTextContent(
+				'FAQ Responder',
+			);
+			expect(getByTestId('instance-ai-workflow-handoff-greeting')).toHaveTextContent(
+				'make changes, debug an issue, set up credentials',
+			);
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(handleRedirectLandingSpy).not.toHaveBeenCalled();
+		});
+
+		it('restores a pending workflow attachment before loadThread resolves', async () => {
+			store.threads = [];
+			let resolveLoad!: () => void;
+			store.loadThread.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveLoad = resolve;
+				}),
+			);
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() =>
+				expect(thread.setPendingWorkflowAttachment).toHaveBeenCalledWith({
+					type: 'workflow',
+					id: 'wf-1',
+					name: 'FAQ Responder',
+				}),
+			);
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
+			resolveLoad();
+		});
+
+		it('fires the workflow-list auto landing handler once on hydration', async () => {
+			thread.sseState = 'disconnected';
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			stashPendingRedirectLanding('thread-1');
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() => expect(handleRedirectLandingSpy).toHaveBeenCalledWith('thread-1'));
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('appends the pending workflow attachment on first submit and clears it', async () => {
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				expect.objectContaining({
+					authorship: USER_TYPED_MESSAGE,
+					attachments: [{ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' }],
+				}),
+			);
+			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
+			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+
+		it('clears the workflow hand-off stash after send even if the runtime already dropped it', async () => {
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			let resolveSend!: (value: boolean) => void;
+			vi.mocked(thread.sendMessage).mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveSend = resolve;
+				}),
+			);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+			thread.pendingWorkflowAttachment = null;
+
+			resolveSend(true);
+			await vi.waitFor(() => expect(getPendingWorkflowAttachment('thread-1')).toBeNull());
+		});
+
+		it('clears the pending workflow attachment when the context chip is dismissed', async () => {
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
+			await fireEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
+			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+	});
+});

@@ -57,6 +57,43 @@ Default.args = {
 	items,
 };
 
+export const Sizes: StoryFn = () => ({
+	components: { Breadcrumbs },
+	setup() {
+		return { items };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Breadcrumbs :items="items" theme="medium" />
+			<Breadcrumbs :items="items" theme="small" />
+		</div>
+	`,
+});
+
+const itemsWithIcons: PathItem[] = [
+	{
+		id: 'project',
+		label: 'My project',
+		href: '/project',
+		icon: { type: 'icon', value: 'folder' },
+	},
+	{ id: 'folder', label: 'Launch', href: '/launch', icon: { type: 'emoji', value: '🚀' } },
+	{ id: 'current', label: 'Current' },
+];
+
+export const WithIcons: StoryFn = () => ({
+	components: { Breadcrumbs },
+	setup() {
+		return { itemsWithIcons };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Breadcrumbs :items="itemsWithIcons" theme="medium" />
+			<Breadcrumbs :items="itemsWithIcons" theme="small" />
+		</div>
+	`,
+});
+
 export const CustomSeparator = defaultTemplate.bind({});
 CustomSeparator.args = {
 	items,
@@ -168,19 +205,6 @@ WithSlots.args = {
 		{ id: '3', label: 'Parent 1', href: '/hidden1' },
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
-};
-
-const smallVersionTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	components: { Breadcrumbs },
-	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
-});
-export const SmallVersion = smallVersionTemplate.bind({});
-SmallVersion.args = {
-	items,
-	theme: 'small',
-	showBorder: true,
 };
 
 const smallWithSlotsTemplate: StoryFn = (args, { argTypes }) => ({

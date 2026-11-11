@@ -1,4 +1,4 @@
-import type { TokenUsage } from '@n8n/agents';
+import { withPromptSizeBreakdown, type TokenUsage } from '@n8n/agents';
 import { z } from 'zod';
 
 // ── Schema (source of truth) ────────────────────────────────────────────────
@@ -16,6 +16,12 @@ export const builderUsageItemSchema = z.object({
 	cacheRead: z.number().min(0),
 	cacheWrite: z.number().min(0),
 	output: z.number().min(0),
+	/**
+	 * Largest prompt among the model calls in this item. The service bills
+	 * models that cost more for long prompts by it. Absent when the run did not
+	 * report a prompt-size split, so the service bills at the highest rate.
+	 */
+	maxPromptTokens: z.number().int().min(0).optional(),
 });
 
 export type BuilderUsageItem = z.infer<typeof builderUsageItemSchema>;
@@ -31,6 +37,20 @@ export const runTokenUsageSchema = z.object({
 });
 
 export type RunTokenUsage = z.infer<typeof runTokenUsageSchema>;
+
+const tokenCountsSchema = z.object({
+	promptTokens: z.number().optional(),
+	completionTokens: z.number().optional(),
+	inputTokenDetails: z
+		.object({
+			noCache: z.number().optional(),
+			cacheRead: z.number().optional(),
+			cacheWrite: z.number().optional(),
+		})
+		.optional(),
+});
+
+type TokenCounts = z.infer<typeof tokenCountsSchema>;
 
 /** Shape of the `finish` stream chunk emitted by the agent runtime. */
 const finishChunkSchema = z.object({
@@ -51,6 +71,15 @@ const finishChunkSchema = z.object({
 					cacheWrite: z.number().optional(),
 				})
 				.optional(),
+			byPromptSize: z
+				.array(
+					z.object({
+						promptTokensOver: z.number(),
+						maxPromptTokens: z.number(),
+						usage: tokenCountsSchema,
+					}),
+				)
+				.optional(),
 		})
 		.optional(),
 });
@@ -58,6 +87,9 @@ const finishChunkSchema = z.object({
 // ── Accumulator ─────────────────────────────────────────────────────────────
 
 type PerModelTokens = {
+	model: string;
+	/** Undefined when the usage came without a prompt-size split. */
+	maxPromptTokens: number | undefined;
 	uncachedInput: number;
 	cacheRead: number;
 	cacheWrite: number;
@@ -69,7 +101,8 @@ type PerModelTokens = {
  * chunks. Instantiated per-stream, fed each raw chunk, and drained at the end.
  * A run emits one `finish` chunk per agent segment (one extra per resume), so
  * usage is summed across segments — flat aggregates for metrics, plus a
- * per-model breakdown for credit billing.
+ * per-model breakdown for credit billing. The breakdown keeps the runtime's
+ * prompt-size buckets apart, so the service can bill each at its own rate.
  */
 export class UsageAccumulator {
 	private promptTokens = 0;
@@ -83,8 +116,7 @@ export class UsageAccumulator {
 	observe(chunk: unknown): void {
 		const parsed = finishChunkSchema.safeParse(chunk);
 		if (!parsed.success || !parsed.data.usage) return;
-		const { promptTokens, completionTokens, totalTokens, cost, inputTokenDetails } =
-			parsed.data.usage;
+		const { promptTokens, completionTokens, totalTokens, cost, byPromptSize } = parsed.data.usage;
 
 		this.promptTokens += promptTokens ?? 0;
 		this.completionTokens += completionTokens ?? 0;
@@ -93,17 +125,38 @@ export class UsageAccumulator {
 		this.seen = true;
 
 		const model = parsed.data.model ?? 'unknown';
-		const entry = this.perModel.get(model) ?? {
+		if (byPromptSize && byPromptSize.length > 0) {
+			for (const bucket of byPromptSize) {
+				this.addTokens(model, bucket, bucket.usage);
+			}
+		} else {
+			this.addTokens(model, undefined, parsed.data.usage);
+		}
+	}
+
+	private addTokens(
+		model: string,
+		bucket: { promptTokensOver: number; maxPromptTokens: number } | undefined,
+		counts: TokenCounts,
+	): void {
+		const key = `${model}\u0000${bucket?.promptTokensOver ?? 'unsplit'}`;
+		const entry = this.perModel.get(key) ?? {
+			model,
+			maxPromptTokens: undefined,
 			uncachedInput: 0,
 			cacheRead: 0,
 			cacheWrite: 0,
 			output: 0,
 		};
+		if (bucket) {
+			entry.maxPromptTokens = Math.max(entry.maxPromptTokens ?? 0, bucket.maxPromptTokens);
+		}
 		// uncachedInput comes straight from the SDK's noCache figure (never derived by
 		// subtraction) when the provider supplied a usable cache breakdown. When it
 		// didn't (e.g. uncached OpenAI usage, which reports only an aggregate prompt
 		// count), fall back to promptTokens so input tokens are still billed instead
 		// of silently dropped. output already includes reasoning tokens (AI SDK semantics).
+		const { promptTokens, completionTokens, inputTokenDetails } = counts;
 		const noCache = Math.max(0, inputTokenDetails?.noCache ?? 0);
 		const cacheRead = Math.max(0, inputTokenDetails?.cacheRead ?? 0);
 		const cacheWrite = Math.max(0, inputTokenDetails?.cacheWrite ?? 0);
@@ -112,7 +165,7 @@ export class UsageAccumulator {
 		entry.cacheRead += cacheRead;
 		entry.cacheWrite += cacheWrite;
 		entry.output += Math.max(0, completionTokens ?? 0);
-		this.perModel.set(model, entry);
+		this.perModel.set(key, entry);
 	}
 
 	/** Whether any usage was observed. */
@@ -123,11 +176,16 @@ export class UsageAccumulator {
 	/** Produce a usage summary. Safe to call multiple times (idempotent). */
 	toUsage(): RunTokenUsage {
 		const usage: BuilderUsageItem[] = [];
-		for (const [model, e] of this.perModel) {
+		for (const { model, maxPromptTokens, ...tokens } of this.perModel.values()) {
 			// Skip models with no billable tokens (e.g. a finish chunk that carried
 			// only a total) so they don't create spurious zero-credit claims.
-			if (e.uncachedInput + e.cacheRead + e.cacheWrite + e.output > 0) {
-				usage.push({ type: 'llmTokens', model, ...e });
+			if (tokens.uncachedInput + tokens.cacheRead + tokens.cacheWrite + tokens.output > 0) {
+				usage.push({
+					type: 'llmTokens',
+					model,
+					...tokens,
+					...(maxPromptTokens !== undefined && { maxPromptTokens }),
+				});
 			}
 		}
 
@@ -145,13 +203,13 @@ export class UsageAccumulator {
  * Map a single LLM call's token usage to billable items by replaying it
  * through the accumulator, so one-off claims (observational-memory
  * observer/reflector calls) use the exact same billing semantics as
- * finish-chunk stream usage.
+ * finish-chunk stream usage. The usage is one call, so its prompt size is exact.
  */
 export function tokenUsageToBuilderUsageItems(
 	model: string,
 	usage: TokenUsage,
 ): BuilderUsageItem[] {
 	const accumulator = new UsageAccumulator();
-	accumulator.observe({ type: 'finish', model, usage });
+	accumulator.observe({ type: 'finish', model, usage: withPromptSizeBreakdown(usage) });
 	return accumulator.toUsage().usage ?? [];
 }

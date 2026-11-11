@@ -19,6 +19,7 @@ const mockFindPackageJson = vi.mocked(fileUtils.findPackageJson);
 const ruleTester = new RuleTester();
 
 const nodeFilePath = '/tmp/TestNode.node.ts';
+const versionedNodeFilePath = '/tmp/v1/TestNodeV1.node.ts';
 
 function createNodeCode(
 	credentials: Array<string | { name: string; required?: boolean }> = [],
@@ -97,6 +98,36 @@ export class TestNode implements INodeType {
 }`;
 }
 
+/**
+ * Versioned node layout from the node-building docs: each version class
+ * implements `INodeType` and assigns `description` in its constructor, merging
+ * the `baseDescription` that the `VersionedNodeType` entry file passes in.
+ */
+function createVersionedNodeCode(credentialNameLiteral: string): string {
+	return `
+import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNodeV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 1,
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: ${credentialNameLiteral},
+					required: true,
+				},
+			],
+			properties: [],
+		};
+	}
+}`;
+}
+
 function createNonNodeClass(): string {
 	return `
 export class RegularClass {
@@ -153,8 +184,52 @@ ruleTester.run('valid-credential-references', ValidCredentialReferencesRule, {
 			filename: nodeFilePath,
 			code: createNonINodeTypeClass(),
 		},
+		{
+			name: 'versioned node assigning description in its constructor references a credential that exists',
+			filename: versionedNodeFilePath,
+			code: createVersionedNodeCode("'myApiCredential'"),
+		},
 	],
 	invalid: [
+		{
+			name: 'versioned node assigning description in its constructor references a credential that does not exist',
+			filename: versionedNodeFilePath,
+			code: createVersionedNodeCode("'myApiCredentail'"),
+			errors: [
+				{
+					messageId: 'credentialNotFound',
+					data: { credentialName: 'myApiCredentail' },
+					suggestions: [
+						{
+							messageId: 'didYouMean',
+							data: { suggestedName: 'myApiCredential' },
+							output: createVersionedNodeCode('"myApiCredential"'),
+						},
+					],
+				},
+			],
+		},
+		{
+			name: 'credential name in a description cast with `as` does not exist in package',
+			filename: nodeFilePath,
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		credentials: [{ name: 'brokenReference', required: true }],
+		properties: [],
+	} as INodeTypeDescription;
+}`,
+			errors: [
+				{
+					messageId: 'credentialNotFound',
+					data: { credentialName: 'brokenReference' },
+				},
+			],
+		},
 		{
 			name: 'credential name does not exist in package (object form)',
 			filename: nodeFilePath,

@@ -56,6 +56,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	deriveHomeProject,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -737,32 +738,22 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	// Updates the position of all the nodes that the top-left node
-	// is at the given position
+	// Updates all node positions so the group starts at the given position
 	function updateNodePositions(
 		workflowData: WorkflowData | WorkflowDataUpdate,
 		position: XYPosition,
 	): void {
-		if (workflowData.nodes === undefined) {
+		if (!workflowData.nodes?.length) {
 			return;
 		}
 
-		// Find most top-left node
-		const minPosition = [99999999, 99999999];
+		const minPosition = [Infinity, Infinity];
 		for (const node of workflowData.nodes) {
-			if (node.position[1] < minPosition[1]) {
-				minPosition[0] = node.position[0];
-				minPosition[1] = node.position[1];
-			} else if (node.position[1] === minPosition[1]) {
-				if (node.position[0] < minPosition[0]) {
-					minPosition[0] = node.position[0];
-					minPosition[1] = node.position[1];
-				}
-			}
+			minPosition[0] = Math.min(minPosition[0], node.position[0]);
+			minPosition[1] = Math.min(minPosition[1], node.position[1]);
 		}
 
-		// Update the position on all nodes so that the
-		// most top-left one is at given position
+		// Shift the group's bounding-box top-left to the given position
 		const offsetPosition = [position[0] - minPosition[0], position[1] - minPosition[1]];
 		for (const node of workflowData.nodes) {
 			node.position[0] += offsetPosition[0];
@@ -781,6 +772,11 @@ export function useWorkflowHelpers() {
 
 			node.credentials = Object.entries(node.credentials).reduce<INodeCredentials>(
 				(acc, [credentialType, credential]) => {
+					if (credential.__aiGatewayManaged && credential.id === null) {
+						acc[credentialType] = credential;
+						return acc;
+					}
+
 					const isUsableCredential = usableCredentials.some(
 						(ownCredential) => `${ownCredential.id}` === `${credential.id}`,
 					);
@@ -865,7 +861,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 		if (workflowData.checksum) {
 			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}

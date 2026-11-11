@@ -4,16 +4,33 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { mintApprovalCallback, SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
-import { OperationalError, UserError } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	EngineDidNotAdmitError,
+	EngineRejectedWorkflowError,
+	isStartRefusedBeforeSave,
+} from '@/services/engine-data-plane-proxy.service';
+
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import type { EngineTlsMaterial } from '../engine-tls-material';
+
+const authSecret = 'a'.repeat(32);
+const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		workflow: {},
+		executionId: EXECUTION_ID,
+		callerContext: { hostMode: 'trigger' },
 	};
 
 	let http: HttpRequestClient;
@@ -32,7 +49,10 @@ describe('EngineDataPlaneClient', () => {
 		);
 
 	/** Rebuilds the client so each test can vary the engine config. */
-	const newClient = (config: Partial<EngineConfig> = {}) => {
+	const newClient = (
+		config: Partial<EngineConfig> = {},
+		tlsMaterial: Pick<EngineTlsMaterial, 'tls'> = { tls: undefined },
+	) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
@@ -42,13 +62,49 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		return new EngineDataPlaneClient(
-			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', ...config }),
+			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
+			mock<InstanceSettings>({ instanceId: 'instance-1' }),
+			tlsMaterial as EngineTlsMaterial,
 		);
 	};
 
 	beforeEach(() => {
 		client = newClient();
+	});
+
+	it('presents the client certificate and verifies the engine against the engine CA alone when TLS is on', () => {
+		newClient({}, { tls });
+
+		expect(clientOptions?.connectionPool).toEqual({
+			agentOptions: { ...tls, rejectUnauthorized: true },
+		});
+	});
+
+	it('uses no connection pool over plain HTTP', () => {
+		expect(clientOptions?.connectionPool).toBeUndefined();
+	});
+
+	it('posts search filters without following redirects', async () => {
+		const body = { workflowIds: ['wf'], hostMode: 'webhook', includeTotal: true, limit: 20 };
+		const result = { items: [], hasMore: false, total: 0 };
+		respondWith(200, result);
+		await expect(client.searchExecutions(body)).resolves.toEqual(result);
+		expect(http.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: '/api/workflow-executions/search',
+				method: 'POST',
+				body,
+				disableFollowRedirect: true,
+			}),
+		);
+	});
+
+	it('propagates search failures', async () => {
+		respondWith(503, {});
+		await expect(client.searchExecutions({ workflowIds: 'all', limit: 20 })).rejects.toThrow(
+			OperationalError,
+		);
 	});
 
 	describe('startExecution', () => {
@@ -63,6 +119,16 @@ describe('EngineDataPlaneClient', () => {
 					method: 'POST',
 					body: request,
 				}),
+			);
+		});
+
+		it('does not follow redirects, so the identity token reaches only the configured host', async () => {
+			respondWith(201, { executionId: 'exec-1' });
+
+			await client.startExecution(request);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ disableFollowRedirect: true }),
 			);
 		});
 
@@ -83,7 +149,20 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
-			expect(clientOptions?.ssrf).toBe('disabled');
+			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
+		});
+
+		it('sends an identity token the engine accepts, proving the caller is the instance id', () => {
+			const headers = clientOptions?.headers;
+			const resolved = typeof headers === 'function' ? headers() : headers;
+			const authorization = resolved?.authorization ?? '';
+
+			expect(authorization).toMatch(/^Bearer .+/);
+
+			const token = authorization.replace('Bearer ', '');
+			const verifier = new SharedSecretIdentityVerifier(authSecret);
+
+			expect(verifier.verify(token)).toEqual({ cpId: 'instance-1', tenantId: 'instance-1' });
 		});
 
 		it.each([
@@ -91,28 +170,32 @@ describe('EngineDataPlaneClient', () => {
 				case: 'a rejected graph',
 				statusCode: 400,
 				body: { error: 'invalid_graph', reason: 'cycle detected' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine rejected the workflow: cycle detected',
 			},
 			{
 				case: 'a refused admission',
 				statusCode: 429,
 				body: { error: 'admittance_rejected', reason: 'at capacity' },
-				errorClass: OperationalError,
+				errorClass: EngineDidNotAdmitError,
+				refusedBeforeSave: true,
 				message: 'Engine did not admit the execution: at capacity',
 			},
 			{
 				case: 'an unsupported workflow',
 				statusCode: 501,
 				body: { error: 'unimplemented', reason: 'wait steps' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine does not support this workflow yet: wait steps',
 			},
 			{
 				case: 'an error code with no reason',
 				statusCode: 400,
 				body: { error: 'invalid_request' },
-				errorClass: UserError,
+				errorClass: EngineRejectedWorkflowError,
+				refusedBeforeSave: true,
 				message: 'Engine rejected the workflow: invalid_request',
 			},
 			{
@@ -120,22 +203,258 @@ describe('EngineDataPlaneClient', () => {
 				statusCode: 500,
 				body: { error: 'boom' },
 				errorClass: OperationalError,
+				refusedBeforeSave: false,
 				message: 'Engine responded with 500: boom',
+			},
+			{
+				case: 'a redirect the client refused to follow',
+				statusCode: 302,
+				body: '',
+				errorClass: OperationalError,
+				refusedBeforeSave: false,
+				message: 'Engine responded with 302',
 			},
 			{
 				case: 'a body that is not the engine error shape',
 				statusCode: 502,
 				body: '<html>bad gateway</html>',
 				errorClass: OperationalError,
+				refusedBeforeSave: false,
 				message: 'Engine responded with 502',
 			},
-		])('maps $case to $errorClass.name', async ({ statusCode, body, errorClass, message }) => {
-			respondWith(statusCode, body);
+		])(
+			'maps $case to $errorClass.name',
+			async ({ statusCode, body, errorClass, refusedBeforeSave, message }) => {
+				respondWith(statusCode, body);
 
-			const error = await startExecutionError();
+				const error = await startExecutionError();
 
-			expect(error).toBeInstanceOf(errorClass);
-			expect(error).toHaveProperty('message', message);
+				expect(error).toBeInstanceOf(errorClass);
+				expect(error).toHaveProperty('message', message);
+				// The dispatcher deletes the trigger files only when no execution was saved.
+				expect(isStartRefusedBeforeSave(error)).toBe(refusedBeforeSave);
+			},
+		);
+	});
+
+	describe('getExecution', () => {
+		it('reads the execution from the engine', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed' };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}`,
+					method: 'GET',
+					qs: undefined,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('asks for the steps on the same request, so a read is one round trip', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID, { includeSteps: true })).resolves.toEqual(
+				snapshot,
+			);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ qs: { includeSteps: 'true' } }),
+			);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.getExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+	});
+
+	describe('findLatestExecution', () => {
+		const filter = { workflowIds: ['wf-1'], status: ['completed' as const] };
+
+		it('posts the filter and returns the newest execution with its steps', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.findLatestExecution(filter)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/workflow-executions/search/latest',
+					method: 'POST',
+					body: filter,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('returns undefined when no execution matches', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.findLatestExecution(filter)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.findLatestExecution(filter)).rejects.toThrow(OperationalError);
+		});
+	});
+
+	describe('cancelExecution', () => {
+		it('reports a cancelled execution', async () => {
+			respondWith(200, {
+				executionId: EXECUTION_ID,
+				status: 'cancelled',
+				finishedAt: '2026-10-02T09:00:00.000Z',
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: true,
+				finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+			});
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}/cancel`,
+					method: 'POST',
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('reports the status of an execution that had already ended', async () => {
+			respondWith(409, {
+				error: 'not_cancellable',
+				reason: 'The execution has already completed',
+				details: { status: 'completed' },
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: false,
+				status: 'completed',
+			});
+		});
+
+		it.each([
+			['no details', { error: 'not_cancellable' }],
+			['no status', { error: 'not_cancellable', details: {} }],
+			['an unknown status', { error: 'not_cancellable', details: { status: 'paused' } }],
+		])('throws on a refusal that names %s', async (_case, body) => {
+			respondWith(409, body);
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+	});
+
+	describe('resume requests', () => {
+		it('reads the step id of an approval callback, and nothing from another reference', () => {
+			const stepId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+
+			expect(client.readApprovalCallback(mintApprovalCallback('secret', stepId, 'a'))).toBe(stepId);
+			expect(client.readApprovalCallback('nhitl1|e1|a|mac')).toBeUndefined();
+		});
+
+		it("posts `locateResume` to the engine's locate route", async () => {
+			const value = {
+				execution: { id: EXECUTION_ID },
+				target: { stepId: 'step-1', nodeId: 'wait' },
+			};
+			respondWith(200, value);
+
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
+				ok: true,
+				value,
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/resume-requests/locate',
+					method: 'POST',
+					body: { id: EXECUTION_ID, token: 't' },
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it("posts `resolveStep` to the step's resolve route", async () => {
+			respondWith(200, { executionId: EXECUTION_ID, stepId: 'step-1' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toEqual({
+				ok: true,
+				value: { executionId: EXECUTION_ID, stepId: 'step-1' },
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/step-executions/step-1/resolve',
+					body: { token: 't', outputs: [[]] },
+				}),
+			);
+		});
+
+		it.each([
+			[401, 'invalid_token'],
+			[404, 'not_found'],
+			[409, 'not_waiting'],
+			[501, 'unimplemented'],
+		])("relays a %s refusal with the engine's reason", async (status, error) => {
+			respondWith(status, { error });
+
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
+				ok: false,
+				status,
+				error,
+			});
+		});
+
+		it('relays a 300 without a reason as an engine error', async () => {
+			respondWith(300, {});
+
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
+				ok: false,
+				status: 300,
+				error: 'engine_error',
+			});
+		});
+
+		it("throws on a 401 for this plane's own identity, which is a failure and not a refusal", async () => {
+			respondWith(401, { error: 'unauthenticated' });
+
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).rejects.toThrow(
+				'Engine responded with 401',
+			);
+		});
+
+		it('throws on a 500, which is a failure and not a refusal', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).rejects.toThrow(
+				'Engine responded with 500',
+			);
 		});
 	});
 });

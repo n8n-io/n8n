@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
 import { computed, provide, ref, watch } from 'vue';
@@ -7,16 +7,15 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	hasToolConnection,
 	type McpServerConnectionItem,
 	type ToolCredentialRef,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useMcpServerConnect } from '../composables/useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConnectionRow, { type ConnectionRowIcon } from './ConnectionRow.vue';
 
@@ -35,7 +34,13 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
-const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
+const {
+	connectServer,
+	connectWithCredential,
+	createCredentialAdapter,
+	ignorePendingConnectResult,
+	isConnectLocked,
+} = useMcpServerConnect();
 
 const isConnecting = ref(false);
 
@@ -48,7 +53,10 @@ void (async () => {
 })();
 void (async () => {
 	try {
-		await credentialsStore.fetchAllCredentials();
+		await Promise.all([
+			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
 	} catch (error) {
 		console.warn('Failed to preload credentials for the tools card', error);
 	}
@@ -64,7 +72,6 @@ interface CardRow {
 	serverSlug: string;
 	subtitle: string;
 	icon: ConnectionRowIcon;
-	credentialType: string;
 	item: McpServerConnectionItem & { credentials: ToolCredentialRef[] };
 }
 
@@ -72,21 +79,23 @@ const rows = computed<CardRow[]>(() =>
 	props.servers.map((server) => {
 		const entry = catalogBySlug.value.get(server.serverSlug);
 		const connection = mcpStore.connections.find((c) => c.serverSlug === server.serverSlug);
-		const credentialType =
-			connection?.credentialType ?? entry?.credentialType ?? server.credentialType;
+		const credentialOptions = entry?.credentials ?? server.usesCredentials;
 		return {
 			serverSlug: server.serverSlug,
 			subtitle: entry?.tagline ?? server.tagline ?? '',
-			icon: iconForTool(entry?.icons ?? [], uiStore.appliedTheme),
-			credentialType,
+			icon: iconForMcpRegistryServer(entry?.icons ?? [], uiStore.appliedTheme),
 			item: {
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
-				status: connection?.status ?? 'none',
-				credentials: [
-					{ authType: credentialType, credentialId: connection?.credentialId, required: true },
-				],
+				status: isConnectLocked(server.serverSlug) ? 'connecting' : (connection?.status ?? 'none'),
+				credentials: credentialOptions.map(({ credentialType, name }) => ({
+					authType: credentialType,
+					displayName: name,
+					credentialId:
+						connection?.credentialType === credentialType ? connection.credentialId : undefined,
+					required: true,
+				})),
 				availableTools: [],
 			},
 		};
@@ -97,7 +106,7 @@ const isActionable = computed(() => !props.readOnly && !props.expired);
 const anyConnected = computed(() => rows.value.some(hasConnection));
 
 function hasConnection(row: CardRow): boolean {
-	return hasToolConnection(row.item.status);
+	return mcpStore.connections.some((connection) => connection.serverSlug === row.serverSlug);
 }
 
 function finish(approved: boolean) {
@@ -138,14 +147,13 @@ async function runConnect(attempt: () => Promise<unknown>) {
 	}
 }
 
-async function connect(row: CardRow) {
-	await runConnect(
-		async () => await connectServer({ slug: row.serverSlug, credentialType: row.credentialType }),
-	);
+async function connect(row: CardRow, credentialType: string, credentialTypes?: readonly string[]) {
+	await connectServer({ slug: row.serverSlug, credentialType, credentialTypes });
 }
 
 async function handleSelectCredential(row: CardRow, credentialId: string) {
 	await runConnect(async () => {
+		ignorePendingConnectResult(row.serverSlug);
 		mcpTelemetry.trackExistingCredentialSelected(row.serverSlug);
 		return await connectWithCredential(row.serverSlug, credentialId);
 	});
@@ -153,20 +161,20 @@ async function handleSelectCredential(row: CardRow, credentialId: string) {
 
 provide(
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	createCredentialAdapter((_authType, item) => {
+	createCredentialAdapter((authType, item, credentialTypes) => {
 		const row = rows.value.find((candidate) => candidate.item.id === item.id);
-		if (row) void connect(row);
+		if (row) void connect(row, authType, credentialTypes);
 	}),
 );
 
 function handleBrowseAll() {
-	mcpTelemetry.trackToolsListOpened();
+	mcpTelemetry.trackToolsListOpened('mcp_connect_card');
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 function openSettings(row: CardRow) {
 	if (!hasConnection(row)) return;
-	mcpTelemetry.trackSettingsOpened(row.serverSlug);
+	mcpTelemetry.trackSettingsOpened(row.serverSlug, 'mcp_connect_card');
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId: row.item.id },
@@ -175,7 +183,7 @@ function openSettings(row: CardRow) {
 </script>
 
 <template>
-	<div
+	<N8nCard
 		:class="[$style.card, isActionable && $style.awaitingInput]"
 		data-test-id="instance-ai-mcp-connect-card"
 	>
@@ -197,7 +205,6 @@ function openSettings(row: CardRow) {
 				:name="row.item.title"
 				:subtitle="row.subtitle"
 				:icon="row.icon"
-				size="default"
 				:clickable="hasConnection(row)"
 				@open-settings="openSettings(row)"
 			>
@@ -250,13 +257,13 @@ function openSettings(row: CardRow) {
 				}}
 			</N8nButton>
 		</ConfirmationFooter>
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	flex-direction: column;
+	padding: 0;
+	box-shadow: none;
 	max-width: 90%;
 	border: var(--border);
 	border-radius: var(--radius--lg);
@@ -264,7 +271,8 @@ function openSettings(row: CardRow) {
 }
 
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

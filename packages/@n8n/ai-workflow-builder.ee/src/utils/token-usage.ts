@@ -28,7 +28,8 @@ export function extractLastTokenUsage(messages: unknown[]): TokenUsage | undefin
 	const lastAiAssistantMessage = messages.findLast(
 		(m): m is AIMessageWithUsageMetadata =>
 			m instanceof AIMessage &&
-			m.response_metadata?.usage !== undefined &&
+			typeof m.response_metadata?.usage === 'object' &&
+			m.response_metadata.usage !== null &&
 			'input_tokens' in m.response_metadata.usage &&
 			'output_tokens' in m.response_metadata.usage,
 	);

@@ -62,6 +62,12 @@ const chromeMock = {
 	windows: {
 		getCurrent: vi.fn(),
 	},
+	storage: {
+		local: {
+			get: vi.fn(),
+			set: vi.fn(),
+		},
+	},
 };
 
 Object.assign(globalThis, { chrome: chromeMock });
@@ -142,6 +148,8 @@ beforeEach(() => {
 
 	chromeMock.tabs.get.mockImplementation(async (id: number) => await Promise.resolve(makeTab(id)));
 	chromeMock.windows.getCurrent.mockResolvedValue({ type: 'normal' } as chrome.windows.Window);
+	chromeMock.storage.local.get.mockResolvedValue({});
+	chromeMock.storage.local.set.mockResolvedValue(undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -197,7 +205,7 @@ describe('useConnection', () => {
 	});
 
 	describe('connected instance', () => {
-		const RELAY_URL = 'wss://acme.app.n8n.cloud/relay';
+		const RELAY_URL = 'wss://acme.app.n8n.cloud:8443/relay';
 
 		it('names the instance reported by the background on mount', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
@@ -210,7 +218,7 @@ describe('useConnection', () => {
 			const { wrapper, result } = mountComposable();
 			await flush();
 
-			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+			expect(result().relayHostKey.value).toBe('acme.app.n8n.cloud:8443');
 
 			wrapper.unmount();
 		});
@@ -218,12 +226,12 @@ describe('useConnection', () => {
 		it('names the instance when a connection starts while the view is open', async () => {
 			const { wrapper, result } = mountComposable();
 			await flush();
-			expect(result().relayHost.value).toBeNull();
+			expect(result().relayHostKey.value).toBeNull();
 
 			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
 			await flush();
 
-			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+			expect(result().relayHostKey.value).toBe('acme.app.n8n.cloud:8443');
 
 			wrapper.unmount();
 		});
@@ -237,7 +245,7 @@ describe('useConnection', () => {
 			await result().disconnect();
 			await flush();
 
-			expect(result().relayHost.value).toBeNull();
+			expect(result().relayHostKey.value).toBeNull();
 
 			wrapper.unmount();
 		});
@@ -511,6 +519,176 @@ describe('useConnection', () => {
 				expect.objectContaining({ type: 'connect' }),
 			);
 			expect(result().errorMessage.value).toBeTruthy();
+
+			wrapper.unmount();
+		});
+	});
+
+	describe('remembered instances', () => {
+		const APPROVED_KEY = 'approvedRelayHosts';
+		const RELAY_URL = 'ws://localhost:1234/ext';
+
+		/** Background responses for a connect that succeeds against RELAY_URL. */
+		function stubSuccessfulConnect(): void {
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getRelayUrl') return RELAY_URL;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') return { success: true };
+				if (msg.type === 'clearRelayUrl') return { success: true };
+				return await Promise.resolve({});
+			});
+		}
+
+		it('stores the host and port when the user opts in', async () => {
+			stubSuccessfulConnect();
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			await result().connect();
+			await flush();
+
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
+				[APPROVED_KEY]: ['localhost:1234'],
+			});
+
+			wrapper.unmount();
+		});
+
+		it('stores the host the user approved even if the live URL changes mid-handshake', async () => {
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getRelayUrl') return RELAY_URL;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') {
+					// The session drops mid-handshake, which clears the live relay URL.
+					pushMessage({ type: 'statusChanged', connected: false });
+					return { success: true };
+				}
+				if (msg.type === 'clearRelayUrl') return { success: true };
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			await result().connect();
+			await flush();
+
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
+				[APPROVED_KEY]: ['localhost:1234'],
+			});
+
+			wrapper.unmount();
+		});
+
+		it('clears the opt-in when a different instance takes over the page', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			pushMessage({ type: 'relayUrlReady', relayUrl: 'ws://other.host:9999/ext' });
+			await flush();
+
+			expect(result().rememberInstance.value).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it('stores nothing by default — auto-connect is opt-in', async () => {
+			stubSuccessfulConnect();
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().rememberInstance.value).toBe(false);
+			await result().connect();
+			await flush();
+
+			expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('stores nothing when auto-connecting even if remember is somehow set', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent(RELAY_URL),
+			);
+			stubSuccessfulConnect();
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			await result().connect();
+			await flush();
+
+			expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+			window.history.replaceState({}, '', '/');
+		});
+
+		it('stores nothing when auto-connecting for the eval harness', async () => {
+			window.history.replaceState(
+				{},
+				'',
+				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent(RELAY_URL),
+			);
+			stubSuccessfulConnect();
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().isAutoConnect.value).toBe(true);
+			expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+			window.history.replaceState({}, '', '/');
+		});
+
+		it('exposes every stored host so they can be managed while disconnected', async () => {
+			chromeMock.storage.local.get.mockResolvedValue({
+				[APPROVED_KEY]: ['acme.app.n8n.cloud', 'localhost:1234'],
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().approvedHosts.value).toEqual(['acme.app.n8n.cloud', 'localhost:1234']);
+
+			wrapper.unmount();
+		});
+
+		it('drops a stored host without ending the session', async () => {
+			const stored = ['acme.app.n8n.cloud', 'localhost:1234'];
+			chromeMock.storage.local.get.mockImplementation(
+				async () => await Promise.resolve({ [APPROVED_KEY]: stored }),
+			);
+			chromeMock.storage.local.set.mockImplementation(async (update: Record<string, string[]>) => {
+				stored.splice(0, stored.length, ...update[APPROVED_KEY]);
+				return await Promise.resolve(undefined);
+			});
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getStatus') return { connected: true, tabIds: [], relayUrl: RELAY_URL };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			await result().forgetHost('localhost:1234');
+
+			expect(result().approvedHosts.value).toEqual(['acme.app.n8n.cloud']);
+			expect(result().status.value).toBe('connected');
+			expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalledWith({ type: 'disconnect' });
 
 			wrapper.unmount();
 		});

@@ -4,6 +4,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { InstanceAiMcpConnectServer } from '@n8n/api-types';
 
+import { mcpConnectInputs, trackInputCompleted } from '../confirmationTelemetry';
 import { useThread } from '../instanceAi.store';
 import InstanceAiMcpConnectCard from './InstanceAiMcpConnectCard.vue';
 
@@ -31,20 +32,6 @@ const isResolved = computed(
 		thread.resolvedConfirmationIds.has(props.requestId),
 );
 
-function resolutionEventProps(approved: boolean, connectedSlugs: string[]) {
-	const options = props.servers.map((server) => server.serverSlug);
-	return {
-		thread_id: thread.id,
-		input_thread_id: props.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'mcp-connect',
-		provided_inputs: approved
-			? [{ label: 'mcp-connect', options, option_chosen: connectedSlugs }]
-			: [],
-		skipped_inputs: approved ? [] : [{ label: 'mcp-connect', options }],
-	};
-}
-
 async function onResolve({
 	approved,
 	connectedSlugs,
@@ -68,7 +55,18 @@ async function onResolve({
 		return;
 	}
 
-	telemetry.track('User finished providing input', resolutionEventProps(approved, connectedSlugs));
+	trackInputCompleted(
+		telemetry,
+		{
+			threadId: thread.id,
+			inputThreadId: props.inputThreadId,
+			instanceId: rootStore.instanceId,
+			actionSource: thread.resolveActionSource(),
+			type: 'mcp-connect',
+			runtime: 'instance-ai',
+		},
+		mcpConnectInputs(props.servers, approved, connectedSlugs),
+	);
 	thread.resolveConfirmation(props.requestId, approved ? 'approved' : 'deferred');
 }
 </script>

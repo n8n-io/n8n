@@ -18,7 +18,7 @@
 		<div style="text-align:center">
 			<h1>SAML Connection Test failed</h1>
 			<h2>{{#if message}}{{message}}{{else}}A common issue could be that no email attribute is set{{/if}}</h2>
-			<button onclick="window.close()">You can close this window now</button>
+			<button id="close-window">You can close this window now</button>
 			<p></p>
 			{{#with attributes}}
 			<h2>Here are the attributes returned by your SAML IdP:</h2>
@@ -37,5 +37,8 @@
 			</details>
 			{{/if}}
 		</div>
+		<script nonce="{{cspNonce}}">
+			document.getElementById('close-window').addEventListener('click', () => window.close());
+		</script>
 	</body>
 </html>

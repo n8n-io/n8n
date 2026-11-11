@@ -4,8 +4,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { fromFunction, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
+import { fromExpression, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
 
+import { DEFAULT_TRUSTED_SOURCE_ID } from '../../utils/trusted-source';
 import { getResponseCode, getResponseData } from './utils';
 
 // The Webhook node's "n8n User Auth (OAuth2)" mode. Seeds the triggering user's
@@ -22,14 +23,31 @@ const n8nOAuth2AuthOption: INodePropertyOptions = {
 // Each field declares its expression template and native resolver in one place:
 // the editor evaluates the generated template strings, while the backend reads
 // parameters directly (no expression engine) whenever they are static.
+//
+// TODO(native-evaluation rollout, CAT-4699): once lazy isolate acquisition and
+// native evaluation are the defaults, replace every fromParameter/
+// fromExpression declaration below with its plain inline template string and
+// drop the webhookDescriptionFields wrapper - the resolvers only exist to
+// predict engine use, which native evaluation makes unnecessary.
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
 	isFullPath: true,
 	...webhookDescriptionFields({
 		httpMethod: fromParameter('httpMethod', 'GET'),
-		responseCode: fromFunction(getResponseCode),
+		// The templates for responseCode/responseData are hand-written in the
+		// native subset grammar so they evaluate in-process without an engine.
+		// They mirror getResponseCode/getResponseData branch for branch;
+		// description.test.ts executes both across every branch to pin the
+		// parity.
+		responseCode: fromExpression(
+			'={{ $parameter.responseCode || ($parameter.options?.responseCode?.values ? ($parameter.options.responseCode.values.customCode || $parameter.options.responseCode.values.responseCode) : 200) }}',
+			getResponseCode,
+		),
 		responseMode: fromParameter('responseMode'),
-		responseData: fromFunction(getResponseData),
+		responseData: fromExpression(
+			"={{ $parameter.responseData || ($parameter.responseMode === 'onReceived' && $parameter.options?.responseData ? $parameter.options.responseData : ($parameter.options?.noResponseBody ? 'noData' : undefined)) }}",
+			getResponseData,
+		),
 		responseBinaryPropertyName: fromParameter('responseBinaryPropertyName'),
 		responseContentType: fromParameter(['options', 'responseContentType']),
 		responsePropertyName: fromParameter(['options', 'responsePropertyName']),
@@ -126,6 +144,21 @@ export const requireExecuteAccessProperty = (propertyName = 'authentication'): I
 	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
 	description:
 		'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+});
+
+// The issuer whose bearer tokens the n8n User Auth (OAuth2) mode accepts. The host reads the
+// stored value to narrow the trigger's resource, so the node never passes it on itself.
+export const trustedSourceProperty = (propertyName = 'authentication'): INodeProperties => ({
+	displayName: 'Trusted Source Name or ID',
+	name: 'trustedSource',
+	type: 'options',
+	typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+	default: DEFAULT_TRUSTED_SOURCE_ID,
+	displayOptions: { show: { [propertyName]: ['n8nOAuth2'] } },
+	// The resolvers read the raw value without an execution context, so it must be static.
+	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+	description: 'The identity provider whose access tokens can trigger this workflow',
 });
 
 export const httpMethodsProperty: INodeProperties = {
@@ -380,6 +413,35 @@ export const optionsProperty: INodeProperties = {
 					'/responseMode': ['onReceived'],
 				},
 			},
+		},
+		{
+			displayName: 'OAuth2 Client',
+			name: 'oauthClient',
+			type: 'options',
+			options: [
+				{
+					name: 'Auto-Detect',
+					value: 'auto',
+					description:
+						'Redirect browser navigations through the n8n login; require a bearer token from everything else',
+				},
+				{
+					name: 'Bearer Token Only',
+					value: 'bearer',
+					description: 'Always require a bearer token, never redirect',
+				},
+				{
+					name: 'Browser (Virtual Client)',
+					value: 'browser',
+					description: 'Always redirect GET requests without a bearer token through the n8n login',
+				},
+			],
+			default: 'auto',
+			displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
+			// The resolvers read the raw value to grant `isFirstParty`, so it must be static.
+			noDataExpression: true,
+			description:
+				'How a request without a bearer token is handled when using n8n User Auth (OAuth2). Only GET requests can be redirected.',
 		},
 		{
 			displayName: 'Raw Body',

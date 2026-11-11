@@ -21,7 +21,7 @@ import type {
 	RemoveOptions,
 	WriteOptions,
 } from '../types';
-import { BaseFilesystem } from './base-filesystem';
+import { BaseFilesystem, type BaseFilesystemOptions } from './base-filesystem';
 import type { DaytonaSandbox } from '../sandbox/daytona-sandbox';
 
 type DaytonaFsHandle = Parameters<Parameters<DaytonaSandbox['withFilesystem']>[0]>[0];
@@ -36,8 +36,11 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	readonly provider = 'daytona';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly sandbox: DaytonaSandbox) {
-		super();
+	constructor(
+		private readonly sandbox: DaytonaSandbox,
+		options?: BaseFilesystemOptions,
+	) {
+		super(options);
 		this.id = `daytona-fs-${sandbox.id}`;
 	}
 
@@ -76,6 +79,24 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 			await fs.uploadFile(buffer, path);
 		}, options?.abortSignal);
+	}
+
+	/** Upload many files in one request. Daytona creates missing parent directories. */
+	async writeFiles(
+		files: Array<{ path: string; content: FileContent }>,
+		options?: AbortableOptions,
+	): Promise<void> {
+		await this.withFs(
+			async (fs) =>
+				await fs.uploadFiles(
+					files.map(({ path, content }) => ({
+						source:
+							typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content),
+						destination: path,
+					})),
+				),
+			options?.abortSignal,
+		);
 	}
 
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {

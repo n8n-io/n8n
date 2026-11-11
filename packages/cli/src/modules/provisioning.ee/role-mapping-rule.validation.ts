@@ -1,6 +1,7 @@
 import type { Role } from '@n8n/db';
+import { isReservedGlobalRole } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 export function assertRoleCompatibleWithMappingType(
 	role: Role,
@@ -8,6 +9,10 @@ export function assertRoleCompatibleWithMappingType(
 ): void {
 	if (type === 'instance' && role.roleType !== 'global') {
 		throw new BadRequestError('Instance mapping rules must use a global role');
+	}
+
+	if (type === 'instance' && isReservedGlobalRole(role.slug)) {
+		throw new BadRequestError('Instance mapping rules cannot use a reserved role');
 	}
 
 	if (type === 'project' && role.roleType !== 'project') {

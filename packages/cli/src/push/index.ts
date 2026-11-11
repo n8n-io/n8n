@@ -13,10 +13,8 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError, InternalServerError } from '@n8n/errors';
+import { MAX_PUBSUB_PAYLOAD_BYTES, Publisher } from '@n8n/backend-services';
 
 import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
@@ -187,8 +185,12 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(pushMsg, userIds);
+	sendToUsers(
+		pushMsg: PushMessage,
+		userIds: Array<User['id']>,
+		options?: { excludePushRef?: string },
+	) {
+		this.backend.sendToUsers(pushMsg, userIds, options);
 	}
 
 	@OnShutdown()

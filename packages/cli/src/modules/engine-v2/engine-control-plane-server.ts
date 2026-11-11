@@ -1,0 +1,136 @@
+import { inTest, Logger } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { createEngineHttpServer } from '@n8n/engine';
+import express, { type Application } from 'express';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
+import { bodyParser, rawBodyReader } from '@/middlewares';
+import { send } from '@/response-helper';
+
+import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
+import { EngineCredentialsController } from './engine-credentials.controller';
+import { EngineDataTablesController } from './engine-data-tables.controller';
+import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
+import { EngineTlsMaterial } from './engine-tls-material';
+import {
+	CREDENTIALS_RESOLVE_PATH,
+	DATA_TABLES_CALL_PATH,
+	SUB_WORKFLOWS_RESOLVE_PATH,
+} from './engine-v2.constants';
+
+/**
+ * Provides services for the engine in the data plane: credentials, data tables,
+ * and sub-workflow resolution. It listens on its own host and port, separate
+ * from the REST API server, so an operator can restrict these internal routes
+ * to the network that the data plane uses without touching the editor's routes.
+ */
+@Service()
+export class EngineControlPlaneServer {
+	private server: Server | undefined;
+
+	/** The bound port, which differs from the configured one when that is `0`. */
+	get port(): number | undefined {
+		return (this.server?.address() as AddressInfo | null)?.port;
+	}
+
+	constructor(
+		private readonly engineConfig: EngineConfig,
+		private readonly tlsMaterial: EngineTlsMaterial,
+		private readonly credentialsController: EngineCredentialsController,
+		private readonly dataTablesController: EngineDataTablesController,
+		private readonly subWorkflowController: EngineSubWorkflowController,
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('engine-v2');
+	}
+
+	async start(): Promise<void> {
+		const app = express();
+		app.disable('x-powered-by');
+		this.configureRoutes(app);
+
+		const { controlPlaneHost: host, controlPlanePort: port } = this.engineConfig;
+
+		const { tls } = this.tlsMaterial;
+		this.server = createEngineHttpServer(app, tls);
+		this.server.on('error', (error: NodeJS.ErrnoException) => {
+			if (error.code !== 'EADDRINUSE') {
+				// Nothing else handles these, so an unlogged one is a silent failure.
+				this.logger.error('Engine v2 control plane server error', { error });
+				return;
+			}
+
+			this.logger.error(`Engine v2 control plane port ${port} is already in use`);
+			// Skipped in tests, where exiting would kill the vitest worker.
+			if (!inTest) process.exit(1);
+		});
+
+		await new Promise<void>((resolve, reject) => {
+			// Detached once listening: a later error is not a failed bind.
+			const onBindError = (error: Error) => reject(error);
+			this.server!.once('error', onBindError);
+			this.server!.listen(port, host, () => {
+				this.server!.off('error', onBindError);
+				resolve();
+			});
+		});
+
+		// An IPv6 literal needs brackets to read as a URL.
+		const shownHost = host.includes(':') ? `[${host}]` : host;
+		// The bound port, not the configured one, which is `0` when the OS picks it.
+		this.logger.info(
+			`Engine v2 control plane listening on ${tls ? 'https' : 'http'}://${shownHost}:${this.port}`,
+		);
+	}
+
+	async stop(): Promise<void> {
+		if (!this.server) return;
+
+		await new Promise<void>((resolve, reject) => {
+			this.server!.close((error) => (error ? reject(error) : resolve()));
+		});
+
+		// Dropped only on success, so a failed close is retried next time.
+		this.server = undefined;
+	}
+
+	private configureRoutes(app: Application): void {
+		// Open: a liveness probe reveals nothing.
+		app.get('/healthz', (_req, res) => {
+			res.status(200).json({ status: 'ok' });
+		});
+
+		// Auth is per route, because each route requires its own token scope. It
+		// runs before the body parser, so an unauthenticated body is never read.
+		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
+		app.post(
+			CREDENTIALS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'credentials:read'),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.credentialsController.resolveCredential(req, res)),
+		);
+
+		app.post(
+			DATA_TABLES_CALL_PATH,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'data-tables:use'),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.dataTablesController.call(req, res)),
+		);
+
+		app.post(
+			SUB_WORKFLOWS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(
+				this.engineConfig,
+				this.logger,
+				'sub-workflows:resolve',
+			),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.subWorkflowController.resolveSubWorkflow(req, res)),
+		);
+	}
+}

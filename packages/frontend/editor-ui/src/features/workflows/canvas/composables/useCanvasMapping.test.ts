@@ -23,7 +23,9 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { FREE_STICKY_Z_INDEX_OFFSET } from '../stores/canvasNodeGroups.constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -81,6 +83,29 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(mapped.type).toBe('canvas-node');
 		expect(mapped.position).toEqual({ x: 10, y: 20 });
 		expect(mapped.draggable).toBe(true);
+	});
+
+	it('labels an empty-group anchor as Replace Me without relabeling a regular No-Op', () => {
+		const anchor = createTestNode({
+			id: 'anchor',
+			name: 'No Operation, do nothing',
+			type: NO_OP_NODE_TYPE,
+			parameters: { emptyGroupAnchor: true },
+		}) as INodeUi;
+		const regularNoOp = createTestNode({
+			id: 'regular-no-op',
+			name: 'Keep this label',
+			type: NO_OP_NODE_TYPE,
+		}) as INodeUi;
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([anchor, regularNoOp]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+		});
+
+		expect(nodes.value.find((node) => node.id === 'anchor')?.label).toBe('nodeView.replaceMe');
+		expect(nodes.value.find((node) => node.id === 'regular-no-op')?.label).toBe('Keep this label');
 	});
 
 	it('pulls subtitle from renderData.subtitleByNodeId', () => {
@@ -242,19 +267,27 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.StickyNote);
 	});
 
-	it('spreads additionalPropertiesByNodeId onto the mapped CanvasNode', () => {
-		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+	it('maps the sticky z-index from render data, below expanded groups for free stickies', () => {
+		const member = createTestNode({ id: 'm', name: 'Member', type: STICKY_NODE_TYPE }) as INodeUi;
+		const free = createTestNode({ id: 'f', name: 'Free', type: STICKY_NODE_TYPE }) as INodeUi;
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['m'] };
 		const rd = createEmptyCanvasRenderData({
-			additionalPropertiesByNodeId: computed(() => ({ a: { style: { zIndex: -42 } } })),
+			additionalPropertiesByNodeId: computed(() => ({
+				m: { style: { zIndex: -99 } },
+				f: { style: { zIndex: -100 } },
+			})),
 		});
 
 		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
+			nodes: ref([member, free]),
 			connections: ref({}),
 			renderData: shallowRef(rd),
+			allGroups: ref([group]),
 		});
 
-		expect(nodes.value[0].style).toEqual({ zIndex: -42 });
+		const [memberNode, freeNode] = nodes.value;
+		expect(memberNode.style).toEqual({ zIndex: -99 });
+		expect(freeNode.style).toEqual({ zIndex: -100 + FREE_STICKY_Z_INDEX_OFFSET });
 	});
 
 	it('attaches input/output connections derived from the connections prop', () => {
@@ -317,11 +350,11 @@ describe('useCanvasMapping — node display sizes', () => {
 });
 
 describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
-	it('reads hasExecutionError from executionIssuesByNodeName (single-node parity)', () => {
+	it('reads hasExecutionError from executionIssuesByNodeId (single-node parity)', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();
-		rd.executionIssuesByNodeName.set(
-			'Alpha',
+		rd.executionIssuesByNodeId.set(
+			'a',
 			computed(() => ['Boom']),
 		);
 
@@ -384,6 +417,49 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		});
 
 		expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+	});
+
+	describe('iterations', () => {
+		function getIterations(tasks: ITaskData[] | null | undefined) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			if (tasks !== undefined) {
+				setRunData(rd, 'a', tasks);
+			}
+
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			return getNodeExecutionSnapshot('a').iterations;
+		}
+
+		function task(executionStatus: ITaskData['executionStatus']) {
+			return { executionStatus } as ITaskData;
+		}
+
+		it('is 0 when the node has no run data', () => {
+			expect(getIterations(undefined)).toBe(0);
+			expect(getIterations(null)).toBe(0);
+		});
+
+		it('is 0 for an empty task list', () => {
+			expect(getIterations([])).toBe(0);
+		});
+
+		it('counts every task when none was canceled', () => {
+			expect(getIterations([task('success'), task('success'), task('error')])).toBe(3);
+		});
+
+		it('is 0 when every task was canceled', () => {
+			expect(getIterations([task('canceled'), task('canceled'), task('canceled')])).toBe(0);
+		});
+
+		it('skips only the canceled tasks', () => {
+			expect(getIterations([task('success'), task('canceled'), task('error')])).toBe(2);
+		});
 	});
 });
 
@@ -474,7 +550,10 @@ describe('useCanvasMapping — mapped connections', () => {
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
 		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.executionPinDataByNodeName.Alpha = [{ json: { ok: true } }];
+		rd.executionPinDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { ok: true } }]),
+		);
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({

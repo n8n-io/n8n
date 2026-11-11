@@ -8,7 +8,7 @@ import type {
 import { validate } from 'class-validator';
 
 import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
-import { BadRequestError } from './errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 export async function validateEntity(
 	entity:

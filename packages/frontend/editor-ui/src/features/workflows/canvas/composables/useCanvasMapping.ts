@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -26,9 +27,14 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
-import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import {
+	isEmptyGroupAnchor,
+	NodeConnectionTypes,
+	type IConnections,
+	type ITaskData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
@@ -65,32 +71,25 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 
-	// `executionIssuesByNodeName` is keyed by name; groups address nodes by id.
-	const nodeNameById = computed(() => {
-		const map = new Map<string, string>();
-		for (const node of nodes.value) map.set(node.id, node.name);
-		return map;
-	});
+	function getCanvasNodeLabel(node: INodeUi): string {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
+
+		return isEmptyGroupAnchorNode ? i18n.baseText('nodeView.replaceMe') : node.name;
+	}
 
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
-		if (!tasks) return 0;
-		let count = 0;
-		for (const task of tasks) {
-			if (task.executionStatus !== 'canceled') count++;
-		}
-		return count;
+		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
-		const name = nodeNameById.value.get(id);
 		const status = rd.executionStatusByNodeId.get(id)?.value;
 		const tasks = rd.executionRunDataByNodeId.get(id)?.value;
 
 		// Mirror the single-node `computeHasIssues`
-		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
+		const executionIssues = rd.executionIssuesByNodeId.get(id)?.value;
 		const hasExecutionError =
 			status === 'error' ||
 			status === 'crashed' ||
@@ -115,6 +114,8 @@ export function useCanvasMapping({
 		if (!nodeGroupView) return new Map();
 		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
 	});
+
+	const groupMemberIds = computed(() => new Set(allGroups.value.flatMap((group) => group.nodeIds)));
 
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
@@ -145,9 +146,8 @@ export function useCanvasMapping({
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		const nodeName = nodeNameById.value.get(id);
 		if (rd.isExecutionDataDisplayed) {
-			return nodeName ? rd.executionPinDataByNodeName[nodeName] : undefined;
+			return rd.executionPinDataByNodeId.get(id)?.value;
 		}
 		return rd.pinnedDataByNodeId.get(id)?.value;
 	}
@@ -197,14 +197,19 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
-				label: node.name,
+				label: getCanvasNodeLabel(node),
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...additionalProperties[node.id],
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

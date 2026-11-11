@@ -1,3 +1,8 @@
+import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
+import { decodeHostValue } from './transfer-codec';
+import { arrayFrom, defineProperty, isInteger } from './intrinsics';
+import { isArrayIndexKey, isKeyOf } from './utils';
+
 // ============================================================================
 // Deep Lazy Proxy System
 // ============================================================================
@@ -67,6 +72,15 @@ export function throwIfErrorSentinel(value: unknown): void {
 	}
 }
 
+/**
+ * Throw the error sentinel of a host call, or give back the data of the call
+ * without its escape wrapper.
+ */
+export function readHostResult(value: unknown): unknown {
+	throwIfErrorSentinel(value);
+	return isEscapedTransferValue(value) ? value[TRANSFER_VALUE_KEY] : value;
+}
+
 /** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
 export function isLazyProxy(obj: unknown): boolean {
 	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj);
@@ -99,6 +113,8 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  * 2. Metadata indicates type: primitive, object, or array
  * 3. For objects/arrays: Create nested proxy (shape-matched) for lazy loading
  * 4. Cache all fetched values in target to avoid repeated callbacks
+ * 5. On the first write or delete: shallow-materialize into the cache
+ *    (copy-on-write). Mutations stay in the evaluation and never reach the host.
  *
  * Callable host bindings (`$('Foo').first()`, `$items()`, etc.) do not flow
  * through this proxy — they are wired as in-isolate stubs on `target` that
@@ -127,7 +143,8 @@ export function createDeepLazyProxy(
 	const objectKeys = meta?.kind === 'object' ? meta.keys : undefined;
 
 	// Cache for keys fetched from the bridge (root object proxies without known keys).
-	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
+	// Shared by ownKeys, getOwnPropertyDescriptor, and materialize() so all three
+	// see the same key list.
 	let fetchedKeys: string[] | undefined;
 
 	function resolveObjectKeys(): string[] {
@@ -144,7 +161,7 @@ export function createDeepLazyProxy(
 
 	function isInArrayBounds(prop: string): number | undefined {
 		const idx = Number(prop);
-		if (!Number.isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
+		if (!isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
 		if (String(idx) !== prop) return undefined; // reject '00', '1.0', etc.
 		return idx;
 	}
@@ -162,15 +179,78 @@ export function createDeepLazyProxy(
 			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
 		}
-		return value;
+		// Decoded data can hold the same keys as metadata or callback errors.
+		return decodeHostValue(value);
 	}
 
 	const target: object = isArray ? [] : {};
 
+	// Evaluation-scoped copy-on-write. Reads stay lazy, but the first write or
+	// delete shallow-materializes the data into `target` and flips this flag;
+	// from then on every trap delegates to Reflect on the real target. Writes
+	// never cross the isolate boundary — the host callback surface is read-only
+	// (getValueAtPath / getArrayElement) — and the mutated copy dies with the
+	// per-evaluation context.
+	// The guard must be in EVERY trap: after mutation, the construction-time
+	// meta (arrayLength, host key list, host `in` checks) is stale — an
+	// unguarded trap would report the pre-push length or resurrect deleted keys.
+	let materialized = false;
+
+	// `prop` is the already-stringified index — callers have it at hand, and
+	// re-deriving it here would put a String() allocation on the hot read path.
+	// Plain assignment is safe here (unlike fetchAndCacheObjectValue): `prop`
+	// is always a canonical index string, never a setter-chain key like '__proto__'.
+	function fetchAndCacheArrayElement(idx: number, prop: string): unknown {
+		const t = target as Record<string, unknown>;
+		const element = getArrayElement(basePath, idx);
+		// Primitives (and null) skip `materializeChild`'s metadata checks.
+		if (element === null || typeof element !== 'object') {
+			t[prop] = element;
+			return element;
+		}
+		t[prop] = materializeChild(basePath, prop, element);
+		return t[prop];
+	}
+
+	function fetchAndCacheObjectValue(prop: string): unknown {
+		const t = target as Record<string, unknown>;
+		const value = getValueAtPath([...basePath, prop]);
+		// defineProperty, not assignment: a key like '__proto__' must land as an
+		// own data property on the cache instead of walking the setter chain and
+		// silently replacing the target's prototype.
+		defineProperty(t, prop, {
+			value: materializeChild(basePath, prop, value),
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
+		return t[prop];
+	}
+
+	function materialize(): void {
+		if (materialized) return;
+		// Keep cached entries: a cached child proxy can already carry its own
+		// copy-on-write mutations; a re-fetch would create a fresh proxy and
+		// discard them.
+		if (isArray) {
+			for (let i = 0; i < arrayLength; i++) {
+				const prop = String(i);
+				if (!Object.prototype.hasOwnProperty.call(target, prop)) fetchAndCacheArrayElement(i, prop);
+			}
+			(target as unknown[]).length = arrayLength;
+		} else {
+			for (const key of resolveObjectKeys()) {
+				if (!Object.prototype.hasOwnProperty.call(target, key)) fetchAndCacheObjectValue(key);
+			}
+		}
+		materialized = true;
+	}
+
 	const proxy = new Proxy(target as any, {
-		ownKeys(): Array<string | symbol> {
+		ownKeys(targetObj: any): Array<string | symbol> {
+			if (materialized) return Reflect.ownKeys(targetObj);
 			if (isArray) {
-				const keys: Array<string | symbol> = Array.from({ length: arrayLength }, (_, i) =>
+				const keys: Array<string | symbol> = arrayFrom({ length: arrayLength }, (_, i) =>
 					String(i),
 				);
 				// Required by proxy invariant: target [] has non-configurable 'length'
@@ -179,7 +259,11 @@ export function createDeepLazyProxy(
 			}
 			return resolveObjectKeys();
 		},
-		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
+		getOwnPropertyDescriptor(
+			targetObj: any,
+			prop: string | symbol,
+		): PropertyDescriptor | undefined {
+			if (materialized) return Reflect.getOwnPropertyDescriptor(targetObj, prop);
 			if (typeof prop === 'symbol') return undefined;
 			if (isArray) {
 				if (prop === 'length') {
@@ -193,8 +277,9 @@ export function createDeepLazyProxy(
 					};
 				}
 				if (isInArrayBounds(prop) !== undefined) {
-					// Lazy proxies are read-only views of host data — writes from
-					// expression code must not propagate back across the isolate.
+					// Before the first write, the proxy is a lazy read view; the
+					// descriptor is reported read-only. Actual writes are handled by
+					// the set trap, which materializes first (see `materialize`).
 					// Reading `proxy[prop]` triggers the get trap, which fetches the
 					// element from the host (if not cached) and stores it on the
 					// target. Including `value` matches a native array's data
@@ -214,6 +299,7 @@ export function createDeepLazyProxy(
 			return undefined;
 		},
 		get(targetObj: any, prop: string | symbol): unknown {
+			if (materialized) return Reflect.get(targetObj, prop);
 			// Symbol-keyed access falls through to the proxy target so that
 			// well-known symbols on the prototype chain are reachable. For array
 			// proxies this exposes `Array.prototype[Symbol.iterator]` etc., which
@@ -241,38 +327,47 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
-			// Check cache - if already fetched, return cached value
-			if (prop in targetObj) {
+			if (
+				isKeyOf(targetObj, prop) ||
+				(prop in targetObj && (isArray || !resolveObjectKeys().includes(prop)))
+			) {
 				return targetObj[prop];
 			}
 
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
-				if (idx === undefined) return undefined;
-				const element = getArrayElement(basePath, idx);
-				// Primitives (and null) skip `materializeChild`'s metadata checks.
-				if (element === null || typeof element !== 'object') {
-					targetObj[prop] = element;
-					return element;
+				if (idx !== undefined) {
+					return fetchAndCacheArrayElement(idx, prop);
 				}
-				targetObj[prop] = materializeChild(basePath, String(idx), element);
-				return targetObj[prop];
+				if (isArrayIndexKey(prop)) {
+					return undefined;
+				}
 			}
 
-			// Build path for this property — needed for the getValueAtPath call.
-			// materializeChild rebuilds it only inside metadata branches.
-			const path = [...basePath, prop];
+			// A host array can carry named keys, for example a key that a Set node
+			// writes on an item whose json is an array.
+			return fetchAndCacheObjectValue(prop);
+		},
 
-			// Call back to host to get metadata/value.
-			const value = getValueAtPath(path);
+		// Expression code runs in sloppy mode (the eval wrapper adds no
+		// 'use strict'), so a false result from these traps no-ops silently
+		// instead of throwing. Materialize, then let Reflect apply the
+		// mutation for real.
+		set(_targetObj: any, prop: string | symbol, value: unknown, receiver: unknown): boolean {
+			materialize();
+			// Forward the receiver: when the proxy sits on another object's
+			// prototype chain, the write must create an own property on that
+			// object, not land in this proxy's cache.
+			return Reflect.set(target, prop, value, receiver);
+		},
 
-			targetObj[prop] = materializeChild(basePath, prop, value);
-			return targetObj[prop];
+		deleteProperty(_targetObj: any, prop: string | symbol): boolean {
+			materialize();
+			return Reflect.deleteProperty(target, prop);
 		},
 
 		has(targetObj: any, prop: string | symbol): boolean {
-			// Implement 'in' operator support
-			// Example: '$json' in data
+			if (materialized) return Reflect.has(targetObj, prop);
 
 			// Mirror the get trap: symbol-keyed lookups defer to the target so
 			// `Symbol.iterator in arr` reflects the prototype chain.
@@ -284,12 +379,10 @@ export function createDeepLazyProxy(
 				return isInArrayBounds(prop) !== undefined;
 			}
 
-			// Check cache first
 			if (prop in targetObj) {
 				return true;
 			}
 
-			// Build path and check existence via callback
 			const path = [...basePath, prop];
 			const value = getValueAtPath(path);
 
@@ -297,8 +390,7 @@ export function createDeepLazyProxy(
 			// so the isolate's outer try-catch can serialize them back via __reportError
 			throwIfErrorSentinel(value);
 
-			// Property exists if value is not undefined
-			// Note: null values mean property exists but is null
+			// Note: null values mean the property exists but is null.
 			return value !== undefined;
 		},
 	});

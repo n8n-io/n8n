@@ -16,9 +16,8 @@ import { generateSchemaFromExample } from './generateSchemaFromExample';
 /** Description fields that are identical across versions. */
 export const sharedVersionDescription: Pick<
 	INodeTypeDescription,
-	'hidden' | 'defaults' | 'codex' | 'usableAsTool' | 'inputs' | 'outputs'
+	'defaults' | 'codex' | 'usableAsTool' | 'inputs' | 'outputs'
 > = {
-	hidden: true,
 	defaults: {
 		name: 'Message an Agent',
 	},
@@ -107,6 +106,7 @@ export const commonProperties: INodeProperties[] = [
 		name: 'jsonSchemaExample',
 		type: 'json',
 		default: defaultJsonSchemaExample,
+		noDataExpression: true,
 		description: 'Example JSON object used to generate the output schema',
 		typeOptions: {
 			rows: 10,
@@ -189,6 +189,13 @@ export const commonProperties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			{
+				displayName: 'Enable Streaming',
+				name: 'enableStreaming',
+				type: 'boolean',
+				default: true,
+				description: "Whether to stream the agent's response as it generates text",
+			},
 			{
 				displayName: 'Invoke Agent',
 				name: 'invokeMode',
@@ -585,6 +592,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
 				sessionId?: string;
 				allowOtherNodesData?: boolean;
+				enableStreaming?: boolean;
 			};
 			const allowOtherNodesData =
 				agentSource === 'inline' ? false : (advanced.allowOtherNodesData ?? false);
@@ -611,6 +619,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					...source,
 					sessionId,
 					outputSchema,
+					...(advanced.enableStreaming === false ? { enableStreaming: false } : {}),
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,
 				},

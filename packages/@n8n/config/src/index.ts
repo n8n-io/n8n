@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ActivityLogConfig } from './configs/activity-log.config';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
@@ -7,6 +8,7 @@ import { AiGatewayConfig } from './configs/ai-gateway.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
+import { CanvasOnlyConfig } from './configs/canvas-only.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CollaborationConfig } from './configs/collaboration.config';
@@ -31,13 +33,14 @@ import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+import { MemoryGuardConfig } from './configs/memory-guard.config';
 import { McpClientConfig } from './configs/mcp-client.config';
 import { McpServerConfig } from './configs/mcp-server.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
+import { OutboundProxyConfig } from './configs/outbound-proxy.config';
 import { PersonalizationConfig } from './configs/personalization.config';
-import { PollerConfig } from './configs/poller.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
@@ -58,38 +61,58 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
-export { DatabaseConfig, SqliteConfig } from './configs/database.config';
+export { DatabaseConfig, SqliteConfig, statementTimeoutSeconds } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
+export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
+export { PublicApiRateLimitConfig } from './configs/public-api.config';
+export {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	isLegacyBooleanSetting,
+	parseContentSecurityPolicy,
+} from './configs/content-security-policy';
+export type {
+	ContentSecurityPolicyReportOnlySetting,
+	ContentSecurityPolicySetting,
+} from './configs/content-security-policy';
 export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
+export type { EngineDefaultType, EngineMode } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { MemoryGuardConfig } from './configs/memory-guard.config';
+export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
-export { PollerConfig } from './configs/poller.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { McpClientConfig } from './configs/mcp-client.config';
 export { McpServerConfig } from './configs/mcp-server.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
+export {
+	CanvasOnlyConfig,
+	CANVAS_ONLY_PERSONAL_SPACE_DENIABLE_SCOPES,
+	type CanvasOnlyPersonalSpaceDeniableScope,
+} from './configs/canvas-only.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { TracingSourcesConfig } from './configs/tracing-sources.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
@@ -184,9 +207,6 @@ export class GlobalConfig {
 	scheduler: SchedulerConfig;
 
 	@Nested
-	poller: PollerConfig;
-
-	@Nested
 	generic: GenericConfig;
 
 	@Nested
@@ -197,6 +217,9 @@ export class GlobalConfig {
 
 	@Nested
 	executions: ExecutionsConfig;
+
+	@Nested
+	memoryGuard: MemoryGuardConfig;
 
 	@Nested
 	diagnostics: DiagnosticsConfig;
@@ -237,6 +260,9 @@ export class GlobalConfig {
 	@Nested
 	httpRequest: HttpRequestConfig;
 
+	@Nested
+	outboundProxy: OutboundProxyConfig;
+
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
@@ -257,9 +283,8 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
-	/** Whether to enable canvas-only mode, hiding the chrome UI. */
-	@Env('N8N_CANVAS_ONLY')
-	canvasOnly: boolean = false;
+	@Nested
+	canvasOnly: CanvasOnlyConfig;
 
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
@@ -268,6 +293,16 @@ export class GlobalConfig {
 	/** Public base URL for both test and production webhooks. Successor to the deprecated `WEBHOOK_URL`. */
 	@Env('N8N_WEBHOOK_URL')
 	webhookUrl: string = '';
+
+	/**
+	 * Public base URL that external apps use to send messages to agents through
+	 * the webhook channel. Only main instances serve these requests, so point it
+	 * at your main instances, not at webhook processes. When unset, n8n uses the
+	 * editor base URL, then the webhook URL. Set it when your webhook URL points
+	 * at webhook processes and the editor base URL is unset.
+	 */
+	@Env('N8N_AGENT_WEBHOOK_URL')
+	agentWebhookUrl: string = '';
 
 	/** URLs to external frontend hooks files, separated by semicolons. */
 	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
@@ -320,4 +355,7 @@ export class GlobalConfig {
 
 	@Nested
 	featureFlags: FeatureFlagConfig;
+
+	@Nested
+	activityLog: ActivityLogConfig;
 }

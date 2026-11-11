@@ -1,0 +1,89 @@
+import type { SerializedCredentialData, SerializedCredentialDataValue } from '@n8n/api-types';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+
+import { isObject } from '@/utils';
+
+import type { CredentialExportPolicy } from '../../n8n-packages.types';
+
+// oauthTokenData never travels, at any depth — tokens are secrets and the target must reconnect.
+export const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);
+
+// Whether every leaf inside the value is an expression, so filtering strips nothing.
+export function isExpressionOnly(value: unknown): boolean {
+	if (typeof value === 'string') return containsExpression(value);
+	if (Array.isArray(value)) return value.length > 0 && value.every(isExpressionOnly);
+	if (isObject(value)) {
+		const values = Object.entries(value)
+			.filter(([key]) => !NEVER_EXPORTED_KEYS.has(key))
+			.map(([, entry]) => entry);
+		return values.length > 0 && values.every(isExpressionOnly);
+	}
+	return false;
+}
+
+/** Removes the never-exported keys at any depth, so a package that carries one cannot restore it. */
+export function omitNeverExportedKeys<T>(value: T): T {
+	if (Array.isArray(value)) return value.map(omitNeverExportedKeys) as T;
+	if (isObject(value)) {
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([key]) => !NEVER_EXPORTED_KEYS.has(key))
+				.map(([key, entry]) => [key, omitNeverExportedKeys(entry)]),
+		) as T;
+	}
+	return value;
+}
+
+function filterValue(value: unknown): SerializedCredentialDataValue | undefined {
+	if (typeof value === 'string') {
+		return containsExpression(value) ? value : undefined;
+	}
+	if (Array.isArray(value)) {
+		// Array positions carry meaning and filtering strips literals, so an entry that is
+		// only partly expressions cannot be reproduced at its slot. The array travels only
+		// when every entry is expressions end to end; otherwise it is dropped whole.
+		if (!isExpressionOnly(value)) return undefined;
+		return value
+			.map(filterValue)
+			.filter((entry): entry is SerializedCredentialDataValue => entry !== undefined);
+	}
+	if (isObject(value)) {
+		const kept = filterObject(value);
+		return Object.keys(kept).length > 0 ? kept : undefined;
+	}
+	return undefined;
+}
+
+function filterObject(value: Record<string, unknown>): SerializedCredentialData {
+	const kept: SerializedCredentialData = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (NEVER_EXPORTED_KEYS.has(key)) continue;
+		const filtered = filterValue(entry);
+		if (filtered !== undefined) kept[key] = filtered;
+	}
+	return kept;
+}
+
+/* eslint-disable @typescript-eslint/naming-convention -- API credential export policy keys */
+const SELECT_EXPORTED_DATA: Record<
+	CredentialExportPolicy,
+	(
+		getDecryptedData: () => Promise<ICredentialDataDecryptedObject>,
+	) => Promise<SerializedCredentialData | undefined>
+> = {
+	'expression-values-only': async (getDecryptedData) => {
+		const filtered = filterObject(await getDecryptedData());
+		return Object.keys(filtered).length > 0 ? filtered : undefined;
+	},
+	'no-values': async () => undefined,
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/** Decides what of a credential's decrypted data travels in the package; `no-values` never decrypts. */
+export async function selectCredentialDataForExport(
+	policy: CredentialExportPolicy,
+	getDecryptedData: () => Promise<ICredentialDataDecryptedObject>,
+): Promise<SerializedCredentialData | undefined> {
+	return await SELECT_EXPORTED_DATA[policy](getDecryptedData);
+}

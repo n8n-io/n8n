@@ -44,7 +44,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					output: {
 						postReceive: [
@@ -65,7 +65,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					output: {
 						postReceive: [
@@ -121,7 +121,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					send: {
 						preSend: [validEmailAndPhonePreSendAction, splitTagsPreSendAction],

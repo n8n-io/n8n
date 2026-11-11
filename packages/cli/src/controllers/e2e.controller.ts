@@ -12,16 +12,12 @@ import {
 	PollerStateRepository,
 	ScheduledJobRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import type nodeFs from 'node:fs';
-import type { Profiler } from 'node:inspector';
-import type * as nodeInspectorPromises from 'node:inspector/promises';
-import type nodePath from 'node:path';
-import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -31,11 +27,15 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
+import { CacheService } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
+import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
+import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { CoverageWindows } from './e2e-coverage-windows';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -101,11 +101,13 @@ export class E2EController {
 		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
+		[LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES]: false,
+		[LICENSE_FEATURES.EXECUTION_LIMITS]: false,
 		[LICENSE_FEATURES.SAML]: false,
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
-		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
+		[LICENSE_FEATURES.PROMOTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -127,6 +129,7 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_CREDITS]: false,
 		[LICENSE_FEATURES.AI_GATEWAY]: false,
 		[LICENSE_FEATURES.AI_GATEWAY_CLOUD_UBB]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT_CLOUD_UBB_ENTITLEMENT]: false,
 		[LICENSE_FEATURES.FOLDERS]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
@@ -143,6 +146,9 @@ export class E2EController {
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
 		[LICENSE_FEATURES.WORKFLOW_REVIEWS]: false,
 		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
+		[LICENSE_FEATURES.WORKER_POOLS]: false,
+		[LICENSE_FEATURES.SCIM]: false,
+		[LICENSE_FEATURES.TRUSTED_SOURCE_MANAGE]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -197,14 +203,16 @@ export class E2EController {
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
-		private readonly taskBroker: TaskBroker,
+		private readonly processInternalsService: ProcessInternalsService,
+		private readonly heapDiagnosticsService: HeapDiagnosticsService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -266,19 +274,25 @@ export class E2EController {
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		const count = await this.scheduledJobRepository.countByOwner(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+		);
 		return { count };
 	}
 
 	/**
-	 * A poll node's stored cursor, so a test can assert on it directly instead of
-	 * inferring it from execution behaviour.
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
 	 */
 	@Get('/poller-state', { skipAuth: true })
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const state = await this.pollerStateRepository.findState(workflowId, nodeId);
+		return {
+			cursor: state?.cursor ?? null,
+			consecutiveErrors: state?.consecutiveErrors ?? 0,
+			backoffUntil: state?.backoffUntil ?? null,
+		};
 	}
 
 	/**
@@ -296,7 +310,10 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			0,
+		);
 		return { success: true };
 	}
 
@@ -309,18 +326,11 @@ export class E2EController {
 		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
 	) {
 		const { workflowId, nodeId, secondsAgo } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			secondsAgo,
+		);
 		return { success: true };
-	}
-
-	/**
-	 * Number of task runners currently registered with the broker, so a test can
-	 * wait for a runner to be ready instead of racing its startup.
-	 */
-	@Get('/task-runners/count', { skipAuth: true })
-	countTaskRunners() {
-		const count = this.taskBroker.getKnownRunners().size;
-		return { count };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })
@@ -369,52 +379,17 @@ export class E2EController {
 	 */
 	@Post('/gc', { skipAuth: true })
 	triggerGarbageCollection() {
-		if (typeof global.gc === 'function') {
-			// Call GC twice to allow for more reclaimation
-			global.gc();
-			global.gc();
-			return { success: true, message: 'Garbage collection triggered' };
-		}
-		return {
-			success: false,
-			message: 'Garbage collection not available. Ensure Node.js is started with --expose-gc flag.',
-		};
+		return this.heapDiagnosticsService.collectGarbage();
 	}
 
 	/**
-	 * Write a V8 heap snapshot for memory leak analysis.
-	 * Triggers GC first for a cleaner snapshot.
-	 * Returns the file path inside the container — retrieve via `docker cp` or keepalive mode.
+	 * Write a V8 heap snapshot for memory leak analysis. Triggers GC first.
+	 * Returns the file name to pass to the download route.
 	 */
 	@Post('/heap-snapshot', { skipAuth: true })
 	takeHeapSnapshot() {
-		const v8 = require('node:v8') as typeof nodeV8;
-		const fs = require('node:fs') as typeof nodeFs;
-
-		if (typeof global.gc === 'function') {
-			global.gc();
-			global.gc();
-		}
-
-		const filePath = v8.writeHeapSnapshot();
-		if (!filePath) {
-			return { success: false, message: 'Failed to write heap snapshot' };
-		}
-
-		const path = require('node:path') as typeof nodePath;
-		const stats = fs.statSync(filePath);
-		const filename = path.basename(filePath);
-		this.heapSnapshotPaths.set(filename, filePath);
-
-		return {
-			success: true,
-			filePath: filename,
-			sizeBytes: stats.size,
-			sizeMB: Math.round(stats.size / 1024 / 1024),
-		};
+		return this.heapDiagnosticsService.writeHeapSnapshot();
 	}
-
-	private heapSnapshotPaths = new Map<string, string>();
 
 	/**
 	 * Download a heap snapshot file as a stream.
@@ -422,21 +397,7 @@ export class E2EController {
 	 */
 	@Get('/heap-snapshot/:filename', { skipAuth: true })
 	downloadHeapSnapshot(req: Request) {
-		const fs = require('node:fs') as typeof nodeFs;
-		const path = require('node:path') as typeof nodePath;
-
-		const filename = path.basename(req.params.filename);
-		if (!filename.endsWith('.heapsnapshot')) {
-			throw new Error('Invalid file type');
-		}
-
-		// Look up the full path stored during POST, or try cwd
-		const filePath = this.heapSnapshotPaths.get(filename) ?? path.resolve(filename);
-		if (!fs.existsSync(filePath)) {
-			throw new Error(`Snapshot not found: ${filename} (tried ${filePath})`);
-		}
-
-		return fs.createReadStream(filePath);
+		return this.heapDiagnosticsService.openHeapSnapshot(String(req.params.filename));
 	}
 
 	// --- Per-spec backend V8 coverage (DEVP-370) -----------------------------
@@ -445,81 +406,43 @@ export class E2EController {
 	// E2E impact map (today the map is frontend-only). Test-only: the whole
 	// controller hard-exits outside E2E (see top of file).
 	//
-	// Uses `Profiler.getBestEffortCoverage` (NON-draining) + a server-side
-	// baseline/delta so it never resets the global V8 counters — the shard-level
-	// `NODE_V8_COVERAGE` exit dump (the Codecov report path) is left untouched.
+	// Each start and take ends a coverage window (see CoverageWindows), so each
+	// spec gets the call counts of its own window. Best-effort coverage is not
+	// usable here: it reports 0 or 1 for each function, so only the first spec
+	// in a container got credit for code that every spec runs.
 	//
 	// REQUIRES the coverage run to be single-worker (it is — coverage project
 	// runs `--workers=1`). Precise coverage is process-global, so the start→take
 	// window is only attributable to one spec when specs don't run concurrently.
-	private coverageSession?: nodeInspectorPromises.Session;
+	private readonly coverageWindows = new CoverageWindows();
 
-	private coverageBaseline = new Map<string, number>();
-
-	private async ensureCoverageSession(): Promise<nodeInspectorPromises.Session> {
-		if (!this.coverageSession) {
-			const inspector = require('node:inspector/promises') as typeof nodeInspectorPromises;
-			this.coverageSession = new inspector.Session();
-			this.coverageSession.connect();
-			// `enable` only — NODE_V8_COVERAGE already turned precise coverage on at
-			// boot. We never call start/takePreciseCoverage (those reset the global
-			// counters and would empty the shard exit dump).
-			await this.coverageSession.post('Profiler.enable');
-		}
-		return this.coverageSession;
-	}
-
-	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
-	}
-
-	private static coverageCount(fn: Profiler.FunctionCoverage): number {
-		return fn.ranges.reduce((sum, range) => sum + range.count, 0);
-	}
-
-	private static indexCoverage(scripts: Profiler.ScriptCoverage[]): Map<string, number> {
-		const index = new Map<string, number>();
-		for (const script of scripts) {
-			for (const fn of script.functions) {
-				index.set(E2EController.coverageKey(script.url, fn), E2EController.coverageCount(fn));
-			}
-		}
-		return index;
-	}
-
-	/** Keep only functions whose hit count rose since the baseline (this spec). */
-	private static deltaCoverage(
-		scripts: Profiler.ScriptCoverage[],
-		baseline: Map<string, number>,
-	): Profiler.ScriptCoverage[] {
-		const delta: Profiler.ScriptCoverage[] = [];
-		for (const script of scripts) {
-			const functions = script.functions.filter(
-				(fn) =>
-					E2EController.coverageCount(fn) >
-					(baseline.get(E2EController.coverageKey(script.url, fn)) ?? 0),
-			);
-			if (functions.length) delta.push({ ...script, functions });
-		}
-		return delta;
-	}
-
-	/** Test-only: mark the start of a spec's backend-coverage window. */
+	/**
+	 * Test-only: mark the start of a spec's backend-coverage window. The first
+	 * call returns the code that ran at boot, which every spec depends on.
+	 */
 	@Post('/coverage/start', { skipAuth: true })
-	async startCoverage() {
-		const session = await this.ensureCoverageSession();
-		const { result } = await session.post('Profiler.getBestEffortCoverage');
-		this.coverageBaseline = E2EController.indexCoverage(result);
-		return { success: true };
+	startCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false };
+		return window.boot ? { success: true, boot: window.result } : { success: true };
 	}
 
 	/** Test-only: return the V8 coverage executed since `start` (this spec's
-	 * delta), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
+	 * window), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
 	@Post('/coverage/take', { skipAuth: true })
-	async takeCoverage() {
-		if (!this.coverageSession) return { success: false, result: [] };
-		const { result } = await this.coverageSession.post('Profiler.getBestEffortCoverage');
-		return { success: true, result: E2EController.deltaCoverage(result, this.coverageBaseline) };
+	takeCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false, result: [] };
+		return { success: true, result: window.result };
+	}
+
+	/**
+	 * Return counts of this process's in-memory state (collections, libuv
+	 * resources, memory). Tests diff two readings to find unbounded growth.
+	 */
+	@Get('/internals', { skipAuth: true })
+	getInternals() {
+		return this.processInternalsService.collect();
 	}
 
 	/**
@@ -683,7 +606,7 @@ export class E2EController {
 		chat: UserSetupPayload,
 	) {
 		const userCreatePromises = [
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
@@ -694,7 +617,7 @@ export class E2EController {
 		];
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
@@ -706,7 +629,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			userCreatePromises.push(
-				this.userRepository.createUserWithProject({
+				this.personRepository.createPersonWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -718,7 +641,7 @@ export class E2EController {
 		}
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...chat,
 				password: await this.passwordUtility.hash(chat.password),
@@ -731,16 +654,11 @@ export class E2EController {
 		const [newOwner] = await Promise.all(userCreatePromises);
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } =
-				await this.mfaService.encryptSecretAndRecoveryCodes(
-					owner.mfaSecret,
-					owner.mfaRecoveryCodes,
-				);
-
-			await this.userRepository.update(newOwner.user.id, {
-				mfaSecret: encryptedSecret,
-				mfaRecoveryCodes: encryptedRecoveryCodes,
-			});
+			await this.mfaService.saveSecretAndRecoveryCodes(
+				newOwner.user.id,
+				owner.mfaSecret,
+				owner.mfaRecoveryCodes,
+			);
 		}
 	}
 

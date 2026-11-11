@@ -44,7 +44,7 @@ function openCommandBar(event: MouseEvent) {
 	});
 }
 
-const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
+const { settingsItems, settingsSections, handleSettingsItemSelect } = useSettingsItems();
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -98,6 +98,7 @@ const onLogout = () => {
 				<ChatSidebarContent :is-collapsed="isCollapsed" />
 				<BottomMenu
 					:items="visibleMenuItems"
+					:settings-sections="settingsSections"
 					:is-collapsed="isCollapsed"
 					@select="handleSettingsItemSelect"
 					@logout="onLogout"
@@ -108,6 +109,8 @@ const onLogout = () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

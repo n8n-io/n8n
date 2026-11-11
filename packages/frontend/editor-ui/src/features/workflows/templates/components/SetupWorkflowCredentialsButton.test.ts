@@ -301,6 +301,31 @@ describe('SetupWorkflowCredentialsButton', () => {
 			expect(getByTestId('setup-credentials-button')).toBeVisible();
 		});
 
+		it('does not render the compact button by default', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('setup-credentials-button')).toBeVisible();
+			expect(queryByTestId('setup-credentials-button-compact')).toBeNull();
+		});
+
+		it('renders a compact icon-only button with the label as aria-label when collapsible', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent({ props: { collapsible: true } });
+			expect(getByTestId('setup-credentials-button')).toBeInTheDocument();
+			expect(getByTestId('setup-credentials-button-compact')).toHaveAttribute(
+				'aria-label',
+				'Set up template',
+			);
+		});
+
 		it('ignores disabled nodes when deciding whether all credentials are filled', () => {
 			const nodes = [
 				{

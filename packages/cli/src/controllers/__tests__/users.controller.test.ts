@@ -1,41 +1,26 @@
-import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
-import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
+import type { AuthenticatedRequest, Person, PersonRepository } from '@n8n/db';
 import type { Response } from 'express';
+import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { JwtService } from '@/services/jwt.service';
+import { NotFoundError } from '@n8n/errors';
+import type { UserRequest } from '@/requests';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 import type { UserService } from '@/services/user.service';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { UrlService } from '@/services/url.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { UsersController } from '../users.controller';
 
 describe('UsersController', () => {
-	const eventService = mock<EventService>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const userService = mock<UserService>();
 	const jwtService = mock<JwtService>();
 	const urlService = mock<UrlService>();
-	const provisioningService = mock<ProvisioningService>();
 
 	const controller = new UsersController(
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		userRepository,
+		personRepository,
 		mock(),
 		userService,
-		mock(),
-		mock(),
-		mock(),
-		eventService,
 		jwtService,
 		urlService,
-		provisioningService,
 		mock(),
 	);
 
@@ -45,79 +30,32 @@ describe('UsersController', () => {
 	});
 
 	describe('changeGlobalRole', () => {
-		it('should emit event user-changed-role', async () => {
+		it('delegates to userService.changeGlobalRole', async () => {
 			const request = mock<AuthenticatedRequest>({
 				user: { id: '123' },
 			});
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: '456' }));
-			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+			const payload = mock({ newRoleName: 'global:member' });
+			userService.changeGlobalRole.mockResolvedValue({ success: true });
 
-			await controller.changeGlobalRole(
-				request,
-				mock(),
-				mock({ newRoleName: 'global:member' }),
-				'456',
-			);
-
-			expect(eventService.emit).toHaveBeenCalledWith('user-changed-role', {
-				userId: '123',
-				targetUserId: '456',
-				targetUserNewRole: 'global:member',
-				publicApi: false,
+			await expect(controller.changeGlobalRole(request, mock(), payload, '456')).resolves.toEqual({
+				success: true,
 			});
+
+			expect(userService.changeGlobalRole).toHaveBeenCalledWith(request.user, '456', payload);
 		});
+	});
 
-		it('rejects an owner changing another owner, protecting the last owner', async () => {
-			const request = mock<AuthenticatedRequest>({
-				user: { id: '123', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+	describe('deleteUser', () => {
+		it('delegates to userService.deleteUser', async () => {
+			const request = mock<UserRequest.Delete>({
+				user: { id: '123' },
+				params: { id: '456' },
+				query: { transferId: 'project-1' },
 			});
-			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(
-				mock<User>({ id: '456', role: { slug: GLOBAL_OWNER_ROLE.slug } }),
-			);
+			userService.deleteUser.mockResolvedValue({ success: true });
 
-			await expect(
-				controller.changeGlobalRole(
-					request,
-					mock(),
-					mock({ newRoleName: 'global:custom-role-abc' }),
-					'456',
-				),
-			).rejects.toThrow(ForbiddenError);
-
-			expect(userService.changeUserRole).not.toHaveBeenCalled();
-		});
-
-		it('rejects an admin changing an owner', async () => {
-			const request = mock<AuthenticatedRequest>({
-				user: { id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } },
-			});
-			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(
-				mock<User>({ id: '456', role: { slug: GLOBAL_OWNER_ROLE.slug } }),
-			);
-
-			await expect(
-				controller.changeGlobalRole(request, mock(), mock({ newRoleName: 'global:admin' }), '456'),
-			).rejects.toThrow(ForbiddenError);
-
-			expect(userService.changeUserRole).not.toHaveBeenCalled();
-		});
-
-		it('rejects a user changing their own global role', async () => {
-			const request = mock<AuthenticatedRequest>({
-				user: { id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } },
-			});
-			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(
-				mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } }),
-			);
-
-			await expect(
-				controller.changeGlobalRole(request, mock(), mock({ newRoleName: 'global:member' }), '123'),
-			).rejects.toThrow(ForbiddenError);
-
-			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			await expect(controller.deleteUser(request)).resolves.toEqual({ success: true });
+			expect(userService.deleteUser).toHaveBeenCalledWith(request.user, '456', 'project-1');
 		});
 	});
 
@@ -133,20 +71,19 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			const targetUser = mock<User>({
+			const targetPerson = mock<Person>({
 				id: inviteeId,
 			});
 
-			userRepository.findOne.mockResolvedValue(targetUser);
+			personRepository.findById.mockResolvedValue(targetPerson);
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 
 			const result = await controller.generateInviteLink(request, mock<Response>());
 
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
-			});
+			expect(personRepository.findById).toHaveBeenCalledWith(inviteeId);
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,
@@ -170,7 +107,7 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			userRepository.findOne.mockResolvedValue(null);
+			personRepository.findById.mockResolvedValue(null);
 
 			await expect(controller.generateInviteLink(request, mock<Response>())).rejects.toThrow(
 				NotFoundError,
@@ -179,10 +116,8 @@ describe('UsersController', () => {
 				'User to generate invite link for not found',
 			);
 
-			expect(userRepository.findOne).toHaveBeenCalledTimes(2);
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
-			});
+			expect(personRepository.findById).toHaveBeenCalledTimes(2);
+			expect(personRepository.findById).toHaveBeenCalledWith(inviteeId);
 			expect(jwtService.sign).not.toHaveBeenCalled();
 			expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
 		});
@@ -198,13 +133,14 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: inviteeId }));
+			personRepository.findById.mockResolvedValue(mock<Person>({ id: inviteeId }));
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 
 			await controller.generateInviteLink(request, mock<Response>());
 
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,

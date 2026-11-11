@@ -2,7 +2,11 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
-import type { INodeParameterResourceLocator, INodeTypeDescription } from 'n8n-workflow';
+import {
+	isEmptyGroupAnchor,
+	type INodeParameterResourceLocator,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -27,7 +31,6 @@ import {
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
-	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
@@ -233,7 +236,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (validationErrors.length > 0) return true;
 
 		const executionIssues =
-			executionStateStore.activeExecutionIssuesByNodeName.get(node.name)?.value ?? [];
+			executionStateStore.activeExecutionIssuesByNodeId.get(nodeId)?.value ?? [];
 		if (executionIssues.length > 0) return true;
 
 		const tasks = executionStateStore.activeExecutionRunDataByNodeId.get(nodeId)?.value ?? null;
@@ -242,10 +245,14 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 	function getVisiblePinData(nodeId: string) {
 		const node = getNode(nodeId);
-		if (!node) return undefined;
-		if (executionStateStore.isExecutionDataDisplayed) {
-			return executionStateStore.activeExecutionPinDataByNodeName[node.name];
+		if (!node) {
+			return undefined;
 		}
+
+		if (executionStateStore.isExecutionDataDisplayed) {
+			return executionStateStore.activeExecutionPinDataByNodeId.get(nodeId)?.value;
+		}
+
 		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
 	}
 
@@ -289,6 +296,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
 		const nodeType = nodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const simulated = simulatedNodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const iconSource = simulated ?? nodeType ?? node.type;
@@ -317,7 +325,11 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				tooltip,
 				dirtiness: dirtinessByNodeId.get(node.id)?.value,
 				icon,
-				placeholder: node.placeholder,
+				placeholder: node.placeholder === true || isEmptyGroupAnchorNode,
+				deprecated: Boolean(nodeType?.deprecated),
+				deprecatedReplacementName: nodeType?.replacedByNodeType
+					? nodeTypesStore.getNodeType(nodeType.replacedByNodeType)?.displayName
+					: undefined,
 			},
 		};
 	}
@@ -499,7 +511,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			}
 		}
 
-		const result: Record<string, Partial<CanvasNode>> = {};
+		const result: Record<string, { style: { zIndex: number } }> = {};
 		for (const box of stickyBoxes) {
 			result[box.id] = { style: { zIndex: box.zIndex } };
 		}
@@ -553,6 +565,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		},
 		get executionPinDataByNodeName() {
 			return executionStateStore.activeExecutionPinDataByNodeName;
+		},
+		get executionIssuesByNodeId() {
+			return executionStateStore.activeExecutionIssuesByNodeId;
+		},
+		get executionPinDataByNodeId() {
+			return executionStateStore.activeExecutionPinDataByNodeId;
 		},
 		get isExecutionDataDisplayed() {
 			return executionStateStore.isExecutionDataDisplayed;

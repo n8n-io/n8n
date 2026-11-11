@@ -39,8 +39,25 @@ const Template: StoryFn = (args) => ({
 	`,
 });
 
-export const User = Template.bind({});
-User.args = { role: 'user' };
+export const Default = Template.bind({});
+Default.args = { role: 'user' };
+
+export const Variants: StoryFn = () => ({
+	components: { N8nChatMessage, N8nIconButton },
+	template: `
+		<div style="width: 500px; max-width: 100%; display: flex; flex-direction: column; gap: 12px;">
+			<N8nChatMessage role="user">
+				<p style="margin: 0;">Build a workflow that summarizes new support tickets.</p>
+			</N8nChatMessage>
+			<N8nChatMessage role="assistant">
+				<p style="margin: 0;">Build a workflow that summarizes new support tickets.</p>
+				<template #actions>
+					<N8nIconButton icon="copy" variant="ghost" size="xsmall" aria-label="Copy message" />
+				</template>
+			</N8nChatMessage>
+		</div>
+	`,
+});
 
 export const Assistant = Template.bind({});
 Assistant.args = { role: 'assistant' };

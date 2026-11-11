@@ -56,9 +56,9 @@ export class ObjectStoreService {
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
-		const { host, bucket, protocol, credentials, maxAttempts } = this.s3Config;
+		const { bucket, credentials, maxAttempts } = this.s3Config;
 		const clientConfig: S3ClientConfig = {};
-		const endpoint = host ? `${protocol}://${host}` : undefined;
+		const { endpoint } = this;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
 			clientConfig.forcePathStyle = this.s3Config.forcePathStyle;
@@ -77,6 +77,10 @@ export class ObjectStoreService {
 	}
 
 	async init() {
+		const { bucket, forcePathStyle } = this.s3Config;
+		this.logger.info(
+			`S3 binary storage configured: endpoint=${this.endpoint ?? 'default'}, bucket=${this.bucket}, region=${bucket.region || 'none'}, forcePathStyle=${forcePathStyle}`,
+		);
 		await this.checkConnection();
 		this.setReady(true);
 	}
@@ -91,12 +95,22 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
+		const { endpoint } = this;
+
 		try {
-			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket });
+			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket, endpoint });
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
-			await this.s3Client.send(command);
+			const { startupTimeoutMs } = this.s3Config;
+			await this.s3Client.send(
+				command,
+				// NOTE: startupTimeoutMs of 0 means no timeout.
+				startupTimeoutMs > 0 ? { abortSignal: AbortSignal.timeout(startupTimeoutMs) } : {},
+			);
 		} catch (e) {
-			this.handleS3Error(e);
+			const error = ensureError(e);
+			const message = `Failed to connect to S3 at ${endpoint ?? 'the default S3 endpoint'} (bucket: ${this.bucket}): ${error.message}. Check that N8N_EXTERNAL_STORAGE_S3_HOST includes the port, that N8N_EXTERNAL_STORAGE_S3_PROTOCOL matches the endpoint, and that the endpoint is reachable.`;
+			this.logger.error(message);
+			throw new UnexpectedError(message, { cause: error });
 		}
 	}
 
@@ -370,6 +384,12 @@ export class ObjectStoreService {
 		} catch (e) {
 			this.handleS3Error(e);
 		}
+	}
+
+	/** Custom S3 endpoint, or `undefined` to let the SDK resolve the default. */
+	private get endpoint() {
+		const { host, protocol } = this.s3Config;
+		return host ? `${protocol}://${host}` : undefined;
 	}
 
 	private handleS3Error(e: unknown): never {

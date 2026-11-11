@@ -1,6 +1,6 @@
-import { type IExecuteFunctions, NodeApiError } from 'n8n-workflow';
+import { type IExecuteFunctions, NodeApiError, UserError } from 'n8n-workflow';
 
-import { elasticsearchApiRequest } from '../GenericFunctions';
+import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from '../GenericFunctions';
 
 describe('Elasticsearch -> elasticsearchApiRequest', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
@@ -108,5 +108,32 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 				url: 'https://elastic.domain.com/test-endpoint',
 			}),
 		);
+	});
+});
+
+describe('Elasticsearch -> elasticsearchApiRequestAllItems', () => {
+	let mockExecuteFunctions: IExecuteFunctions;
+	const mockHttpRequestWithAuthentication = vi.fn();
+
+	beforeEach(() => {
+		mockExecuteFunctions = {
+			getCredentials: vi.fn().mockResolvedValue({
+				baseUrl: 'https://example.com',
+				ignoreSSLIssues: false,
+			}),
+			helpers: {
+				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
+			},
+			getNode: vi.fn().mockReturnValue({}),
+		} as unknown as IExecuteFunctions;
+		mockHttpRequestWithAuthentication.mockClear();
+	});
+
+	it('should reject an invalid index id before making any request', async () => {
+		await expect(
+			elasticsearchApiRequestAllItems.call(mockExecuteFunctions, '..', {}, {}),
+		).rejects.toThrow(UserError);
+
+		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 });

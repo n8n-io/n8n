@@ -13,6 +13,7 @@
 // source nominal type and re-interpret the plain object as SimpleWorkflow.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { deepCopy } from 'n8n-workflow';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -85,7 +86,7 @@ function normalizeNode(node: NodeRaw): NormalizedNode {
 }
 
 function toPlainObject(value: unknown): Record<string, unknown> {
-	if (!isPlainObject(value)) return {};
+	if (!isRecord(value)) return {};
 	return { ...value };
 }
 
@@ -99,13 +100,9 @@ export function serializeNormalizedWorkflow(workflow: SimpleWorkflow): string {
 }
 
 function sortedReplacer(_key: string, value: unknown): unknown {
-	if (isPlainObject(value)) {
+	if (isRecord(value)) {
 		const entries = Object.entries(value).sort(([a], [b]) => a.localeCompare(b));
 		return Object.fromEntries(entries);
 	}
 	return value;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

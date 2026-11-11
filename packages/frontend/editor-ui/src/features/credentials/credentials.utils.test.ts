@@ -8,7 +8,11 @@ import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from './credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { getAutoSelectedCredential } from './credentials.utils';
+import {
+	getAutoSelectedCredential,
+	hasAutomaticOAuthApp,
+	hasManagedOAuthApp,
+} from './credentials.utils';
 
 const openAiApiCredentialType = {
 	name: 'openAiApi',
@@ -73,7 +77,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('picks the most recently updated usable credential of the node type', () => {
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			older: createCredential({
 				id: 'older',
 				name: 'Older',
@@ -93,7 +97,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when the node already has a credential set', () => {
-		credentialsStore.state.credentials = { older: createCredential({ id: 'older' }) };
+		credentialsStore.usableCredentials = { older: createCredential({ id: 'older' }) };
 
 		const node = createNode({
 			credentials: { openAiApi: { id: 'older', name: 'Older' } },
@@ -103,16 +107,41 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when no usable credentials of the required type exist', () => {
-		credentialsStore.state.credentials = {};
+		credentialsStore.usableCredentials = {};
 
 		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
+	});
+
+	it('ignores credentials the scoped fetch left out of the usable slice', () => {
+		// Paste/duplicate into a project must not auto-assign a credential that
+		// project cannot use, which the backend would then reject on save.
+		credentialsStore.state.credentials = { personal: createCredential({ id: 'personal' }) };
+		credentialsStore.usableCredentials = {};
+
+		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
+	});
+
+	it('picks from the host-supplied list when one is given, even with an empty slice', () => {
+		// Must agree with the dropdown, which renders the same list — otherwise
+		// "nothing to auto-select" would fire while rows are visibly listed.
+		credentialsStore.usableCredentials = {};
+
+		expect(
+			getAutoSelectedCredential(createNode(), 'openAiApi', [
+				createCredential({ id: 'older', name: 'Older', updatedAt: '2024-01-01T00:00:00.000Z' }),
+				createCredential({ id: 'newer', name: 'Newer', updatedAt: '2024-06-01T00:00:00.000Z' }),
+			]),
+		).toEqual({
+			credentialType: 'openAiApi',
+			credential: { id: 'newer', name: 'Newer' },
+		});
 	});
 
 	it('returns undefined for a node type without credentials', () => {
 		nodeTypesStore.setNodeTypes([
 			{ ...openAiNodeType, name: 'n8n-nodes-base.noOp', credentials: undefined },
 		]);
-		credentialsStore.state.credentials = { older: createCredential() };
+		credentialsStore.usableCredentials = { older: createCredential() };
 
 		const node = createNode({ type: 'n8n-nodes-base.noOp' });
 
@@ -124,7 +153,7 @@ describe('getAutoSelectedCredential', () => {
 			openAiApi: openAiApiCredentialType,
 			slackApi: { ...openAiApiCredentialType, name: 'slackApi', displayName: 'Slack' },
 		};
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			openai: createCredential({
 				id: 'openai',
 				name: 'OpenAI',
@@ -143,5 +172,55 @@ describe('getAutoSelectedCredential', () => {
 			credentialType: 'slackApi',
 			credential: { id: 'slack', name: 'Slack' },
 		});
+	});
+});
+
+describe('hasManagedOAuthApp', () => {
+	const slackOAuth2Api: ICredentialType = {
+		name: 'slackOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Slack OAuth2 API',
+		properties: [],
+	};
+
+	it.each<[boolean, string, string[] | undefined, boolean | undefined]>([
+		[false, 'no property is overwritten', undefined, undefined],
+		[false, 'only the client ID is overwritten', ['clientId'], undefined],
+		[false, 'only the client secret is overwritten', ['clientSecret'], undefined],
+		[true, 'both client fields are overwritten', ['clientId', 'clientSecret'], undefined],
+		[false, 'managed creation is skipped', ['clientId', 'clientSecret'], true],
+	])('is %s when %s', (expected, _case, overwrittenProperties, skipManagedCreation) => {
+		expect(
+			hasManagedOAuthApp({
+				...slackOAuth2Api,
+				__overwrittenProperties: overwrittenProperties,
+				__skipManagedCreation: skipManagedCreation,
+			}),
+		).toBe(expected);
+	});
+
+	it('returns false for a credential type the store does not know', () => {
+		expect(hasManagedOAuthApp(undefined)).toBe(false);
+	});
+});
+
+describe('hasAutomaticOAuthApp', () => {
+	const todoistOAuth2Api: ICredentialType = {
+		name: 'todoistOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Todoist OAuth2 API',
+		properties: [],
+	};
+
+	it.each<[boolean, string, Partial<ICredentialType>]>([
+		[false, 'the type does not support registration', {}],
+		[true, 'the type supports registration', { dynamicClientRegistration: true }],
+		[
+			false,
+			'the instance also has a managed app',
+			{ dynamicClientRegistration: true, __overwrittenProperties: ['clientId', 'clientSecret'] },
+		],
+	])('is %s when %s', (expected, _case, overrides) => {
+		expect(hasAutomaticOAuthApp({ ...todoistOAuth2Api, ...overrides })).toBe(expected);
 	});
 });

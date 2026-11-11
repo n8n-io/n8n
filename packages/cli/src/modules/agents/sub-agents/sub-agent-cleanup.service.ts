@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -12,14 +14,14 @@ export class SubAgentCleanupService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/**
 	 * Remove a sub-agent reference from every parent agent's draft config.
-	 * Called when the sub-agent is deleted or unpublished, so a parent never
-	 * keeps delegating to (or silently reactivates delegation to) an agent
-	 * that is no longer available as a sub-agent. Sub-agents are project-
-	 * scoped, so only the child's own project needs scanning.
+	 * Called when the sub-agent is deleted. Sub-agents are project-scoped, so
+	 * only the child's own project needs scanning.
 	 */
 	async removeSubAgentFromParents(childAgentId: string, projectId: string): Promise<void> {
 		const agents = await this.agentRepository.find({ where: { projectId } });
@@ -52,7 +54,13 @@ export class SubAgentCleanupService {
 			};
 
 			markAgentDraftDirty(parent);
-			if (await this.agentRepository.saveDraftFenced(parent)) {
+			const candidate = parent;
+			const saved = await this.transactionRunner.run({}, async (ctx) => {
+				if (!(await this.agentRepository.saveDraftFenced(candidate, ctx))) return false;
+				await this.definitionService.captureVersion(candidate, 'System', ctx);
+				return true;
+			});
+			if (saved) {
 				this.runtimeCacheService.clearRuntimes(parent.id);
 
 				this.logger.debug('Removed sub-agent reference from parent agent', {

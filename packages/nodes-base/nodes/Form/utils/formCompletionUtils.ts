@@ -12,6 +12,8 @@ import {
 
 import {
 	generateFormUserAuthToken,
+	getHostNavigationPath,
+	getN8nWebsiteLink,
 	getNodeReference,
 	handleNewlines,
 	resolveRawData,
@@ -88,10 +90,12 @@ export const renderFormCompletion = async (
 	const completionMessage = handleNewlines(
 		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
 	);
-	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+	const redirectUrl =
+		validateSafeRedirectUrl(context.getNodeParameter('redirectUrl', '') as string) ?? undefined;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
+		appendAttribution?: boolean;
 	};
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
@@ -110,19 +114,33 @@ export const renderFormCompletion = async (
 		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
 		title = resolveRawData(context, title);
 	}
-	const appendAttribution = context.evaluateExpression(
-		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
-	) as boolean;
+	// The completion page inherits the trigger's attribution setting unless it
+	// carries its own, so an ending page can drop the footer on its own.
+	const appendAttribution =
+		options.appendAttribution ??
+		(context.evaluateExpression(
+			`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
+		) as boolean);
 
-	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
+	// Without a valid URL the page shows the completion card, so it keeps the sandbox.
+	const redirects = respondWith === 'redirect' && redirectUrl !== undefined;
+
+	if (!redirects && !isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	} else {
+		// The form route sandboxes every response. Remove it here: the redirect does not
+		// work under the sandbox (n8n-io/n8n#20303).
+		res.removeHeader('Content-Security-Policy');
 	}
 
 	// Embed the form auth token so the completion page's auto-POST (which
 	// resumes the paused workflow) can re-authenticate the user — cookies
 	// aren't sent on fetch from the sandboxed completion page.
 	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
+		? generateFormUserAuthToken(context.getNode(), authedUser, {
+				workflowId: context.getWorkflow().id,
+				executionId: context.getExecutionId(),
+			})
 		: undefined;
 
 	res.render('form-trigger-completion', {
@@ -130,11 +148,18 @@ export const renderFormCompletion = async (
 		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
+		// Without this the footer's anchor renders with an empty href and the
+		// browser resolves it against the completion page's own URL.
+		n8nWebsiteLink: appendAttribution ? getN8nWebsiteLink(context.getInstanceId()) : undefined,
 		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
-		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
+		redirectUrl,
 		authToken,
+		// The completion page reloads itself while the run finishes, and that hop is
+		// subject to the same cookie semantics as every other page of the form, so it
+		// goes through the host when the host is the shell.
+		hostNavigationPath: getHostNavigationPath(context),
 	});
 
 	return { noWebhookResponse: true };

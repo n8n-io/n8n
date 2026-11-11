@@ -4,9 +4,11 @@ import {
 	RoleMappingRuleListPublicDto,
 	RoleMappingRuleListQueryPublicDto,
 	RoleMappingRulePublicDto,
+	UpdateRoleMappingRulePublicDto,
+	roleMappingRuleIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, isPerson } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -15,15 +17,17 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
+	Patch,
 	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import {
@@ -117,7 +121,7 @@ export class RoleMappingRulesPublicController {
 	async moveRoleMappingRule(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
 		@Body body: MoveRoleMappingRuleDto,
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
@@ -126,7 +130,59 @@ export class RoleMappingRulesPublicController {
 			id: roleMappingRuleId,
 			targetIndex: body.targetIndex,
 			userId: req.user.id,
-			userEmail: req.user.email,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
+		});
+
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	@Patch('/:roleMappingRuleId')
+	@ApiKeyScope('roleMappingRule:update')
+	@ApiSummary('Update a role-mapping rule')
+	@ApiDescription(
+		"Updates a rule's claim expression, role, and/or project assignments. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.",
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRulePublicDto)
+	@ApiErrorResponse(404)
+	async updateRoleMappingRule(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
+		@Body body: UpdateRoleMappingRulePublicDto,
+	): Promise<RoleMappingRulePublicDto> {
+		this.assertProvisioningLicensed();
+
+		const rule = await this.roleMappingRuleService.patch({
+			id: roleMappingRuleId,
+			dto: body,
+			userId: req.user.id,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
+		});
+
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	@Delete('/:roleMappingRuleId')
+	@ApiKeyScope('roleMappingRule:delete')
+	@ApiSummary('Delete a role-mapping rule')
+	@ApiDescription(
+		'Deletes a role-mapping rule. The remaining rules of the same type close the gap, so their `order` values stay a contiguous sequence starting at 0.',
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRulePublicDto)
+	@ApiErrorResponse(404)
+	async deleteRoleMappingRule(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
+	): Promise<RoleMappingRulePublicDto> {
+		this.assertProvisioningLicensed();
+
+		const rule = await this.roleMappingRuleService.delete({
+			id: roleMappingRuleId,
+			userId: req.user.id,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 
 		return toRoleMappingRulePublicDto(rule);

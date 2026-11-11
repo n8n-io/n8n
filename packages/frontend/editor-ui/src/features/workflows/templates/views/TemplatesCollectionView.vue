@@ -170,6 +170,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .wrapper {
 	display: flex;
 	justify-content: space-between;

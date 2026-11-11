@@ -1,7 +1,8 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
+import { forgetApprovedHost, listApprovedHosts, rememberHost } from '../../approvedHosts';
 import { createLogger } from '../../logger';
-import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
+import { getRelayHostKey, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
@@ -34,6 +35,13 @@ export function useConnection() {
 	// attacker-controlled WSS endpoint.
 	const isAutoConnect = ref<boolean>(false);
 
+	// ── Remembered-instance consent ──────────────────────────────────────────
+	// Opt-in: a remembered instance reconnects with no prompt at all, so nobody should end
+	// up in that state without ticking the box themselves.
+	const rememberInstance = ref(false);
+	// Every stored host, so the drawer can revoke them without being connected.
+	const approvedHosts = ref<string[]>([]);
+
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
 	const tabRegistry = reactive(new Map<number, chrome.tabs.Tab>());
@@ -55,8 +63,10 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
-	const relayHost = computed(() => getRelayHost(connectedRelayUrl.value ?? relayUrl.value));
 	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
+	// The one identity the user ever sees, and the one that gets stored, so what they agree
+	// to always matches what the revoke list shows back.
+	const relayHostKey = computed(() => getRelayHostKey(connectedRelayUrl.value ?? relayUrl.value));
 
 	// ── Private helpers ───────────────────────────────────────────────────────
 
@@ -114,24 +124,31 @@ export function useConnection() {
 		}
 
 		if (!isAllowedRelayUrl(relayUrl.value)) {
-			errorMessage.value = `Can't connect to ${relayHost.value ?? 'this address'} — not a recognized n8n instance.`;
+			errorMessage.value = `Can't connect to ${relayHostKey.value ?? 'this address'} — not a recognized n8n instance.`;
 			log.warn('connect: relay URL not allowed', relayUrl.value);
 			return;
 		}
 
-		log.debug('connect: relay URL =', relayUrl.value, 'selectedTabs:', selectedTabIds.size);
+		// Pinned before any await: a new request can replace `relayUrl` mid-handshake, and the
+		// approval must record the host the user was actually shown.
+		const approvedUrl = relayUrl.value;
+		log.debug('connect: relay URL =', approvedUrl, 'selectedTabs:', selectedTabIds.size);
 		status.value = 'connecting';
 		errorMessage.value = '';
 
 		const raw: unknown = await chrome.runtime.sendMessage({
 			type: 'connect',
-			relayUrl: relayUrl.value,
+			relayUrl: approvedUrl,
 			selectedTabIds: [...selectedTabIds],
 		});
 		log.debug('connect response:', raw);
 
 		if (isConnectResponse(raw) && raw.success) {
 			status.value = 'connected';
+			// The eval harness connects unattended — it must not write user-facing trust state.
+			if (rememberInstance.value && !isAutoConnect.value) {
+				approvedHosts.value = await rememberHost(approvedUrl);
+			}
 			await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
 			// Fetch controlled IDs — controlledTabDetails computed auto-resolves from registry
 			const statusResponse: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
@@ -156,6 +173,12 @@ export function useConnection() {
 		await chrome.runtime.sendMessage({ type: 'disconnect' });
 		applyStatus({ connected: false });
 		relayUrl.value = null;
+	}
+
+	/** Drops a stored approval. Never touches the live session. */
+	async function forgetHost(host: string): Promise<void> {
+		log.debug('forgetHost', host);
+		approvedHosts.value = await forgetApprovedHost(host);
 	}
 
 	async function decline(): Promise<void> {
@@ -185,6 +208,8 @@ export function useConnection() {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
+			// A different instance is asking now, so its approval has to be given afresh.
+			rememberInstance.value = false;
 			// Drop the now-stale connection params from the page URL. The live value lives in
 			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
 			window.history.replaceState(null, '', window.location.pathname);
@@ -253,7 +278,8 @@ export function useConnection() {
 			applyStatus(currentStatus);
 		}
 
-		await initTabRegistry();
+		const [storedHosts] = await Promise.all([listApprovedHosts(), initTabRegistry()]);
+		approvedHosts.value = storedHosts;
 
 		if (!mounted) return;
 
@@ -282,13 +308,16 @@ export function useConnection() {
 		errorMessage,
 		relayUrl,
 		hasRelayUrl,
-		relayHost,
 		isRelayAllowed,
 		isAutoConnect,
+		relayHostKey,
+		rememberInstance,
+		approvedHosts,
 		controlledTabs: controlledTabDetails,
 		toggleTab,
 		connect,
 		decline,
 		disconnect,
+		forgetHost,
 	};
 }

@@ -1,0 +1,44 @@
+// Set only inside the n8n hosting shell's frame: the path prefix whose pages this
+// page may hand to the host to navigate to. Empty everywhere else.
+const hostNavigationPath = '{{path}}';
+const isShellHosted = window.parent !== window && !!hostNavigationPath;
+
+// True for this form's own follow-up pages, the only ones the shell will move to.
+function isHostNavigable(target) {
+	if (!hostNavigationPath) return false;
+	try {
+		const here = new URL(window.location.href);
+		const resolved = new URL(target, here);
+		if (resolved.origin !== here.origin) return false;
+		return resolved.pathname === hostNavigationPath
+			|| resolved.pathname.startsWith(hostNavigationPath + '/');
+	} catch (e) {
+		return false;
+	}
+}
+
+// Ask the host for a move this document can't make itself: inside the shell it is
+// sandboxed to an opaque origin, so a navigation it starts counts as cross-site and
+// the browser withholds the form's own auth cookie. The shell runs on the real
+// origin, so the move it makes for us keeps the cookie. `type` says which move —
+// another page of this form inside the frame, or the author's redirect for the tab.
+function requestHostNavigation(type, target) {
+	// targetOrigin '*': an opaque-origin document cannot name its parent's origin,
+	// and the payload is only a URL the parent can already read.
+	window.parent.postMessage({ type, url: String(target) }, '*');
+}
+
+// Move to another page of this form.
+function navigateTo(target) {
+	if (isShellHosted && isHostNavigable(target)) requestHostNavigation('n8n-form-navigate', target);
+	else window.location.replace(target);
+}
+{{#if withRedirect}}
+
+// Leave for the redirect the form's author configured. The form is finished, so this
+// takes the whole tab, which is where a form rendered without the shell ends up too.
+function redirectTo(target) {
+	if (isShellHosted) requestHostNavigation('n8n-form-redirect', target);
+	else window.location.replace(target);
+}
+{{/if}}

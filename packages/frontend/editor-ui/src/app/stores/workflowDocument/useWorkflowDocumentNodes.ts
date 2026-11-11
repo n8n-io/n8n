@@ -10,7 +10,6 @@ import {
 import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import type {
-	INode,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeIssueData,
@@ -39,7 +38,6 @@ import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useNodeTypesStore } from '../nodeTypes.store';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 
 // --- Event types ---
 
@@ -124,10 +122,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			}
 
 			if (node.position) {
-				const snappedPosition = snapPositionToGrid(node.position);
-				node.position = isAgentNodeV2(node)
-					? [snappedPosition[0], node.position[1]]
-					: snappedPosition;
+				node.position = snapPositionToGrid(node.position);
 			}
 		}
 
@@ -503,7 +498,14 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
 
-	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
+	/**
+	 * `markDirty: false` is for writes that mirror already-saved server state:
+	 * the document changes, but there is nothing new to save.
+	 */
+	function updateNodeProperties(
+		updateInformation: INodeUpdatePropertiesInformation,
+		{ markDirty = true }: { markDirty?: boolean } = {},
+	): void {
 		const nodeIndex = nodes.value.findIndex((node) => node.name === updateInformation.name);
 
 		if (nodeIndex !== -1) {
@@ -513,7 +515,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
-				if (changed) {
+				if (changed && markDirty) {
 					void onStateDirty.trigger();
 				}
 			}
@@ -572,31 +574,30 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		type: string;
 	}) {
 		nodes.value.forEach((node: INodeUi) => {
-			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
-			if (!nodeCredentials?.[data.type]) {
+			const nodeCredentialDetails: INodeCredentialsDetails | string | undefined =
+				node.credentials?.[data.type];
+			if (!nodeCredentialDetails) {
 				return;
 			}
 
-			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
-
-			if (
-				typeof nodeCredentialDetails === 'string' &&
-				nodeCredentialDetails === data.invalid.name
-			) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				return;
-			}
-
-			if (nodeCredentialDetails.id === null) {
-				if (nodeCredentialDetails.name === data.invalid.name) {
-					(node.credentials as INodeCredentials)[data.type] = data.credentials;
+			if (typeof nodeCredentialDetails === 'string') {
+				if (nodeCredentialDetails !== data.invalid.name) {
+					return;
 				}
+			} else if (nodeCredentialDetails.id === null) {
+				if (nodeCredentialDetails.name !== data.invalid.name) {
+					return;
+				}
+			} else if (nodeCredentialDetails.id !== data.invalid.id) {
 				return;
 			}
 
-			if (nodeCredentialDetails.id === data.invalid.id) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-			}
+			updateNodeProperties({
+				name: node.name,
+				properties: {
+					credentials: { ...node.credentials, [data.type]: data.credentials },
+				},
+			});
 		});
 	}
 

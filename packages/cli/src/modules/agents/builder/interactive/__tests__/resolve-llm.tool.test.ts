@@ -19,6 +19,15 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
 	};
 }
 
+/**
+ * A live list that contains the provider's maintained default, i.e. the happy
+ * path where the credential can actually reach it.
+ */
+function makeModelLookupServingDefault(credentialType: string) {
+	const defaultModel = LLM_PROVIDER_DEFAULTS[credentialType].defaultModel as string;
+	return makeModelLookup(async () => [{ name: defaultModel, value: defaultModel }]);
+}
+
 function makeFreeCredits(
 	isEligibleImpl?: FreeCreditsProvisioner['isEligible'],
 	claimImpl?: FreeCreditsProvisioner['claim'],
@@ -34,13 +43,13 @@ function makeFreeCredits(
 	};
 }
 
-describe('resolve_llm tool', () => {
+describe('agent_builder_resolve_llm tool', () => {
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
 			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'My Slack', type: 'slackApi' },
 		]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookupServingDefault('openAiApi');
 		const tool = buildResolveLlmTool({
 			credentialProvider,
 			modelLookup,
@@ -51,11 +60,12 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openai',
-			model: 'gpt-5.6-terra',
+			model: 'gpt-6.1-terra',
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
-		expect(modelLookup.list).not.toHaveBeenCalled();
+		// The default is verified against the credential's live list, not trusted.
+		expect(modelLookup.list).toHaveBeenCalledWith('c1', 'openAiApi', 'openai');
 	});
 
 	it('auto-resolves the requested provider when multiple LLM-provider credentials exist', async () => {
@@ -63,7 +73,7 @@ describe('resolve_llm tool', () => {
 			{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
 			{ id: 'c2', name: 'My OpenRouter', type: 'openRouterApi' },
 		]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookupServingDefault('openRouterApi');
 		const tool = buildResolveLlmTool({
 			credentialProvider,
 			modelLookup,
@@ -74,7 +84,7 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openrouter',
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5.5',
 			credentialId: 'c2',
 			credentialName: 'My OpenRouter',
 		});
@@ -217,6 +227,62 @@ describe('resolve_llm tool', () => {
 			});
 		});
 
+		it('resolves the free-credits model against the newly claimed credential', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+				{ name: 'GPT-5 nano', value: 'gpt-5-nano' },
+			]);
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({ ok: true, model: 'gpt-5-mini' });
+			expect(modelLookup.list).toHaveBeenCalledWith('free-1', 'openAiApi', 'openai');
+		});
+
+		it('falls back to the first allowlisted model when the free-credits model is retired', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5.6 luna', value: 'gpt-5.6-luna' },
+			]);
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				model: 'gpt-5.6-luna',
+				claimedFreeOpenAiCredits: true,
+			});
+		});
+
+		it('keeps the claim when the free-credits model list cannot be reached', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup(async () => {
+				throw new Error('proxy unavailable');
+			});
+			const freeCredits = makeFreeCredits(
+				() => true,
+				async () => ({ credentialId: 'free-1', credentialName: 'n8n free OpenAI API credits' }),
+			);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({}, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				model: 'gpt-5-mini',
+				credentialId: 'free-1',
+				claimedFreeOpenAiCredits: true,
+			});
+		});
+
 		it('returns missing_credential when no LLM credentials exist and free credits are not eligible', async () => {
 			const credentialProvider = makeProvider([]);
 			const modelLookup = makeModelLookup();
@@ -300,7 +366,7 @@ describe('resolve_llm tool', () => {
 				{ id: 'c1', name: 'Personal OpenRouter', type: 'openRouterApi' },
 				{ id: 'c2', name: 'Work OpenRouter', type: 'openRouterApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('openRouterApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -311,7 +377,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openrouter',
-				model: 'anthropic/claude-sonnet-5',
+				model: 'anthropic/claude-sonnet-5.5',
 				credentialId: 'c2',
 				credentialName: 'Work OpenRouter',
 			});
@@ -344,7 +410,7 @@ describe('resolve_llm tool', () => {
 				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 				{ id: 'c2', name: 'My Anthropic', type: 'anthropicApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -355,7 +421,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c2',
 				credentialName: 'My Anthropic',
 				autoPicked: true,
@@ -363,18 +429,132 @@ describe('resolve_llm tool', () => {
 			});
 		});
 
-		it('LLM_PROVIDER_PRIORITY covers every provider in LLM_PROVIDER_DEFAULTS', () => {
-			const definedProviders = new Set(Object.values(LLM_PROVIDER_DEFAULTS).map((d) => d.provider));
+		it('LLM_PROVIDER_PRIORITY covers every provider with a default model', () => {
+			// A provider without a default model (Microsoft Foundry) is never auto-picked.
+			const definedProviders = new Set(
+				Object.values(LLM_PROVIDER_DEFAULTS)
+					.filter((d) => d.defaultModel !== undefined)
+					.map((d) => d.provider),
+			);
 			expect(new Set(LLM_PROVIDER_PRIORITY)).toEqual(definedProviders);
 		});
 	});
 
+	// INS-1263: agent_builder_resolve_llm returned the maintained default without checking it
+	// against the credential, so a model the provider does not serve shipped into
+	// the agent config and every call then failed with `404 Not Found`.
+	describe('provider default verification for own credentials', () => {
+		const googleCredential = { id: 'g1', name: 'My Gemini', type: 'googlePalmApi' };
+
+		it('reports unknown_model instead of a default the credential cannot reach', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+				{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'google',
+				requestedModel: LLM_PROVIDER_DEFAULTS.googlePalmApi.defaultModel,
+			});
+		});
+
+		it('never falls back to an arbitrary model from a provider catalog', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-1.0-pro-vision', value: 'models/gemini-1.0-pro-vision' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			// Unlike the short curated gateway allowlist, the first entry of a
+			// provider's own catalog is arbitrary — the agent must choose.
+			expect(result).toMatchObject({ ok: false, reason: 'unknown_model' });
+		});
+
+		it('surfaces available models as callable ids so the agent can retry', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			// The `models/` prefix must be stripped: it passes config validation and
+			// then fails at run time.
+			expect(result).toMatchObject({
+				availableModels: [{ name: 'gemini-3.5-flash', value: 'gemini-3.5-flash' }],
+			});
+		});
+
+		it('resolves the default from a models/-prefixed google list', async () => {
+			const { defaultModel } = LLM_PROVIDER_DEFAULTS.googlePalmApi;
+			const modelLookup = makeModelLookup(async () => [
+				{ name: `models/${defaultModel}`, value: `models/${defaultModel}` },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({ ok: true, provider: 'google', model: defaultModel });
+		});
+
+		it('returns a requested google model as a callable id', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google', model: 'gemini-3.5-flash' }, {});
+
+			expect(result).toMatchObject({ ok: true, model: 'gemini-3.5-flash' });
+		});
+
+		it('returns model_lookup_failed rather than an unverified default', async () => {
+			const modelLookup = makeModelLookup(async () => {
+				throw new Error('credentials invalid');
+			});
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'model_lookup_failed',
+				provider: 'google',
+				error: 'credentials invalid',
+			});
+		});
+	});
+
 	describe('model validation against modelLookup', () => {
-		it('skips lookup when no model is requested', async () => {
+		it('verifies the provider default against the lookup when no model is requested', async () => {
 			const credentialProvider = makeProvider([
 				{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -385,11 +565,11 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
-			expect(modelLookup.list).not.toHaveBeenCalled();
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'anthropicApi', 'anthropic');
 		});
 
 		it('validates the requested model against the lookup for Cohere', async () => {
@@ -513,6 +693,33 @@ describe('resolve_llm tool', () => {
 			});
 		});
 
+		it('caps availableModels and reports how many were left out', async () => {
+			const credentialProvider = makeProvider([
+				{ id: 'c1', name: 'My OpenRouter', type: 'openRouterApi' },
+			]);
+			const available = Array.from({ length: 40 }, (_, i) => ({
+				name: `Model ${i}`,
+				value: `vendor/model-${i}`,
+			}));
+			const modelLookup = makeModelLookup(async () => available);
+			const tool = buildResolveLlmTool({
+				credentialProvider,
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'openrouter', model: 'nothing-like-it' }, {});
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'openrouter',
+				requestedModel: 'nothing-like-it',
+				availableModels: available.slice(0, 25),
+				availableModelsTruncated: true,
+				totalAvailableModels: 40,
+			});
+		});
+
 		it('returns unknown_model with the candidate matches when the substring is ambiguous', async () => {
 			const credentialProvider = makeProvider([
 				{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
@@ -565,6 +772,121 @@ describe('resolve_llm tool', () => {
 		});
 	});
 
+	describe('Microsoft Foundry deployments', () => {
+		const chat = { name: 'my-chat (gpt-4.1)', value: 'my-chat', servedModel: 'gpt-4.1' };
+		const mini = { name: 'my-mini (gpt-4.1-mini)', value: 'my-mini', servedModel: 'gpt-4.1-mini' };
+
+		describe.each(['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'])(
+			'with %s',
+			(credentialType) => {
+				function resolveFoundry(input: Record<string, unknown>, deployments: unknown[] | Error) {
+					const modelLookup = makeModelLookup(async () => {
+						if (deployments instanceof Error) throw deployments;
+						return deployments as Awaited<ReturnType<ModelLookup['list']>>;
+					});
+					const tool = buildResolveLlmTool({
+						credentialProvider: makeProvider([
+							{ id: 'f1', name: 'My Foundry', type: credentialType },
+						]),
+						modelLookup,
+						freeCredits: makeFreeCredits(),
+					});
+					return { result: tool.handler!(input, {}), modelLookup };
+				}
+
+				it('resolves the only deployment when no model is requested', async () => {
+					const { result, modelLookup } = resolveFoundry({ provider: 'azure-openai' }, [chat]);
+
+					await expect(result).resolves.toEqual({
+						ok: true,
+						provider: 'azure-openai',
+						model: 'my-chat',
+						credentialId: 'f1',
+						credentialName: 'My Foundry',
+					});
+					expect(modelLookup.list).toHaveBeenCalledWith('f1', credentialType, 'azure-openai');
+				});
+
+				it('lists the deployments when there are several and no model is requested', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai' }, [chat, mini]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('matches a requested model to the deployment that serves it', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'gpt-4.1' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-chat' });
+				});
+
+				it('resolves a requested deployment name', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'my-mini' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-mini' });
+				});
+
+				it('lists the deployments when the requested model matches none', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'claude-opus-5' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						requestedModel: 'claude-opus-5',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('passes the reason a credential cannot list deployments to the builder', async () => {
+					const { result } = resolveFoundry(
+						{ provider: 'azure-openai' },
+						new Error('Agents need a Microsoft Foundry credential.'),
+					);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'model_lookup_failed',
+						provider: 'azure-openai',
+						error: 'Agents need a Microsoft Foundry credential.',
+					});
+				});
+			},
+		);
+
+		it('does not auto-pick Foundry over a provider with a default model', async () => {
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([
+					{ id: 'f1', name: 'My Foundry', type: 'azureOpenAiApi' },
+					{ id: 'a1', name: 'My Anthropic', type: 'anthropicApi' },
+				]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+
+			await expect(tool.handler!({}, {})).resolves.toMatchObject({
+				ok: true,
+				provider: 'anthropic',
+				autoPicked: true,
+				otherProviders: ['azure-openai'],
+			});
+		});
+	});
+
 	describe('n8n Connect managed credentials', () => {
 		it('defaults to n8n Connect with the provider default when the gateway allowlists it', async () => {
 			const modelLookup = makeModelLookup(async () => [
@@ -585,7 +907,7 @@ describe('resolve_llm tool', () => {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-6',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -700,13 +1022,13 @@ describe('resolve_llm tool', () => {
 			// n8n Connect options appended for supported providers without an own key (openai, google).
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
@@ -759,7 +1081,7 @@ describe('resolve_llm tool', () => {
 				provider: 'google',
 				model: 'gemini-2.5-pro',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -786,13 +1108,13 @@ describe('resolve_llm tool', () => {
 			};
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
@@ -850,8 +1172,8 @@ describe('resolve_llm tool', () => {
 		});
 	});
 
-	describe('explicit n8n credits request (useN8nCredits)', () => {
-		it('resolves n8n credits for the requested provider even when the user has their own credential', async () => {
+	describe('explicit Gateway credits request (useGatewayCredits)', () => {
+		it('resolves Gateway credits for the requested provider even when the user has their own credential', async () => {
 			const modelLookup = makeModelLookup(async () => [
 				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
 			]);
@@ -863,14 +1185,14 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ provider: 'openai', useN8nCredits: true }, {});
+			const result = await tool.handler!({ provider: 'openai', useGatewayCredits: true }, {});
 
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openai',
 				model: 'gpt-5-mini',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 		});
 
@@ -884,33 +1206,33 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
 			expect(result).toMatchObject({
 				ok: true,
 				provider: 'openai',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 		});
 
-		it('reports n8n_credits_unsupported_provider when the gateway does not serve the requested provider', async () => {
+		it('reports gateway_credits_unsupported_provider when the gateway does not serve the requested provider', async () => {
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ provider: 'anthropic', useN8nCredits: true }, {});
+			const result = await tool.handler!({ provider: 'anthropic', useGatewayCredits: true }, {});
 
 			expect(result).toMatchObject({
 				ok: false,
-				reason: 'n8n_credits_unsupported_provider',
+				reason: 'gateway_credits_unsupported_provider',
 				provider: 'anthropic',
 			});
 		});
 
-		it('reports ambiguous_n8n_credits_provider with the served providers when none is named', async () => {
+		it('reports ambiguous_gateway_credits_provider with the served providers when none is named', async () => {
 			const served = new Set(['openai', 'google']);
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
@@ -918,24 +1240,24 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => served.has(provider),
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
-			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_n8n_credits_provider' });
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_gateway_credits_provider' });
 			const { providers } = result as { providers: string[] };
 			expect(providers).toEqual(expect.arrayContaining(['openai', 'google']));
 		});
 
-		it('reports n8n_credits_unavailable when the gateway serves no provider', async () => {
+		it('reports gateway_credits_unavailable when the gateway serves no provider', async () => {
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async () => false,
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
 			// No providers list — there is nothing for the caller to pick from.
-			expect(result).toEqual({ ok: false, reason: 'n8n_credits_unavailable' });
+			expect(result).toEqual({ ok: false, reason: 'gateway_credits_unavailable' });
 		});
 
 		it('surfaces the allowlisted models on unknown_model so the agent can retry', async () => {
@@ -949,7 +1271,7 @@ describe('resolve_llm tool', () => {
 				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!(
-				{ provider: 'openai', model: 'gpt-nonexistent', useN8nCredits: true },
+				{ provider: 'openai', model: 'gpt-nonexistent', useGatewayCredits: true },
 				{},
 			);
 
@@ -959,6 +1281,123 @@ describe('resolve_llm tool', () => {
 				provider: 'openai',
 				availableModels: [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }],
 			});
+		});
+	});
+
+	// The tool description says only when to call the tool. What to do with a
+	// result travels on that result, so it costs context only when it applies.
+	describe('next step for the model', () => {
+		async function modelView(
+			credentials: CredentialListItem[],
+			input: Record<string, unknown> = {},
+			modelLookup: ModelLookup = makeModelLookup(),
+			freeCredits = makeFreeCredits(),
+		) {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider(credentials),
+				modelLookup,
+				freeCredits,
+			});
+			const result = await tool.handler!(input, {});
+			return tool.toModelOutput!(result) as Record<string, unknown>;
+		}
+
+		it('adds no next step to a plain resolution', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{},
+				makeModelLookupServingDefault('openAiApi'),
+			);
+
+			expect(view.ok).toBe(true);
+			expect(view).not.toHaveProperty('nextStep');
+		});
+
+		it('tells the model to defer a missing credential during an initial build', async () => {
+			const view = await modelView([], { provider: 'anthropic' });
+
+			expect(view.reason).toBe('missing_credential');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
+			expect(view.nextStep).toContain('existing Agent');
+		});
+
+		it('tells the model to pass the picked credential id after an ambiguous result', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'Work', type: 'anthropicApi' },
+					{ id: 'c2', name: 'Personal', type: 'anthropicApi' },
+				],
+				{ provider: 'anthropic' },
+			);
+
+			expect(view.reason).toBe('ambiguous_credential');
+			expect(view.nextStep).toContain('credentialId');
+		});
+
+		it('tells the model to retry an unknown model from the returned list', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]),
+			);
+
+			expect(view.reason).toBe('unknown_model');
+			expect(view.nextStep).toContain('availableModels');
+			expect(view.nextStep).not.toContain('sample');
+		});
+
+		it('says a truncated model list is only a sample', async () => {
+			const models = Array.from({ length: 40 }, (_, i) => ({ name: `m${i}`, value: `m${i}` }));
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => models),
+			);
+
+			expect(view.availableModelsTruncated).toBe(true);
+			expect(view.nextStep).toContain('sample');
+			expect(view.nextStep).toContain('ask_user');
+		});
+
+		it('tells the model to mention claimed free OpenAI credits', async () => {
+			const view = await modelView(
+				[],
+				{},
+				makeModelLookup(),
+				makeFreeCredits(
+					() => true,
+					async () => ({ credentialId: 'free', credentialName: 'n8n free OpenAI API credits' }),
+				),
+			);
+
+			expect(view.claimedFreeOpenAiCredits).toBe(true);
+			expect(view.nextStep).toContain('free OpenAI credits');
+		});
+
+		it('tells the model to state an auto-picked provider as changeable', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+					{ id: 'c2', name: 'My OpenAI', type: 'openAiApi' },
+				],
+				{},
+				makeModelLookup(async (_id, type) => {
+					const defaultModel = LLM_PROVIDER_DEFAULTS[type].defaultModel as string;
+					return [{ name: defaultModel, value: defaultModel }];
+				}),
+			);
+
+			expect(view.autoPicked).toBe(true);
+			expect(view.nextStep).toContain('provider and model');
+			expect(view.nextStep).toContain('changeable');
+		});
+
+		it('tells the model to pick a supported provider after an unsupported one', async () => {
+			const view = await modelView([], { provider: 'not-a-provider' });
+
+			expect(view.reason).toBe('unsupported_provider');
+			expect(view.nextStep).toContain('supportedProviders');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
 		});
 	});
 });

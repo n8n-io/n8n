@@ -1,4 +1,6 @@
 import type {
+	OperationContext,
+	Transaction,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatus,
@@ -6,6 +8,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { UNKNOWN_FAILURE_REASON } from '@/constants';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 describe('WorkflowPublicationStatusService', () => {
@@ -49,6 +52,23 @@ describe('WorkflowPublicationStatusService', () => {
 			...overrides,
 		} as WorkflowPublicationTriggerStatus;
 	}
+
+	it('reads publication state through the active transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+		triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
+
+		await service.getStatus(WORKFLOW_ID, ctx);
+
+		expect(outboxRepository.findInFlightByWorkflowId).toHaveBeenCalledExactlyOnceWith(
+			WORKFLOW_ID,
+			ctx,
+		);
+		expect(triggerStatusRepository.findByWorkflowId).toHaveBeenCalledExactlyOnceWith(
+			WORKFLOW_ID,
+			ctx,
+		);
+	});
 
 	describe('never published (no rows, no in-flight publication)', () => {
 		it('returns not_published with null versions', async () => {
@@ -210,5 +230,124 @@ describe('WorkflowPublicationStatusService', () => {
 				{ nodeId: 'n2', status: 'failed', errorMessage: 'schedule parse error' },
 			]);
 		});
+	});
+
+	describe('getListStatusesByWorkflowIds', () => {
+		it('derives per-workflow terminal status and omits workflows with no rows', async () => {
+			triggerStatusRepository.getStatusCountsByWorkflowIds.mockResolvedValue(
+				new Map([
+					['wf-ok', { total: 2, failed: 0 }],
+					['wf-partial', { total: 3, failed: 1 }],
+					['wf-failed', { total: 2, failed: 2 }],
+				]),
+			);
+
+			const statuses = await service.getListStatusesByWorkflowIds([
+				'wf-ok',
+				'wf-partial',
+				'wf-failed',
+				'wf-none',
+			]);
+
+			expect(statuses.get('wf-ok')).toBe('published');
+			expect(statuses.get('wf-partial')).toBe('partial');
+			expect(statuses.get('wf-failed')).toBe('failed');
+			expect(statuses.has('wf-none')).toBe(false);
+		});
+
+		it('does not consult the outbox (terminal states only)', async () => {
+			triggerStatusRepository.getStatusCountsByWorkflowIds.mockResolvedValue(new Map());
+			await service.getListStatusesByWorkflowIds(['wf-a']);
+			expect(outboxRepository.findInFlightByWorkflowId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getFailedActivationError', () => {
+		const nodes = [
+			{ id: 'node-1', name: 'Webhook' },
+			{ id: 'node-2', name: 'Schedule' },
+		];
+
+		it('returns null without consulting the outbox when there are no rows', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBeNull();
+
+			expect(triggerStatusRepository.findByWorkflowId).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(outboxRepository.findInFlightByWorkflowId).not.toHaveBeenCalled();
+		});
+
+		it('returns null when every trigger activated', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-1', status: 'activated' }),
+				makeRow({ nodeId: 'node-2', status: 'activated' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBeNull();
+		});
+
+		it('returns null for a partial publication', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-1', status: 'activated' }),
+				makeRow({ nodeId: 'node-2', status: 'failed', errorMessage: 'err2' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBeNull();
+		});
+
+		it('returns a single failure verbatim', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBe('err1');
+		});
+
+		it("orders several failures by the caller's node order, not by id", async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+				makeRow({ nodeId: 'node-2', status: 'failed', errorMessage: 'err2' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[1], nodes[0]])).toBe(
+				'Triggers failed to activate: "Schedule": err2; "Webhook": err1',
+			);
+		});
+
+		it('falls back to the node id for a node the caller does not know, after the known ones', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'deleted-node', status: 'failed', errorMessage: 'err2' }),
+				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[0]])).toBe(
+				'Triggers failed to activate: "Webhook": err1; "deleted-node": err2',
+			);
+		});
+
+		it('orders several unknown ids by id, so the message is stable', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ nodeId: 'node-9', status: 'failed', errorMessage: 'err9' }),
+				makeRow({ nodeId: 'node-8', status: 'failed', errorMessage: 'err8' }),
+				makeRow({ nodeId: 'node-1', status: 'failed', errorMessage: 'err1' }),
+			]);
+
+			expect(await service.getFailedActivationError(WORKFLOW_ID, [nodes[0]])).toBe(
+				'Triggers failed to activate: "Webhook": err1; "node-8": err8; "node-9": err9',
+			);
+		});
+
+		it.each([null, ''])(
+			'reports an unknown reason for an empty error message (%j)',
+			async (errorMessage) => {
+				triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+					makeRow({ nodeId: 'node-1', status: 'failed', errorMessage }),
+				]);
+
+				expect(await service.getFailedActivationError(WORKFLOW_ID, nodes)).toBe(
+					UNKNOWN_FAILURE_REASON,
+				);
+			},
+		);
 	});
 });

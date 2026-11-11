@@ -1,11 +1,8 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
-	assertCredentialAllowsUrl,
-	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
+	type DisplayCondition,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -14,13 +11,18 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
+import { parseExtraBody } from '../shared/extra-body';
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
+	aiClientFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
@@ -37,9 +39,40 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	default: '',
 };
 
+// The official API accepts reasoning_effort only on o1 (and its dated versions), o3-mini and later, and gpt-5 models.
+const OPENAI_REASONING_MODEL: DisplayCondition = {
+	_cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' },
+};
+
+const reasoningEffort: INodeProperties = {
+	displayName: 'Reasoning Effort',
+	name: 'reasoningEffort',
+	default: 'medium',
+	description:
+		'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses.',
+	type: 'options',
+	options: [
+		{
+			name: 'Low',
+			value: 'low',
+			description: 'Favors speed and economical token usage',
+		},
+		{
+			name: 'Medium',
+			value: 'medium',
+			description: 'Balance between speed and reasoning accuracy',
+		},
+		{
+			name: 'High',
+			value: 'high',
+			description:
+				'Favors more complete reasoning at the cost of more tokens generated and slower responses',
+		},
+	],
+};
+
 const OPENAI_MODEL_BUILDER_HINT = {
-	propertyHint:
-		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
+	propertyHint: MODEL_SELECTION_HINT,
 };
 
 const completionsResponseFormat: INodeProperties = {
@@ -87,7 +120,8 @@ export class LmChatOpenAi implements INodeType {
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
-		description: 'For advanced usage with an AI chain',
+		description:
+			'Run GPT models, with optional Responses API for web search, file search, and code execution',
 		defaults: {
 			name: 'OpenAI Chat Model',
 		},
@@ -144,7 +178,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -547,35 +581,23 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Reasoning Effort',
-						name: 'reasoningEffort',
-						default: 'medium',
+						...reasoningEffort,
+						displayOptions: { show: { '/model': [OPENAI_REASONING_MODEL] } },
+					},
+					{
+						displayName: 'Model Supports Reasoning',
+						name: 'modelSupportsReasoning',
+						type: 'boolean',
+						default: false,
 						description:
-							'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses.',
-						type: 'options',
-						options: [
-							{
-								name: 'Low',
-								value: 'low',
-								description: 'Favors speed and economical token usage',
-							},
-							{
-								name: 'Medium',
-								value: 'medium',
-								description: 'Balance between speed and reasoning accuracy',
-							},
-							{
-								name: 'High',
-								value: 'high',
-								description:
-									'Favors more complete reasoning at the cost of more tokens generated and slower responses',
-							},
-						],
+							'Whether the model accepts a reasoning effort. Turn on for a reasoning model on an OpenAI-compatible endpoint that n8n does not recognize by name.',
+						displayOptions: { hide: { '/model': [OPENAI_REASONING_MODEL] } },
+					},
+					{
+						...reasoningEffort,
 						displayOptions: {
-							show: {
-								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond, and gpt-5 models. Not on o1-mini or other GPT-models.
-								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' } }],
-							},
+							show: { modelSupportsReasoning: [true] },
+							hide: { '/model': [OPENAI_REASONING_MODEL] },
 						},
 					},
 					{
@@ -766,17 +788,12 @@ export class LmChatOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 
 		if (options.baseURL) {
-			assertCredentialAllowsUrl({
-				node: this.getNode(),
-				credentialData: credentials,
-				url: options.baseURL,
-				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-				surface: 'OpenAI',
-			});
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
@@ -784,10 +801,14 @@ export class LmChatOpenAi implements INodeType {
 
 		const timeout = options.timeout;
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				this.helpers.getSecureEgressFilter(),
+			),
 		};
 		const customHeader = getCustomCredentialHeader(credentials);
 		configuration.defaultHeaders = mergeCustomHeaders(
@@ -808,24 +829,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		if (options.extraBody) {
-			let extraBody: Record<string, unknown>;
-			try {
-				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field is not valid JSON',
-					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
-				);
-			}
-			if (!isPlainObject(extraBody)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field must be a JSON object',
-					{ itemIndex },
-				);
-			}
-			Object.assign(modelKwargs, extraBody);
+			Object.assign(modelKwargs, parseExtraBody(this, options.extraBody, itemIndex));
 		}
 
 		const includedOptions = pick(options, [
@@ -875,7 +879,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		return {
-			response: model,
+			response: responsesApiEnabled ? model : wrapChatModelMessageInput(model),
 		};
 	}
 }

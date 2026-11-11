@@ -1,97 +1,148 @@
-import { describe, it, expect, vi } from 'vitest';
-import { fetchInstalledPackageInfo } from './communityNodes.utils';
-import { useCommunityNodesStore } from './communityNodes.store';
-import { type NodeTypesStore, useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { CommunityNodeType } from '@n8n/api-types';
-import { createTestingPinia } from '@pinia/testing';
+import { describe, it, expect } from 'vitest';
+import type { RestrictedPackageType } from '@n8n/api-types';
+import {
+	describeInstallPolicyNote,
+	describeSelectedNodeRestriction,
+	isCommunityPackageUpdateAvailable,
+	isNodesApiVersionError,
+} from './communityNodes.utils';
 
-vi.mock('./communityNodes.store', () => ({
-	useCommunityNodesStore: vi.fn(() => ({
-		getInstalledPackage: vi.fn(),
-	})),
-}));
+describe('isCommunityPackageUpdateAvailable', () => {
+	const defaults = {
+		installedVersion: '1.0.0',
+		latestVerifiedVersion: '1.0.0',
+		isCommunityNodesFeatureEnabled: true,
+		isUnverifiedPackagesEnabled: false,
+		isManagedByEnv: false,
+	};
 
-vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
-		communityNodeType: vi.fn(),
-	})),
-}));
-
-type CommunityNodesStore = ReturnType<typeof useCommunityNodesStore>;
-
-const mockCommunityNodesStore = (mock: Partial<CommunityNodesStore>) => {
-	vi.mocked(useCommunityNodesStore).mockImplementation(
-		() =>
-			({
-				getInstalledPackage: vi.fn(),
-				...mock,
-			}) as unknown as CommunityNodesStore,
-	);
-};
-
-const mockNodeTypesStore = (mock: Partial<NodeTypesStore>) => {
-	vi.mocked(useNodeTypesStore).mockImplementation(
-		() =>
-			({
-				communityNodeType: vi.fn(),
-				...mock,
-			}) as unknown as NodeTypesStore,
-	);
-};
-
-describe('fetchInstalledPackageInfo', () => {
-	beforeEach(() => {
-		createTestingPinia({ stubActions: false });
+	it('returns true when a newer verified version is available', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				latestVerifiedVersion: '1.1.0',
+			}),
+		).toBe(true);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	it('ignores a newer npm version when unverified packages are disabled', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				updateAvailable: '1.1.0',
+			}),
+		).toBe(false);
 	});
 
-	it('should return undefined if no installed package is found', async () => {
-		const packageName = 'test-package';
-		mockCommunityNodesStore({
-			getInstalledPackage: vi.fn().mockResolvedValue(undefined),
-		});
-
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toBeUndefined();
+	it('returns true for a newer npm version when unverified packages are enabled', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				updateAvailable: '1.1.0',
+				isUnverifiedPackagesEnabled: true,
+			}),
+		).toBe(true);
 	});
 
-	it('should return package info with unverifiedUpdate as false if no update is available', async () => {
-		const packageName = 'test-package';
-		const installedPackage = { packageName, updateAvailable: null };
-		mockCommunityNodesStore({
-			getInstalledPackage: vi
-				.fn()
-				.mockResolvedValue(installedPackage as unknown as PublicInstalledPackage),
-		});
-		mockNodeTypesStore({
-			communityNodeType: vi
-				.fn()
-				.mockReturnValue({ npmVersion: '1.0.0' } as unknown as CommunityNodeType),
-		});
+	it('returns false when community packages are managed by the environment', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				latestVerifiedVersion: '1.1.0',
+				updateAvailable: '1.2.0',
+				isUnverifiedPackagesEnabled: true,
+				isManagedByEnv: true,
+			}),
+		).toBe(false);
+	});
+});
 
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toEqual({ ...installedPackage, unverifiedUpdate: false });
+describe('isNodesApiVersionError', () => {
+	const incompatibleNodesApiVersionError = (requiredNodesApiVersion: string | null): unknown => ({
+		httpStatusCode: 400,
+		meta: { requiredNodesApiVersion, supportedNodesApiVersion: '1' },
 	});
 
-	it('should return package info with unverifiedUpdate as true if an update is available', async () => {
-		const packageName = 'test-package';
-		const installedPackage = { packageName, updateAvailable: '1.1.0' };
-		mockCommunityNodesStore({
-			getInstalledPackage: vi
-				.fn()
-				.mockResolvedValue(installedPackage as unknown as PublicInstalledPackage),
-		});
-		mockNodeTypesStore({
-			communityNodeType: vi
-				.fn()
-				.mockReturnValue({ npmVersion: '1.0.0' } as unknown as CommunityNodeType),
-		});
+	it('should match the error metadata, not the message', () => {
+		expect(isNodesApiVersionError(incompatibleNodesApiVersionError('3.1'))).toBe(true);
+		// Malformed declared values carry `null` and must be recognized too.
+		expect(isNodesApiVersionError(incompatibleNodesApiVersionError(null))).toBe(true);
+		// The same copy without the metadata is a generic error.
+		expect(
+			isNodesApiVersionError(new Error('This community node requires n8n node API version 3.')),
+		).toBe(false);
+		// Other 400s must not match.
+		expect(
+			isNodesApiVersionError(
+				Object.assign(new Error('Package is banned'), { httpStatusCode: 400 }),
+			),
+		).toBe(false);
+		expect(isNodesApiVersionError(undefined)).toBe(false);
+	});
+});
 
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toEqual({ ...installedPackage, unverifiedUpdate: true });
+describe('describeInstallPolicyNote', () => {
+	const onInstance = (type: string, optInAvailable = false): RestrictedPackageType => ({
+		type,
+		blockedOn: 'instance',
+		optInAvailable,
+	});
+	const inProjects = (type: string): RestrictedPackageType => ({
+		type,
+		blockedOn: 'projects',
+		optInAvailable: false,
+	});
+	const note = (nodeTypes: RestrictedPackageType[], total = 5) =>
+		describeInstallPolicyNote({ nodeTypes }, total);
+
+	it('returns undefined without policy information', () => {
+		expect(describeInstallPolicyNote(undefined, 5)).toBeUndefined();
+	});
+
+	it('returns undefined when nothing is restricted', () => {
+		expect(note([])).toBeUndefined();
+	});
+
+	it('counts one node restricted on the instance', () => {
+		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 nodes is restricted on this instance.');
+	});
+
+	it('counts several nodes restricted on the instance', () => {
+		expect(note([onInstance('a.a'), onInstance('a.b'), onInstance('a.c')])).toBe(
+			'3 of 5 nodes are restricted on this instance.',
+		);
+	});
+
+	it('says when projects can allow a restricted node', () => {
+		expect(note([onInstance('a.a', true)])).toBe(
+			'1 of 5 nodes is restricted on this instance. Projects can allow some of these nodes.',
+		);
+	});
+
+	it('counts nodes restricted only in projects', () => {
+		expect(note([inProjects('a.a')])).toBe('1 node is restricted in some projects.');
+		expect(note([inProjects('a.a'), inProjects('a.b')])).toBe(
+			'2 nodes are restricted in some projects.',
+		);
+	});
+
+	it('reports instance and project restrictions together', () => {
+		expect(note([onInstance('a.a'), inProjects('a.b'), inProjects('a.c')])).toBe(
+			'1 of 5 nodes is restricted on this instance. 2 nodes are restricted in some projects.',
+		);
+	});
+});
+
+describe('describeSelectedNodeRestriction', () => {
+	it('names a node the instance restricts', () => {
+		expect(describeSelectedNodeRestriction('Apify', 'instance')).toBe(
+			'Apify is restricted on this instance.',
+		);
+	});
+
+	it('names a node the current project restricts', () => {
+		expect(describeSelectedNodeRestriction('Apify', 'project')).toBe(
+			'Apify is restricted in this project.',
+		);
 	});
 });

@@ -1,7 +1,9 @@
 import type { WorkflowEntity } from '@n8n/db';
 
-import type { WorkflowIdConflict } from './workflow-import-match.service';
+import type { WorkflowArchiveTransition } from './workflow-archive-transition';
+import type { WorkflowIdConflict, WorkflowLineageConflict } from './workflow-import-match.service';
 import type {
+	PublishingAction,
 	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
@@ -16,8 +18,13 @@ export interface WorkflowImportContext extends ImportContext {
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
-	/** Whether the workflow was published (active) in the source instance. */
-	sourcePublished: boolean;
+	/**
+	 * From `workflow-metadata.json`. Absent when the source published a version this package does
+	 * not carry, which leaves the target's publish state alone.
+	 */
+	sourcePublished?: boolean;
+	/** From `workflow.json`. */
+	sourceArchived: boolean;
 	/**
 	 * Source id of the package folder this workflow is nested under or null for a scope-root workflow that lands in the request's
 	 * target folder.
@@ -31,28 +38,31 @@ export interface PreparedWorkflow {
 	tagIds?: string[];
 }
 
-export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
-
-/**
- * A conflict policy's verdict for one workflow. `blocked` aborts the import and
- * is set only by the `fail` policy.
- */
-export interface WorkflowDecision {
-	action: WorkflowPlannedAction;
-	blocked: boolean;
-}
-
 /**
  * The decided plan for one workflow. Discriminated by `action` so that
  * `update`/`skip` carry the pre-existing workflow they operate on, while
  * `create` has none — no null checks needed downstream. `create` carries the
  * id the workflow will be written under (`decidedId`, per the id policy) so
  * the plan is the complete source-id → local-id map before anything is written.
+ * `update` carries the archive step needed when the package and the target
+ * disagree on the archived state.
  */
-export type WorkflowPlanItem =
+export type WorkflowImportDecision =
 	| ({ action: 'create'; decidedId: string } & PreparedWorkflow)
-	| ({ action: 'update'; existing: WorkflowEntity } & PreparedWorkflow)
+	| ({
+			action: 'update';
+			existing: WorkflowEntity;
+			archiveTransition: WorkflowArchiveTransition | null;
+			/**
+			 * Set under `layoutConflictPolicy=follow-package`: the folder the update moves the workflow to.
+			 * `null` is the project root.
+			 */
+			moveToFolderId?: string | null;
+	  } & PreparedWorkflow)
 	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
+
+/** The publication action stays fixed from preflight through the publish sweep. */
+export type WorkflowPlanItem = WorkflowImportDecision & { publishingAction: PublishingAction };
 
 /** A plan item whose content is written to the database (i.e. not skipped). */
 export type PersistedWorkflowPlanItem = Extract<WorkflowPlanItem, { action: 'create' | 'update' }>;
@@ -67,8 +77,17 @@ export interface WorkflowFolderConflict {
 	sourceWorkflowId: string;
 	existingWorkflowId: string;
 	existingParentFolderId: string | null;
-	targetFolderId: string;
+	targetFolderId: string | null;
 	name: string;
+}
+
+/** A matched workflow the import must archive or unarchive, but the user lacks `workflow:delete` on. */
+export interface WorkflowArchiveForbidden {
+	sourceWorkflowId: string;
+	existingWorkflowId: string;
+	name: string;
+	projectId: string;
+	transition: WorkflowArchiveTransition;
 }
 
 /**
@@ -78,8 +97,10 @@ export interface WorkflowFolderConflict {
 export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
+	lineageConflicts: WorkflowLineageConflict[];
 	idConflicts: WorkflowIdConflict[];
 	folderConflicts: WorkflowFolderConflict[];
+	archiveForbidden: WorkflowArchiveForbidden[];
 }
 
 export interface WorkflowImportOutcome {
@@ -103,7 +124,7 @@ export type PersistedWorkflowOutcome =
 			item: PersistedWorkflowPlanItem;
 			/**
 			 * Why this workflow must stay inactive even if the policy wants it published — it depends on
-			 * a credential that was stubbed, or a node type this instance does not have.
+			 * a credential that was stubbed or created incomplete, or a node type this instance does not have.
 			 */
 			blockedFromPublish?: WorkflowPublishingBlockedReason;
 	  };

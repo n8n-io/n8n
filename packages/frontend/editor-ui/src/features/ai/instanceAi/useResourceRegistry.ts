@@ -1,12 +1,22 @@
 import { reactive, watch } from 'vue';
-import type {
-	InstanceAiMessage,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	DATA_TABLE_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
+	isFormerWorkflowsTool,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
+import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
+
+import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
+import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -26,6 +36,16 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
+/**
+ * How a produced artifact first entered the thread: the agent built or edited
+ * it (`built`), the agent read it in a lookup that opens a tab (`fetched`), a
+ * message or the editor hand-off attached it (`attached`), or the user
+ * mentioned it from the composer (`mentioned`). A mention reaches the thread
+ * as a message attachment, so `sendMessage` seeds `mentioned` before the
+ * message lands. Telemetry only; the panel does not show it.
+ */
+export type ArtifactOrigin = 'built' | 'fetched' | 'attached' | 'mentioned';
+
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
@@ -37,10 +57,23 @@ interface Collections {
 	byName: Map<string, ResourceEntry>;
 	/** Produced resources keyed by lowercased name; safe for markdown auto-linking. */
 	linkableByName: Map<string, ResourceEntry>;
+	/** Origin of each produced resource, set by its first intake and never overwritten. */
+	origins: Map<string, ArtifactOrigin>;
+	/** Origin the current collection phase stamps on resources it records for the first time. */
+	intake: ArtifactOrigin;
+	/** Every name recorded for each agent id, to tell a stale metadata name from a user rename. */
+	agentNames: Map<string, Set<string>>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {
@@ -64,7 +97,7 @@ type PendingAgentTargetMetadata = {
  * optional fields provided by the new call win; fields it omits are preserved
  * from the existing entry. Callers are responsible for resolving `name` using
  * the existing entry as a fallback so partial updates (e.g. a patch
- * `build-workflow` call that carries only a `workflowId`) don't regress a
+ * `workflow_builder_build_workflow` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
 function recordProduced(
@@ -88,6 +121,12 @@ function recordProduced(
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
+	if (merged.type === 'agent') {
+		const names = col.agentNames.get(merged.id) ?? new Set<string>();
+		names.add(merged.name);
+		col.agentNames.set(merged.id, names);
+	}
+	if (!col.origins.has(entry.id)) col.origins.set(entry.id, col.intake);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
 		if (wasLinkable) col.linkableByName.delete(existing.name.toLowerCase());
@@ -116,40 +155,112 @@ function entryFromListItem(
 }
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
-const ARTIFACT_TOOLS = new Set([
-	'build-workflow',
-	'build-workflow-with-agent',
-	'build-agent',
-	'submit-workflow',
-	'apply-workflow-credentials',
-	'workflows',
-	'credentials',
-	'data-tables',
+const ARTIFACT_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
+	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
+	...WORKFLOW_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
+	...DATA_TABLE_TOOL_NAMES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
 ]);
-const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
-function entryFromAgentBuilderTarget(
-	target: InstanceAiAgentNode['targetResource'],
-	existing?: ResourceEntry,
-	fallbackName = 'Untitled',
-): ResourceEntry | undefined {
-	if (target?.type !== 'agent' || !target.id) return undefined;
-	const entry: ResourceEntry = {
-		type: 'agent',
-		id: target.id,
-		name: optionalString(target.name) ?? existing?.name ?? fallbackName,
-	};
-	const projectId = optionalString(target.projectId) ?? existing?.projectId;
-	if (projectId !== undefined) entry.projectId = projectId;
-	return entry;
+const WORKFLOW_MUTATING_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+]);
+// Tools that read without changing anything. Their results still register a
+// tab (a small `get_workflow` returns the document itself), but the tab is fetched, not built.
+const WORKFLOW_READ_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_NODE_USAGE,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
+	WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
+	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
+]);
+const DATA_TABLE_READ_ACTIONS = new Set<string>(['schema', 'query']);
+
+function isDataTableReadCall(tc: ArtifactToolCall): boolean {
+	const action = getDataTableCallAction(tc.toolName, tc.args?.action);
+	return action !== undefined && DATA_TABLE_READ_ACTIONS.has(action);
 }
 
-function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
-	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
+/** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
+function toolCallOrigin(tc: ArtifactToolCall): ArtifactOrigin {
+	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
+		return 'fetched';
+	if (isDataTableReadCall(tc)) return 'fetched';
+	return 'built';
+}
+/**
+ * Agent builder results: a successful `agent_builder_select_agent`, and any builder tool
+ * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
+ * Selecting an existing Agent registers it before its first change, so its tab opens
+ * when the build starts.
+ */
+function extractFromAgentBuilderResult(tc: ArtifactToolCall, col: Collections): void {
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
+	if (typeof result.agentId !== 'string') return;
+	const isSelected = tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && result.ok === true;
+	if (!isSelected && result.configMutated !== true) return;
+
+	const existing = col.produced.get(result.agentId);
+	const entry: ResourceEntry = {
+		type: 'agent',
+		id: result.agentId,
+		name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+	};
+	const projectId = optionalString(result.projectId);
+	if (projectId !== undefined) entry.projectId = projectId;
+	recordProduced(col, entry);
+}
+
+/**
+ * Skills hub results: a successful `skills` create or update. A list or get only
+ * reads the skill, so it does not register an artifact.
+ */
+function extractFromSkillsResult(tc: ArtifactToolCall, col: Collections): void {
+	const skill = getSkillArtifactFromToolCall(tc);
+	if (!skill) return;
+	const existing = col.produced.get(skill.skillId);
+	recordProduced(col, {
+		type: 'skill',
+		id: skill.skillId,
+		name: skill.name ?? existing?.name ?? 'Untitled',
+	});
+}
+
+/** Apps results: a successful `apps` create or commit. Reads and opens do not count. */
+function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
+	const app = getAppArtifactFromToolCall(tc);
+	if (!app) return;
+	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
+}
+
+function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
+	extractFromAgentBuilderResult(tc, col);
+	extractFromSkillsResult(tc, col);
+	extractFromAppsResult(tc, col);
+	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
+	if (
+		!isFormerWorkflowsCall &&
+		!ARTIFACT_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action))
+	)
+		return;
+	if (!tc.result || typeof tc.result !== 'object') return;
+	const result = tc.result as Record<string, unknown>;
+	const isWorkflowRead = WORKFLOW_READ_TOOLS.has(
+		resolveBuilderToolName(tc.toolName, tc.args?.action),
+	);
+	// A failed read can name a workflow that does not exist (e.g. a guessed id).
+	const isFailedWorkflowRead =
+		isWorkflowRead && (typeof result.error === 'string' || result.found === false);
 
 	// --- Workflows --------------------------------------------------------
 	// List result: { workflows: [{ id, name }, ...] } — index by name only.
@@ -160,25 +271,29 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
+	// workflow_builder_build_workflow / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
-	if (typeof result.workflowId === 'string') {
+	// A failed build still names its target workflow and the unsaved name, so
+	// skip it to keep the existing entry as it was.
+	// Reads such as get_workflow_as_code also return { workflowId, name }. A versioned
+	// get_workflow read returns the version's label as `name`, so it is skipped.
+	if (typeof result.workflowId === 'string' && result.success !== false && !isFailedWorkflowRead) {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args?.name) ??
+			(result.versionId === undefined ? optionalString(result.name) : undefined) ??
 			existing?.name ??
 			'Untitled';
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
 	}
 
 	if (
-		tc.toolName === 'workflows' &&
+		(WORKFLOW_MUTATING_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)) ||
+			(isFormerWorkflowsCall && tc.args?.action === 'update')) &&
 		result.success === true &&
-		typeof tc.args?.workflowId === 'string' &&
-		typeof tc.args.action === 'string' &&
-		WORKFLOW_MUTATING_ACTIONS.has(tc.args.action)
+		typeof tc.args?.workflowId === 'string'
 	) {
 		const workflowId = tc.args.workflowId;
 		const existing = col.produced.get(workflowId);
@@ -190,10 +305,14 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
-	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
+	// A `get_workflow` result, and historical workflows action=get-json events, return
+	// the workflow document itself, not under a `workflow` key. A large workflow comes
+	// back with a `structure` summary in place of `nodes`.
+	if (
+		(isFormerWorkflowsCall || isWorkflowRead) &&
+		!isFailedWorkflowRead &&
+		(Array.isArray(result.nodes) || result.structure !== undefined)
+	) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
 	}
@@ -216,11 +335,17 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// build-agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// agent_builder_build_agent (threads from before the builder ran inline):
+	// { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
-	// 'Untitled'. projectId is preserved from the agent-spawned entry by
-	// recordProduced's merge.
-	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
+	// 'Untitled'. recordProduced's merge keeps the projectId of an earlier entry.
+	if (
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
+		typeof result.agentId === 'string' &&
+		(result.agentChange === 'created' ||
+			result.agentChange === 'updated' ||
+			result.agentChange === undefined)
+	) {
 		const existing = col.produced.get(result.agentId);
 		recordProduced(col, {
 			type: 'agent',
@@ -280,10 +405,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		const dataTableAction = optionalString(tc.args?.action);
-		const isReadOnlyLookup =
-			tc.toolName === 'data-tables' &&
-			(dataTableAction === 'schema' || dataTableAction === 'query');
+		const isReadOnlyLookup = isDataTableReadCall(tc);
 		recordProduced(
 			col,
 			{
@@ -297,35 +419,10 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
-/**
- * Register the agent's `targetResource` as a produced artifact when it carries
- * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first build-workflow
- * tool result arrives — lets the artifacts panel show the workflow as soon as
- * the sub-agent starts, instead of waiting for the first edit.
- */
-function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
-	const target = node.targetResource;
-	if (!target?.id) return;
-	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
-
-	const existing = col.produced.get(target.id);
-	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
-	if (target.type === 'agent') {
-		const entry = entryFromAgentBuilderTarget(target, existing, name);
-		if (entry) recordProduced(col, entry);
-		return;
-	}
-	recordProduced(col, { type: target.type, id: target.id, name });
-}
-
-function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	extractFromTargetResource(node, col);
-	for (const tc of node.toolCalls) {
+function collectFromToolCalls(turn: ArtifactTurn, col: Collections): void {
+	for (const tc of turn.toolCalls) {
+		col.intake = toolCallOrigin(tc);
 		extractFromToolCall(tc, col);
-	}
-	for (const child of node.children) {
-		collectFromAgentNode(child, col);
 	}
 }
 
@@ -334,8 +431,8 @@ function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void
  * e.g. the editor hand-off attaches the current workflow or agent, which then
  * shows as an artifact tab even before the agent acts on it.
  */
-function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
-	for (const attachment of message.attachments ?? []) {
+function collectFromAttachments(turn: ArtifactTurn, col: Collections): void {
+	for (const attachment of turn.attachments ?? []) {
 		if (attachment.type === 'workflow') {
 			recordProduced(col, {
 				type: 'workflow',
@@ -354,6 +451,14 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'nodes') {
+			const workflowName = optionalString(attachment.workflowName);
+			if (!workflowName) continue;
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.workflowId,
+				name: workflowName,
+			});
 		}
 	}
 }
@@ -365,17 +470,22 @@ function enrichAgentFromBuilderTarget(
 	if (!target) return;
 	const existing = col.produced.get(target.agentId);
 	if (existing && existing.type !== 'agent') return;
-	// Event-derived names are canonical; the persisted metadata name only fills
-	// in when no run event carried one (e.g. historical threads whose events
-	// aren't loaded). The 'Untitled' placeholder is not a real name.
+	// The metadata name lags behind the events during a run, so a name that an
+	// earlier event carried is stale. A name no event carried is a rename the
+	// user saved in the agent builder, which only the metadata records. The
+	// 'Untitled' placeholder is not a real name.
 	const eventName =
 		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
+	const isUserRename =
+		target.name !== undefined &&
+		eventName !== undefined &&
+		!col.agentNames.get(target.agentId)?.has(target.name);
 	recordProduced(
 		col,
 		{
 			type: 'agent',
 			id: target.agentId,
-			name: eventName ?? target.name ?? 'Untitled',
+			name: (isUserRename ? target.name : eventName) ?? target.name ?? 'Untitled',
 			projectId: target.projectId,
 		},
 		{ linkable: existing !== undefined },
@@ -390,12 +500,54 @@ function enrichWorkflowNames(
 		if (entry.type !== 'workflow') continue;
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
-			col.byName.delete(entry.name.toLowerCase());
-			col.linkableByName.delete(entry.name.toLowerCase());
+			const previousKey = entry.name.toLowerCase();
+			const wasLinkable = col.linkableByName.get(previousKey)?.id === entry.id;
+			col.byName.delete(previousKey);
+			col.linkableByName.delete(previousKey);
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
-			col.linkableByName.set(storeName.toLowerCase(), entry);
+			if (wasLinkable) col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
+	}
+}
+
+/**
+ * Surface a workflow the editor handed off before any message carries it, so
+ * the canvas tab opens on arrival. Skipped once a message attachment (or any
+ * other producer) already knows this id.
+ */
+function enrichWorkflowFromPendingAttachment(
+	col: Collections,
+	pending: InstanceAiWorkflowAttachment | undefined,
+): void {
+	if (!pending) return;
+	if (col.produced.has(pending.id)) return;
+
+	recordProduced(
+		col,
+		{
+			type: 'workflow',
+			id: pending.id,
+			name: optionalString(pending.name) ?? 'Untitled',
+		},
+		{ linkable: true },
+	);
+}
+
+function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiAppTarget[]): void {
+	for (const target of targets) {
+		const existing = col.produced.get(target.appId);
+		if (existing && existing.type !== 'app') continue;
+		recordProduced(
+			col,
+			{
+				type: 'app',
+				id: target.appId,
+				name: existing?.name ?? target.name ?? 'App',
+				projectId: target.projectId,
+			},
+			{ linkable: existing !== undefined },
+		);
 	}
 }
 
@@ -435,6 +587,17 @@ function enrichAgentFromPendingTarget(
 // Composable
 // ---------------------------------------------------------------------------
 
+/** Thread state besides the messages that adds or enriches registry entries. */
+export interface ResourceRegistrySources {
+	workflowNameLookup?: (id: string) => string | undefined;
+	archivedWorkflowIds?: () => ReadonlySet<string>;
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined;
+	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
+}
+
 /**
  * Scans tool-call results in the conversation and returns two collections:
  *
@@ -450,21 +613,34 @@ function enrichAgentFromPendingTarget(
  * - `linkableResourceNameIndex` (keyed by lowercased name) — only resources
  *   produced or mutated by the agent. Used for markdown name→link replacement
  *   so passive list/search results cannot rewrite ordinary prose.
+ *
+ * - `producedArtifactOrigins` (keyed by resource id) — how each produced
+ *   artifact first entered the thread. Sticky for the life of this registry:
+ *   the `mentioned` origin that `seedArtifactOrigins` plants before a send
+ *   survives the message attachment that then carries the mention, which
+ *   would read as `attached`. A reload has only the messages, so an earlier
+ *   mention then reads as `attached`.
  */
 export function useResourceRegistry(
-	messages: () => InstanceAiMessage[],
-	workflowNameLookup?: (id: string) => string | undefined,
-	archivedWorkflowIds?: () => ReadonlySet<string>,
-	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
-	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	turns: () => readonly ArtifactTurn[],
+	{
+		workflowNameLookup,
+		archivedWorkflowIds,
+		agentBuilderTarget,
+		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		agentBuilderTargets,
+		appTargets,
+	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
 	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
 	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
+	const producedArtifactOrigins = reactive(new Map<string, ArtifactOrigin>());
 
-	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// Derived from `turns` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
 	// stay a watch: the handler reads the target maps, so a watchEffect would
 	// re-trigger itself.
@@ -474,15 +650,31 @@ export function useResourceRegistry(
 				produced: new Map<string, ResourceEntry>(),
 				byName: new Map<string, ResourceEntry>(),
 				linkableByName: new Map<string, ResourceEntry>(),
+				origins: new Map<string, ArtifactOrigin>(),
+				intake: 'attached',
+				agentNames: new Map<string, Set<string>>(),
 			};
 
-			for (const msg of messages()) {
-				collectFromMessageAttachments(msg, col);
-				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
+			// Turns run in order, and the user's attachments precede the agent's
+			// work, so the first record of an id is its origin. Each tool call
+			// sets its own intake.
+			for (const turn of turns()) {
+				col.intake = 'attached';
+				collectFromAttachments(turn, col);
+				collectFromToolCalls(turn, col);
 			}
+			col.intake = 'attached';
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
+			for (const target of agentBuilderTargets?.() ?? []) {
+				const existing = col.produced.get(target.agentId);
+				if (existing?.type === 'agent' && !existing.pending) {
+					recordProduced(col, { ...existing, projectId: target.projectId }, { linkable: false });
+				}
+			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichAppsFromTargets(col, appTargets?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
@@ -503,11 +695,42 @@ export function useResourceRegistry(
 			reconcileMap(producedArtifacts, col.produced);
 			reconcileMap(resourceNameIndex, col.byName);
 			reconcileMap(linkableResourceNameIndex, col.linkableByName);
+			reconcileOrigins(producedArtifactOrigins, col.origins);
 		},
 		{ immediate: true },
 	);
 
-	return { producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+	function seedArtifactOrigins(ids: Iterable<string>, origin: ArtifactOrigin): void {
+		for (const id of ids) {
+			if (!producedArtifactOrigins.has(id)) producedArtifactOrigins.set(id, origin);
+		}
+	}
+
+	return {
+		producedArtifacts,
+		resourceNameIndex,
+		linkableResourceNameIndex,
+		producedArtifactOrigins,
+		seedArtifactOrigins,
+	};
+}
+
+/**
+ * Forget artifacts that left the thread and adopt the origin of new ones. An
+ * artifact already known keeps its origin, whatever this pass derived: the
+ * `mentioned` origin seeded before a send stays, while the message attachment
+ * that carries the mention would read as `attached`.
+ */
+function reconcileOrigins(
+	target: Map<string, ArtifactOrigin>,
+	next: Map<string, ArtifactOrigin>,
+): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, origin] of next) {
+		if (!target.has(key)) target.set(key, origin);
+	}
 }
 
 /** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */

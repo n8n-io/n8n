@@ -195,6 +195,8 @@ describe('useAgentToolRefAdapter', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
+				enabled: false,
+				requireApproval: true,
 				description: 'Send a Slack message',
 				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
@@ -213,6 +215,8 @@ describe('useAgentToolRefAdapter', () => {
 			expect(updated).toEqual({
 				type: 'node',
 				name: 'Slack v2',
+				enabled: false,
+				requireApproval: true,
 				description: 'Send a Slack message',
 				node: {
 					nodeType: 'n8n-nodes-base.slack',
@@ -429,6 +433,38 @@ describe('useAgentToolRefAdapter', () => {
 				workflow: 'Invoice Sender',
 				name: 'Invoice Sender',
 			});
+		});
+
+		it('persists and clears workflow input bindings', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const withInputs = updateWorkflowToolRef(original, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+			expect(withInputs).toMatchObject({
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+
+			const cleared = updateWorkflowToolRef(withInputs, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: undefined,
+			});
+			expect(cleared).not.toHaveProperty('inputs');
 		});
 
 		it('is a no-op for non-workflow refs', () => {

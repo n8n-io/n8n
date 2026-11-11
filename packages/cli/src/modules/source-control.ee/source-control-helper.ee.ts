@@ -1,27 +1,30 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
+import type { TagEntity, User, WorkflowTagMapping } from '@n8n/db';
+import { isPerson } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
 import {
 	deepCopy,
 	jsonParse,
-	UserError,
-	type CredentialInformation,
 	type DataTableColumnType,
 	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
+import { mergeCredentialData } from '@/credentials/credential-data-merge';
 import { License } from '@/license';
-import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
-import { containsExpression } from '@/utils';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 
 import {
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -63,60 +66,6 @@ export function sanitizeCredentialData(
 	return result;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-/**
- * Recursively merges a single value based on its type.
- * Handles strings, numbers, booleans, arrays, and plain objects.
- */
-function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): unknown {
-	if (typeof sanitizedRemoteValue === 'string') {
-		if (containsExpression(sanitizedRemoteValue)) {
-			return sanitizedRemoteValue;
-		} else if (localValue !== undefined && localValue !== null) {
-			// Local value is preserved if it exists (secret handling)
-			return localValue;
-		}
-
-		// The remote field exists as an empty string (key is part of the schema)
-		// but local has no value for it. Preserve the empty string so the field
-		// is not silently dropped from the merged credential.
-		return '';
-	}
-
-	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
-		return sanitizedRemoteValue;
-	}
-
-	if (Array.isArray(sanitizedRemoteValue)) {
-		// Only merge by index if lengths match, otherwise array structure has changed
-		// and we can't reliably match items (could be additions/removals/reordering)
-		if (Array.isArray(localValue) && localValue.length === sanitizedRemoteValue.length) {
-			return sanitizedRemoteValue.map((sanitizedItem, index) => {
-				const localItem = localValue[index];
-				return mergeSingleValue(sanitizedItem, localItem);
-			});
-		}
-
-		return sanitizedRemoteValue;
-	}
-
-	if (isPlainObject(sanitizedRemoteValue)) {
-		if (isPlainObject(localValue)) {
-			return mergeRemoteCrendetialDataIntoLocalCredentialData({
-				local: localValue as ICredentialDataDecryptedObject,
-				remote: sanitizedRemoteValue as ICredentialDataDecryptedObject,
-			});
-		}
-
-		return sanitizedRemoteValue;
-	}
-
-	return undefined;
-}
-
 /**
  * Merges remote credential data into local data.
  * Remote expressions, numbers and boolean values overwrite local values.
@@ -128,31 +77,11 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 	local: ICredentialDataDecryptedObject;
 	remote: ICredentialDataDecryptedObject;
 }): ICredentialDataDecryptedObject {
-	const merged: ICredentialDataDecryptedObject = {};
-
-	const sanitizedRemote = sanitizeCredentialData(remote);
-
-	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
-		const localValue = local[key];
-		const mergedValue = mergeSingleValue(sanitizedRemoteValue, localValue);
-
-		if (mergedValue !== undefined) {
-			merged[key] = mergedValue as CredentialInformation;
-		}
-	}
-
-	// Keep local fields the remote stub does not carry. A field left at its default value
-	// is not persisted, so it never reaches the stub; an absent field carries the same
-	// "no value to give" meaning as a present-but-blank one, which is already preserved
-	// above. Without this it would be dropped on pull and reset to its default. This also
-	// covers oauthTokenData, which sanitization always strips from the remote.
-	for (const [key, localValue] of Object.entries(local)) {
-		if (!(key in sanitizedRemote)) {
-			merged[key] = localValue;
-		}
-	}
-
-	return merged;
+	return mergeCredentialData({
+		existing: local,
+		incoming: sanitizeCredentialData(remote),
+		arrays: 'merge-by-index',
+	});
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
@@ -206,10 +135,7 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof (error as { code: unknown }).code === 'string'
+		typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
 	);
 }
 
@@ -283,6 +209,7 @@ export function sourceControlFoldersExistCheck(
 
 export function isSourceControlLicensed() {
 	const license = Container.get(License);
+	// oxlint-disable-next-line typescript/no-deprecated
 	return license.isSourceControlLicensed();
 }
 
@@ -290,7 +217,8 @@ export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair>
 	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
-export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
+export function getRepoType(repoUrl?: string): 'github' | 'gitlab' | 'other' {
+	if (!repoUrl) return 'other';
 	if (repoUrl.includes('github.com')) {
 		return 'github';
 	} else if (repoUrl.includes('gitlab.com')) {
@@ -418,19 +346,30 @@ export function hasOwnerChanged(
 }
 
 /**
- * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
- * between local and remote versions
+ * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
+ * descriptions and owners between local and remote versions
  */
+function normalizeDescription(description: string | null | undefined): string | null {
+	return description ? description : null;
+}
+
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
+	direction: 'push' | 'pull',
 ): boolean {
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	// Description edits don't bump the versionId. On pull, skip legacy remote files
+	// without a `description` key: importing them can't change the local description.
+	const hasDescriptionChanged =
+		direction === 'pull' && remote.description === undefined
+			? false
+			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
 }
 
 /**
@@ -522,4 +461,19 @@ function hasSynchableCredentialDataChanged(
 	const sanitizedData1 = sanitizeCredentialData(data1);
 	const sanitizedData2 = sanitizeCredentialData(data2);
 	return !isEqual(sanitizedData1, sanitizedData2);
+}
+
+/**
+ * The git author of a commit by this account. A service account, and a person
+ * without a full profile, get the defaults, so the commit cannot fail on an empty git identity.
+ */
+export function gitAuthor(user: User): { name: string; email: string } {
+	if (isPerson(user)) {
+		const { firstName, lastName, email } = user;
+		return {
+			name: firstName && lastName ? `${firstName} ${lastName}` : SOURCE_CONTROL_DEFAULT_NAME,
+			email: email || SOURCE_CONTROL_DEFAULT_EMAIL,
+		};
+	}
+	return { name: SOURCE_CONTROL_DEFAULT_NAME, email: SOURCE_CONTROL_DEFAULT_EMAIL };
 }

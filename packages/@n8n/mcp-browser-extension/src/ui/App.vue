@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nIcon, N8nLogo } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nLogo } from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
 import InfoRow from './components/InfoRow.vue';
+import RememberedHosts from './components/RememberedHosts.vue';
 import TabList from './components/TabList.vue';
 
 const {
@@ -11,14 +12,17 @@ const {
 	selectedTabIds,
 	errorMessage,
 	hasRelayUrl,
-	relayHost,
 	isRelayAllowed,
 	isAutoConnect,
+	relayHostKey,
+	rememberInstance,
+	approvedHosts,
 	controlledTabs,
 	toggleTab,
 	connect,
 	decline,
 	disconnect,
+	forgetHost,
 } = useConnection();
 
 const showTabSelection = ref(false);
@@ -40,7 +44,9 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<div class="panel">
 					<InfoRow
 						icon="shield"
-						:title="relayHost ? `Connected to ${relayHost}` : 'Connected to your n8n instance'"
+						:title="
+							relayHostKey ? `Connected to ${relayHostKey}` : 'Connected to your n8n instance'
+						"
 					/>
 					<InfoRow
 						icon="lock"
@@ -52,6 +58,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						<TabList :tabs="controlledTabs" />
 					</template>
 				</div>
+				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
 			<template v-else-if="showConnectPrompt">
@@ -60,13 +67,20 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<div class="panel">
 					<InfoRow
 						icon="shield"
-						:title="`Connecting to ${relayHost}`"
+						:title="`Connecting to ${relayHostKey}`"
 						description="Only continue if you initiated this connection"
-					/>
+					>
+						<N8nCheckbox
+							v-if="!isAutoConnect"
+							v-model="rememberInstance"
+							class="remember"
+							:label="`Always allow ${relayHostKey}`"
+						/>
+					</InfoRow>
 					<InfoRow
 						icon="lock"
 						title="Browser access"
-						description="n8n can access tabs it opens. Select existing tabs below to grant additional access"
+						description="n8n can access tabs it opens. Tabs you select below are shared for this connection only"
 					>
 						<button
 							v-if="tabs.length"
@@ -94,8 +108,8 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 			<template v-else-if="hasRelayUrl">
 				<h1 class="title">Allow n8n to access your browser</h1>
 				<p class="error">
-					Can't connect to <strong>{{ relayHost || 'this address' }}</strong> — it isn't a valid n8n
-					instance.
+					Can't connect to <strong>{{ relayHostKey || 'this address' }}</strong> — it isn't a valid
+					n8n instance.
 				</p>
 			</template>
 
@@ -108,13 +122,14 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						description="Initiate the connection from your n8n instance to get started"
 					/>
 				</div>
+				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
 			<p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 		</div>
 
 		<div v-if="isConnected" class="footer">
-			<N8nButton variant="ghost" size="large" @click="disconnect">Disconnect</N8nButton>
+			<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
 		</div>
 		<div v-else-if="showConnectPrompt" class="footer">
 			<N8nButton variant="ghost" size="large" @click="decline">Decline</N8nButton>
@@ -134,9 +149,9 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	height: min(700px, calc(100dvh - 2 * var(--spacing--md)));
 	min-height: 420px;
 	background: var(--background--subtle);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border: var(--border);
 	border-radius: var(--radius--xl);
-	box-shadow: var(--shadow--light);
+	box-shadow: var(--shadow--sm);
 	overflow: hidden;
 
 	// In a popup window the window itself is the card — no chrome, fill the viewport
@@ -162,14 +177,8 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 }
 
 .logo {
-	display: block;
+	justify-content: flex-start;
 	margin-bottom: var(--spacing--lg);
-
-	:deep(svg) {
-		margin-left: 0;
-		width: auto;
-		height: 24px;
-	}
 }
 
 .title {
@@ -178,13 +187,13 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	gap: var(--spacing--xs);
 	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 	margin: 0 0 var(--spacing--lg);
 }
 
 .status-dot {
-	width: 12px;
-	height: 12px;
+	width: var(--height--4xs);
+	height: var(--height--4xs);
 	border-radius: 50%;
 	background: var(--color--success);
 	flex-shrink: 0;
@@ -196,20 +205,9 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	margin: 0 0 var(--spacing--sm);
 }
 
-.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	background: var(--background--surface);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--lg);
-	min-height: 0;
-}
-
 .divider {
 	border: none;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-top: var(--border);
 	margin: 0;
 }
 
@@ -225,11 +223,16 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	border-radius: var(--radius);
 	cursor: pointer;
 	font-size: var(--font-size--xs);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 
 	&:hover {
-		background: var(--color--background);
+		background: var(--background--hover);
 	}
+}
+
+.remember {
+	--checkbox--label--font-size: var(--font-size--xs);
+	margin-top: var(--spacing--sm);
 }
 
 .footer {

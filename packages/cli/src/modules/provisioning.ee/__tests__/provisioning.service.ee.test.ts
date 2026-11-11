@@ -1,7 +1,9 @@
 import { BLOCK_ACCESS_ASSIGNMENT, type ProvisioningConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import { type GlobalConfig } from '@n8n/config';
 import {
+	type Person,
 	type User,
 	type UserRepository,
 	type SettingsRepository,
@@ -16,15 +18,13 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { type EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import { type UserService } from '@/services/user.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 
@@ -318,6 +318,21 @@ describe('ProvisioningService', () => {
 			);
 		});
 
+		it('should not assign the agent role from a claim', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			roleRepository.findOne.mockResolvedValue(
+				mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, 'global:agent');
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${user.id}`,
+				{ userId: user.id, roleSlug: 'global:agent' },
+			);
+		});
+
 		it('sends telemetry event', async () => {
 			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
 			const roleSlug = 'global:admin';
@@ -581,6 +596,15 @@ describe('ProvisioningService', () => {
 
 				await expect(
 					provisioningService.assertSsoLoginAllowed(context, 'global:owner'),
+				).rejects.toThrow(ForbiddenError);
+				expect(roleRepository.findOne).not.toHaveBeenCalled();
+			});
+
+			it('should throw when the claim is the agent role, which provisioning never assigns', async () => {
+				setDirectClaimConfig(BLOCK_ACCESS_ASSIGNMENT);
+
+				await expect(
+					provisioningService.assertSsoLoginAllowed(context, 'global:agent'),
 				).rejects.toThrow(ForbiddenError);
 				expect(roleRepository.findOne).not.toHaveBeenCalled();
 			});
@@ -1232,6 +1256,18 @@ describe('ProvisioningService', () => {
 				expect(settingsRepository.upsert).not.toHaveBeenCalled();
 			});
 
+			it('should reject the agent role', async () => {
+				stubGetConfigs(provisioningConfigDto, provisioningConfigDto);
+				roleRepository.findOne.mockResolvedValue(
+					mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+				);
+
+				await expect(
+					provisioningService.patchConfig({ defaultInstanceRole: 'global:agent' }),
+				).rejects.toThrow(BadRequestError);
+				expect(settingsRepository.upsert).not.toHaveBeenCalled();
+			});
+
 			it('should clear the field when patched with null', async () => {
 				const current: ProvisioningConfigDto = {
 					...provisioningConfigDto,
@@ -1284,7 +1320,7 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('provisionExpressionMappedRolesForUser', () => {
-		const user = mock<User>({
+		const person = mock<Person>({
 			id: 'user-1',
 			email: 'test@example.com',
 			role: mock<Role>({ slug: 'global:member', roleType: 'global' }),
@@ -1329,7 +1365,7 @@ describe('ProvisioningService', () => {
 
 			const context = { $claims: { role: 'admin' }, $provider: 'oidc' as const };
 
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(eventService.emit).toHaveBeenCalledWith('expression-mapping-roles-resolved', {
 				userId: 'user-1',
@@ -1373,12 +1409,37 @@ describe('ProvisioningService', () => {
 
 			const context = { $claims: { role: 'owner' }, $provider: 'oidc' as const };
 
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('global:owner'),
-				expect.objectContaining({ userId: user.id }),
+				expect.objectContaining({ userId: person.id }),
+			);
+		});
+
+		it('should not assign the agent role via expression mapping', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:agent',
+					matchedRuleId: 'rule-1',
+					expression: '{{ true }}',
+					isFallback: false,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+			);
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${person.id}`,
+				expect.objectContaining({ userId: person.id }),
 			);
 		});
 
@@ -1386,7 +1447,7 @@ describe('ProvisioningService', () => {
 			provisioningService['isExpressionMappingEnabled'] = vi.fn().mockResolvedValue(false);
 
 			const context = { $claims: {}, $provider: 'saml' as const };
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(eventService.emit).not.toHaveBeenCalledWith(
 				'expression-mapping-roles-resolved',
@@ -1412,7 +1473,7 @@ describe('ProvisioningService', () => {
 				$claims: { groups: ['admins'], email: 'test@example.com' },
 				$provider: 'oidc' as const,
 			};
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(logger.debug).toHaveBeenCalledWith('SSO role resolution complete', {
 				userId: 'user-1',
@@ -1450,7 +1511,7 @@ describe('ProvisioningService', () => {
 			});
 
 			const context = { $claims: {}, $provider: 'oidc' as const };
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'expression-mapping-roles-resolved',
@@ -1492,7 +1553,7 @@ describe('ProvisioningService', () => {
 			);
 
 			const context = { $claims: {}, $provider: 'oidc' as const };
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			// No project rules => project roles are not managed => manual access must survive.
 			expect(entityManager.delete).not.toHaveBeenCalled();
@@ -1524,7 +1585,7 @@ describe('ProvisioningService', () => {
 			);
 
 			const context = { $claims: {}, $provider: 'oidc' as const };
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			// No instance rules => instance role is not managed => manual role must survive.
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
@@ -1563,6 +1624,30 @@ describe('ProvisioningService', () => {
 				return type === 'project' ? project : instance;
 			});
 		};
+
+		const setSsoLogin = (on: boolean) =>
+			vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(on);
+
+		beforeEach(() => setSsoLogin(true));
+		afterAll(() => vi.restoreAllMocks());
+
+		describe('while SAML or OIDC sign-in is off', () => {
+			beforeEach(() => setSsoLogin(false));
+
+			it('does not manage roles when claim provisioning is enabled', async () => {
+				setEnabled({ instanceProvisioning: true, projectProvisioning: true });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+			});
+
+			it('does not manage roles when expression mapping has rules for both scopes', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 1, project: 1 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+				expect(roleMappingRuleRepository.count).not.toHaveBeenCalled();
+			});
+		});
 
 		describe('isProjectRoleManaged', () => {
 			it('is managed when project role claim provisioning is enabled', async () => {

@@ -8,16 +8,35 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryAiGatewayCredentialTypeName,
+	getMcpRegistryCredentialOptions,
+	getMcpRegistryCredentialTypeName,
+	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
+	MCP_REGISTRY_PACKAGE_NAME,
+	getConfiguredEndpointUrl,
+	resolveMcpRegistryConnection,
+} from './mcp-registry-connection';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	mcpRegistryExtendsCredentialSchema,
+	mcpRegistryUsesCredentialsSchema,
+	type McpRegistryAiGatewayPair,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
+	type McpRegistryUsesCredential,
 } from './registry/mcp-registry.types';
 
-export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
-export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
-export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
-export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+export {
+	LANGCHAIN_PACKAGE_NAME,
+	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
+	MCP_REGISTRY_BASE_NODE_NAME,
+	MCP_REGISTRY_PACKAGE_NAME,
+} from './mcp-registry-connection';
+export {
+	getMcpRegistryCredentialOptions,
+	getMcpRegistryCredentialTypeName,
+} from './mcp-registry-connection';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -32,14 +51,6 @@ function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 }
 
 /**
- * Get credentials type name based on server's slug and auth type
- */
-export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
-	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
-	return `${camelCase(server.slug)}McpOAuth2Api`;
-}
-
-/**
  * Shared identity fields for every synthetic credential the registry produces.
  */
 function getMcpRegistryCredentialHeader(
@@ -50,21 +61,6 @@ function getMcpRegistryCredentialHeader(
 		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
 		displayName: `${server.title} MCP OAuth2`,
 	};
-}
-
-/**
- * Picks the server's remote endpoint and parses its hostname.
- */
-function resolveCredentialRemote(
-	server: McpRegistryServer,
-): { endpointUrl: string; hostname: string } | null {
-	const remote = pickRemote(server);
-	if (!remote) return null;
-	try {
-		return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
-	} catch {
-		return null;
-	}
 }
 
 /**
@@ -88,11 +84,14 @@ function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
 }
 
 /**
- * Registry MCP server → service-specific credential type for OAuth2 auth type
+ * Registry MCP server → service-specific credential type for OAuth2 auth type.
+ * Plain `oauth2` credentials have no user-editable, host-bearing field of
+ * their own to resolve a templated URL against, so templated remotes are
+ * unsupported here and drop the row, same as an unparseable URL.
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
-	const remote = resolveCredentialRemote(server);
-	if (!remote) return null;
+	const remote = resolveMcpRegistryConnection(server);
+	if (!remote || remote.isTemplated) return null;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -108,7 +107,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				displayName: 'Server URL',
 				name: 'serverUrl',
 				type: 'hidden',
-				default: remote.endpointUrl,
+				default: getConfiguredEndpointUrl(remote),
 			},
 			{
 				displayName: 'Resource URL',
@@ -116,7 +115,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				type: 'hidden',
 				default: '',
 			},
-			...buildDomainRestrictionProperties(remote.hostname),
+			...buildDomainRestrictionProperties(remote.endpointHostname),
 		],
 	};
 }
@@ -128,7 +127,7 @@ function getValidatedExtendsCredential(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ) {
-	if (!server.extendsCredential) return null;
+	if (server.authType !== 'extendsCredential') return null;
 
 	const parseResult = mcpRegistryExtendsCredentialSchema.safeParse(server.extendsCredential);
 	if (!parseResult.success) return null;
@@ -146,8 +145,26 @@ function getValidatedExtendsCredential(
 	return { parentType, overrides };
 }
 
+function getValidatedUsesCredentials(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): McpRegistryUsesCredential[] | null {
+	if (server.authType !== 'usesCredentials') return null;
+
+	const parseResult = mcpRegistryUsesCredentialsSchema.safeParse(server.usesCredentials);
+	if (!parseResult.success) return null;
+	const supportedCredentials = parseResult.data.filter(({ credentialType }) =>
+		isKnownCredentialType(credentialType),
+	);
+	return supportedCredentials.length > 0 ? supportedCredentials : null;
+}
+
 /**
- * Builds a dedicated credential type extending a known n8n credential.
+ * Builds a dedicated credential type extending a known n8n credential. A
+ * templated remote has no literal hostname, so the endpoint and the domain
+ * pin are both written as `$self`-expressions resolved against the parent
+ * credential's own `host` field, the same field the Strapi-authored URL
+ * template itself already depends on.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
@@ -156,8 +173,14 @@ function serverToExtendedCredentialDescription(
 	const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
 	if (!validated) return null;
 
-	const remote = resolveCredentialRemote(server);
+	const remote = resolveMcpRegistryConnection(server);
 	if (!remote) return null;
+
+	// A row that fixes `scope` makes the parent's "Custom Scopes" toggle dead
+	// weight, so hide it unless the row sets `customScopes` itself.
+	if (validated.overrides.scope !== undefined && validated.overrides.customScopes === undefined) {
+		validated.overrides.customScopes = false;
+	}
 
 	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
 		([name, value]) => ({
@@ -168,10 +191,44 @@ function serverToExtendedCredentialDescription(
 		}),
 	);
 
+	const serverUrlProperty: INodeProperties = {
+		displayName: 'Server URL',
+		name: 'serverUrl',
+		type: 'hidden',
+		default: getConfiguredEndpointUrl(remote),
+	};
+	const serverUrlOverride = remote.isTemplated ? [serverUrlProperty] : [];
+
+	const allowedDomainsDefault = remote.isTemplated
+		? '={{$self["host"].extractDomain()}}'
+		: remote.endpointHostname;
+
 	return {
 		...getMcpRegistryCredentialHeader(server),
 		extends: [validated.parentType],
-		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
+		properties: [
+			...overrideProperties,
+			...serverUrlOverride,
+			...buildDomainRestrictionProperties(allowedDomainsDefault),
+		],
+	};
+}
+
+/**
+ * Builds the credential type of an AI Gateway row. It has no base type and no
+ * fields: the node slot holds the managed marker, and the credentials helper
+ * mints the token without reading this type.
+ */
+function serverToAiGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	if (!resolveMcpRegistryConnection(server)) return null;
+
+	return {
+		name: getMcpRegistryAiGatewayCredentialTypeName(server.slug),
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} Gateway credits`,
+		// Nobody creates this credential: the node slot holds the managed marker.
+		hidden: true,
+		properties: [],
 	};
 }
 
@@ -190,27 +247,41 @@ function getNodeDescriptionCredentials(
 			if (!validated) return [];
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		}
+		case 'usesCredentials': {
+			const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+			if (!credentials) return [];
+			if (credentials.length === 1) {
+				return [{ name: credentials[0].credentialType, required: true }];
+			}
+			return credentials.map(({ credentialType, value }) => ({
+				name: credentialType,
+				required: true,
+				displayOptions: { show: { authentication: [value] } },
+			}));
+		}
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return [{ name: getMcpRegistryAiGatewayCredentialTypeName(server.slug), required: true }];
 		default:
 			return [];
 	}
 }
 
-/**
- * Pick the connection details from a registry server. Only `streamable-http`
- * and `sse` are supported; `streamable-http` is preferred.
- */
-function pickRemote(
+function getAuthenticationProperty(
 	server: McpRegistryServer,
-): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
-	const streamable = server.remotes.find((r) => r.type === 'streamable-http');
-	if (streamable) return { transport: 'httpStreamable', endpointUrl: streamable.url };
+	isKnownCredentialType: IsKnownCredentialType,
+): INodeProperties | null {
+	const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+	if (!credentials || credentials.length < 2) return null;
 
-	const sse = server.remotes.find((r) => r.type === 'sse');
-	if (sse) return { transport: 'sse', endpointUrl: sse.url };
-
-	return null;
+	return {
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		noDataExpression: true,
+		options: credentials.map(({ name, value }) => ({ name, value })),
+		default: credentials[0].value,
+	};
 }
-
 const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
 	'image/svg+xml',
 	'image/webp',
@@ -242,21 +313,81 @@ function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
 	return preferredIcon(icons)?.src;
 }
 
-/**
- * Patches the `endpointUrl` and `serverTransport` defaults on a cloned property
- * list with the entry's resolved remote, leaving the rest of the runtime's UI
- * surface untouched.
- */
 function withRemoteDefaults(
 	properties: INodeProperties[],
 	transport: 'httpStreamable' | 'sse',
 	endpointUrl: string,
 ): INodeProperties[] {
-	return properties.map((prop) => {
-		if (prop.name === 'endpointUrl') return { ...prop, default: endpointUrl };
-		if (prop.name === 'serverTransport') return { ...prop, default: transport };
-		return prop;
+	return properties.map((property) => {
+		if (property.name === 'endpointUrl') return { ...property, default: endpointUrl };
+		if (property.name === 'serverTransport') return { ...property, default: transport };
+		return property;
 	});
+}
+
+/**
+ * Adds the Gateway credits choice of a paired server. It goes first in the
+ * selector, but the default stays the own option, because saved workflows omit
+ * default values.
+ */
+function addAiGatewayChoice(
+	description: INodeTypeDescription,
+	server: McpRegistryServer,
+	aiGateway: McpRegistryAiGatewayPair,
+): void {
+	// The node drops registry credential types that n8n does not know. Use the first option that the
+	// node kept, so the default does not point at a credential that the node hides.
+	const declaredTypes = new Set((description.credentials ?? []).map(({ name }) => name));
+	const ownOption = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined }).find(
+		({ credentialType }) => declaredTypes.has(credentialType),
+	);
+	if (!ownOption) return;
+	const aiGatewayOption = { name: 'Gateway credits', value: 'aiGateway' };
+	description.credentials = [
+		// A single own credential has no selector yet, so it gets one.
+		...(description.credentials ?? []).map((credential) =>
+			credential.displayOptions
+				? credential
+				: { ...credential, displayOptions: { show: { authentication: [ownOption.value] } } },
+		),
+		{
+			name: getMcpRegistryAiGatewayCredentialTypeName(aiGateway.slug),
+			required: true,
+			displayOptions: { show: { authentication: [aiGatewayOption.value] } },
+		},
+	];
+
+	const authenticationProperty = description.properties.find(
+		({ name }) => name === 'authentication',
+	);
+	if (authenticationProperty) {
+		authenticationProperty.options = [aiGatewayOption, ...(authenticationProperty.options ?? [])];
+		return;
+	}
+	description.properties = [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [aiGatewayOption, { name: ownOption.name, value: ownOption.value }],
+			default: ownOption.value,
+		},
+		...description.properties,
+	];
+}
+
+/** Whether the loader can load the server, by the same rules as `serverToNodeDescription`. */
+export function canLoadMcpRegistryServer(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): boolean {
+	return (
+		resolveMcpRegistryConnection(server) !== null &&
+		getNodeDescriptionCredentials(server, isKnownCredentialType).length > 0 &&
+		(server.authType === 'usesCredentials' ||
+			serverToCredentialDescription(server, isKnownCredentialType) !== null)
+	);
 }
 
 /**
@@ -271,6 +402,10 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return serverToAiGatewayCredentialDescription(server);
+		case 'usesCredentials':
+			return null;
 		default:
 			return null;
 	}
@@ -284,15 +419,25 @@ export function serverToNodeDescription(
 	baseDescription: INodeTypeDescription,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
+	if (
+		server.authType !== 'oauth2' &&
+		server.authType !== 'extendsCredential' &&
+		server.authType !== 'usesCredentials' &&
+		server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE
+	) {
+		return null;
+	}
 
-	const remote = pickRemote(server);
-	if (!remote) return null;
+	const connection = resolveMcpRegistryConnection(server);
+	if (!connection) return null;
+	const credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	if (credentials.length === 0) return null;
 
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
-	if (server.status === 'deprecated') {
+	// A paired AI Gateway row stays loaded for saved workflows. Its twin offers it.
+	if (server.status === 'deprecated' || server.pairedSlug) {
 		description.hidden = true;
 	} else {
 		delete description.hidden;
@@ -302,7 +447,7 @@ export function serverToNodeDescription(
 	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.tagline;
 	description.defaults = { name: displayName };
-	description.credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	description.credentials = credentials;
 	if (description.codex) {
 		description.codex.alias?.push(server.title, displayName);
 		if (server.websiteUrl) {
@@ -311,9 +456,14 @@ export function serverToNodeDescription(
 	}
 	description.properties = withRemoteDefaults(
 		description.properties,
-		remote.transport,
-		remote.endpointUrl,
+		connection.transport,
+		getConfiguredEndpointUrl(connection),
 	);
+	const authenticationProperty = getAuthenticationProperty(server, isKnownCredentialType);
+	if (authenticationProperty) {
+		description.properties = [authenticationProperty, ...description.properties];
+	}
+	if (server.aiGateway) addAiGatewayChoice(description, server, server.aiGateway);
 	description.builderHint = {
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,

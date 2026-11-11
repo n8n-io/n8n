@@ -105,12 +105,15 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 				}
 
 				loading.value = true;
-				const retrievedTags = await tagsApi.getTags(rootStore.restApiContext, {
-					withUsageCount,
-				});
-				setAllTags(retrievedTags);
-				loading.value = false;
-				return retrievedTags;
+				try {
+					const retrievedTags = await tagsApi.getTags(rootStore.restApiContext, {
+						withUsageCount,
+					});
+					setAllTags(retrievedTags);
+					return retrievedTags;
+				} finally {
+					loading.value = false;
+				}
 			};
 
 			const create = async (

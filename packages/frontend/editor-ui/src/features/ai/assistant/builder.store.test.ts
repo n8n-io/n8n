@@ -16,7 +16,7 @@ import { BUILDER_ENABLED_VIEWS } from './constants';
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { nextTick, reactive } from 'vue';
@@ -42,7 +42,6 @@ const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -162,7 +161,7 @@ describe('AI Builder store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
-				aiAssistant: { enabled: true, setup: true },
+				aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 			}),
 		);
 		window.posthog = {

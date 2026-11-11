@@ -39,7 +39,13 @@ export type WorkflowReviewDecisionIneligibilityReason =
 	| 'missing_permission'
 	| 'missing_reviewer_permission';
 
-export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
+/**
+ * The inbox item's flat `workflowName` / `workflowVersionId` are omitted: they
+ * summarize the review for the list card, which holds exactly one workflow today
+ * (create caps the list at one), while the detail lists every covered workflow.
+ */
+export interface WorkflowReviewRequestDetail
+	extends Omit<WorkflowReviewInboxItem, 'workflowName' | 'workflowVersionId'> {
 	description: string | null;
 	workflows: WorkflowReviewRequestWorkflowDetail[];
 	/**

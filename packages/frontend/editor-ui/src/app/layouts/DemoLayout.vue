@@ -28,6 +28,7 @@ if (window !== window.parent) {
 const workflowId = useWorkflowId();
 
 const {
+	isLoading,
 	initializeData,
 	initializeWorkflow,
 	currentWorkflowDocumentStore,
@@ -84,7 +85,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView v-if="currentWorkflowDocumentStore" />
+		<RouterView v-if="!isLoading && currentWorkflowDocumentStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfProtectionService } from '../../ssrf';
@@ -11,7 +12,11 @@ import { startServer, type LocalServer } from '../local-server';
 import { OutboundHttp } from '../outbound-http';
 
 const client = () =>
-	new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).requests({ ssrf: 'disabled' });
+	new OutboundHttp(
+		mock<SsrfProtectionService>(),
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<Logger>(),
+	).requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 describe('OutboundHttp error tagging', () => {
 	let server: LocalServer;

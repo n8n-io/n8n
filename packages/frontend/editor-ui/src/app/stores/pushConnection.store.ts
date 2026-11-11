@@ -9,6 +9,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/app/push-connection/useEventSourceClient';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -18,6 +19,7 @@ export type OnPushMessageHandler = (event: PushMessage) => void;
 export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const backendConnectionStore = useBackendConnectionStore();
 
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
@@ -123,6 +125,14 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 */
 	let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	/** Number of active pushConnect owners; disconnect only when this reaches zero. */
+	let connectionOwnerCount = 0;
+
+	const openConnection = () => {
+		isConnecting.value = true;
+		client.value.connect();
+	};
+
 	const pushConnect = () => {
 		recentConnectIntent = true;
 
@@ -141,12 +151,30 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			disconnectTimeout = null;
 		}
 
+		connectionOwnerCount++;
+		if (connectionOwnerCount !== 1) {
+			return;
+		}
+
 		isConnectionRequested.value = true;
-		isConnecting.value = true;
-		client.value.connect();
+		openConnection();
 	};
 
 	const pushDisconnect = () => {
+		if (connectionOwnerCount === 0) {
+			return;
+		}
+
+		connectionOwnerCount--;
+
+		if (connectionOwnerCount > 0) {
+			if (disconnectTimeout) {
+				clearTimeout(disconnectTimeout);
+				disconnectTimeout = null;
+			}
+			return;
+		}
+
 		// If connect was called recently, don't disconnect
 		// (handles race condition where new view mounts before old view unmounts)
 		if (recentConnectIntent) {
@@ -160,7 +188,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		disconnectTimeout = setTimeout(() => {
 			// Double-check in case connect was called while we were waiting
-			if (recentConnectIntent) {
+			if (recentConnectIntent || connectionOwnerCount > 0) {
 				disconnectTimeout = null;
 				return;
 			}
@@ -188,6 +216,16 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 					serializeAndSend(message);
 				}
 				outgoingQueue.value = [];
+			}
+		},
+	);
+
+	// A socket that looks open after a backend outage may be dead on the server side.
+	watch(
+		() => backendConnectionStore.isOnline,
+		(isOnline) => {
+			if (isOnline && isConnectionRequested.value && client.value.isConnected.value) {
+				openConnection();
 			}
 		},
 	);

@@ -7,7 +7,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 type NotionFunctions = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
@@ -86,7 +86,11 @@ export async function notionApiRequestAllItemsV3(
 }
 
 export async function getDataSourceProperties(this: NotionFunctions, dataSourceId: string) {
-	const dataSource = await notionApiRequestV3.call(this, 'GET', `/data_sources/${dataSourceId}`);
+	const dataSource = await notionApiRequestV3.call(
+		this,
+		'GET',
+		`/data_sources/${toPathSegment(dataSourceId)}`,
+	);
 	if (!isDataObject(dataSource.properties)) {
 		throw new NodeOperationError(this.getNode(), 'Notion did not return data source properties');
 	}

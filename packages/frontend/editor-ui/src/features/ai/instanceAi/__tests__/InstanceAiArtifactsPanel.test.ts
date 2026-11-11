@@ -1,19 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
+	InstanceAiMessage,
+	TaskList,
+} from '@n8n/api-types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 const storeState = reactive({
 	id: 'thread-1',
 	currentTasks: undefined as TaskList | undefined,
 	producedArtifacts: new Map<string, ResourceEntry>(),
-	messages: [] as Array<{ role: string; context?: Record<string, unknown> }>,
+	messages: [] as Array<{
+		role: string;
+		context?: Record<string, unknown>;
+		agentTree?: InstanceAiAgentNode;
+	}>,
+	get artifactTurns() {
+		// The fixtures fill only the fields that the panel reads.
+		return toArtifactTurns(this.messages as InstanceAiMessage[]);
+	},
 	projectId: undefined as string | undefined,
+	hydrationStatus: 'ready' as 'idle' | 'hydrating' | 'ready',
 });
 const metadataState = ref<Record<string, unknown> | undefined>(undefined);
 const updateThreadMetadataMock = vi.fn(
@@ -33,23 +51,10 @@ vi.mock('../instanceAi.store', () => ({
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 	pinia: createTestingPinia(),
 	global: {
+		plugins: [createArtifactTestRouter()],
 		provide: {
 			// Lucide-only icons (outside the curated set) need the async body loader.
 			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
-		},
-		stubs: {
-			ConnectionsCard: defineComponent({
-				props: {
-					dropdownPortalTarget: { type: HTMLElement, required: false },
-				},
-				setup(props) {
-					return () =>
-						h('section', {
-							'data-test-id': 'connections-card',
-							'data-portal-target-tag': props.dropdownPortalTarget?.tagName ?? '',
-						});
-				},
-			}),
 		},
 	},
 });
@@ -59,12 +64,46 @@ describe('InstanceAiArtifactsPanel', () => {
 		storeState.currentTasks = undefined;
 		storeState.producedArtifacts = new Map<string, ResourceEntry>();
 		storeState.projectId = 'proj-1';
+		storeState.hydrationStatus = 'ready';
 		storeState.messages = [];
 		metadataState.value = undefined;
 		updateThreadMetadataMock.mockClear();
+		useProjectsStore().myProjects = [];
 	});
 
-	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
+	it('shows the project name once the thread project is known', () => {
+		useProjectsStore().myProjects = [
+			{ id: 'proj-1', name: 'Marketing', type: 'team', icon: { type: 'icon', value: 'layers' } },
+		] as ProjectListItem[];
+
+		const { getByText, queryByText, queryByTestId } = renderComponent();
+
+		expect(getByText('Marketing')).toBeInTheDocument();
+		expect(queryByText('Unknown project')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-project-loading')).not.toBeInTheDocument();
+	});
+
+	it('shows skeletons instead of "Unknown project" and "No artifacts yet" until hydration is ready', async () => {
+		storeState.projectId = undefined;
+		storeState.hydrationStatus = 'hydrating';
+
+		const { getByTestId, queryByTestId, queryByText, getByText } = renderComponent();
+
+		expect(getByTestId('instance-ai-artifacts-project-loading')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-artifacts-list-loading')).toBeInTheDocument();
+		expect(queryByText('Unknown project')).not.toBeInTheDocument();
+		expect(queryByText('No artifacts yet')).not.toBeInTheDocument();
+
+		storeState.hydrationStatus = 'ready';
+		await nextTick();
+
+		expect(queryByTestId('instance-ai-artifacts-project-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-list-loading')).not.toBeInTheDocument();
+		expect(getByText('Unknown project')).toBeInTheDocument();
+		expect(getByText('No artifacts yet')).toBeInTheDocument();
+	});
+
+	it('keeps the empty artifacts section visible without an empty tasks section', () => {
 		const { getByText, getByTestId, queryByText } = renderComponent();
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
@@ -72,15 +111,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
-		expect(getByTestId('connections-card')).toBeInTheDocument();
-	});
-
-	it('anchors connection menus inside the panel', async () => {
-		const { getByTestId } = renderComponent();
-
-		await nextTick();
-
-		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {
@@ -201,7 +231,7 @@ describe('InstanceAiArtifactsPanel', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 					},
 				},
@@ -367,7 +397,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		const pendingComposerContext = ref({
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 			},
 		});
@@ -451,6 +481,81 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
 	});
 
+	it('opens skill artifacts in preview and keeps the chat tab when the skill is already shown', () => {
+		// Returns false when the skill tab is already active.
+		const openSkillPreview = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['skill-1', { type: 'skill', id: 'skill-1', name: 'Plan trips' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openSkillPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Plan trips' });
+		expect(artifactLink).toHaveAttribute('href', '/settings/context/skills?skillId=skill-1');
+		expect(artifactLink).not.toHaveAttribute('target');
+		expect(artifactLink.querySelector('[data-icon="book-open"]')).toBeInTheDocument();
+
+		const firstClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(firstClick)).toBe(false);
+
+		// The row has no target="_blank", so a click that is not prevented would
+		// navigate the chat tab away.
+		const secondClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(secondClick)).toBe(false);
+
+		expect(openSkillPreview).toHaveBeenNthCalledWith(1, 'skill-1');
+		expect(openSkillPreview).toHaveBeenNthCalledWith(2, 'skill-1');
+	});
+
+	it('shows a spinner on the artifact row while the AI is building it', () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+			['wf-1', { type: 'workflow', id: 'wf-1', name: 'My Workflow' }],
+		]);
+		storeState.messages = [
+			{
+				role: 'assistant',
+				agentTree: {
+					agentId: 'root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-select',
+							toolName: 'agent_builder_select_agent',
+							args: {},
+							result: { ok: true, agentId: 'agent-1' },
+							isLoading: false,
+						},
+					],
+					timeline: [],
+					children: [],
+				} as InstanceAiAgentNode,
+			},
+		];
+
+		const { getByRole } = renderComponent();
+
+		const buildingRow = getByRole('link', { name: 'Open SEO Auditor' });
+		expect(
+			buildingRow.querySelector('[data-test-id="instance-ai-artifact-building-spinner"]'),
+		).toBeInTheDocument();
+		expect(buildingRow.querySelector('[data-icon="robot"]')).not.toBeInTheDocument();
+
+		const idleRow = getByRole('link', { name: 'Open My Workflow' });
+		expect(
+			idleRow.querySelector('[data-test-id="instance-ai-artifact-building-spinner"]'),
+		).not.toBeInTheDocument();
+	});
+
 	it('keeps pending agents in the preview without exposing a standalone link', () => {
 		const openAgentPreview = vi.fn();
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([
@@ -530,5 +635,23 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasDefaultPreventedByComponent).toBe(false);
 		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
+	it('keeps the router base in artifact links', () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['wf-1', { type: 'workflow', id: 'wf-1', name: 'Sales workflow' }],
+			['dt-1', { type: 'data-table', id: 'dt-1', name: 'Orphan table' }],
+			['app-1', { type: 'app', id: 'app-1', name: 'Unscoped app' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: { plugins: [createArtifactTestRouter('/n8n/')] },
+		});
+
+		const hrefOf = (name: string) =>
+			getByRole('link', { name: `Open ${name}` }).getAttribute('href');
+		expect(hrefOf('Sales workflow')).toBe('/n8n/workflow/wf-1');
+		expect(hrefOf('Orphan table')).toBe('/n8n/home/datatables');
+		expect(hrefOf('Unscoped app')).toBe('#');
 	});
 });

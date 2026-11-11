@@ -5,8 +5,10 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { searchAtlassianSites } from '@utils/atlassian';
+
 import { extractNextCursor, resolveSpaceKey } from '../actions/common';
-import { confluenceApiRequest } from '../transport';
+import { confluenceApiRequest, getConfluenceCredentialName } from '../transport';
 
 interface SearchPage {
 	entries: IDataObject[];
@@ -17,9 +19,21 @@ interface SearchPage {
 const SEARCH_PAGE_SIZE = 50;
 const MAX_FILTERED_SEARCH_PAGES = 10;
 const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
+const TITLE_TERM_SEPARATORS = /[^\p{L}\p{M}\p{N}_.,'\u2019]+/u;
+const TERM_EDGE_PUNCTUATION = /^[.,'\u2019]+|[.,'\u2019]+$/gu;
+const TEXT_SEARCH_OPERATORS = new Set(['AND', 'OR', 'NOT']);
 
-export async function searchSpaces(
+/**
+ * Shared list search over the v2 cursor-paginated lists that have no
+ * server-side text filter (spaces, labels): the typed text is matched
+ * client-side against `name`, fetching ahead so matches beyond the first
+ * page stay discoverable.
+ */
+async function searchByName(
 	this: ILoadOptionsFunctions,
+	endpoint: string,
+	baseQs: IDataObject,
+	toDisplayName: (name: string, entry: IDataObject) => string,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
@@ -27,28 +41,79 @@ export async function searchSpaces(
 	const results: INodeListSearchItems[] = [];
 	let cursor = paginationToken;
 
-	// No server-side text filter on the v2 spaces list; fetch ahead so matches
-	// beyond the first page stay discoverable
 	for (let fetched = 0; fetched < MAX_FILTERED_SEARCH_PAGES; fetched++) {
-		const qs: IDataObject = { limit: SEARCH_PAGE_SIZE, sort: 'name', status: 'current' };
+		const qs: IDataObject = { ...baseQs, limit: SEARCH_PAGE_SIZE };
 		if (cursor !== undefined) qs.cursor = cursor;
 
-		const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);
+		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, qs);
 		const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
-		for (const space of entries) {
-			if (typeof space.id !== 'string' && typeof space.id !== 'number') continue;
-			if (typeof space.name !== 'string') continue;
-			if (filterLower !== '' && !space.name.toLowerCase().includes(filterLower)) continue;
-			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
-			results.push({ name: `${space.name}${key}`, value: String(space.id) });
+		let lastName: string | undefined;
+		let exactFound = false;
+		for (const entry of entries) {
+			if (typeof entry.name !== 'string') continue;
+			lastName = entry.name.toLowerCase();
+			if (typeof entry.id !== 'string' && typeof entry.id !== 'number') continue;
+			if (filterLower !== '' && !lastName.includes(filterLower)) continue;
+			if (lastName === filterLower) exactFound = true;
+			results.push({ name: toDisplayName(entry.name, entry), value: String(entry.id) });
 		}
 
 		cursor = extractNextCursor(response);
-		if (cursor === undefined || filterLower === '' || results.length > 0) break;
+		if (cursor === undefined || filterLower === '' || exactFound) break;
+		// The list is name-sorted: don't stop on partial matches while an exact match may still lie ahead
+		const exactMayLieAhead = lastName !== undefined && lastName < filterLower;
+		if (results.length > 0 && !exactMayLieAhead) break;
 	}
 
 	return { results, paginationToken: cursor };
+}
+
+export async function getSites(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await searchAtlassianSites.call(this, getConfluenceCredentialName(this), filter);
+}
+
+export async function searchSpaces(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName.call(
+		this,
+		'/wiki/api/v2/spaces',
+		{ sort: 'name', status: 'current' },
+		(name, space) => {
+			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
+			return `${name}${key}`;
+		},
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getLabels(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName.call(
+		this,
+		'/wiki/api/v2/labels',
+		{ sort: 'name' },
+		(name, label) => {
+			// Non-global labels (my/team/system) share names with global ones; the prefix disambiguates
+			const prefix =
+				typeof label.prefix === 'string' && label.prefix !== '' && label.prefix !== 'global'
+					? ` (${label.prefix})`
+					: '';
+			return `${name}${prefix}`;
+		},
+		filter,
+		paginationToken,
+	);
 }
 
 export async function searchSpacesWithAll(
@@ -124,6 +189,14 @@ function nextStartToken(
 	return parsed ?? String(start + Math.max(count, 1));
 }
 
+// Mirrors the word breaks of the title index; a wildcard applies to one term only
+function toTitleTerms(filter: string): string[] {
+	return filter
+		.split(TITLE_TERM_SEPARATORS)
+		.map((term) => term.replace(TERM_EDGE_PUNCTUATION, ''))
+		.filter((term) => term !== '' && !TEXT_SEARCH_OPERATORS.has(term));
+}
+
 function getScopedSpaceId(this: ILoadOptionsFunctions): string {
 	try {
 		const raw = this.getCurrentNodeParameter('space', { extractValue: true });
@@ -148,17 +221,18 @@ export async function getPages(
 		if (spaceKey !== undefined) spaceClause = ` AND space = "${spaceKey}"`;
 	}
 
-	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
-	const cql =
-		escaped === ''
-			? `type=page${spaceClause} ORDER BY lastmodified DESC`
-			: `type=page${spaceClause} AND title ~ "${escaped}*" ORDER BY lastmodified DESC`;
+	const text = (filter ?? '').trim();
+	const terms = toTitleTerms(text).join(' ');
+	// The wildcard term skips the analyser (no stemming), so the OR adds the analysed form
+	const titleClause = terms === '' ? '' : ` AND (title ~ "${terms}*" OR title ~ "${terms}")`;
+	const cql = `type=page${spaceClause}${titleClause} ORDER BY lastmodified DESC`;
 
 	// Exact-title pages can be buried behind newer prefix matches, so page one
 	// fetches them separately; toPageItems drops the overlap
+	// A phrase with escaped quotes or backslashes gets a 400, so such text skips the exact query
 	const exact =
-		escaped !== '' && paginationToken === undefined
-			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${escaped}"`)
+		text !== '' && paginationToken === undefined && !/["\\]/.test(text)
+			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${text}"`)
 			: EMPTY_PAGE;
 
 	const page = await fetchSearchPage.call(this, cql, start);

@@ -31,13 +31,13 @@
                             "type": "integer"
                         },
                         "companyFoundedOn": {
-                            "type": "integer"
+                            "type": "string"
                         },
                         "companyHeadQuarter": {
                             "type": "string"
                         },
                         "companyId": {
-                            "type": "integer"
+                            "type": "string"
                         },
                         "companyIndustry": {
                             "type": "string"
@@ -186,6 +186,9 @@
                                         "items": {
                                             "type": "object",
                                             "properties": {
+                                                "companyName": {
+                                                    "type": "string"
+                                                },
                                                 "date": {
                                                     "type": "object",
                                                     "properties": {
@@ -212,6 +215,9 @@
                                                             }
                                                         }
                                                     }
+                                                },
+                                                "description": {
+                                                    "type": "null"
                                                 },
                                                 "title": {
                                                     "type": "string"
@@ -268,5 +274,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

@@ -1,0 +1,75 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"billing_frequency": {
+			"type": "string"
+		},
+		"billing_frequency_cycles": {},
+		"category": {},
+		"code": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object"
+		},
+		"description": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"is_linkable": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"prices": {
+			"items": {
+				"properties": {
+					"cost": {
+						"type": "number"
+					},
+					"currency": {
+						"type": "string"
+					},
+					"direct_cost": {
+						"type": "number"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number"
+					},
+					"product_id": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"tax": {
+			"type": "number"
+		},
+		"unit": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

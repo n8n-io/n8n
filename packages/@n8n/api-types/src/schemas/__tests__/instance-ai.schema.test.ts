@@ -10,7 +10,10 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	appBlueprintSchema,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -20,28 +23,135 @@ import {
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiSendMessageRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
+	instanceAiEvalSeedFolderSchema,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadMessagesQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('app blueprint schema', () => {
+	const blueprint = {
+		name: 'Planner',
+		namespace: 'planner',
+		visibility: 'project',
+		description: 'Plan weekly tasks.',
+		theme: 'both',
+	} as const;
+
+	it('accepts existing and new planned bindings', () => {
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [
+					{
+						kind: 'dataTable',
+						name: 'Tasks',
+						description: 'Stores weekly tasks.',
+						status: 'existing',
+						resourceId: 'table-1',
+					},
+					{
+						kind: 'agent',
+						name: 'Planning agent',
+						description: 'Answers questions about tasks.',
+						status: 'new',
+					},
+				],
+			}).success,
+		).toBe(true);
+	});
+
+	it('requires a resource id only for existing bindings', () => {
+		const binding = {
+			kind: 'workflow',
+			name: 'Weekly summary',
+			description: 'Creates the weekly summary.',
+		};
+
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'existing' }],
+			}).success,
+		).toBe(false);
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'new', resourceId: 'workflow-1' }],
+			}).success,
+		).toBe(false);
+	});
+});
+
+describe('Instance AI prompt version requests', () => {
+	it('accepts an optional version pin and rejects empty or oversized pins', () => {
+		const base = { message: 'Build a workflow', timeZone: 'UTC' };
+		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
+				.promptVersion,
+		).toBe('progressive@1');
+		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
+			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
+				false,
+			);
+		}
+	});
+
+	it('accepts a thread artifact index, including an empty one, and rejects an oversized list', () => {
+		const base = { message: 'Change this', timeZone: 'UTC' };
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: { artifacts: [] },
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: Array.from({ length: 21 }, (_, index) => ({
+						type: 'workflow' as const,
+						id: `wf-${index}`,
+					})),
+				},
+			}).success,
+		).toBe(false);
+	});
+});
 
 describe('sandbox provider', () => {
 	it('accepts supported providers', () => {
@@ -75,6 +185,148 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('parses a preferences-applied event that names the rows the turn carried', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [
+					{ id: 'pref-1', scope: 'user' },
+					{ id: 'pref-2', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+				],
+				renderedLength: 240,
+				injectedThisTurn: true,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses an older stored event that still names a carrying run', () => {
+		// Events written before the field was removed stay in the durable log.
+		const payload = {
+			preferences: [{ id: 'pref-1', scope: 'instance' }],
+			renderedLength: 240,
+			injectedThisTurn: false,
+		};
+		const event = { type: 'preferences-applied', runId: 'run-2', agentId: 'agent-1', payload };
+
+		expect(
+			instanceAiEventSchema.parse({ ...event, payload: { ...payload, carriedFromRunId: 'run-1' } }),
+		).toEqual(event);
+	});
+
+	it('parses a turn that reused an earlier block', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses an empty payload, which says the turn applied no preferences', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { preferences: [], renderedLength: 0, injectedThisTurn: true },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps preferences-applied durable, so a reload still reports the turn', () => {
+		// A live-only frame would leave the plus menu blank for every turn a client
+		// missed, and a week-old thread could never answer the question at all.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
+	});
+
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
+			},
+		};
+
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 });
 
@@ -172,11 +424,17 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 
 		// These should remain unchanged (safe for read-only instances)
-		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
+		expect(result.mutateDataTableRows).toBe('require_approval');
+		expect(result.createSkill).toBe('require_approval');
+		expect(result.updateSkill).toBe('require_approval');
+		expect(result.deleteSkill).toBe('require_approval');
 
 		// These should all be blocked
 		expect(result.createWorkflow).toBe('blocked');
@@ -190,23 +448,36 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.createDataTable).toBe('blocked');
 		expect(result.deleteDataTable).toBe('blocked');
 		expect(result.mutateDataTableSchema).toBe('blocked');
-		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
-			readFilesystem: 'always_allow',
 		};
 
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
-		expect(result.readFilesystem).toBe('always_allow');
+	});
+
+	it('keeps an admin block on data table row writes', () => {
+		const result = applyBranchReadOnlyOverrides({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+			mutateDataTableRows: 'blocked',
+		});
+		expect(result.mutateDataTableRows).toBe('blocked');
+	});
+
+	it('blocks createPreference on a read-only branch like every other write', () => {
+		const result = applyBranchReadOnlyOverrides(DEFAULT_INSTANCE_AI_PERMISSIONS);
+		expect(result.createPreference).toBe('blocked');
 	});
 
 	it('should not mutate the original permissions object', () => {
@@ -214,6 +485,68 @@ describe('applyBranchReadOnlyOverrides', () => {
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
+	});
+});
+
+describe('createPreference permission', () => {
+	it('defaults to always_allow, because the tool never pauses for approval', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.createPreference).toBe('always_allow');
+	});
+
+	it.each(['always_allow', 'blocked'] as const)('accepts %s from the settings API', (mode) => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: mode },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses require_approval from the settings API', () => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: 'require_approval' },
+		});
+		expect(parsed.success).toBe(false);
 	});
 });
 
@@ -236,6 +569,30 @@ describe('confirmationRequestPayloadSchema', () => {
 		const payload = makeConfirmation({ requireUserSelection: true });
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -270,15 +627,6 @@ describe('isDisplayableConfirmationRequest', () => {
 					inputType: 'questions',
 					message: '',
 					questions: [{ id: 'q1', question: 'Pick one', type: 'single', options: ['A'] }],
-				}),
-			),
-		).toBe(true);
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					planItems: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
 				}),
 			),
 		).toBe(true);
@@ -342,6 +690,39 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					testListener: {
+						workflowId: 'wf-1',
+						triggers: [
+							{
+								nodeName: 'Webhook',
+								url: 'http://localhost:5678/webhook-test/abc',
+								method: 'POST',
+							},
+						],
+						deadlineAt: '2026-01-01T00:10:00.000Z',
+					},
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					inputType: 'app-blueprint',
+					appBlueprint: {
+						name: 'Planner',
+						namespace: 'planner',
+						visibility: 'project',
+						description: 'Plan weekly tasks.',
+						theme: 'both',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -355,54 +736,14 @@ describe('isDisplayableConfirmationRequest', () => {
 		).toBe(false);
 	});
 
-	it('does not treat lightweight task lists as displayable plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					tasks: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
-	it('recognizes only renderable task args for plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
-					},
-				}),
-			),
-		).toBe(true);
-
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
 	it('keeps the input type switch exhaustive', () => {
 		const handled = {
 			approval: true,
 			text: true,
 			questions: true,
-			'plan-review': true,
 			'resource-decision': true,
 			continue: true,
+			'app-blueprint': true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
@@ -466,9 +807,56 @@ describe('data-tables session grant keys', () => {
 	});
 });
 
+describe('node execution session grant keys', () => {
+	it('scopes the key by resource and operation', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.slack', {
+				resource: 'message',
+				operation: 'post',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.slack:message:post');
+	});
+
+	it('falls back to the first scoping parameter a node without resource/operation declares', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.httpRequest', {
+				method: 'POST',
+				url: 'https://example.com/v4/sheets',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.httpRequest:https://example.com/v4/sheets');
+		// `mode` precedes `url` in the fallback order, so a node declaring both is scoped by mode.
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.set', { mode: 'manual', url: 'https://x' }),
+		).toBe('nodes:execute:n8n-nodes-base.set:manual');
+	});
+
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
+	it('keeps the key at the node type when nothing scopes the call', () => {
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter')).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+	});
+});
+
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
 	});
 });
 
@@ -562,12 +950,62 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('carries no body');
 	});
 
-	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+	const toolBody = (name: string) => ({
+		code: `export default new Tool("${name}");`,
+		descriptor: {
+			name,
+			description: 'Look up an order',
+			systemInstruction: null,
+			inputSchema: null,
+			outputSchema: null,
+			hasSuspend: false,
+			hasResume: false,
+			hasToMessage: false,
+			requireApproval: false,
+			providerOptions: null,
+		},
+	});
+
+	it('accepts a custom tool reference backed by its body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('my_tool') },
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('keeps the untrusted-output marker of a custom tool body', () => {
+		const body = toolBody('my_tool');
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: {
+					my_tool: { ...body, descriptor: { ...body.descriptor, outputTrust: 'untrusted' } },
+				},
+			}),
+		);
+		expect(result.success && result.data.tools?.my_tool.descriptor.outputTrust).toBe('untrusted');
+	});
+
+	it('rejects a custom tool reference with no body', () => {
 		const result = instanceAiEvalSeedAgentSchema.safeParse(
 			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
 		);
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('custom tool');
+		expect(errorOf(result)).toContain('references custom tool');
+	});
+
+	it('rejects a custom tool body stored under a different name', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] },
+				tools: { my_tool: toolBody('other_tool') },
+			}),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('stored under its own name');
 	});
 
 	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
@@ -597,7 +1035,7 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
@@ -606,8 +1044,34 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('unpublished draft');
+		expect(errorOf(result)).toContain(expectedError);
 	});
 
 	it('rejects an inherited property name as a backed skill body', () => {
@@ -803,6 +1267,20 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts optional parent workflow display metadata', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'Orders' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects parent workflow display metadata over 255 characters', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'a'.repeat(256) }),
+		);
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
 		const result = instanceAiAttachmentSchema.safeParse(
 			nodesAttachment({
@@ -935,5 +1413,243 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ page: -1 },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
+	});
+});
+
+describe('instanceAiHandoffContextSchema', () => {
+	it('accepts the setup panel execute context', () => {
+		const result = instanceAiHandoffContextSchema.safeParse({
+			source: 'setup-panel-execute',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a setup panel execute context without a workflowId', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute' }).success,
+		).toBe(false);
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute', workflowId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown source', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
+				.success,
+		).toBe(false);
+	});
+});
+
+describe('instanceAiEvalSeedFolderSchema', () => {
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+	const folder = (overrides: Record<string, unknown> = {}) => ({
+		id: 'odwFolder0001',
+		name: 'ODW',
+		...overrides,
+	});
+
+	it('accepts a root folder and a nested folder', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder()).success).toBe(true);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(
+				folder({ id: 'odwArchive001', parentFolderId: 'odwFolder0001' }),
+			).success,
+		).toBe(true);
+	});
+
+	it('rejects an id under 8 characters, like a seed data table id', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ id: 'odw1' })).success).toBe(false);
+	});
+
+	it('rejects a name that is not already trimmed', () => {
+		// The live turn names the folder the way a user would, so the created name
+		// must match the authored one verbatim. A silent trim would hide the mismatch.
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: ' ODW' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW ' })).success).toBe(false);
+	});
+
+	it('rejects a name with a slash, the folderPath separator', () => {
+		const result = instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW/Archive' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('/');
+	});
+
+	it("applies n8n's own folder name rules", () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '...' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '.hidden' })).success).toBe(
+			false,
+		);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'O'.repeat(129) })).success,
+		).toBe(false);
+	});
+});
+
+describe('findSeedFolderIssues', () => {
+	it('returns nothing for a valid tree with workflows placed in declared folders', () => {
+		expect(
+			findSeedFolderIssues({
+				folders: [
+					{ id: 'odwFolder0001' },
+					{ id: 'odwArchive001', parentFolderId: 'odwFolder0001' },
+				],
+				workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'odwArchive001' }, { id: 'rootWf00001' }],
+			}),
+		).toEqual([]);
+	});
+
+	it('flags a duplicate folder id', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }, { id: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('Duplicate seed folder id "odwFolder0001"')]);
+	});
+
+	it('flags a folder whose parent is not declared', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwArchive001', parentFolderId: 'missingFolder1' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('"missingFolder1"')]);
+	});
+
+	it('flags a folder that is its own parent as a cycle', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001', parentFolderId: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual(['Seed folder "odwFolder0001" is in a parent cycle']);
+	});
+
+	it('flags every member of a parent cycle, and every folder that descends from it', () => {
+		const issues = findSeedFolderIssues({
+			folders: [
+				{ id: 'folderAaaaaa', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', parentFolderId: 'folderAaaaaa' },
+				{ id: 'folderCccccc', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(issues).toEqual([
+			'Seed folder "folderAaaaaa" is in a parent cycle',
+			'Seed folder "folderBbbbbb" is in a parent cycle',
+			'Seed folder "folderCccccc" descends from a parent cycle',
+		]);
+	});
+
+	it('flags a workflow placed in a folder the seed does not declare', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }],
+			workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'nopeFolder001' }],
+		});
+		expect(issues).toEqual([
+			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
+		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest workflow node groups', () => {
+	const request = (nodeGroups: unknown) => ({
+		threadId: '11111111-1111-4111-8111-111111111111',
+		messages: [],
+		workflows: [{ id: 'wf-1', name: 'Grouped', nodes: [], connections: {}, nodeGroups }],
+	});
+
+	it('accepts seed workflow node groups', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse(
+			request([{ id: 'group-1', name: 'Notify', nodeIds: ['node-1'] }]),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a malformed node group', () => {
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(request([{ id: 'group-1', nodeIds: 'node-1' }]))
+				.success,
+		).toBe(false);
+		expect(
+			InstanceAiEvalRestoreThreadRequest.safeParse(
+				request([{ id: 'group-1', name: '', nodeIds: ['node-1'] }]),
+			).success,
+		).toBe(false);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest folders', () => {
+	const threadId = '11111111-1111-4111-8111-111111111111';
+
+	it('accepts folders and a workflow with a parentFolderId', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'odwSignal1Wf',
+					name: 'Odds Watch - 1',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a duplicate id and a parent cycle in the request itself', () => {
+		// A caller that validates with the schema alone must not accept a graph the
+		// restore cannot create.
+		const duplicate = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'odwFolder0001', name: 'ODW 2' },
+			],
+		});
+		expect(duplicate.success).toBe(false);
+
+		const cycle = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(cycle.success).toBe(false);
+	});
+
+	it('caps folders at 20', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InstanceAiThreadHistoryQuery', () => {
+	it('defaults the page size and trims the search text', () => {
+		expect(InstanceAiThreadHistoryQuery.parse({ search: ' Invoice ' })).toEqual({
+			limit: 30,
+			search: 'Invoice',
+		});
+	});
+
+	it.each([
+		{ limit: 0 },
+		{ limit: 101 },
+		{ search: 'x'.repeat(501) },
+		{ search: 'invoice\u0000draft' },
+		{ cursor: '' },
+	])('rejects %o', (query) => {
+		expect(InstanceAiThreadHistoryQuery.safeParse(query).success).toBe(false);
 	});
 });

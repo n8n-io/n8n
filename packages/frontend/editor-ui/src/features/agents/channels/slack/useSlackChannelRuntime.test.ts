@@ -28,7 +28,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
-		fetchAllCredentialsForWorkflow: mocks.fetchCredentials,
+		fetchUsableCredentials: mocks.fetchCredentials,
 		deleteCredential: vi.fn(),
 	}),
 }));
@@ -143,6 +143,11 @@ describe('useSlackChannelRuntime', () => {
 			const runtime = createRuntime();
 
 			await expect(runtime.connectManagerCredential(credentialId)).resolves.toBe(true);
+
+			expect(mocks.fetchCredentials).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				forAgent: true,
+			});
 
 			const expectedCredential = expect.objectContaining({ id: 'manager' });
 			if (credentialId) {

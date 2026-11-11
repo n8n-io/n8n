@@ -35,6 +35,7 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	lastSetupHint: undefined as unknown,
 	lastSkipAutoSelect: undefined as boolean | undefined,
 	lastPreferNewCredential: undefined as boolean | undefined,
+	lastCredentials: undefined as unknown,
 	lastCredentialHelp: undefined as
 		| ((credential: {
 				credentialType: string;
@@ -81,6 +82,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 				'instanceAiCredentialHelp',
 				'skipAutoSelect',
 				'preferNewCredential',
+				'credentials',
 			],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
@@ -88,6 +90,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
+				nodeCredentialsMock.lastCredentials = props.credentials;
 				nodeCredentialsMock.lastSkipAutoSelect = props.skipAutoSelect as boolean | undefined;
 				nodeCredentialsMock.lastPreferNewCredential = props.preferNewCredential as
 					| boolean
@@ -107,7 +110,10 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
 	const { computed } = await import('vue');
-	return { useInstanceAiAvailable: () => computed(() => true) };
+	return {
+		useInstanceAiAvailable: () => computed(() => true),
+		useInstanceAiReady: () => computed(() => true),
+	};
 });
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', async (importOriginal) => {
@@ -168,9 +174,8 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 
 	return {
 		sections: computed(() => [section]),
-		steps: computed(() => [{ kind: 'section', section }]),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => ({ kind: 'section', section })),
+		activeSection: computed(() => section),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({ [section.targetNodeName]: { typeformApi: 'cred-1' } }),
@@ -192,9 +197,7 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
 		isSectionSkipped: () => false,
-		isStepComplete: () => false,
-		isStepSkipped: () => false,
-		isStepHandled: () => false,
+		isSectionHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
@@ -334,6 +337,21 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(nodeCredentialsMock.lastSetupHint).toEqual(section.setupHint);
 	});
 
+	it('offers only the credentials the server listed, whatever the store holds', async () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'slackApi',
+			existingCredentials: [{ id: 'own', name: 'My Slack' }],
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastCredentials).toEqual([
+			expect.objectContaining({ id: 'own', name: 'My Slack', type: 'slackApi' }),
+		]);
+	});
+
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {
 		const section = makeWorkflowSetupSection({
 			id: 'Gemini:googlePalmApi',
@@ -444,6 +462,7 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 			'project-1',
 			'Where do I find the "fal.ai API key" for my "fal.ai API Key" credential?',
+			{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 			{ source: 'credential_edit', origin: 'internal' },
 			undefined,
 			undefined,

@@ -1,34 +1,39 @@
 <script lang="ts" setup>
-import type {
-	InstanceAiAgentNode,
-	InstanceAiTimelineEntry,
-	InstanceAiToolCallState,
-	TaskList,
+import {
+	appBlueprintSchema,
+	type AppBlueprint,
+	type InstanceAiAgentNode,
+	type InstanceAiTimelineEntry,
+	type InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
+	type TimelineBlock,
 } from '../agentTimeline.utils';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
+import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
-import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
+import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
+import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
 const thread = useThread();
-const telemetry = useTelemetry();
-const rootStore = useRootStore();
+const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -86,11 +91,29 @@ const props = withDefaults(
 		compact?: boolean;
 		/** When provided, renders only these entries instead of the full timeline. */
 		visibleEntries?: InstanceAiTimelineEntry[];
+		/** The message this timeline belongs to — cards act only on the latest turn. */
+		messageId?: string;
+		/** The run this timeline belongs to — cards append their facts to it. */
+		runId?: string;
 	}>(),
 	{
 		compact: false,
 		visibleEntries: undefined,
+		messageId: undefined,
+		runId: undefined,
 	},
+);
+
+/**
+ * A preference card acts only from the transcript tail, and only when the
+ * message carries the run the endpoints must append the card fact to. A later
+ * turn strands the card.
+ */
+const canActOnPreferenceCard = computed(
+	() =>
+		props.runId !== undefined &&
+		props.messageId !== undefined &&
+		props.messageId === thread.messages.at(-1)?.id,
 );
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
@@ -113,6 +136,20 @@ const childrenById = computed(() => {
 	return map;
 });
 
+/**
+ * Changes whenever the run visibly advances: a new run, a new timeline entry,
+ * or the tail entry growing. Drives the activity indicator's clock — an
+ * entry-derived key can't, because the tail entry's identity is stable while
+ * its content streams.
+ */
+const progressToken = computed(() => {
+	const entries = timelineEntries.value;
+	const tail = entries.at(-1);
+	const tailSize =
+		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
+	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
+});
+
 const renderBlocks = computed(() =>
 	buildTimelineBlocks(
 		timelineEntries.value,
@@ -122,40 +159,117 @@ const renderBlocks = computed(() =>
 	),
 );
 
-function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
-	return (
-		tc.confirmation?.planItems ??
-		(tc.args?.tasks as PlannedTaskArg[] | undefined) ??
-		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
-		[]
+/** The host page already shows its subject, so a card for it is redundant. */
+function visibleArtifacts(artifacts: ArtifactInfo[]): ArtifactInfo[] {
+	return artifacts.filter(
+		(artifact) => !isEmbedSubject(embedSubject?.value, artifact.type, artifact.resourceId),
 	);
 }
 
-function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
-	const requestId = tc.confirmation?.requestId;
-	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
+function blockToolCalls(block: TimelineBlock): InstanceAiToolCallState[] {
+	// A finish-setup call that ends on its questions phase renders as a questions block.
+	if (block.type === 'questions') return [block.toolCall];
+	if (block.type !== 'thinking') return [];
+	return block.entries.flatMap((entry) =>
+		entry.type === 'tool-call' && toolCallsById.value[entry.toolCallId]
+			? [toolCallsById.value[entry.toolCallId]]
+			: [],
+	);
+}
 
-	if (localStatus === 'approved' || tc.confirmationStatus === 'approved') return 'approved';
-	if (localStatus === 'denied') return 'denied';
-	// `confirmationStatus === 'denied'` covers re-renders where the local action
-	// was lost (e.g. page reload): default to changes-requested since
-	// create-tasks emits a revised plan card on top of the old one in that flow.
-	if (localStatus === 'changes-requested' || tc.confirmationStatus === 'denied') {
-		return 'changes-requested';
+/**
+ * Workflows and Agents built by this agent's own tool calls, keyed by the
+ * thinking or questions block that built them. A workflow card shows only in the embedded
+ * panel, because the full view opens the built workflow in its preview panel.
+ * An Agent card shows in both views, after the last block that changed it,
+ * once the run settles: mid-build the preview tab shows progress, and the
+ * block the card anchors to can still change.
+ */
+const builtArtifactsByBlock = computed(() => {
+	const byBlock = new Map<string, ArtifactInfo[]>();
+	if (props.visibleEntries) return byBlock;
+
+	const showAgentCards = props.agentNode.status !== 'active';
+	const seenWorkflowIds = new Set<string>();
+	const latestAgents = new Map<string, { blockKey: string; artifact: ArtifactInfo }>();
+	for (const block of renderBlocks.value) {
+		const toolCalls = blockToolCalls(block);
+		if (toolCalls.length === 0) continue;
+
+		if (embedSubject) {
+			const workflows = visibleArtifacts(extractBuiltWorkflowArtifacts(toolCalls)).filter(
+				(artifact) => !seenWorkflowIds.has(artifact.resourceId),
+			);
+			for (const artifact of workflows) seenWorkflowIds.add(artifact.resourceId);
+			if (workflows.length > 0) byBlock.set(block.key, workflows);
+		}
+
+		if (!showAgentCards) continue;
+		for (const artifact of visibleArtifacts(extractBuiltAgentArtifacts(toolCalls))) {
+			const previous = latestAgents.get(artifact.resourceId)?.artifact;
+			latestAgents.set(artifact.resourceId, {
+				blockKey: block.key,
+				artifact: { ...artifact, projectId: artifact.projectId ?? previous?.projectId },
+			});
+		}
 	}
 
-	return 'pending';
+	for (const { blockKey, artifact } of latestAgents.values()) {
+		byBlock.set(blockKey, [...(byBlock.get(blockKey) ?? []), artifact]);
+	}
+	return byBlock;
+});
+
+function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
+	if (block.type === 'child') return visibleArtifacts(extractArtifacts(block.child));
+	return builtArtifactsByBlock.value.get(block.key) ?? [];
 }
 
-function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId || getPlanReviewStatus(tc) !== 'changes-requested') return false;
-	return thread.updatingPlanRequestIds.has(requestId);
-}
+type AnswerItem =
+	| { type: 'artifact'; key: string; artifact: ArtifactInfo }
+	| Extract<TimelineBlock, { type: 'text' }>;
+
+type RenderGroup =
+	| { type: 'activity'; key: string; block: TimelineBlock }
+	| { type: 'answer'; key: string; items: AnswerItem[] };
+
+/** Keep cards and adjacent answer text together without changing activity spacing. */
+const renderGroups = computed(() => {
+	const groups: RenderGroup[] = [];
+
+	function appendAnswerItem(item: AnswerItem) {
+		const previous = groups.at(-1);
+		if (previous?.type === 'answer') {
+			previous.items.push(item);
+		} else {
+			groups.push({ type: 'answer', key: item.key, items: [item] });
+		}
+	}
+
+	for (const block of renderBlocks.value) {
+		if (block.type === 'text') {
+			appendAnswerItem(block);
+			continue;
+		}
+
+		groups.push({ type: 'activity', key: block.key, block });
+		if (block.type === 'child' && props.visibleEntries) continue;
+
+		for (const artifact of blockArtifacts(block)) {
+			appendAnswerItem({
+				type: 'artifact',
+				key: `${block.key}-${artifact.resourceId}`,
+				artifact,
+			});
+		}
+	}
+
+	return groups;
+});
 
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. Without the resolvedConfirmationIds
- *  check, a freshly-loading create-tasks call could briefly re-enable the old
+ *  check, a freshly-loading tool call could briefly re-enable the old
  *  card's footer (toolCall.isLoading flips back to true on tool-call-start
  *  before the previous card's read-only catches up). */
 function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
@@ -164,152 +278,105 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
-function handlePlanApprove(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId) return;
+/** Approval went through, but n8n could not create the app. */
+function hasAppCreateError(tc: InstanceAiToolCallState): boolean {
+	return isRecord(tc.result) && tc.result.approved === true && typeof tc.result.error === 'string';
+}
 
-	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
-		input_thread_id: tc.confirmation?.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'plan-review',
-		provided_inputs: [
-			{
-				label: 'plan',
-				options: ['approve', 'ask-for-edits', 'deny'],
-				option_chosen: 'approve',
-			},
-		],
-		skipped_inputs: [],
-		num_tasks: getPlanTasks(tc).length,
-		plan_feedback_type: 'accept',
-	});
-
-	thread.resolveConfirmation(requestId, 'approved');
-	if (thread.activePlanEdit?.requestId === requestId) {
-		thread.cancelPlanEdit();
+function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefined {
+	if (isRecord(tc.result)) {
+		const parsed = appBlueprintSchema.safeParse(tc.result.blueprint);
+		if (parsed.success) return parsed.data;
 	}
-	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId || isCardReadOnly(tc)) return;
-
-	thread.startPlanEdit({
-		requestId,
-		inputThreadId: tc.confirmation?.inputThreadId,
-		taskCount: getPlanTasks(tc).length,
-	});
-}
-
-function handlePlanDeny(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId) return;
-
-	const numTasks = getPlanTasks(tc).length;
-	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
-		input_thread_id: tc.confirmation?.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'plan-review',
-		provided_inputs: [
-			{
-				label: 'plan',
-				options: ['approve', 'ask-for-edits', 'deny'],
-				option_chosen: 'deny',
-			},
-		],
-		skipped_inputs: [],
-		num_tasks: numTasks,
-		plan_feedback_type: 'deny',
-	});
-
-	if (thread.activePlanEdit?.requestId === requestId) {
-		thread.cancelPlanEdit();
-	}
-	thread.resolveConfirmation(requestId, 'denied');
-	void thread.confirmAction(requestId, { kind: 'planDeny' });
-}
-
-/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
-function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
-	if (!tasks?.tasks?.length) return undefined;
-	return tasks.tasks.map((t) => ({
-		id: t.id,
-		title: t.description,
-		kind: '',
-		spec: '',
-		deps: [],
-	}));
+	return tc.confirmation?.appBlueprint;
 }
 </script>
 
 <template>
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
-		<template v-for="block in renderBlocks" :key="block.key">
-			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-			<ThinkingBlock
-				v-if="block.type === 'thinking'"
-				:agent-node="props.agentNode"
-				:entries="block.entries"
-				:active="block.active"
-				:awaiting-input="block.active && thread.isAwaitingConfirmation"
-			/>
-
-			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
-			<TimelineTextSegment
-				v-else-if="block.type === 'text'"
-				:entry="block.entry"
-				:compact="props.compact"
-				:streaming="isStreamingTimelineEntry(props.agentNode, block.entry)"
-				:class="$style.timelineItem"
-			/>
-
-			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
-
-			<PlanReviewPanel
-				v-else-if="block.type === 'plan-review'"
-				:key="block.toolCall.confirmation?.requestId"
-				:planned-tasks="getPlanTasks(block.toolCall)"
-				:status="getPlanReviewStatus(block.toolCall)"
-				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation?.expired"
-				@approve="handlePlanApprove(block.toolCall)"
-				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
-				@deny="handlePlanDeny(block.toolCall)"
-			/>
-
-			<InstanceAiMcpConnect
-				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
-				:key="block.toolCall.confirmation.requestId"
-				:request-id="block.toolCall.confirmation.requestId"
-				:input-thread-id="block.toolCall.confirmation.inputThreadId"
-				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
-				:read-only="isCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation.expired"
-			/>
-
-			<!-- Answered questions (read-only after resolution) -->
-			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
-
-			<!-- Child agent — flat section -->
-			<template v-else-if="block.type === 'child'">
-				<AgentSection :agent-node="block.child" />
-
-				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
-				<template v-if="!props.visibleEntries">
+		<template v-for="group in renderGroups" :key="group.key">
+			<div v-if="group.type === 'answer'" :class="$style.answerGroup">
+				<template v-for="item in group.items" :key="item.key">
 					<ArtifactCard
-						v-for="artifact in extractArtifacts(block.child)"
-						:key="artifact.resourceId"
-						:type="artifact.type"
-						:name="resolveArtifactName(artifact)"
-						:resource-id="artifact.resourceId"
-						:project-id="artifact.projectId"
-						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-						:metadata="formatArtifactMetadata(artifact)"
+						v-if="item.type === 'artifact'"
+						:type="item.artifact.type"
+						:name="resolveArtifactName(item.artifact)"
+						:resource-id="item.artifact.resourceId"
+						:project-id="item.artifact.projectId"
+						:archived="thread.producedArtifacts.get(item.artifact.resourceId)?.archived"
+						:metadata="formatArtifactMetadata(item.artifact)"
 					/>
+					<TimelineTextSegment
+						v-else
+						:entry="item.entry"
+						:compact="props.compact"
+						:streaming="isStreamingTimelineEntry(props.agentNode, item.entry)"
+						:class="$style.timelineItem"
+					/>
+				</template>
+			</div>
+			<template v-else>
+				<template v-for="block in [group.block]" :key="block.key">
+					<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
+					<template v-if="block.type === 'thinking'">
+						<ThinkingBlock
+							:agent-node="props.agentNode"
+							:entries="block.entries"
+							:active="block.active"
+							:awaiting-input="block.active && thread.isAwaitingConfirmation"
+						/>
+					</template>
+
+					<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
+
+					<InstanceAiMcpConnect
+						v-else-if="
+							block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest
+						"
+						:key="block.toolCall.confirmation.requestId"
+						:request-id="block.toolCall.confirmation.requestId"
+						:input-thread-id="block.toolCall.confirmation.inputThreadId"
+						:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+						:read-only="isCardReadOnly(block.toolCall)"
+						:expired="block.toolCall.confirmation.expired"
+					/>
+
+					<InstanceAiAppBlueprint
+						v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
+						:key="block.toolCall.confirmation.requestId"
+						:request-id="block.toolCall.confirmation.requestId"
+						:input-thread-id="block.toolCall.confirmation.inputThreadId"
+						:blueprint="resolveAppBlueprint(block.toolCall)!"
+						:errors="block.toolCall.confirmation.appBlueprintErrors"
+						:failed="hasAppCreateError(block.toolCall)"
+						:read-only="isCardReadOnly(block.toolCall)"
+						:expired="block.toolCall.confirmation.expired"
+					/>
+
+					<!-- Answered questions (read-only after resolution) -->
+					<template v-else-if="block.type === 'questions'">
+						<AnsweredQuestions :tool-call="block.toolCall" />
+					</template>
+
+					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
+					<PreferenceCard
+						v-else-if="block.type === 'preference'"
+						:tool-call="block.toolCall"
+						:run-id="props.runId ?? ''"
+						:read-only="!canActOnPreferenceCard"
+						:class="$style.timelineItem"
+					/>
+
+					<!-- The run is live but a committed answer settled the block behind it -->
+					<TimelineActivityIndicator
+						v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+						:progress-token="progressToken"
+					/>
+
+					<!-- Child agent — flat section -->
+					<template v-else-if="block.type === 'child'">
+						<AgentSection :agent-node="block.child" />
+					</template>
 				</template>
 			</template>
 		</template>
@@ -318,14 +385,25 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <style lang="scss" module>
 .timeline {
-	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
+	/** Keep the activity rail extension equal to the gap between blocks. */
 	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
 	gap: var(--n8n--ai-activity-step-gap);
 }
 
-.timelineItem {
-	max-width: 90%;
+.answerGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	margin-block: calc(var(--spacing--sm) - var(--n8n--ai-activity-step-gap));
+
+	&:first-child {
+		margin-top: 0;
+	}
+
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 </style>

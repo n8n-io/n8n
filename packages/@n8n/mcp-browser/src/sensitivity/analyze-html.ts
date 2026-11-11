@@ -8,10 +8,13 @@ import {
 	hasButtonMatching,
 	highEntropyCandidates,
 	isSensitiveInput,
+	isSecretLabelledCell,
+	opaqueFieldValues,
+	opaqueTokenCandidates,
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
-	sensitiveInputValues,
+	sensitiveFieldHits,
 	SENSITIVE_ARIA_LABEL_PATTERN,
 	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
@@ -61,20 +64,30 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 				getAssociatedLabelText(field, document, labelsByControlIdMap),
 			);
 		if (!sensitive) continue;
-		for (const value of sensitiveInputValues(field)) {
-			collectHit(hits, { type: 'password', value });
-		}
+		for (const hit of sensitiveFieldHits(field)) collectHit(hits, hit);
+	}
+
+	// A console renders an issued credential as static text beside its label, with
+	// no input to key off. A conservative first cut: div-soup rows, a second `dd`
+	// under one `dt`, and `thead` column headers are all still uncovered.
+	for (const cell of Array.from(document.querySelectorAll('dd, td'))) {
+		if (!isSecretLabelledCell(cell)) continue;
+		for (const hit of opaqueTokenCandidates(cell)) collectHit(hits, hit);
 	}
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often
 	// rendered once with copy affordances and explanatory text.
+	// Both signals read attributes or child controls rather than the dialog's own
+	// text, so a dialog holding only the field and an icon-only copy control still
+	// confirms. No text means no phrase and no entropy candidates, which the two
+	// passes below already report as nothing.
 	for (const dialog of Array.from(document.querySelectorAll('[role="dialog"], dialog[open]'))) {
 		const text = elementText(dialog);
-		if (!text) continue;
 		const hasRevealPhrase = REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(text));
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
 		for (const hit of highEntropyCandidates(text)) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(dialog)) collectHit(hits, hit);
 	}
 
 	// Product UIs frequently label secret containers with test IDs even when the
@@ -109,6 +122,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
 		for (const hit of highEntropyCandidates(elementText(container))) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(container)) collectHit(hits, hit);
 	}
 
 	// Monospace tokens inside a nearby sensitive ancestor are common in API-key

@@ -8,6 +8,7 @@ export {
 	DAYTONA_WORKSPACE_ROOT,
 	N8N_SANDBOX_HOME,
 	N8N_SANDBOX_WORKSPACE_ROOT,
+	PORTABLE_WORKSPACE_ROOT,
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
 	type SandboxWorkspace,
@@ -20,6 +21,10 @@ export {
 export { loadDaytona } from './lazy-daytona';
 export { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 export { createFilesystem, createSandbox } from './create-workspace';
+export type {
+	BaseFilesystemOptions,
+	FilesystemLifecycleHook,
+} from '../filesystem/base-filesystem';
 export type {
 	CommandResult,
 	CopyOptions,

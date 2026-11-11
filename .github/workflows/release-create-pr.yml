@@ -14,6 +14,12 @@ on:
         required: true
         type: string
 
+      prerelease:
+        description: 'Publish without promoting release channels or running stable release maintenance.'
+        required: false
+        type: boolean
+        default: false
+
     outputs:
       pull-request-number:
         description: 'Number of the created pull request'
@@ -38,12 +44,36 @@ on:
           - experimental
           - premajor
 
-permissions:
-  contents: write
-  pull-requests: write
+      prerelease:
+        description: 'Publish without promoting release channels or running stable release maintenance.'
+        type: boolean
+        default: false
+
+permissions: {}
 
 jobs:
+  resolve-release-base:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout release base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.base-branch }}
+          persist-credentials: false
+
+      - name: Resolve base commit
+        id: resolve
+        run: |
+          BASE_SHA="$(git rev-parse HEAD)"
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
   create-release-pr:
+    needs: [resolve-release-base, verify-single-instance-npm-full]
     runs-on: ubuntu-latest
 
     permissions:
@@ -56,6 +86,24 @@ jobs:
       pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
     steps:
+      - name: Validate release inputs
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          if [ "$PRERELEASE" != "true" ]; then
+            exit 0
+          fi
+          if [ "$BASE_BRANCH" != "3.x" ]; then
+            echo "::error::Standalone prereleases must use the 3.x base branch."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TYPE" =~ ^(major|minor|patch)$ ]]; then
+            echo "::error::Standalone prereleases only support major, minor, or patch release types."
+            exit 1
+          fi
+
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -64,23 +112,23 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
+      # Switch to the verified commit in a separate step to keep checkout ref handling safe.
       # poutine: untrusted_checkout_exec
-      - name: Switch to base branch
+      - name: Switch to base commit
         env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
-        run: git checkout "$BASE_BRANCH"
+          BASE_SHA: ${{ needs.resolve-release-base.outputs.sha }}
+        run: git checkout --detach "$BASE_SHA"
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Bump package versions
@@ -102,26 +150,31 @@ jobs:
 
       - name: Push the base branch
         env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
+          BASE_SHA: ${{ needs.resolve-release-base.outputs.sha }}
         run: |
-          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
+          git push -f origin "$BASE_SHA:refs/heads/release/$NEXT_RELEASE"
 
       - name: Generate PR body
         id: generate-body
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -e
           CHANGELOG_FILE="CHANGELOG-${{ env.NEXT_RELEASE }}.md"
           DELIMITER="EOF_$(uuidgen)"
 
-          if [ -f "${CHANGELOG_FILE}" ]; then
-            {
-              echo "content<<${DELIMITER}"
+          {
+            echo "content<<${DELIMITER}"
+            if [ "$PRERELEASE" = "true" ]; then
+              echo '<!-- release-prerelease -->'
+            fi
+            if [ -f "${CHANGELOG_FILE}" ]; then
               cat "${CHANGELOG_FILE}"
-              echo "${DELIMITER}"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "content=No changelog generated. Likely points to fixes in our CI." >> "$GITHUB_OUTPUT"
-          fi
+            else
+              echo 'No changelog generated. Likely points to fixes in our CI.'
+            fi
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
@@ -133,26 +186,32 @@ jobs:
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
           labels: release,release:${{ inputs.release-type }},automation:release
-          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          title: "${{ inputs.prerelease && ':rocket: Pre-release' || ':rocket: Release' }} ${{ env.NEXT_RELEASE }}"
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+      enable-automerge: true
 
-  # Packs every publishable package, so it only runs at release prep, in parallel with the PR.
+  # Verify every publishable package before creating the release PR.
   verify-single-instance-npm-full:
     name: Verify single-instance deps (npm-install, full)
+    needs: [resolve-release-base]
     uses: ./.github/workflows/test-single-instance-npm.yml
     permissions:
       contents: read
     with:
       scope: all
-      # Profile the release being prepared, not this workflow's triggering revision.
-      base-branch: ${{ inputs.base-branch }}
+      blocking: true
+      # Verify the same commit that release preparation will use.
+      base-branch: ${{ needs.resolve-release-base.outputs.sha }}
       timeout-minutes: 30

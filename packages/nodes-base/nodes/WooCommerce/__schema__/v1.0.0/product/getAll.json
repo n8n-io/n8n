@@ -307,6 +307,9 @@
         "post_password": {
             "type": "string"
         },
+        "price": {
+            "type": "string"
+        },
         "price_html": {
             "type": "string"
         },
@@ -412,5 +415,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

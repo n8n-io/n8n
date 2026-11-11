@@ -1,4 +1,9 @@
-import { convertFileToBinaryData, getBinaryDataFileName } from '@/app/utils/fileUtils';
+import {
+	base64ToFile,
+	convertFileToBinaryData,
+	getBinaryDataFileName,
+	resolveFileMimeType,
+} from '@/app/utils/fileUtils';
 
 describe('getBinaryDataFileName', () => {
 	it('keeps a name that already carries the extension', () => {
@@ -27,6 +32,7 @@ describe('convertFileToBinaryData', () => {
 		['README', 'text/plain', undefined, 'text'],
 		['.env', 'text/plain', undefined, 'text'],
 		['README', '', undefined, undefined],
+		['notes.md', '', 'md', 'text'],
 		['archive.tar.gz', 'application/gzip', 'gz', undefined],
 		['data.json', 'application/json', 'json', 'json'],
 		['page.html', 'text/html', 'html', 'html'],
@@ -56,6 +62,25 @@ describe('convertFileToBinaryData', () => {
 		});
 	});
 
+	it('uses the Markdown MIME type when the browser does not supply one', async () => {
+		const file = new File(['hello'], 'notes.md');
+
+		expect(await convertFileToBinaryData(file)).toEqual(
+			expect.objectContaining({ mimeType: 'text/markdown', fileType: 'text' }),
+		);
+	});
+
+	it('maps a CSV to text/csv when the browser reports Excel or no MIME type', async () => {
+		expect(
+			await convertFileToBinaryData(
+				new File(['a,b'], 'data.csv', { type: 'application/vnd.ms-excel' }),
+			),
+		).toEqual(expect.objectContaining({ mimeType: 'text/csv' }));
+		expect(await convertFileToBinaryData(new File(['a,b'], 'data.csv'))).toEqual(
+			expect.objectContaining({ mimeType: 'text/csv' }),
+		);
+	});
+
 	it('rejects when the file cannot be read', async () => {
 		vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader) {
 			this.onerror?.(new ProgressEvent('error') as ProgressEvent<FileReader>);
@@ -64,5 +89,44 @@ describe('convertFileToBinaryData', () => {
 		await expect(convertFileToBinaryData(new File([], 'README'))).rejects.toThrow(
 			'Failed to convert file to binary data',
 		);
+	});
+});
+
+describe('base64ToFile', () => {
+	it('round-trips the bytes, name, and type of a file', async () => {
+		const original = new File(['héllo, world'], 'note.txt', { type: 'text/plain' });
+		const encoded = await convertFileToBinaryData(original);
+
+		const decoded = base64ToFile(encoded.data, 'note.txt', 'text/plain');
+
+		expect(decoded.name).toBe('note.txt');
+		expect(decoded.type).toBe('text/plain');
+		expect((await convertFileToBinaryData(decoded)).data).toBe(encoded.data);
+	});
+});
+
+describe('resolveFileMimeType', () => {
+	it('keeps the type that the browser reports', () => {
+		expect(resolveFileMimeType('photo.png', 'image/png')).toBe('image/png');
+	});
+
+	it.each(['', 'application/vnd.ms-excel', 'application/octet-stream'])(
+		'reports a CSV file with the type "%s" as text/csv',
+		(mimeType) => {
+			expect(resolveFileMimeType('Data.CSV', mimeType)).toBe('text/csv');
+		},
+	);
+
+	it('keeps a specific type of a CSV file', () => {
+		expect(resolveFileMimeType('data.csv', 'text/plain')).toBe('text/plain');
+	});
+
+	it('detects Markdown from the extension when the type is empty', () => {
+		expect(resolveFileMimeType('notes.md', '')).toBe('text/markdown');
+		expect(resolveFileMimeType('notes.markdown', '')).toBe('text/markdown');
+	});
+
+	it('gives an empty type for an unknown file without a type', () => {
+		expect(resolveFileMimeType('archive.bin', '')).toBe('');
 	});
 });

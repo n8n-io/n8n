@@ -6,6 +6,7 @@ import {
 	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 } from '@/app/constants';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -17,7 +18,7 @@ import type {
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -28,6 +29,7 @@ import {
 	type ViewportTransform,
 } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
+import { isRecord } from '@n8n/utils/is-record';
 
 /*
  * Canvas constants and functions
@@ -42,10 +44,6 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
-// Rendered size of the v2 AI Agent canvas card. CanvasNodeAgent.vue binds its
-// width from here; the height is content-driven, so [1] is only a layout
-// fallback estimate used before the card has been measured.
-export const AGENT_NODE_SIZE: [number, number] = [GRID_SIZE * 20, GRID_SIZE * 8];
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
@@ -164,44 +162,14 @@ export const doRectsOverlap = (
 	);
 };
 
-/**
- * Returns the closest number divisible by the given number
- */
-const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
-	const quotient = Math.ceil(inputNumber / divisibleBy);
-
-	// 1st possible closest number
-	const inputNumber1 = divisibleBy * quotient;
-
-	// 2nd possible closest number
-	const inputNumber2 =
-		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
-
-	// if true, then inputNumber1 is the required closest number
-	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
-		return inputNumber1;
-	}
-
-	// else inputNumber2 is the required closest number
-	return inputNumber2;
-};
-
 export function snapPositionToGrid(position: XYPosition): XYPosition {
-	return [
-		closestNumberDivisibleBy(position[0], GRID_SIZE),
-		closestNumberDivisibleBy(position[1], GRID_SIZE),
-	];
+	return [snapToGrid(position[0]), snapToGrid(position[1])];
 }
 
-export function snapPositionToGridByCenter(
-	position: XYPosition,
-	[nodeWidth, nodeHeight]: [number, number],
-): XYPosition {
-	const snappedCenter: XYPosition = [
-		Math.round((position[0] + nodeWidth / 2) / GRID_SIZE) * GRID_SIZE,
-		Math.round((position[1] + nodeHeight / 2) / GRID_SIZE) * GRID_SIZE,
-	];
-	return [snappedCenter[0] - nodeWidth / 2, snappedCenter[1] - nodeHeight / 2];
+export function snapToGrid(value: number): number {
+	const snapped = Math.round(value / GRID_SIZE) * GRID_SIZE;
+	// Turn -0 into 0 and keep NaN
+	return snapped === 0 ? 0 : snapped;
 }
 
 /**
@@ -222,7 +190,11 @@ export const getNewNodePosition = (
 		normalize?: boolean;
 	} = {},
 ): XYPosition => {
-	const resolvedOffset = snapPositionToGrid(offset);
+	// Step at least one grid cell, so that the conflict loop always moves the position
+	const resolvedOffset: XYPosition = [
+		Math.max(snapToGrid(offset[0]), GRID_SIZE),
+		Math.max(snapToGrid(offset[1]), GRID_SIZE),
+	];
 	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
@@ -681,4 +653,27 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/** True when the canvas paste handler can import the text: workflow JSON or a workflow URL. */
+export function isPastableWorkflowText(text: string): boolean {
+	if (VALID_WORKFLOW_IMPORT_URL_REGEX.test(text)) return true;
+	// Same structure check as importWorkflowData
+	const data = jsonParse<unknown>(text, { fallbackValue: null });
+	return isRecord(data) && 'nodes' in data && 'connections' in data;
+}
+
+/**
+ * Reads the clipboard only when the browser already granted access, so no prompt appears.
+ * Returns undefined when that is not possible (Firefox and Safari do not support this query).
+ */
+export async function readClipboardTextIfGranted(): Promise<string | undefined> {
+	try {
+		// 'clipboard-read' is a Chromium permission that the DOM types do not list
+		const status = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
+		if (status.state !== 'granted') return undefined;
+		return await navigator.clipboard.readText();
+	} catch {
+		return undefined;
+	}
 }

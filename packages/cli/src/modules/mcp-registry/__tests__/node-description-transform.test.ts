@@ -5,9 +5,14 @@ import {
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
+	githubUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -29,7 +34,12 @@ const baseDescription: INodeTypeDescription = {
 	outputs: [],
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
-		{ displayName: 'Endpoint URL', name: 'endpointUrl', type: 'hidden', default: '' },
+		{
+			displayName: 'Endpoint URL',
+			name: 'endpointUrl',
+			type: 'hidden',
+			default: '',
+		},
 		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
@@ -67,6 +77,9 @@ describe('serverToNodeDescription', () => {
 			version: 1,
 		});
 		expect(description?.hidden).toBeUndefined();
+		expect(description?.properties.find((p) => p.name === 'endpointUrl')?.default).toBe(
+			'https://mcp.notion.com/mcp',
+		);
 	});
 
 	it('prefers streamable-http when both remotes are available', () => {
@@ -76,14 +89,12 @@ describe('serverToNodeDescription', () => {
 			isKnownCredentialType,
 		);
 
-		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
 
 		expect(serverTransport?.default).toBe('httpStreamable');
-		expect(endpointUrl?.default).toBe('https://mcp.notion.com/mcp');
 	});
 
-	it('falls back to sse when only sse is available', () => {
+	it('fills the remote transport when only SSE is available', () => {
 		const sseOnlyServer: McpRegistryServer = {
 			...notionMockServer,
 			remotes: [{ type: 'sse', url: 'https://mcp.notion.com/sse' }],
@@ -95,11 +106,9 @@ describe('serverToNodeDescription', () => {
 			isKnownCredentialType,
 		);
 
-		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
 
 		expect(serverTransport?.default).toBe('sse');
-		expect(endpointUrl?.default).toBe('https://mcp.notion.com/sse');
 	});
 
 	it('returns null when no supported remote is available', () => {
@@ -254,7 +263,7 @@ describe('serverToNodeDescription', () => {
 		expect(baseDescription).toEqual(snapshot);
 	});
 
-	it('leaves properties other than endpointUrl and serverTransport untouched', () => {
+	it('leaves properties other than serverTransport untouched', () => {
 		const description = serverToNodeDescription(
 			notionMockServer,
 			baseDescription,
@@ -367,14 +376,96 @@ describe('serverToNodeDescription', () => {
 			expect(description?.credentials).toEqual([{ name: 'gmailMcpOAuth2Api', required: true }]);
 		});
 
-		it('omits credentials when the parent type is not registered', () => {
+		it('returns null when the parent type is not registered', () => {
 			const description = serverToNodeDescription(
 				gmailDirectExtendMockServer,
 				baseDescription,
 				() => false,
 			);
 
-			expect(description?.credentials).toEqual([]);
+			expect(description).toBeNull();
+		});
+	});
+
+	describe('with usesCredentials', () => {
+		it('adds an authentication selector and direct credential descriptions', () => {
+			const description = serverToNodeDescription(
+				githubUsesCredentialsMockServer,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api' || name === 'githubApi',
+			);
+
+			expect(description?.credentials).toEqual([
+				{
+					name: 'githubOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+				{
+					name: 'githubApi',
+					required: true,
+					displayOptions: { show: { authentication: ['accessToken'] } },
+				},
+			]);
+			expect(description?.properties[0]).toEqual({
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{ name: 'OAuth2', value: 'oAuth2' },
+					{ name: 'Access Token', value: 'accessToken' },
+				],
+				default: 'oAuth2',
+			});
+		});
+
+		it('uses a single credential without adding a selector', () => {
+			const server: McpRegistryServer = {
+				...githubUsesCredentialsMockServer,
+				usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+			};
+			const description = serverToNodeDescription(
+				server,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api',
+			);
+
+			expect(description?.credentials).toEqual([{ name: 'githubOAuth2Api', required: true }]);
+			expect(description?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		});
+
+		it('omits credential types that are not supported', () => {
+			const description = serverToNodeDescription(
+				githubUsesCredentialsMockServer,
+				baseDescription,
+				(name) => name === 'githubOAuth2Api',
+			);
+
+			expect(description?.credentials).toEqual([{ name: 'githubOAuth2Api', required: true }]);
+			expect(description?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		});
+
+		it('builds a tile for a templated streamable-http-templated remote, unresolved endpointUrl and all', () => {
+			const description = serverToNodeDescription(
+				databricksGenieTemplatedMockServer,
+				baseDescription,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([
+				{ name: 'databricksGenieMcpOAuth2Api', required: true },
+			]);
+
+			// The node's own endpointUrl parameter still gets patched with the raw
+			// template; the runtime never reads it once a credential serverUrl is
+			// resolvable (see McpRegistryClientTool), but the description build
+			// itself does not special-case a templated remote.
+			const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
+			const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
+			expect(serverTransport?.default).toBe('httpStreamable');
+			expect(endpointUrl?.default).toBe('={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie');
 		});
 	});
 });
@@ -433,6 +524,12 @@ describe('serverToCredentialDescription', () => {
 		expect(serverToCredentialDescription(unsupportedServer, isKnownCredentialType)).toBeNull();
 	});
 
+	it('does not create a synthetic credential for usesCredentials', () => {
+		expect(
+			serverToCredentialDescription(githubUsesCredentialsMockServer, isKnownCredentialType),
+		).toBeNull();
+	});
+
 	it('returns null when no remote is available', () => {
 		const noRemoteServer: McpRegistryServer = {
 			...notionMockServer,
@@ -489,6 +586,12 @@ describe('serverToCredentialDescription', () => {
 						name: 'authQueryParameters',
 						type: 'hidden',
 						default: '',
+					},
+					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
 					},
 					{
 						displayName: 'Allowed HTTP Request Domains',
@@ -563,10 +666,10 @@ describe('serverToCredentialDescription', () => {
 		});
 
 		it('returns null when authType is "extendsCredential" but the extendsCredential field is missing', () => {
-			const server: McpRegistryServer = {
+			const server = {
 				...slackExtendingMockServer,
 				extendsCredential: undefined,
-			};
+			} as unknown as McpRegistryServer;
 
 			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
 		});
@@ -608,6 +711,236 @@ describe('serverToCredentialDescription', () => {
 			const description = serverToCredentialDescription(server, isKnownCredentialType);
 
 			expect(description?.extends).toEqual(['mcpOAuth2Api']);
+		});
+
+		it('writes a $self-expression serverUrl and allowedDomains for a streamable-http-templated remote', () => {
+			const description = serverToCredentialDescription(
+				databricksGenieTemplatedMockServer,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).toEqual({
+				name: 'databricksGenieMcpOAuth2Api',
+				displayName: 'Databricks Genie One MCP OAuth2',
+				extends: ['databricksOAuth2Api'],
+				icon: 'node:@n8n/mcp-registry.databricksGenie',
+				properties: [
+					{ displayName: 'scope', name: 'scope', type: 'hidden', default: 'genie offline_access' },
+					{
+						displayName: 'grantType',
+						name: 'grantType',
+						type: 'hidden',
+						default: 'authorizationCode',
+					},
+					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
+					},
+					{
+						displayName: 'Server URL',
+						name: 'serverUrl',
+						type: 'hidden',
+						default: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+					},
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: '={{$self["host"].extractDomain()}}',
+					},
+				],
+			});
+		});
+	});
+
+	it('drops the row for a templated remote paired with plain oauth2 auth, no host-bearing field to resolve against', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http-templated', url: '={{$self["host"]}}/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+	});
+
+	it('drops the row when the remote type is unrecognised, the back-compat gate for future remote types', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'some-future-remote-type' as never, url: 'https://mcp.notion.com/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+	});
+
+	describe('back-compat: an old n8n instance loading a streamable-http-templated row', () => {
+		/**
+		 * Verbatim snapshot of pickRemote/resolveCredentialRemote as they shipped
+		 * before this ticket (commit e60c43112c3, the tip this feature branched
+		 * from). Neither function knows about `streamable-http-templated`, so this
+		 * proves the exact pre-existing code drops the row, not a stand-in that
+		 * merely resembles it. Two independent guards do the dropping, checked
+		 * separately below: the unrecognised-type match in pickRemote, and the
+		 * new URL() parse in resolveCredentialRemote, so a future change to
+		 * either one alone still leaves old instances safe.
+		 */
+		function oldPickRemote(
+			server: McpRegistryServer,
+		): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
+			const streamable = server.remotes.find((r) => r.type === 'streamable-http');
+			if (streamable) return { transport: 'httpStreamable', endpointUrl: streamable.url };
+
+			const sse = server.remotes.find((r) => r.type === 'sse');
+			if (sse) return { transport: 'sse', endpointUrl: sse.url };
+
+			return null;
+		}
+
+		function oldResolveCredentialRemote(
+			server: McpRegistryServer,
+		): { endpointUrl: string; hostname: string } | null {
+			const remote = oldPickRemote(server);
+			if (!remote) return null;
+			try {
+				return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
+			} catch {
+				return null;
+			}
+		}
+
+		it('old pickRemote never matches streamable-http-templated, so the row is invisible to it', () => {
+			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull();
+		});
+
+		it('even if a row used the plain streamable-http type with a template-string url, new URL() rejects it independently', () => {
+			const serverWithOldTypeName: McpRegistryServer = {
+				...databricksGenieTemplatedMockServer,
+				remotes: databricksGenieTemplatedMockServer.remotes.map((remote) => ({
+					...remote,
+					type: 'streamable-http',
+				})),
+			};
+
+			expect(oldResolveCredentialRemote(serverWithOldTypeName)).toBeNull();
+		});
+
+		it('the current, patched code builds a tile old code could never build for the same row', () => {
+			expect(
+				serverToCredentialDescription(
+					databricksGenieTemplatedMockServer,
+					(name) => name === 'databricksOAuth2Api',
+				),
+			).not.toBeNull(); // current code DOES build a tile once the parent credential is known...
+			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull(); // ...but old code drops it regardless
+		});
+	});
+});
+
+describe('Gateway credits MCP server', () => {
+	it('loads as a node with one credential type that has no base type and no fields', () => {
+		const node = serverToNodeDescription(
+			firecrawlAiGatewayMockServer,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const credential = serverToCredentialDescription(
+			firecrawlAiGatewayMockServer,
+			isKnownCredentialType,
+		);
+
+		expect(node?.credentials).toEqual([
+			{ name: 'n8nConnectFirecrawlMcpAiGatewayApi', required: true },
+		]);
+		expect(node?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		expect(credential).toEqual({
+			name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			icon: 'node:@n8n/mcp-registry.n8nConnectFirecrawl',
+			displayName: 'Firecrawl Gateway credits',
+			hidden: true,
+			properties: [],
+		});
+	});
+});
+
+describe('a server paired with its AI Gateway twin', () => {
+	it('offers Gateway credits first, keeps the own option as the default, and hides the AI Gateway node', () => {
+		const [twin, aiGatewayRow] = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer],
+			() => true,
+		);
+
+		const twinNode = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const aiGatewayNode = serverToNodeDescription(
+			aiGatewayRow,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+
+		expect(twinNode?.credentials).toEqual([
+			{
+				name: 'firecrawlMcpOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
+			},
+			{
+				name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				required: true,
+				displayOptions: { show: { authentication: ['aiGateway'] } },
+			},
+		]);
+		expect(twinNode?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'OAuth2', value: 'oAuth2' },
+			],
+			default: 'oAuth2',
+		});
+		expect(aiGatewayNode?.hidden).toBe(true);
+	});
+
+	it('keeps the supported own credential as the default when the first registry option is unknown', () => {
+		const [twin] = pairAiGatewayServers(
+			[
+				{
+					...firecrawlMockServer,
+					authType: 'usesCredentials',
+					usesCredentials: [
+						{ credentialType: 'unknownApi', name: 'Unknown', value: 'unknown' },
+						{ credentialType: 'firecrawlApi', name: 'API key', value: 'apiKey' },
+					],
+				},
+				firecrawlAiGatewayMockServer,
+			],
+			() => true,
+		);
+
+		const node = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			(name) => name !== 'unknownApi',
+		);
+
+		expect(node?.credentials?.[0]).toEqual({
+			name: 'firecrawlApi',
+			required: true,
+			displayOptions: { show: { authentication: ['apiKey'] } },
+		});
+		expect(node?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'API key', value: 'apiKey' },
+			],
+			default: 'apiKey',
 		});
 	});
 });

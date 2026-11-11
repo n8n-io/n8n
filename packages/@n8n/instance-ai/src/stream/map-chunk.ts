@@ -1,28 +1,31 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+	unwrapToolCatalogCall,
+	instanceAiApprovalDetailsSchema,
+	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
-	taskListSchema,
-	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	skillUpdatePayloadSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
+	credentialDestinationSchema,
+	testListenerCardSchema,
+	appBlueprintErrorsSchema,
+	appBlueprintSchema,
+	confirmationInputTypeSchema,
+	type InstanceAiEvent,
+	type InstanceAiConfirmationInputType,
 } from '@n8n/api-types';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
-
-const questionItemSchema = z.object({
-	id: z.string(),
-	question: z.string(),
-	type: z.enum(['single', 'multi', 'text']),
-	options: z.array(z.string()).optional(),
-});
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
@@ -213,13 +216,19 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
-type ConfirmationInputType =
-	| 'approval'
-	| 'text'
-	| 'questions'
-	| 'plan-review'
-	| 'resource-decision'
-	| 'continue';
+/**
+ * The tool and arguments for a tool event. A tool catalog `call_tool` call reports
+ * the tool it runs, so the UI labels and renders the real tool.
+ */
+function displayedToolCall(
+	toolName: unknown,
+	input: unknown,
+): { toolName: string; args: Record<string, unknown> } {
+	return unwrapToolCatalogCall(
+		typeof toolName === 'string' ? toolName : '',
+		isRecord(input) ? input : {},
+	);
+}
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -247,19 +256,9 @@ function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
 	return (valid as readonly string[]).includes(raw) ? (raw as (typeof valid)[number]) : 'warning';
 }
 
-function parseInputType(value: unknown): ConfirmationInputType | undefined {
-	const raw = typeof value === 'string' ? value : undefined;
-	const valid = [
-		'approval',
-		'text',
-		'questions',
-		'plan-review',
-		'resource-decision',
-		'continue',
-	] as const;
-	return (valid as readonly string[]).includes(raw ?? '')
-		? (raw as (typeof valid)[number])
-		: undefined;
+function parseInputType(value: unknown): InstanceAiConfirmationInputType | undefined {
+	const parsed = confirmationInputTypeSchema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
 }
 
 function parseDomainAccess(value: unknown): { url: string; host: string } | undefined {
@@ -285,11 +284,7 @@ function mapToolCallChunk(
 	return {
 		type: 'tool-call',
 		...base,
-		payload: {
-			toolCallId: chunk.toolCallId,
-			toolName: chunk.toolName,
-			args: isRecord(chunk.input) ? chunk.input : {},
-		},
+		payload: { toolCallId: chunk.toolCallId, ...displayedToolCall(chunk.toolName, chunk.input) },
 	};
 }
 
@@ -324,6 +319,7 @@ function mapSuspendedChunk(
 			: toolCallId;
 
 	if (!requestId || !toolCallId) return null;
+	const call = displayedToolCall(chunk.toolName, chunk.input);
 
 	const credentialRequests = parseSchemaArray(
 		suspendPayload.credentialRequests,
@@ -332,15 +328,22 @@ function mapSuspendedChunk(
 	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
-	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
+	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
-	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
-	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceName = presentString(suspendPayload.resourceName);
+	const approvalDetails = parseSchemaRecord(
+		suspendPayload.approvalDetails,
+		instanceAiApprovalDetailsSchema,
+	);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -350,7 +353,16 @@ function mapSuspendedChunk(
 		suspendPayload.mcpConnectRequest,
 		mcpConnectRequestSchema,
 	);
-	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
+	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
+	const appBlueprintErrors = parseSchemaRecord(
+		suspendPayload.appBlueprintErrors,
+		appBlueprintErrorsSchema,
+	);
+	// A test run of the target Agent pauses for the target's own tool approvals.
+	const isTargetTestRun =
+		resolveBuilderToolName(call.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
+	const targetApprovalResult = isTargetTestRun
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
 	const targetApproval = targetApprovalResult?.success
@@ -369,8 +381,8 @@ function mapSuspendedChunk(
 		payload: {
 			requestId,
 			toolCallId,
-			toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
-			args: isRecord(chunk.input) ? chunk.input : {},
+			toolName: call.toolName,
+			args: call.args,
 			severity: parseSeverity(suspendPayload.severity),
 			message:
 				typeof suspendPayload.message === 'string'
@@ -384,15 +396,19 @@ function mapSuspendedChunk(
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
+			...(resourceName ? { resourceName } : {}),
+			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
-			...(tasks ? { tasks } : {}),
-			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
+			...(testListener ? { testListener } : {}),
+			...(appBlueprint ? { appBlueprint } : {}),
+			...(appBlueprintErrors ? { appBlueprintErrors } : {}),
 		},
 	};
 }
@@ -404,8 +420,7 @@ function toolCallFromContent(part: unknown, base: EventBase): InstanceAiEvent | 
 		...base,
 		payload: {
 			toolCallId: typeof part.toolCallId === 'string' ? part.toolCallId : '',
-			toolName: typeof part.toolName === 'string' ? part.toolName : '',
-			args: isRecord(part.input) ? part.input : {},
+			...displayedToolCall(part.toolName, part.input),
 		},
 	};
 }
@@ -432,6 +447,11 @@ function mapMessageChunk(
 	base: EventBase,
 ): InstanceAiEvent | null {
 	const message = getRecordProperty(chunk, 'message');
+	const data = getRecordProperty(message, 'data');
+	if (message?.type === 'custom' && data?.type === 'n8n:runtime-skill-update') {
+		const update = skillUpdatePayloadSchema.safeParse(data.skillUpdate);
+		return update.success ? { type: 'skill-update', ...base, payload: update.data } : null;
+	}
 	if (message?.role !== 'tool') return null;
 
 	const content = getArrayProperty(message, 'content');

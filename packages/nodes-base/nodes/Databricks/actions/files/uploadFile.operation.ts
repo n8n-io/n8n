@@ -1,7 +1,7 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -22,7 +22,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
 	const items = this.getInputData();
 
-	await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	await databricksApiRequest(this, credentialType, {
 		method: 'PUT',
 		url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
 		body: binaryData,

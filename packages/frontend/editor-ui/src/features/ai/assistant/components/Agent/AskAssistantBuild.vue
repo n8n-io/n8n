@@ -760,6 +760,7 @@ defineExpose({
 				/>
 				<CreditWarningBanner
 					v-else-if="showCreditBanner"
+					variant="attached"
 					:credits-remaining="creditsRemaining"
 					:credits-quota="creditsQuota"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

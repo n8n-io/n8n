@@ -3,7 +3,6 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nPreviewTag,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
@@ -14,6 +13,7 @@ import { useI18n } from '@n8n/i18n';
 defineProps<{
 	incomplete: boolean;
 	connectModelOnly: boolean;
+	returnVisit: boolean;
 	modelValue: string;
 	sandboxValue: string;
 	searchValue: string;
@@ -21,12 +21,12 @@ defineProps<{
 
 const emit = defineEmits<{
 	setup: [];
+	setupLater: [];
 	openStep: [step: 'model' | 'sandbox' | 'search'];
 	turnOff: [];
 }>();
 
 const i18n = useI18n();
-const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assistant';
 </script>
 
 <template>
@@ -35,11 +35,10 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 		:data-test-id="incomplete ? 'assistant-setup-incomplete' : 'assistant-setup-intro'"
 	>
 		<div :class="[$style.content, incomplete && $style.wide]">
-			<N8nIcon icon="sparkles" :size="32" :class="$style.heroIcon" />
+			<N8nIcon icon="n8n-assistant" :size="32" :class="$style.heroIcon" />
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
-			<N8nPreviewTag v-if="!incomplete" :class="$style.preview" size="medium" />
 
 			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}
@@ -47,15 +46,15 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 
 			<div v-if="!incomplete" :class="$style.benefits">
 				<div :class="$style.benefit">
-					<N8nIcon icon="workflow" size="small" />
+					<N8nIcon icon="workflow" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.build') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="flask-conical" size="small" />
+					<N8nIcon icon="flask-conical" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.debug') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="circle-help" size="small" />
+					<N8nIcon icon="circle-help" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.help') }}</N8nText>
 				</div>
 			</div>
@@ -110,16 +109,16 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 					@click="emit('setup')"
 				/>
 				<N8nButton
+					v-if="!returnVisit"
 					variant="ghost"
 					size="medium"
-					:href="DOCS_URL"
-					target="_blank"
-					:label="i18n.baseText('instanceAi.onboarding.learnMore')"
-					data-test-id="assistant-learn-more"
+					:label="i18n.baseText('instanceAi.onboarding.setUpLater')"
+					data-test-id="assistant-set-up-later"
+					@click="emit('setupLater')"
 				/>
 			</div>
 
-			<div :class="$style.turnOff">
+			<div v-if="returnVisit" :class="$style.turnOff">
 				<N8nButton
 					variant="ghost"
 					size="small"
@@ -167,10 +166,6 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 
 .title {
 	margin: var(--spacing--sm) 0 0;
-}
-
-.preview {
-	margin-top: var(--spacing--xs);
 }
 
 .lede {

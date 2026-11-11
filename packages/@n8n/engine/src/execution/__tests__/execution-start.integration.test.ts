@@ -11,13 +11,19 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -30,6 +36,10 @@ const graph: WorkflowGraph = {
 	],
 	edges: [{ from: 'trigger', to: 'step-a', outputIndex: 0, inputIndex: 0 }],
 };
+
+const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+	noopLifecycleEventPublisher,
+);
 
 describe('execution start (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -60,13 +70,26 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+			new ExecutionStartHandler(
+				executionStore,
+				stepStore,
+				orchestrationQueue,
+				lifecycleEventPublisherFactory,
+			),
+			new StepSettledHandler(
+				executionStore,
+				stepStore,
+				stepQueue,
+				orchestrationQueue,
+				lifecycleEventPublisherFactory,
+				noopExecutionResponseSender,
+			),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 
@@ -84,7 +107,10 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
+			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: generateId(),
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -115,14 +141,25 @@ describe('execution start (integration)', () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
 		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			queue,
+			lifecycleEventPublisherFactory,
+		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
+			workflow: {},
 			triggerOutputs: null,
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

@@ -135,6 +135,60 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('keeps the unavailable reason without falling back to the catalog', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			'azure-openai': provider('azure-openai', { 'gpt-4o': model('gpt-4o', 'GPT-4o') }),
+		});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'azure-openai',
+			verified: true,
+			unavailable: true,
+			unavailableReason: 'endpoint_type_unsupported',
+			models: [],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { 'azure-openai': 'azure-credential-id' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(getModelsForPicker(credentials)['azure-openai']).toEqual({
+			models: [],
+			unavailable: true,
+			unavailableReason: 'endpoint_type_unsupported',
+		});
+	});
+
+	it('lists models with a priority first and the rest by name', async () => {
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'google',
+			verified: true,
+			models: [
+				model('gemini-2.5-pro', 'Gemini 2.5 Pro'),
+				{ ...model('gemini-featured', 'Gemini Featured'), priority: 10 },
+				model('gemini-2.5-flash', 'Gemini 2.5 Flash'),
+			],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { google: 'google-credential-id' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(modelIds(getModelsForPicker(credentials).google?.models ?? [])).toEqual([
+			'gemini-featured',
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+		]);
+	});
+
 	it('returns a verified provider default only when it remains in the picker list', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {

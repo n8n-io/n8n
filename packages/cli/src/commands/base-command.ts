@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -9,10 +8,14 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import { SystemTaskMetadata } from '@n8n/decorators';
+import type { SystemTaskClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
@@ -26,13 +29,17 @@ import {
 	StorageConfig,
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
-import { Expression, UnexpectedError } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
@@ -42,10 +49,10 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
+import { POLICY_MODULES } from '@/policy/policy-modules';
 import { PostHogClient } from '@/posthog';
+import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -85,6 +92,13 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/**
+	 * Whether to connect to the control plane database. The engine data plane
+	 * process runs without one, so it also skips the migrations, the persisted
+	 * instance identity and the encryption bootstrap that need it.
+	 */
+	protected needsDb = true;
+
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
@@ -97,47 +111,17 @@ export abstract class BaseCommand<F = never> {
 	 */
 	protected seedsInstanceIdentity = false;
 
+	/** Whether this command runs the main server process (`n8n start`). */
+	protected readonly isMainServer: boolean = false;
+
 	async init(): Promise<void> {
+		// First, so any default-agent egress during init already honours the proxy
+		// env vars. Sentry is unaffected either way: its transport builds its own
+		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
+		this.installOutboundProxyAgents();
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
-
-		const {
-			backendDsn,
-			environment,
-			deploymentName,
-			profilesSampleRate,
-			tracesSampleRate,
-			tracesSlowSpanThresholdMs,
-			webhookTracesSampleRate,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			eventLoopBlockDetectionEnabled,
-		} = this.globalConfig.sentry;
-		await this.errorReporter.init({
-			serverType: this.instanceSettings.instanceType,
-			dsn: backendDsn,
-			environment,
-			release: `n8n@${N8N_VERSION}`,
-			serverName: deploymentName,
-			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			tracesSampleRate,
-			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
-			webhookEndpoint: this.globalConfig.endpoints.webhook,
-			webhookTracesSampleRate,
-			profilesSampleRate,
-			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
-			eligibleIntegrations: {
-				Express: true,
-				Http: true,
-				Postgres: this.globalConfig.database.type === 'postgresdb',
-				Redis:
-					this.globalConfig.executions.mode === 'queue' ||
-					this.globalConfig.cache.backend === 'redis',
-			},
-		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
@@ -145,6 +129,7 @@ export abstract class BaseCommand<F = never> {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =
 			this.globalConfig.executions.mode === 'queue' ||
@@ -155,40 +140,47 @@ export abstract class BaseCommand<F = never> {
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
 		}
 
-		await this.dbConnection
-			.init()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error initializing DB', error),
-			);
+		if (this.needsDb) {
+			await this.dbConnection
+				.init()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error initializing DB', error),
+				);
 
-		// This needs to happen after DB.init() or otherwise DB Connection is not
-		// available via the dependency Container that services depend on.
-		if (inDevelopment || inTest) {
-			this.shutdownService.validate();
-		}
+			// This needs to happen after DB.init() or otherwise DB Connection is not
+			// available via the dependency Container that services depend on.
+			if (inDevelopment || inTest) {
+				this.shutdownService.validate();
+			}
 
-		await this.server?.init();
+			await this.server?.init();
 
-		await this.dbConnection
-			.migrate()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error running database migrations', error),
-			);
+			await this.dbConnection
+				.migrate()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error running database migrations', error),
+				);
 
-		// Apply the persisted instance identity so every command (e.g. license:info)
-		// sees the same instanceId as the running server. Non-fatal for one-off
-		// commands, which must keep working with restricted DB credentials.
-		try {
-			await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
-				canSeed: this.seedsInstanceIdentity,
-			});
-		} catch (error) {
-			if (this.seedsInstanceIdentity) throw error;
-			this.logger.warn('Could not read the instance identity from the DB, using derived values', {
-				error: ensureError(error),
-			});
+			// Apply the persisted instance identity so every command (e.g. license:info)
+			// sees the same instanceId as the running server. Non-fatal for one-off
+			// commands, which must keep working with restricted DB credentials.
+			try {
+				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+					canSeed: this.seedsInstanceIdentity,
+				});
+			} catch (error) {
+				if (this.seedsInstanceIdentity) throw error;
+				this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+					error: ensureError(error),
+				});
+			}
+
+			// Wire the encryption key provider (and seed keys on a seeding main) before
+			// anything encrypts or decrypts. This must run for every entrypoint —
+			// servers and one-off commands — since the cipher has no fallback path.
+			await Container.get(EncryptionBootstrapService).run();
 		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
@@ -227,12 +219,24 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
 		if (this.needsExpressionEngine) {
-			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-				this.globalConfig.expressionEngine;
+			const {
+				engine,
+				poolSize,
+				maxCodeCacheSize,
+				bridgeTimeout,
+				bridgeMemoryLimit,
+				idleTimeout,
+				lazyAcquire,
+				compileCache,
+				nativeEvaluation,
+				nativeEvaluationVerifySample,
+			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
+			this.logNativeVerifyModeStatus();
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -241,6 +245,14 @@ export abstract class BaseCommand<F = never> {
 					bridgeTimeout,
 					bridgeMemoryLimit,
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					lazyAcquire,
+					compileCache,
+					nativeEvaluation,
+					nativeEvaluationVerifySample,
+					reportNativeVerifyMismatch: this.errorReporter.isSentryActive()
+						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
+						: undefined,
+					canReportNativeVerifyMismatch: () => this.errorReporter.isSentryActive(),
 					observability,
 				});
 			} catch (error) {
@@ -253,6 +265,72 @@ export abstract class BaseCommand<F = never> {
 			// Record the configured engine so an unexpected expression evaluation on a
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
+		}
+	}
+
+	private logNativeVerifyModeStatus() {
+		const { nativeEvaluation, nativeEvaluationVerifySample, engine } =
+			this.globalConfig.expressionEngine;
+		if (nativeEvaluationVerifySample > 0) {
+			if (nativeEvaluation) {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because native evaluation is enabled',
+				);
+			} else if (engine === 'legacy') {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because the expression engine is legacy',
+				);
+			} else if (!this.errorReporter.isSentryActive()) {
+				this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
+			} else {
+				this.logger.info('Native evaluation verify mode is active', {
+					sample: nativeEvaluationVerifySample,
+					engine,
+				});
+			}
+		}
+	}
+
+	private reportNativeVerifyMismatch({
+		engine,
+		skeleton,
+		nativeResultType,
+		engineResultType,
+		workflowId,
+	}: NativeVerifyMismatch) {
+		// Not warn: it wraps the message in an Error, which is deduplicated by stack.
+		this.errorReporter.info('Native evaluation result differs from the expression engine', {
+			tags: { expressionEngine: engine },
+			extra: { skeleton, nativeResultType, engineResultType, workflowId },
+			fingerprint: ['native-evaluation-verify-mismatch', skeleton],
+			shouldIsolate: true,
+		});
+	}
+
+	/**
+	 * Registers the system tasks this command runs and hands the registry to the
+	 * runner, which routes them. `ownTasks` are the tasks only this command runs,
+	 * on top of the ones every server command runs.
+	 */
+	protected async initSystemTasks(ownTasks: SystemTaskClass[] = []): Promise<void> {
+		const metadata = Container.get(SystemTaskMetadata);
+		for (const taskClass of [...(await instanceSystemTasks(this.globalConfig)), ...ownTasks]) {
+			metadata.register(taskClass);
+		}
+
+		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
+		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
+		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Installs the env-proxy global agents so default-agent HTTP honours the proxy
+	 * environment variables. In `main-only` outbound proxy mode, only the main
+	 * server process installs them.
+	 */
+	protected installOutboundProxyAgents() {
+		if (this.globalConfig.outboundProxy.mode === 'all' || this.isMainServer) {
+			installGlobalProxyAgent();
 		}
 	}
 
@@ -301,6 +379,15 @@ export abstract class BaseCommand<F = never> {
 
 	protected error(message: string) {
 		throw new UnexpectedError(message);
+	}
+
+	/** Print an error banner, optionally preceded by a command-specific summary. */
+	protected logError(error: Error, summary?: string) {
+		if (summary) this.logger.error(summary);
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 
 	async initBinaryDataService() {
@@ -376,6 +463,22 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
+		await this.initBinaryDataBlobManagers({
+			s3: isS3WriteMode || isExecutionDataS3Mode,
+			azure: isAzureWriteMode || isExecutionDataAzureMode,
+		});
+
+		await binaryDataService.init();
+	}
+
+	/**
+	 * Registers the S3 and Azure binary data managers for every configured store.
+	 * A store that fails to connect is skipped, unless `required` names it: then the
+	 * process exits, because a mode that writes to it cannot work without it.
+	 */
+	protected async initBinaryDataBlobManagers(required: { s3: boolean; azure: boolean }) {
+		const binaryDataService = Container.get(BinaryDataService);
+
 		try {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
@@ -385,7 +488,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 		} catch {
-			if (isS3WriteMode || isExecutionDataS3Mode) {
+			if (required.s3) {
 				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
 				process.exit(1);
 			}
@@ -400,15 +503,13 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 		} catch {
-			if (isAzureWriteMode || isExecutionDataAzureMode) {
+			if (required.azure) {
 				this.logger.error(
 					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
 				);
 				process.exit(1);
 			}
 		}
-
-		await binaryDataService.init();
 	}
 
 	protected async initObjectStoreIfConfigured() {
@@ -477,8 +578,12 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	initWorkflowHistory() {
-		Container.get(WorkflowHistoryManager).init();
+	/**
+	 * Registers the policy checks, so a one-off command that writes or runs content is refused
+	 * what the server refuses. Call after `initLicense()`: the feature module is license-gated.
+	 */
+	async initPolicyEnforcement() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
 	}
 
 	async cleanupTestRunner() {

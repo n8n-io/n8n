@@ -1,13 +1,20 @@
 import type { Mock } from 'vitest';
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableDDLService } from '@n8n/backend-module-data-table';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
@@ -47,6 +54,9 @@ describe('ImportService', () => {
 	let mockDataTableDDLService: DataTableDDLService;
 	let mockUserRepository: UserRepository;
 	let mockWorkflowService: WorkflowService;
+	let mockPolicyEnforcementService: PolicyEnforcementService;
+	let mockSharedWorkflowRepository: SharedWorkflowRepository;
+	let mockWorkflowRepository: WorkflowRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -61,6 +71,14 @@ describe('ImportService', () => {
 		mockDataTableDDLService = mock<DataTableDDLService>();
 		mockUserRepository = mock<UserRepository>();
 		mockWorkflowService = mock<WorkflowService>();
+		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor = vi.fn().mockReturnValue(true);
+		mockPolicyEnforcementService.enforceContentImport = vi.fn().mockResolvedValue(mock());
+		mockSharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		mockWorkflowRepository = mock<WorkflowRepository>();
+		mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds = vi
+			.fn()
+			.mockResolvedValue(new Map());
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = vi.fn(async (data: string) =>
@@ -114,6 +132,10 @@ describe('ImportService', () => {
 			mockDataTableDDLService,
 			mockUserRepository,
 			mockWorkflowService,
+			mockPolicyEnforcementService,
+			mockSharedWorkflowRepository,
+			mockWorkflowRepository,
+			mock(),
 		);
 	});
 
@@ -306,6 +328,88 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should read the files of a renamed entity under its current name', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'KnowledgeFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			// An export from before the rename holds `agentfile.jsonl`, numbered when large.
+			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/agentfile.jsonl')
+				.mockReturnValueOnce('/test/input/agentfile.2.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: {
+					knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/agentfile.2.jsonl'],
+				},
+				tableNames: ['agent_files'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should skip the old-name files of a renamed entity when the directory also holds current-name files', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'KnowledgeFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			// One export never writes both names: the old file is a leftover of an earlier run.
+			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl', 'knowledgefile.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/knowledgefile.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: { knowledgefile: ['/test/input/knowledgefile.jsonl'] },
+				tableNames: ['agent_files'],
+				dataTableFiles: {},
+			});
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.jsonl'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.2.jsonl'));
+		});
+
+		it('should not remap an old-name file while an entity carries that name', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'AgentFile',
+					tableName: 'agent_file_other',
+					columns: [{ databaseName: 'id' }],
+				},
+				{
+					name: 'KnowledgeFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			const mockFiles = ['agentfile.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/agentfile.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: { agentfile: ['/test/input/agentfile.jsonl'] },
+				tableNames: ['agent_file_other'],
 				dataTableFiles: {},
 			});
 		});

@@ -1,11 +1,15 @@
+export { isBatchStepConfig } from './workflow-graph';
 export type {
+	BatchStepConfig,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 } from './workflow-graph';
 export {
+	createNodeLabeler,
 	findTriggerNode,
 	getDescendantNodeIds,
 	getPredecessorNodeIds,

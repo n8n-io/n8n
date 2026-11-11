@@ -1,41 +1,35 @@
-import { Logger } from '@n8n/backend-common';
-import * as ssoHelpers from '@/sso.ee/sso-helpers';
-import { InvitationController } from '../invitation.controller';
 import type { AcceptInvitationRequestDto } from '@n8n/api-types';
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
-import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_ADMIN_ROLE } from '@n8n/db';
-import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
+import { PersonRepository, UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import type { Person, PublicUser, AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
-
-import config from '@/config';
-import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
+import { mock } from 'vitest-mock-extended';
+
 import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
-import { OwnershipService } from '@/services/ownership.service';
+import type { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+
+import { InvitationController } from '../invitation.controller';
 
 describe('InvitationController', () => {
 	const logger: Logger = mockInstance(Logger);
 	const externalHooks: ExternalHooks = mockInstance(ExternalHooks);
 	const authService: AuthService = mockInstance(AuthService);
 	const userService: UserService = mockInstance(UserService);
-	const license: License = mockInstance(License);
 	const passwordUtility: PasswordUtility = mockInstance(PasswordUtility);
 	const userRepository: UserRepository = mockInstance(UserRepository);
+	const personRepository: PersonRepository = mockInstance(PersonRepository);
 	const postHog: PostHogClient = mockInstance(PostHogClient);
 	const eventService: EventService = mockInstance(EventService);
-	const ownershipService: OwnershipService = mockInstance(OwnershipService);
 
 	function defaultInvitationController() {
 		return new InvitationController(
@@ -43,188 +37,30 @@ describe('InvitationController', () => {
 			externalHooks,
 			authService,
 			userService,
-			license,
 			passwordUtility,
 			userRepository,
+			personRepository,
 			postHog,
 			eventService,
-			ownershipService,
 		);
 	}
 
 	describe('inviteUser', () => {
-		it('throws a BadRequestError if SSO is enabled', async () => {
-			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
+		it('delegates to userService.inviteUser with the authenticated user and payload', async () => {
+			const usersInvited = [{ user: { id: '123', email: 'valid@email.com' }, error: '' }];
+			vi.mocked(userService.inviteUser).mockResolvedValue(usersInvited as never);
 
 			const invitationController = defaultInvitationController();
-
-			const user = mock<User>({
-				id: '123',
-				email: 'valid@email.com',
-				password: 'password',
-				authIdentities: [],
-				role: GLOBAL_OWNER_ROLE,
-				mfaEnabled: false,
-			});
-
+			const person = mock<Person>({ id: '123', email: 'valid@email.com' });
 			const payload = new InviteUsersRequestDto({
 				email: 'valid@email.com',
 				role: 'global:member',
 			});
-
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const res = mock<Response>();
 
-			const promise = invitationController.inviteUser(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow(
-				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-		});
-
-		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
-			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(false);
-			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
-
-			const invitationController = defaultInvitationController();
-
-			const user = mock<User>({
-				id: '123',
-				email: 'valid@email.com',
-			});
-
-			const payload = new InviteUsersRequestDto({
-				email: 'valid@email.com',
-				role: 'global:member',
-			});
-
-			const req = mock<AuthenticatedRequest>({ user });
-			const res = mock<Response>();
-
-			const promise = invitationController.inviteUser(req, res, payload);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		});
-
-		it('throws a BadRequestError if the owner account is not set up', async () => {
-			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
-			vi.spyOn(config, 'getEnv').mockReturnValue(false);
-			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(false));
-
-			const invitationController = defaultInvitationController();
-
-			const user = mock<User>({
-				id: '123',
-				email: 'valid@email.com',
-			});
-
-			const payload = new InviteUsersRequestDto({
-				email: 'valid@email.com',
-				role: 'global:member',
-			});
-
-			const req = mock<AuthenticatedRequest>({ user });
-			const res = mock<Response>();
-
-			const promise = invitationController.inviteUser(req, res, payload);
-			await expect(promise).rejects.toThrow(BadRequestError);
-			await expect(promise).rejects.toThrow(
-				'You must set up your own account before inviting others',
-			);
-		});
-
-		it('throws a ForbiddenError if the user is an admin but advanced permissions is not licensed', async () => {
-			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
-			vi.spyOn(config, 'getEnv').mockReturnValue(true);
-			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(false);
-			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
-
-			const invitationController = defaultInvitationController();
-
-			const user = mock<User>({
-				id: '123',
-				email: 'valid@email.com',
-				role: GLOBAL_ADMIN_ROLE,
-			});
-
-			const payload = new InviteUsersRequestDto(
-				{
-					email: 'valid@email.com',
-					role: 'global:admin',
-				},
-				{
-					email: 'valid@email.com',
-					role: 'global:admin',
-				},
-			);
-
-			const req = mock<AuthenticatedRequest>({ user });
-			const res = mock<Response>();
-
-			const promise = invitationController.inviteUser(req, res, payload);
-			await expect(promise).rejects.toThrow(ForbiddenError);
-			await expect(promise).rejects.toThrow(
-				'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
-			);
-		});
-
-		it('invites users successfully', async () => {
-			const inviteUsersResult = {
-				usersInvited: [
-					{
-						user: {
-							id: '123',
-							email: 'valid@email.com',
-							emailSent: false,
-							role: 'global:member',
-							inviteAcceptUrl: 'https://n8n.io/signup?inviterId=123&inviteeId=123',
-						},
-						error: '',
-					},
-				],
-				usersCreated: ['123'],
-			};
-			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
-			vi.spyOn(config, 'getEnv').mockReturnValue(true);
-			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(true);
-			vi.mocked(userService.inviteUsers).mockResolvedValue(inviteUsersResult);
-			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
-
-			const invitationController = defaultInvitationController();
-
-			const user = mock<User>({
-				id: '123',
-				email: 'valid@email.com',
-				role: GLOBAL_MEMBER_ROLE,
-			});
-
-			const payload = new InviteUsersRequestDto({
-				email: 'valid@email.com',
-				role: 'global:member',
-			});
-
-			const req = mock<AuthenticatedRequest>({ user });
-			const res = mock<Response>();
-
-			expect(await invitationController.inviteUser(req, res, payload)).toEqual(
-				inviteUsersResult.usersInvited,
-			);
-
-			expect(userService.inviteUsers).toHaveBeenCalledWith(user, [
-				{
-					email: 'valid@email.com',
-					role: 'global:member',
-				},
-			]);
-
-			expect(externalHooks.run).toHaveBeenCalledWith('user.invited', [
-				inviteUsersResult.usersCreated,
-			]);
+			expect(await invitationController.inviteUser(req, res, payload)).toEqual(usersInvited);
+			expect(userService.inviteUser).toHaveBeenCalledWith(person, payload);
 		});
 	});
 
@@ -280,12 +116,12 @@ describe('InvitationController', () => {
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
-			const inviter = mock<User>({
+			const inviter = mock<Person>({
 				id: inviterId,
 				email: 'valid@email.com',
 				role: GLOBAL_OWNER_ROLE,
 			});
-			const invitee = mock<User>({
+			const invitee = mock<Person>({
 				id: inviteeId,
 				email: 'valid@email.com',
 				password: null,
@@ -296,9 +132,10 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(inviter);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(invitee);
 			vi.mocked(passwordUtility.hash).mockResolvedValue('Password123!');
-			vi.mocked(userRepository.save).mockResolvedValue(invitee);
+			vi.mocked(personRepository.save).mockResolvedValue(invitee);
 			vi.mocked(authService.issueCookie).mockResolvedValue(invitee as never);
 			vi.mocked(eventService.emit).mockResolvedValue(invitee as never);
 			vi.mocked(userService.toPublic).mockResolvedValue(invitee as unknown as PublicUser);
@@ -324,18 +161,42 @@ describe('InvitationController', () => {
 			);
 
 			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(token);
-			expect(userRepository.find).toHaveBeenCalledWith({
-				where: [{ id: inviterId }, { id: inviteeId }],
-				relations: ['role'],
-			});
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith(inviterId);
+			expect(personRepository.findByIdWithRole).toHaveBeenCalledWith(inviteeId);
 			expect(passwordUtility.hash).toHaveBeenCalledWith('Password123!');
-			expect(userRepository.save).toHaveBeenCalled();
+			expect(personRepository.save).toHaveBeenCalled();
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, invitee, false, 'browser-id');
 			expect(eventService.emit).toHaveBeenCalledWith('user-signed-up', {
 				user: invitee,
 				userType: 'email',
 				wasDisabledLdapUser: false,
 			});
+		});
+
+		it('throws a BadRequestError if the inviter and the invitee are the same', async () => {
+			vi.mocked(personRepository.findByIdWithRole).mockClear();
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
+			const payload = {
+				token: 'valid-jwt-token',
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const promise = defaultInvitationController().acceptInvitationWithToken(
+				mock<AuthlessRequest>({ body: payload }),
+				mock<Response>(),
+				payload,
+			);
+
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid payload or URL');
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 
 		it('throws a BadRequestError if users are not found', async () => {
@@ -349,7 +210,8 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(null);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(null);
 
 			const invitationController = defaultInvitationController();
 
@@ -376,12 +238,12 @@ describe('InvitationController', () => {
 			const token = 'valid-jwt-token';
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
-			const inviter = mock<User>({
+			const inviter = mock<Person>({
 				id: inviterId,
 				email: 'valid@email.com',
 				role: GLOBAL_OWNER_ROLE,
 			});
-			const invitee = mock<User>({
+			const invitee = mock<Person>({
 				id: inviteeId,
 				email: 'valid@email.com',
 				password: 'Password123!',
@@ -392,7 +254,8 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(inviter);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(invitee);
 
 			const invitationController = defaultInvitationController();
 

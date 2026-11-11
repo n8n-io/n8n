@@ -4,10 +4,9 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, Publisher } from '@n8n/backend-services';
 
 const KEY = 'redaction.enforcement';
 
@@ -25,6 +24,10 @@ export class InstanceRedactionEnforcementService {
 	 * Resolves the instance redaction floor. Returns `'off'` when no value is
 	 * stored. The floor is stored as the enum directly, so no translation is
 	 * needed.
+	 *
+	 * Read on every instance type, since workers and webhook instances resolve the floor
+	 * while establishing an execution context. In queue mode the cache is shared Redis;
+	 * `N8N_CACHE_BACKEND=memory` gives each process its own copy, stale until its TTL.
 	 */
 	async get(): Promise<RedactionFloor> {
 		return await this.load();
@@ -72,6 +75,9 @@ export class InstanceRedactionEnforcementService {
 	 * Drop the locally cached redaction floor when a peer main reports a change.
 	 * Next read re-loads from the DB. Does not re-publish — the originating main
 	 * already updated its own cache synchronously in set().
+	 *
+	 * Scoped to mains: in queue mode the others share the same Redis cache, so they see
+	 * the change without an invalidation of their own. See `get()` for the memory caveat.
 	 */
 	@OnPubSubEvent('redaction-floor-changed', { instanceType: 'main' })
 	async handleRedactionFloorChanged(): Promise<void> {

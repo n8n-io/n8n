@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -8,7 +9,6 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
@@ -125,10 +125,29 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 	test('returns 404 when no entry exists for the running user', async () => {
 		const credential = await saveResolvableCredential();
 
-		await testServer
+		const response = await testServer
 			.authAgentFor(memberA)
 			.delete(`/credentials/${credential.id}/my-connection`)
 			.expect(404);
+
+		expect(response.body.message).toBe('No connection to disconnect');
+	});
+
+	test('returns the same 404 body when the credential id is unknown', async () => {
+		const credential = await saveResolvableCredential();
+
+		const missingConnection = await testServer
+			.authAgentFor(memberA)
+			.delete(`/credentials/${credential.id}/my-connection`)
+			.expect(404);
+
+		const unknownCredential = await testServer
+			.authAgentFor(memberA)
+			.delete('/credentials/00000000-0000-4000-8000-000000000000/my-connection')
+			.expect(404);
+
+		expect(unknownCredential.body.message).toBe(missingConnection.body.message);
+		expect(unknownCredential.body.code).toBe(missingConnection.body.code);
 	});
 
 	test('returns 404 on repeat call (entry already deleted)', async () => {

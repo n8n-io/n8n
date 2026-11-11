@@ -9,10 +9,12 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { collectSecretFieldNames, restoreSecretConfig } from '../config-redaction';
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -155,8 +157,9 @@ export class DynamicCredentialResolverService {
 		}
 
 		if (params.config !== undefined) {
-			await this.validateConfig(existing.type, params.config, canUseExternalSecrets);
-			existing.config = await this.encryptConfig(params.config);
+			const config = await this.restoreRedactedSecrets(existing, params.config);
+			await this.validateConfig(existing.type, config, canUseExternalSecrets);
+			existing.config = await this.encryptConfig(config);
 		}
 
 		if (params.name !== undefined) {
@@ -282,6 +285,27 @@ export class DynamicCredentialResolverService {
 
 		// Validate the resolved config against the resolver's schema
 		await resolverImplementation.validateOptions(resolvedConfig);
+	}
+
+	/**
+	 * A redacted config GET returns the blanking sentinel for secret fields. When the
+	 * editor round-trips that config back on save, restore each sentinel secret (including
+	 * fields nested in collections) from the stored config so it is not overwritten with
+	 * the placeholder.
+	 */
+	private async restoreRedactedSecrets(
+		existing: DynamicCredentialResolver,
+		incoming: CredentialResolverConfiguration,
+	): Promise<CredentialResolverConfiguration> {
+		const secretFields = collectSecretFieldNames(
+			this.registry.getResolverByTypename(existing.type)?.metadata.options,
+		);
+		if (secretFields.size === 0) {
+			return incoming;
+		}
+
+		const stored = await this.decryptConfig(existing.config);
+		return restoreSecretConfig(incoming, stored, secretFields);
 	}
 
 	/**

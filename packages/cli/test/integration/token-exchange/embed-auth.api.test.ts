@@ -1,13 +1,13 @@
 process.env.N8N_ENV_FEAT_TOKEN_EXCHANGE = 'true';
 
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
-import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, PersonRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
-import { EventService } from '@/events/event.service';
 import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
@@ -186,8 +186,8 @@ describe('Embed Auth API (integration)', () => {
 			.expect(302);
 
 		// Verify user was created
-		const userRepo = Container.get(UserRepository);
-		const user = await userRepo.findOneBy({ email });
+		const personRepo = Container.get(PersonRepository);
+		const user = await personRepo.findByEmail(email);
 		expect(user).toBeDefined();
 		expect(user!.firstName).toBe('Jay');
 		expect(user!.lastName).toBe('Tee');
@@ -229,8 +229,8 @@ describe('Embed Auth API (integration)', () => {
 			.expect(302);
 
 		// Verify profile updated
-		const userRepo = Container.get(UserRepository);
-		const updated = await userRepo.findOneBy({ id: user.id });
+		const personRepo = Container.get(PersonRepository);
+		const updated = await personRepo.findById(user.id);
 		expect(updated!.firstName).toBe('New');
 		expect(updated!.lastName).toBe('Last');
 	});

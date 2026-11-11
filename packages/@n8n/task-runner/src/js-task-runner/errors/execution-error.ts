@@ -1,6 +1,25 @@
 import type { ErrorLike } from './error-like';
 import { SerializableError } from './serializable-error';
 
+/**
+ * Matches the header row of a stack, i.e. `<error name>: <error message>`. The
+ * name is whatever the thrown error's `name` is, which is not always
+ * `Error`-suffixed - `pg`'s `DatabaseError` sets it to `error`, and a custom
+ * error may contain spaces, dots or dashes - so accept any name up to the first
+ * `': '`, instead of looking for an `Error:` prefix.
+ */
+const STACK_HEADER_REGEX = /^(?<errorType>\S.*?): (?<errorDetails>.+)$/;
+
+/** Matches a stack frame row, e.g. `    at Object.foo (/a/b.js:1:2)`. */
+const STACK_FRAME_REGEX = /^\s+at\s/;
+
+/**
+ * Matches the caret row that closes the source excerpt V8 prefixes a syntax
+ * error's stack with. The excerpt holds user code, which can look like a header
+ * row, so the header is only searched for past the caret.
+ */
+const SOURCE_EXCERPT_CARET_REGEX = /^\s*\^+\s*$/;
+
 export class ExecutionError extends SerializableError {
 	description: string | null = null;
 
@@ -29,34 +48,40 @@ export class ExecutionError extends SerializableError {
 	}
 
 	/**
-	 * Populate error `message` and `description` from error `stack`.
+	 * Populate error `message` and `description` from error `stack`. The stack is
+	 * the richer source - it carries the error name and the line number - but the
+	 * error's own `message` is always present, so keep it as the fallback for a
+	 * stack we cannot parse, rather than discarding it.
 	 */
 	private populateFromStack() {
-		const stackRows = (this.stack ?? '').split('\n');
+		const fallbackMessage = this.message || 'Unknown error';
+		const stackRows = (this.stack ?? '').split(/\r?\n/);
 
-		if (stackRows.length === 0) {
-			this.message = 'Unknown error';
-			return;
-		}
-
-		const messageRow = stackRows.find((line) => line.includes('Error:'));
 		const lineNumberDisplay = this.toLineNumberDisplay(stackRows);
-
-		if (!messageRow) {
-			this.message = `Unknown error ${lineNumberDisplay}`;
-			return;
-		}
-
-		const [errorDetails, errorType] = this.toErrorDetailsAndType(messageRow);
+		const [errorDetails, errorType] = this.toErrorDetailsAndType(this.toMessageRow(stackRows));
 
 		if (errorType) this.description = errorType;
 
-		if (!errorDetails) {
-			this.message = `Unknown error ${lineNumberDisplay}`;
-			return;
-		}
+		this.message = `${errorDetails ?? fallbackMessage} ${lineNumberDisplay}`.trim();
+	}
 
-		this.message = `${errorDetails} ${lineNumberDisplay}`;
+	/**
+	 * Find the row holding `<error name>: <error message>`, i.e. the first row
+	 * past any source excerpt and before the first stack frame. Rows after it can
+	 * be continuation rows of a multi-line message, which must not be mistaken
+	 * for the header.
+	 */
+	private toMessageRow(stackRows: string[]) {
+		const firstFrameIndex = stackRows.findIndex((row) => STACK_FRAME_REGEX.test(row));
+		const headerRows = firstFrameIndex === -1 ? stackRows : stackRows.slice(0, firstFrameIndex);
+
+		const excerptEndIndex = headerRows.reduce(
+			(lastCaretIndex, row, index) =>
+				SOURCE_EXCERPT_CARET_REGEX.test(row) ? index + 1 : lastCaretIndex,
+			0,
+		);
+
+		return headerRows.slice(excerptEndIndex).find((row) => STACK_HEADER_REGEX.test(row));
 	}
 
 	private toLineNumberDisplay(stackRows: string[]) {
@@ -90,24 +115,13 @@ export class ExecutionError extends SerializableError {
 	}
 
 	private toErrorDetailsAndType(messageRow?: string) {
-		if (!messageRow) return [null, null];
+		const groups = messageRow?.match(STACK_HEADER_REGEX)?.groups;
 
-		const segments = messageRow.split(':').map((i) => i.trim());
-		if (segments[1] === "Cannot find module 'node") {
-			segments[1] = `${segments[1]}:${segments[2]}`;
-			segments.splice(2, 1);
-		}
+		if (!groups) return [null, null];
 
-		if (
-			segments.length >= 3 &&
-			segments[1]?.startsWith("Module 'node") &&
-			segments[2]?.includes("' is disallowed")
-		) {
-			segments[1] = `${segments[1]}:${segments[2]}`;
-			segments.splice(2, 1);
-		}
+		const { errorType, errorDetails } = groups;
 
-		const [errorDetails, errorType] = segments.reverse();
-		return [errorDetails, errorType === 'Error' ? null : errorType];
+		// `Error`, and driver names like `error`, tell the user nothing
+		return [errorDetails.trim() || null, errorType.toLowerCase() === 'error' ? null : errorType];
 	}
 }

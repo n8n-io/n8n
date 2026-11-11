@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import {
+	CredentialsEntity,
 	In,
 	ProjectRelationRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 	type User,
@@ -17,7 +19,7 @@ import type {
 	UserConnection,
 } from '@/credentials/credential-connection-status-provider.interface';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';
@@ -53,6 +55,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findMyConnections(
@@ -203,40 +206,68 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		const pairsToCheck = uniquePairs.filter((p) => userById.has(p.userId));
 
 		let projectRetainedKeys = new Set<string>();
+		let globallyConnectableCredentialIds = new Set<string>();
 		if (pairsToCheck.length > 0) {
-			// Credential roles that carry credential:connect — served from the role
-			const validCredRoles = await this.roleService.rolesWithScope(
-				'credential',
-				CREDENTIAL_RETAIN_SCOPE,
-				em,
-			);
-			const projectRetained = await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
-				pairsToCheck,
-				CREDENTIAL_RETAIN_SCOPE,
-				validCredRoles,
-				em,
-			);
+			const credentialIds = [...new Set(pairsToCheck.map((p) => p.credentialId))];
+
+			const [projectRetained, globallyConnectableCredentials] = await Promise.all([
+				// Credential roles that carry credential:connect — served from the role
+				(async () => {
+					const validCredRoles = await this.roleService.rolesWithScope(
+						'credential',
+						CREDENTIAL_RETAIN_SCOPE,
+						async () => await this.roleRepository.findAll(em),
+					);
+					return await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
+						pairsToCheck,
+						CREDENTIAL_RETAIN_SCOPE,
+						validCredRoles,
+						em,
+					);
+				})(),
+				// End-user credentials shared globally grant every user connect
+				// access regardless of project membership (see role.service.ts).
+				em.find(CredentialsEntity, {
+					where: {
+						id: In(credentialIds),
+						isGlobal: true,
+						usageScope: 'project',
+						isResolvable: true,
+					},
+					select: ['id'],
+				}),
+			]);
 			projectRetainedKeys = new Set(projectRetained.map(keyOf));
+			globallyConnectableCredentialIds = new Set(globallyConnectableCredentials.map((c) => c.id));
 		}
 
-		const toDelete = this.selectOrphanedPairs(uniquePairs, userById, projectRetainedKeys);
+		const toDelete = this.selectOrphanedPairs(
+			uniquePairs,
+			userById,
+			projectRetainedKeys,
+			globallyConnectableCredentialIds,
+		);
 		if (toDelete.length > 0) {
 			await this.repository.deleteByPairs(toDelete, em);
 		}
 	}
 
 	/**
-	 * A pair is orphaned unless the user retains `credential:connect`.
+	 * A pair is orphaned unless the user retains `credential:connect`, either
+	 * through a global role, a project share, or a global end-user credential
+	 * share.
 	 */
 	private selectOrphanedPairs(
 		pairs: CredentialUserPair[],
 		userById: Map<string, User>,
 		projectRetainedKeys: Set<string>,
+		globallyConnectableCredentialIds: Set<string>,
 	): CredentialUserPair[] {
 		return pairs.filter((pair) => {
 			const user = userById.get(pair.userId);
 			if (!user) return true;
 			if (hasGlobalScope(user, CREDENTIAL_RETAIN_SCOPE)) return false;
+			if (globallyConnectableCredentialIds.has(pair.credentialId)) return false;
 			return !projectRetainedKeys.has(keyOf(pair));
 		});
 	}

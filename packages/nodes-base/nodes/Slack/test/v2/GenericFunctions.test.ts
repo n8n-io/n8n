@@ -460,6 +460,45 @@ describe('Slack V2 > GenericFunctions', () => {
 			(sleep as Mock).mockResolvedValue(undefined);
 		});
 
+		it.each([false, true])(
+			'reports Slack API errors with HTTP 200, after a page: %s',
+			async (afterPage) => {
+				const request = vi.fn();
+				if (afterPage) {
+					request.mockResolvedValueOnce({
+						statusCode: 200,
+						body: {
+							ok: true,
+							channels: [{ id: 'ch1' }],
+							response_metadata: { next_cursor: 'next' },
+						},
+					});
+				}
+				request.mockResolvedValue({
+					statusCode: 200,
+					body: { ok: false, error: 'missing_scope', needed: 'channels:read' },
+				});
+				mockExecuteFunctions.helpers.requestWithAuthentication = request;
+
+				await expect(
+					slackApiRequestAllItemsWithRateLimit(
+						mockExecuteFunctions,
+						'channels',
+						'GET',
+						'/conversations.list',
+						{},
+						{},
+						{ onFail: 'stop' },
+					),
+				).rejects.toMatchObject({
+					message: 'Your Slack credential is missing required Oauth Scopes',
+					description: 'Add the following scope(s) to your Slack App: channels:read',
+				});
+				expect(request).toHaveBeenCalledTimes(afterPage ? 2 : 1);
+				expect(sleep).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should paginate successfully without rate limits', async () => {
 			const responses = [
 				{
@@ -1395,6 +1434,35 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: 'invalid-blocks-format',
 					text: 'Test text',
 				});
+			});
+
+			// A bare Block Kit array (`[ {...} ]`) is what `ensureType: 'object'` yields for a
+			// blocksUi string holding the array without the `{ blocks: [...] }` wrapper. Slack
+			// then gets a body with no `blocks` key and renders nothing, without erroring.
+			it('should drop the blocks when blocksUi is a bare array instead of a blocks object', () => {
+				const mockBlocksUI = [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: 'Hello World',
+						},
+					},
+				];
+
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+					(param: string, _index: number) => {
+						if (param === 'messageType') return 'block';
+						if (param === 'otherOptions.includeLinkToWorkflow') return false;
+						if (param === 'text') return 'Fallback text';
+						if (param === 'blocksUi') return mockBlocksUI;
+						return undefined;
+					},
+				);
+
+				const result = getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
+
+				expect(result.blocks).toBeUndefined();
 			});
 
 			it('should add text property when text parameter is provided', () => {

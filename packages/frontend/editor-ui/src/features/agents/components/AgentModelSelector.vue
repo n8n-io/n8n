@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nAiModelSelectorDropdown,
 	useDropdownSearch,
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -14,10 +15,22 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	type AgentModelsUnavailableReason,
+	type CredentialTypeAvailability,
+} from '@n8n/api-types';
+import {
+	ContactAdminModal,
+	SCOPE_LABEL_KEY,
+	type ContactAudience,
+	useTypeAvailability,
+} from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
+import ModelSelectorRestrictedMarker from './model-selector/ModelSelectorRestrictedMarker.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -28,6 +41,7 @@ import {
 	type AgentModelProvider,
 	type AgentModelSelection,
 	type AgentModelsByProvider,
+	type AgentModelsForProvider,
 } from '../model-providers';
 
 const MAX_MODEL_NAME_CHARS = 45;
@@ -35,8 +49,37 @@ const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
 const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
 const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
+interface EmptyModelsMessage {
+	label: BaseTextKey;
+	/** How to fix it. Shown in a tooltip, because the menu row truncates long text. */
+	hint?: BaseTextKey;
+}
+
+const UNAVAILABLE_REASON_MESSAGES: Record<AgentModelsUnavailableReason, EmptyModelsMessage> = {
+	endpoint_type_unsupported: {
+		label: 'agents.modelSelector.unavailable.endpointTypeUnsupported',
+		hint: 'agents.modelSelector.unavailable.endpointTypeUnsupportedHint',
+	},
+	project_missing: {
+		label: 'agents.modelSelector.unavailable.projectMissing',
+		hint: 'agents.modelSelector.unavailable.projectMissingHint',
+	},
+	project_not_found: {
+		label: 'agents.modelSelector.unavailable.projectNotFound',
+		hint: 'agents.modelSelector.unavailable.projectNotFoundHint',
+	},
+};
+
+/** The row shown in place of an empty model list says how to fix it when it can. */
+function emptyModelsMessage(models: AgentModelsForProvider | undefined): EmptyModelsMessage {
+	if (models?.unavailableReason) return UNAVAILABLE_REASON_MESSAGES[models.unavailableReason];
+	if (models?.unavailable) return { label: 'agents.modelSelector.modelsUnavailable' };
+	return { label: 'agents.modelSelector.noModels' };
+}
+
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
+	restriction?: CredentialTypeAvailability;
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -65,22 +108,40 @@ const {
 	 */
 	boundCredentialId?: string | null;
 	disabled?: boolean;
-	/** Append credential modals to body (needed when embedded in the Memory dialog). */
+	/** Render credential modals outside the current container. */
 	credentialModalAppendToBody?: boolean;
 }>();
 
 const emit = defineEmits<{
-	change: [AgentModelSelection];
+	/**
+	 * `source` distinguishes a picker default resolved for the user (e.g. after
+	 * a credential selection) from a model the user picked directly, so the
+	 * host can skip persisting a pending agent for the former — mirrors
+	 * `AgentInfoPanel`'s own auto-applied default.
+	 */
+	change: [selection: AgentModelSelection, source?: 'user' | 'auto'];
 	selectCredential: [provider: AgentModelProvider, credentialId: string | null];
 	configureCredential: [provider: AgentModelProvider];
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const { credentialTypeRestriction } = useTypeAvailability(() => projectId);
 const aiGateway = useAiGateway();
+const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
+const pendingDefaultCredential = ref<{
+	provider: AgentModelProvider;
+	credentialId: string;
+} | null>(null);
+const contactAdmin = ref<{ subject: string; audience: ContactAudience } | null>(null);
+const forceModelOptionsDisabled = ref(false);
+const isResolvingDefaultModel = computed(
+	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
+);
 
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -133,6 +194,7 @@ const selectedCredentialName = computed(() =>
 
 const isCredentialsMissing = computed(
 	() =>
+		credentials !== null &&
 		!isManagedCredential.value &&
 		warnMissingCredentials &&
 		Boolean(selectedModel?.provider) &&
@@ -172,11 +234,11 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 function getCredentialsForProvider(provider: AgentModelProvider) {
 	const credentialsById = new Map<
 		string,
-		ReturnType<typeof credentialsStore.getCredentialsByType>[number]
+		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
 	>();
 
 	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
+		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
 			if (!credentialsById.has(credential.id)) {
 				credentialsById.set(credential.id, credential);
 			}
@@ -196,13 +258,54 @@ const freeOpenAiCreditsDescription = computed(() =>
 	}),
 );
 
+function getProviderRestriction(provider: AgentModelProvider): CredentialTypeAvailability | null {
+	const restrictions = getProviderCredentialTypes(provider).map((credentialType) =>
+		credentialTypeRestriction(credentialType),
+	);
+
+	return restrictions.every((restriction) => restriction !== null)
+		? (restrictions[0] ?? null)
+		: null;
+}
+
+const restrictedLabel = computed(() =>
+	selectedModel && getProviderRestriction(selectedModel.provider)
+		? i18n.baseText('agents.modelSelector.restricted')
+		: undefined,
+);
+
+function restrictedCredentialsName(item: MenuItem): string {
+	return i18n.baseText('agents.modelSelector.restrictedCredentials', {
+		interpolate: { provider: item.label },
+	});
+}
+
+function requestContactAdmin(subject: string, audience: ContactAudience) {
+	dropdownRef.value?.close();
+	contactAdmin.value = { subject, audience };
+}
+
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
+	const credentialTypes = getProviderCredentialTypes(provider);
+	const restriction = getProviderRestriction(provider);
+	if (restriction) {
+		return {
+			id: provider,
+			label: definition.displayName,
+			disabled: true,
+			data: {
+				provider,
+				credentialType: credentialTypes[0],
+				restrictedLabel: i18n.baseText(SCOPE_LABEL_KEY[restriction.scope ?? 'instance']),
+				restriction,
+			},
+		};
+	}
+
 	const credentialOptions = getCredentialsForProvider(provider);
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
-	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
-	const credentialTypes = getProviderCredentialTypes(provider);
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
 		isAiGatewayManagedSelected ||
@@ -214,7 +317,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		id: buildMenuItemId(provider, 'select', credential.id),
 		label: credential.name,
 		disabled: false,
-		checked: selectedProviderCredentialId === credential.id,
+		checked: selectedModel?.provider === provider && selectedProviderCredentialId === credential.id,
 		keepOpen: true,
 		data: { provider },
 	}));
@@ -301,10 +404,11 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		? models.map<MenuItem>((model) => ({
 				id: buildMenuItemId(provider, 'model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
-				disabled: false,
+				disabled: isResolvingDefaultModel.value,
 				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
+					loading: isResolvingDefaultModel.value,
 					description: model.description ?? undefined,
 					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
@@ -324,17 +428,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					},
 				]
 			: modelItems.length === 0
-				? [
-						{
-							id: `${provider}::empty`,
-							label: i18n.baseText(
-								modelsUnavailable
-									? 'agents.modelSelector.modelsUnavailable'
-									: 'agents.modelSelector.noModels',
-							),
-							disabled: true,
-						},
-					]
+				? [emptyModelsItem(provider)]
 				: [];
 
 	// Group the submenu into a "Connect to <provider>" credentials section and a
@@ -403,20 +497,62 @@ function isAggregatorProvider(provider: AgentModelProvider): boolean {
 	return 'isAggregator' in AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 }
 
+function isAiGatewayProvider(provider: AgentModelProvider): boolean {
+	return (
+		aiGateway.isEnabled.value &&
+		getProviderCredentialTypes(provider).some((credentialType) =>
+			aiGateway.canServeCredentialType(credentialType),
+		)
+	);
+}
+
+// Order: the currently selected provider (pinned to the top and marked as
+// connected), then providers the n8n gateway can serve, then everything else
+// (aggregators last). A single divider separates the n8n Connect group from
+// the rest.
 const menu = computed(() => {
-	const providers = AGENT_MODEL_PROVIDERS.toSorted((a, b) => {
-		const aIsAggregator = isAggregatorProvider(a) ? 1 : -1;
-		const bIsAggregator = isAggregatorProvider(b) ? 1 : -1;
-		return aIsAggregator - bIsAggregator;
+	const selectedProvider = selectedModel?.provider ?? null;
+	const aiGatewayProviders: AgentModelProvider[] = [];
+	const aggregatorProviders: AgentModelProvider[] = [];
+	const regularProviders: AgentModelProvider[] = [];
+
+	for (const provider of AGENT_MODEL_PROVIDERS) {
+		if (provider === selectedProvider) continue;
+		if (isAiGatewayProvider(provider)) aiGatewayProviders.push(provider);
+		else if (isAggregatorProvider(provider)) aggregatorProviders.push(provider);
+		else regularProviders.push(provider);
+	}
+
+	const menuItems: MenuItem[] = [];
+
+	if (selectedProvider) {
+		const item = providerToMenuItem(selectedProvider);
+		menuItems.push(
+			item.data?.restrictedLabel
+				? item
+				: {
+						...item,
+						data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
+					},
+		);
+	}
+
+	if (aiGatewayProviders.length) {
+		menuItems.push({
+			id: 'n8nConnect::header',
+			label: i18n.baseText('agents.modelSelector.includedInN8n'),
+			header: true,
+			disabled: true,
+		});
+		menuItems.push(...aiGatewayProviders.map(providerToMenuItem));
+	}
+
+	[...regularProviders, ...aggregatorProviders].forEach((provider, index) => {
+		const item = providerToMenuItem(provider);
+		menuItems.push(index === 0 && aiGatewayProviders.length ? { ...item, divided: true } : item);
 	});
 
-	let dividerInserted = false;
-	return providers.map<MenuItem>((provider) => {
-		const item = providerToMenuItem(provider);
-		if (dividerInserted) return item;
-		dividerInserted = true;
-		return { ...item, divided: true };
-	});
+	return menuItems;
 });
 
 function isSearchableItem(item: MenuItem): boolean {
@@ -470,7 +606,65 @@ const filteredMenu = computed(() => {
 	});
 });
 
-function openNewCredential(credentialType: string) {
+function emptyModelsItem(provider: AgentModelProvider): MenuItem {
+	const message = emptyModelsMessage(modelsByProvider[provider]);
+	return {
+		id: `${provider}::empty`,
+		label: i18n.baseText(message.label),
+		disabled: true,
+		...(message.hint
+			? { data: { description: i18n.baseText(message.hint), descriptionTooltipTeleported: false } }
+			: {}),
+	};
+}
+
+function selectCredentialAndResolveDefaultModel(
+	provider: AgentModelProvider,
+	credentialId: string,
+) {
+	void ensureLoaded(projectId);
+	emit('selectCredential', provider, credentialId);
+	pendingDefaultCredential.value = { provider, credentialId };
+}
+
+function getPendingDefaultModelResolution() {
+	const pending = pendingDefaultCredential.value;
+	if (!pending) return null;
+
+	const pendingCredentials: AgentCredentialsByProvider = {
+		...(credentials ?? {}),
+		[pending.provider]: pending.credentialId,
+	};
+	const defaultModel = getDefaultModelForPicker(pendingCredentials, pending.provider);
+	const status = getVerificationStatus(projectId, pending.provider, pending.credentialId);
+	return { pending, defaultModel, status };
+}
+
+function handleDefaultModelResolution(result: ReturnType<typeof getPendingDefaultModelResolution>) {
+	if (!result || result.status === 'idle' || result.status === 'loading') return;
+	if (
+		pendingDefaultCredential.value?.provider !== result.pending.provider ||
+		pendingDefaultCredential.value.credentialId !== result.pending.credentialId
+	) {
+		return;
+	}
+
+	pendingDefaultCredential.value = null;
+	if (result.status === 'resolved' && result.defaultModel) {
+		emit(
+			'change',
+			{
+				provider: result.defaultModel.provider,
+				model: result.defaultModel.model,
+			},
+			'auto',
+		);
+	}
+}
+
+watch(getPendingDefaultModelResolution, handleDefaultModelResolution);
+
+function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(
 			credentialType,
@@ -482,6 +676,23 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			{
 				hideAskAssistant: true,
+				onCredentialCreated: async function selectCreatedCredential(credential) {
+					// The picker reads the scoped usable list, which only a fetch writes.
+					// Refetch so the new credential is in the list before it is selected,
+					// else the picker treats the selection as invalid and falls back.
+					const scopeProjectId = createCredentialProjectId.value;
+					try {
+						await (scopeProjectId
+							? credentialsStore.fetchUsableCredentials({
+									projectId: scopeProjectId,
+									forAgent: true,
+								})
+							: credentialsStore.refreshUsableCredentials());
+					} catch (error) {
+						toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+					}
+					selectCredentialAndResolveDefaultModel(provider, credential.id);
+				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
 		);
@@ -497,19 +708,19 @@ async function onSelect(id: string) {
 
 	if (action === 'configure') {
 		emit('configureCredential', providerId);
-		openNewCredential(value);
+		openNewCredential(providerId, value);
 		return;
 	}
 
 	if (action === 'select') {
-		emit('selectCredential', providerId, value);
+		selectCredentialAndResolveDefaultModel(providerId, value);
 		return;
 	}
 
 	if (action === 'n8nConnect') {
 		// Radio-style: selecting n8n credits always picks the managed tag. There's no
 		// toggle-off — you switch away by choosing another credential.
-		emit('selectCredential', providerId, AI_GATEWAY_MANAGED_TAG);
+		selectCredentialAndResolveDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
@@ -523,46 +734,81 @@ async function onSelect(id: string) {
 
 		if (!credential) return;
 
-		emit('selectCredential', providerId, credential.id);
-		emit('change', { provider: providerId, model: value });
+		selectCredentialAndResolveDefaultModel(providerId, credential.id);
 		return;
 	}
 
 	if (action === 'model') {
+		pendingDefaultCredential.value = null;
 		emit('change', { provider: providerId, model: value });
 	}
 }
 
+function openDropdown() {
+	if (!disabled) dropdownRef.value?.open();
+}
+
+function setModelOptionsDisabled(disabled: boolean) {
+	if (import.meta.env.DEV) forceModelOptionsDisabled.value = disabled;
+}
+
 defineExpose({
-	open: () => {
-		if (!disabled) dropdownRef.value?.open();
-	},
+	open: openDropdown,
+	setModelOptionsDisabled,
 });
 </script>
 
 <template>
-	<N8nAiModelSelectorDropdown
-		ref="dropdownRef"
-		:items="filteredMenu"
-		:selected-label="selectedLabel"
-		:selected-credential-name="selectedCredentialName"
-		:credentials-missing="isCredentialsMissing"
-		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:disabled="disabled"
-		data-test-id="agent-model-selector"
-		credential-data-test-id="agent-model-selector-credential"
-		@search="handleSearch"
-		@select="onSelect"
-	>
-		<template #trigger-leading="{ ui }">
-			<ModelSelectorTriggerIcon
-				:credential-type-name="triggerCredentialTypeName"
-				:class="ui.class"
-			/>
-		</template>
+	<div :class="$style.root">
+		<N8nAiModelSelectorDropdown
+			ref="dropdownRef"
+			:items="filteredMenu"
+			:is-loading="isLoading || isResolvingDefaultModel"
+			:selected-label="selectedLabel"
+			:selected-credential-name="selectedCredentialName"
+			:credentials-missing="isCredentialsMissing"
+			:restricted-label="restrictedLabel"
+			:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
+			:disabled="disabled"
+			data-test-id="agent-model-selector"
+			credential-data-test-id="agent-model-selector-credential"
+			@search="handleSearch"
+			@select="onSelect"
+		>
+			<template #trigger-leading="{ ui }">
+				<ModelSelectorTriggerIcon
+					:credential-type-name="triggerCredentialTypeName"
+					:class="ui.class"
+				/>
+			</template>
 
-		<template #item-leading="{ item, ui }">
-			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
-		</template>
-	</N8nAiModelSelectorDropdown>
+			<template #item-leading="{ item, ui }">
+				<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
+			</template>
+
+			<template #item-restricted="{ item }">
+				<ModelSelectorRestrictedMarker
+					:name="restrictedCredentialsName(item)"
+					:restriction="item.data?.restriction"
+					@contact-admin="
+						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)
+					"
+				/>
+			</template>
+		</N8nAiModelSelectorDropdown>
+		<ContactAdminModal
+			kind="credential"
+			:type-name="contactAdmin?.subject ?? ''"
+			:audience="contactAdmin?.audience ?? 'instance'"
+			:open="contactAdmin !== null"
+			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"
+		/>
+	</div>
 </template>
+
+<style lang="scss" module>
+// The dialog is a sibling of the dropdown; the wrapper must not change the host layout.
+.root {
+	display: contents;
+}
+</style>

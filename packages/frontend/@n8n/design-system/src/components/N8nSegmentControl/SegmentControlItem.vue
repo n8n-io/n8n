@@ -35,8 +35,6 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 @use '../../css/mixins/focus';
 
 .item {
-	--segment-control--item-height: calc(var(--input--height) - 2 * var(--segment-control--padding));
-
 	position: relative;
 	appearance: none;
 	display: inline-flex;
@@ -46,9 +44,9 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 	flex: 1;
 	border-radius: var(--radius--3xs);
 	background: transparent;
-	height: var(--segment-control--item-height);
-	padding: var(--segment-control--item-padding);
-	font-size: var(--segment-control--font-size);
+	height: 100%;
+	padding: var(--n8n-segment-control--item-padding);
+	font-size: var(--n8n-segment-control--font-size);
 	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	color: var(--text-color--subtle);
@@ -99,7 +97,7 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 }
 
 .square {
-	width: var(--segment-control--item-height);
+	aspect-ratio: 1/1;
 	padding: 0;
 }
 </style>

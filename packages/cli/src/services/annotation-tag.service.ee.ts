@@ -43,8 +43,8 @@ export class AnnotationTagService {
 				return {
 					...rest,
 					usageCount: annotationMappings.length,
-				} as IAnnotationTagWithCountDb;
-			}) as GetAllResult<T>;
+				};
+			});
 		}
 
 		const allTags = (await this.tagRepository.find({

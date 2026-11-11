@@ -1,0 +1,181 @@
+import type * as agents from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
+
+import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { OauthService } from '@/oauth/oauth.service';
+import type { AiService } from '@/services/ai.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { WorkflowRepository } from '@n8n/db';
+
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
+import type {
+	AgentSandboxRuntime,
+	AgentSandboxRuntimeService,
+} from '../agent-sandbox-runtime.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../integrations/n8n-memory';
+import type * as FromJsonConfig from '../json-config/from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+
+const builtAgent = mock<agents.Agent>();
+builtAgent.hasCheckpointStorage.mockReturnValue(true);
+const buildFromJsonMock = vi.fn().mockImplementation(async () => builtAgent);
+vi.mock('../json-config/from-json-config', async () => {
+	const actual = await vi.importActual<typeof FromJsonConfig>('../json-config/from-json-config');
+	return {
+		...actual,
+		buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
+	};
+});
+
+const config: AgentJsonConfig = {
+	name: 'Child Agent',
+	model: 'anthropic/claude-sonnet-4-5',
+	instructions: 'Help with delegated work.',
+};
+
+function makeService(sandboxFilesEnabled = true) {
+	const secureRuntime = mock<AgentSecureRuntime>();
+	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
+
+	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>();
+	sandboxRuntimeService.isEnabled.mockReturnValue(true);
+	const workspaceService = mock<AgentWorkspaceService>();
+	const fileRepository = mock<KnowledgeFileRepository>();
+	fileRepository.hasFilesForAgent.mockResolvedValue(false);
+
+	const service = new AgentRuntimeReconstructionService(
+		mock<Logger>(),
+		mock<AgentRepository>(),
+		fileRepository,
+		mock<ActiveExecutions>(),
+		mock<WorkflowRepository>(),
+		mock<N8NCheckpointStorage>(),
+		secureRuntime,
+		mock<EphemeralNodeExecutor>(),
+		mock<N8nMemory>(),
+		mock<OauthService>(),
+		mock(),
+		sandboxRuntimeService,
+		mock<AiService>(),
+		outboundHttp,
+		workspaceService,
+		mock<AgentKnowledgeMirrorService>(),
+		mock<CredentialsFinderService>(),
+		mock<WorkflowFinderService>(),
+		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
+		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>({
+			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
+		}),
+	);
+
+	return { service, workspaceService };
+}
+
+async function reconstructSubAgent(
+	service: AgentRuntimeReconstructionService,
+	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string },
+) {
+	return await service.reconstructFromResolvedSource({
+		config,
+		memoryOwnerAgentId: 'child-agent-1',
+		projectId: 'project-1',
+		credentialProvider: mock<CredentialProvider>(),
+		toolDescriptors: {},
+		toolCodeByName: {},
+		skills: {},
+		runtimeProfile: 'sub-agent',
+		runType: 'production',
+		...(parentWorkspace !== undefined ? { parentWorkspace } : {}),
+	});
+}
+
+describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+	});
+
+	it('attaches the parent-scoped workspace for sub-agent runs instead of acquiring a sandbox', async () => {
+		const { service, workspaceService } = makeService();
+		const handle = mock<AgentSandboxRuntime>();
+		const delegatedWorkspace = mock<agents.Workspace>();
+		workspaceService.getDelegatedAgentWorkspace.mockReturnValue(delegatedWorkspace);
+
+		await reconstructSubAgent(service, { handle, delegationThreadId: 'thread-1' });
+
+		expect(workspaceService.getDelegatedAgentWorkspace).toHaveBeenCalledWith(handle, 'thread-1');
+		expect(workspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
+		expect(builtAgent.tool).toHaveBeenCalledWith(expect.objectContaining({ name: 'import_files' }));
+		expect(delegatedWorkspace.getInstructions()).toContain('sandbox:report.pdf');
+		expect(builtAgent.nativeToolDeferral).toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining([
+				'workspace_read_file',
+				'import_files',
+				'load_skill',
+				'mark_session_failed',
+				'delegate_subagent',
+			]),
+		});
+		// Sub-agents get no background job tools, so their names are not eager.
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['background_jobs']),
+		});
+	});
+
+	it('attaches the workspace without the sandbox file tools when the flag is off', async () => {
+		const { service, workspaceService } = makeService(false);
+		const delegatedWorkspace = mock<agents.Workspace>();
+		workspaceService.getDelegatedAgentWorkspace.mockReturnValue(delegatedWorkspace);
+
+		await reconstructSubAgent(service, {
+			handle: mock<AgentSandboxRuntime>(),
+			delegationThreadId: 't',
+		});
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
+		expect(builtAgent.tool).not.toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'import_files' }),
+		);
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['import_files']),
+		});
+	});
+
+	it('attaches no workspace for sub-agent runs without a parent handle', async () => {
+		const { service, workspaceService } = makeService();
+
+		await reconstructSubAgent(service);
+
+		expect(workspaceService.getDelegatedAgentWorkspace).not.toHaveBeenCalled();
+		expect(workspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
+		expect(builtAgent.tool).not.toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'import_files' }),
+		);
+	});
+});

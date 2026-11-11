@@ -1,12 +1,13 @@
 import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
 import {
 	convertJsonToSpreadsheetBinary,
+	createBinaryFromJson,
 	extractDataFromPDF,
 	prepareBinariesDataList,
 	routeBinaryProperties,
 } from '@utils/binary';
 import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,7 +20,7 @@ vi.mock('@e965/xlsx', () => ({
 
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
 	getDocument: vi.fn(),
-	version: '5.4.296',
+	version: '6.3.289',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -119,6 +120,36 @@ describe('extractDataFromPDF', () => {
 			// @ts-expect-error - Intentionally deleting for test cleanup
 			delete globalThis.DOMMatrix;
 		}
+	});
+
+	it('should return custom document info entries as a plain object', async () => {
+		const mockDocument = {
+			numPages: 0,
+			getMetadata: vi.fn().mockResolvedValue({
+				info: { Title: 'Report', Custom: new Map([['Department', 'Finance']]) },
+				metadata: null,
+			}),
+			getPage: vi.fn(),
+		};
+		const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+		(getDocument as Mock).mockReturnValue({
+			promise: Promise.resolve(mockDocument),
+		});
+		helpers.assertBinaryData.mockReturnValue({
+			data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+			mimeType: 'application/pdf',
+		});
+
+		const result = await extractDataFromPDF.call(
+			executeFunctions,
+			'data',
+			undefined,
+			undefined,
+			true,
+			0,
+		);
+
+		expect(result.info).toEqual({ Title: 'Report', Custom: { Department: 'Finance' } });
 	});
 
 	describe('DOMMatrix polyfill', () => {
@@ -347,5 +378,172 @@ describe('routeBinaryProperties', () => {
 		expect(json).toEqual({ id: 1 });
 		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'blob');
 		expect(binary.blob).toBe(binaryData);
+	});
+});
+
+describe('createBinaryFromJson base64 decoding', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const context = mock<IExecuteFunctions>({ helpers });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockResolvedValue({ data: '', mimeType: 'application/octet-stream' });
+	});
+
+	it.each([
+		['aGVsbG8=', 'hello'],
+		['aGVsbG8', 'hello'],
+		[' aGVs\n bG8= ', 'hello'],
+		['-_8=', '\xfb\xff'],
+		['', ''],
+		['data:text/plain;base64,aGVsbG8=', 'hello'],
+		['data:text/plain;charset=utf-8;base64,aGVsbG8=', 'hello'],
+		['data:;base64,aGVsbG8=', 'hello'],
+	])('decodes %j without changing the bytes', async (payload, expected) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(expected, 'latin1'));
+	});
+
+	it.each([undefined, '', 'application/octet-stream'])(
+		'respects MIME override %j',
+		async (mimeType) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload: 'data:text/plain;base64,aGk=' },
+				{
+					sourceKey: 'payload',
+					dataIsBase64: true,
+					mimeType,
+					fileName: 'example.txt',
+				},
+			);
+			expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('hi'),
+				'example.txt',
+				mimeType || 'text/plain',
+			);
+		},
+	);
+
+	it.each(['A', 'AA=A', '====', 'aGk===', 'aGk!', 'data:text/plain,hello', 1234, true, null, {}])(
+		'rejects invalid input %j before creating a file',
+		async (payload) => {
+			await expect(
+				createBinaryFromJson.call(
+					context,
+					{ payload },
+					{
+						sourceKey: 'payload',
+						dataIsBase64: true,
+						strictBase64: true,
+						itemIndex: 2,
+					},
+				),
+			).rejects.toBeInstanceOf(NodeOperationError);
+			expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['"aGVsbG8="', 'aGVsbG8=.', 'aGk=='])(
+		'preserves permissive decoding for existing workflows with input %j',
+		async (payload) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+				Buffer.from(payload, BINARY_ENCODING),
+			);
+		},
+	);
+
+	it.each([
+		{ payload: Buffer.from('hi') },
+		{ payload: [104, 105] },
+		{ payload: { type: 'Buffer', data: [104, 105] } },
+	])('preserves buffer-shaped input %#', async ({ payload }) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hi'));
+	});
+
+	it.each([{ payload: [0, 255] }, { payload: { type: 'Buffer', data: [0, 255] } }])(
+		'accepts byte-array boundaries in strict mode for input %#',
+		async ({ payload }) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from([0, 255]));
+		},
+	);
+
+	it.each([
+		{ payload: ['aGk='] },
+		{ payload: [300, -1] },
+		{ payload: [1.5] },
+		{ payload: new Array(1) },
+		{ payload: { type: 'Buffer', data: ['aGk='] } },
+		{ payload: { type: 'Buffer', data: [300, -1] } },
+		{ payload: { type: 'Buffer', data: [1.5] } },
+		{ payload: { type: 'Buffer', data: new Array(1) } },
+	])('rejects invalid byte-array input %# in strict mode', async ({ payload }) => {
+		await expect(
+			createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			),
+		).rejects.toBeInstanceOf(NodeOperationError);
+		expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ payload: ['aGk='], expected: [0] },
+		{ payload: [300, -1], expected: [44, 255] },
+		{ payload: { type: 'Buffer', data: [300, -1] }, expected: [44, 255] },
+	])('preserves permissive byte-array conversion for existing workflows %#', async (testCase) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: testCase.payload },
+			{ sourceKey: 'payload', dataIsBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(testCase.expected));
+	});
+
+	it('decodes the reported PNG data URI to the original 70 bytes', async () => {
+		const payload =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+		await createBinaryFromJson.call(
+			context,
+			{ payload: `data:image/png;base64,${payload}` },
+			{
+				sourceKey: 'payload',
+				dataIsBase64: true,
+			},
+		);
+		const output = helpers.prepareBinaryData.mock.calls[0][0];
+		expect(output).toEqual(Buffer.from(payload, 'base64'));
+		expect(output).toHaveLength(70);
+	});
+
+	it('preserves text conversion', async () => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: 'data:text/plain,hello' },
+			{ sourceKey: 'payload', dataIsBase64: false },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+			Buffer.from('data:text/plain,hello'),
+		);
 	});
 });

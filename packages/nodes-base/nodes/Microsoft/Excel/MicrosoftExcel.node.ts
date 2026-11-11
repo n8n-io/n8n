@@ -14,6 +14,7 @@ export class MicrosoftExcel extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume the Microsoft Excel API for workbooks stored in OneDrive',
 			defaultVersion: 2.2,
+			schemaPath: 'Microsoft/Excel',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

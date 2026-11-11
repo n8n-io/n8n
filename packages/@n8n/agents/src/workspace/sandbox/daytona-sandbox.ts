@@ -23,9 +23,11 @@ import { DaytonaAuthManager } from './daytona-auth-manager';
 import { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from './logger';
+import { toShellCommand } from './shell-command';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
+const SANDBOX_STATE_PAUSED = 'paused';
 const SANDBOX_STATE_ARCHIVED = 'archived';
 const SANDBOX_STATE_CREATING = 'creating';
 const SANDBOX_STATE_RESTORING = 'restoring';
@@ -37,6 +39,7 @@ const SANDBOX_STATE_RESIZING = 'resizing';
 const SANDBOX_STATE_SNAPSHOTTING = 'snapshotting';
 const SANDBOX_STATE_BUILDING_SNAPSHOT = 'building_snapshot';
 const SANDBOX_STATE_STOPPING = 'stopping';
+const SANDBOX_STATE_PAUSING = 'pausing';
 const SANDBOX_STATE_ARCHIVING = 'archiving';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
@@ -53,12 +56,13 @@ const MAX_CONSECUTIVE_ABSENT_CONFLICTS = 3;
 /** Floor for a single wait on a sandbox state transition, regardless of remaining budget. */
 const MIN_STATE_WAIT_SECONDS = 30;
 const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
+const SNAPSHOT_ACTIVATION_POLL_MS = 5_000;
 
 /**
  * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
- * Daytona auto-stopped, or one that was auto-archived. `start()` brings both back to
+ * Daytona auto-stopped, auto-paused, or auto-archived. `start()` brings each back to
  * 'started'. Deliberately narrow — it excludes:
- *  - transient states (creating/starting/stopping/resizing/pending_build): a reset+restart
+ *  - transient states (creating/starting/stopping/pausing/resizing/pending_build): a reset+restart
  *    would race the in-flight transition;
  *  - failed states (error/build_failed): those can be silently deleted and recreated, which
  *    we don't want to trigger off an unrelated operation failure.
@@ -66,6 +70,7 @@ const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
  */
 const RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_STOPPED,
+	SANDBOX_STATE_PAUSED,
 	SANDBOX_STATE_ARCHIVED,
 ]);
 
@@ -95,6 +100,7 @@ const STATEFUL_TRANSITION_SANDBOX_STATES = new Set<SandboxState>([
 
 const WAIT_FOR_RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_STOPPING,
+	SANDBOX_STATE_PAUSING,
 	SANDBOX_STATE_ARCHIVING,
 ]);
 
@@ -157,15 +163,6 @@ export interface DaytonaSandboxOptions {
 	createStrategyMode?: 'direct' | 'proxy';
 }
 
-function shellEscape(value: string): string {
-	return /^[A-Za-z0-9_./:=@+-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function toShellCommand(command: string, args: string[]): string {
-	if (args.length === 0) return command;
-	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
-}
-
 function isSandboxGone(error: unknown): boolean {
 	const { DaytonaNotFoundError } = loadDaytona();
 	return error instanceof DaytonaNotFoundError;
@@ -197,6 +194,16 @@ function isTransientAcquisitionError(error: unknown): boolean {
 	);
 }
 
+/**
+ * Daytona auto-deactivates snapshots after a period of non-use and rejects creates
+ * that reference them with a validation error. The message is the only signal —
+ * there is no dedicated error class or code.
+ */
+function isInactiveSnapshotError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
+	return error instanceof DaytonaError && /snapshot .+ is inactive/i.test(error.message);
+}
+
 function acquisitionFailureClass(error: unknown): string {
 	if (!(error instanceof Error)) return typeof error;
 	const { DaytonaError } = loadDaytona();
@@ -226,6 +233,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * same-named sandbox another process owns.
 	 */
 	private remoteAcquired = false;
+	private createdFresh = false;
 
 	constructor(private readonly options: DaytonaSandboxOptions = {}) {
 		super();
@@ -244,6 +252,14 @@ export class DaytonaSandbox extends BaseSandbox {
 		});
 	}
 
+	/**
+	 * Whether the latest start() created the remote sandbox rather than attaching to one.
+	 * A fresh sandbox holds only what its image bakes.
+	 */
+	get createdFreshSandbox(): boolean {
+		return this.createdFresh;
+	}
+
 	get instance(): Sandbox {
 		if (!this.sandbox) {
 			throw new Error(`Daytona sandbox "${this.id}" is not running`);
@@ -260,7 +276,11 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			const client = await this.getDaytona();
 			const existing = await this.findExistingSandbox(client, deadline);
-			this.sandbox = existing ?? (await this.createSandboxOrReattach(client, deadline));
+			const acquired = existing
+				? { sandbox: existing, created: false }
+				: await this.createSandboxOrReattach(client, deadline);
+			this.sandbox = acquired.sandbox;
+			this.createdFresh = acquired.created;
 			this.remoteAcquired = true;
 		} catch (error) {
 			throw this.toAcquisitionError(error);
@@ -294,14 +314,17 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * exists even though the initial lookup missed it due to a concurrent create from
 	 * another main. Deterministic names make reattach safe.
 	 */
-	private async createSandboxOrReattach(client: Daytona, deadline: number): Promise<Sandbox> {
+	private async createSandboxOrReattach(
+		client: Daytona,
+		deadline: number,
+	): Promise<{ sandbox: Sandbox; created: boolean }> {
 		let conflictError: unknown;
 		let attempt = 0;
 		let consecutiveAbsent = 0;
 
 		do {
 			try {
-				return await this.createSandbox(client, deadline);
+				return { sandbox: await this.createSandbox(client, deadline), created: true };
 			} catch (error) {
 				if (!isSandboxNameConflictError(error)) throw error;
 				conflictError = error;
@@ -312,7 +335,7 @@ export class DaytonaSandbox extends BaseSandbox {
 						sandboxName: this.sandboxName,
 						remoteSandboxId: existing.sandbox.id,
 					});
-					return existing.sandbox;
+					return { sandbox: existing.sandbox, created: false };
 				}
 				if (existing.status === 'absent') {
 					// Create keeps conflicting while the lookup keeps missing: the conflicting
@@ -527,9 +550,9 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * one is 404, auth is 401/403, and transport/proxy conditions vary. Instead we consult
 	 * the authoritative state via the management API — which responds even when the container
 	 * is stopped — and recover only when the sandbox is gone, or in an explicitly recoverable
-	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/archived). Any other state (running,
-	 * a transient transition, or a failed build) propagates the original error so we neither
-	 * mask real failures nor recreate a sandbox off an unrelated error.
+	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/paused/archived). Any other state
+	 * (running, a transient transition, or a failed build) propagates the original error so we
+	 * neither mask real failures nor recreate a sandbox off an unrelated error.
 	 *
 	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
 	 * uses the same credentials), so we fall through to `false` and never recreate.
@@ -547,12 +570,12 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Run a sandbox operation, recovering once if the remote was stopped/archived/deleted out
-	 * from under us. On a recoverable failure the sandbox is resumed (or recreated if gone) and
-	 * the operation is retried exactly once; a second failure propagates.
+	 * Run a sandbox operation, recovering once if the remote was stopped, paused, archived, or
+	 * deleted out from under us. On a recoverable failure the sandbox is resumed (or recreated if
+	 * gone) and the operation is retried exactly once; a second failure propagates.
 	 *
 	 * Replaying the operation is safe because recovery only triggers when the probe confirms
-	 * the remote was NOT running (stopped/archived/gone — see {@link isRecoverable}). In those
+	 * the remote was NOT running (stopped/paused/archived/gone — see {@link isRecoverable}). In those
 	 * states the toolbox/exec request never reached a live container, so it could not have
 	 * partially executed. Operations on a running sandbox are never retried — their error
 	 * propagates untouched.
@@ -626,9 +649,9 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Drive an existing sandbox toward 'started': resume a stopped/archived one, or wait out a
-	 * transitional state. A single wait is capped at half the remaining acquisition budget so a
-	 * sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
+	 * Drive an existing sandbox toward 'started': resume a stopped, paused, or archived one, or wait
+	 * out a transitional state. A single wait is capped at half the remaining acquisition budget so
+	 * a sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
 	 *  - a provisioning sandbox ({@link PROVISIONING_SANDBOX_STATES}: no workspace state yet)
 	 *    is treated as wedged and deleted so the caller can create a fresh one with the rest
 	 *    of the budget;
@@ -723,36 +746,103 @@ export class DaytonaSandbox extends BaseSandbox {
 		let lastError: unknown;
 
 		for (const candidate of candidates) {
-			try {
-				return await this.withTransientRetry(
-					'create',
-					deadline,
-					async () =>
-						await client.create(candidate.params, {
-							timeout: this.createTimeoutSeconds(deadline),
-						}),
-				);
-			} catch (error) {
-				// A name conflict is strategy-independent; let the caller reattach by name.
-				if (isSandboxNameConflictError(error)) throw error;
-				lastError = error;
-				this.reportCreateError(error, candidate.strategy);
-				if (
-					candidate.strategy === 'snapshot' &&
-					candidates.some(({ strategy }) => strategy === 'image')
-				) {
-					this.options.logger?.warn('Sandbox create from snapshot failed; falling back to image', {
-						snapshotName: this.options.snapshot,
-						mode: this.options.createStrategyMode,
-						error: error instanceof Error ? error.message : String(error),
-					});
-					continue;
+			let activatedSnapshot = false;
+			for (;;) {
+				try {
+					return await this.withTransientRetry(
+						'create',
+						deadline,
+						async () =>
+							await client.create(candidate.params, {
+								timeout: this.createTimeoutSeconds(deadline),
+							}),
+					);
+				} catch (error) {
+					// A name conflict is strategy-independent; let the caller reattach by name.
+					if (isSandboxNameConflictError(error)) throw error;
+					// Daytona deactivated the referenced snapshot while it sat idle. It still
+					// exists, so reactivate it and retry — otherwise every run pinned to this
+					// version stays down until someone reactivates it manually.
+					if (
+						candidate.strategy === 'snapshot' &&
+						!activatedSnapshot &&
+						isInactiveSnapshotError(error) &&
+						(await this.activateSnapshotAndWait(client, deadline))
+					) {
+						activatedSnapshot = true;
+						continue;
+					}
+					lastError = error;
+					this.reportCreateError(error, candidate.strategy);
+					if (
+						candidate.strategy === 'snapshot' &&
+						candidates.some(({ strategy }) => strategy === 'image')
+					) {
+						this.options.logger?.warn(
+							'Sandbox create from snapshot failed; falling back to image',
+							{
+								snapshotName: this.options.snapshot,
+								mode: this.options.createStrategyMode,
+								error: error instanceof Error ? error.message : String(error),
+							},
+						);
+						break;
+					}
+					throw error;
 				}
-				throw error;
 			}
 		}
 
 		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
+	}
+
+	/**
+	 * Reactivate this sandbox's inactive snapshot and wait — bounded by the acquisition
+	 * deadline — for it to become active again. Best-effort: in proxy mode the snapshot
+	 * endpoints may not be allowed through, so any failure returns false and the original
+	 * create error propagates unchanged.
+	 */
+	private async activateSnapshotAndWait(client: Daytona, deadline: number): Promise<boolean> {
+		const snapshotName = this.options.snapshot;
+		if (!snapshotName) return false;
+		this.options.logger?.warn('Daytona snapshot is inactive; requesting activation', {
+			snapshotName,
+		});
+		try {
+			const snapshot = await client.snapshot.get(snapshotName);
+			if (snapshot.state === 'inactive') await client.snapshot.activate(snapshot);
+			for (;;) {
+				const current = await client.snapshot.get(snapshotName);
+				if (current.state === 'active') {
+					this.options.logger?.info('Daytona snapshot reactivated', { snapshotName });
+					return true;
+				}
+				if (current.state === 'error' || current.state === 'build_failed') {
+					this.options.logger?.warn('Daytona snapshot is unusable after activation request', {
+						snapshotName,
+						state: current.state,
+					});
+					return false;
+				}
+				if (Date.now() + SNAPSHOT_ACTIVATION_POLL_MS >= deadline) {
+					this.options.logger?.warn('Timed out waiting for Daytona snapshot activation', {
+						snapshotName,
+						state: current.state,
+					});
+					return false;
+				}
+				await new Promise((resolve) => setTimeout(resolve, SNAPSHOT_ACTIVATION_POLL_MS));
+			}
+		} catch (error) {
+			this.options.logger?.warn(
+				'Daytona snapshot activation failed; surfacing the original create error',
+				{
+					snapshotName,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+			return false;
+		}
 	}
 
 	private async waitBeforeAcquisitionRetry(attempt: number, deadline: number): Promise<void> {

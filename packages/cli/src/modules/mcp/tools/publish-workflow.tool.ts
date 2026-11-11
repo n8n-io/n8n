@@ -1,7 +1,7 @@
 import {
 	type WorkflowPublishBlockedDetails,
 	type WorkflowPublishBlockedReason,
-	workflowPublishBlockedDetailsSchema,
+	workflowPublishBlockedDetailsShape,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -45,9 +45,8 @@ const outputSchema = {
 	workflowId: z.string(),
 	activeVersionId: z.string().nullable(),
 	error: z.string().optional(),
-	reason: workflowPublishBlockedDetailsSchema.shape.reason.optional(),
-	workflowReviewRequestId:
-		workflowPublishBlockedDetailsSchema.shape.workflowReviewRequestId.optional(),
+	reason: workflowPublishBlockedDetailsShape.reason.optional(),
+	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
 } satisfies z.ZodRawShape;
 
 /** Only these two failures carry a machine-readable reason; anything else reports just its message. */
@@ -95,6 +94,7 @@ export const createPublishWorkflowTool = (
 			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {
 				versionId,
 				source: 'n8n-mcp',
+				publishHistory: 'none',
 			});
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});

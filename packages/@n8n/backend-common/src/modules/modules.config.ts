@@ -3,6 +3,7 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
+	'inbox',
 	'agents',
 	'agent-evals',
 	'insights',
@@ -11,10 +12,13 @@ export const MODULE_NAMES = [
 	'data-table',
 	'oauth-server',
 	'mcp',
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	'mcp-discovery',
+	// EOF Experiment cleanup
 	'provisioning',
 	'breaking-changes',
 	'source-control',
-	'git-connections',
+	'promotions',
 	'dynamic-credentials',
 	'chat-hub',
 	'sso-oidc',
@@ -38,6 +42,15 @@ export const MODULE_NAMES = [
 	'workflow-reviews',
 	'engine-v2',
 	'policy-infrastructure',
+	'type-availability-policies',
+	'instance-reporting',
+	'inbound-auth-core',
+	'scim',
+	'skills',
+	'apps',
+	'knowledge',
+	'execution-limits',
+	'execution-ledger',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

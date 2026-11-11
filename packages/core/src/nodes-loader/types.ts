@@ -5,6 +5,8 @@ export namespace n8n {
 		n8n?: {
 			credentials?: string[];
 			nodes?: string[];
+			/** A positive integer or `"<major>.<minor>"`, as declared by the package. */
+			n8nNodesApiVersion?: number | string;
 		};
 		author?: {
 			name?: string;

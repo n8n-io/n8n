@@ -8,27 +8,29 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import type { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { getKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
+
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
 } from '../agent-sandbox-runtime.service';
-import type { AgentFile } from '../entities/agent-file.entity';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
-const knowledgePaths = getAgentKnowledgePaths('daytona');
-const n8nKnowledgePaths = getAgentKnowledgePaths('n8n-sandbox');
+const knowledgePaths = getKnowledgePaths('daytona');
+const n8nKnowledgePaths = getKnowledgePaths('n8n-sandbox');
 
 type TestWorkspaceSandbox = WorkspaceSandbox & { provider: SandboxProvider } & Required<
 		Pick<WorkspaceSandbox, 'executeCommand'>
 	>;
 
-function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+function makeAgentFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
 	const id = overrides.id ?? 'file-id';
 	const fileName = overrides.fileName ?? 'file.txt';
 	return {
@@ -42,11 +44,11 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 		...overrides,
-	} as AgentFile;
+	} as KnowledgeFile;
 }
 
-function makeKnowledgeFileStore(): ReturnType<typeof mock<AgentKnowledgeFileStore>> {
-	const store = mock<AgentKnowledgeFileStore>();
+function makeKnowledgeFileStore(): ReturnType<typeof mock<KnowledgeFileStore>> {
+	const store = mock<KnowledgeFileStore>();
 	store.readAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
 	return store;
 }
@@ -105,15 +107,17 @@ function makeRuntimeService(
 function makeService({
 	runtimeService,
 	logger = mock<Logger>(),
-	agentFileRepository = mock<AgentFileRepository>(),
+	agentFileRepository = mock<KnowledgeFileRepository>(),
 	agentRepository = mock<AgentRepository>(),
 	agentKnowledgeFileStore = makeKnowledgeFileStore(),
+	projectDeletion = mock<AgentProjectDeletionRepository>(),
 }: {
 	runtimeService: AgentSandboxRuntimeService;
 	logger?: Logger;
-	agentFileRepository?: AgentFileRepository;
+	agentFileRepository?: KnowledgeFileRepository;
 	agentRepository?: AgentRepository;
-	agentKnowledgeFileStore?: AgentKnowledgeFileStore;
+	agentKnowledgeFileStore?: KnowledgeFileStore;
+	projectDeletion?: AgentProjectDeletionRepository;
 }): AgentKnowledgeMirrorService {
 	return new AgentKnowledgeMirrorService(
 		{ sandboxTimeout: 300_000 } as AgentsConfig,
@@ -122,7 +126,12 @@ function makeService({
 		agentFileRepository,
 		agentRepository,
 		agentKnowledgeFileStore,
+		projectDeletion,
 	);
+}
+
+function isMirrorSyncCommand(command: string): boolean {
+	return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
 }
 
 describe('AgentKnowledgeMirrorService', () => {
@@ -137,6 +146,45 @@ describe('AgentKnowledgeMirrorService', () => {
 		runtimeService = makeRuntimeService(makeRuntime(sandbox, filesystem));
 	});
 
+	it('does not start a mirror sync after project deletion starts', async () => {
+		const projectDeletion = mock<AgentProjectDeletionRepository>();
+		projectDeletion.assertWritable.mockRejectedValue(new Error('project is being deleted'));
+		const logger = mock<Logger>();
+		const service = makeService({ runtimeService, projectDeletion, logger });
+		service.prewarmMirrorInBackground(projectId, agentId);
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
+		expect(runtimeService.acquireKnowledgeSandbox).not.toHaveBeenCalled();
+	});
+
+	it('removes a mirror that finishes after project deletion starts', async () => {
+		const projectDeletion = mock<AgentProjectDeletionRepository>();
+		projectDeletion.assertWritable
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('project is being deleted'));
+		const agentFileRepository = mock<KnowledgeFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService({
+			runtimeService,
+			projectDeletion,
+			agentRepository,
+			agentFileRepository,
+		});
+		service.prewarmMirrorInBackground(projectId, agentId);
+		await vi.waitFor(() =>
+			expect(runtimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId),
+		);
+		expect(projectDeletion.assertWritable).toHaveBeenCalledTimes(2);
+		const syncIndex = sandbox.executeCommand.mock.calls.findIndex(([command]) =>
+			isMirrorSyncCommand(command),
+		);
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(sandbox.executeCommand.mock.invocationCallOrder[syncIndex]).toBeLessThan(
+			runtimeService.destroyKnowledgeSandbox.mock.invocationCallOrder[0],
+		);
+	});
+
 	describe('globKnowledgeFiles', () => {
 		const fixtureFiles = [
 			makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
@@ -145,8 +193,8 @@ describe('AgentKnowledgeMirrorService', () => {
 			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
 		];
 
-		function makeGlobService(files: AgentFile[] = fixtureFiles): AgentKnowledgeMirrorService {
-			const agentFileRepository = mock<AgentFileRepository>();
+		function makeGlobService(files: KnowledgeFile[] = fixtureFiles): AgentKnowledgeMirrorService {
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue(files);
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.existsBy.mockResolvedValue(true);
@@ -197,6 +245,19 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(secondPage.hasMore).toBe(false);
 		});
 
+		it('matches regex metacharacters in the pattern literally', async () => {
+			const service = makeGlobService([
+				makeAgentFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
+				makeAgentFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
+			]);
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: 'report(v1).pdf',
+			});
+
+			expect(result.files.map((file) => file.displayName)).toEqual(['report(v1).pdf']);
+		});
+
 		it('rejects unsafe patterns', async () => {
 			const service = makeGlobService();
 
@@ -222,7 +283,7 @@ describe('AgentKnowledgeMirrorService', () => {
 	});
 
 	it('returns an empty search without acquiring a sandbox when no files exist', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 		agentFileRepository.findByAgentId.mockResolvedValue([]);
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.existsBy.mockResolvedValue(true);
@@ -239,11 +300,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			return command.startsWith('cat ') && command.includes('/manifest');
 		}
 
-		function isMirrorSyncCommand(command: string): boolean {
-			return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
-		}
-
-		function makeMirrorFile(id: string, fileName: string): AgentFile {
+		function makeMirrorFile(id: string, fileName: string): KnowledgeFile {
 			return makeAgentFile({ id, fileName });
 		}
 
@@ -252,8 +309,8 @@ describe('AgentKnowledgeMirrorService', () => {
 			fileStore = makeKnowledgeFileStore(),
 			logger = mock<Logger>(),
 		}: {
-			fileRepository: AgentFileRepository;
-			fileStore?: AgentKnowledgeFileStore;
+			fileRepository: KnowledgeFileRepository;
+			fileStore?: KnowledgeFileStore;
 			logger?: Logger;
 		}): AgentKnowledgeMirrorService {
 			const agentRepository = mock<AgentRepository>();
@@ -272,7 +329,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			sandbox.executeCommand.mockImplementation(async (command) =>
 				makeCommandResult(isManifestReadCommand(command) ? manifestState : ''),
 			);
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
@@ -333,13 +390,14 @@ describe('AgentKnowledgeMirrorService', () => {
 			sandbox.executeCommand.mockImplementation(async (command) =>
 				makeCommandResult(isManifestReadCommand(command) ? 'file-id\tfile.txt\n' : '0\t1\thello\n'),
 			);
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 			const service = makeMirrorService({ fileRepository: agentFileRepository });
 
 			const result = await service.readKnowledge(projectId, agentId, { file: 'file.txt' });
 
 			expect(result.ranges[0].text).toBe('1|hello');
+			expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');
 		});
 
 		it('runs a queued mirror sync with a newer file snapshot after an in-flight sync', async () => {
@@ -355,7 +413,7 @@ describe('AgentKnowledgeMirrorService', () => {
 				}
 				return makeCommandResult();
 			});
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId
 				.mockResolvedValueOnce([makeMirrorFile('file-1', 'doc1.txt')])
 				.mockResolvedValueOnce([
@@ -386,7 +444,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			sandbox = makeSandbox('n8n-sandbox', 'n8n-sandbox-id');
 			filesystem = mock<WorkspaceFilesystem>();
 			runtimeService = makeRuntimeService(makeRuntime(sandbox, filesystem));
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const service = makeMirrorService({ fileRepository: agentFileRepository });
 
@@ -415,7 +473,7 @@ describe('AgentKnowledgeMirrorService', () => {
 				runtimeService.acquireKnowledgeSandbox
 					.mockResolvedValueOnce(makeRuntime(staleSandbox, staleFilesystem))
 					.mockResolvedValueOnce(makeRuntime(replacementSandbox, replacementFilesystem));
-				const agentFileRepository = mock<AgentFileRepository>();
+				const agentFileRepository = mock<KnowledgeFileRepository>();
 				agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 				const service = makeMirrorService({ fileRepository: agentFileRepository });
 
@@ -434,7 +492,7 @@ describe('AgentKnowledgeMirrorService', () => {
 					? makeCommandResult('', `failed with ${secret}`, 2)
 					: makeCommandResult(),
 			);
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const service = makeMirrorService({ fileRepository: agentFileRepository });
 
@@ -450,7 +508,7 @@ describe('AgentKnowledgeMirrorService', () => {
 		it('propagates filesystem write failures instead of finalizing a partial mirror', async () => {
 			const providerError = new Error('provider write failed');
 			filesystem.writeFile.mockRejectedValue(providerError);
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const service = makeMirrorService({ fileRepository: agentFileRepository });
 
@@ -470,7 +528,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			sandbox.executeCommand.mockImplementation(async (command) =>
 				isMirrorSyncCommand(command) ? makeCommandResult('', 'disk full', 1) : makeCommandResult(),
 			);
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const service = makeMirrorService({ fileRepository: agentFileRepository });
 
@@ -481,7 +539,7 @@ describe('AgentKnowledgeMirrorService', () => {
 
 		it('retries a knowledge file on the next sync after its first load fails', async () => {
 			sandbox.executeCommand.mockResolvedValue(makeCommandResult());
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
 			const agentKnowledgeFileStore = makeKnowledgeFileStore();
 			agentKnowledgeFileStore.readAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));

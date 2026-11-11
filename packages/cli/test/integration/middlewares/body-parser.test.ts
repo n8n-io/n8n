@@ -4,8 +4,7 @@ import { createServer } from 'http';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 import { rawBodyReader, bodyParser, parseBody } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {
@@ -53,6 +52,25 @@ describe('bodyParser', () => {
 		const body = JSON.parse(response.text) as { test?: Record<string, unknown> };
 		expect(body.test).toHaveProperty('sanitized___proto__');
 		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	});
+
+	it('should decode a form body in the charset from the content-type header', async () => {
+		const response = await request(server)
+			.post('/')
+			.set('content-type', 'application/x-www-form-urlencoded; charset=ISO-8859-1')
+			.send('text=Gr%FC%DFe')
+			.expect(200);
+		expect(JSON.parse(response.text)).toEqual({ text: 'Grüße' });
+	});
+
+	it('should decode a json body in the charset from the content-type header', async () => {
+		const response = await request(server)
+			.post('/')
+			.set('content-type', 'application/json; charset="windows-1252"')
+			.serialize(((data: unknown) => data) as (obj: unknown) => string)
+			.send(Buffer.from([...Buffer.from('{"price":"5'), 0x80, ...Buffer.from('"}')]))
+			.expect(200);
+		expect(JSON.parse(response.text)).toEqual({ price: '5€' });
 	});
 
 	it('should reject an unreadable request stream as a client error', async () => {

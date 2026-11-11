@@ -2,9 +2,11 @@ import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
 	AuthIdentity,
-	User,
+	Person,
 	AuthIdentityRepository,
+	isPerson,
 	AuthProviderSyncHistoryRepository,
+	PersonRepository,
 	UserRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
@@ -12,6 +14,8 @@ import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
 import { randomString } from 'n8n-workflow';
+
+import { UserDeactivationHooks } from '@/services/user-deactivation-hooks.service';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
@@ -83,21 +87,11 @@ export const getAuthIdentityByLdapId = async (
  * @param idAttributeValue - LDAP ID value
  */
 export const getUserByLdapId = async (idAttributeValue: string) => {
-	return await Container.get(UserRepository).findOne({
-		relations: { role: true },
-		where: {
-			authIdentities: {
-				providerId: idAttributeValue,
-				providerType: 'ldap',
-			},
-		},
-	});
+	return await Container.get(PersonRepository).findByLdapId(idAttributeValue);
 };
 
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-	return await Container.get(UserRepository).findOne({
-		where: { email },
-	});
+export const getUserByEmail = async (email: string): Promise<Person | null> => {
+	return await Container.get(PersonRepository).findByEmail(email);
 };
 
 /**
@@ -107,7 +101,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 export const mapLdapAttributesToUser = (
 	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
-): [AuthIdentity['providerId'], Pick<User, 'email' | 'firstName' | 'lastName'>] => {
+): [AuthIdentity['providerId'], Pick<Person, 'email' | 'firstName' | 'lastName'>] => {
 	return [
 		ldapUser[ldapConfig.ldapIdAttribute] as string,
 		{
@@ -131,14 +125,15 @@ export const getLdapIds = async (): Promise<string[]> => {
 	return identities.map((i) => i.providerId);
 };
 
-export const getLdapUsers = async (): Promise<User[]> => {
+export const getLdapUsers = async (): Promise<Person[]> => {
 	const identities = await Container.get(AuthIdentityRepository).find({
 		relations: { user: true },
 		where: {
 			providerType: 'ldap',
 		},
 	});
-	return identities.map((i) => i.user);
+	// Only a person signs in through LDAP.
+	return identities.map((i) => i.user).filter(isPerson);
 };
 
 /**
@@ -148,18 +143,18 @@ export const mapLdapUserToDbUser = (
 	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
 	toCreate = false,
-): [string, User] => {
-	const user = new User();
+): [string, Person] => {
+	const person = new Person();
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
-	Object.assign(user, data);
+	Object.assign(person, data);
 	if (toCreate) {
-		user.role = GLOBAL_MEMBER_ROLE;
-		user.password = randomString(8);
-		user.disabled = false;
+		person.role = GLOBAL_MEMBER_ROLE;
+		person.password = randomString(8);
+		person.disabled = false;
 	} else {
-		user.disabled = true;
+		person.disabled = true;
 	}
-	return [ldapId, user];
+	return [ldapId, person];
 };
 
 /**
@@ -168,38 +163,42 @@ export const mapLdapUserToDbUser = (
  * Update "ToDisableUsers" in the database
  */
 export const processUsers = async (
-	toCreateUsers: Array<[string, User]>,
-	toUpdateUsers: Array<[string, User]>,
+	toCreateUsers: Array<[string, Person]>,
+	toUpdateUsers: Array<[string, Person]>,
 	toDisableUsers: string[],
+	linkExistingAccountsByEmail: boolean,
 ): Promise<void> => {
 	const userRepository = Container.get(UserRepository);
-	const { manager: dbManager } = userRepository;
-	await dbManager.transaction(async (transactionManager) => {
+	await userRepository.runInTransaction({}, async (transactionManager, ctx) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
 				// If a local user already exists with this email (e.g. an email/password
 				// invite that predates LDAP), link the existing user to the LDAP identity
 				// instead of creating a duplicate row and tripping the unique email
-				// constraint — same behaviour as LdapService.handleLogin.
-				const existingUser = await transactionManager.findOne(User, {
+				// constraint. This matches LdapService.handleLogin. Skip the entry when
+				// linking by email is disabled.
+				const existingPerson = await transactionManager.findOne(Person, {
 					where: { email: user.email },
 				});
 
-				if (existingUser) {
+				if (existingPerson) {
+					if (!linkExistingAccountsByEmail) return;
+
 					const hasChanges =
-						existingUser.firstName !== user.firstName || existingUser.lastName !== user.lastName;
+						existingPerson.firstName !== user.firstName ||
+						existingPerson.lastName !== user.lastName;
 
 					if (hasChanges) {
-						existingUser.firstName = user.firstName;
-						existingUser.lastName = user.lastName;
-						await transactionManager.save(User, existingUser);
+						existingPerson.firstName = user.firstName;
+						existingPerson.lastName = user.lastName;
+						await transactionManager.save(Person, existingPerson);
 					}
 
-					const authIdentity = AuthIdentity.create(existingUser, ldapId);
+					const authIdentity = AuthIdentity.create(existingPerson, ldapId);
 					return await transactionManager.save(authIdentity);
 				}
 
-				const { user: savedUser } = await userRepository.createUserWithProject(
+				const { user: savedUser } = await Container.get(PersonRepository).createPersonWithProject(
 					user,
 					transactionManager,
 				);
@@ -211,21 +210,21 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					const existingUser = await transactionManager.findOneBy(User, {
+					const existingPerson = await transactionManager.findOneBy(Person, {
 						id: authIdentity.userId,
 					});
-					if (existingUser) {
+					if (existingPerson) {
 						// Only update if data has actually changed
 						const hasChanges =
-							existingUser.email !== user.email ||
-							existingUser.firstName !== user.firstName ||
-							existingUser.lastName !== user.lastName;
+							existingPerson.email !== user.email ||
+							existingPerson.firstName !== user.firstName ||
+							existingPerson.lastName !== user.lastName;
 
 						if (hasChanges) {
-							existingUser.email = user.email;
-							existingUser.firstName = user.firstName;
-							existingUser.lastName = user.lastName;
-							await transactionManager.save(User, existingUser);
+							existingPerson.email = user.email;
+							existingPerson.firstName = user.firstName;
+							existingPerson.lastName = user.lastName;
+							await transactionManager.save(Person, existingPerson);
 						}
 					}
 				}
@@ -235,11 +234,12 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+					const person = await transactionManager.findOneBy(Person, { id: authIdentity.userId });
 
-					if (user) {
-						user.disabled = true;
-						await transactionManager.save(user);
+					if (person) {
+						person.disabled = true;
+						await transactionManager.save(person);
+						await Container.get(UserDeactivationHooks).run(person.id, ctx);
 					}
 
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
@@ -314,14 +314,14 @@ export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
 	];
 };
 
-export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
-	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId), {
+export const createLdapAuthIdentity = async (person: Person, ldapId: string) => {
+	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(person, ldapId), {
 		transaction: false,
 	});
 };
 
-export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const { user } = await Container.get(UserRepository).createUserWithProject({
+export const createLdapUserOnLocalDb = async (data: Partial<Person>, ldapId: string) => {
+	const { user } = await Container.get(PersonRepository).createPersonWithProject({
 		password: randomString(8),
 		role: GLOBAL_MEMBER_ROLE,
 		...data,
@@ -330,13 +330,14 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 	return user;
 };
 
-export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
+export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<Person>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+		const personRepository = Container.get(PersonRepository);
+		const person = await personRepository.findById(userId);
 
-		if (user) {
-			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		if (person) {
+			await personRepository.save(Object.assign(person, data));
 		}
 	}
 };

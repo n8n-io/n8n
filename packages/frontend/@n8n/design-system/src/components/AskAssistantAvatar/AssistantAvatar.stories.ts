@@ -20,7 +20,12 @@ const Template: StoryFn = (args, { argTypes }) => ({
 export const Default = Template.bind({});
 Default.args = {};
 
-export const Mini = Template.bind({});
-Mini.args = {
-	size: 'mini',
-};
+export const Sizes: StoryFn = () => ({
+	components: { AssistantAvatar },
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center;">
+			<AssistantAvatar size="mini" />
+			<AssistantAvatar size="small" />
+		</div>
+	`,
+});

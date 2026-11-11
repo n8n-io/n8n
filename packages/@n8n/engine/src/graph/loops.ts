@@ -1,6 +1,7 @@
 import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
-import type { GraphEdge, WorkflowGraph } from './workflow-graph';
+import { isBatchStepConfig, type GraphEdge, type WorkflowGraph } from './workflow-graph';
+import { createNodeLabeler } from './workflow-graph-queries';
 
 /** A loop, derived from the graph's marked back-edges. */
 export interface WorkflowLoop {
@@ -116,8 +117,8 @@ function isCyclic(members: Set<string>, edges: GraphEdge[]): boolean {
  *    leaving the member set is the one from that done slot.
  */
 export function validateLoops(graph: WorkflowGraph): void {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
-	const name = (id: string) => namesById.get(id) ?? id;
+	const nodeIds = new Set(graph.nodes.map((node) => node.id));
+	const name = createNodeLabeler(graph);
 
 	// Prerequisites for everything below: colliding IDs would make both
 	// component membership and `(nodeId, iteration)` step identity ambiguous,
@@ -131,7 +132,7 @@ export function validateLoops(graph: WorkflowGraph): void {
 	}
 	for (const edge of graph.edges) {
 		for (const endpoint of [edge.from, edge.to]) {
-			if (!namesById.has(endpoint)) {
+			if (!nodeIds.has(endpoint)) {
 				throw new GraphValidationError(
 					`Edge ${name(edge.from)} -> ${name(edge.to)} references ${endpoint}, which is not a node in the graph`,
 				);
@@ -151,6 +152,9 @@ export function validateLoops(graph: WorkflowGraph): void {
 
 	const batchNodeIds = new Set(
 		graph.nodes.filter((node) => node.type === 'batch').map((node) => node.id),
+	);
+	const triggerNodeIds = new Set(
+		graph.nodes.filter((node) => node.type === 'trigger').map((node) => node.id),
 	);
 	const loops = deriveLoops(graph);
 	const loopsByBatchNode = new Map(loops.map((loop) => [loop.batchNodeId, loop]));
@@ -174,6 +178,22 @@ export function validateLoops(graph: WorkflowGraph): void {
 			throw new GraphValidationError(
 				`Node ${name(batchNodeId)} has a back-edge returning to it but is not a batch node`,
 			);
+		}
+
+		const batchNode = graph.nodes.find((node) => node.id === batchNodeId);
+		if (!isBatchStepConfig(batchNode?.config)) {
+			throw new GraphValidationError(
+				`Batch node ${name(batchNodeId)} has no batch size, and it must be a whole number of at least 1`,
+			);
+		}
+
+		// Nothing outside the loop points in, so it would start at pass 1 with no pass 0, and never finish.
+		for (const memberId of memberIds) {
+			if (triggerNodeIds.has(memberId)) {
+				throw new GraphValidationError(
+					`Trigger ${name(memberId)} is inside the loop of ${name(batchNodeId)}, so that loop could never start`,
+				);
+			}
 		}
 
 		// Nesting, before the shape rules: two looping batch nodes land in one

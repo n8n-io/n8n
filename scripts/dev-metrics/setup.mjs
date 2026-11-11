@@ -149,10 +149,25 @@ function isOurShim(path) {
 
 const pathDirs = () => (process.env.PATH ?? '').split(':').filter(Boolean);
 
-/** First executable `bin` on PATH (may be our shim). */
+// Binaries that pnpm manages itself: the `packageManager` version store
+// (`<PNPM_HOME>/store/vN/links/...`) and its self-update install dir
+// (`<PNPM_HOME>/.tools/pnpm/<version>/...`). pnpm prepends the running binary's
+// dir to PATH for lifecycle scripts, so a `pnpm install` under a version-switched
+// pnpm puts these first on PATH. Shimming them corrupts pnpm's version switching
+// — never touch them, target the durable install instead. The shape checks match
+// on any prefix because PNPM_HOME is not always set in the environment.
+function isPnpmManagedPath(p) {
+	if (/\/store\/v\d+\/links\//.test(p) || /\/\.tools\/pnpm\//.test(p)) return true;
+	const home = process.env.PNPM_HOME;
+	if (!home) return false;
+	return p.startsWith(join(home, 'store') + '/') || p.startsWith(join(home, '.tools') + '/');
+}
+
+/** First shimmable `bin` on PATH (may be our shim; never a pnpm-managed one). */
 function whichOnPath(bin) {
 	for (const d of pathDirs()) {
 		const p = join(d, bin);
+		if (isPnpmManagedPath(p)) continue;
 		if (isExecutable(p)) return p;
 	}
 	return '';
@@ -162,6 +177,7 @@ function whichOnPath(bin) {
 function resolveRealBinary(bin) {
 	for (const d of pathDirs()) {
 		const p = join(d, bin);
+		if (isPnpmManagedPath(p)) continue;
 		if (!isExecutable(p)) continue;
 		if (!isOurShim(p)) return p; // genuine
 		const saved = p + SAVED_SUFFIX;
@@ -190,7 +206,27 @@ function renderShim(file, realExec, bin) {
 	chmodSync(file, 0o755);
 }
 
+/** Put the saved original back in place of a shim (or remove a stray shim). */
+function restoreOne(p) {
+	const saved = p + SAVED_SUFFIX;
+	if (existsSync(saved))
+		renameSync(saved, p); // restore original
+	else rmSync(p, { force: true }); // stray shim with no saved original
+}
+
 function installOne(bin) {
+	// Heal installs made before the pnpm-managed-path guard existed: restore any
+	// shim inside a pnpm-managed dir, then shim the durable binary below.
+	for (const d of pathDirs()) {
+		const p = join(d, bin);
+		if (!isPnpmManagedPath(p) || !isOurShim(p)) continue;
+		try {
+			restoreOne(p);
+		} catch {
+			// unwritable managed dir — the durable binary below still gets the shim
+		}
+	}
+
 	const front = whichOnPath(bin);
 
 	// Already shimmed: re-render only if this checkout's template is newer
@@ -218,7 +254,7 @@ function installOne(bin) {
 	// swap — so a crash never leaves the binary's path empty. If the final swap
 	// fails after the original was moved aside, roll it back so pnpm keeps working.
 	// `real` is genuine here (not our shim), so any existing saved sibling is stale
-	// — e.g. a corepack/pnpm upgrade dropped a fresh binary over the old shim. Move
+	// — e.g. a pnpm upgrade dropped a fresh binary over the old shim. Move
 	// the current binary aside unconditionally (overwriting the stale copy) so the
 	// shim runs today's binary, never a leftover older one.
 	const saved = real + SAVED_SUFFIX;
@@ -239,7 +275,7 @@ function installBinaries() {
 	syncTracker();
 	const results = SHADOWED_BINARIES.map(installOne);
 	// Remember where shims landed so --disable/--reset can restore them later even
-	// from a different node/corepack version whose bin dir isn't on PATH now.
+	// from a different node version whose bin dir isn't on PATH now.
 	const shims = results.filter((r) => r.action === 'in-place' || r.action === 'refreshed');
 	if (shims.length) {
 		const prev = readState()?.installedShims ?? [];
@@ -255,10 +291,7 @@ function uninstallBinaries() {
 	const restored = [];
 	for (const p of new Set([...recorded, ...onPath])) {
 		if (!isOurShim(p)) continue;
-		const saved = p + SAVED_SUFFIX;
-		if (existsSync(saved))
-			renameSync(saved, p); // restore original
-		else rmSync(p, { force: true }); // stray shim with no saved original
+		restoreOne(p);
 		restored.push(p);
 	}
 	return restored;

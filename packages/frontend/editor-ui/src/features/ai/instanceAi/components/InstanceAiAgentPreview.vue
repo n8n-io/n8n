@@ -1,30 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import type { AgentCreationResource } from '@/features/agents/types';
+import { computed, onBeforeUnmount } from 'vue';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
-import type { AgentResource } from '@/features/agents/types';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
-import {
-	getAgentBuilderTargetFromThreadMetadata,
-	getPendingAgentTargetFromThreadMetadata,
-} from '../instanceAi.threadRuntime';
-import { useThread, useInstanceAiStore } from '../instanceAi.store';
-import {
-	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
-	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
-} from '../constants';
-import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
+import { useArtifactThread } from '../artifactThread';
+import { useArtifactAgentTargets, type PendingAgentRequest } from '../artifactAgentTargets';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
+import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	previewSessionId?: string;
+	previewOpen: boolean;
+	previewChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 // === Editing lock ===
@@ -34,55 +30,66 @@ const emit = defineEmits<{
 // Parity with the workflow artifact: content stays fully visible and
 // inspectable — only editing/publishing is disabled, via
 // `artifact-editing-locked` on `AgentBuilderView`.
-const thread = useThread();
-const instanceAiStore = useInstanceAiStore();
+const thread = useArtifactThread();
+const agentTargets = useArtifactAgentTargets();
 
-const isAgentBuilding = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingAgent(message.agentTree, props.agentId)) return true;
-	}
-	return false;
+/**
+ * Props of an unmounted instance keep their last values, so a target comparison
+ * alone cannot tell "still showing this artifact" from "torn down while the
+ * request was in flight". Both must be false before a response touches shared
+ * thread state.
+ */
+let mounted = true;
+onBeforeUnmount(() => {
+	mounted = false;
 });
 
-async function syncAgentTarget(name: string) {
-	const metadata = instanceAiStore.getThreadMetadata(thread.id);
-	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
-	const pendingTarget = getPendingAgentTargetFromThreadMetadata(metadata);
-	if (
-		target?.agentId === props.agentId &&
-		target.projectId === props.projectId &&
-		target.name === name &&
-		!pendingTarget
-	) {
-		return;
-	}
+const isAgentBuilding = computed(() => isAgentEditingAgent(thread.artifactTurns, props.agentId));
 
-	await instanceAiStore.updateThreadMetadata(thread.id, {
-		[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: null,
-		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-			agentId: props.agentId,
-			projectId: props.projectId,
-			name,
-		},
-	});
+// The prompt starts processing before the agent-builder event arrives.
+const showBuildingIndicator = computed(
+	() =>
+		isAgentBuilding.value ||
+		(thread.activeArtifactId === props.agentId && (thread.isSendingMessage || thread.isStreaming)),
+);
+
+async function syncAgentTarget(name: string) {
+	await agentTargets.bind({ agentId: props.agentId, projectId: props.projectId, name });
 }
 
-async function onAgentPersisted(agent: AgentResource) {
-	await syncAgentTarget(agent.name);
+/**
+ * Persist the pending artifact: one request creates (or adopts, when the chat
+ * already created it under the same id) the agent and replaces this thread's
+ * pending marker with the bound target. The builder treats resolution as the
+ * acknowledgement, so the binding is durable before it stops drafting.
+ */
+async function persistAgent(target: PendingAgentRequest): Promise<AgentCreationResource> {
+	const { agent, commit } = await agentTargets.persistPendingAgent(target);
+	// Skipped once this preview has been torn down or moved on, so a slow response
+	// for the previous artifact cannot restore its binding over the current one —
+	// the server write already landed, and the next thread load picks it up.
+	if (mounted && props.projectId === target.projectId && props.agentId === target.agentId) {
+		commit();
+	}
+	return agent;
 }
 </script>
 
 <template>
 	<div :class="$style.root">
+		<Transition name="agent-building-indicator">
+			<AgentBuildingIndicator v-if="showBuildingIndicator" />
+		</Transition>
 		<AgentBuilderView
 			artifact-mode
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
+			:artifact-preview-open="props.previewOpen"
+			:artifact-preview-chat-target="props.previewChatTarget"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
-			@persisted="onAgentPersisted"
+			:artifact-persist-agent="persistAgent"
 			@preview-open-change="emit('preview-open-change', $event)"
 			@assistant-handoff="emit('assistant-handoff', $event)"
 			@name-saved="syncAgentTarget"

@@ -6,7 +6,7 @@ import {
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
 import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
-import { useAgentTelemetry } from './useAgentTelemetry';
+import { useAgentTelemetry, type KnowledgeUploadClientFailureReason } from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
@@ -20,26 +20,41 @@ export interface AgentBuilderTelemetryDeps {
 	agent: Ref<AgentResource | null>;
 	/** Local (unsaved) config — the fingerprint source for emitted events. */
 	localConfig: Ref<AgentJsonConfig | null>;
-	connectedTriggers: Ref<string[]>;
 }
 
 interface EditSnapshot {
 	agentId: string;
 	status: AgentTelemetryStatus;
 	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
 }
 
+/**
+ * The config says which channels exist, not whether they are running — only the
+ * status endpoint knows that. A published agent's channels are therefore seeded
+ * as `starting` rather than `connected`: claiming connected here is what let a
+ * channel that never started show a green dot until something refetched.
+ */
 function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
+	isPublished: boolean,
 ): Array<AgentIntegrationStatusEntry & { credentialId: string }> {
 	const knownTypes = new Set(knownTriggerTypes);
 	const entries: Array<AgentIntegrationStatusEntry & { credentialId: string }> = [];
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
-		entries.push({ type: integration.type, credentialId: integration.credentialId });
+		// Settings and approval ride along so a config seed does not blank what the
+		// status endpoint reported. The edit modal saves from that cache.
+		entries.push({
+			type: integration.type,
+			credentialId: integration.credentialId,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
+			status: isPublished ? 'starting' : 'configured',
+		});
 	}
 
 	return entries;
@@ -53,16 +68,12 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			agentId: deps.agentId.value,
 			status: deriveAgentStatus(deps.agent.value),
 			config: deps.localConfig.value,
-			connectedTriggers: deps.connectedTriggers.value,
 		};
 	}
 
 	/**
-	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
-	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
-	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
-	 * can throw in insecure contexts, so failures are swallowed — individual
-	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 * Compute the fingerprint before each event. Ignore failures so telemetry
+	 * does not interrupt editing. Track calls also handle errors in `useAgentTelemetry`.
 	 */
 	function withFingerprint(
 		config: AgentJsonConfig | null,
@@ -102,6 +113,19 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		);
 	}
 
+	function trackTriggerRemoved(payload: { triggerType: string; triggers: string[] }) {
+		const s = snapshot();
+		withFingerprint(s.config, payload.triggers, (configVersion, configuredTriggers) => {
+			agentTelemetry.trackRemovedTrigger({
+				agentId: s.agentId,
+				triggerType: payload.triggerType,
+				triggers: configuredTriggers,
+				configVersion,
+				status: s.status,
+			});
+		});
+	}
+
 	/**
 	 * Eagerly derive configured trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -114,6 +138,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		const integrations = integrationStatusEntriesFromConfig(
 			deps.localConfig.value,
 			knownTriggerTypes,
+			!!deps.agent.value?.activeVersionId,
 		);
 		const configured = integrations.map((integration) => integration.type).sort();
 		const configuredIntegrations = integrations.filter(
@@ -124,7 +149,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.agentId.value,
 			knownTriggerTypes,
 			configuredIntegrations,
-			deps.agent.value?.activeVersionId ? 'connected' : 'configured',
+			integrations.filter((integration) => isDraftIntegration(integration)),
 		);
 		return configured;
 	}
@@ -141,11 +166,39 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
 	}
 
+	function trackOpenedKnowledgeTab() {
+		agentTelemetry.trackOpenedKnowledgeTab({ agentId: deps.agentId.value });
+	}
+
+	function trackStartedFileUpload(fileCount: number) {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'file',
+			fileCount,
+		});
+	}
+
+	function trackStartedVectorStoreSetup() {
+		agentTelemetry.trackStartedAddingKnowledge({
+			agentId: deps.agentId.value,
+			kind: 'vector_store',
+		});
+	}
+
+	function trackRejectedFileUpload(reason: KnowledgeUploadClientFailureReason, fileCount: number) {
+		agentTelemetry.trackFailedKnowledgeUpload({ agentId: deps.agentId.value, reason, fileCount });
+	}
+
 	return {
 		trackTriggerAdded,
+		trackTriggerRemoved,
 		fetchInitialTriggersBaseline,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackOpenedKnowledgeTab,
+		trackStartedFileUpload,
+		trackStartedVectorStoreSetup,
+		trackRejectedFileUpload,
 	};
 }

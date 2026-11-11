@@ -18,6 +18,21 @@ class TagGenerator {
 			versionSuffix = '-distroless';
 		}
 
+		if (image === 'n8n-pc') {
+			imageName = 'n8n';
+			versionSuffix = '-pc';
+		}
+
+		if (image === 'n8n-debian') {
+			imageName = 'n8n';
+			versionSuffix = '-debian';
+		}
+
+		if (image === 'runners-debian') {
+			imageName = 'runners';
+			versionSuffix = '-debian';
+		}
+
 		const platformSuffix = platform ? `-${platform.split('/').pop()}` : '';
 		const fullVersion = `${version}${versionSuffix}${platformSuffix}`;
 
@@ -82,12 +97,12 @@ class TagGenerator {
 	}
 
 	generateAll({ version, platform, includeDockerHub = false, sha = '', date = '' }) {
-		const images = ['n8n', 'runners', 'runners-distroless'];
+		const images = ['n8n', 'n8n-pc', 'n8n-debian', 'runners', 'runners-distroless', 'runners-debian'];
 		const results = {};
 
 		for (const image of images) {
 			const tags = this.generate({ image, version, platform, includeDockerHub, sha, date });
-			const prefix = image.replace('-distroless', '_distroless');
+			const prefix = image.replaceAll('-', '_');
 			results[prefix] = tags;
 
 			if (this.githubOutput) {

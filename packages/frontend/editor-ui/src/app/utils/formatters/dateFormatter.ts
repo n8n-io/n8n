@@ -29,11 +29,15 @@ export const toDayMonth = (fullDate: Date | string) => dateformat(fullDate, 'd m
 export const toTime = (fullDate: Date | string, includeMillis: boolean = false) =>
 	dateformat(fullDate, includeMillis ? 'HH:MM:ss.l' : 'HH:MM:ss');
 
+const startOfDay = (date: Date) =>
+	new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
 export const formatTimeAgo = (fullDate: Date | string): string => {
 	const now = new Date();
 	const date = new Date(fullDate);
-	const diffInMs = now.getTime() - date.getTime();
-	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+	// Count calendar days, not 24h windows: yesterday evening is "Yesterday" this
+	// morning. Rounding absorbs the 23h/25h days around a DST change.
+	const diffInDays = Math.round((startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24));
 
 	if (diffInDays === 0) {
 		return i18n.baseText('userActivity.today');

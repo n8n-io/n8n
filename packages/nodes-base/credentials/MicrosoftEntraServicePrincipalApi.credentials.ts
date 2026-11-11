@@ -10,7 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
-import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
+import {
+	getTokenRequestClient,
+	hasAccessToken,
+	TOKEN_REQUEST_TIMEOUT,
+} from './common/token-request';
 
 const DEFAULT_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 const DEFAULT_LOGIN_HOST = 'https://login.microsoftonline.com';
@@ -31,21 +35,6 @@ const LOGIN_HOSTS_BY_GRAPH_URL: Record<string, string> = {
 	'https://dod-graph.microsoft.us': 'https://login.microsoftonline.us',
 	'https://microsoftgraph.chinacloudapi.cn': 'https://login.partner.microsoftonline.cn',
 };
-
-interface TokenResponse {
-	access_token?: string;
-	token_type?: string;
-	expires_in?: number;
-}
-
-function hasAccessToken(response: unknown): response is TokenResponse & { access_token: string } {
-	return (
-		typeof response === 'object' &&
-		response !== null &&
-		typeof (response as { access_token?: unknown }).access_token === 'string' &&
-		(response as { access_token: string }).access_token.length > 0
-	);
-}
 
 // Reads + trims the credential fields the token exchange depends on. Pasted IDs
 // often carry whitespace, so trimming happens once here.
@@ -162,7 +151,7 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 
 	displayName = 'Microsoft Entra Service Principal';
 
-	documentationUrl = 'microsoftentra';
+	documentationUrl = 'microsoftentraserviceprincipal';
 
 	icon: Icon = 'file:icons/Microsoft.svg';
 
@@ -188,7 +177,7 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test reads the organization via Microsoft Graph, so the app needs Organization.Read.All (or Directory.Read.All) for the test to pass.',
+				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test only checks that the app can sign in. A missing or unconsented permission shows up as an error when a node runs, not here.',
 			name: 'setupNotice',
 			type: 'notice',
 			default: '',
@@ -281,9 +270,9 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		},
 	];
 
-	// Only called when "accessToken" (the expirable property) is empty, on a 401 retry,
-	// or during a credential test. Core drives expiry refresh through its 401 retry path,
-	// so we deliberately do not persist `expires_in` or run a credential-side TTL.
+	// Only called when "accessToken" (the expirable property) is empty or on a 401 retry.
+	// Core drives expiry refresh through its 401 retry path, so we deliberately do not
+	// persist `expires_in` or run a credential-side TTL.
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const accessToken = await getAccessToken(credentials);
 		return { accessToken };
@@ -303,10 +292,11 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		return requestOptions;
 	}
 
+	// The service document needs no application permission, so the test passes on the mint alone.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.graphApiBaseUrl || "https://graph.microsoft.com"}}',
-			url: '/v1.0/organization',
+			url: '/v1.0/',
 			method: 'GET',
 		},
 	};

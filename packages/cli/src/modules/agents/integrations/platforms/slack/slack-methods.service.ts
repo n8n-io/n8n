@@ -1,34 +1,39 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
+	AgentSlackIntegrationSettings,
 	SlackAgentAppManifest,
 	SlackApiErrorMeta,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { BadRequestError } from '@n8n/errors';
+import { CacheService, UrlService } from '@n8n/backend-services';
 
+import { getAgentOrThrow } from '../../../utils/get-agent-or-throw';
 import {
+	hasSessionShape,
+	managedSlackAppCacheKey,
+	SLACK_APP_SETUP_TTL_MS,
 	SLACK_BOT_SCOPES,
+	SLACK_CREDENTIAL_TYPE,
 	type SlackAppSetupSession,
 	slackSetupCacheKey,
 } from './slack-setup.types';
 import { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
-import type { Agent } from '../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import { findDraftIntegration } from '../../../utils/agent-channel';
 import { stringProperty } from '../../integration-helpers';
 
-const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
-const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
-const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 const REQUIRED_BOT_EVENTS = [
 	'app_mention',
@@ -62,6 +67,7 @@ export class SlackMethodsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly cacheService: CacheService,
 		private readonly cipher: Cipher,
+		private readonly logger: Logger,
 	) {}
 
 	async callSlackApi<T extends { [key: string]: unknown }>(
@@ -76,7 +82,8 @@ export class SlackMethodsService {
 			}
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled',
+					// Fixed public vendor host (slack.com), not user-controllable
+					useDefaultSsrfPolicy: 'unsafe',
 				})
 				.request({
 					method: 'POST',
@@ -99,10 +106,8 @@ export class SlackMethodsService {
 		return new SlackApiError(action, stringProperty(response, 'error') ?? 'unknown_error');
 	}
 
-	async getAgent(agentId: string, projectId: string): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return agent;
+	async getAgent(agentId: string, projectId: string): Promise<ProjectAgent> {
+		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
 	}
 
 	buildManifest(
@@ -185,11 +190,23 @@ export class SlackMethodsService {
 		);
 	}
 
+	async decodeSession(value: string): Promise<SlackAppSetupSession | undefined> {
+		try {
+			const decrypted = await this.cipher.decryptV2(value);
+			const session = jsonParse<unknown>(decrypted, { fallbackValue: null });
+			if (hasSessionShape(session)) return session;
+		} catch {
+			// Each setup flow decides how to handle invalid cached state.
+		}
+		return undefined;
+	}
+
 	async connectBotCredential(
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		accessToken: string,
 		session: SlackAppSetupSession,
+		modifiedBy?: AgentActor,
 	): Promise<string> {
 		const credentialData = {
 			name: this.credentialName(session.teamName, agent.name),
@@ -197,6 +214,7 @@ export class SlackMethodsService {
 			data: {
 				accessToken,
 				signatureSecret: session.signingSecret,
+				agentId: session.agentId,
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -213,26 +231,76 @@ export class SlackMethodsService {
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
-			settings: { messagingExperience: 'agent' },
+			settings: draftSlackSettings(agent) ?? { messagingExperience: 'agent' },
 		} satisfies AgentIntegrationConfig;
-		await this.integrationManagementService.connect({
-			agent,
-			user,
-			integration,
-		});
+		try {
+			await this.integrationManagementService.connect({
+				agent,
+				user,
+				integration,
+				...(modifiedBy ? { modifiedBy } : {}),
+			});
+		} catch (error) {
+			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
+			throw error;
+		}
 		await this.clearManagedAppSession(session);
 		return credential.id;
+	}
+
+	/**
+	 * Undo the credential this setup attempt created, so a failed connect doesn't
+	 * leave one behind in the project.
+	 *
+	 * Keyed on whether the agent durably references it rather than on how the
+	 * connect failed: the integration write lands before the steps that settle
+	 * publication and release a replaced channel, so a failure there still leaves
+	 * the entry persisted, and that entry is what the next publish or reconcile
+	 * acts on.
+	 *
+	 * Only ever called with a credential created moments earlier in the same call
+	 * and never handed out on this path, so the agent row is the only place that
+	 * can reference it — nothing the user picked or already owned is reachable
+	 * from here.
+	 */
+	private async deleteUnreferencedCredential(
+		agentId: string,
+		credentialId: string,
+		user: User,
+	): Promise<void> {
+		try {
+			const state = await this.agentRepository.findIntegrationState(agentId);
+			const referenced = (state?.integrations ?? []).some(
+				(entry) => entry.credentialId === credentialId,
+			);
+			if (referenced) return;
+
+			await this.credentialsService.delete(user, credentialId);
+		} catch (error) {
+			// Best-effort: the setup failure is what the caller reports.
+			this.logger.warn('[SlackMethodsService] Could not clean up the Slack credential', {
+				agentId,
+				credentialId,
+				error,
+			});
+		}
 	}
 
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
 			await this.cacheService.delete(
-				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}:${session.userId}`,
+				managedSlackAppCacheKey({
+					projectId: session.projectId,
+					agentId: session.agentId,
+					managerCredentialId: session.managerCredentialId,
+					workspaceId: session.teamId,
+					userId: session.userId,
+				}),
 			);
 		}
 	}
 
-	private webhookUrl(projectId: string, agentId: string): string {
+	webhookUrl(projectId: string, agentId: string): string {
 		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/slack`;
 	}
 
@@ -262,4 +330,9 @@ export class SlackMethodsService {
 			.slice(0, 35);
 		return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
 	}
+}
+
+/** Setup completes a Slack draft with its settings. `connect` keeps the draft approval. */
+function draftSlackSettings(agent: ProjectAgent): AgentSlackIntegrationSettings | undefined {
+	return findDraftIntegration(agent.integrations ?? [], 'slack')?.settings;
 }

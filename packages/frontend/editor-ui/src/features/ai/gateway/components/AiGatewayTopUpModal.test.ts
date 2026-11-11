@@ -108,7 +108,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 		await userEvent.click(screen.getByRole('button', { name: 'Contact admin' }));
 
 		expect(windowOpen).toHaveBeenCalledWith(
-			'mailto:owner@example.com?subject=n8n%20credits%20top-up',
+			'mailto:owner@example.com?subject=Gateway%20credits%20top-up',
 		);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	});
@@ -134,7 +134,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 		await userEvent.click(screen.getByRole('button', { name: 'Contact admin' }));
 
-		expect(windowOpen).toHaveBeenCalledWith('mailto:?subject=n8n%20credits%20top-up');
+		expect(windowOpen).toHaveBeenCalledWith('mailto:?subject=Gateway%20credits%20top-up');
 	});
 
 	it('closes the dialog when Cancel is clicked', async () => {

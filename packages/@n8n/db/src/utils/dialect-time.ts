@@ -67,6 +67,26 @@ export function columnOrNowPlusMsLiteral(
 }
 
 /**
+ * Whichever is later of a column's value or DB-clock `now` plus a millisecond
+ * offset, per dialect. Ratchets a deadline forward: a stored value further out
+ * than the offset stands, and a `NULL` column takes the offset.
+ * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
+ * SQL fragment (a quoted column name), never caller input.
+ */
+export function laterOfColumnAndNowPlusMsLiteral(
+	isPostgres: boolean,
+	columnExpr: string,
+	ms: number,
+): string {
+	const now = dbNowLiteral(isPostgres);
+	const offset = dbNowPlusMsLiteral(isPostgres, ms);
+	if (isPostgres) {
+		return `GREATEST(COALESCE(${columnExpr}, ${now}), ${offset})`;
+	}
+	return `MAX(COALESCE(${columnExpr}, ${now}), ${offset})`;
+}
+
+/**
  * Parse a DB-clock value read back from a query.
  * Postgres returns a `Date`.
  * SQLite returns UTC wall-clock text with no zone.

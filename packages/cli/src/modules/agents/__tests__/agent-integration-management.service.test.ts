@@ -1,20 +1,22 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { Agent } from '../entities/agent.entity';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { WebhookIntegration } from '../integrations/platforms/webhook/webhook-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentIntegrationManagementService', () => {
@@ -25,14 +27,14 @@ describe('AgentIntegrationManagementService', () => {
 	} satisfies AgentIntegrationConfig;
 	const replaced = { type: 'slack', credentialId: 'credential-0' } satisfies AgentIntegrationConfig;
 
-	function makeAgent(overrides: Partial<Agent> = {}): Agent {
+	function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 		return {
 			id: 'agent-1',
 			projectId: 'project-1',
 			activeVersionId: 'version-1',
 			integrations: [],
 			...overrides,
-		} as Agent;
+		} as ProjectAgent;
 	}
 
 	function makeService() {
@@ -42,11 +44,13 @@ describe('AgentIntegrationManagementService', () => {
 		const registry = mock<ChatIntegrationRegistry>();
 		const logger = mock<Logger>();
 		const agentRepository = mock<AgentRepository>();
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		const implementation = mock<AgentChatIntegration>({
 			type: 'slack',
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
 		});
+		implementation.acceptedCredentialTypes.mockReturnValue(['slackApi']);
 		registry.require.mockReturnValue(implementation);
 		registry.get.mockReturnValue(implementation);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
@@ -64,12 +68,15 @@ describe('AgentIntegrationManagementService', () => {
 				registry,
 				logger,
 				agentRepository,
+				agentUpdateBroadcaster,
 			),
 			persistenceService,
 			credentialsService,
 			chatService,
 			implementation,
+			registry,
 			agentRepository,
+			agentUpdateBroadcaster,
 		};
 	}
 
@@ -77,7 +84,7 @@ describe('AgentIntegrationManagementService', () => {
 	 * Mirrors what the real delta does to the entity: it corrects `activeVersionId`
 	 * to the row it read, which is what callers derive their response from.
 	 */
-	function deltaResult(agent: Agent, published: boolean, extra: object = {}) {
+	function deltaResult(agent: ProjectAgent, published: boolean, extra: object = {}) {
 		agent.activeVersionId = published ? 'version-1' : null;
 		return { agent, changed: true, published, ...extra };
 	}
@@ -104,10 +111,25 @@ describe('AgentIntegrationManagementService', () => {
 
 	describe('adding a channel', () => {
 		it('brings the connection up before the durable write, then broadcasts it', async () => {
-			const { service, persistenceService, chatService, implementation } = makeService();
+			const { service, persistenceService, chatService, implementation, agentUpdateBroadcaster } =
+				makeService();
 			const agent = makeAgent();
+			const persisted = createDeferredPromise();
+			persistenceService.applyIntegrationDelta.mockImplementationOnce(async () => {
+				await persisted.promise;
+				return { agent, changed: true };
+			});
 
-			await service.connect({ agent, user: user as never, integration });
+			const connecting = service.connect({
+				agent,
+				user: user as never,
+				integration,
+				pushRef: 'writer-push-ref',
+			});
+			await vi.waitFor(() => expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled());
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+			persisted.resolve();
+			await connecting;
 
 			expect(implementation.validateConfig).toHaveBeenCalledWith(integration);
 			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
@@ -127,10 +149,17 @@ describe('AgentIntegrationManagementService', () => {
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.broadcastIntegrationChange),
 			);
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				'writer-push-ref',
+			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(agentUpdateBroadcaster.notify),
+			);
 		});
 
 		it('persists nothing when the connection fails to start', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const startupError = new Error('Slack connect failed');
 			chatService.connect.mockRejectedValue(startupError);
 
@@ -139,11 +168,12 @@ describe('AgentIntegrationManagementService', () => {
 			).rejects.toBe(startupError);
 
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
 		it('releases the new connection when the durable write fails', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const writeError = new Error('write failed');
 			persistenceService.applyIntegrationDelta.mockRejectedValue(writeError);
 			const agent = makeAgent();
@@ -153,6 +183,7 @@ describe('AgentIntegrationManagementService', () => {
 			);
 
 			expect(chatService.connect).toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			// Local teardown only: nothing durable changed, so a broadcast would have
 			// peers tear down runtimes that are still persisted and still healthy.
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
@@ -168,7 +199,7 @@ describe('AgentIntegrationManagementService', () => {
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
 			stubRow(agentRepository, [persistedEntry]);
-			chatService.getChatInstance.mockReturnValue({} as never);
+			chatService.isChannelLive.mockReturnValue(true);
 			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
 
 			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
@@ -193,7 +224,7 @@ describe('AgentIntegrationManagementService', () => {
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
 			stubRow(agentRepository, [persistedEntry]);
-			chatService.getChatInstance.mockReturnValue({} as never);
+			chatService.isChannelLive.mockReturnValue(true);
 			chatService.connect.mockRejectedValueOnce(new Error('Slack connect failed'));
 
 			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
@@ -282,6 +313,167 @@ describe('AgentIntegrationManagementService', () => {
 			expect(chatService.connect).not.toHaveBeenCalled();
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
 		});
+
+		it('starts no runtime when a draft channel fails its pre-connect validation', async () => {
+			// A leader-only channel on a follower reports as live without the follower
+			// being able to check — so without the publication gate, the rollback below
+			// would start a poller for an agent that must not receive events.
+			const { service, chatService, agentRepository } = makeService();
+			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
+			const agent = makeAgent({ activeVersionId: null, integrations: [persistedEntry] });
+			stubRow(agentRepository, [persistedEntry], null);
+			chatService.isChannelLive.mockReturnValue(true);
+			chatService.validateBeforeConnect.mockRejectedValue(
+				new Error('credential is already connected to another agent'),
+			);
+
+			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
+				'credential is already connected to another agent',
+			);
+
+			// Nothing was running, so there is nothing to put back.
+			expect(chatService.connect).not.toHaveBeenCalled();
+		});
+
+		it('keeps the settings and approval of the draft it completes', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...draft, credentialId: integration.credentialId } },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('prefers the settings in the request over the draft settings', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+			const settings = { messagingExperience: 'assistant' as const };
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: { ...integration, settings },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...integration, settings, approval: draft.approval } },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+	});
+
+	describe('connecting n8n Chat', () => {
+		const n8nChat = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+
+		it('adds the entry without any credential lookup or runtime start', async () => {
+			const { service, persistenceService, credentialsService, chatService } = makeService();
+			const agent = makeAgent();
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: n8nChat },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('starts no runtime even for an already-published agent', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: true,
+			});
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('still notifies collaborators through the same push channel as other connects', async () => {
+			const { service, persistenceService, agentUpdateBroadcaster } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: true });
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: n8nChat,
+				pushRef: 'writer-1',
+			});
+
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				'writer-1',
+			);
+		});
+
+		it('keeps a single entry when connected twice', async () => {
+			const { service, persistenceService } = makeService();
+			const agent = makeAgent({ integrations: [n8nChat] });
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			// The persistence layer's own upsert handles this; the management
+			// service must still route it through the same add-delta path.
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: n8nChat },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+	});
+
+	describe('disconnecting n8n Chat', () => {
+		const n8nChat = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+
+		it('removes the persisted entry', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [n8nChat] });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: n8nChat,
+			});
+
+			await service.disconnect({
+				agent,
+				user: user as never,
+				type: n8nChat.type,
+				credentialId: n8nChat.credentialId,
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ remove: { type: 'n8n_chat', credentialId: '' } },
+				{ user, modifiedBy: 'user' },
+			);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, n8nChat);
+		});
 	});
 
 	describe('publication state changing mid-request', () => {
@@ -352,7 +544,7 @@ describe('AgentIntegrationManagementService', () => {
 			stubRow(agentRepository, []);
 			// Never live: not before the connect, and gone again by the time the write
 			// finished — as if a peer's disconnect broadcast landed in between.
-			chatService.getChatInstance.mockReturnValue(undefined);
+			chatService.isChannelLive.mockReturnValue(false);
 			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
 				deltaResult(agent, true),
 			);
@@ -417,7 +609,8 @@ describe('AgentIntegrationManagementService', () => {
 		});
 
 		it('tears down the runtime when platform cleanup fails after durable removal', async () => {
-			const { service, persistenceService, chatService, implementation } = makeService();
+			const { service, persistenceService, chatService, implementation, agentUpdateBroadcaster } =
+				makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			const cleanupError = new Error('Slack cleanup failed');
 			const removal = mock<Required<Pick<AgentChatIntegration, 'onRemove'>>>();
@@ -436,16 +629,25 @@ describe('AgentIntegrationManagementService', () => {
 					type: integration.type,
 					credentialId: integration.credentialId,
 					deleteExternalResource: true,
+					modifiedBy: 'mcp',
 				}),
 			).rejects.toBe(cleanupError);
 
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledExactlyOnceWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'mcp' },
+				undefined,
+			);
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(order(removal.onRemove));
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(agentUpdateBroadcaster.notify),
+			);
+			expect(order(agentUpdateBroadcaster.notify)).toBeLessThan(order(removal.onRemove));
 			expect(order(removal.onRemove)).toBeLessThan(order(chatService.disconnectChannel));
 		});
 
 		it('removes persistence before tearing down the runtime channel', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			persistenceService.applyIntegrationDelta.mockResolvedValue({
 				agent,
@@ -467,14 +669,24 @@ describe('AgentIntegrationManagementService', () => {
 				{ user, modifiedBy: 'mcp' },
 			);
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'mcp' },
+				undefined,
+			);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.disconnectChannel),
 			);
 		});
 
 		it('leaves the channel and its managed resources intact when durable removal fails', async () => {
-			const { service, persistenceService, chatService, implementation, agentRepository } =
-				makeService();
+			const {
+				service,
+				persistenceService,
+				chatService,
+				implementation,
+				agentRepository,
+				agentUpdateBroadcaster,
+			} = makeService();
 			const removalError = new Error('write failed');
 			persistenceService.applyIntegrationDelta.mockRejectedValue(removalError);
 			stubRow(agentRepository, [integration]);
@@ -489,13 +701,14 @@ describe('AgentIntegrationManagementService', () => {
 				}),
 			).rejects.toBe(removalError);
 
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.disconnect).not.toHaveBeenCalled();
 		});
 
 		it('clears a stray runtime connection when nothing was persisted under that reference', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const agent = makeAgent();
 			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: false });
 
@@ -507,6 +720,7 @@ describe('AgentIntegrationManagementService', () => {
 			});
 
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, {
 				type: 'slack',
 				credentialId: '',
@@ -709,4 +923,52 @@ describe('AgentIntegrationManagementService', () => {
 			});
 		},
 	);
+
+	describe('webhook channel', () => {
+		function makeWebhookService() {
+			const deps = makeService();
+			const webhook = new WebhookIntegration();
+			deps.registry.require.mockReturnValue(webhook);
+			deps.registry.get.mockReturnValue(webhook);
+			stubRow(deps.agentRepository, []);
+			return deps;
+		}
+
+		it('connects authentication none without a credential lookup or a runtime', async () => {
+			const { service, credentialsService, chatService, persistenceService } = makeWebhookService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue(deltaResult(agent, true));
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: { type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled();
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential that does not match the authentication', async () => {
+			const { service, credentialsService, persistenceService } = makeWebhookService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-jwt', type: 'jwtAuth' },
+			] as never);
+
+			await expect(
+				service.connect({
+					agent: makeAgent(),
+					user: user as never,
+					integration: {
+						type: 'webhook',
+						credentialId: 'cred-jwt',
+						settings: { authentication: 'headerAuth' },
+					},
+				}),
+			).rejects.toBeInstanceOf(BadRequestError);
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+	});
 });

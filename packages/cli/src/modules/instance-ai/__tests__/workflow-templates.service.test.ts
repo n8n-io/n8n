@@ -28,7 +28,7 @@ describe('WorkflowTemplatesService', () => {
 		makeService();
 
 		expect(requests).toHaveBeenCalledWith({
-			ssrf: 'disabled',
+			useDefaultSsrfPolicy: 'unsafe',
 			timeout: TEMPLATE_REQUEST_TIMEOUT_MS,
 		});
 	});

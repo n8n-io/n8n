@@ -1,9 +1,14 @@
 // ---------------------------------------------------------------------------
 // In-memory runtime workspace for in-process eval harnesses.
 //
-// Without a workspace, `build-workflow` fails its source read with a
+// Without a workspace, `workflow_builder_build_workflow` fails its source read with a
 // `code_fixable` remediation telling the agent to write the file with
 // `workspace_write_file` — a tool that only exists when a workspace is attached.
+//
+// Tool exposure is filtered to CORE_WORKSPACE_TOOL_NAMES, but the runtime also
+// calls the filesystem directly for its own bookkeeping — offloading oversized
+// tool results and clearing them at the end of every run — so those operations
+// are implemented rather than rejected.
 // ---------------------------------------------------------------------------
 
 import {
@@ -37,7 +42,11 @@ class InMemoryWorkspaceFilesystem implements WorkspaceFilesystem {
 	readonly basePath = stubWorkspaceRoot;
 	status: ProviderStatus = 'ready';
 
-	private readonly files = new Map<string, string>();
+	private readonly files: Map<string, string>;
+
+	constructor(files: ReadonlyMap<string, string>) {
+		this.files = new Map([...files].map(([path, content]) => [relativePath(path), content]));
+	}
 
 	async readFile(path: string): Promise<string> {
 		const content = this.files.get(relativePath(path));
@@ -58,21 +67,38 @@ class InMemoryWorkspaceFilesystem implements WorkspaceFilesystem {
 		await Promise.resolve();
 	}
 
+	async exists(path: string): Promise<boolean> {
+		const key = relativePath(path);
+		if (this.files.has(key)) return await Promise.resolve(true);
+		const prefix = `${key}/`;
+		for (const file of this.files.keys()) {
+			if (file.startsWith(prefix)) return await Promise.resolve(true);
+		}
+		return await Promise.resolve(false);
+	}
+
+	async rmdir(path: string): Promise<void> {
+		const prefix = `${relativePath(path)}/`;
+		for (const file of this.files.keys()) {
+			if (file.startsWith(prefix)) this.files.delete(file);
+		}
+		await Promise.resolve();
+	}
+
 	appendFile = unreachable;
 	deleteFile = unreachable;
 	copyFile = unreachable;
 	moveFile = unreachable;
-	rmdir = unreachable;
 	readdir = unreachable;
-	exists = unreachable;
 	stat = unreachable;
 }
 
-export function createStubWorkspace(): Workspace {
+/** `files` maps a path to its content, for files that prod writes into the sandbox at setup. */
+export function createStubWorkspace(files: ReadonlyMap<string, string> = new Map()): Workspace {
 	const workspace = new Workspace({
 		id: 'stub-workspace',
 		name: 'stub-workspace',
-		filesystem: new InMemoryWorkspaceFilesystem(),
+		filesystem: new InMemoryWorkspaceFilesystem(files),
 	});
 
 	const allTools = workspace.getTools.bind(workspace);

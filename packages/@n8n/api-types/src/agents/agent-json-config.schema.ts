@@ -1,5 +1,7 @@
 import { z, type ZodError } from 'zod';
 
+import { parseRegexLiteral } from 'n8n-workflow';
+
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
@@ -14,14 +16,17 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+import { jsonValueSchema } from '../schemas/json-value.schema';
+import { mcpToolPermissionsSchema } from '../schemas/mcp-tool-permissions.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-	 * (?:[a-z0-9._:-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-	 * [a-z0-9._:-]+: Model name (e.g. "claude-sonnet-4-5")
+	 * (?:[a-z0-9._:@-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+	 * [a-z0-9._:@-]+: Model name (e.g. "claude-fable-5@default")
+	 * `@` allows gateway model IDs after the provider (e.g. "openai/@OpenAI/gpt-5-mini")
 	 */
 	AGENT_MODEL_STRING_REGEX,
 	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
@@ -49,6 +54,18 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
+export const EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH = 100;
+
+const EpisodicMemoryGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
+
+const EpisodicMemoryGuidanceSchema = z.object({
+	include: EpisodicMemoryGuidanceTopicsSchema.optional(),
+	exclude: EpisodicMemoryGuidanceTopicsSchema.optional(),
+});
+
 const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(false),
@@ -56,10 +73,10 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(true),
 		credential: EpisodicMemoryCredentialSchema,
-		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+		guidance: EpisodicMemoryGuidanceSchema.optional(),
 	}),
 ]);
 
@@ -98,7 +115,7 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	},
 } as const;
 
-const AgentPersonalisationGradientSchema = z
+export const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
@@ -133,6 +150,7 @@ const SubAgentConfigSchema = z
 	.object({
 		agentId: z.string().trim().min(1),
 		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+		enabled: z.boolean().optional(),
 	})
 	.strict();
 
@@ -186,8 +204,14 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
+/**
+ * A ref to a skill. A skill has no on/off state: a ref is attached or it is
+ * not. `versionId` pins the ref of a saved agent to one saved version of the
+ * skill. Without it, the agent draft runs the latest saved version.
+ */
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
+	versionId: z.string().uuid().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -217,6 +241,8 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'mcpOAuth2Api',
 ]);
 
+export const McpOAuth2CredentialTypeSchema = z.string().regex(/^(?:oAuth2Api|.*OAuth2(?:Api)?)$/);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
@@ -237,16 +263,19 @@ export const McpServerConfigSchema = z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
 			.describe('Transport protocol'),
+		// todo: make McpOAuth2CredentialTypeSchema an object?
 		authentication: z
-			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 			.default('none')
 			.describe(
-				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+				'Auth method. Named variants or an OAuth2 credential type returned by the registry',
 			),
 		credential: z
 			.string()
 			.optional()
-			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
+			.describe(
+				'Credential id from setup_credentials(target: "agent"). Required when authentication is not "none"',
+			),
 		metadata: z
 			.object({
 				nodeTypeName: z
@@ -260,35 +289,11 @@ export const McpServerConfigSchema = z
 			.describe(
 				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
-		toolFilter: z
-			.discriminatedUnion('mode', [
-				z
-					.object({
-						mode: z.literal('allow'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-				z
-					.object({
-						mode: z.literal('exclude'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-			])
+		toolPermissions: mcpToolPermissionsSchema
 			.optional()
-			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: z
-			.discriminatedUnion('mode', [
-				z.object({ mode: z.literal('global') }).strict(),
-				z
-					.object({
-						mode: z.literal('selected'),
-						tools: z.array(z.string().min(1)).min(1),
-					})
-					.strict(),
-			])
-			.optional()
-			.describe('Human-in-the-loop approval. Absent = no approval required'),
+			.describe(
+				'Optional read/write category permissions with exact-name tool overrides. Omission allows all tools without approval',
+			),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -369,6 +374,7 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
+	enabled: z.boolean().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -379,9 +385,33 @@ const CustomToolJsonConfigSchema = z.object({
 	requireApproval: z.boolean().optional(),
 });
 
+/**
+ * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
+ * - `ai`: field is advertised to the LLM with optional input guidance.
+ * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ * - `expression`: field is omitted from the LLM schema and resolved at invoke time.
+ */
+export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('ai'), description: z.string().optional() }).strict(),
+	z
+		.object({
+			mode: z.literal('fixed'),
+			// Reject missing/undefined — fixed bindings must pin a concrete value.
+			value: jsonValueSchema,
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('expression'),
+			value: z.string().regex(/^=\s*\S/, 'Enter an expression that starts with ='),
+		})
+		.strict(),
+]);
+
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
+		enabled: z.boolean().optional(),
 		workflowId: z.string().min(1).optional().describe("The workflow's stable ID."),
 		workflow: z.string().min(1).describe("The workflow's display name and legacy lookup key."),
 		name: z.string().optional(),
@@ -391,12 +421,19 @@ export const WorkflowToolJsonConfigSchema = z
 			.boolean()
 			.optional()
 			.describe('Whether to return all node outputs instead of just the last node'),
+		inputs: z
+			.record(z.string(), WorkflowToolInputFieldSchema)
+			.optional()
+			.describe(
+				'Optional per-field bindings for Execute Workflow Trigger inputs. Missing keys default to AI-determined.',
+			),
 	})
 	.strict();
 
 export const NodeToolJsonConfigSchema = z
 	.object({
 		type: z.literal('node'),
+		enabled: z.boolean().optional(),
 		name: z.string().min(1),
 		description: z.string().optional(),
 		inputSchema: z.never().optional(),
@@ -411,13 +448,186 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
+const PositiveUsdSchema = z.number().positive();
+
+/** Opt-in session cap and monthly budget. Amounts are greater than 0. `enabled: false` keeps the saved amounts. */
+export const BudgetGuardrailConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		monthlyBudgetUsd: PositiveUsdSchema.optional(),
+		alertThresholdPercent: z.number().int().min(1).max(100).optional(),
+		sessionCostCapUsd: PositiveUsdSchema.optional(),
+	})
+	.superRefine((budget, ctx) => {
+		if (budget.alertThresholdPercent !== undefined && budget.monthlyBudgetUsd === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['alertThresholdPercent'],
+				message: 'Set a monthly budget to use an alert threshold',
+			});
+		}
+	});
+
+/**
+ * PII entity set for `pii` tool guardrails. Mirrors `PIIEntity` in
+ * `@n8n/nodes-langchain` (`nodes/Guardrails/actions/checks/pii.ts`) —
+ * api-types cannot depend on that package. Keep in sync.
+ */
+export const TOOL_GUARDRAIL_PII_ENTITIES = [
+	// Global
+	'CREDIT_CARD',
+	'CRYPTO',
+	'DATE_TIME',
+	'EMAIL_ADDRESS',
+	'IBAN_CODE',
+	'IP_ADDRESS',
+	'LOCATION',
+	'PHONE_NUMBER',
+	'MEDICAL_LICENSE',
+	// USA
+	'US_BANK_NUMBER',
+	'US_DRIVER_LICENSE',
+	'US_ITIN',
+	'US_PASSPORT',
+	'US_SSN',
+	// UK
+	'UK_NHS',
+	'UK_NINO',
+	// Spain
+	'ES_NIF',
+	'ES_NIE',
+	// Italy
+	'IT_FISCAL_CODE',
+	'IT_DRIVER_LICENSE',
+	'IT_VAT_CODE',
+	'IT_PASSPORT',
+	'IT_IDENTITY_CARD',
+	// Poland
+	'PL_PESEL',
+	// Singapore
+	'SG_NRIC_FIN',
+	'SG_UEN',
+	// Australia
+	'AU_ABN',
+	'AU_ACN',
+	'AU_TFN',
+	'AU_MEDICARE',
+	// India
+	'IN_PAN',
+	'IN_AADHAAR',
+	'IN_VEHICLE_REGISTRATION',
+	'IN_VOTER',
+	'IN_PASSPORT',
+	// Finland
+	'FI_PERSONAL_IDENTITY_CODE',
+] as const;
+
+export type ToolGuardrailPiiEntity = (typeof TOOL_GUARDRAIL_PII_ENTITIES)[number];
+
+const ParseableRegexSchema = z
+	.string()
+	.min(1)
+	.refine((value) => {
+		try {
+			const { source, flags } = parseRegexLiteral(value);
+			new RegExp(source, flags);
+			return true;
+		} catch {
+			return false;
+		}
+	}, 'Enter a valid regular expression');
+
+/**
+ * A typed ref to a tool configured on the agent, resolving to a runtime tool
+ * name at reconstruction.
+ */
+export const ToolGuardrailToolRefSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('workflow'), workflowId: z.string().min(1) }),
+	z.object({ type: z.literal('node'), name: z.string().min(1) }),
+]);
+
+const toolGuardrailBaseShape = {
+	id: z
+		.string()
+		.min(1)
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Guardrail id can only contain letters, numbers, hyphens, and underscores',
+		),
+	name: z.string().trim().min(1).optional(),
+	stage: z.enum(['before', 'after']),
+	tools: z.array(ToolGuardrailToolRefSchema).min(1),
+};
+
+const modelToolGuardrailShape = {
+	prompt: z.string().min(1).optional(),
+	threshold: z.number().min(0).max(1).optional(),
+};
+
+/**
+ * A guardrail running before or after the referenced tools. Pattern kinds
+ * run locally; model kinds call a model with an optional prompt and
+ * threshold.
+ */
+export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('keywords'),
+		...toolGuardrailBaseShape,
+		keywords: z.array(z.string().min(1)).min(1),
+	}),
+	z.object({
+		kind: z.literal('pii'),
+		...toolGuardrailBaseShape,
+		type: z.enum(['all', 'selected']),
+		entities: z.array(z.enum(TOOL_GUARDRAIL_PII_ENTITIES)).min(1).optional(),
+	}),
+	z.object({
+		kind: z.literal('secretKeys'),
+		...toolGuardrailBaseShape,
+		permissiveness: z.enum(['strict', 'balanced', 'permissive']),
+	}),
+	z.object({
+		kind: z.literal('urls'),
+		...toolGuardrailBaseShape,
+		allowedUrls: z.array(z.string().min(1)).optional(),
+		allowedSchemes: z.array(z.string().min(1)).optional(),
+		blockUserinfo: z.boolean().optional(),
+		allowSubdomains: z.boolean().optional(),
+	}),
+	z.object({
+		kind: z.literal('customRegex'),
+		...toolGuardrailBaseShape,
+		regex: z.array(z.object({ name: z.string().min(1), value: ParseableRegexSchema })).min(1),
+	}),
+	z.object({
+		kind: z.literal('jailbreak'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+	z.object({ kind: z.literal('nsfw'), ...toolGuardrailBaseShape, ...modelToolGuardrailShape }),
+	z.object({
+		kind: z.literal('topicalAlignment'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+	z.object({
+		kind: z.literal('customPrompt'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+]);
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
+
 export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
+	/** An empty string is a deliberate clear of a previously stored value. */
+	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
@@ -457,7 +667,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	integrations: z
+		.array(AgentIntegrationConfigSchema)
+		.refine(
+			(integrations) => integrations.filter((entry) => entry.type === 'n8n_chat').length <= 1,
+			{
+				message: 'Only one n8n Chat channel is allowed',
+			},
+		)
+		.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -490,6 +708,39 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
+			guardrails: z
+				.object({
+					budget: BudgetGuardrailConfigSchema.optional(),
+					tools: z
+						.array(ToolGuardrailConfigSchema)
+						.superRefine((guardrails, ctx) => {
+							const seen = new Set<string>();
+							for (let index = 0; index < guardrails.length; index++) {
+								const guardrail = guardrails[index];
+								if (seen.has(guardrail.id)) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'id'],
+										message: `Duplicate tool guardrail id: "${guardrail.id}"`,
+									});
+								}
+								seen.add(guardrail.id);
+								if (
+									guardrail.kind === 'pii' &&
+									guardrail.type === 'selected' &&
+									!guardrail.entities?.length
+								) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'entities'],
+										message: 'Select at least one PII entity or set type to "all"',
+									});
+								}
+							}
+						})
+						.optional(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
@@ -512,9 +763,46 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+
+declare const storedSkillRefsBrand: unique symbol;
+
+/**
+ * Opaque type of the legacy `skills` key in a stored config. Nothing reads
+ * or writes this key: the skill refs live in the skill tables. The data
+ * migration removes the key from stored configs.
+ */
+export interface OpaqueStoredSkillRefs {
+	readonly [storedSkillRefsBrand]: true;
+}
+
+/**
+ * Agent config as the backend stores it on the agent draft and on each
+ * published version. It holds no skill refs: read and write them through
+ * `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
+ * document format of REST, MCP and the agent builder.
+ *
+ * Because the `skills` key is opaque, a stored config is not assignable to
+ * `AgentJsonConfig`. To get a document, compose one with the skill refs.
+ */
+export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
+	readonly skills?: OpaqueStoredSkillRefs;
+};
+export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
+export type AgentToolGuardrailToolRef = z.infer<typeof ToolGuardrailToolRefSchema>;
+export type AgentToolGuardrailConfig = z.infer<typeof ToolGuardrailConfigSchema>;
+export type AgentToolGuardrailKind = AgentToolGuardrailConfig['kind'];
+
+/** In-memory monthly spend for one agent. This process only. */
+export interface AgentBudgetSpend {
+	spentUsd: number;
+}
+export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
+export type AgentJsonWorkflowToolInputField = NonNullable<
+	AgentJsonWorkflowToolConfig['inputs']
+>[string];
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
@@ -560,21 +848,66 @@ export function findVectorStoreToolNameCollisions(
 	if (!config.vectorStores?.length) return [];
 
 	const toolNames = new Set(
-		(config.tools ?? []).map((tool) => {
-			switch (tool.type) {
-				case 'custom':
-					return tool.id;
-				case 'workflow':
-					return tool.name ?? tool.workflow;
-				case 'node':
-					return tool.name;
-			}
-		}),
+		(config.tools ?? [])
+			.filter((tool) => tool.enabled !== false)
+			.map((tool) => {
+				switch (tool.type) {
+					case 'custom':
+						return tool.id;
+					case 'workflow':
+						return tool.name ?? tool.workflow;
+					case 'node':
+						return tool.name;
+				}
+			}),
 	);
 
 	return config.vectorStores
 		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
 		.filter((toolName) => toolNames.has(toolName));
+}
+
+export interface ToolGuardrailRefIssue {
+	guardrailIndex: number;
+	toolIndex: number;
+	ref: AgentToolGuardrailToolRef;
+}
+
+/**
+ * Flags tool guardrail refs that point at no configured tool. Disabled tools
+ * still count as configured: a disabled tool keeps its guardrail. A workflow
+ * tool without a `workflowId` (legacy name-only configs) matches no
+ * `workflow` ref. Draft save tolerates dangling refs; the validation service
+ * surfaces them at publish and run.
+ */
+export function findToolGuardrailRefIssues(
+	config: Pick<AgentJsonConfig, 'config' | 'tools'>,
+): ToolGuardrailRefIssue[] {
+	const guardrails = config.config?.guardrails?.tools;
+	if (!guardrails?.length) return [];
+
+	const workflowIds = new Set<string>();
+	const nodeNames = new Set<string>();
+	for (const tool of config.tools ?? []) {
+		if (tool.type === 'workflow' && tool.workflowId !== undefined) {
+			workflowIds.add(tool.workflowId);
+		} else if (tool.type === 'node') {
+			nodeNames.add(tool.name);
+		}
+	}
+
+	const issues: ToolGuardrailRefIssue[] = [];
+	for (let guardrailIndex = 0; guardrailIndex < guardrails.length; guardrailIndex++) {
+		const refs = guardrails[guardrailIndex].tools;
+		for (let toolIndex = 0; toolIndex < refs.length; toolIndex++) {
+			const ref = refs[toolIndex];
+			const matches =
+				(ref.type === 'workflow' && workflowIds.has(ref.workflowId)) ||
+				(ref.type === 'node' && nodeNames.has(ref.name));
+			if (!matches) issues.push({ guardrailIndex, toolIndex, ref });
+		}
+	}
+	return issues;
 }
 
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {

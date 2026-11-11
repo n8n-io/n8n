@@ -152,6 +152,46 @@ describe('get-workflow-versions-diff MCP tool', () => {
 			});
 		});
 
+		test('does not report a missing parameters key against empty parameters as a modification', async () => {
+			// Regression (ADO-5355): a node persisted without a `parameters` key is
+			// semantically identical to one persisted with `parameters: {}`.
+			const before = makeNode({ type: 'n8n-nodes-base.webhook' });
+			delete (before as Partial<INode>).parameters;
+			const after = makeNode({ type: 'n8n-nodes-base.webhook', parameters: {} });
+
+			mockVersions([before], [after]);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				success: true,
+				nodesAdded: [],
+				nodesRemoved: [],
+				nodesModified: [],
+			});
+		});
+
+		test('added nodes persisted without a parameters key carry a normalized parameters object', async () => {
+			const added = makeNode({ type: 'n8n-nodes-base.webhook' });
+			delete (added as Partial<INode>).parameters;
+
+			mockVersions([], [added]);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			const content = result.structuredContent as { nodesAdded: Array<Record<string, unknown>> };
+			expect(content.nodesAdded).toHaveLength(1);
+			expect(content.nodesAdded[0].parameters).toEqual({});
+		});
+
 		test('lists a renamed node by its target-version name with the rename in the delta', async () => {
 			const before = makeNode({ name: 'Old Name' });
 			const after = makeNode({ name: 'New Name' });

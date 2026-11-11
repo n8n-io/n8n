@@ -19,7 +19,7 @@ export interface SecretHit {
 	 */
 	captureValue?: string;
 	/** Why this hit must not become a credential, when it must not. */
-	captureBlocked?: string;
+	captureBlocked?: CaptureBlockedReason;
 }
 
 type RedactionMarkerHit = Pick<SecretHit, 'type' | 'value' | 'ref'>;
@@ -78,9 +78,19 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 	return [...hits.values()];
 }
 
+// Each completes "<value> cannot be captured because …" in `browser_capture_secret`.
 export const UNDELIMITED_TOKEN = 'its surrounding text has no delimiter';
 
 export const CONCATENATED_ONLY = 'it only appears where markup runs text together';
+export const PARTIAL_TOKEN = 'it is only part of a value the markup splits apart';
+export const ASSIGNMENT_NAME = 'it names the value rather than being it';
+
+/** Why a hit may still be redacted but must never become a credential. */
+export type CaptureBlockedReason =
+	| typeof UNDELIMITED_TOKEN
+	| typeof CONCATENATED_ONLY
+	| typeof PARTIAL_TOKEN
+	| typeof ASSIGNMENT_NAME;
 
 /** The value capturing would store, which is the whole token when one was found. */
 export function captureSpanOf(hit: SecretHit): string {

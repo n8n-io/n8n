@@ -1,10 +1,11 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { APIRequest, User } from '@n8n/db';
+import { isPerson, type APIRequest, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { Server } from 'node:http';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -17,8 +18,11 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { packagedModules } from '@/modules/modules.manifest';
+import { NodeTypes } from '@/node-types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -48,33 +52,36 @@ function prefix(pathSegment: string) {
 }
 
 const browserId = 'test-browser-id';
+/** Only a person logs in with a session cookie. */
+function asPerson(user: User) {
+	if (!isPerson(user)) throw new Error('Only a person can get a session cookie');
+	return user;
+}
+
 function createAgent(
-	app: express.Application,
+	target: express.Application | Server,
 	options?: { auth: boolean; user?: User; noRest?: boolean },
 ) {
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 
 	const withRestSegment = !options?.noRest;
 
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(
-			options.user,
-			options.user.mfaEnabled,
-			browserId,
-		);
+		const person = asPerson(options.user);
+		const token = Container.get(AuthService).issueJWT(person, person.mfaEnabled, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
 
 const userDoesNotHaveApiKey = (user: User) => {
-	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+	return !isPerson(user) || !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
 };
 
 const publicApiAgent = (
-	app: express.Application,
+	target: express.Application | Server,
 	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
 ) => {
 	if (user && apiKey) {
@@ -85,24 +92,29 @@ const publicApiAgent = (
 		throw new Error('User does not have an API key');
 	}
 
-	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+	const agentApiKey = apiKey ?? (user && isPerson(user) ? user.apiKeys[0].apiKey : undefined);
 
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	if (!user && !apiKey) return agent;
 	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
 };
 
-const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
-	const agent = request.agent(app);
+const publicApiAgentWithCookie = (
+	target: express.Application | Server,
+	user: User,
+	version = 1,
+) => {
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
 		req.set('browser-id', browserId);
 		return await req;
 	});
-	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled, browserId);
+	const person = asPerson(user);
+	const token = Container.get(AuthService).issueJWT(person, person.mfaEnabled, browserId);
 	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	return agent;
 };
@@ -113,6 +125,7 @@ export const setupTestServer = ({
 	quotas,
 	modules,
 	setupTimeout,
+	reuseServer,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -125,27 +138,35 @@ export const setupTestServer = ({
 
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
-	mockInstance(PostHogClient);
+	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagForInstance.mockResolvedValue(undefined);
+	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
+		featureFlags: {},
+		featureFlagPayloads: {},
+	});
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
+	const httpServer = app.listen(0);
+	const target = reuseServer ? httpServer : app;
 	const testServer: TestServer = {
 		app,
-		httpServer: app.listen(0),
-		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
-		authlessAgent: createAgent(app),
-		restlessAgent: createAgent(app, { auth: false, noRest: true }),
-		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
-		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
-		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
-		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
+		httpServer,
+		authAgentFor: (user: User) => createAgent(target, { auth: true, user }),
+		authlessAgent: createAgent(target),
+		restlessAgent: createAgent(target, { auth: false, noRest: true }),
+		publicApiAgentFor: (user) => publicApiAgent(target, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(target, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(target, {}),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(target, user),
 		license: new LicenseMocker(),
 	};
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
+		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
+		Container.get(NodeTypesProxy).registerProvider(Container.get(NodeTypes));
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 
@@ -198,6 +219,10 @@ export const setupTestServer = ({
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'activeWorkflows':
+						await import('@/controllers/active-workflows.controller.js');
+						break;
+
 					case 'annotationTags':
 						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;
@@ -222,6 +247,14 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
+					case 'ai-preferences':
+						await import('@/controllers/ai-preference.controller.js');
+						break;
+
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -230,7 +263,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -251,6 +284,14 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'oauth-server':
+						await import('@/modules/oauth-server/oauth-server.module.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -302,6 +343,10 @@ export const setupTestServer = ({
 
 					case 'passwordReset':
 						await import('@/controllers/password-reset.controller.js');
+						break;
+
+					case 'changeEmail':
+						await import('@/controllers/change-email.controller.js');
 						break;
 
 					case 'owner':
@@ -372,11 +417,11 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module.js');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':
-						await import('@/modules/data-table/data-table.module.js');
+						await import('@n8n/backend-module-data-table/module');
 						break;
 
 					case 'workflow-reviews':
@@ -395,6 +440,10 @@ export const setupTestServer = ({
 						await import('@/controllers/security-settings.controller.js');
 						break;
 
+					case 'public-api-rate-limit-settings':
+						await import('@/controllers/public-api-rate-limit-settings.controller.js');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller.js');
 						break;
@@ -403,13 +452,28 @@ export const setupTestServer = ({
 						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
 						break;
 
+					case 'trusted-sources':
+						await import('@/modules/inbound-auth-core/trusted-source.controller.js');
+						break;
+
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
+						break;
+
+					case 'type-availability-policies':
+						await import(
+							'@/modules/type-availability-policies/type-availability-policies.module.js'
+						);
 						break;
 				}
 			}
 
 			await Container.get(ModuleRegistry).initModules('main');
+			// As `start` does: the skills module reads the credentials of its sources through cli.
+			const { registerSkillSourceCredentials } = await import(
+				'@/credentials/skill-source-credentials.js'
+			);
+			registerSkillSourceCredentials();
 			Container.get(ControllerRegistry).activate(app);
 
 			await Container.get(AuthHandlerRegistry).init();

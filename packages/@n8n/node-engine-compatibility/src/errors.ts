@@ -8,11 +8,24 @@ const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
  */
 export class UnsupportedWorkflowError extends UserError {}
 
-export class UnsupportedTriggerError extends UserError {
-	constructor(nodeName: string, nodeType: string) {
+/** Only the caller knows which of several triggers fired. */
+export class AmbiguousTriggerError extends UserError {
+	constructor(nodeNames: string[]) {
 		super(
-			`Trigger node "${nodeName}" (${nodeType}) is not supported yet; only the Manual Trigger is currently supported.`,
+			`This workflow has ${nodeNames.length} triggers (${quote(nodeNames)}), so the trigger that fired must be named.`,
 		);
+	}
+}
+
+export class NotATriggerError extends UserError {
+	constructor(nodeName: string, nodeType: string) {
+		super(`Node "${nodeName}" (${nodeType}) is not a trigger, so nothing can start from it.`);
+	}
+}
+
+export class UnknownTriggerError extends UserError {
+	constructor(nodeName: string) {
+		super(`This workflow has no enabled node named "${nodeName}" to start from.`);
 	}
 }
 
@@ -61,7 +74,7 @@ export class UnsupportedNodeTypeError extends UserError {
 export class VmExpressionEngineRequiredError extends UnexpectedError {
 	constructor() {
 		super(
-			'V1StepExecutor requires the VM expression engine. Initialize it via `Expression.initExpressionEngine()` before executing steps.',
+			'V1StepExecutor requires an isolated expression engine (vm or quickjs). Initialize it via `Expression.initExpressionEngine()` before executing steps.',
 		);
 	}
 }
@@ -71,5 +84,68 @@ export class EngineRequestNotSupportedError extends UserError {
 		super(
 			`Node type "${nodeType}" returned an engine request, but sub-node execution is not supported`,
 		);
+	}
+}
+
+/** A wait that engine v2 cannot end yet. */
+export class UnsupportedWaitError extends UserError {
+	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
+		super(
+			waitsFor === 'a sub-execution'
+				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
+				: `Node "${nodeName}" sends a message and waits, and engine v2 cannot end that wait yet.`,
+		);
+	}
+}
+
+export class MissingResumeSecretError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" needs a signed resume URL or approval callback, but engine v2 has no resume secret to sign it`,
+		);
+	}
+}
+
+export class UnendingWaitError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" waits with no time limit and does not accept a resume request, so nothing can end the wait`,
+		);
+	}
+}
+
+export class InlineSubWorkflowError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" calls a sub-workflow that is not stored in the database. Engine v2 runs sub-workflows from the database only.`,
+		);
+	}
+}
+
+export class RepeatedSubWorkflowCallError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" calls a sub-workflow more than once. Engine v2 runs one sub-workflow for each run of a node: use "Run once for all items", or Loop Over Items.`,
+		);
+	}
+}
+
+/**
+ * A node other than the Execute Sub-workflow node called `executeWorkflow`. The
+ * node runs again from the top when the sub-execution ends, which is safe only
+ * for a node whose work before the call has no side effect.
+ */
+export class UnsupportedSubWorkflowCallerError extends UserError {
+	constructor(nodeName: string, nodeType: string) {
+		super(
+			`Node "${nodeName}" (${nodeType}) calls a sub-workflow. Engine v2 runs sub-workflows from the Execute Sub-workflow node only.`,
+		);
+	}
+}
+
+/** The node asked to wait until a value that is not a date, so no deadline can be declared. */
+export class InvalidWaitDateError extends UserError {
+	constructor(nodeName: string) {
+		super(`Node "${nodeName}" asked to wait until a date that is not valid`);
 	}
 }

@@ -12,7 +12,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/inbox/reviews/:reviewId',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -44,7 +44,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 
 		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
 			'href',
-			'/workflow-review-requests/review-1',
+			'/inbox/reviews/review-1',
 		);
 	});
 

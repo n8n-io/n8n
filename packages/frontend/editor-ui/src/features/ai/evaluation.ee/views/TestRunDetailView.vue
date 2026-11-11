@@ -247,7 +247,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	height: fit-content;
 	width: 100%;
 	max-width: var(--content-container--width);
-	padding: var(--spacing--lg) 0 var(--spacing--3xl) 0;
+	padding: var(--spacing--lg) var(--spacing--2xl) var(--spacing--3xl);
 }
 
 .header {
@@ -284,7 +284,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 .runHeading {
 	font-size: var(--font-size--2xl);
 	line-height: 1.1;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 	margin: 0;
 	letter-spacing: var(--letter-spacing--tight);

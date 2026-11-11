@@ -1,10 +1,10 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
+import { DbLockUnavailableError } from './db-lock-unavailable.error';
 import type { OperationContext } from './transaction';
 import { TypeOrmTransaction } from './typeorm-transaction';
 
@@ -16,10 +16,15 @@ export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,
 	TRUSTED_KEY_REFRESH = 1002,
 	WORKFLOW_STATISTICS_ROLLUP = 1003,
-	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
+	WORKFLOW_REVIEW_MUTATION = 1004,
 	MIGRATIONS = 1005,
 	EVAL_COLLECTION_RERUN = 1006,
 	INSTANCE_AI_SETTINGS = 1007,
+	DATA_ENCRYPTION_KEY_SEED = 1008,
+	INSIGHTS_COMPACTION = 1009,
+	/** Unscoped for quota reservations; scoped by app for storage mutations. */
+	APPS_STORAGE = 1010,
+	EXECUTION_LEDGER_FOLD = 1011,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -178,7 +183,7 @@ export class DbLockService {
 	async withLockContext<T>(
 		lockId: DbLock,
 		fn: (ctx: OperationContext) => Promise<T>,
-		options?: { timeoutMs?: number },
+		options?: { timeoutMs?: number; subKey?: number },
 	): Promise<T> {
 		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}
@@ -191,7 +196,7 @@ export class DbLockService {
 	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
 	 *   advisory lock form) to scope the lock, e.g. per entity. Scopes the SQLite
 	 *   in-process mutex the same way.
-	 * @throws {OperationalError} if the lock is already held by another process
+	 * @throws {DbLockUnavailableError} if the lock is already held by another process
 	 */
 	async tryWithLock<T>(
 		lockId: DbLock,
@@ -216,12 +221,26 @@ export class DbLockService {
 				lockKeys,
 			);
 			if (!result[0].pg_try_advisory_xact_lock) {
-				throw new OperationalError(
-					`DbLock ${lockKey(lockId, options?.subKey)} is already held by another process`,
-				);
+				throw new DbLockUnavailableError(lockKey(lockId, options?.subKey));
 			}
 			return await fn(tx);
 		});
+	}
+
+	/**
+	 * `tryWithLock`, but `fn` gets an `OperationContext` for repositories and `withSavepoint`.
+	 * @throws {DbLockUnavailableError} if the lock is already held by another process
+	 */
+	async tryWithLockContext<T>(
+		lockId: DbLock,
+		fn: (ctx: OperationContext) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
+		return await this.tryWithLock(
+			lockId,
+			async (tx) => await fn({ trx: new TypeOrmTransaction(tx) }),
+			options,
+		);
 	}
 
 	/**
@@ -236,7 +255,7 @@ export class DbLockService {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
@@ -281,20 +300,18 @@ export class DbLockService {
 	 * Try to acquire the in-process lock without blocking.
 	 * Returns a one-shot release function bound to this specific acquisition.
 	 *
-	 * @throws {OperationalError} if the lock is already held
+	 * @throws {DbLockUnavailableError} if the lock is already held
 	 */
 	private tryAcquireLock(lockId: number, subKey?: number): ReleaseFn {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
 
-		throw new OperationalError(
-			`DbLock ${lockKey(lockId, subKey)} is already held by another process`,
-		);
+		throw new DbLockUnavailableError(lockKey(lockId, subKey));
 	}
 
 	/**
@@ -316,7 +333,7 @@ export class DbLockService {
 				// is never null while the lock is logically owned, preventing
 				// a concurrent tryAcquireLock from sneaking in during the
 				// microtask gap between resolve and the waiter's continuation.
-				const nextToken: OwnerToken = {} as OwnerToken;
+				const nextToken: OwnerToken = {};
 				lockState.held = nextToken;
 				next(nextToken);
 			} else {

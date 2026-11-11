@@ -17,6 +17,7 @@ import {
 	N8nRadioGroup,
 	N8nRadioGroupItem,
 	N8nTooltip,
+	N8nVisuallyHidden,
 } from '@n8n/design-system';
 
 import {
@@ -47,7 +48,7 @@ const props = withDefaults(
 		 * Tool names each scope unlocks. When provided, group rows show a tool
 		 * count pill whose popover lists the tools enabled by the current
 		 * selection. Expected i18n keys under the prefix: `.tools.count`,
-		 * `.tools.enabledOf`.
+		 * `.tools.enabled`, `.tools.enabledOf`, `.tools.notEnabled`.
 		 */
 		scopeTools?: Record<string, string[]>;
 	}>(),
@@ -345,8 +346,12 @@ function toggleScope(scope: S, checked: boolean) {
 									:data-test-id="`scope-group-${group.key}`"
 									@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
 								/>
+								<!-- `as-child` makes the pill itself the tooltip trigger, so keyboard
+									focus opens the popover and `aria-describedby` lands on the focused
+									element for screen readers. -->
 								<N8nTooltip
 									v-if="groupTools(group).length > 0"
+									as-child
 									placement="right"
 									:show-after="150"
 									:content-class="$style['tools-tooltip']"
@@ -378,6 +383,14 @@ function toggleScope(scope: S, checked: boolean) {
 													:class="$style['tool-icon']"
 												/>
 												<span :class="$style['tool-name']">{{ tool }}</span>
+												<!-- State icons are aria-hidden; expose enabled state as text. -->
+												<N8nVisuallyHidden>
+													{{
+														groupEnabledTools(group).has(tool)
+															? baseText('tools.enabled')
+															: baseText('tools.notEnabled')
+													}}
+												</N8nVisuallyHidden>
 											</div>
 										</div>
 									</template>
@@ -409,8 +422,8 @@ function toggleScope(scope: S, checked: boolean) {
 												@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 											/>
 											<N8nBadge
-												:theme="
-													classifyScope(scope, readActions) === 'read' ? 'default' : 'success'
+												:variant="
+													classifyScope(scope, readActions) === 'read' ? 'outline' : 'success'
 												"
 											>
 												{{ getBadgeLabel(scope) }}
@@ -428,6 +441,8 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
 /* Option and checkbox labels render at 12px here, one step below the body copy. */
 .selector {
 	--radio-group-item--label--font-size: var(--font-size--2xs);
@@ -530,6 +545,8 @@ function toggleScope(scope: S, checked: boolean) {
 		border-color: var(--color--primary);
 		color: var(--color--text--shade-1);
 	}
+
+	@include focus.focus-visible-ring-offset;
 }
 
 /* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */
@@ -551,7 +568,7 @@ function toggleScope(scope: S, checked: boolean) {
 
 .tools-popover-header {
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);

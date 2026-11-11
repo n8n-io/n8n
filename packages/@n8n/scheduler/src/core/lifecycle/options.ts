@@ -19,6 +19,9 @@ export interface LifecycleOptions {
 	/** How often retention deletes finished tasks past their windows, in seconds. */
 	retentionIntervalSeconds: number;
 
+	/** How often owner reconciliation runs, in seconds. */
+	reconciliationIntervalSeconds: number;
+
 	/** How long one materializer sweep may run before it is abandoned, in seconds. */
 	materializerTimeoutSeconds: number;
 
@@ -30,6 +33,9 @@ export interface LifecycleOptions {
 
 	/** How long one retention pass may run before it is abandoned, in seconds. */
 	retentionTimeoutSeconds: number;
+
+	/** How long one owner reconciliation pass may run before it is abandoned, in seconds. */
+	reconciliationTimeoutSeconds: number;
 
 	/**
 	 * How far each tick's delay may deviate from its interval, as a ratio of the
@@ -59,10 +65,12 @@ export const DEFAULT_LIFECYCLE_OPTIONS: LifecycleOptions = {
 	executorIntervalSeconds: 5,
 	reaperIntervalSeconds: 30,
 	retentionIntervalSeconds: Time.hours.toSeconds,
+	reconciliationIntervalSeconds: 15 * Time.minutes.toSeconds,
 	materializerTimeoutSeconds: Time.minutes.toSeconds,
 	executorTimeoutSeconds: Time.minutes.toSeconds,
 	reaperTimeoutSeconds: Time.minutes.toSeconds,
 	retentionTimeoutSeconds: 5 * Time.minutes.toSeconds,
+	reconciliationTimeoutSeconds: 5 * Time.minutes.toSeconds,
 	jitterRatio: 0.1,
 	concurrencyMode: 'sequential',
 	maxConcurrentPasses: 10,

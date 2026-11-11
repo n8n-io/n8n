@@ -5,6 +5,10 @@ export { ExpressionEvaluator } from './evaluator/expression-evaluator';
 // so this value re-export does NOT pull in the native binary at import time.
 export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
+// QuickJsBridge lazy-loads quickjs-emscripten internally; importing this
+// value does NOT pull in the WASM module at import time.
+export { QuickJsBridge } from './bridge/quickjs-bridge';
+
 // Types
 export type {
 	IExpressionEvaluator,
@@ -29,6 +33,8 @@ export {
 	TimeoutError,
 	SecurityViolationError,
 	SyntaxError,
+	HostCallError,
+	RuntimeRestartingError,
 } from './types';
 export { IsolateError } from '@n8n/errors';
 
@@ -41,3 +47,7 @@ export type { ExpressionErrorType } from './evaluator/error-classification';
 // Extension runtime exports
 export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';
 export { ExpressionExtensionError } from './extensions/expression-extension-error';
+
+// Runtime sanitizer applied to property keys built at runtime. Exported so
+// hosts can verify their transform-time denylist matches the runtime one.
+export { __sanitize } from './runtime/safe-globals';

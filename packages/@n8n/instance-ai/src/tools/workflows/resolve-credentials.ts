@@ -7,7 +7,11 @@
  * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	shouldAutoResolveCredential,
+} from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import {
@@ -91,6 +95,7 @@ export interface CredentialResolutionResult {
 export function buildCredentialResolutionNote(
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
 	heldForNewCredentialTypes: readonly string[] = [],
+	options?: { n8nCreditsDepleted?: boolean },
 ): string | undefined {
 	const storedParts: string[] = [];
 	const gatewayParts: string[] = [];
@@ -124,7 +129,7 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-			`Set up automatically with n8n credits (no API key required) for: ${gatewayParts.join('; ')}.`,
+			`Set up automatically with Gateway credits (no API key required) for: ${gatewayParts.join('; ')}.`,
 		);
 	}
 	if (storedParts.length > 0 || gatewayParts.length > 0) {
@@ -136,10 +141,24 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
+			options?.n8nCreditsDepleted
+				? 'Gateway credits are depleted. Tell the user they must top up Gateway credits or add their own key on the node before the workflow can run. Do not offer a live test. Do not say it works out of the box.'
+				: 'Briefly let the user know these run on Gateway credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
 		);
 	}
 	return sentences.join(' ');
+}
+
+export async function isN8nCreditsWalletDepleted(
+	context: Pick<InstanceAiContext, 'credentialService'>,
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+): Promise<boolean> {
+	const hasN8nCreditsAttached = Object.values(resolvedCredentialsByNode).some((credentials) =>
+		credentials.some((credential) => credential.id === null),
+	);
+	if (!hasN8nCreditsAttached) return false;
+	const wallet = await context.credentialService.getAiGatewayWallet?.();
+	return wallet !== null && wallet !== undefined && wallet.balance <= 0;
 }
 
 /**
@@ -164,6 +183,7 @@ export async function resolveCredentials(
 	ctx: InstanceAiContext,
 	availableCredentials?: CredentialMap,
 	preferNewCredentialTypes?: readonly string[],
+	setupSelections?: Record<string, ResolvedCredential[]>,
 ): Promise<CredentialResolutionResult> {
 	const preferNewTypes = new Set(preferNewCredentialTypes ?? []);
 	const heldForNewCredentialTypes = new Set<string>();
@@ -256,10 +276,7 @@ export async function resolveCredentials(
 			const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
 			for (const existingNode of existing.nodes ?? []) {
 				if (existingNode.credentials && existingNode.name) {
-					existingCredsByNode.set(
-						existingNode.name,
-						existingNode.credentials as Record<string, unknown>,
-					);
+					existingCredsByNode.set(existingNode.name, existingNode.credentials);
 				}
 			}
 		} catch {
@@ -419,6 +436,14 @@ export async function resolveCredentials(
 				mockCredential();
 			};
 
+			const setupSelection = node.name
+				? setupSelections?.[node.name]?.find((selection) => selection.type === key)
+				: undefined;
+			if (setupSelection?.id === null && (await isGatewayCredentialType(key))) {
+				await attachGatewayCredential();
+				continue;
+			}
+
 			if (value !== undefined && value !== null) {
 				// Templated Custom Auth ids are service-agnostic at the type level, so a
 				// model-attached reference can silently wire another service's credential
@@ -428,7 +453,8 @@ export async function resolveCredentials(
 				if (key === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
 					const suppliedId = getCredentialId(value);
 					const priorId = getCredentialId(existingCreds?.[key]);
-					if (suppliedId !== undefined && suppliedId === priorId) {
+					const selectedByUser = setupSelection?.id === suppliedId;
+					if (suppliedId !== undefined && (suppliedId === priorId || selectedByUser)) {
 						cleanupMockPinData(json, node.name);
 						continue;
 					}
@@ -437,6 +463,23 @@ export async function resolveCredentials(
 					}
 					await mockOrAttachGateway();
 					continue;
+				}
+				// Explicit n8n credits: the builder wrote the managed tag as this slot's
+				// id. Attach it ahead of the user's own credential (so "use n8n credits"
+				// wins even when a stored credential of the type exists), but only when
+				// the gateway serves the type or a supported sibling. Otherwise fall
+				// through to normal resolution rather than persist an unusable credential.
+				if (getCredentialId(value) === AI_GATEWAY_MANAGED_TAG && !wantsNewCredential) {
+					if (await isGatewayCredentialType(key)) {
+						await attachGatewayCredential();
+						continue;
+					}
+					const managedSibling = await resolveSupportedSiblingType(node, key);
+					if (managedSibling) {
+						delete creds[key];
+						await attachGatewayCredential(managedSibling);
+						continue;
+					}
 				}
 				if (isKnownCredentialForType(value, key, availableCredentials)) {
 					cleanupMockPinData(json, node.name);
@@ -467,8 +510,8 @@ export async function resolveCredentials(
 			const credentialsForType = availableCredentials?.get(key);
 			if (
 				!wantsNewCredential &&
-				credentialsForType?.length === 1 &&
-				!GENERIC_AUTH_CREDENTIAL_TYPES.has(key)
+				credentialsForType &&
+				shouldAutoResolveCredential(key, credentialsForType.length)
 			) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };

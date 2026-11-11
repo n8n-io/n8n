@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import type { ToolDefinition } from '../types';
+import type { ResolvedConfig, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import {
 	createConnectedTool,
@@ -11,7 +11,10 @@ import {
 	withSnapshotEnvelope,
 } from './helpers';
 
-export function createInteractionTools(connection: BrowserConnection): ToolDefinition[] {
+export function createInteractionTools(
+	connection: BrowserConnection,
+	mode: ResolvedConfig['mode'] = 'local',
+): ToolDefinition[] {
 	return [
 		browserClick(connection),
 		browserType(connection),
@@ -20,7 +23,8 @@ export function createInteractionTools(connection: BrowserConnection): ToolDefin
 		browserHover(connection),
 		browserPress(connection),
 		browserScroll(connection),
-		browserUpload(connection),
+		// Remote sessions leave file selection to the user in their own browser.
+		...(mode === 'remote' ? [] : [browserUpload(connection)]),
 		browserDialog(connection),
 	];
 }
@@ -81,6 +85,12 @@ const browserTypeSchema = z
 	.object({
 		element: elementTargetSchema.describe('Element to type into'),
 		text: z.string().describe('Text to type'),
+		mode: z
+			.enum(['type', 'paste'])
+			.optional()
+			.describe(
+				'"type" (default) sends one keystroke per character. "paste" inserts the whole value in one operation and replaces any existing content, so `clear` is redundant with it. Use "paste" for multi-line values, code or JSON editors, and whenever typed text comes back garbled, duplicated or wrongly indented.',
+			),
 		clear: z.boolean().optional().describe('Clear existing text first'),
 		submit: z.boolean().optional().describe('Press Enter after typing'),
 		delay: z.number().optional().describe('Delay between keystrokes in ms'),
@@ -103,6 +113,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 		browserTypeSchema,
 		async (state, input, pageId) => {
 			await state.adapter.type(pageId, input.element, input.text, {
+				mode: input.mode,
 				clear: input.clear,
 				submit: input.submit,
 				delay: input.delay,
