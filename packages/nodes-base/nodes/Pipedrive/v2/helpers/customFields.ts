@@ -1,6 +1,10 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { setSafeObjectProperty } from 'n8n-workflow';
 
 import type { ICustomProperties, ICustomInterface } from '../transport';
+
+/** Pipedrive custom field keys are 40-character hashes. Default fields have readable keys. */
+const CUSTOM_FIELD_KEY = /^[0-9a-f]{40}$/;
 
 /** Field types that are passed through without enum/set resolution in resolve functions. */
 const PASSTHROUGH_FIELD_TYPES = [
@@ -148,5 +152,66 @@ export function resolveCustomFieldsV2(
 	}
 
 	json.custom_fields = resolved;
+	item.json = json;
+}
+
+/**
+ * The v1 Leads endpoint (used for lead create/update) expects custom fields as
+ * top-level 40-char keys, not nested under a `custom_fields` object. Moves the
+ * encoded custom fields from `body.custom_fields` to the root of the body.
+ */
+export function flattenCustomFieldsToRoot(body: IDataObject): void {
+	const customFields = body.custom_fields;
+	if (!customFields || typeof customFields !== 'object') {
+		return;
+	}
+
+	for (const [key, value] of Object.entries(customFields as IDataObject)) {
+		// The v1 format for a multi-option field is a comma-separated list of option IDs.
+		setSafeObjectProperty(body, key, Array.isArray(value) ? value.join(',') : value);
+	}
+	delete body.custom_fields;
+}
+
+/**
+ * /leadFields lists the default lead fields (title, value, owner_id, ...) and the custom
+ * fields. Keeps only the custom fields, so a custom field name such as "Value" cannot
+ * resolve to a default field and overwrite it in the request body.
+ */
+export function leadCustomFieldsOnly(customProperties: ICustomProperties): ICustomProperties {
+	const customFields: ICustomProperties = {};
+	for (const [key, data] of Object.entries(customProperties)) {
+		if (CUSTOM_FIELD_KEY.test(key)) {
+			customFields[key] = data;
+		}
+	}
+	return customFields;
+}
+
+/**
+ * The v1 Leads endpoint returns custom fields as top-level 40-char keys. Moves
+ * the known custom field keys under `custom_fields` so the shared resolver can
+ * map them to human-readable names, keeping lead output consistent with other
+ * v2 resources.
+ */
+export function nestRootCustomFields(
+	customProperties: ICustomProperties,
+	item: INodeExecutionData,
+): void {
+	const json = item.json as IDataObject;
+	const customFields = (json.custom_fields as IDataObject) ?? {};
+
+	for (const key of Object.keys(json)) {
+		// /leadFields also lists the default fields (title, owner_id, ...). Only 40-char
+		// hash keys are custom fields, so the default fields stay at the root.
+		if (CUSTOM_FIELD_KEY.test(key) && customProperties[key] !== undefined) {
+			customFields[key] = json[key];
+			delete json[key];
+		}
+	}
+
+	if (Object.keys(customFields).length > 0) {
+		json.custom_fields = customFields;
+	}
 	item.json = json;
 }

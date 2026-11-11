@@ -1,6 +1,12 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
+import {
+	encodeCustomFieldsV2,
+	flattenCustomFieldsToRoot,
+	leadCustomFieldsOnly,
+	nestRootCustomFields,
+	resolveCustomFieldsV2,
+} from '../../v2/helpers/customFields';
 import { addFieldsToBody } from '../../v2/helpers/fields';
 import {
 	coerceToBoolean,
@@ -418,5 +424,105 @@ describe('Pipedrive v2 Type Coercion', () => {
 			// through and Pipedrive surfaces the real validation error.
 			expect(toDateOnly('Jan 15, 2024')).toBe('Jan 15, 2024');
 		});
+	});
+});
+
+describe('addFieldsToBody with unsafe custom field names', () => {
+	it('should not let a custom field named __proto__ change the prototype', () => {
+		const body: IDataObject = {};
+		const unsafeName = '__proto__';
+		const safeName = 'abc123';
+		addFieldsToBody(body, {
+			customFields: {
+				property: [
+					{ name: unsafeName, value: { polluted: true } },
+					{ name: safeName, value: 'kept' },
+				],
+			},
+		});
+
+		const customFields = body.custom_fields as IDataObject;
+		expect(Object.getPrototypeOf(customFields)).toBe(Object.prototype);
+		expect((customFields as { polluted?: boolean }).polluted).toBeUndefined();
+		expect(customFields.abc123).toBe('kept');
+	});
+});
+
+describe('nestRootCustomFields', () => {
+	const hashKey = 'd4a8f5b7c2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7';
+	const leadFields: ICustomProperties = {
+		title: { name: 'Title', key: 'title', field_type: 'varchar' },
+		owner_id: { name: 'Owner', key: 'owner_id', field_type: 'user' },
+		[hashKey]: { name: 'Region', key: hashKey, field_type: 'varchar' },
+	};
+
+	it('should move only custom field keys under custom_fields and keep the default fields', () => {
+		const item: INodeExecutionData = {
+			json: { id: 'lead-1', title: 'Promising Lead', owner_id: 7, [hashKey]: 'EMEA' },
+		};
+
+		nestRootCustomFields(leadFields, item);
+
+		expect(item.json).toEqual({
+			id: 'lead-1',
+			title: 'Promising Lead',
+			owner_id: 7,
+			custom_fields: { [hashKey]: 'EMEA' },
+		});
+	});
+
+	it('should not add custom_fields when the lead has no custom field', () => {
+		const item: INodeExecutionData = { json: { id: 'lead-1', title: 'Promising Lead' } };
+
+		nestRootCustomFields(leadFields, item);
+
+		expect(item.json).toEqual({ id: 'lead-1', title: 'Promising Lead' });
+	});
+});
+
+describe('leadCustomFieldsOnly', () => {
+	it('should keep the custom fields and drop the default lead fields', () => {
+		const hashKey = 'd4a8f5b7c2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7';
+		const result = leadCustomFieldsOnly({
+			title: { name: 'Title', key: 'title', field_type: 'varchar' },
+			value: { name: 'Value', key: 'value', field_type: 'monetary' },
+			[hashKey]: { name: 'Value', key: hashKey, field_type: 'varchar' },
+		});
+
+		expect(result).toEqual({ [hashKey]: { name: 'Value', key: hashKey, field_type: 'varchar' } });
+	});
+
+	it('should let a custom field named like a default field encode to the custom field key', () => {
+		const hashKey = 'd4a8f5b7c2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7';
+		const customFields = leadCustomFieldsOnly({
+			value: { name: 'Value', key: 'value', field_type: 'monetary' },
+			[hashKey]: { name: 'Value', key: hashKey, field_type: 'varchar' },
+		});
+		const body: IDataObject = { title: 'Lead', custom_fields: { Value: 'EMEA' } };
+
+		encodeCustomFieldsV2(customFields, body);
+		flattenCustomFieldsToRoot(body);
+
+		expect(body).toEqual({ title: 'Lead', [hashKey]: 'EMEA' });
+	});
+});
+
+describe('flattenCustomFieldsToRoot', () => {
+	it('should send multi-option values as comma-separated option IDs', () => {
+		const body: IDataObject = { title: 'Lead', custom_fields: { abc: [12, 13], def: 'text' } };
+
+		flattenCustomFieldsToRoot(body);
+
+		expect(body).toEqual({ title: 'Lead', abc: '12,13', def: 'text' });
+	});
+});
+
+describe('addFieldsToBody with an empty Custom Fields collection', () => {
+	it('should not add customFields or custom_fields to the body', () => {
+		const body: IDataObject = {};
+
+		addFieldsToBody(body, { customFields: {}, label: 'hot' });
+
+		expect(body).toEqual({ label: 'hot' });
 	});
 });
