@@ -75,7 +75,9 @@ it('allows one concurrent investigation claim per workflow', async () => {
 
 it('releases technical failures while retaining the original execution identity', async () => {
 	const first = await createInvestigation();
-	await investigations.finishWithoutResult(first.id);
+	expect(await investigations.finishWithoutResult(first.id)).toBe(true);
+	// A repeat changes nothing. The caller uses this to send one telemetry event.
+	expect(await investigations.finishWithoutResult(first.id)).toBe(false);
 	expect(await investigations.getUnfinishedForWorkflow(baseline.workflowId)).toBeNull();
 	expect(await investigations.getForExecution(baseline.workflowId, first.executionId)).toEqual({
 		id: first.id,
