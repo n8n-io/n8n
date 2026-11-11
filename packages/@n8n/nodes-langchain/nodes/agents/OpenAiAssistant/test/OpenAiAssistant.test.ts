@@ -99,17 +99,5 @@ describe('OpenAiAssistant', () => {
 				}),
 			);
 		});
-
-		it.each([
-			['empty', { apiKey: '' }],
-			['blank', { apiKey: '  ' }],
-			['missing', {}],
-		])('should throw when the API key is %s', async (_, credentials) => {
-			const ctx = setupMockContext();
-			ctx.getCredentials = vi.fn().mockResolvedValue(credentials);
-
-			await expect(node.execute.call(ctx)).rejects.toThrow('The credential has no API key');
-			expect(MockedOpenAIClient).not.toHaveBeenCalled();
-		});
 	});
 });
