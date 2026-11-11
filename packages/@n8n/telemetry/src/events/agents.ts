@@ -680,7 +680,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ARCHIVED_AGENT: {
 		name: 'User archived agent',
 		description:
-			'A user archived an agent. The archive first unpublishes a published agent, which also emits "User unpublished agent". Emitted from `AgentPublishService.archiveAgent`.',
+			'An agent was archived. This one event covers every surface: the editor, the MCP `archive_agent` tool and a package import. `user_id` is the acting user. The archive first unpublishes a published agent. That step emits the unpublish event of the surface that archived: "User unpublished agent", "Builder unpublished agent" or "MCP unpublished agent". Emitted from `AgentPublishService.archiveAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),
