@@ -18,7 +18,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -129,7 +129,7 @@ let linkRepository: PromotionEnvironmentProjectRepository;
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 let packagesService: N8nPackagesService;
-let owner: User;
+let owner: Person;
 let testRoot: string;
 let remoteSeedRoot: string;
 let remoteSeed: Promise<TestRemote> | undefined;

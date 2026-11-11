@@ -19,7 +19,7 @@ const agentPreviewSessionSchema = z.object({
 
 export type AgentPreviewSession = z.infer<typeof agentPreviewSessionSchema>;
 
-function parseSession(raw: unknown): AgentPreviewSession | undefined {
+export function parseAgentPreviewSession(raw: unknown): AgentPreviewSession | undefined {
 	const parsed = agentPreviewSessionSchema.safeParse(raw);
 	return parsed.success ? parsed.data : undefined;
 }
@@ -30,7 +30,7 @@ async function readThreadSession(
 	if (!context.threadMemory || !context.threadId) return undefined;
 
 	const thread = await getThread(context.threadMemory, context.threadId);
-	return parseSession(thread?.metadata?.[AGENT_PREVIEW_SESSION_METADATA_KEY]);
+	return parseAgentPreviewSession(thread?.metadata?.[AGENT_PREVIEW_SESSION_METADATA_KEY]);
 }
 
 /**

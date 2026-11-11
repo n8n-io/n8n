@@ -2,7 +2,7 @@ operationId: exportPackage
 tags:
   - N8nPackage
 summary: 'Beta: Export agents, workflows, folders, or projects as an n8n package'
-description: |
+description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Export agents, workflows, and folders, or whole projects, as a gzipped tar
@@ -27,6 +27,8 @@ description: |
 
   Agent definitions include referenced skills, custom tools, and schedules.
   Knowledge base files and runtime data are excluded.
+
+  Requires one of these API key scopes: `project:export`, `workflow:export`, `agent:export`.
 x-required-scope: project:export,workflow:export,agent:export
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

@@ -603,6 +603,45 @@ describe('CryptoV2 Node', () => {
 				).toBe(plaintext);
 			});
 
+			it('returns a raw RSA-OAEP SHA-1 data key as lossless base64', async () => {
+				// NODE-6182: Graph subscription data keys contain raw bytes, not UTF-8 text.
+				const dataKey = Buffer.alloc(32, 0xff);
+				const ciphertext = publicEncrypt(
+					{
+						key: rsaPublicKey,
+						padding: constants.RSA_PKCS1_OAEP_PADDING,
+						oaepHash: 'sha1',
+					},
+					dataKey,
+				).toString('base64');
+				expect(
+					privateDecrypt(
+						{
+							key: rsaPrivateKey,
+							padding: constants.RSA_PKCS1_OAEP_PADDING,
+							oaepHash: 'sha1',
+						},
+						Buffer.from(ciphertext, 'base64'),
+					),
+				).toEqual(dataKey);
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					encryptionPrivateKey: rsaPrivateKey,
+				});
+				const decryptParams = mockDecryptParams(ciphertext, {
+					mode: 'asymmetric',
+					oaepHash: 'sha1',
+				});
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(name: string) => decryptParams[name],
+				);
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.data).toBe(dataKey.toString('base64'));
+			});
+
 			it('throws a clear error when RSA plaintext exceeds the key size limit', async () => {
 				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
