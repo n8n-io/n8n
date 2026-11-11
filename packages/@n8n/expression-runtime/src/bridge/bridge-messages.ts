@@ -176,6 +176,18 @@ export const getNodeItemMessage = z
 	.strict();
 
 /**
+ * `$(nodeName)` — check that the referenced node exists. The host throws
+ * the same `ExpressionError` as the legacy engine when it does not. An empty
+ * name refers to the previous node.
+ */
+export const checkNodeMessage = z
+	.object({
+		type: z.literal('checkNode'),
+		nodeName: z.string(),
+	})
+	.strict();
+
+/**
  * `$evaluateExpression(expression, itemIndex?)` — evaluate a nested
  * expression string at runtime against the same execution context.
  *
@@ -212,6 +224,7 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getNodePairedItemMessage,
 	getNodeItemMatchingMessage,
 	getNodeItemMessage,
+	checkNodeMessage,
 	evaluateExpressionMessage,
 ]);
 

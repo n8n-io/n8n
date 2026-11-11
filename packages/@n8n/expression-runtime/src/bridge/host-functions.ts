@@ -1,4 +1,4 @@
-import type { WorkflowData } from '../types';
+import type { NodeProxy } from '../types/evaluator';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import {
 	isEscapedTransferValue,
@@ -170,12 +170,19 @@ function toHostMetadata(value: unknown): unknown {
  * values must not be returned. An Error in a result crosses as a marker
  * (see `prepareForGuest`).
  */
-export function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
-	return prepareForGuest(dispatchHostMessage(rawMsg, data));
+export function dispatchHostCall(rawMsg: unknown, resolver: HostDataResolver): unknown {
+	return prepareForGuest(dispatchHostMessage(rawMsg, resolver));
 }
 
-function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
+/** Return the host node proxy of `$(nodeName)` from the resolver cache. */
+function resolveNode(resolver: HostDataResolver, nodeName: string): NodeProxy | undefined {
+	const node = resolver.resolve(['$', nodeName]);
+	return typeof node === 'object' && node !== null ? node : undefined;
+}
+
+function dispatchHostMessage(rawMsg: unknown, resolver: HostDataResolver): unknown {
 	const msg = bridgeMessageSchema.parse(rawMsg);
+	const data = resolver.getData();
 	switch (msg.type) {
 		// The `$('Foo').{first,last,all}` typed RPCs.
 		//
@@ -189,11 +196,11 @@ function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
 		// same observable result the runtime's `E()` handler produces from any
 		// thrown error here.
 		case 'getNodeFirst':
-			return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
 		case 'getNodeLast':
-			return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
 		case 'getNodeAll':
-			return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
+			return resolveNode(resolver, msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
 		// The `$input.{first,last,all}` typed RPCs.
 		//
 		// Each reads a fixed literal property name off `data.$input` (the
@@ -240,14 +247,18 @@ function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
 		// those host-side branches fire exactly as they do in the legacy
 		// engine; no in-guest validation needed.
 		case 'getNodePairedItem':
-			return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
+			return resolveNode(resolver, msg.nodeName)?.pairedItem?.(msg.itemIndex);
 		case 'getNodeItemMatching':
-			return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
+			return resolveNode(resolver, msg.nodeName)?.itemMatching?.(msg.itemIndex);
 		case 'getNodeItem':
 			// `.item` is a host getter — accessing it invokes the resolver and
 			// returns the value immediately. Optional chaining only short-
 			// circuits on null/undefined; the getter still fires on access.
-			return data.$?.(msg.nodeName)?.item;
+			return resolveNode(resolver, msg.nodeName)?.item;
+		// The host node proxy cannot cross the boundary, so only its errors are returned.
+		case 'checkNode':
+			resolveNode(resolver, msg.nodeName);
+			return undefined;
 		// `$evaluateExpression(expression, itemIndex?)`. Forwards the string
 		// to the host's nested-evaluation helper, which re-enters the
 		// expression engine on the inner expression. Under the VM engine this

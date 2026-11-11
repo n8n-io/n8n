@@ -23,6 +23,7 @@ import {
 	DataTableSchemaConflictPolicy,
 	LayoutConflictPolicy,
 	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
 	TagConflictPolicy,
 	WorkflowPublishingPolicy,
 	type ImportSelection,
@@ -46,8 +47,8 @@ export type ApplyPreview = {
 };
 
 /**
- * The request of a selective Apply. The package is the source of truth, and a destructive data
- * table change waits for a confirmation.
+ * The request of a selective Apply. The package is the source of truth, also for the project
+ * details, and a destructive data table change waits for a confirmation.
  */
 export function applySelectionRequest(
 	user: User,
@@ -55,6 +56,7 @@ export function applySelectionRequest(
 ): ImportSelectionRequest {
 	return {
 		user,
+		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 		dataTableSchemaConflictPolicy: confirmDestructiveChanges
@@ -242,8 +244,9 @@ export class ApplyPreviewService {
 }
 
 /**
- * Every workflow of the project that the branch holds is applied. A workflow that this instance
- * owns and the branch lacks is deleted, unless it moved to another project: that is reported.
+ * Every workflow and folder of the project that the branch holds is applied. A workflow that this
+ * instance owns and the branch lacks is deleted, unless it moved to another project: that is
+ * reported.
  */
 function classifyProjectWorkflows(
 	inventory: PackageDirectoryInventory,
@@ -258,6 +261,9 @@ function classifyProjectWorkflows(
 	return {
 		selectedProjectId: projectId,
 		selectedWorkflowIds,
+		selectedFolderIds: inventory.folders
+			.filter((folder) => folder.projectId === projectId)
+			.map(({ folder }) => folder.id),
 		deletedWorkflowIds: ownedWorkflowIds.filter(
 			(id) => !selected.has(id) && !movedWorkflowIds.has(id),
 		),

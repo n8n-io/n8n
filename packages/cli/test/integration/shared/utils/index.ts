@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -30,6 +31,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 
 export { setupTestServer } from './test-server';
@@ -196,6 +198,7 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
 	loadNodesAndCredentials.loaded.nodes = nodes;
+	Container.get(NodeTypesProxy).registerProvider(Container.get(NodeTypes));
 }
 
 /**

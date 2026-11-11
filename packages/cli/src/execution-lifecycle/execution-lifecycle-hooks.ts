@@ -894,11 +894,12 @@ export function getLifecycleHooksForSubExecutions(
 	parentExecution?: RelatedExecution,
 	projectId?: string,
 	projectName?: string,
+	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsMemoryGuard(hooks);
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });

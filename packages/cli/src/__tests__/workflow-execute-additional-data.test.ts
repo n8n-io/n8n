@@ -219,6 +219,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
+			credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
 			workflowPreExecute.run.mockResolvedValue(undefined);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -519,6 +520,28 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('reports the personal credentials count of a database sub-workflow to telemetry', async () => {
+				credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 2 });
+
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const [additionalDataIntegrated] = vi.mocked(WorkflowExecute).mock.calls[0];
+				eventService.emit.mockClear();
+				await additionalDataIntegrated.hooks?.runHook('workflowExecuteAfter', [runWithData, {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'workflow-post-execute',
+					expect.objectContaining({ telemetryMetadata: { personalCredentialsCount: 2 } }),
+				);
 			});
 
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {

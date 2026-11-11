@@ -3,6 +3,7 @@ import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import {
 	type EventService,
 	JwtService,
+	NodeTypesProxy,
 	RedisClientService,
 	Subscriber,
 } from '@n8n/backend-services';
@@ -17,6 +18,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -77,7 +79,7 @@ const activeExecutions = mockInstance(ActiveExecutions);
 
 // Mocks for services reached by the full `init()` path, as in start.test.ts
 mockInstance(ErrorReporter);
-mockInstance(NodeTypes);
+const nodeTypes = mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
@@ -213,6 +215,20 @@ describe('Worker', () => {
 	describe('init', () => {
 		afterEach(() => {
 			vi.unstubAllEnvs();
+		});
+
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
 		});
 
 		it.each([

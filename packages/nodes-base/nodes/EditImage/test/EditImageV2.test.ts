@@ -141,6 +141,9 @@ async function nonWhiteBounds(
 	return { left, top, right, bottom };
 }
 
+// Removing a font unregisters every family loaded from the same file.
+let renderFontFamily: string | undefined;
+
 function renderTextBounds({
 	font,
 	text,
@@ -162,43 +165,43 @@ function renderTextBounds({
 	width: number;
 	height: number;
 }): { left: number; top: number; right: number; bottom: number } {
-	const family = 'n8n-edit-image-test-font';
-	const fontKey = GlobalFonts.registerFromPath(font, family);
-	if (!fontKey) throw new Error('Expected the test font to load');
-
-	try {
-		const context = createCanvas(width, height).getContext('2d');
-		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, width, height);
-		context.font = `${fontSize}px "${family}"`;
-		context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
-		context.textBaseline = 'alphabetic';
-		const x = horizontalAlignment === 'east' ? width - positionX : positionX;
-		const y = verticalAlignment === 'south' ? height - positionY : positionY;
-		context.fillStyle = '#111111';
-		context.fillText(text, x, y);
-
-		const pixels = context.getImageData(0, 0, width, height).data;
-		let left = width;
-		let top = height;
-		let right = 0;
-		let bottom = 0;
-
-		for (let pixelY = 0; pixelY < height; pixelY++) {
-			for (let pixelX = 0; pixelX < width; pixelX++) {
-				const index = (pixelY * width + pixelX) * 4;
-				if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
-				left = Math.min(left, pixelX);
-				top = Math.min(top, pixelY);
-				right = Math.max(right, pixelX + 1);
-				bottom = Math.max(bottom, pixelY + 1);
-			}
+	if (!renderFontFamily) {
+		const family = 'n8n-edit-image-test-font';
+		if (!GlobalFonts.registerFromPath(font, family)) {
+			throw new Error('Expected the test font to load');
 		}
-
-		return { left, top, right, bottom };
-	} finally {
-		GlobalFonts.remove(fontKey);
+		renderFontFamily = family;
 	}
+
+	const context = createCanvas(width, height).getContext('2d');
+	context.fillStyle = '#ffffff';
+	context.fillRect(0, 0, width, height);
+	context.font = `${fontSize}px "${renderFontFamily}"`;
+	context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
+	context.textBaseline = 'alphabetic';
+	const x = horizontalAlignment === 'east' ? width - positionX : positionX;
+	const y = verticalAlignment === 'south' ? height - positionY : positionY;
+	context.fillStyle = '#111111';
+	context.fillText(text, x, y);
+
+	const pixels = context.getImageData(0, 0, width, height).data;
+	let left = width;
+	let top = height;
+	let right = 0;
+	let bottom = 0;
+
+	for (let pixelY = 0; pixelY < height; pixelY++) {
+		for (let pixelX = 0; pixelX < width; pixelX++) {
+			const index = (pixelY * width + pixelX) * 4;
+			if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
+			left = Math.min(left, pixelX);
+			top = Math.min(top, pixelY);
+			right = Math.max(right, pixelX + 1);
+			bottom = Math.max(bottom, pixelY + 1);
+		}
+	}
+
+	return { left, top, right, bottom };
 }
 
 function createExecuteFunctions({
@@ -879,6 +882,47 @@ describe('Edit Image v2', () => {
 		const result = await new EditImage().execute.call(executeFunctions);
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
+	});
+
+	it('registers a font once and keeps it registered for later text operations', async () => {
+		vi.resetModules();
+		const { EditImage: FreshEditImage } = await import('../EditImage.node');
+		const registerFromPath = vi.spyOn(GlobalFonts, 'registerFromPath');
+		const remove = vi.spyOn(GlobalFonts, 'remove');
+		const input = await imageBuffer('#ffffff', 80, 40);
+		const createTextExecuteFunctions = () =>
+			createExecuteFunctions({
+				parameters: {
+					operation: 'text',
+					dataPropertyName: 'data',
+					text: 'Hello',
+					fontSize: 12,
+					fontColor: '#000000',
+					positionX: 2,
+					positionY: 2,
+					horizontalAlignment: 'west',
+					verticalAlignment: 'north',
+					lineLength: 80,
+					options: { font: testFont },
+				},
+				input: {
+					json: {},
+					binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+				},
+				binaryBuffers: { data: input },
+			});
+
+		try {
+			await new FreshEditImage().execute.call(createTextExecuteFunctions());
+			await new FreshEditImage().execute.call(createTextExecuteFunctions());
+
+			expect(registerFromPath).toHaveBeenCalledTimes(1);
+			expect(registerFromPath).toHaveBeenCalledWith(testFont, expect.stringContaining('Geist'));
+			expect(remove).not.toHaveBeenCalled();
+		} finally {
+			registerFromPath.mockRestore();
+			remove.mockRestore();
+		}
 	});
 
 	it.each([['west', 'north'] as const, ['east', 'south'] as const])(
