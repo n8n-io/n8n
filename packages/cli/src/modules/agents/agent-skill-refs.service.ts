@@ -164,6 +164,93 @@ export class AgentSkillRefsService {
 		return result;
 	}
 
+	/** Resolve list publication state in bulk. A followed skill does not change the draft id. */
+	async findSkillVersionsForAgents(
+		agents: Pick<Agent, 'id' | 'activeVersionId'>[],
+		ctx: OperationContext,
+	): Promise<Map<string, Record<string, AgentSkillVersionInfo>>> {
+		if (agents.length === 0) return new Map();
+		const [dependencies, pins] = await Promise.all([
+			this.agentSkillRepository.findDependencies(
+				agents.map(({ id }) => id),
+				ctx,
+			),
+			this.agentSkillRepository.findPinsForVersions(
+				agents.flatMap(({ activeVersionId }) => activeVersionId ?? []),
+				ctx,
+			),
+		]);
+		const refs = new Map(
+			agents.map(({ id }) => [
+				id,
+				toSkillRefs(
+					(dependencies.get(id) ?? []).map(({ skillId, versionId }) => ({
+						id: skillId,
+						...(versionId ? { versionId } : {}),
+					})),
+				),
+			]),
+		);
+		const [versionOf, versions] = await Promise.all([
+			this.skillRuntime.runtimeVersions([...refs.values()].flat(), ctx),
+			this.skillRuntime.findVersionRefs(
+				pins.map(({ skillVersionId }) => skillVersionId),
+				ctx,
+			),
+		]);
+		const published = new Map<string, Map<string, number>>();
+		for (const pin of pins) {
+			const version = versions.get(pin.skillVersionId)?.version;
+			if (version === undefined) continue;
+			const skills = published.get(pin.agentVersionId) ?? new Map<string, number>();
+			skills.set(pin.skillId, version);
+			published.set(pin.agentVersionId, skills);
+		}
+		const result = new Map<string, Record<string, AgentSkillVersionInfo>>();
+		for (const agent of agents) {
+			const skills: Record<string, AgentSkillVersionInfo> = {};
+			for (const ref of refs.get(agent.id) ?? []) {
+				const runtime = versionOf(ref);
+				if (!runtime) continue;
+				skills[ref.id] = {
+					draft: runtime.version,
+					published: published.get(agent.activeVersionId ?? '')?.get(ref.id) ?? null,
+					latest: runtime.latest,
+					pinned: runtime.pinned,
+				};
+			}
+			result.set(agent.id, skills);
+		}
+		return result;
+	}
+
+	/** Compare resolved draft versions with an immutable saved version. */
+	async matchesVersion(
+		versionId: string,
+		snapshot: Map<string, string>,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const pins = await this.agentSkillRepository.findPins(versionId, ctx);
+		return (
+			pins.length === snapshot.size &&
+			pins.every(({ skillId, skillVersionId }) => snapshot.get(skillId) === skillVersionId)
+		);
+	}
+
+	/** Check the versions the editor showed against the exact snapshot to publish. */
+	async matchesDraftVersions(
+		snapshot: Map<string, string>,
+		expected: Record<string, number>,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		if (snapshot.size !== Object.keys(expected).length) return false;
+		const versions = await this.skillRuntime.findVersionRefs([...snapshot.values()], ctx);
+		return [...snapshot].every(([id, versionId]) => {
+			const version = versions.get(versionId);
+			return version?.skillId === id && version.version === expected[id];
+		});
+	}
+
 	/** The version number of each skill that one published agent version pins, keyed by skill id. */
 	private async publishedVersionNumbers(
 		agentVersionId: string | null,
@@ -245,10 +332,8 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * Removes the draft refs to the given skills. A skill save marks every Agent that
-	 * follows the skill as changed and captures a version of it. Call this before the
-	 * skills of an Agent are saved in its own save transaction, then attach the refs again
-	 * with `replaceAllDraftRefs`.
+	 * Remove draft refs before an Agent import saves its skills. Attach the refs again
+	 * with `replaceAllDraftRefs` in the same transaction.
 	 */
 	async detachDraftRefs(agentId: string, skillIds: string[], ctx: OperationContext): Promise<void> {
 		if (skillIds.length === 0) return;

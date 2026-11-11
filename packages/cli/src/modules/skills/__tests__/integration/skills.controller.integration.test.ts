@@ -658,7 +658,7 @@ describe('SkillsController', () => {
 			);
 		});
 
-		it('marks a following agent that was in sync as changed, and leaves a pinned agent alone', async () => {
+		it('keeps the draft version of following and pinned agents when a skill is saved', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',
 				projectId: project.id,
@@ -677,7 +677,7 @@ describe('SkillsController', () => {
 				.expect(200);
 
 			expect(saved.body.data).toMatchObject({ version: 2, created: true });
-			expect(await draftVersionOf(following.id)).not.toBe(following.versionId);
+			expect(await draftVersionOf(following.id)).toBe(following.versionId);
 			expect(await draftVersionOf(pinned.id)).toBe(pinned.versionId);
 		});
 	});

@@ -384,6 +384,31 @@ describe('SkillSourceConnectDialog', () => {
 			expect(error).not.toHaveTextContent('raw server text');
 		});
 
+		it('opens the visible source from the duplicate message', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: 'source-1' } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			await userEvent.click(await view.findByTestId('skill-source-view-existing'));
+
+			expect(view.emitted('openSource')).toEqual([['source-1']]);
+		});
+
+		it('does not offer to open a source that the user cannot see', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: null } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			expect(await view.findByTestId('skill-source-duplicate')).toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-view-existing')).not.toBeInTheDocument();
+		});
+
 		it.each([
 			{
 				where: 'global' as const,

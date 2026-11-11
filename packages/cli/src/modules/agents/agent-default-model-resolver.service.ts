@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
@@ -27,6 +28,7 @@ export class AgentDefaultModelResolverService {
 		private readonly credentialsService: CredentialsService,
 		private readonly modelLookupService: BuilderModelLiveLookupService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -38,11 +40,10 @@ export class AgentDefaultModelResolverService {
 	 * or the default is not live — the caller keeps the agent as a draft.
 	 */
 	async resolve(user: User, projectId: string): Promise<AgentModelCredentialConfig | null> {
-		const credentials = await createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
+		const credentials = await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
 			user,
-		).list();
+			await createAgentCredentialProvider(this.credentialsService, projectId, user).list(),
+		);
 		// A provider without a default model (Microsoft Foundry) is never a new agent's default.
 		const supportedCredentials = credentials.filter(
 			(credential) =>
