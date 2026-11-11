@@ -42,6 +42,8 @@ vi.mock('@n8n/ai-utilities', () => ({
 		populateVectorStore: (...args: unknown[]) => unknown;
 		beforeInsert: (...args: unknown[]) => unknown;
 		parseDeleteFilter: (...args: unknown[]) => unknown;
+		deleteByOptions: unknown;
+		deleteDocuments: (...args: unknown[]) => unknown;
 	}) =>
 		class BaseNode {
 			meta = config.meta;
@@ -50,6 +52,8 @@ vi.mock('@n8n/ai-utilities', () => ({
 			populateVectorStore = config.populateVectorStore;
 			beforeInsert = config.beforeInsert;
 			parseDeleteFilter = config.parseDeleteFilter;
+			deleteByOptions = config.deleteByOptions;
+			deleteDocuments = config.deleteDocuments;
 		},
 }));
 
@@ -63,6 +67,12 @@ type TestNode = {
 	meta: { operationModes: string[] };
 	deleteFields: Array<{ name: string; options: Array<{ name: string }> }>;
 	parseDeleteFilter: (filter: Record<string, unknown>) => unknown;
+	deleteByOptions: Array<{ value: string }>;
+	deleteDocuments: (
+		context: ISupplyDataFunctions,
+		vectorStore: unknown,
+		itemIndex: number,
+	) => Promise<IDataObject | undefined>;
 	getVectorStoreClient: (
 		context: ISupplyDataFunctions,
 		filter: IDataObject | undefined,
@@ -561,6 +571,71 @@ describe('VectorStoreWeaviate.node', () => {
 				expect.anything(),
 				expect.objectContaining({ indexName: 'TestCollection', tenant: 'tenantA' }),
 			);
+		});
+
+		describe('entire collection or tenant', () => {
+			const deleteCollection = vi.fn();
+			const removeTenants = vi.fn();
+			const client = mock<WeaviateClient>({
+				collections: mock<WeaviateClient['collections']>({
+					delete: deleteCollection,
+					get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
+				}),
+			});
+
+			const runDelete = async (deleteBy: string, options: Record<string, unknown> = {}) => {
+				const context = createContext(options);
+				context.getNodeParameter.mockImplementation((name: string) => {
+					if (name === 'options') return { skip_init_checks: true, ...options };
+					if (name === 'deleteBy') return deleteBy;
+					return 'TestCollection';
+				});
+				const vectorStore = await node.getVectorStoreClient(
+					context,
+					undefined,
+					mock<Embeddings>(),
+					0,
+				);
+				return await node.deleteDocuments(context, vectorStore, 0);
+			};
+
+			beforeEach(() => {
+				connectSpy.mockResolvedValue(client);
+				deleteCollection.mockReset();
+				removeTenants.mockReset();
+			});
+
+			it('should offer the choice to delete the entire collection or tenant', () => {
+				expect(node.deleteByOptions.map(({ value }) => value)).toEqual(['collection']);
+			});
+
+			it.each(['ids', 'filter'])('should leave the delete by %s to LangChain', async (deleteBy) => {
+				await expect(runDelete(deleteBy)).resolves.toBeUndefined();
+
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should delete the collection when no tenant is set', async () => {
+				const result = await runDelete('collection');
+
+				expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					deleted: true,
+					deleteBy: 'collection',
+					collection: 'TestCollection',
+					tenant: undefined,
+				});
+			});
+
+			it('should remove only the tenant when a tenant is set', async () => {
+				const result = await runDelete('collection', { tenant: 'tenantA' });
+
+				expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+				expect(deleteCollection).not.toHaveBeenCalled();
+				expect(result).toEqual(expect.objectContaining({ tenant: 'tenantA' }));
+			});
 		});
 	});
 });

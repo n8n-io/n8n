@@ -57,6 +57,14 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		return base;
 	}
 
+	/** Deletes the whole collection, or only the tenant when the store has one */
+	async deleteCollection(): Promise<IDataObject> {
+		const { client, indexName, tenant } = this.args;
+		if (!indexName) throw new UnexpectedError('The Weaviate store has no collection name');
+		await clearCollection(client, indexName, tenant);
+		return { deleted: true, deleteBy: 'collection', collection: indexName, tenant };
+	}
+
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
 		filter = filter ?? this.defaultFilter;
 		const args = this.args;
@@ -329,6 +337,18 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 	insertFields,
 	deleteFields,
 	parseDeleteFilter: (filter) => parseCompositeFilter(filter as WeaviateCompositeFilter),
+	deleteByOptions: [
+		{
+			name: 'Entire Collection or Tenant',
+			value: 'collection',
+			description: 'Delete the whole collection, or only the tenant when the Tenant option is set',
+		},
+	],
+	async deleteDocuments(context, vectorStore, itemIndex) {
+		// LangChain can only delete by IDs or by filter, so this choice uses the client
+		if (context.getNodeParameter('deleteBy', itemIndex) !== 'collection') return undefined;
+		return await vectorStore.deleteCollection();
+	},
 	sharedFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
