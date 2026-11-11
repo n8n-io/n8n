@@ -13,5 +13,10 @@
 		},
 		"types": ["node", "vitest/globals", "vite/client"]
 	},
-	"include": ["src/**/*.ts", "src/**/*.json", "assets/**/*.mts"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.json",
+		"assets/**/*.mts",
+		"scripts/verify-snapshot-packages.ts"
+	]
 }

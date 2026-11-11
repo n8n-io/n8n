@@ -163,6 +163,29 @@ export async function packSandboxLinkedWorkspacePackages(
 	return packed;
 }
 
+/** Pack the SDK and its complete runtime workspace dependency closure. */
+export async function packSnapshotWorkspacePackages(
+	logger: Logger,
+): Promise<WorkspacePackageTarball[]> {
+	const rootPath = resolvePackagePath(SANDBOX_LINK_ROOT_PACKAGE);
+	if (!rootPath) {
+		throw new Error(`${SANDBOX_LINK_ROOT_PACKAGE} could not be resolved on the host`);
+	}
+
+	const packed: WorkspacePackageTarball[] = [];
+	for (const pkg of await findLinkedWorkspacePackages(SANDBOX_LINK_ROOT_PACKAGE, rootPath, null)) {
+		const tarball = await packWorkspacePackage(logger, pkg.name, pkg.path);
+		if (!tarball) {
+			throw new Error(
+				`${pkg.name} could not be packed. Build the workflow SDK dependency graph first.`,
+			);
+		}
+		packed.push(tarball);
+	}
+
+	return packed;
+}
+
 /**
  * The root package and the packages in `linked` that it depends on at runtime,
  * directly or through other linked packages. Each dependency resolves from the
@@ -172,7 +195,7 @@ export async function packSandboxLinkedWorkspacePackages(
 export async function findLinkedWorkspacePackages(
 	rootName: string,
 	rootPath: string,
-	linked: ReadonlySet<string> = SANDBOX_LINKED_WORKSPACE_PACKAGES,
+	linked: ReadonlySet<string> | null = SANDBOX_LINKED_WORKSPACE_PACKAGES,
 ): Promise<HostWorkspacePackage[]> {
 	const found: HostWorkspacePackage[] = [];
 	const visited = new Set<string>();
@@ -192,7 +215,7 @@ export async function findLinkedWorkspacePackages(
 			const packageRequire = createRequire(path.join(packagePath, 'package.json'));
 			for (const [dependency, range] of Object.entries(dependencies)) {
 				if (typeof range !== 'string' || !range.startsWith('workspace:')) continue;
-				if (!linked.has(dependency)) continue;
+				if (linked && !linked.has(dependency)) continue;
 				const dependencyPath = resolvePackagePath(dependency, packageRequire);
 				if (!dependencyPath) {
 					throw new Error(

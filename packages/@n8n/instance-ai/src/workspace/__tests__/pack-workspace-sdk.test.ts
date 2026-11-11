@@ -37,6 +37,26 @@ describe('findLinkedWorkspacePackages', () => {
 		expect(names.at(-1)).toBe('@n8n/workflow-sdk');
 	});
 
+	it('finds the complete runtime workspace dependency closure for snapshots', async () => {
+		const sdkPath = path.dirname(require.resolve(`${SANDBOX_LINK_ROOT_PACKAGE}/package.json`));
+
+		const found = await findLinkedWorkspacePackages(SANDBOX_LINK_ROOT_PACKAGE, sdkPath, null);
+
+		expect(found.map((pkg) => pkg.name).sort()).toEqual([
+			'@n8n/constants',
+			'@n8n/errors',
+			'@n8n/expression-runtime',
+			'@n8n/tournament',
+			'@n8n/utils',
+			'@n8n/workflow-sdk',
+			'n8n-workflow',
+		]);
+		const names = found.map((pkg) => pkg.name);
+		expect(names.indexOf('@n8n/constants')).toBeLessThan(names.indexOf('@n8n/utils'));
+		expect(names.indexOf('@n8n/expression-runtime')).toBeLessThan(names.indexOf('n8n-workflow'));
+		expect(names.at(-1)).toBe('@n8n/workflow-sdk');
+	});
+
 	it('resolves a dependency from the package that depends on it, and skips packages that are not linked', async () => {
 		const rootPath = path.join(root, 'sdk');
 		const workflowPath = path.join(rootPath, 'node_modules', 'workflow');

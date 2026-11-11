@@ -102,7 +102,9 @@ async function main() {
 		...builderTemplatesOptionsFromEnv({ logger: consoleLogger }),
 		fetch,
 	});
-	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService);
+	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService, {
+		packWorkspacePackages: true,
+	});
 
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,
