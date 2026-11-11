@@ -2,7 +2,7 @@ import { ModelStreamStallError } from '@n8n/agents';
 import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
@@ -88,6 +88,11 @@ function setup() {
 	// The real reporter, so that the tests see its filters. Sentry is the mock.
 	const sentry = mock<ErrorReporter>();
 	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
+	const userRepository = mock<UserRepository>();
+	userRepository.findOneBy.mockResolvedValue(user);
+	adapterService.createContext.mockReturnValue(
+		environment.context as ReturnType<InstanceAiAdapterService['createContext']>,
+	);
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -101,8 +106,10 @@ function setup() {
 		tracer,
 		threadTabs,
 		errorReporter,
+		userRepository,
 	);
 	return {
+		userRepository,
 		provider,
 		sentry,
 		errorReporter,
@@ -204,6 +211,78 @@ describe('AssistantAgentProvider', () => {
 			approved: true,
 		});
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
+	});
+
+	describe('onBeforeThreadDeletion', () => {
+		function deletionScope(workflowIds?: string[]) {
+			const memory = mock<SystemAgentStartTurn['memory']>({
+				getThread: vi.fn(async () => ({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: workflowIds ? { assistantTemporaryWorkflowIds: workflowIds } : {},
+				})) as never,
+			});
+			return {
+				agentId: 'assistant',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				memory,
+			};
+		}
+
+		it('has no cleanup when the thread marks no temporary workflows', async () => {
+			const { provider, adapterService } = setup();
+
+			await expect(provider.onBeforeThreadDeletion(deletionScope())).resolves.toBeUndefined();
+			expect(adapterService.createContext).not.toHaveBeenCalled();
+		});
+
+		it('archives the marked workflows only after the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary, userRepository } = setup();
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+
+			await afterDeletion?.();
+
+			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-1');
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
+		});
+
+		it('gives the archive the markers it read before the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary } = setup();
+			archiveIfAiTemporary.mockResolvedValueOnce(false);
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			await afterDeletion?.();
+
+			const [, options] = adapterService.createContext.mock.calls[0];
+			const markers = options?.temporaryWorkflowMarkers;
+			await expect(markers?.has('wf-2')).resolves.toBe(true);
+			// The archive drops the marker of a workflow that it cannot archive.
+			await expect(markers?.list()).resolves.toEqual(['wf-2']);
+			// The thread is gone, so the archive does not write to its metadata.
+			const { patchThread } = scope.memory as unknown as { patchThread: ReturnType<typeof vi.fn> };
+			expect(patchThread).not.toHaveBeenCalled();
+		});
+
+		it('archives nothing when the user no longer exists', async () => {
+			const { provider, archiveIfAiTemporary, userRepository } = setup();
+			userRepository.findOneBy.mockResolvedValue(null);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(deletionScope(['wf-1']));
+			await afterDeletion?.();
+
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('prepareTurn', () => {
