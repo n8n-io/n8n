@@ -617,6 +617,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			projectType: detail.projectType,
 			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,

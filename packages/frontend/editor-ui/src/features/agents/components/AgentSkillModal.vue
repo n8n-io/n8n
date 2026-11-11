@@ -20,18 +20,19 @@ import {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nActionDropdown,
 	N8nButton,
 	N8nCallout,
+	N8nDropdownMenu,
 	N8nFormInput,
 	N8nIcon,
+	N8nIconButton,
 	N8nOption,
 	N8nSelect,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { ActionDropdownItem, IconName } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -108,6 +109,8 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	/** Settings only: the saved project's type, even when the project is not listed. */
+	projectType?: SkillDetail['projectType'];
 	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
 	availableToMCP?: boolean;
@@ -470,7 +473,10 @@ const selectedScopeSkill = computed(() => {
 		scope: target.scope,
 		projectId: target.scope === 'project' ? (target.projectId ?? null) : null,
 		projectName: selectedScope.value?.label ?? null,
-		projectType: skillAccess.value?.projectType ?? null,
+		projectType:
+			showScope.value && scope.value === props.data.initialScope
+				? (props.data.projectType ?? null)
+				: (skillAccess.value?.projectType ?? null),
 	};
 });
 const showScopeBadge = computed(
@@ -492,11 +498,11 @@ function onScopeChoice(value: string) {
 	if (value === 'project' || value === 'instance') availableTo.value = value;
 }
 
-function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {
+function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> {
 	return scopeChoices.value.map((choice) => ({
 		id: `scope:${choice.value}`,
 		label: choice.label,
-		icon: choice.icon,
+		icon: { type: 'icon', value: choice.icon },
 		checked: choice.value === selectedScopeValue.value,
 		testId: `${testIdPrefix}${choice.value}`,
 	}));
@@ -511,8 +517,8 @@ const showAttachToggle = computed(
 		!!props.data.agentId &&
 		!!props.data.onRemove,
 );
-const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
-	const items: Array<ActionDropdownItem<string>> = [];
+const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const items: Array<DropdownMenuItemProps<string>> = [];
 	if (showAttachToggle.value) {
 		items.push({
 			id: 'attach',
@@ -521,9 +527,10 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 						interpolate: { agent: props.data.agentName },
 					})
 				: i18n.baseText('agents.builder.skills.menu.addToThisAgent'),
-			icon: 'bot',
-			// The row draws a switch that is on: the skill is attached.
-			customClass: $style.menuItem,
+			icon: { type: 'icon', value: 'bot' },
+			checkbox: true,
+			checked: true,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-attach',
 		});
 	}
@@ -531,9 +538,11 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'assistant',
 			label: i18n.baseText('settings.context.skills.assistant.toggle'),
-			icon: 'sparkles',
+			icon: { type: 'icon', value: 'sparkles' },
+			checkbox: true,
+			checked: availableToAssistant.value,
 			disabled: editorLocked.value,
-			customClass: $style.menuItem,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-assistant',
 		});
 	}
@@ -541,9 +550,11 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'mcp',
 			label: i18n.baseText('settings.context.skills.modal.mcp.toggle'),
-			icon: 'mcp',
+			icon: { type: 'icon', value: 'mcp' },
+			checkbox: true,
+			checked: availableToMCP.value,
 			disabled: editorLocked.value,
-			customClass: $style.menuItem,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-mcp',
 		});
 	}
@@ -551,13 +562,13 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'change-scope',
 			label: i18n.baseText('agents.builder.skills.menu.changeScope'),
-			icon: 'globe',
+			icon: { type: 'icon', value: 'globe' },
 			disabled: !scopeEditable.value,
-			customClass: $style.menuItem,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-change-scope',
 			children: scopeItems('agent-skill-menu-scope-option-').map((item) => ({
 				...item,
-				customClass: $style.menuItem,
+				class: $style.menuItem,
 			})),
 		});
 	}
@@ -565,11 +576,11 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'delete',
 			label: i18n.baseText('agents.builder.skills.menu.delete'),
-			icon: 'trash-2',
+			icon: { type: 'icon', value: 'trash-2' },
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
-			customClass: [$style.menuItem, $style.deleteItem].join(' '),
+			class: [$style.menuItem, $style.deleteItem],
 			testId: 'agent-skill-menu-delete',
 		});
 	}
@@ -1264,31 +1275,23 @@ function onRemove() {
 			</N8nTooltip>
 		</template>
 		<template v-if="isFormStep && headerMenuItems.length > 0" #titleSuffix>
-			<N8nActionDropdown
+			<N8nDropdownMenu
 				:items="headerMenuItems"
 				placement="bottom-start"
-				activator-icon="ellipsis"
-				activator-size="small"
 				:teleported="false"
-				data-testid="agent-skill-header-menu"
 				@select="onHeaderMenuSelect"
 			>
-				<template #menuItem="item">
-					<span v-if="item.id === 'attach'" :class="$style.menuSwitchRow">
-						{{ item.label }}
-						<!-- The whole row toggles, so the switch only shows the state. -->
-						<N8nSwitch
-							:model-value="true"
-							:class="$style.menuSwitch"
-							tabindex="-1"
-							aria-hidden="true"
-							data-testid="agent-skill-menu-attach-switch"
-						/>
-					</span>
-					<span
-						v-else-if="item.id === 'assistant' || item.id === 'mcp'"
-						:class="$style.menuSwitchRow"
-					>
+				<template #trigger>
+					<N8nIconButton
+						variant="ghost"
+						size="small"
+						icon="ellipsis"
+						:aria-label="i18n.baseText('generic.more')"
+						data-testid="agent-skill-header-menu"
+					/>
+				</template>
+				<template #item-label="{ item, ui }">
+					<span v-if="item.checkbox" :class="[ui.class, $style.menuSwitchRow]">
 						<span>
 							{{ item.label }}
 							<N8nTooltip
@@ -1302,27 +1305,37 @@ function onRemove() {
 								/>
 							</N8nTooltip>
 						</span>
-						<N8nSwitch
-							:model-value="item.id === 'assistant' ? availableToAssistant : availableToMCP"
-							:disabled="editorLocked"
-							:class="$style.menuSwitch"
-							tabindex="-1"
-							aria-hidden="true"
-							:data-testid="
-								item.id === 'assistant' ? 'skill-assistant-availability' : 'skill-available-to-mcp'
-							"
-						/>
 					</span>
 					<N8nTooltip
 						v-else-if="item.id === 'delete' && data.deleteDisabledReason"
 						:content="data.deleteDisabledReason"
 						placement="right"
 					>
-						<span data-testid="agent-skill-menu-delete-reason">{{ item.label }}</span>
+						<span :class="ui.class" data-testid="agent-skill-menu-delete-reason">{{
+							item.label
+						}}</span>
 					</N8nTooltip>
-					<template v-else>{{ item.label }}</template>
+					<span v-else :class="ui.class">{{ item.label }}</span>
 				</template>
-			</N8nActionDropdown>
+				<template #item-trailing="{ item }">
+					<!-- The menu item exposes the state. The switch is only a visual indicator. -->
+					<N8nSwitch
+						v-if="item.checkbox"
+						:model-value="item.checked"
+						:disabled="item.disabled"
+						:class="$style.menuSwitch"
+						tabindex="-1"
+						aria-hidden="true"
+						:data-testid="
+							item.id === 'attach'
+								? 'agent-skill-menu-attach-switch'
+								: item.id === 'assistant'
+									? 'skill-assistant-availability'
+									: 'skill-available-to-mcp'
+						"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</template>
 		<template v-if="isFormStep && latestVersion" #headerActions>
 			<N8nButton

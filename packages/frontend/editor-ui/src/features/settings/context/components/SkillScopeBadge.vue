@@ -21,6 +21,9 @@ const project = computed(() => {
 	if (props.skill.projectId === projectsStore.personalProject?.id) {
 		return projectsStore.personalProject;
 	}
+	if (props.skill.projectId === projectsStore.currentProject?.id) {
+		return projectsStore.currentProject;
+	}
 	return (
 		projectsStore.myProjects.find((project) => project.id === props.skill.projectId) ??
 		projectsStore.projects.find((project) => project.id === props.skill.projectId)
@@ -29,7 +32,11 @@ const project = computed(() => {
 const display = computed(() =>
 	scopeDisplay({
 		...props.skill,
-		projectType: props.skill.projectType ?? project.value?.type ?? null,
+		projectType:
+			props.skill.projectType ??
+			(project.value?.type === 'personal' || project.value?.type === 'team'
+				? project.value.type
+				: null),
 	}),
 );
 const projectIcon = computed(() => props.projectIcon ?? project.value?.icon);

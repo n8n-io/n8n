@@ -122,11 +122,12 @@ type StubItem = {
 	testId?: string;
 	disabled?: boolean;
 	checked?: boolean;
+	checkbox?: boolean;
 	children?: StubItem[];
 };
 
 /** Renders every item, submenu items included, as a button that selects it. */
-const ActionDropdownStub = defineComponent({
+const DropdownMenuStub = defineComponent({
 	props: { items: { type: Array as PropType<StubItem[]>, default: () => [] } },
 	emits: ['select'],
 	computed: {
@@ -136,7 +137,7 @@ const ActionDropdownStub = defineComponent({
 	},
 	template: `
 		<div v-bind="$attrs">
-			<slot name="activator" />
+			<slot name="trigger" />
 			<button
 				v-for="item in flatItems"
 				:key="item.id"
@@ -144,7 +145,10 @@ const ActionDropdownStub = defineComponent({
 				:data-checked="item.checked ? 'true' : undefined"
 				:disabled="item.disabled"
 				@click="$emit('select', item.id)"
-			><slot name="menuItem" v-bind="item">{{ item.label }}</slot></button>
+			>
+				<slot name="item-label" :item="item" :ui="{}">{{ item.label }}</slot>
+				<slot name="item-trailing" :item="item" :ui="{}" />
+			</button>
 		</div>
 	`,
 });
@@ -171,6 +175,7 @@ function renderModal({
 		| 'onStopSyncing'
 		| 'scopeOptions'
 		| 'initialScope'
+		| 'projectType'
 		| 'scopeLockedReason'
 		| 'getDefaultName'
 		| 'availableToAssistant'
@@ -220,8 +225,8 @@ function renderModal({
 				N8nCallout: {
 					template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
 				},
-				N8nActionDropdown: realMenu ? false : ActionDropdownStub,
-				ActionDropdown: realMenu ? false : ActionDropdownStub,
+				N8nDropdownMenu: realMenu ? false : DropdownMenuStub,
+				DropdownMenu: realMenu ? false : DropdownMenuStub,
 				N8nHeading: { template: '<h2><slot /></h2>' },
 				N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
 				N8nText: { template: '<span><slot /></span>' },
@@ -1781,7 +1786,8 @@ describe('AgentSkillModal from Settings', () => {
 		mockedStore(useProjectsStore).myProjects = [
 			{ id: 'p1', name: 'Marketing', type: 'team', icon: { type: 'emoji', value: '🚀' } },
 		] as ProjectListItem[];
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId, queryByRole } = renderModal({
+			realMenu: true,
 			skillId: 's1',
 			skill: SAVED_SKILL,
 			settings: {
@@ -1794,13 +1800,31 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge).toHaveTextContent(/🚀\s*Marketing/);
 		expect(badge.tagName).toBe('SPAN');
 		await userEvent.click(badge);
-		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
+		expect(queryByRole('menu')).not.toBeInTheDocument();
 		expect(badge.querySelector('button')).toBeNull();
+	});
+
+	it('shows the personal icon for an unlisted project from Settings', () => {
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'project:other-personal', label: 'Ada', icon: 'user' }],
+				initialScope: 'project:other-personal',
+				projectType: 'personal',
+			},
+		});
+
+		expect(
+			getByTestId('agent-skill-scope-badge').querySelector('[data-icon="user"]'),
+		).not.toBeNull();
+		expect(getSkillDetail).not.toHaveBeenCalled();
 	});
 
 	it('keeps a synced skill scope locked without a badge dropdown', async () => {
 		const onConfirm = vi.fn();
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId, getByRole, queryByRole } = renderModal({
+			realMenu: true,
 			skillId: 's1',
 			skill: SAVED_SKILL,
 			onConfirm,
@@ -1822,10 +1846,14 @@ describe('AgentSkillModal from Settings', () => {
 		});
 
 		expect(getByTestId('agent-skill-source-link')).toHaveTextContent('acme/skills · release/next');
-		expect(getByTestId('agent-skill-menu-change-scope')).toBeDisabled();
-		await userEvent.click(getByTestId('agent-skill-scope-badge'));
-		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
-		await fireEvent.click(getByTestId('agent-skill-menu-scope-option-project:p1'));
+		const badge = getByTestId('agent-skill-scope-badge');
+		expect(badge.closest('button, [role="button"], [aria-haspopup]')).toBeNull();
+		await userEvent.click(badge);
+		expect(queryByRole('menu')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
+		expect(
+			getByRole('menuitem', { name: 'agents.builder.skills.menu.changeScope' }),
+		).toHaveAttribute('aria-disabled', 'true');
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Global');
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
@@ -2221,19 +2249,22 @@ describe('header and footer', () => {
 
 		expect(container.querySelector('header [role="switch"]')).toBeNull();
 		expect(queryByRole('menu')).not.toBeInTheDocument();
-		const openMenu = async () =>
-			await userEvent.click(getByTestId('agent-skill-header-menu').querySelector('button')!);
+		const openMenu = async () => await userEvent.click(getByTestId('agent-skill-header-menu'));
 		await openMenu();
-		expect(getByTestId('skill-assistant-availability')).not.toBeChecked();
-		expect(getByTestId('skill-available-to-mcp')).toBeChecked();
-		await userEvent.click(
-			getByRole('menuitem', { name: 'settings.context.skills.assistant.toggle' }),
-		);
+		const assistantItem = () =>
+			getByRole('menuitemcheckbox', { name: 'settings.context.skills.assistant.toggle' });
+		const mcpItem = () =>
+			getByRole('menuitemcheckbox', { name: 'settings.context.skills.modal.mcp.toggle' });
+		expect(assistantItem()).not.toBeChecked();
+		expect(mcpItem()).toBeChecked();
+		assistantItem().focus();
+		await userEvent.keyboard('{Enter}');
 		await openMenu();
-		expect(getByTestId('skill-assistant-availability')).toBeChecked();
-		await userEvent.click(
-			getByRole('menuitem', { name: 'settings.context.skills.modal.mcp.toggle' }),
-		);
+		expect(assistantItem()).toBeChecked();
+		await userEvent.click(mcpItem());
+		await openMenu();
+		expect(mcpItem()).not.toBeChecked();
+		await userEvent.keyboard('{Escape}');
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 
 		expect(onConfirm).toHaveBeenCalledWith(
@@ -2266,7 +2297,8 @@ describe('header and footer', () => {
 
 	it('detaches a hub skill with the agent toggle in the header menu', async () => {
 		const onRemove = vi.fn();
-		const { findByTestId, queryByTestId } = renderModal({
+		const { getByTestId, findByRole, queryByTestId } = renderModal({
+			realMenu: true,
 			skillRefsEnabled: true,
 			skill: savedSkill,
 			skillId: 'tone',
@@ -2274,14 +2306,19 @@ describe('header and footer', () => {
 			onRemove,
 		});
 
-		const toggle = await findByTestId('agent-skill-menu-attach');
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
+		const toggle = await findByRole('menuitemcheckbox', {
+			name: 'agents.builder.skills.menu.addToAgent Darwin',
+		});
 		expect(toggle).toHaveTextContent('agents.builder.skills.menu.addToAgent');
-		// The row shows a switch that is on, not a check mark.
-		expect(toggle).not.toHaveAttribute('data-checked');
+		expect(toggle).toHaveAttribute('role', 'menuitemcheckbox');
+		expect(toggle).toBeChecked();
 		expect(within(toggle).getByRole('switch', { hidden: true })).toBeChecked();
 		expect(queryByTestId('agent-skill-remove')).not.toBeInTheDocument();
 		// The skill is attached to this agent, so the builder cannot delete it.
-		expect(await findByTestId('agent-skill-menu-delete')).toBeDisabled();
+		expect(
+			await findByRole('menuitem', { name: 'agents.builder.skills.menu.delete' }),
+		).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.click(toggle);
 
@@ -2320,7 +2357,8 @@ describe('header and footer', () => {
 
 	it('changes the scope from the header menu', async () => {
 		const onConfirm = vi.fn();
-		const { getByTestId } = renderModal({
+		const { getByTestId, getByRole, findByRole } = renderModal({
+			realMenu: true,
 			skill: savedSkill,
 			skillId: 'tone',
 			onConfirm,
@@ -2333,7 +2371,12 @@ describe('header and footer', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('agent-skill-menu-scope-option-project:p1'));
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
+		getByRole('menuitem', { name: 'agents.builder.skills.menu.changeScope' }).focus();
+		await userEvent.keyboard('{ArrowRight}');
+		const global = await findByRole('menuitem', { name: 'Global' });
+		expect(global.querySelectorAll('[data-icon="check"]')).toHaveLength(1);
+		await userEvent.click(getByRole('menuitem', { name: 'Marketing' }));
 
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Marketing');
 		await userEvent.click(getByTestId('agent-skill-create-save'));
