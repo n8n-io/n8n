@@ -1,0 +1,44 @@
+packages/modules/apps/backend/src/serving/app-host.service.ts
+  s_41e65c2b02ffda::t_2f93fedb5fc7d6 14,19
+  s_41e65c2b02ffda::t_541d086362bf6a 31
+  s_41e65c2b02ffda::t_ffa30438a6d878 76-80
+packages/modules/apps/backend/src/preview/app-preview.service.ts
+  s_41e65c2b02ffda::t_b015994fb0ebab 2
+  s_41e65c2b02ffda::t_1d0910fbc00e5b 50
+packages/modules/apps/backend/src/serving/__tests__/apps-hosting.service.test.ts
+  s_41e65c2b02ffda::t_2ef0a86a96f1c5 40-47
+  s_41e65c2b02ffda::t_19d292e7d643b9 38-39,48-72
+  s_41e65c2b02ffda::t_94a25a54e65454 16
+packages/modules/apps/backend/src/serving/app-serving.controller.ts
+  s_41e65c2b02ffda::t_b7bdb9821f74f7 78
+packages/modules/apps/backend/src/serving/__tests__/app-serving.controller.test.ts
+  s_41e65c2b02ffda::t_ce3a8327edf85f 23-24
+  s_41e65c2b02ffda::t_460f74c7e989f5 122
+packages/modules/apps/backend/src/serving/apps-hosting.service.ts
+  s_41e65c2b02ffda::t_8e335dc1f80d6c 24-27
+packages/modules/apps/backend/src/preview/__tests__/app-preview.service.test.ts
+  s_41e65c2b02ffda::t_ffad287f5a6361 58
+packages/modules/apps/backend/src/serving/__tests__/app-host.service.test.ts
+  s_41e65c2b02ffda::t_3f0b378456f5c5 70-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfd57f05cced2d86e3ee89a7ca292a915144186d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_41e65c2b02ffda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8157c004-9d27-4a7c-a0ef-f13f741554d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
