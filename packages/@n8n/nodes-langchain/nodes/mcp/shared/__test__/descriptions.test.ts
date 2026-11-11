@@ -29,3 +29,86 @@ describe.each([
 		).toBe(true);
 	});
 });
+
+describe('MCP Client Tool generic OAuth2 description', () => {
+	it('should expose the authentication option and its credential picker', () => {
+		const { credentials: nodeCredentials, properties } = new McpClientTool().description;
+		const authentication = properties
+			.filter((property) => property.name === 'authentication')
+			.map(({ options, displayOptions }) => ({
+				options: options?.filter((option) => 'value' in option && option.value === 'oAuth2Api'),
+				displayOptions,
+			}));
+		const credential = nodeCredentials?.find((entry) => entry.name === 'oAuth2Api');
+		const credentialPicker = properties.find((property) => property.name === 'credentials');
+
+		expect({ authentication, credential, credentialPicker }).toMatchInlineSnapshot(`
+			{
+			  "authentication": [
+			    {
+			      "displayOptions": {
+			        "show": {
+			          "@version": [
+			            {
+			              "_cnd": {
+			                "lt": 1.2,
+			              },
+			            },
+			          ],
+			        },
+			      },
+			      "options": [],
+			    },
+			    {
+			      "displayOptions": {
+			        "show": {
+			          "@version": [
+			            {
+			              "_cnd": {
+			                "gte": 1.2,
+			              },
+			            },
+			          ],
+			        },
+			      },
+			      "options": [
+			        {
+			          "description": "Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.",
+			          "name": "Generic OAuth2 API",
+			          "value": "oAuth2Api",
+			        },
+			      ],
+			    },
+			  ],
+			  "credential": {
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "oAuth2Api",
+			        ],
+			      },
+			    },
+			    "name": "oAuth2Api",
+			    "required": true,
+			  },
+			  "credentialPicker": {
+			    "default": "",
+			    "displayName": "Credentials",
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "headerAuth",
+			          "bearerAuth",
+			          "mcpOAuth2Api",
+			          "oAuth2Api",
+			          "multipleHeadersAuth",
+			        ],
+			      },
+			    },
+			    "name": "credentials",
+			    "type": "credentials",
+			  },
+			}
+		`);
+	});
+});
