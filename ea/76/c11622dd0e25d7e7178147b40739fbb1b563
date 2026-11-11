@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  ai_agent 188-190,333-335,507-509,534-536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea76c11622dd0e25d7e7178147b40739fbb1b563",
+  "prompts": {}
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_6d62f9675bd0c9::t_53b845db5456fa 1186-1188,1191,1247-1251,1253-1256
+  s_6d62f9675bd0c9::t_2b4a407860d69d 837-845,892-901,1165-1185,1189-1190,1258,1260
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_6d62f9675bd0c9::t_f69cf5fa3483fd 755-758,775,779,781-783
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_6d62f9675bd0c9::t_9d528427dd7ec9 1585-1590,1595,1706
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf36d39f8340b4ca049c6514a0ff307ed98f84bb",
+  "prompts": {},
+  "sessions": {
+    "s_6d62f9675bd0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfbc7221-ccda-4125-afb3-227680eed70d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
