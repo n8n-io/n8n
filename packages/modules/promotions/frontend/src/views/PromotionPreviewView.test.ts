@@ -959,6 +959,44 @@ describe('PromotionPreviewView', () => {
 		expect(row).not.toHaveTextContent('Move it on this instance');
 	});
 
+	it('should explain why Apply cannot write a data table or a tag', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck(
+				check({
+					conflicts: [
+						{
+							kind: 'data-table',
+							code: 'data-table-conflict',
+							id: 't1',
+							name: 'Orders',
+							reason: 'id-conflict',
+							consumers: consumers('w1'),
+						},
+						{
+							kind: 'tag',
+							code: 'tag-conflict',
+							id: 'tag1',
+							name: 'Finance',
+							reason: 'rename-drift',
+							consumers: consumers('w1'),
+						},
+					],
+				}),
+			),
+		);
+
+		const { getByTestId, getByRole } = await renderApply();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const table = within(getByTestId('promotion-preview-blockers-table'));
+
+		expect(table.getByRole('row', { name: /Orders/ })).toHaveTextContent(
+			'A data table in another project on this instance already uses this ID.',
+		);
+		expect(table.getByRole('row', { name: /Finance/ })).toHaveTextContent(
+			'another tag already uses this name. Rename or delete one of the two tags on this instance.',
+		);
+	});
+
 	it('should apply a workflow that the branch holds in another folder of the project', async () => {
 		// The branch holds "Payment reminders" at the project root. This instance holds it in "Payments".
 		const preview = previewWithCheck();
