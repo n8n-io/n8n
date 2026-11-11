@@ -110,6 +110,38 @@ The lookup still checks that the user can use the stored credential in the proje
 It does not decrypt the placeholder credential or contact the model provider.
 Production sessions continue to use live model catalogs.
 
+## Simulated services — `execute-with-sim`
+
+`POST /eval/execute-with-sim/:workflowId` runs a workflow against a sim server
+instead of the LLM mock (the eval CLI's `--mocking sim`). The run is a normal
+execution of the stored workflow, with the caller's node parameters, on this
+instance:
+
+- The sim server issues the credentials. The run stores them in the workflow's
+  project and deletes them afterwards, so credential ids, OAuth2 refresh and
+  permission checks work as in production.
+- A per-run egress proxy (`sim-egress-proxy.ts`) receives every node request:
+  core sets it on the final request, after auth and signing
+  (`evalEgressProxy`). The proxy tunnels a host the sim server serves to its
+  HTTPS listener (`N8N_INSTANCE_AI_EVAL_SIM_GATEWAY`), sends loopback traffic
+  direct, and refuses any other host. The result reports a refused host as
+  `SIM NOT COVERED`.
+- Vendor SDKs (AI sub-nodes) do not use the request helpers. A credential whose
+  base URL the sim server serves points at the proxy for the run
+  (`sim-credentials-helper.ts`). An AI sub-node whose credential has no base URL
+  is refused before the run.
+- Data Tables, static data, Remove Duplicates history and time-based waits are
+  prepared as in mock mode.
+- A polling trigger polls as a published workflow does (`trigger` mode).
+  `POST /eval/poll-with-sim/:workflowId` runs its first poll and returns the
+  workflow's static data. The caller adds the records that arrive, then passes
+  that state as `pollState`: the trigger polls again before the run, its output
+  starts the run, and its poll time is the trigger's first entry in
+  `runTimes`. Otherwise the run starts from the caller's trigger items.
+
+The instance trusts the sim server's CA through `NODE_EXTRA_CA_CERTS`, because
+the requests keep their real hostnames.
+
 ## The rule
 
 `__schema__` describes a node's **output**, not the service's wire format —
