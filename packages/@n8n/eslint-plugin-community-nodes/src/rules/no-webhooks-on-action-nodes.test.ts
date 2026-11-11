@@ -33,18 +33,20 @@ const webhookHandler = `async webhook() {
 }`;
 
 function createNodeCode({
+	className = 'TestNode',
 	group = "['input']",
 	nodeDescription = "'A test node'",
 	description = '',
 	members = '',
 }: {
+	className?: string;
 	group?: string;
 	nodeDescription?: string;
 	description?: string;
 	members?: string;
 } = {}): string {
 	return `
-export class TestNode extends Node {
+export class ${className} extends Node {
 	description = {
 		displayName: 'Test Node',
 		name: 'testNode',
@@ -132,8 +134,16 @@ describe.each([
 					}`,
 			}),
 		},
-	])('reports $name as an error', ({ code }) => {
-		const messages = lint(code).filter((diagnostic) => diagnostic.ruleId === ruleId);
+		{
+			name: 'webhook options on an action node in a file with a trigger filename',
+			code: createNodeCode({
+				description: webhooks,
+				members: `${webhookMethods}\n${webhookHandler}`,
+			}),
+			filename: 'TestTrigger.node.ts',
+		},
+	])('reports $name as an error', ({ code, filename }) => {
+		const messages = lint(code, filename).filter((diagnostic) => diagnostic.ruleId === ruleId);
 
 		expect(messages).toEqual(
 			expect.arrayContaining([expect.objectContaining({ ruleId, severity: 2, message })]),
@@ -151,6 +161,16 @@ describe.each([
 		'this.evaluateExpression(`{{ $execution.resumeUrl }}${suffix}`, 0)',
 		'$execution.resumeUrl',
 		"$execution['resumeUrl']",
+		"this.evaluateExpression('{{ $execution.resumeFormUrl }}', 0)",
+		"this.evaluateExpression('{{ $execution?.resumeUrl }}', 0)",
+		"this.evaluateExpression('{{ $execution ?. resumeFormUrl }}', 0)",
+		'$execution.resumeFormUrl',
+		'$execution?.resumeUrl',
+		"$execution?.['resumeFormUrl']",
+		'this.getWorkflowDataProxy(0).$execution.resumeUrl',
+		'this.getWorkflowDataProxy(0).$execution.resumeFormUrl',
+		'this.getWorkflowDataProxy(0)?.$execution?.resumeUrl',
+		"this.getWorkflowDataProxy(0)['$execution']['resumeUrl']",
 	])('reports a resume URL without webhook declarations: %s', (callbackUrl) => {
 		const code = createNodeCode({
 			members: `async execute() {
@@ -195,12 +215,36 @@ describe.each([
 			filename: 'TestNode.node.ts',
 		},
 		{
-			name: 'a webhook trigger identified only by its filename',
+			name: 'a webhook trigger identified only by its class name',
 			code: createNodeCode({
+				className: 'TestTrigger',
 				description: webhooks,
 				members: `${webhookMethods}\n${webhookHandler}`,
 			}),
-			filename: 'TestTrigger.node.ts',
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'a trigger that reads a resume URL through the workflow data proxy',
+			code: createNodeCode({
+				group: "['trigger']",
+				members: 'async execute() { return this.getWorkflowDataProxy(0).$execution.resumeUrl; }',
+			}),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'an action node that reads other execution properties through the workflow data proxy',
+			code: createNodeCode({
+				members: 'async execute() { return this.getWorkflowDataProxy(0).$execution.id; }',
+			}),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'an action node that reads a similar property name',
+			code: createNodeCode({
+				members:
+					"async execute() { return this.evaluateExpression('{{ $execution.resumeUrlPrefix }}', 0); }",
+			}),
+			filename: 'TestNode.node.ts',
 		},
 		{
 			name: 'a polling trigger identified only by its poll method',

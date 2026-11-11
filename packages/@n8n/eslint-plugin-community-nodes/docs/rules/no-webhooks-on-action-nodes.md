@@ -13,12 +13,13 @@ on an action node:
 - A `webhooks` property in the node description.
 - A `webhookMethods` class property.
 - An `async webhook()` method.
-- A `$execution.resumeUrl` reference in code or an expression string, even without
-  a `webhooks` declaration.
+- A `$execution.resumeUrl` or `$execution.resumeFormUrl` reference in code or an
+  expression string, even without a `webhooks` declaration. This includes
+  optional chaining (`$execution?.resumeUrl`) and access through the workflow
+  data proxy (`this.getWorkflowDataProxy(0).$execution.resumeUrl`).
 
 The rule identifies a trigger when its description group includes `'trigger'`,
-its class defines `poll()` or `trigger()`, or its filename ends with
-`Trigger.node.ts`.
+its class name ends with `Trigger`, or its class defines `poll()` or `trigger()`.
 
 Move webhook behavior to a dedicated trigger node, or use polling in the action
 node. A complete webhook lifecycle does not exempt an action node.

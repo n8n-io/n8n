@@ -1,5 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils } from '@typescript-eslint/utils';
 import { distance } from 'fastest-levenshtein';
 
 function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: string): boolean {
@@ -356,6 +356,21 @@ export function isHelpersAccess(node: TSESTree.MemberExpression): boolean {
 		node.object.type === AST_NODE_TYPES.MemberExpression &&
 		node.object.property.type === AST_NODE_TYPES.Identifier &&
 		node.object.property.name === 'helpers'
+	);
+}
+
+/**
+ * Matches `$execution.<property>` and member chains that end in `$execution`, such as
+ * `this.getWorkflowDataProxy(0).$execution.<property>`.
+ */
+export function isExecutionAccess(node: TSESTree.MemberExpression): boolean {
+	if (node.object.type === AST_NODE_TYPES.Identifier) {
+		return node.object.name === '$execution';
+	}
+
+	return (
+		node.object.type === AST_NODE_TYPES.MemberExpression &&
+		ASTUtils.getPropertyName(node.object) === '$execution'
 	);
 }
 

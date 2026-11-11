@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils, type TSESTree } from '@typescript-eslint/utils';
 
 import {
 	createRule,
@@ -6,10 +6,15 @@ import {
 	findNodeDescriptionObject,
 	findObjectProperty,
 	getPropertyKeyName,
-	hasTriggerGroup,
+	isExecutionAccess,
 	isFileType,
 	isNodeTypeClass,
+	isTriggerNode,
+	isTriggerNodeClass,
 } from '../utils/index.js';
+
+/** Both URLs make the execution wait for an incoming webhook call. */
+const RESUME_URL_PROPERTIES = new Set(['resumeUrl', 'resumeFormUrl']);
 
 export const NoWebhooksOnActionNodesRule = createRule({
 	name: 'no-webhooks-on-action-nodes',
@@ -26,12 +31,12 @@ export const NoWebhooksOnActionNodesRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!isFileType(context.filename, '.node.ts') || context.filename.endsWith('Trigger.node.ts')) {
+		if (!isFileType(context.filename, '.node.ts')) {
 			return {};
 		}
 
 		const actionNodes = new WeakSet<TSESTree.ClassDeclaration>();
-		const resumeUrlPattern = /\$execution\s*\.\s*resumeUrl\b/;
+		const resumeUrlPattern = /\$execution\s*\??\.\s*resume(?:Form)?Url\b/;
 		const hasResumeUrlExpression = (value: string) =>
 			[...value.matchAll(/\{\{[\s\S]*?\}\}/g)].some(([expression]) =>
 				resumeUrlPattern.test(expression),
@@ -58,7 +63,7 @@ export const NoWebhooksOnActionNodesRule = createRule({
 				if (!isNodeTypeClass(node)) return;
 
 				const description = findNodeDescriptionObject(node);
-				if (description && hasTriggerGroup(description)) {
+				if (description ? isTriggerNode(node, description) : isTriggerNodeClass(node)) {
 					return;
 				}
 
@@ -100,14 +105,8 @@ export const NoWebhooksOnActionNodesRule = createRule({
 			},
 			MemberExpression(node) {
 				if (
-					node.object.type === AST_NODE_TYPES.Identifier &&
-					node.object.name === '$execution' &&
-					((!node.computed &&
-						node.property.type === AST_NODE_TYPES.Identifier &&
-						node.property.name === 'resumeUrl') ||
-						(node.computed &&
-							node.property.type === AST_NODE_TYPES.Literal &&
-							node.property.value === 'resumeUrl'))
+					isExecutionAccess(node) &&
+					RESUME_URL_PROPERTIES.has(ASTUtils.getPropertyName(node) ?? '')
 				) {
 					reportResumeUrl(node);
 				}
