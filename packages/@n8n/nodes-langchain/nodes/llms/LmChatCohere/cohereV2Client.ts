@@ -37,7 +37,7 @@ interface V1ChatHistoryItem {
 
 interface V1ToolResult {
 	call: V1ToolCall;
-	outputs: Record<string, unknown>[];
+	outputs: Array<Record<string, unknown>>;
 }
 
 interface V1Tool {
