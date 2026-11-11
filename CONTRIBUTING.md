@@ -670,8 +670,9 @@ pnpm test:affected
 ```
 
 In the root folder, `pnpm test` runs the tests of all packages. This takes a
-long time, and some packages need Docker. CI runs the full suite on each pull
-request, so you do not usually need to run it locally.
+long time, and some packages need Docker. On each pull request, CI runs the
+tests of the packages that your change affects. Run `pnpm test:affected`
+locally to get the same coverage before you push.
 
 If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
 
