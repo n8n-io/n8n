@@ -5,9 +5,6 @@ import { N8nActionToggle, N8nCard, N8nIcon, N8nText, type PathItem } from '@n8n/
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useUsersStore } from '@n8n/stores/users.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import FolderCardSubtitle from '@/features/core/folders/components/FolderCardSubtitle.vue';
 import { getFolderPath, moveFolder } from '@/features/core/folders/folders.api';
@@ -25,12 +22,11 @@ const props = defineProps<{
 	folderId: string | null;
 	folders: ChangeLocationSearchResponseItem[];
 	search: string;
+	folderPermissions: { create: boolean; update: boolean; delete: boolean };
 	hideToolbar?: boolean;
 }>();
 const emit = defineEmits<{ changed: [] }>();
 const rootStore = useRootStore();
-const projectsStore = useProjectsStore();
-const usersStore = useUsersStore();
 const favorites = useFavoritesStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -42,19 +38,6 @@ const action = ref<AgentFolderAction | null>(null);
 const dragged = ref<{ type: 'agent' | 'folder'; id: string } | null>(null);
 let generation = 0;
 
-const folderPermissions = computed(() => {
-	const global = getResourcePermissions(usersStore.currentUser?.globalScopes).folder;
-	const project = getResourcePermissions(
-		projectsStore.myProjects.find((item) => item.id === props.projectId)?.scopes,
-	).folder;
-
-	return {
-		create: global.create || project.create,
-		update: global.update || project.update,
-		delete: global.delete || project.delete,
-		list: global.list || project.list,
-	};
-});
 const breadcrumbs = computed<PathItem[]>(() => [
 	{ id: PROJECT_ROOT, label: i18n.baseText('agents.folders.root') },
 	...path.value,
@@ -63,8 +46,6 @@ const breadcrumbs = computed<PathItem[]>(() => [
 async function refresh() {
 	const requestGeneration = ++generation;
 	path.value = [];
-
-	if (!folderPermissions.value.list) return;
 
 	try {
 		const tree = props.folderId
@@ -87,7 +68,7 @@ async function refresh() {
 }
 
 watch(
-	() => [props.projectId, props.folderId, folderPermissions.value.list],
+	() => [props.projectId, props.folderId],
 	() => {
 		void refresh();
 	},
@@ -114,16 +95,16 @@ function actionsFor(folder: ChangeLocationSearchResponseItem) {
 				favorites.isFavorite(folder.id, 'folder') ? 'favorites.remove' : 'favorites.add',
 			),
 		},
-		...(folderPermissions.value.create
+		...(props.folderPermissions.create
 			? [{ value: 'create', label: i18n.baseText('agents.folders.create') }]
 			: []),
-		...(folderPermissions.value.update && canUpdate.value
+		...(props.folderPermissions.update && canUpdate.value
 			? [
 					{ value: 'rename', label: i18n.baseText('agents.folders.rename') },
 					{ value: 'moveFolder', label: i18n.baseText('agents.folders.move') },
 				]
 			: []),
-		...(folderPermissions.value.delete && (canDelete.value || canUpdate.value)
+		...(props.folderPermissions.delete && (canDelete.value || canUpdate.value)
 			? [{ value: 'delete', label: i18n.baseText('agents.folders.deleteTitle'), destructive: true }]
 			: []),
 	];
@@ -174,7 +155,7 @@ async function drop(targetId: string) {
 				source.id,
 				targetId === PROJECT_ROOT ? null : targetId,
 			);
-		} else if (folderPermissions.value.update) {
+		} else if (props.folderPermissions.update) {
 			await moveFolder(rootStore.restApiContext, props.projectId, source.id, targetId);
 		}
 
@@ -186,7 +167,6 @@ async function drop(targetId: string) {
 
 defineExpose({
 	breadcrumbs,
-	folderPermissions,
 	isDragging: computed(() => dragged.value !== null),
 	navigate,
 	drop,
@@ -205,7 +185,7 @@ defineExpose({
 			v-if="!hideToolbar"
 			:items="breadcrumbs"
 			:folder-id="folderId"
-			:can-create="Boolean(folderPermissions.create)"
+			:can-create="folderPermissions.create"
 			:drag-active="dragged !== null"
 			@navigate="navigate"
 			@drop="drop"

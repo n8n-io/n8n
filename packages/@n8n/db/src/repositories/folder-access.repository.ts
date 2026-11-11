@@ -6,6 +6,7 @@ import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { BaseRepository } from './base-repository';
+import { FOLDER_TREE_JOIN } from './folder.repository';
 
 @Service()
 export class FolderAccessRepository extends BaseRepository<Folder> {
@@ -56,11 +57,7 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 				.select('child.id', 'id')
 				.addSelect('child.projectId', 'project_id')
 				.addSelect('child.resourceType', 'resource_type')
-				.innerJoin(
-					'folder_tree',
-					'parent',
-					'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
-				);
+				.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 			const query = manager
 				.createQueryBuilder()
 				.addCommonTableExpression(

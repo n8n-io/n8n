@@ -14,6 +14,14 @@ import { TransactionRunner, type OperationContext } from '../services/transactio
 // oxlint-disable-next-line typescript/no-deprecated
 type FolderListQueryOptions = ListQuery.Options;
 
+/**
+ * Joins a `child` folder to its `parent` row in a recursive folder CTE.
+ * The CTE must select `project_id` and `resource_type`, so that a tree stays
+ * in one project and one resource type.
+ */
+export const FOLDER_TREE_JOIN =
+	'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type';
+
 @Service()
 export class FolderRepository extends BaseRepository<Folder> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -430,11 +438,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 			.addSelect('child.parentFolderId', 'parentFolderId')
 			.addSelect('child.projectId', 'project_id')
 			.addSelect('child.resourceType', 'resource_type')
-			.innerJoin(
-				'folder_tree',
-				'parent',
-				'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
-			);
+			.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 
 		const subQuery = this.createQueryBuilder()
 			.select('tree.id')
@@ -480,11 +484,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 			.select('child.id', 'id')
 			.addSelect('child.projectId', 'project_id')
 			.addSelect('child.resourceType', 'resource_type')
-			.innerJoin(
-				'folder_tree',
-				'parent',
-				'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
-			);
+			.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 
 		recursiveQuery.andWhere('child.resourceType = :resourceType', { resourceType });
 
@@ -540,11 +540,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 					'child.projectId AS project_id',
 					'child.resourceType AS resource_type',
 				])
-				.innerJoin(
-					'folder_tree',
-					'parent',
-					'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
-				);
+				.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 
 			const query = this.createQueryBuilder()
 				.addCommonTableExpression(
@@ -590,11 +586,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 				"CONCAT(parent.path, '/', child.name) as path",
 				'parent.level + 1 as level',
 			])
-			.innerJoin(
-				'folder_paths',
-				'parent',
-				'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
-			);
+			.innerJoin('folder_paths', 'parent', FOLDER_TREE_JOIN);
 
 		const mainQuery = this.createQueryBuilder()
 			.addCommonTableExpression(

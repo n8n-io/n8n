@@ -240,7 +240,7 @@ const mountView = async () => {
 				AgentFolderBrowser: {
 					name: 'AgentFolderBrowser',
 					props: ['folders'],
-					data: () => ({ breadcrumbs: [], folderPermissions: { create: true } }),
+					data: () => ({ breadcrumbs: [] }),
 					template:
 						'<div><div v-for="folder in folders" :key="folder.id" data-test-id="agent-folder-card">{{ folder.name }}</div></div>',
 				},

@@ -25,16 +25,6 @@ vi.mock('../composables/useAgentPermissions', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
-vi.mock('@n8n/stores/users.store', () => ({
-	useUsersStore: () => ({
-		currentUser: {
-			globalScopes: ['folder:list', 'folder:create', 'folder:update', 'folder:delete'],
-		},
-	}),
-}));
-vi.mock('@/features/collaboration/projects/projects.store', () => ({
-	useProjectsStore: () => ({ myProjects: [] }),
-}));
 vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => ({ isFavorite: () => false, fetchFavorites: mocks.fetchFavorites }),
 }));
@@ -82,7 +72,13 @@ beforeEach(() => {
 
 function render(folders = [folder]) {
 	return mount(AgentFolderBrowser, {
-		props: { projectId: 'project', folderId: 'parent', search: '', folders },
+		props: {
+			projectId: 'project',
+			folderId: 'parent',
+			search: '',
+			folders,
+			folderPermissions: { create: true, update: true, delete: true },
+		},
 	});
 }
 

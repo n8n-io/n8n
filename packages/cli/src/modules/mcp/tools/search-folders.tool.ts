@@ -70,7 +70,7 @@ export const createSearchFoldersTool = (
 		projectId,
 		query,
 		limit = MAX_RESULTS,
-		resourceType = 'workflow',
+		resourceType,
 	}: {
 		projectId: string;
 		query?: string;

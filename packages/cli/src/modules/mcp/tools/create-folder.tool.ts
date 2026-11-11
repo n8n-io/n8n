@@ -59,7 +59,7 @@ export const createCreateFolderTool = (
 		projectId,
 		name,
 		parentFolderId,
-		resourceType = 'workflow',
+		resourceType,
 	}: {
 		projectId: string;
 		name: string;

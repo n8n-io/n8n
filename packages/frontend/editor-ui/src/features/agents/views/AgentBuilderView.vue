@@ -1743,7 +1743,7 @@ async function createPendingAgent(
 	try {
 		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
 			id: targetAgentId,
-			...(typeof route.query.folderId === 'string' ? { parentFolderId: route.query.folderId } : {}),
+			parentFolderId: request.parentFolderId,
 			config: initialConfig,
 		});
 	} catch (error) {

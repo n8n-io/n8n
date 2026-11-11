@@ -29,12 +29,6 @@ export class AgentFolderService implements FolderContentHandler {
 		}
 	}
 
-	async count(projectId: string, folderIds: string[]): Promise<number> {
-		const counts = await this.directCounts(projectId, folderIds);
-
-		return [...counts.values()].reduce((total, count) => total + count, 0);
-	}
-
 	async directCounts(projectId: string, folderIds: string[]): Promise<Map<string, number>> {
 		return await this.agentRepository.countByFolder(projectId, folderIds);
 	}

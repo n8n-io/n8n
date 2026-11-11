@@ -547,16 +547,12 @@ export class AgentsService {
 		const paths = new Map<string, string[]>();
 
 		for (const folderId of folderIds) {
-			const tree = await this.folderService.getFolderTree(folderId, projectId);
-			const path: string[] = [];
-			let node = tree[0];
+			const path = await this.folderService.getFolderPath(folderId, projectId);
 
-			while (node) {
-				path.push(node.name);
-				node = node.children[0];
-			}
-
-			paths.set(folderId, path);
+			paths.set(
+				folderId,
+				path.map((folder) => folder.name),
+			);
 		}
 
 		return {

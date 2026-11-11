@@ -9,7 +9,6 @@ export interface FolderContentHandler {
 		projectId: string,
 		operation: 'read' | 'update' | 'delete',
 	): Promise<void>;
-	count(projectId: string, folderIds: string[]): Promise<number>;
 	directCounts(projectId: string, folderIds: string[]): Promise<Map<string, number>>;
 	relocate(
 		projectId: string,

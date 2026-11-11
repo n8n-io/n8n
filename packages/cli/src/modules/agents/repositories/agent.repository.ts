@@ -101,10 +101,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * update that row instead of colliding on the primary key.
 	 */
 	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
-		if (agent.scope === 'instance' && agent.parentFolderId) {
-			throw new UnexpectedError('Instance agents cannot have folders');
-		}
-
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);

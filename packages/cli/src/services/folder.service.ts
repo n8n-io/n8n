@@ -207,13 +207,15 @@ export class FolderService {
 		}
 	}
 
-	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
+	/** The folders from the top of the project down to `folderId`. */
+	async getFolderPath(folderId: string, projectId: string): Promise<Folder[]> {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
-		const path = await this.folderRepository.getAncestorPath(
-			folderId,
-			projectId,
-			folder.resourceType,
-		);
+
+		return await this.folderRepository.getAncestorPath(folderId, projectId, folder.resourceType);
+	}
+
+	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
+		const path = await this.getFolderPath(folderId, projectId);
 
 		return this.transformFolderPathToTree(
 			path.map((item) => ({
@@ -264,13 +266,7 @@ export class FolderService {
 			return;
 		}
 
-		if (folderId === transferToFolderId) {
-			throw new UserError('Cannot transfer folder contents to the folder being deleted');
-		}
-
-		if (transferToFolderId !== PROJECT_ROOT) {
-			await this.validateRelocation(folder, projectId, transferToFolderId);
-		}
+		await this.validateRelocation(folder, projectId, transferToFolderId);
 
 		await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
@@ -408,9 +404,10 @@ export class FolderService {
 				projectId,
 				'agent',
 			);
-			const totalAgents = await this.folderContentService
+			const counts = await this.folderContentService
 				.get('agent')
-				.count(projectId, [folderId, ...descendants]);
+				.directCounts(projectId, [folderId, ...descendants]);
+			const totalAgents = [...counts.values()].reduce((total, count) => total + count, 0);
 
 			return { folder, totalSubFolders: descendants.length, totalWorkflows: 0, totalAgents };
 		}

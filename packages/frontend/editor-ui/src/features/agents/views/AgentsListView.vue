@@ -106,16 +106,22 @@ const loading = ref(true);
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
 );
-const showFolders = computed(() => {
+const folderPermissions = computed(() => {
 	const global = getResourcePermissions(usersStore.currentUser?.globalScopes).folder;
 	const project = getResourcePermissions(
 		projectsStore.myProjects.find((item) => item.id === projectId.value)?.scopes,
 	).folder;
 
-	return Boolean(
-		projectId.value && settingsStore.isFoldersFeatureEnabled && (global.list || project.list),
-	);
+	return {
+		create: Boolean(global.create || project.create),
+		update: Boolean(global.update || project.update),
+		delete: Boolean(global.delete || project.delete),
+		list: Boolean(global.list || project.list),
+	};
 });
+const showFolders = computed(() =>
+	Boolean(projectId.value && settingsStore.isFoldersFeatureEnabled && folderPermissions.value.list),
+);
 
 // Exposure covers both arms: control users see the default empty state, test users
 // the templates intro. The source mirrors the layout's empty-state condition, so a
@@ -307,10 +313,6 @@ function openMove(agent: AgentResource) {
 	moveAction.value = { mode: 'moveAgent', id: agent.id, parentFolderId: agent.parentFolderId };
 }
 
-function foldersChanged() {
-	void fetchAgents();
-}
-
 watch([projectId, folderId, showFolders], () => {
 	currentPage.value = 1;
 	folders.value = [];
@@ -461,7 +463,7 @@ onMounted(async () => {
 				<AgentFolderToolbar
 					:items="folderBrowser?.breadcrumbs ?? []"
 					:folder-id="folderId"
-					:can-create="folderBrowser?.folderPermissions.create ?? false"
+					:can-create="folderPermissions.create"
 					:drag-active="folderBrowser?.isDragging ?? false"
 					@navigate="folderBrowser?.navigate($event)"
 					@drop="folderBrowser?.drop($event)"
@@ -476,8 +478,9 @@ onMounted(async () => {
 					:folder-id="folderId"
 					:folders="folders"
 					:search="filters.search"
+					:folder-permissions="folderPermissions"
 					hide-toolbar
-					@changed="foldersChanged"
+					@changed="fetchAgents"
 				/>
 				<template v-if="!loading && totalItems === 0">
 					<N8nText v-if="filters.search" color="text-base" size="medium">
@@ -553,7 +556,7 @@ onMounted(async () => {
 			:project-id="moveProjectId"
 			:action="moveAction"
 			@close="moveAction = null"
-			@saved="foldersChanged"
+			@saved="fetchAgents"
 		/>
 	</div>
 </template>

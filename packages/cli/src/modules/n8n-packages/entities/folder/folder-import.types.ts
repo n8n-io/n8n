@@ -1,3 +1,5 @@
+import type { FolderResourceType } from '@n8n/api-types';
+
 import type {
 	FolderConflict,
 	FolderConflictPolicy,
@@ -37,4 +39,3 @@ export interface FolderImportPlan {
 	items: FolderPlanItem[];
 	conflicts: FolderConflict[];
 }
-import type { FolderResourceType } from '@n8n/api-types';
