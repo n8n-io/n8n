@@ -21,20 +21,21 @@ function unimplemented(feature: string) {
 }
 
 /**
- * `$vars` that fails on first read. Variables live in the control plane
- * database, and an empty object would turn `$vars.x` into a silent `undefined`
- * inside a request or a parameter.
+ * Stands in for `$vars` on the data plane, which has no variables: they live
+ * in the control plane database. Three rules make it safe to hand around:
  *
- * Only a read of a named variable fails. Enumeration finds nothing, so the
- * task broker can serialize the additional data for a runner: a Code node
- * reads `$vars` through that copy, where it is empty, as it is on a v1
- * instance without variables.
+ * - A read of a named variable throws, so `$vars.x` in an expression fails
+ *   loudly instead of resolving to `undefined`.
+ * - Enumeration finds nothing, so the task broker can serialize the additional
+ *   data for a runner. A Code node then sees an empty `$vars`, as it does on a
+ *   v1 instance without variables.
+ * - Symbols, own properties and `toJSON` pass through, because serializers and
+ *   inspectors probe them before they read anything.
  */
-const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
+const variablesPlaceholder: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
 	{},
 	{
 		get: (target, property) => {
-			// Serializers and inspectors probe these before they read anything.
 			if (
 				typeof property === 'symbol' ||
 				Object.hasOwn(target, property) ||
@@ -120,7 +121,7 @@ export class EngineAdditionalDataBuilder {
 			webhookTestBaseUrl: testWebhookBase + endpoints.webhookTest,
 			mcpBaseUrl: webhookBase + endpoints.mcp,
 			mcpTestBaseUrl: testWebhookBase + endpoints.mcpTest,
-			variables: unimplementedVariables,
+			variables: variablesPlaceholder,
 			externalSecretsProxy: unimplementedExternalSecretsProxy,
 			// The key the Data Table node's helpers look for. In v1 the data-table
 			// module fills it; here the provider asks the control plane.
