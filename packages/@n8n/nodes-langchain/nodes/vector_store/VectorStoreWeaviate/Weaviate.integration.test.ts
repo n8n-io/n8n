@@ -2,6 +2,8 @@ import { jsonParse } from 'n8n-workflow';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { mock } from 'vitest-mock-extended';
+import type { WeaviateClient } from 'weaviate-client';
 
 // Plain hoisted state, because the shared config restores vi.fn() mocks before each test
 const fsState = vi.hoisted(() => ({
@@ -142,5 +144,57 @@ describe('getIntegrationVersion', () => {
 
 		await expect(getIntegrationVersion()).rejects.toThrow('EACCES');
 		expect(fsState.reads).toHaveLength(readsAfterFailure);
+	});
+});
+
+describe('registerIntegrationHeader', () => {
+	const clientWithHeaders = (headers: unknown) =>
+		mock<WeaviateClient>({
+			getConnectionDetails: vi.fn().mockResolvedValue({ host: 'localhost', headers }),
+		});
+
+	it('should add the integration header with the package version to the live headers', async () => {
+		const { registerIntegrationHeader, INTEGRATION_HEADER } = await loadFreshModule();
+		const headers: Record<string, string> = { 'X-Existing': '1' };
+
+		await registerIntegrationHeader(clientWithHeaders(headers));
+
+		expect(headers).toEqual({
+			'X-Existing': '1',
+			[INTEGRATION_HEADER]: `n8n-langchain/${packageVersion}`,
+		});
+	});
+
+	it('should leave headers in array form unchanged', async () => {
+		const { registerIntegrationHeader } = await loadFreshModule();
+		const headers = [['X-Existing', '1']];
+
+		await registerIntegrationHeader(clientWithHeaders(headers));
+
+		expect(headers).toEqual([['X-Existing', '1']]);
+	});
+
+	it('should do nothing when the client has no headers', async () => {
+		const { registerIntegrationHeader } = await loadFreshModule();
+
+		await expect(registerIntegrationHeader(clientWithHeaders(undefined))).resolves.toBeUndefined();
+	});
+
+	it('should not throw when the client cannot give its connection details', async () => {
+		const { registerIntegrationHeader } = await loadFreshModule();
+		const client = mock<WeaviateClient>({
+			getConnectionDetails: vi.fn().mockRejectedValue(new Error('not supported')),
+		});
+
+		await expect(registerIntegrationHeader(client)).resolves.toBeUndefined();
+	});
+
+	it('should not throw when the version cannot be resolved', async () => {
+		const { registerIntegrationHeader, INTEGRATION_HEADER } = await loadFreshModule();
+		fsState.failWith = () => fsError('EACCES');
+		const headers: Record<string, string> = {};
+
+		await expect(registerIntegrationHeader(clientWithHeaders(headers))).resolves.toBeUndefined();
+		expect(headers[INTEGRATION_HEADER]).toBeUndefined();
 	});
 });
