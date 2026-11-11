@@ -36,6 +36,7 @@ import {
 	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	ObservableObject,
 	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
@@ -541,7 +542,9 @@ export class WorkflowRunner {
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
-		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
+		// add() can wait for a concurrency slot, and the execution before this one
+		// can save static data during that wait. Read it again, also for new executions.
+		const shouldReloadStaticData = loadStaticData === true;
 
 		try {
 			if (shouldEnqueue) {
@@ -650,6 +653,16 @@ export class WorkflowRunner {
 		if (loadStaticData === true && workflowId) {
 			data.workflowData.staticData =
 				await this.workflowStaticDataService.getStaticDataById(workflowId);
+
+			// The prebuilt workflow holds the static data read before the concurrency
+			// wait. Replace it without marking it as changed, so an unchanged run saves nothing.
+			if (executionWorkflow) {
+				executionWorkflow.staticData = ObservableObject.create(
+					data.workflowData.staticData ?? {},
+					undefined,
+					{ ignoreEmptyOnFirstChild: true },
+				);
+			}
 		}
 
 		// Soft timeout to stop workflow execution after current running node
