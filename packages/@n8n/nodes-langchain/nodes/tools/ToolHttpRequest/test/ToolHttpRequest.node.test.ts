@@ -290,6 +290,53 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it('should handle authentication with generic Bearer Auth credentials', async () => {
+			// AGENT-668: Bearer Auth setup succeeds, so the configured tool must execute the request.
+			executeFunctions.getNode.mockReturnValue(
+				mock<INode>({
+					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					name: 'HTTP Request',
+					typeVersion: 1.1,
+					credentials: {
+						httpBearerAuth: { id: 'bearer-auth-credential', name: 'Bearer Auth' },
+					},
+				}),
+			);
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+			executeFunctions.getCredentials.mockResolvedValue({ token: 'test-bearer-token' });
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBearerAuth';
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const result = await (response as N8nTool).invoke({});
+
+			expect(result).toBe('Hello World');
+			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpBearerAuth', 0);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://api.example.com/data',
+					headers: expect.objectContaining({ Authorization: 'Bearer test-bearer-token' }),
+				}),
+			);
+		});
+
 		it('should apply Simplified Custom Auth through credential authentication', async () => {
 			helpers.httpRequestWithAuthentication.mockResolvedValue({
 				body: 'Hello World',
