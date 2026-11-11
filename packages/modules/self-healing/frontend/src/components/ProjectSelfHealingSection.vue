@@ -93,10 +93,35 @@ const projectMembersLabel = computed(() =>
 	}),
 );
 
+const workflowNamesById = computed(
+	() =>
+		new Map(
+			store.options[props.projectId]?.workflows.map((workflow) => [workflow.id, workflow.name]),
+		),
+);
+
+// Selected-workflow configurations take precedence, so an all-scope one covers only the rest.
+const hasSelectedWorkflowConfiguration = computed(() =>
+	configurations.value.some(
+		({ scope, workflowIds }) => scope === 'selected' && workflowIds.length > 0,
+	),
+);
+
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
 	if (configuration.scope === 'all') {
-		return i18n.baseText('selfHealing.config.all');
+		return i18n.baseText(
+			hasSelectedWorkflowConfiguration.value
+				? 'selfHealing.config.allOther'
+				: 'selfHealing.config.all',
+		);
 	}
+
+	const [onlyWorkflowId] = configuration.workflowIds;
+	const onlyWorkflowName =
+		configuration.workflowIds.length === 1
+			? workflowNamesById.value.get(onlyWorkflowId)
+			: undefined;
+	if (onlyWorkflowName) return onlyWorkflowName;
 
 	return i18n.baseText('selfHealing.config.selectedCount', {
 		adjustToNumber: configuration.workflowIds.length,
@@ -232,9 +257,14 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				:page-sizes="[configurations.length + 1]"
 			>
 				<template #[`item.scope`]="{ item }">
-					<N8nText size="medium" color="text-dark" data-test-id="self-healing-configuration-row">{{
-						scopeLabel(item)
-					}}</N8nText>
+					<N8nText
+						size="medium"
+						color="text-dark"
+						:class="$style.scope"
+						:title="scopeLabel(item)"
+						data-test-id="self-healing-configuration-row"
+						>{{ scopeLabel(item) }}</N8nText
+					>
 				</template>
 				<template #[`item.reviewerIds`]="{ item }">
 					<div :class="$style.people">
@@ -347,7 +377,9 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 	min-width: 0;
 }
 
+.scope,
 .personName {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
