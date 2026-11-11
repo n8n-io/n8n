@@ -1,12 +1,6 @@
 import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
-import type {
-	FinishKnowledgeToolCall,
-	KnowledgeToolCall,
-	KnowledgeToolCallResult,
-} from '../../agent-knowledge-usage-tracker';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -15,7 +9,14 @@ import {
 	type GlobKnowledgeFilesResult,
 	type ReadKnowledgeResult,
 	type SearchKnowledgeResult,
-} from '../../agent-knowledge-retrieval';
+} from '@/modules/knowledge/retrieval/retrieval-schemas';
+
+import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
+import type {
+	FinishKnowledgeToolCall,
+	KnowledgeToolCall,
+	KnowledgeToolCallResult,
+} from '../../agent-knowledge-usage-tracker';
 
 interface KnowledgeToolErrorOutput {
 	error: string;

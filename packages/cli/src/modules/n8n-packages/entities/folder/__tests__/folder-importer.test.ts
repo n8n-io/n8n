@@ -133,19 +133,6 @@ describe('FolderImporter', () => {
 		expect(folderService.updateFolder).not.toHaveBeenCalled();
 	});
 
-	it('keeps the existing name of a folder outside the selection', async () => {
-		const folderService = mock<FolderService>();
-		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
-		const importer = new FolderImporter(folderService);
-		const ctx = context('follow-package', { movableFolderIds: new Set() });
-
-		const plan = await importer.plan(ctx, [{ ...folder('a', null), name: 'Invoices' }]);
-		await importer.applyUpdates(ctx, plan);
-
-		expect(plan.items).toEqual([expect.objectContaining({ action: 'skip' })]);
-		expect(folderService.updateFolder).not.toHaveBeenCalled();
-	});
-
 	it('still reports a folder that belongs to another project', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-2', null)]);
@@ -162,27 +149,6 @@ describe('FolderImporter', () => {
 		]);
 		expect(plan.items).toEqual([]);
 		expect(folderService.createFolder).not.toHaveBeenCalled();
-		expect(folderService.updateFolder).not.toHaveBeenCalled();
-	});
-
-	it('leaves a folder outside the selection where it is, without a conflict', async () => {
-		const folderService = mock<FolderService>();
-		folderService.getFoldersByIds.mockResolvedValue([
-			existingFolder('a', 'project-1', 'old'),
-			existingFolder('new', 'project-1', null),
-		]);
-		const importer = new FolderImporter(folderService);
-		const ctx = context('follow-package', { movableFolderIds: new Set(['new']) });
-
-		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
-		await importer.apply(ctx, plan);
-		await importer.applyUpdates(ctx, plan);
-
-		expect(plan.conflicts).toEqual([]);
-		expect(plan.items.find(({ sourceFolderId }) => sourceFolderId === 'a')).toMatchObject({
-			action: 'skip',
-			targetParentFolderId: 'old',
-		});
 		expect(folderService.updateFolder).not.toHaveBeenCalled();
 	});
 

@@ -20,6 +20,15 @@ export class UrlService {
 		return base;
 	}
 
+	/**
+	 * Returns the URL of an agent's webhook channel. Only mains serve it, so it
+	 * uses the instance base URL, as the MCP endpoint does.
+	 */
+	getAgentWebhookUrl(agentId: string) {
+		const base = this.globalConfig.agentWebhookUrl.replace(/\/$/, '') || this.getInstanceBaseUrl();
+		return `${base}/${this.globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}`;
+	}
+
 	getTestWebhookBaseUrl() {
 		let base = this.globalConfig.webhookUrl || this.getInstanceBaseUrl();
 		if (!base.endsWith('/')) base += '/';

@@ -108,6 +108,7 @@ describe('createFrontend', () => {
 				'tsconfig.json',
 				'vite.config.ts',
 				'eslint.config.mjs',
+				'oxlint.config.mts',
 				'stylelint.config.mjs',
 				'biome.jsonc',
 				'README.md',
@@ -142,6 +143,17 @@ describe('createFrontend', () => {
 				"import { defineFrontendModule } from '@n8n/frontend-module-sdk';",
 			);
 			expect(descriptor).toContain('export const MyFeatureModule = defineFrontendModule({');
+		});
+
+		it('configures hybrid frontend linting', () => {
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+
+			expect(manifest.scripts.lint).toBe('oxlint src --quiet && eslint src --quiet');
+			for (const dependency of ['@n8n/oxlint-config', 'oxlint', 'oxlint-tsgolint']) {
+				expect(Object.keys(manifest.devDependencies)).toContain(dependency);
+			}
 		});
 
 		it('registers the plugins a design-system consumer needs, and declares them', () => {

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { parse } from 'yaml';
 import { evaluateFilter, parseFilters } from '../actions/ci-filter/ci-filter.mjs';
@@ -137,6 +140,78 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('automated release PR CI bypass', () => {
+	const releasePrConjunction = [
+		"github.event.pull_request.user.login == 'n8n-assistant[bot]'",
+		"startsWith(github.event.pull_request.head.ref, 'release-pr/')",
+		"startsWith(github.event.pull_request.base.ref, 'release/')",
+	].join(' && ');
+	const compact = (condition) =>
+		condition
+			.trim()
+			.replace(/^\$\{\{(.*)\}\}$/s, '$1')
+			.replaceAll(/\s/g, '');
+
+	const assertSkipsReleasePr = (condition) => {
+		assert.ok(compact(condition).includes(`!(${compact(releasePrConjunction)})`));
+	};
+	const assertPassesReleasePr = (condition) => {
+		assert.equal(
+			compact(condition),
+			compact(`github.event_name == 'pull_request' && ${releasePrConjunction}`),
+		);
+	};
+	const assertNeedsPrPolicy = (job) => {
+		assert.ok(job.needs === 'pr-policy' || job.needs.includes('pr-policy'));
+	};
+	const assertUsesPrPolicy = (job) => {
+		assertNeedsPrPolicy(job);
+		assert.match(job.if, /needs\.pr-policy\.outputs\.skip-ci != 'true'/);
+	};
+
+	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
+		const policy = workflowFile('ci-pr-policy-reusable.yml');
+		assert.equal(policy.jobs.classify.outputs['skip-ci'], '${{ steps.policy.outputs.skip-ci }}');
+		assertPassesReleasePr(stepNamed(policy, 'classify', 'Evaluate PR policy').env.SKIP_CI);
+
+		const ci = workflowFile('ci-pull-requests.yml');
+		assert.equal(ci.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(ci.jobs['install-and-build']);
+		assertUsesPrPolicy(ci.jobs['format-check']);
+		assert.equal(ci.jobs['required-checks'].if, 'always()');
+		assertNeedsPrPolicy(ci.jobs['required-checks']);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+
+		const quality = workflowFile('ci-pr-quality.yml');
+		assert.equal(quality.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(quality.jobs.changes);
+		assertUsesPrPolicy(quality.jobs['check-knip']);
+		assertUsesPrPolicy(quality.jobs['check-do-not-merge']);
+		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+		assertNeedsPrPolicy(quality.jobs['required-pr-quality-checks']);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+	});
+
+	it('skips standalone workflows for automated release PRs', () => {
+		assertSkipsReleasePr(workflowFile('docker-build-smoke.yml').jobs.gate.if);
+		assertSkipsReleasePr(workflowFile('ci-owners-validation.yml').jobs.validate.if);
+	});
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
@@ -212,6 +287,91 @@ describe('release SBOM validation in PR CI', () => {
 	});
 });
 
+describe('release PR verification gate', () => {
+	const workflow = workflowFile('release-create-pr.yml');
+
+	it('requires successful verification before creating the PR', () => {
+		const create = workflow.jobs['create-release-pr'];
+		assert.ok(create.needs.includes('verify-single-instance-npm-full'));
+		assert.equal(create.if ?? 'success()', 'success()');
+		assert.ok(workflow.jobs['approve-and-automerge'].needs.includes('create-release-pr'));
+	});
+
+	it('fails release preparation on findings from all packages on the release base', () => {
+		const verify = workflow.jobs['verify-single-instance-npm-full'];
+		assert.equal(verify.uses, './.github/workflows/test-single-instance-npm.yml');
+		assert.equal(verify.with.scope, 'all');
+		assert.equal(verify.with.blocking, true);
+		assert.equal(verify.with['base-branch'], '${{ needs.resolve-release-base.outputs.sha }}');
+		assert.equal(verify['continue-on-error'] ?? false, false);
+	});
+
+	it('uses one resolved commit for verification and release preparation', () => {
+		const resolve = workflow.jobs['resolve-release-base'];
+		const verify = workflow.jobs['verify-single-instance-npm-full'];
+		const create = workflow.jobs['create-release-pr'];
+		assert.equal(resolve.outputs.sha, '${{ steps.resolve.outputs.sha }}');
+		assert.equal(
+			resolve.steps.find((step) => step.uses?.startsWith('actions/checkout@')).with.ref,
+			'${{ inputs.base-branch }}',
+		);
+		assert.ok(verify.needs.includes('resolve-release-base'));
+		assert.ok(create.needs.includes('resolve-release-base'));
+		for (const name of ['Switch to base commit', 'Push the base branch']) {
+			assert.equal(
+				stepNamed(workflow, 'create-release-pr', name).env.BASE_SHA,
+				verify.with['base-branch'],
+			);
+		}
+	});
+
+	it('keeps the verified commit when the selected branch advances', (t) => {
+		const directory = mkdtempSync(join(tmpdir(), 'release-base-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const env = {
+			...process.env,
+			GIT_AUTHOR_NAME: 'Test User',
+			GIT_AUTHOR_EMAIL: 'test@example.com',
+			GIT_COMMITTER_NAME: 'Test User',
+			GIT_COMMITTER_EMAIL: 'test@example.com',
+			GITHUB_OUTPUT: join(directory, 'output'),
+			NEXT_RELEASE: '1.0.1',
+		};
+		const git = (...args) =>
+			execFileSync('git', args, {
+				cwd: directory,
+				env,
+				encoding: 'utf8',
+				stdio: ['ignore', 'pipe', 'pipe'],
+			}).trim();
+		const runStep = (step) =>
+			execFileSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', step.run], {
+				cwd: directory,
+				env,
+				stdio: 'pipe',
+			});
+		git('init', '--initial-branch=selected-base');
+		git('commit', '--allow-empty', '-m', 'Verified base');
+		const verifiedSha = git('rev-parse', 'HEAD');
+		runStep(stepNamed(workflow, 'resolve-release-base', 'Resolve base commit'));
+		env.BASE_SHA = readFileSync(env.GITHUB_OUTPUT, 'utf8').trim().replace(/^sha=/, '');
+		assert.equal(env.BASE_SHA, verifiedSha);
+
+		git('commit', '--allow-empty', '-m', 'Later base');
+		assert.notEqual(git('rev-parse', 'selected-base'), verifiedSha);
+		runStep(stepNamed(workflow, 'create-release-pr', 'Switch to base commit'));
+		assert.equal(git('rev-parse', 'HEAD'), verifiedSha);
+
+		const remote = join(directory, 'remote.git');
+		git('init', '--bare', remote);
+		git('remote', 'add', 'origin', remote);
+		git('update-ref', 'refs/remotes/origin/selected-base', git('rev-parse', 'selected-base'));
+		writeFileSync(join(directory, 'version.txt'), '1.0.1');
+		runStep(stepNamed(workflow, 'create-release-pr', 'Push the base branch'));
+		assert.equal(git('--git-dir', remote, 'rev-parse', 'refs/heads/release/1.0.1'), verifiedSha);
+	});
+});
+
 describe('test-e2e-reusable.yml', () => {
 	const workflow = workflowFile('test-e2e-reusable.yml');
 	const shardUpload = stepNamed(workflow, 'test', 'Upload Shard Artifacts');
@@ -272,5 +432,58 @@ describe('test-e2e-reusable.yml', () => {
 				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
 			}
 		});
+	});
+});
+
+describe('trusted publishing setup workflows', () => {
+	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
+	const packageSetup = workflowFile('release-publish-new-package.yml');
+	const releasePublish = workflowFile('release-publish.yml');
+
+	it('exposes unpublished packages and processes them one at a time', () => {
+		assert.equal(
+			triggersOf(orchestrator).workflow_call.outputs.packages.value,
+			'${{ jobs.detect-new-packages.outputs.packages }}',
+		);
+		assert.equal(
+			orchestrator.jobs['detect-new-packages'].outputs.packages,
+			'${{ steps.detect.outputs.packages-json }}',
+		);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
+			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',
+		);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].uses,
+			'./.github/workflows/release-publish-new-package.yml',
+		);
+	});
+
+	it('publishes a throwaway version under the rc tag', () => {
+		const publish = stepNamed(packageSetup, 'publish-to-npm', 'Publish throwaway package version');
+		assert.match(publish.run, /npm pkg set version=0\.0\.0-tp/);
+		assert.match(publish.run, /pnpm publish --access public --tag rc --no-git-checks/);
+	});
+
+	it('configures the release workflow as a trusted publisher', () => {
+		const trust = stepNamed(packageSetup, 'publish-to-npm', 'Configure trusted publishing');
+		assert.match(
+			trust.run,
+			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
+		);
+	});
+
+	it('runs setup only for minor releases and blocks publishing when setup fails', () => {
+		const setup = releasePublish.jobs['setup-trusted-publishing'];
+		const publish = releasePublish.jobs['publish-to-npm'];
+
+		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
+		assert.match(setup.if, /needs\.determine-version-info\.outputs\.bump == 'minor'/);
+		assert.ok(publish.needs.includes('setup-trusted-publishing'));
+		assert.match(publish.if, /always\(\)/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
 	});
 });
