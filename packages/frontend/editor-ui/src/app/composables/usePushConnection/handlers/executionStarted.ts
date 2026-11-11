@@ -2,6 +2,7 @@ import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -43,6 +44,8 @@ export async function executionStarted(
 
 	if (needsInit) {
 		workflowExecutionStateStore.promotePendingExecution(data.executionId);
+		// Entries are keyed by old execution ids, so they would pile up until reload.
+		useSubworkflowProgressStore().reset();
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));

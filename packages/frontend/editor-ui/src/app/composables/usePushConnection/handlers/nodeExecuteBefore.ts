@@ -1,6 +1,7 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import type { PushHandlerOptions } from './types';
 
 /**
@@ -25,6 +26,8 @@ export async function nodeExecuteBefore(
 		data.sequenceNumber,
 		data.data.executionIndex,
 	);
+	// Each run of an Execute Sub-workflow node starts a new child, so drop the last one's progress.
+	useSubworkflowProgressStore().clear(data.executionId, data.nodeName);
 
 	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }

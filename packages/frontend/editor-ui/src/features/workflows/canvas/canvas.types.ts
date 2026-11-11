@@ -149,6 +149,11 @@ export interface CanvasNodeData {
 		waiting?: string;
 		running: boolean;
 		waitingForNext?: boolean;
+		subworkflowProgress?: {
+			currentNodeName?: string;
+			currentNodeIndex: number;
+			totalNodes: number;
+		};
 	};
 	runData: {
 		outputMap?: ExecutionOutputMap;
