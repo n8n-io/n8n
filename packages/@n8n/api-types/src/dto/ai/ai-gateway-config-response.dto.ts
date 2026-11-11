@@ -14,6 +14,16 @@ const aiGatewayProviderConfigEntryShape = {
 
 export class AiGatewayProviderConfigEntry extends Z.class(aiGatewayProviderConfigEntryShape) {}
 
+const aiGatewayPromotionSchema = z.object({
+	text: z.string(),
+	// Node types to show the promotion on. A Tool variant matches its base node type.
+	nodes: z.array(z.string()).min(1),
+	startsAt: z.string().optional(),
+	endsAt: z.string().optional(),
+});
+
+export type AiGatewayPromotion = z.infer<typeof aiGatewayPromotionSchema>;
+
 export class AiGatewayConfigDto extends Z.class({
 	nodes: z.array(z.string()),
 	credentialTypes: z.array(z.string()),
@@ -21,4 +31,6 @@ export class AiGatewayConfigDto extends Z.class({
 	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 	minNodeTypeVersion: z.record(z.number()).optional(),
 	hiddenNodeProperties: z.record(z.array(z.string())).optional(),
+	// A malformed promotion must not make the whole config invalid.
+	promotions: z.array(aiGatewayPromotionSchema).optional().catch(undefined),
 }) {}
