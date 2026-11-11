@@ -193,7 +193,7 @@ watch(
 	{ immediate: true },
 );
 watch(
-	() => thread.messages.some((message) => message.role === 'user'),
+	() => thread.artifactTurns.some((turn) => turn.role === 'user'),
 	(hasMessages) => {
 		if (hasMessages) emit('message-sent');
 	},
