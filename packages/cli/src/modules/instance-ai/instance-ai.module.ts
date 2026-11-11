@@ -121,6 +121,19 @@ export class InstanceAiModule implements ModuleInterface {
 				.warn('The Assistant agent needs the agents module, so it is not registered');
 			return;
 		}
+		const { InstanceAiConfig } = await import('@n8n/config');
+		const evalInstance = Container.get(InstanceAiConfig).evalInstance;
+		if (evalInstance) {
+			// The provider injects the overrides when it is first resolved, so set them before.
+			// Only an eval instance loads this code.
+			const { AssistantTurnOverrides } = await import(
+				'./assistant-agent/assistant-turn-overrides.js'
+			);
+			const { EvalAssistantTurnOverrides } = await import(
+				'./assistant-agent/eval/eval-assistant-turn-overrides.js'
+			);
+			Container.set(AssistantTurnOverrides, Container.get(EvalAssistantTurnOverrides));
+		}
 		const { SystemAgentRegistrationService } = await import(
 			'@/modules/agents/system-agents/system-agent-registration.service.js'
 		);
@@ -139,6 +152,9 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');
+		if (evalInstance) {
+			await import('./assistant-agent/eval/assistant-agent-eval.controller.js');
+		}
 		this.assistantAgentRegistered = true;
 	}
 

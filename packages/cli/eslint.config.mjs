@@ -109,6 +109,20 @@ const skillsModuleDynamicImportBoundary = {
 	message: skillsModuleIsolation.message,
 };
 
+// The Assistant agent eval code loads only on an eval instance, through a dynamic import in
+// the instance-ai module. Product code reads the overrides through `AssistantTurnOverrides`.
+const assistantAgentEvalBoundary = {
+	group: ['**/assistant-agent/eval', '**/assistant-agent/eval/**'],
+	message:
+		'Only the instance-ai module loads the Assistant agent eval code, on an eval instance. Use AssistantTurnOverrides.',
+};
+
+// The files next to the eval directory reach it as `./eval`, which the pattern above cannot see.
+const assistantAgentEvalSiblingBoundary = {
+	...assistantAgentEvalBoundary,
+	group: ['./eval', './eval/**'],
+};
+
 const METRICS_DATABASE_IMPORT_MESSAGE =
 	'Use DatabaseMetricQueryService for metrics database reads.';
 const METRICS_CLI_IMPORT_MESSAGE =
@@ -222,7 +236,31 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry, assistantAgentEvalBoundary],
+				},
+			],
+		},
+	},
+	{
+		files: ['./src/modules/instance-ai/assistant-agent/*.ts'],
+		rules: {
+			// Repeats the instance-ai restrictions: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						...instanceAiLazyRuntimeImports,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [
+						jsonwebtokenSubpathRestriction,
+						skillsModuleEntry,
+						assistantAgentEvalBoundary,
+						assistantAgentEvalSiblingBoundary,
+					],
 				},
 			],
 		},
