@@ -592,6 +592,7 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
+		this.flushBuffers();
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
