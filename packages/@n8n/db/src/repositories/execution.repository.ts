@@ -32,6 +32,7 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	ExecutionTracingContext,
 	IRunExecutionData,
 	IRunExecutionDataAll,
 	IWorkflowSettings,
@@ -76,6 +77,33 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	}
 }
 
+const MAX_REPORTED_INVALID_EXECUTIONS = 20;
+
+const REPORTED_ROW_FIELDS = [
+	'id',
+	'storedAt',
+	'status',
+	'mode',
+	'finished',
+	'createdAt',
+	'startedAt',
+	'stoppedAt',
+	'jsonSizeBytes',
+	'deletedAt',
+	'retryOf',
+] as const;
+
+/** Row fields that tell which kind of execution lost its data. Leaves out fields the query did not load. */
+function toReportedRow(execution: ExecutionEntity) {
+	const row: Record<string, unknown> = {};
+	for (const field of REPORTED_ROW_FIELDS) {
+		const value: unknown = execution[field];
+		if (value === undefined || value === null) continue;
+		row[field] = value instanceof Date ? value.toISOString() : value;
+	}
+	return row;
+}
+
 export type CrashedExecution = {
 	id: string;
 	workflowId: string;
@@ -83,7 +111,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	tracingContext?: ExecutionTracingContext;
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
@@ -99,6 +127,7 @@ export type ResumeAttemptClaim =
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
+	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
 	/** Also update a soft-deleted execution. */
@@ -278,6 +307,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
+					executions: executions.slice(0, MAX_REPORTED_INVALID_EXECUTIONS).map(toReportedRow),
 				},
 			}),
 		);
@@ -596,10 +626,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
 	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
 	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
-	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
-	 *   so combining them is not supported.
+	 *   Note: `requireStatus`, `requireStatuses`, and `requireNotCanceled` all constrain the
+	 *   `status` column, so combining them is not supported.
 	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
@@ -607,6 +638,14 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const statusConstraintCount =
+			(conditions?.requireStatus !== undefined ? 1 : 0) +
+			(conditions?.requireStatuses !== undefined ? 1 : 0) +
+			(conditions?.requireNotCanceled ? 1 : 0);
+		if (statusConstraintCount > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
+		}
+
 		const {
 			id,
 			data,
@@ -630,6 +669,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireStatuses)
+					whereCondition.status = In([...conditions.requireStatuses]);
 				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');

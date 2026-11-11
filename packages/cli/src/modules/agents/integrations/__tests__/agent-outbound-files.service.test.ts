@@ -2,16 +2,21 @@ import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { UrlService } from '@n8n/backend-services';
 import type { SentMessage, Thread } from 'chat';
+import { UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import {
+	AgentFileLimitError,
+	type AgentChatAttachmentService,
+} from '../../agent-chat-attachment.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
 import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const scope = { projectId: 'project-1', threadId: 'agent-thread-1' };
 const chartFile = {
@@ -61,7 +66,9 @@ function createService() {
 	);
 	const thread = mock<Thread<unknown, unknown>>();
 	return {
-		service: new AgentOutboundFiles(attachmentService, registry),
+		service: new AgentOutboundFiles(attachmentService, registry, {
+			resolveFileRefs: async (refs: string[]) => refs,
+		} as unknown as AgentSandboxFilesService),
 		attachmentService,
 		thread,
 	};
@@ -88,6 +95,21 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 
 	it('posts Slack reply files as uploads without a caption', async () => {
 		const { service, thread } = createService();
+
+		await service.postReplyFiles(thread, 'slack', { fileIds: ['file-1'], caption: '', scope });
+
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: '',
+			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+		});
+	});
+
+	it('sends a sandbox file under its base name', async () => {
+		const { service, attachmentService, thread } = createService();
+		attachmentService.getReadable.mockResolvedValue({
+			...chartFile,
+			fileName: 'reports/q1/chart.png',
+		} as never);
 
 		await service.postReplyFiles(thread, 'slack', { fileIds: ['file-1'], caption: '', scope });
 
@@ -345,5 +367,44 @@ describe('AgentOutboundFiles.check', () => {
 			}),
 		});
 		expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentOutboundFiles.check', () => {
+	it('returns FILE_NOT_FOUND when a sandbox path cannot be stored', async () => {
+		const service = new AgentOutboundFiles(
+			mock<AgentChatAttachmentService>(),
+			createService().service['integrationRegistry'],
+			{
+				resolveFileRefs: async () => {
+					throw new UserError('"sandbox:x" could not be read from outputs/');
+				},
+			} as unknown as AgentSandboxFilesService,
+		);
+
+		await expect(service.check('slack', ['sandbox:x'], scope)).resolves.toEqual({
+			ok: false,
+			error: {
+				code: 'FILE_NOT_FOUND',
+				message: '"sandbox:x" could not be read from outputs/',
+			},
+		});
+	});
+
+	it('returns FILE_UPLOAD_LIMIT_EXCEEDED when a sandbox file is over a cap', async () => {
+		const service = new AgentOutboundFiles(
+			mock<AgentChatAttachmentService>(),
+			createService().service['integrationRegistry'],
+			{
+				resolveFileRefs: async () => {
+					throw new AgentFileLimitError('"x" is larger than 50 MB');
+				},
+			} as unknown as AgentSandboxFilesService,
+		);
+
+		await expect(service.check('slack', ['sandbox:x'], scope)).resolves.toEqual({
+			ok: false,
+			error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: '"x" is larger than 50 MB' },
+		});
 	});
 });

@@ -2,7 +2,10 @@ operationId: updatePackage
 tags:
   - CommunityPackage
 summary: Update a community package
-description: Update an installed community package to a new version.
+description: |-
+  Update an installed community package to a new version.
+
+  Requires the `communityPackage:update` API key scope.
 x-required-scope: communityPackage:update
 parameters:
   - schema:

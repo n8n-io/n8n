@@ -46,7 +46,7 @@ export class SecurityPolicyPublicController {
 	@Licensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY)
 	@ApiSummary('Retrieve the security policy')
 	@ApiDescription(
-		'Retrieve the instance security policy: personal-space publishing and sharing, the execution-data redaction enforcement floor, and the read-only usage counts shown in the UI. Requires the `securitySettings:manage` scope and the Personal Space Policy feature to be licensed.',
+		'Retrieve the instance security policy: personal-space publishing and sharing, the execution-data redaction enforcement floor, and the read-only usage counts shown in the UI. Requires the Personal Space Policy feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SecurityPolicyPublicDto)
@@ -60,7 +60,7 @@ export class SecurityPolicyPublicController {
 	@Licensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY)
 	@ApiSummary('Set the security policy')
 	@ApiDescription(
-		'Replace the instance security policy with the provided full object. Every writable field must be sent. Read-only usage counts from GET are ignored if included, so a GET response can be sent back as a PUT body. The update takes effect exactly as it would from the UI, using the same validation. Requires the `securitySettings:manage` scope and the Personal Space Policy feature to be licensed. When the group is managed via environment variables, the write is rejected with 409 and no changes are made; a read still returns the current values.',
+		'Replace the instance security policy with the provided full object. Every writable field must be sent. Read-only usage counts from GET are ignored if included, so a GET response can be sent back as a PUT body. The update takes effect exactly as it would from the UI, using the same validation. Requires the Personal Space Policy feature to be licensed. When the group is managed via environment variables, the write is rejected with 409 and no changes are made; a read still returns the current values.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SecurityPolicyPublicDto)

@@ -6,8 +6,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IWorkflowExecutionDataProcess,
-	UnexpectedError,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 
 vi.mock(
@@ -17,9 +17,11 @@ vi.mock(
 vi.mock('@/executions/execution-viewer-reader', () => ({ loadExecutionForViewer: vi.fn() }));
 
 import { ActiveExecutions } from '@/active-executions';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { McpService } from '@/modules/mcp/mcp.service';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -35,7 +37,7 @@ function mockViewedExecution(resultData: Record<string, unknown>) {
 	} as unknown as IExecutionResponse);
 }
 
-// Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
+// Helper to create a mock NodeTypesProxy that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -43,7 +45,7 @@ const TRIGGER_NODE_TYPES = new Set([
 ]);
 
 function createMockNodeTypes() {
-	const instance = mockInstance(NodeTypes);
+	const instance = mockInstance(NodeTypesProxy);
 	instance.getByNameAndVersion.mockImplementation(((type: string) => {
 		if (!type) throw new Error(`Unknown node type: ${type}`);
 		return {
@@ -80,6 +82,8 @@ describe('test-workflow MCP tool', () => {
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
+		// The user can use every credential unless a test says otherwise.
+		mockInstance(CredentialsPermissionChecker);
 		logger = mockLogger();
 	});
 
@@ -996,6 +1000,89 @@ describe('test-workflow MCP tool', () => {
 				executionId: null,
 				status: 'error',
 				error: expect.stringContaining("not found or you don't have permission"),
+			});
+		});
+
+		// CONTEXT-416
+		test('returns executionId and refusal reason when the runner refuses the run', async () => {
+			const refusalMessage =
+				'Node "HTTP" uses the credential "Owner API Key", which you cannot use';
+			const refusalDescription = 'Ask its owner to share this credential with you.';
+			const httpNode = {
+				id: 'node-2',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [200, 0],
+				disabled: false,
+				parameters: {},
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Owner API Key' } },
+			} as INode;
+			const workflow = createWorkflow({
+				settings: { availableInMCP: true },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+					httpNode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			// The user cannot use the credential, so the permission check refuses the run.
+			const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
+			credentialsPermissionChecker.check.mockRejectedValue(
+				Object.assign(new UserError(refusalMessage, { description: refusalDescription }), {
+					node: httpNode,
+				}),
+			);
+
+			// `WorkflowRunner.run` saves the refused run as a failed execution and
+			// finalizes it before it returns the ID. So the execution is no longer
+			// active, and `getPostExecutePromise` throws for it.
+			(workflowRunner.run as Mock).mockResolvedValue('exec-refused');
+			(activeExecutions.has as Mock).mockReturnValue(false);
+			(activeExecutions.getPostExecutePromise as Mock).mockRejectedValue(
+				new ExecutionNotFoundError('exec-refused'),
+			);
+
+			const tool = createTestWorkflowTool(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				telemetry,
+				mcpService,
+				logger,
+			);
+
+			const result = await tool.handler(
+				{
+					workflowId: 'wf-1',
+					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
+					timeout: undefined,
+				},
+				{} as any,
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				executionId: 'exec-refused',
+				status: 'error',
+				error: expect.stringContaining(refusalMessage),
+			});
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining(refusalDescription),
+			});
+			expect(result.structuredContent).not.toMatchObject({
+				error: expect.stringContaining('No active execution found'),
 			});
 		});
 	});

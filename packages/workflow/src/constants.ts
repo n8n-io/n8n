@@ -134,6 +134,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
+export const CODE_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';

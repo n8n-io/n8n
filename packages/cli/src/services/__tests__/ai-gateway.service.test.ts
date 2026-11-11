@@ -3,14 +3,13 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import type { Person, PersonRepository, Project, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UserError } from '@n8n/errors';
 import type { License } from '@/license';
 import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';

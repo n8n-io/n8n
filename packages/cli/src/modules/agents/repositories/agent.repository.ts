@@ -14,7 +14,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -866,25 +866,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
-	}
-
-	/** Give every changed follower a new draft ID, including already modified drafts. */
-	async markFollowerDraftsChanged(
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<string[]> {
-		const changed: string[] = [];
-		for (const id of agentIds) {
-			const result = await this.managerFor(ctx)
-				.createQueryBuilder()
-				.update(Agent)
-				.set({ versionId: randomUUID(), revision: () => 'revision + 1' })
-				.where('id = :id', { id })
-				.andWhere(projectScopeUpdateSql)
-				.execute();
-			if ((result.affected ?? 0) > 0) changed.push(id);
-		}
-		return changed;
 	}
 
 	/** The project of each agent, to send an update push to the right project. */

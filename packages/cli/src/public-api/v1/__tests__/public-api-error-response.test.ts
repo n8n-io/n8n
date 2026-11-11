@@ -1,9 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Response } from 'express';
-import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+	OperationalError,
+} from '@n8n/errors';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 
 import { sendPublicApiErrorResponse } from '../public-api-error-response';

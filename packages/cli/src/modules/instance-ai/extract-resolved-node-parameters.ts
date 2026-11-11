@@ -24,10 +24,10 @@ import {
 	Workflow,
 	createEmptyRunExecutionData,
 	HTTP_REQUEST_NODE_TYPE,
+	type INodeTypes,
 } from 'n8n-workflow';
 
 import { getExecutionRedaction } from '@/executions/execution-viewer-reader';
-import type { NodeTypes } from '@/node-types';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter
@@ -228,7 +228,7 @@ function reconstructExecuteData(
  * stemming from variables that only exist during a live run (e.g. `$response`).
  */
 export async function extractResolvedNodeParameters(
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { itemIndex?: number; runIndex?: number },
