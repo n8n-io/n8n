@@ -263,6 +263,7 @@ jobs:
               .github/scripts/db-test-matrix.mjs
 
       - name: Setup and Build
+        id: setup-and-build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
         with:
@@ -283,16 +284,16 @@ jobs:
           CLI_INTEGRATION_RUNS: ${{ fromJSON(steps.ci-filter.outputs.results).unit }}
         run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope=pr --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
+      # Leave scope outputs empty when workflow-only changes skip the build.
       - name: Compute affected packages
         id: affected-packages
-        if: fromJSON(steps.ci-filter.outputs.results).unit
+        if: fromJSON(steps.ci-filter.outputs.results).unit && steps.setup-and-build.outcome == 'success'
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
           JANITOR=packages/quality/testing/janitor/dist/cli.js
-          # Without a built janitor (a workflow-only PR skips the build), report no
-          # signal: every package then treats a lockfile change as a full run.
+          # If the comparison fails, run every package for a lockfile change.
           LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE" || echo ALL)
           echo "Lockfile impact: $LOCKFILE_IMPACT"
           echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"

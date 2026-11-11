@@ -215,27 +215,93 @@ describe('automated release PR CI bypass', () => {
 describe('merge queue unit tests', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const unitTest = workflow.jobs['unit-test'];
+	const build = stepNamed(workflow, 'install-and-build', 'Setup and Build');
 	const affectedPackages = stepNamed(workflow, 'install-and-build', 'Compute affected packages');
-	const runsFor = (condition, eventName, unit) =>
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const filters = parseFilters(filterStep.with.filters);
+	const runsFor = (condition, eventName, results, buildOutcome = 'skipped') =>
 		evaluateStepCondition(
 			condition
 				.replaceAll('github.event_name', 'inputs.eventName')
 				.replaceAll('needs.install-and-build.outputs.unit', 'inputs.unit')
-				.replaceAll('fromJSON(steps.ci-filter.outputs.results).unit', 'inputs.unit'),
-			{ inputs: { eventName, unit } },
+				.replaceAll('fromJSON(steps.ci-filter.outputs.results)', 'inputs')
+				.replaceAll('steps.setup-and-build.outcome', 'inputs.buildOutcome'),
+			{ inputs: { ...results, eventName, buildOutcome } },
 		);
 
 	for (const eventName of ['pull_request', 'merge_group']) {
 		it(`runs unit tests and computes their scope on ${eventName} when relevant files change`, () => {
-			assert.ok('merge_group' in triggersOf(workflow));
-			for (const unit of [true, false]) {
-				assert.equal(runsFor(unitTest.if, eventName, unit), unit, 'unit-test');
-				assert.equal(runsFor(affectedPackages.if, eventName, unit), unit, 'affected packages');
+			assert.ok(eventName in triggersOf(workflow));
+			for (const { files, unit, builds, computesScope } of [
+				{ files: ['packages/cli/src/index.ts'], unit: true, builds: true, computesScope: true },
+				{
+					files: ['packages/core/src/execution-engine/workflow-execute.ts'],
+					unit: true,
+					builds: true,
+					computesScope: true,
+				},
+				{
+					files: ['packages/frontend/editor-ui/src/App.vue'],
+					unit: true,
+					builds: true,
+					computesScope: true,
+				},
+				{ files: ['pnpm-lock.yaml'], unit: true, builds: true, computesScope: true },
+				{
+					files: ['.github/workflows/test-unit-reusable.yml'],
+					unit: true,
+					builds: false,
+					computesScope: false,
+				},
+				{
+					files: [
+						'.github/workflows/test-unit-reusable.yml',
+						'.github/workflows/test-e2e-reusable.yml',
+					],
+					unit: true,
+					builds: true,
+					computesScope: true,
+				},
+				{ files: ['README.md'], unit: false, builds: false, computesScope: false },
+				{
+					files: ['.github/workflows/ci-pull-requests.yml'],
+					unit: false,
+					builds: false,
+					computesScope: false,
+				},
+				{
+					files: ['packages/@n8n/task-runner-python/src/main.py'],
+					unit: false,
+					builds: false,
+					computesScope: false,
+				},
+				{
+					files: ['packages/quality/testing/playwright/tests/example.spec.ts'],
+					unit: false,
+					builds: true,
+					computesScope: false,
+				},
+			]) {
+				const results = Object.fromEntries(
+					[...filters].map(([name, patterns]) => [name, evaluateFilter(files, patterns)]),
+				);
+				const context = `${eventName}: ${files.join(', ')}`;
+				assert.equal(runsFor(unitTest.if, eventName, results), unit, `${context}: unit-test`);
+				const runsBuild = runsFor(build.if, eventName, results);
+				assert.equal(runsBuild, builds, `${context}: build`);
+				assert.equal(
+					runsFor(affectedPackages.if, eventName, results, runsBuild ? 'success' : 'skipped'),
+					computesScope,
+					`${context}: affected packages`,
+				);
 			}
 		});
 	}
 
 	it('uses the built commit and keeps unit tests in the required merge gate', () => {
+		const steps = workflow.jobs['install-and-build'].steps;
+		assert.equal(build.id, 'setup-and-build');
+		assert.ok(steps.indexOf(build) < steps.indexOf(affectedPackages));
 		assert.equal(unitTest.uses, './.github/workflows/test-unit-reusable.yml');
 		assert.equal(unitTest.with.ref, '${{ needs.install-and-build.outputs.commit_sha }}');
 		assert.equal(
