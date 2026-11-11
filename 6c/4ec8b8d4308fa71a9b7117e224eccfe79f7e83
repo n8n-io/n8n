@@ -1,0 +1,38 @@
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_7c60aaca5a7f14::t_f5ae531adb4426 872,882-883,887-888,893-894,897-898,902-905,911-912,921-924,927-931,937-938,941-942
+  s_7c60aaca5a7f14::t_179293158c5f04 899
+  s_7c60aaca5a7f14::t_5f697177207ed4 842-843
+  s_7c60aaca5a7f14::t_7625dc689f5484 863-864
+  s_7c60aaca5a7f14::t_a9c76bf8416d5d 889-891
+  s_7c60aaca5a7f14::t_8855b98e83f460 892,895-896,900-901,906-910,914-920,925-926,932-936
+  s_7c60aaca5a7f14::t_1d46b208efe063 913
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_7c60aaca5a7f14::t_96b868c6d322e6 936-941,947-948
+  s_7c60aaca5a7f14::t_6687795dbfe039 162,259
+  s_7c60aaca5a7f14::t_6190689e8b789e 343-375,377-380,382-387,389-398
+  s_7c60aaca5a7f14::t_f81247ae0facbe 206
+  s_7c60aaca5a7f14::t_70510171d954ff 187
+  s_7c60aaca5a7f14::t_222265b485b70f 732
+  s_7c60aaca5a7f14::t_1d46b208efe063 376,661-663
+  s_7c60aaca5a7f14::t_69ed8e174f0a08 159-161,163-175,180-186,188-205,207-252
+  s_7c60aaca5a7f14::t_779e82c118f567 176-179
+  s_7c60aaca5a7f14::t_c9c9eeee804c27 648-650,652-660,667-668,670-671
+  s_7c60aaca5a7f14::t_b9aa77db616745 651
+  s_7c60aaca5a7f14::t_3f54104b6c6a1c 730-731,733-741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c4ec8b8d4308fa71a9b7117e224eccfe79f7e83",
+  "prompts": {},
+  "sessions": {
+    "s_7c60aaca5a7f14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53edca7-da7c-4d69-a1fe-adc5f1ad6c2c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

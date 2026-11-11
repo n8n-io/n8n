@@ -1,0 +1,74 @@
+packages/cli/src/push/index.ts
+  s_bbdff09dde7545::t_c7c5e53a3b0feb 72,74
+  s_bbdff09dde7545::t_abb92b5c9a203d 47-48
+  s_bbdff09dde7545::t_2353be947efdd1 66-67
+packages/cli/src/abstract-server.ts
+  s_bbdff09dde7545::t_f5f6b07ad98be1 22
+  s_bbdff09dde7545::t_fa2edb53509367 52-54
+  s_bbdff09dde7545::t_e9ba193aa1074e 287,289
+  s_bbdff09dde7545::t_356c08cd074ebb 288
+packages/cli/src/push/__tests__/index.test.ts
+  s_bbdff09dde7545::t_b0fbf25df6245b 40-43
+  s_bbdff09dde7545::t_42615db29a3c63 44,46,49-51,53
+  s_bbdff09dde7545::t_82a24479788754 5-6
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_bbdff09dde7545::t_5489bb9f73dbc2 31,33-34
+  s_bbdff09dde7545::t_d3b3685fe8cafc 11
+  s_bbdff09dde7545::t_edaf11d34a81c0 22
+packages/cli/src/webhooks/webhook-server.ts
+  s_bbdff09dde7545::t_66990da3664d26 14
+  s_bbdff09dde7545::t_81571cf0623f47 15
+  s_bbdff09dde7545::t_5e99c7cbce29c4 11-13
+packages/cli/src/chat/__tests__/chat-server.test.ts
+  s_bbdff09dde7545::t_3b2353166bb00a 14
+  s_bbdff09dde7545::t_b9671bf58f4fb3 2,9-13,20
+  s_bbdff09dde7545::t_d712d2c72559a6 15-19
+  s_bbdff09dde7545::t_bca898f00f5029 21-22
+packages/cli/src/modules/instance-ai/__tests__/browser-use-server.test.ts
+  s_bbdff09dde7545::t_20ab9aff611cc3 37,39
+  s_bbdff09dde7545::t_727bf22b7ef557 14
+  s_bbdff09dde7545::t_5115b4efecd502 38
+packages/cli/src/chat/chat-server.ts
+  s_bbdff09dde7545::t_ca78d13af4bc82 17-18
+  s_bbdff09dde7545::t_8fcc67fc76e9d2 11
+packages/cli/src/webhooks/__tests__/webhook-server.test.ts
+  s_bbdff09dde7545::t_bc51ad049f7382 33
+  s_bbdff09dde7545::t_747e8cd3d7e406 60,63-65
+  s_bbdff09dde7545::t_4eea76f824ebe3 66-71,78
+  s_bbdff09dde7545::t_5a14acd0732506 10
+packages/cli/src/server.ts
+  s_bbdff09dde7545::t_dae2e6b33d827a 253
+  s_bbdff09dde7545::t_a4f550c4899ca2 246-252
+packages/cli/src/websocket-router.ts
+  s_bbdff09dde7545::t_33fa69714725c9 8-11,52
+  s_bbdff09dde7545::t_f48a724b004ecd 1-6,12-43,45-51
+  s_bbdff09dde7545::t_db3f3b0e1412c2 44
+packages/cli/src/__tests__/websocket-router.test.ts
+  s_bbdff09dde7545::t_0dc2c2496c4266 81,92-93,100-102,107-114,119-128
+  s_bbdff09dde7545::t_50593d4b555f19 116
+  s_bbdff09dde7545::t_dd763699e55799 17
+  s_bbdff09dde7545::t_2e4930c4a263ad 118
+  s_bbdff09dde7545::t_fe0dd1dede70fc 177,181,186,190,198-201
+  s_bbdff09dde7545::t_be9fa9afc11cdf 174
+  s_bbdff09dde7545::t_5fa0ce3f6d3bdf 3
+  s_bbdff09dde7545::t_cd487d0c1d40bb 41,43-44,49,83-91,103,115,117,129-132,197
+  s_bbdff09dde7545::t_fee1002922b607 9
+  s_bbdff09dde7545::t_d3593a639612e0 4
+  s_bbdff09dde7545::t_0ab83950800fca 94-99,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b1a8940770d0a1d68b3c4d631cfe28849f7774c",
+  "prompts": {},
+  "sessions": {
+    "s_bbdff09dde7545": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9be07d-342d-4c2d-b886-410aa08a5488",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

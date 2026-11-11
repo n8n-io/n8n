@@ -1,0 +1,128 @@
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  h_5d40c27a8fdfd1 45-46,54-56,137-139,163-165,173-174,948-1057
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  h_5d40c27a8fdfd1 59,197-206,749-791,799-847
+packages/@n8n/api-types/src/agents/__tests__/agent-version-metadata.dto.test.ts
+  h_5d40c27a8fdfd1 19-33
+packages/@n8n/api-types/src/agents/dto.ts
+  h_5d40c27a8fdfd1 576-582
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.json
+  h_5d40c27a8fdfd1 1-11
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.simplify-false.json
+  h_5d40c27a8fdfd1 1-57
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.json
+  h_5d40c27a8fdfd1 1-64
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.simplify-false.json
+  h_5d40c27a8fdfd1 1-101
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/outputSchemas.test.ts
+  h_5d40c27a8fdfd1 1-28
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  h_5d40c27a8fdfd1 79-82,124-127
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  h_5d40c27a8fdfd1 585,634-637,646,654
+packages/@n8n/workflow-sdk/src/generate-types/schema-dir-index.test.ts
+  h_5d40c27a8fdfd1 88-102
+packages/cli/package.json
+  h_5d40c27a8fdfd1 200
+packages/cli/src/modules/agents/AGENTS.md
+  h_5d40c27a8fdfd1 33
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  h_5d40c27a8fdfd1 319-339,854
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  h_5d40c27a8fdfd1 401-476
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.test.ts
+  h_5d40c27a8fdfd1 19,34,43,50-52
+packages/cli/src/modules/agents/__tests__/test-utils/stored-agent-config.ts
+  h_5d40c27a8fdfd1 123-124
+packages/cli/src/modules/agents/agent-definition.service.ts
+  h_5d40c27a8fdfd1 41,54
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  h_5d40c27a8fdfd1 58
+packages/cli/src/modules/agents/agent-publish.service.ts
+  h_5d40c27a8fdfd1 9,55,144,152-157,159-160,162,552-556,560,564-571,579,603,709,711-716,721,731-763
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  h_5d40c27a8fdfd1 167-253,335-336
+packages/cli/src/modules/agents/agent-skill-usage.ts
+  h_5d40c27a8fdfd1 2,115-116
+packages/cli/src/modules/agents/agent-skills.service.ts
+  h_5d40c27a8fdfd1 309,321-324
+packages/cli/src/modules/agents/agents.service.ts
+  h_5d40c27a8fdfd1 493-495,732-744
+packages/cli/src/modules/agents/repositories/agent-skill.repository.ts
+  h_5d40c27a8fdfd1 54-70
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  h_5d40c27a8fdfd1 636,639,641-642,697
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  h_5d40c27a8fdfd1 38
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  h_5d40c27a8fdfd1 193-194
+packages/cli/src/modules/skills/__tests__/integration/skills.controller.integration.test.ts
+  h_5d40c27a8fdfd1 661,680
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  h_5d40c27a8fdfd1 517
+packages/cli/src/modules/skills/__tests__/skills-gates.test.ts
+  h_5d40c27a8fdfd1 139,148
+packages/cli/src/modules/skills/services/skill-usage-proxy.service.ts
+  h_5d40c27a8fdfd1 71,73
+packages/cli/src/modules/skills/services/skill-usage.contracts.ts
+  h_5d40c27a8fdfd1 52-53
+packages/cli/src/modules/skills/services/skill.service.ts
+  h_5d40c27a8fdfd1 529
+packages/cli/test/integration/agents/agent-skill.repository.test.ts
+  h_5d40c27a8fdfd1 428
+packages/cli/test/integration/agents/agent-skills.test.ts
+  h_5d40c27a8fdfd1 7,163,166,171-175,177-183,228,244-256,268-384
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  h_5d40c27a8fdfd1 514
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  h_5d40c27a8fdfd1 399-410
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  h_5d40c27a8fdfd1 18,174,184-186,263-273,297,299,368-389,401-411,429-439,465-475,805-815,835-845
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  h_5d40c27a8fdfd1 293-300
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  h_5d40c27a8fdfd1 91,166-172,177,187-197,212
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  h_5d40c27a8fdfd1 27,59
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  h_5d40c27a8fdfd1 12,59,162
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  h_5d40c27a8fdfd1 123
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  h_5d40c27a8fdfd1 5,92
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  h_5d40c27a8fdfd1 44,661,667
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  h_5d40c27a8fdfd1 72-75,77-87,109,111
+packages/frontend/editor-ui/src/features/agents/utils/agentPublication.ts
+  h_5d40c27a8fdfd1 1-14
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_5d40c27a8fdfd1 2,3841
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.draft.test.ts
+  h_5d40c27a8fdfd1 105-107,111
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  h_5d40c27a8fdfd1 11,17,548,573-584
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  h_5d40c27a8fdfd1 18,282-290
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  h_5d40c27a8fdfd1 27-28,270-273,275-278,282,285,288-290
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  h_5d40c27a8fdfd1 21,118-119,200,208-212
+packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+  h_5d40c27a8fdfd1 19-21,26-32,34-35
+pnpm-lock.yaml
+  h_5d40c27a8fdfd1 1034,4925-4926,12620-12622,19267-19268,24406-24409,29685,29690,34434,34444,36885,36889,37491,43262-43263
+pnpm-workspace.yaml
+  h_5d40c27a8fdfd1 450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22d20bf34edcbadc58a63333cd9e855db5f16cf9",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

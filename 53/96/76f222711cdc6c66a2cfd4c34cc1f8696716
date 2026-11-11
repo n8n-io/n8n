@@ -1,0 +1,20 @@
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_9d7cb9a95d5464::t_7b95e8f4f3965b 61
+  s_9d7cb9a95d5464::t_acc2b8b2696435 62-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "539676f222711cdc6c66a2cfd4c34cc1f8696716",
+  "prompts": {},
+  "sessions": {
+    "s_9d7cb9a95d5464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1df1b4b6-0864-4701-a00f-34072efb8759",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_0ecca9d4df614f::t_1e79443013f399 5,42-46,73,584-591,593-597,599-600
+  s_0ecca9d4df614f::t_0f3753518cf88b 47-72
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_0ecca9d4df614f::t_f717f04008bada 490
+  s_0ecca9d4df614f::t_d93824759112e7 303-335
+  s_0ecca9d4df614f::t_a2240832a55435 496
+packages/@n8n/agents/src/runtime/__tests__/model-factory-reasoning.test.ts
+  s_0ecca9d4df614f::t_6e22d8e101e390 1-27,29-36,41-43,45-67
+  s_0ecca9d4df614f::t_972b372691df5f 28,37-40
+  s_0ecca9d4df614f::t_0218a056d870b1 44
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_0ecca9d4df614f::t_15d331beacd500 387,390-404,407-421,476,478
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatOpenAi.test.ts
+  s_0ecca9d4df614f::t_8f34f8445eb7b9 131-132,134,136-153,162-173
+  s_0ecca9d4df614f::t_fc1c6ffc58c821 14,19
+  s_0ecca9d4df614f::t_972b372691df5f 18,133
+  s_0ecca9d4df614f::t_576c49f8d32e87 135
+  s_0ecca9d4df614f::t_de2fe09f96ae9b 154-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f1d4f7a6a12e2a429d2e0c45df63c10b0e4eef5",
+  "prompts": {},
+  "sessions": {
+    "s_0ecca9d4df614f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d56ca33-3842-4c9d-bba0-915ea68f6e83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
