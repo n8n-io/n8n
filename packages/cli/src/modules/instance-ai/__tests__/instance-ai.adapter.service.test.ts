@@ -6420,6 +6420,14 @@ describe('createExecutionAdapter run()', () => {
 					parameters: { resume: 'webhook' },
 					position: [400, 0],
 				},
+				{
+					id: 'node-4',
+					name: 'Wait On Other Branch',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 30, unit: 'seconds' },
+					position: [400, 200],
+				},
 			],
 		});
 
@@ -6428,7 +6436,13 @@ describe('createExecutionAdapter run()', () => {
 
 		it('runs time-based waits without the delay in a verification run and reports them', async () => {
 			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
-				execution: makeExecution({ status: 'success' }),
+				execution: makeExecution({
+					status: 'success',
+					runData: {
+						'Schedule Trigger': [makeTaskData([{ ok: true }])],
+						'Wait Before Retry': [makeTaskData([{ ok: true }])],
+					},
+				}),
 			});
 
 			const result = await adapter.run('wf-1', undefined, { isVerificationRun: true });
@@ -6436,6 +6450,9 @@ describe('createExecutionAdapter run()', () => {
 			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
 			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 0 });
 			expect(waitParameters(nodes, 'Wait For Approval')).toEqual({ resume: 'webhook' });
+			// The wait on the unreached branch is rewritten too, but the run did not reach it.
+			expect(waitParameters(nodes, 'Wait On Other Branch')).toMatchObject({ amount: 0 });
+			expect(result.executedNodeNames).toContain('Wait Before Retry');
 			expect(result.skippedWaitNodeNames).toEqual(['Wait Before Retry']);
 		});
 

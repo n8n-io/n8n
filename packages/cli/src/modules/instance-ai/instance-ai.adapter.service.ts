@@ -2557,13 +2557,16 @@ export class InstanceAiAdapterService {
 							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
 							? triggerNode.name
 							: undefined;
+					// Report only the waits this run reached; the rest never executed.
+					const reachedNodeNames = new Set(result.executedNodeNames);
+					const skippedWaitNodeNames = waits.skippedNodeNames.filter((name) =>
+						reachedNodeNames.has(name),
+					);
 					return {
 						...result,
 						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
-						...(waits.skippedNodeNames.length > 0
-							? { skippedWaitNodeNames: waits.skippedNodeNames }
-							: {}),
+						...(skippedWaitNodeNames.length > 0 ? { skippedWaitNodeNames } : {}),
 					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an

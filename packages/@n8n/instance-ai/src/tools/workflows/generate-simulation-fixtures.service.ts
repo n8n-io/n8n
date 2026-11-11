@@ -159,7 +159,8 @@ function buildUpstreamContext(
  * own added. Their output shape lives upstream, so a synthesized item has to
  * borrow it — pinning `{}` on a Wait wipes the fields every node below it
  * reads. (The classifier lets time-based waits execute for exactly this
- * reason; a webhook or form wait has to be simulated, so it needs the borrowed shape.)
+ * reason. A webhook or form wait is simulated and emits its own resumed-event
+ * shape, so it is not listed here.)
  *
  * The list is short because it only has to cover node types that can BE
  * simulated. Transform/control nodes that also pass data through — noOp, set,

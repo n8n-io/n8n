@@ -53,6 +53,15 @@ describe('skipTimeBasedWaits', () => {
 		expect(skippedNodeNames).toEqual([]);
 	});
 
+	it('keeps a wait whose resume mode is an expression', () => {
+		const node = waitNode('Wait Dynamic', { resume: '={{ $json.mode }}', amount: 15 });
+
+		const { nodes, skippedNodeNames } = skipTimeBasedWaits([node]);
+
+		expect(nodes[0]).toBe(node);
+		expect(skippedNodeNames).toEqual([]);
+	});
+
 	it('keeps disabled waits and other node types', () => {
 		const disabled = waitNode('Old Wait', { amount: 10, unit: 'minutes' }, true);
 		const set: INode = {

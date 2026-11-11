@@ -433,7 +433,7 @@ export function buildSkippedWaitNote(
 	skippedWaitNodeNames: string[] | undefined,
 	reachedNames: Set<string>,
 ): string | undefined {
-	const reached = (skippedWaitNodeNames ?? []).filter((name) => reachedNames.has(name));
+	const reached = [...new Set(skippedWaitNodeNames ?? [])].filter((name) => reachedNames.has(name));
 	if (reached.length === 0) return undefined;
 	return (
 		`Ran ${reached.length} time-based Wait node(s) without their delay: ${reached.join(', ')}. ` +

@@ -248,6 +248,30 @@ describe('runScriptedGateVerification — merge consistency', () => {
 		expect(analysis.simulationNote).toContain('Wait Before Publish');
 	});
 
+	it('names a wait once when several passes reach it', async () => {
+		const withWait = {
+			executedNodeNames: ['Wait Before Publish'],
+			skippedWaitNodeNames: ['Wait Before Publish'],
+		};
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				...withWait,
+				executedNodeNames: [...approvePassResult.executedNodeNames, 'Wait Before Publish'],
+			})
+			.mockResolvedValueOnce({
+				...declinePassResult,
+				...withWait,
+				executedNodeNames: [...declinePassResult.executedNodeNames, 'Wait Before Publish'],
+			});
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.simulationNote).toContain('Ran 1 time-based Wait node(s)');
+		expect(analysis.simulationNote?.match(/Wait Before Publish/g)).toHaveLength(1);
+	});
+
 	it('does not double-count a pinned node that the plan already simulates', async () => {
 		const run = vi
 			.fn()
