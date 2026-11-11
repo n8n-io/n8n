@@ -1,7 +1,16 @@
 import type { IDataObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import type { EndpointCredential, LoginMethod } from './types';
+import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
+
+/**
+ * RFC 6749 section 2.3.1 percent-encodes both halves before base64, unlike the
+ * raw bytes RFC 7617 Basic sends. A secret holding ':' is unparseable without it.
+ */
+export function oauth2BasicCredentials(login: OAuth2Login): string {
+	const pair = `${encodeURIComponent(login.clientId)}:${encodeURIComponent(login.clientSecret)}`;
+	return Buffer.from(pair).toString('base64');
+}
 
 function getLoginHeader(login: LoginMethod): Record<string, string> {
 	switch (login.type) {

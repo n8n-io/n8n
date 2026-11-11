@@ -2,6 +2,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { truncateMessage } from './error-handling';
+import { oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
 const CLOCK_SKEW_MARGIN_MS = 30_000;
@@ -42,8 +43,7 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 		body.set('client_id', login.clientId);
 		body.set('client_secret', login.clientSecret);
 	} else {
-		const pair = Buffer.from(`${login.clientId}:${login.clientSecret}`).toString('base64');
-		headers.authorization = `Basic ${pair}`;
+		headers.authorization = `Basic ${oauth2BasicCredentials(login)}`;
 	}
 
 	return {
