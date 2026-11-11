@@ -56,13 +56,6 @@ on:
         required: false
         default: 0
         type: number
-      integrationTests:
-        description: |
-          Run the backend and CLI integration suites. The merge queue turns them off,
-          because they are the slowest jobs.
-        required: false
-        default: true
-        type: boolean
 env:
   NODE_OPTIONS: --max-old-space-size=7168
   # With a change signal, the shared vitest configs measure only the changed files.
@@ -192,7 +185,6 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    if: inputs.integrationTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
@@ -248,7 +240,6 @@ jobs:
 
   integration-test-cli:
     name: CLI Integration Tests (${{ matrix.shard }}/2)
-    if: inputs.integrationTests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false

@@ -37,22 +37,23 @@ export function readPostgresVersions(repoRoot = REPO_ROOT) {
 	return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-const SCOPES = new Set(['pr', 'full']);
+const SCOPES = new Set(['pr', 'sqlite', 'full']);
 
 /**
  * The schema-docs check runs on the primary Postgres leg only, since the
  * committed docs come from that one version. Scope 'pr' collects coverage on
  * that leg. Scope 'full' collects no coverage.
  *
- * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
- * every Postgres major. CI runs DB tests on PRs only, with 'pr'.
+ * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'sqlite' keeps
+ * SQLite only. Scope 'full' keeps every Postgres major. PRs run 'pr', the merge
+ * queue runs 'sqlite'.
  *
  * @param {PostgresVersions} versions
- * @param {'pr' | 'full'} scope
+ * @param {'pr' | 'sqlite' | 'full'} scope
  */
 export function buildMatrix(versions, scope = 'full') {
 	if (!SCOPES.has(scope)) {
-		throw new Error(`Unknown scope "${scope}", expected "pr" or "full"`);
+		throw new Error(`Unknown scope "${scope}", expected "pr", "sqlite" or "full"`);
 	}
 
 	const { primary, matrix } = versions;
@@ -92,7 +93,11 @@ export function buildMatrix(versions, scope = 'full') {
 	}
 
 	// Validation always runs on the full list; scope only trims the output.
-	const postgresLegs = scope === 'pr' ? matrix.filter(({ image }) => image === primary) : matrix;
+	const postgresLegs = {
+		pr: matrix.filter(({ image }) => image === primary),
+		sqlite: [],
+		full: matrix,
+	}[scope];
 
 	return [
 		{
@@ -134,12 +139,16 @@ const PACKAGED_MODULES_CMD = `${TEST_RUN} --full-task=test:postgres --filter='./
  * Migration: one job per leg, not sharded.
  *
  * @param {PostgresVersions} versions
- * @param {'pr' | 'full'} scope
+ * @param {'pr' | 'sqlite' | 'full'} scope
  * @param {{ cliIntegrationRuns?: boolean }} [options] `cliIntegrationRuns`: the
  *   caller runs the CLI Integration Tests job in full on SQLite.
  */
 export function buildJobMatrices(versions, scope = 'full', { cliIntegrationRuns = false } = {}) {
 	const legs = buildMatrix(versions, scope);
+	// The SQLite schema-docs check needs a Postgres job to move to.
+	if (cliIntegrationRuns && !legs.some((leg) => leg.TEST_IMAGE_POSTGRES)) {
+		throw new Error(`Scope "${scope}" has no Postgres leg, so the SQLite leg must run integration`);
+	}
 	// When the CLI Integration Tests job runs the same SQLite suite (same config
 	// and pool size) in full, the SQLite leg only keeps its migrations. Its
 	// schema-docs check moves to the first Postgres job.
