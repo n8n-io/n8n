@@ -86,6 +86,11 @@ The PR format job runs `pnpm check:dependencies` on every PR and merge group.
 This check rejects the exact package `inflight` in all checked-in pnpm lockfiles.
 It includes development and optional dependencies. It allows `promise-inflight`.
 
+PRs and merge groups run `test-unit-reusable.yml` when the unit path filter matches.
+Both use the affected-package and changed-file scope from `install-and-build`.
+Merge groups retry failed tests twice and do not collect coverage.
+The `Required Checks` job waits for the unit workflow and rejects test failures.
+
 | Prefix     | Purpose                                 |
 |------------|-----------------------------------------|
 | `test-`    | Testing (E2E, unit, visual, benchmarks) |

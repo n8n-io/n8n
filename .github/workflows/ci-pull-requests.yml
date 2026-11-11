@@ -285,7 +285,7 @@ jobs:
 
       - name: Compute affected packages
         id: affected-packages
-        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit
+        if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
@@ -330,12 +330,13 @@ jobs:
 
   unit-test:
     name: Unit tests
-    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.unit == 'true'
+    if: needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: true
+      collectCoverage: ${{ github.event_name != 'merge_group' }}
+      testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
       lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}

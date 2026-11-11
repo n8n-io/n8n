@@ -212,6 +212,59 @@ describe('automated release PR CI bypass', () => {
 	});
 });
 
+describe('merge queue unit tests', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const unitTest = workflow.jobs['unit-test'];
+	const affectedPackages = stepNamed(workflow, 'install-and-build', 'Compute affected packages');
+	const runsFor = (condition, eventName, unit) =>
+		evaluateStepCondition(
+			condition
+				.replaceAll('github.event_name', 'inputs.eventName')
+				.replaceAll('needs.install-and-build.outputs.unit', 'inputs.unit')
+				.replaceAll('fromJSON(steps.ci-filter.outputs.results).unit', 'inputs.unit'),
+			{ inputs: { eventName, unit } },
+		);
+
+	for (const eventName of ['pull_request', 'merge_group']) {
+		it(`runs unit tests and computes their scope on ${eventName} when relevant files change`, () => {
+			assert.ok('merge_group' in triggersOf(workflow));
+			for (const unit of [true, false]) {
+				assert.equal(runsFor(unitTest.if, eventName, unit), unit, 'unit-test');
+				assert.equal(runsFor(affectedPackages.if, eventName, unit), unit, 'affected packages');
+			}
+		});
+	}
+
+	it('uses the built commit and keeps unit tests in the required merge gate', () => {
+		assert.equal(unitTest.uses, './.github/workflows/test-unit-reusable.yml');
+		assert.equal(unitTest.with.ref, '${{ needs.install-and-build.outputs.commit_sha }}');
+		assert.equal(
+			unitTest.with.affectedPackages,
+			'${{ needs.install-and-build.outputs.affected_packages }}',
+		);
+		assert.equal(
+			unitTest.with.changedFiles,
+			'${{ needs.install-and-build.outputs.changed_files }}',
+		);
+		assert.equal(
+			unitTest.with.fullCliIntegration,
+			"${{ needs.install-and-build.outputs.db == 'true' }}",
+		);
+		assert.equal(unitTest['continue-on-error'] ?? false, false);
+		assert.ok(workflow.jobs['required-checks'].needs.includes('unit-test'));
+		assert.equal(workflow.jobs['required-checks'].if, 'always()');
+		assert.equal(
+			stepNamed(workflow, 'required-checks', 'Validate required checks').with['job-results'],
+			'${{ toJSON(needs) }}',
+		);
+	});
+
+	it('retries queue tests twice and collects coverage only on PRs', () => {
+		assert.equal(unitTest.with.testRetries, "${{ github.event_name == 'merge_group' && 2 || 0 }}");
+		assert.equal(unitTest.with.collectCoverage, "${{ github.event_name != 'merge_group' }}");
+	});
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
