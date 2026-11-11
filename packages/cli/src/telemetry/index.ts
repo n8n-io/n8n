@@ -593,7 +593,32 @@ export class Telemetry {
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
 		this.flushBuffers();
-		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+		await Promise.all([this.postHog.stop(), this.drainQueue()]);
+	}
+
+	/**
+	 * One `flush()` posts a single batch of 20 events and resolves as soon as the
+	 * queue is empty, even while batches it did not start are still in flight.
+	 * So this flushes until the queue stops shrinking, then once more on the empty
+	 * queue, which the SDK chains onto the newest in-flight batch.
+	 */
+	private async drainQueue(): Promise<void> {
+		if (!this.rudderStack) return;
+
+		let remaining = this.queuedEventCount();
+		while (remaining > 0) {
+			await this.rudderStack.flush();
+			const left = this.queuedEventCount();
+			if (left >= remaining) break;
+			remaining = left;
+		}
+		await this.rudderStack.flush();
+	}
+
+	/** The SDK keeps its queue on a public property that its types leave out. */
+	private queuedEventCount(): number {
+		const sdk = this.rudderStack;
+		return sdk && 'queue' in sdk && Array.isArray(sdk.queue) ? sdk.queue.length : 0;
 	}
 
 	// Sets instance group properties and attaches user to instance group.
