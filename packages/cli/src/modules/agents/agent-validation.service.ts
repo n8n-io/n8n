@@ -10,6 +10,7 @@ import {
 	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
+	integrationNeedsCredential,
 	isDraftIntegration,
 	nodeTypeAvailabilityScopeSchema,
 	type AgentConfigValidationIssue,
@@ -658,7 +659,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
-			if (integration.type === 'n8n_chat') continue;
+			if (!integrationNeedsCredential(integration)) continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -678,7 +679,10 @@ export class AgentValidationService {
 			}
 
 			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
-			if (integrationImpl && !integrationImpl.credentialTypes.includes(credential.type)) {
+			if (
+				integrationImpl &&
+				!integrationImpl.acceptedCredentialTypes(integration).includes(credential.type)
+			) {
 				issues.push(issue('incompatible_credential', path, capability));
 			}
 		}

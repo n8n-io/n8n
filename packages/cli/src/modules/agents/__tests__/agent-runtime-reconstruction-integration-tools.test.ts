@@ -522,5 +522,47 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
 		});
+
+		it('injects no channel tools for the webhook channel', async () => {
+			Container.set(ChatIntegrationRegistry, new ChatIntegrationRegistry());
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
+			);
+			const runtimeAgent = {
+				nativeToolDeferral: vi.fn(),
+				tool: vi.fn(),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
+				fileStore: vi.fn(),
+			};
+
+			await (
+				makeRuntimeReconstructionService() as unknown as {
+					injectRuntimeDependencies(params: Record<string, unknown>): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				runtimeProfile: 'top-level',
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
+				credentialIntegrations: [
+					{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+				],
+			});
+
+			// Each call passes one tool or an array of tools.
+			const toolNames = runtimeAgent.tool.mock.calls
+				.flat(2)
+				.map((tool: { name?: string }) => tool.name);
+			expect(toolNames.filter((name) => name?.startsWith('webhook'))).toEqual([]);
+		});
 	});
 });

@@ -11,7 +11,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
+import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole, isReservedGlobalRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { UserService } from '@/services/user.service';
@@ -279,9 +279,8 @@ export class IdentityResolutionService {
 
 		const role = roleClaim;
 
-		// Never change a user's role to global:owner via token exchange
-		if (role === 'global:owner') {
-			this.logger.warn('Ignoring global:owner role claim for existing user');
+		if (isReservedGlobalRole(role)) {
+			this.logger.warn('Ignoring a reserved role claim for existing user', { role });
 			return undefined;
 		}
 
@@ -326,10 +325,10 @@ export class IdentityResolutionService {
 
 		const role = roleClaim;
 
-		if (role === 'global:owner') {
+		if (isReservedGlobalRole(role)) {
 			throw new TokenExchangeAuthError(
 				TokenExchangeFailureReason.RoleNotAllowed,
-				'Cannot provision global:owner role via token exchange',
+				`Cannot provision ${role} role via token exchange`,
 			);
 		}
 
