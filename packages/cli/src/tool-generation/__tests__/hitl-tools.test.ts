@@ -4,9 +4,11 @@ import type {
 	IExecuteFunctions,
 	INodeProperties,
 	INodeTypeDescription,
+	IWorkflowDataProxyData,
 	NodeOutput,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { Expression, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { convertNodeToHitlTool, createHitlTools, hasSendAndWaitOperation } from '../hitl-tools';
 
@@ -385,6 +387,45 @@ describe('hitl-tools', () => {
 			expect(messageProp?.default).toBe(
 				'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters }}',
 			);
+		});
+
+		describe('approval message rendering', () => {
+			const tool = {
+				name: 'get_latest_emails',
+				parameters: { limit: 5, filters: { unreadOnly: true, labels: ['INBOX'] } },
+			};
+			const expectedMessage = `The agent wants to run this tool: ${tool.name}\n\nInput:\n${JSON.stringify(tool.parameters)}`;
+			let data: IWorkflowDataProxyData;
+
+			beforeEach(() => {
+				data = mock<IWorkflowDataProxyData>();
+				// Keep tool input as plain objects for expression evaluation.
+				data.$tool = tool;
+			});
+
+			it('should render tool parameters as JSON in a custom approval message', () => {
+				const message = new Expression('UTC').resolveSimpleParameterValue(
+					'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters.toJsonString() }}',
+					data,
+				);
+
+				expect(message).toBe(expectedMessage);
+			});
+
+			// AGENT-439: Reviewers need readable tool input in the default approval message.
+			it('should render tool parameters as JSON in the default approval message', () => {
+				const result = convertNodeToHitlTool(fullNodeWrapper);
+				const defaultMessage = result.description.properties.find(
+					(prop) => prop.name === 'message',
+				)?.default;
+				if (typeof defaultMessage !== 'string') {
+					throw new Error('Expected a default approval message');
+				}
+
+				const message = new Expression('UTC').resolveSimpleParameterValue(defaultMessage, data);
+
+				expect(message).toBe(expectedMessage);
+			});
 		});
 
 		it('should replace original message property with HITL message', () => {
