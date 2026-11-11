@@ -317,6 +317,8 @@ packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay
 packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
 packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
 packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
+packages/frontend/editor-ui/src/app/utils/formatters/aiGatewayBalanceFormatter.ts @n8n-io/relay
+packages/frontend/editor-ui/src/features/credentials/components/AiGatewayCredits/ @n8n-io/relay
 
 # Enterprise Nodes & Partnerships
 

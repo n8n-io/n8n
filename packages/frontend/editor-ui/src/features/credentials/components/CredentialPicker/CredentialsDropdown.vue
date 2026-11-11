@@ -13,8 +13,8 @@ import {
 import { nextTick, ref, computed } from 'vue';
 import type { PermissionsRecord } from '@n8n/permissions';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { AiGatewayBalancePillValue } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 import AiGatewayBalanceIndicator from '@/features/credentials/components/AiGatewayCredits/AiGatewayBalanceIndicator.vue';
-import type { AiGatewayBalancePillValue } from '@/features/credentials/components/AiGatewayCredits/AiGatewayBalancePill.vue';
 import AiGatewayCredentialOption from '@/features/credentials/components/AiGatewayCredits/AiGatewayCredentialOption.vue';
 
 export type CredentialOption = {

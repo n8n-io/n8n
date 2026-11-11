@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import AiGatewayBalancePill, { type AiGatewayBalancePillValue } from './AiGatewayBalancePill.vue';
+import type { AiGatewayBalancePillValue } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
+
+import AiGatewayBalancePill from './AiGatewayBalancePill.vue';
 
 /**
  * Non-interactive balance pill drawn over a collapsed credential select while

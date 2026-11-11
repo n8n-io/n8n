@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { N8nBadge } from '@n8n/design-system';
 
-export type AiGatewayBalancePillValue = {
-	text: string;
-	type: 'default' | 'danger' | 'info';
-};
+import type { AiGatewayBalancePillValue } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 
 defineProps<{
 	pill: AiGatewayBalancePillValue;

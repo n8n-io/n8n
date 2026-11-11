@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
-import AiGatewayBalancePill, { type AiGatewayBalancePillValue } from './AiGatewayBalancePill.vue';
+import type { AiGatewayBalancePillValue } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
+
+import AiGatewayBalancePill from './AiGatewayBalancePill.vue';
 
 /**
  * Content of the managed "Gateway credits" row in a credential select: wallet

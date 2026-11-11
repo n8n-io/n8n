@@ -1,8 +1,8 @@
 import type { I18nClass } from '@n8n/i18n';
 
-export type AiGatewayBalancePill = {
+export type AiGatewayBalancePillValue = {
 	text: string;
-	type: 'default' | 'danger';
+	type: 'default' | 'danger' | 'info';
 };
 
 /** Formats a Gateway credits balance as "$12.30 remaining". */
@@ -19,7 +19,7 @@ export function formatAiGatewayBalanceRemaining(balance: number, i18n: I18nClass
 export function getAiGatewayBalancePill(
 	balance: number | undefined,
 	i18n: I18nClass,
-): AiGatewayBalancePill | undefined {
+): AiGatewayBalancePillValue | undefined {
 	if (balance === undefined) return undefined;
 	const depleted = balance <= 0;
 	return {
