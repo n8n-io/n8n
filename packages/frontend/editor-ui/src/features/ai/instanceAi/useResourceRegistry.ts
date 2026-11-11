@@ -10,14 +10,9 @@ import {
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
-import type {
-	InstanceAiMessage,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
-	InstanceAiWorkflowAttachment,
-	InstanceAiAppTarget,
-} from '@n8n/api-types';
+import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
 
+import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
 
 export type ResourceEntry = {
@@ -190,44 +185,25 @@ const WORKFLOW_READ_TOOLS = new Set<string>([
 ]);
 const DATA_TABLE_READ_ACTIONS = new Set<string>(['schema', 'query']);
 
-function isDataTableReadCall(tc: InstanceAiToolCallState): boolean {
+function isDataTableReadCall(tc: ArtifactToolCall): boolean {
 	const action = getDataTableCallAction(tc.toolName, tc.args?.action);
 	return action !== undefined && DATA_TABLE_READ_ACTIONS.has(action);
 }
 
 /** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
-function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
+function toolCallOrigin(tc: ArtifactToolCall): ArtifactOrigin {
 	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
 		return 'fetched';
 	if (isDataTableReadCall(tc)) return 'fetched';
 	return 'built';
 }
-function entryFromAgentBuilderTarget(
-	target: InstanceAiAgentNode['targetResource'],
-	existing?: ResourceEntry,
-	fallbackName = 'Untitled',
-): ResourceEntry | undefined {
-	if (target?.type !== 'agent' || !target.id) return undefined;
-	const entry: ResourceEntry = {
-		type: 'agent',
-		id: target.id,
-		name:
-			(existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined) ??
-			optionalString(target.name) ??
-			fallbackName,
-	};
-	const projectId = optionalString(target.projectId) ?? existing?.projectId;
-	if (projectId !== undefined) entry.projectId = projectId;
-	return entry;
-}
-
 /**
  * Agent builder results: a successful `agent_builder_select_agent`, and any builder tool
  * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
  * Selecting an existing Agent registers it before its first change, so its tab opens
  * when the build starts.
  */
-function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collections): void {
+function extractFromAgentBuilderResult(tc: ArtifactToolCall, col: Collections): void {
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.agentId !== 'string') return;
@@ -249,7 +225,7 @@ function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collect
  * Skills hub results: a successful `skills` create or update. A list or get only
  * reads the skill, so it does not register an artifact.
  */
-function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections): void {
+function extractFromSkillsResult(tc: ArtifactToolCall, col: Collections): void {
 	const skill = getSkillArtifactFromToolCall(tc);
 	if (!skill) return;
 	const existing = col.produced.get(skill.skillId);
@@ -261,13 +237,13 @@ function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections):
 }
 
 /** Apps results: a successful `apps` create or commit. Reads and opens do not count. */
-function extractFromAppsResult(tc: InstanceAiToolCallState, col: Collections): void {
+function extractFromAppsResult(tc: ArtifactToolCall, col: Collections): void {
 	const app = getAppArtifactFromToolCall(tc);
 	if (!app) return;
 	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
 }
 
-function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
+function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
 	extractFromSkillsResult(tc, col);
 	extractFromAppsResult(tc, col);
@@ -362,8 +338,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// agent_builder_build_agent (threads from before the builder ran inline):
 	// { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
-	// 'Untitled'. projectId is preserved from the agent-spawned entry by
-	// recordProduced's merge.
+	// 'Untitled'. recordProduced's merge keeps the projectId of an earlier entry.
 	if (
 		tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 		typeof result.agentId === 'string' &&
@@ -444,46 +419,10 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
-/**
- * Register the agent's `targetResource` as a produced artifact when it carries
- * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first workflow_builder_build_workflow
- * tool result arrives — lets the artifacts panel show the workflow as soon as
- * the sub-agent starts, instead of waiting for the first edit.
- */
-function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
-	const target = node.targetResource;
-	if (!target?.id) return;
-	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
-
-	const existing = col.produced.get(target.id);
-	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
-	if (target.type === 'agent') {
-		// A read-only turn cannot confirm that this Agent changed. Wait for the
-		// build result. A mutating build registers the Agent at spawn.
-		if (node.activity === 'exploring' && (!existing || existing.pending)) return;
-		const entry = entryFromAgentBuilderTarget(target, existing, name);
-		if (entry) recordProduced(col, entry);
-		return;
-	}
-	recordProduced(col, { type: target.type, id: target.id, name });
-}
-
-function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity === 'exploring';
-	// A sub-agent spawned onto a resource is there to work on it.
-	col.intake = 'built';
-	if (!deferAgentTarget) extractFromTargetResource(node, col);
-	for (const tc of node.toolCalls) {
+function collectFromToolCalls(turn: ArtifactTurn, col: Collections): void {
+	for (const tc of turn.toolCalls) {
 		col.intake = toolCallOrigin(tc);
 		extractFromToolCall(tc, col);
-	}
-	if (deferAgentTarget) {
-		col.intake = 'built';
-		extractFromTargetResource(node, col);
-	}
-	for (const child of node.children) {
-		collectFromAgentNode(child, col);
 	}
 }
 
@@ -492,8 +431,8 @@ function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void
  * e.g. the editor hand-off attaches the current workflow or agent, which then
  * shows as an artifact tab even before the agent acts on it.
  */
-function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
-	for (const attachment of message.attachments ?? []) {
+function collectFromAttachments(turn: ArtifactTurn, col: Collections): void {
+	for (const attachment of turn.attachments ?? []) {
 		if (attachment.type === 'workflow') {
 			recordProduced(col, {
 				type: 'workflow',
@@ -683,7 +622,7 @@ export interface ResourceRegistrySources {
  *   mention then reads as `attached`.
  */
 export function useResourceRegistry(
-	messages: () => InstanceAiMessage[],
+	turns: () => readonly ArtifactTurn[],
 	{
 		workflowNameLookup,
 		archivedWorkflowIds,
@@ -701,7 +640,7 @@ export function useResourceRegistry(
 	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
 	const producedArtifactOrigins = reactive(new Map<string, ArtifactOrigin>());
 
-	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// Derived from `turns` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
 	// stay a watch: the handler reads the target maps, so a watchEffect would
 	// re-trigger itself.
@@ -716,13 +655,13 @@ export function useResourceRegistry(
 				agentNames: new Map<string, Set<string>>(),
 			};
 
-			// Messages run in order, and within one turn the user's attachments
-			// precede the agent's work, so the first record of an id is its origin.
-			// The agent tree sets its own intake per tool call.
-			for (const msg of messages()) {
+			// Turns run in order, and the user's attachments precede the agent's
+			// work, so the first record of an id is its origin. Each tool call
+			// sets its own intake.
+			for (const turn of turns()) {
 				col.intake = 'attached';
-				collectFromMessageAttachments(msg, col);
-				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
+				collectFromAttachments(turn, col);
+				collectFromToolCalls(turn, col);
 			}
 			col.intake = 'attached';
 			const boundTarget = agentBuilderTarget?.();
