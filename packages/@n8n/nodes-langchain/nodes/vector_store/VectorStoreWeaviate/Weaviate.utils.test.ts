@@ -2,7 +2,8 @@ import http from 'node:http';
 import http2 from 'node:http2';
 import type { AddressInfo } from 'node:net';
 
-import weaviate, { Filters } from 'weaviate-client';
+import { mock } from 'vitest-mock-extended';
+import weaviate, { Filters, type WeaviateClient } from 'weaviate-client';
 
 import {
 	createWeaviateClient,
@@ -242,5 +243,72 @@ describe('parseCompositeFilter', () => {
 				],
 			}),
 		).toEqual(Filters.or(author().equal('Elis'), author().equal('Pinnacle')));
+	});
+});
+
+describe('createWeaviateClient connection options', () => {
+	const client = mock<WeaviateClient>();
+	const baseCredentials: WeaviateCredential = {
+		weaviate_cloud_endpoint: '',
+		weaviate_api_key: '',
+		custom_connection_http_host: 'weaviate.local',
+		custom_connection_http_port: 8080,
+		custom_connection_http_secure: true,
+		custom_connection_grpc_host: 'grpc.weaviate.local',
+		custom_connection_grpc_port: 50051,
+		custom_connection_grpc_secure: true,
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('should connect to Weaviate Cloud with the API key, timeout and init check option', async () => {
+		const connect = vi.spyOn(weaviate, 'connectToWeaviateCloud').mockResolvedValue(client);
+
+		const result = await createWeaviateClient(
+			{
+				...baseCredentials,
+				weaviate_cloud_endpoint: 'https://cluster.weaviate.cloud',
+				weaviate_api_key: 'cloud-key',
+			},
+			{ query: 5 },
+			undefined,
+			true,
+		);
+
+		expect(result).toBe(client);
+		expect(connect).toHaveBeenCalledWith('https://cluster.weaviate.cloud', {
+			authCredentials: new weaviate.ApiKey('cloud-key'),
+			timeout: { query: 5 },
+			skipInitChecks: true,
+		});
+	});
+
+	it('should connect to a custom instance with the API key', async () => {
+		const connect = vi.spyOn(weaviate, 'connectToCustom').mockResolvedValue(client);
+
+		await createWeaviateClient({ ...baseCredentials, weaviate_api_key: 'custom-key' });
+
+		expect(connect).toHaveBeenCalledWith({
+			httpHost: 'weaviate.local',
+			httpPort: 8080,
+			httpSecure: true,
+			grpcHost: 'grpc.weaviate.local',
+			grpcPort: 50051,
+			grpcSecure: true,
+			authCredentials: new weaviate.ApiKey('custom-key'),
+			timeout: undefined,
+			proxies: undefined,
+			skipInitChecks: false,
+		});
+	});
+
+	it('should connect to a custom instance without authentication when there is no API key', async () => {
+		const connect = vi.spyOn(weaviate, 'connectToCustom').mockResolvedValue(client);
+
+		await createWeaviateClient(baseCredentials);
+
+		expect(connect).toHaveBeenCalledWith(expect.objectContaining({ authCredentials: undefined }));
 	});
 });
