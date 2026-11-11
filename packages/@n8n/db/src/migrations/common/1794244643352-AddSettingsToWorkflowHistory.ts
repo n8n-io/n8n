@@ -6,6 +6,8 @@ const COLUMN_COMMENT =
 /**
  * Adds a `settings` JSON column to `workflow_history`. It holds only the
  * workflow settings that belong to a version, for now `engineType`.
+ * Existing versions get an empty object. The application reads a missing
+ * setting as its default, so these versions run on engine v1.
  *
  * Raw `ALTER TABLE ADD COLUMN`, not the `addColumns` DSL helper: the table has
  * an incoming CASCADE FK from `workflow_publication_trigger_status`, and the
@@ -13,8 +15,7 @@ const COLUMN_COMMENT =
  * SQLite add a NOT NULL column without a recreate.
  */
 export class AddSettingsToWorkflowHistory1794244643352 implements ReversibleMigration {
-	async up(context: MigrationContext) {
-		const { escape, runQuery, isPostgres } = context;
+	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName('workflow_history');
 		const columnName = escape.columnName('settings');
 
@@ -23,8 +24,6 @@ export class AddSettingsToWorkflowHistory1794244643352 implements ReversibleMigr
 		if (isPostgres) {
 			await runQuery(`COMMENT ON COLUMN ${tableName}.${columnName} IS '${COLUMN_COMMENT}'`);
 		}
-
-		await this.backfillEngineOfLiveVersions(context);
 	}
 
 	async down({ escape, runQuery }: MigrationContext) {
@@ -32,50 +31,5 @@ export class AddSettingsToWorkflowHistory1794244643352 implements ReversibleMigr
 		const columnName = escape.columnName('settings');
 
 		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`);
-	}
-
-	/**
-	 * Copies the workflow's engine to its draft, active and published versions,
-	 * so a workflow on v2 stays on v2. The backend runs every value except `v2`
-	 * on v1, so those get an explicit `v1`. Older versions keep `{}`, which runs
-	 * on v1.
-	 */
-	private async backfillEngineOfLiveVersions({ escape, runQuery, isSqlite }: MigrationContext) {
-		const history = escape.tableName('workflow_history');
-		const workflow = escape.tableName('workflow_entity');
-		const published = escape.tableName('workflow_published_version');
-		const id = escape.columnName('id');
-		const settings = escape.columnName('settings');
-		const versionId = escape.columnName('versionId');
-		const activeVersionId = escape.columnName('activeVersionId');
-		const workflowId = escape.columnName('workflowId');
-		const publishedVersionId = escape.columnName('publishedVersionId');
-
-		const workflowSettings = `${workflow}.${settings}`;
-
-		const isEngineTypeV2 = isSqlite
-			? `json_valid(${workflowSettings}) AND json_extract(${workflowSettings}, '$.engineType') = 'v2'`
-			: `${workflowSettings} ->> 'engineType' = 'v2'`;
-
-		const engine = `CASE WHEN ${isEngineTypeV2} THEN 'v2' ELSE 'v1' END`;
-
-		const engineSettings = isSqlite
-			? `json_object('engineType', ${engine})`
-			: `json_build_object('engineType', ${engine})`;
-
-		await runQuery(
-			`UPDATE ${history}
-			SET ${settings} = (
-				SELECT ${engineSettings} FROM ${workflow}
-				WHERE ${workflow}.${id} = ${history}.${workflowId}
-			)
-			WHERE ${history}.${versionId} IN (
-				SELECT ${versionId} FROM ${workflow} WHERE ${versionId} IS NOT NULL
-				UNION
-				SELECT ${activeVersionId} FROM ${workflow} WHERE ${activeVersionId} IS NOT NULL
-				UNION
-				SELECT ${publishedVersionId} FROM ${published} WHERE ${publishedVersionId} IS NOT NULL
-			)`,
-		);
 	}
 }
