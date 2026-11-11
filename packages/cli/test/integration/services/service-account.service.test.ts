@@ -76,7 +76,12 @@ describe('ServiceAccountService', () => {
 			expect(rows.user?.kind).toBe('service');
 			expect(rows.user?.role.slug).toBe('global:agent');
 			expect(rows.details?.name).toBe('Support agent');
-			expect(rows.project).toMatchObject({ id: project.id, name: 'Support agent' });
+			expect(rows.project).toMatchObject({
+				id: project.id,
+				type: 'personal',
+				creatorId: serviceAccount.id,
+				name: 'Support agent',
+			});
 			expect(rows.relations).toHaveLength(1);
 			expect(rows.relations[0]).toMatchObject({ projectId: project.id });
 			expect(rows.relations[0].role.slug).toBe('project:personalOwner');
