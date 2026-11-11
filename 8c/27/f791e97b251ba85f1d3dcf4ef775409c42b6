@@ -1,0 +1,106 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_cb89639c679a26::t_1ccfda99c3b519 234
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_cb89639c679a26::t_5f3b0372494723 913,990,1280,1356
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_cb89639c679a26::t_da5d11e719caa4 127,133-135,143-144,148,153,206,208,210,212
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_cb89639c679a26::t_5f3b0372494723 68
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_cb89639c679a26::t_89c595ede60893 188,192-193,210-218,275-280,290-294
+packages/@n8n/instance-ai/src/utils/__tests__/generate-validated-json.test.ts
+  s_cb89639c679a26::t_735fbc55eb93d9 31,115,117-118,124-125,133,136-149
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_cb89639c679a26::t_155ab0b38329f4 67-68,83-84,89
+  s_e9500be876154b::t_4e10395d8a6458 66,92
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_cb89639c679a26::t_7f6abb6216ddb4 383,395,413
+  s_cb89639c679a26::t_2d8772d3f6a421 447-449
+  s_cb89639c679a26::t_3688811813b72a 345,354-373,376,415-419,421-422,424-426,428-434,436-443,445-446,452-453,459,477,484,491-492,496,499,505,508,528,531
+  s_cb89639c679a26::t_417170c2f973cb 381-382,384-394,396-412,414,420,423,427,435,444
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_cb89639c679a26::t_951c81a4440adb 1317-1319
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_cb89639c679a26::t_1ccfda99c3b519 136-137
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_cb89639c679a26::t_1ccfda99c3b519 1539-1540
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_cb89639c679a26::t_ceaddb5bc0ca5f 42-45,366,379,451
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_cb89639c679a26::t_b118739478cc35 93,273,341,588
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_e9500be876154b::t_67edb426e0812d 58,60,395
+  s_cb89639c679a26::t_952a2a9724b945 59,61,353-354,366-367,394
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_cb89639c679a26::t_0d5c05920025f0 386-390,398
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_e9500be876154b::t_4e10395d8a6458 116-130
+  s_cb89639c679a26::t_9dab94db97d5f1 21-22,83,98,110,134,148,161,175,190,213,234,251,266,292,311,327,349,362,374,392,418,462,496,525,546,564
+packages/@n8n/instance-ai/src/tools/orchestration/verification/reconcile-plan.ts
+  s_cb89639c679a26::t_1ccfda99c3b519 21-22,32,51-52
+packages/@n8n/instance-ai/docs/configuration.md
+  s_e9500be876154b::t_a1ce685c7c5c02 18
+  s_cb89639c679a26::t_8200905dfd705c 70
+packages/@n8n/config/test/config.test.ts
+  s_cb89639c679a26::t_ee253ed862a0ca 375
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_cb89639c679a26::t_7d64dd9f441896 591-592
+  s_cb89639c679a26::t_b118739478cc35 619,658
+  s_e9500be876154b::t_67edb426e0812d 589
+packages/@n8n/instance-ai/src/types.ts
+  s_e9500be876154b::t_67edb426e0812d 1732,1737-1738
+  s_cb89639c679a26::t_1ccfda99c3b519 1731,1735-1736,1739-1741
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_cb89639c679a26::t_952a2a9724b945 67-68
+  s_e9500be876154b::t_67edb426e0812d 69-70,456
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-agent.factory.test.ts
+  s_cb89639c679a26::t_5f3b0372494723 36
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_cb89639c679a26::t_89c595ede60893 2,28-30,53-55,61
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_cb89639c679a26::t_b1a170f6781045 83-86,90,140-141
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_cb89639c679a26::t_fd8ee95528b934 30-32,34-35,39-51,160-162
+  s_cb89639c679a26::t_b2cca3f84419df 29,33,37-38,52-53,175,181-182,190-196
+  s_cb89639c679a26::t_444183db5c1eb2 155,157-159,163
+  s_cb89639c679a26::t_7f6abb6216ddb4 36
+  s_cb89639c679a26::t_36b3a2e8ed1b8c 144,146-148,150
+  s_e9500be876154b::t_a1ce685c7c5c02 145
+packages/@n8n/instance-ai/src/utils/__tests__/eval-usage.test.ts
+  s_cb89639c679a26::t_cd483bc9a6d919 46,48
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_cb89639c679a26::t_b118739478cc35 138,270,275,279,287
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/classify-node-destructiveness.service.test.ts
+  s_cb89639c679a26::t_123ac0fdbbe365 69-70,75,170,212-214,216,230-231,236-252,418,438,450,482
+  s_cb89639c679a26::t_2d8772d3f6a421 463-465,498-502,508-512
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_cb89639c679a26::t_b6aba95b910019 87-88
+  s_e9500be876154b::t_a1ce685c7c5c02 83
+  s_cb89639c679a26::t_7f6abb6216ddb4 85
+packages/cli/src/modules/instance-ai/self-healing/self-healing-candidate.service.ts
+  s_cb89639c679a26::t_0d5c05920025f0 153-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c27f791e97b251ba85f1d3dcf4ef775409c42b6",
+  "prompts": {},
+  "sessions": {
+    "s_cb89639c679a26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5462c1a6-e2a7-4af9-a636-ab5bd455c501",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_e9500be876154b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291e6860-30e1-4c99-b5ca-73824ab19abe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
