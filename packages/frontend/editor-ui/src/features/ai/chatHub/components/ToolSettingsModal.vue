@@ -2,18 +2,13 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
-import {
-	RestrictedTypeCallout,
-	useNodeTypeRestriction,
-	useTypeAvailability,
-} from '@n8n/frontend-module-type-availability-policies';
+import { RestrictedTypeCallout } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import { useChatToolRestriction } from '@/features/ai/chatHub/composables/useChatToolRestriction';
 
 const props = defineProps<{
 	modalName: string;
@@ -26,18 +21,8 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const nodeTypesStore = useNodeTypesStore();
-const projectsStore = useProjectsStore();
 
-// Chat tools run as workflows in the personal project, so that project's policy applies.
-useTypeAvailability(() => projectsStore.personalProject?.id);
-
-const { isRestricted, restriction } = useNodeTypeRestriction(() => props.data.node?.type);
-const restrictedTypeName = computed(() => {
-	const node = props.data.node;
-	if (!node) return '';
-	return nodeTypesStore.getNodeType(node.type)?.displayName ?? node.type;
-});
+const { isRestricted, restriction, typeName } = useChatToolRestriction(() => props.data.node?.type);
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const isValid = ref(false);
@@ -48,8 +33,6 @@ function closeDialog() {
 }
 
 function handleConfirm() {
-	if (isRestricted.value) return;
-
 	const currentNode = contentRef.value?.node;
 	if (!currentNode) {
 		return;
@@ -101,7 +84,7 @@ function handleNodeNameUpdate(name: string) {
 				<RestrictedTypeCallout
 					v-if="isRestricted"
 					surface="chatTool"
-					:type-name="restrictedTypeName"
+					:type-name="typeName"
 					:restriction="restriction"
 					:class="$style.callout"
 				/>

@@ -155,16 +155,12 @@ const toggleTooltip = computed(() => {
 				</N8nTooltip>
 
 				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
-					<!-- A disabled switch gets no pointer events, so the span keeps the tooltip working. -->
-					<span :class="$style.toggleWrapper">
-						<ElSwitch
-							:model-value="enabled"
-							:disabled="!!restriction"
-							:class="$style.toggle"
-							data-test-id="chat-tool-toggle"
-							@update:model-value="emit('toggle', Boolean($event))"
-						/>
-					</span>
+					<ElSwitch
+						:model-value="enabled"
+						:disabled="!!restriction"
+						:class="$style.toggle"
+						@update:model-value="emit('toggle', Boolean($event))"
+					/>
 				</N8nTooltip>
 			</template>
 
@@ -296,10 +292,6 @@ const toggleTooltip = computed(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
-}
-
-.toggleWrapper {
-	display: inline-flex;
 }
 
 .toggle {

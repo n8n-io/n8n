@@ -691,7 +691,7 @@ describe('ToolsManagerModal', () => {
 			for (const item of getConfiguredItems(container)) {
 				const toggle = getToggle(item);
 				expect(toggle).toBeDisabled();
-				await fireEvent.click(toggle);
+				await userEvent.click(toggle);
 			}
 
 			expect(chatStore.toggleToolEnabled).not.toHaveBeenCalled();
@@ -715,7 +715,7 @@ describe('ToolsManagerModal', () => {
 
 			const saveButton = getByTestId('chat-tool-settings-save');
 			expect(saveButton).toBeDisabled();
-			await fireEvent.click(saveButton);
+			await userEvent.click(saveButton);
 			expect(chatStore.updateConfiguredTool).not.toHaveBeenCalled();
 		});
 

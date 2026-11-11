@@ -35,13 +35,9 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import {
-	RestrictedTypeCallout,
-	useNodeTypeRestriction,
-	useTypeAvailability,
-} from '@n8n/frontend-module-type-availability-policies';
+import { RestrictedTypeCallout } from '@n8n/frontend-module-type-availability-policies';
+import { useChatToolRestriction } from '@/features/ai/chatHub/composables/useChatToolRestriction';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
@@ -81,13 +77,9 @@ const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
-
-// Chat tools run as workflows in the personal project, so that project's policy applies.
-useTypeAvailability(() => projectsStore.personalProject?.id);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -113,13 +105,11 @@ const settingsContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | nu
 const settingsNodeName = ref('');
 const settingsIsValid = ref(false);
 
-const { isRestricted: settingsIsRestricted, restriction: settingsRestriction } =
-	useNodeTypeRestriction(() => settingsNode.value?.type);
-const settingsTypeName = computed(() =>
-	settingsNode.value
-		? (nodeTypesStore.getNodeType(settingsNode.value.type)?.displayName ?? settingsNode.value.type)
-		: '',
-);
+const {
+	isRestricted: settingsIsRestricted,
+	restriction: settingsRestriction,
+	typeName: settingsTypeName,
+} = useChatToolRestriction(() => settingsNode.value?.type);
 
 const tools = computed<ChatHubToolDto[]>(() => chatStore.configuredTools);
 
@@ -249,8 +239,6 @@ function handleConfigureTool(tool: ChatHubToolDto) {
 		.map((t) => t.definition.name);
 
 	openSettings({ ...tool.definition }, otherToolNames, async (configuredNode: INode) => {
-		if (warnIfRestricted(configuredNode.type)) return;
-
 		try {
 			await chatStore.updateConfiguredTool(tool.definition.id, configuredNode);
 		} catch (error) {
@@ -278,9 +266,6 @@ async function handleRemoveTool(toolId: string) {
 }
 
 async function handleToggleTool(tool: ChatHubToolDto, enabled: boolean) {
-	// The policy can finish loading after the list renders.
-	if (isNodeItemRestricted(tool.definition.type)) return;
-
 	try {
 		if (agentId.value) {
 			await chatStore.toggleCustomAgentTool(agentId.value, tool.definition.id);
