@@ -61,20 +61,31 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
-		'enables medium OpenAI reasoning effort for %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-				reasoningEffort: 'medium',
-			});
-		},
-	);
-
-	it('enables high OpenAI reasoning effort for non-GPT-5.6 models', () => {
+	it.each([
+		'openai/gpt-5.6-sol',
+		'openai/gpt-5.6-terra',
+		'openai/gpt-5.6-luna',
+		'openai/gpt-5.10',
+		'openai/gpt-6-astra',
+		'openai/gpt-6.1-sol',
+		'openai/gpt-7',
+	] as const)('enables medium OpenAI reasoning effort for %s', (modelId) => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-4.1');
+		applyAgentThinking(agent, modelId);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it.each([
+		'openai/gpt-4.1',
+		'openai/gpt-4o',
+		'openai/gpt-5',
+		'openai/gpt-5.5',
+		'openai/o3',
+	] as const)('enables high OpenAI reasoning effort for %s', (modelId) => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, modelId);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
 			reasoningEffort: 'high',
 		});
