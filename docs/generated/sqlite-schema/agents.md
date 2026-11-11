@@ -330,9 +330,14 @@ erDiagram
 "agents_observation_cursors" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_255_ lastModelId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
+  INTEGER lastRequestTokens
   varchar_255_ observationScopeId PK
+  datetime_3_ resumeFromAt
+  varchar_36_ resumeFromMessageId
+  TEXT resumeNotes
   datetime_3_ updatedAt
 }
 "agents_observation_locks" {
