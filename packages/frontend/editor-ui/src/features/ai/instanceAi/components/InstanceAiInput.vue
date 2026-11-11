@@ -402,7 +402,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
@@ -951,6 +951,7 @@ const resizable = computed(() => {
 					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
+					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>

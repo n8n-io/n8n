@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest, Person, PersonRepository, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, Person, PersonRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,14 +10,12 @@ import type { UserService } from '@/services/user.service';
 import { UsersController } from '../users.controller';
 
 describe('UsersController', () => {
-	const userRepository = mock<UserRepository>();
 	const personRepository = mock<PersonRepository>();
 	const userService = mock<UserService>();
 	const jwtService = mock<JwtService>();
 	const urlService = mock<UrlService>();
 
 	const controller = new UsersController(
-		userRepository,
 		personRepository,
 		mock(),
 		userService,

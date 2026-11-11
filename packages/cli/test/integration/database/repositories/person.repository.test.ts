@@ -219,4 +219,25 @@ describe('PersonRepository', () => {
 			expect(total).toBe(1);
 		});
 	});
+
+	describe('users list', () => {
+		it('lists and counts persons only', async () => {
+			const person = await createMember();
+			await createServiceAccount();
+
+			const { users, count } = await personRepository.listUsers({
+				filter: {},
+				take: 10,
+				skip: 0,
+			});
+
+			expect(users.map((u) => u.id)).toEqual([person.id]);
+			expect(count).toBe(1);
+			await expect(personRepository.countUserListStatuses({})).resolves.toEqual({
+				all: 1,
+				active: 1,
+				deactivated: 0,
+			});
+		});
+	});
 });
