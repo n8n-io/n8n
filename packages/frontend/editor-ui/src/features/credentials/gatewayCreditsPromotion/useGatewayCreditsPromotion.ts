@@ -3,6 +3,7 @@ import type { AiGatewayPromotion, GatewayCreditsPromotion } from '@n8n/api-types
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 
 // The config is cached for up to an hour, so the client checks the dates itself.
 const isActive = (promotion: GatewayCreditsPromotion | null | undefined, now: number) =>
@@ -83,7 +84,9 @@ export function useGatewayCreditsPromotion({
 	const promotionText = computed(() => {
 		if (!isEnabled.value) return undefined;
 		const now = Date.now();
-		const nodeTypeName = toValue(nodeType);
+		// The node creator keys an uninstalled community node with a preview token.
+		const rawNodeTypeName = toValue(nodeType);
+		const nodeTypeName = rawNodeTypeName && removePreviewToken(rawNodeTypeName);
 		const credentialTypeName = toValue(credentialType);
 
 		// The credential modal follows the node that opened it, when that node uses the credential.

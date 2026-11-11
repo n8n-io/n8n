@@ -38,6 +38,8 @@ const setGatewayEnabled = (enabled: boolean) => {
 
 const NODE_TYPE = '@typesafe-ai/n8n-nodes-typesafe-ai.typeSafeAi';
 const TEXT = 'Free until October 10, 2026.';
+// The node creator key of NODE_TYPE before the package is installed.
+const PREVIEW_NODE_TYPE = '@typesafe-ai/n8n-nodes-preview-typesafe-ai.typeSafeAi';
 
 // Strapi serves node descriptions without `credentials`; only installed node types have them.
 const communityNode = (name: string, promotion: GatewayCreditsPromotion) =>
@@ -87,6 +89,15 @@ describe('useGatewayCreditsPromotion', () => {
 		setup({ text: TEXT });
 
 		expect(useGatewayCreditsPromotion({ nodeType: `${NODE_TYPE}Tool` }).promotionText.value).toBe(
+			TEXT,
+		);
+	});
+
+	it('returns the text for an uninstalled node keyed with the preview token', () => {
+		setup({ text: TEXT });
+		Object.assign(useNodeTypesStore(), { getNodeType: () => null });
+
+		expect(useGatewayCreditsPromotion({ nodeType: PREVIEW_NODE_TYPE }).promotionText.value).toBe(
 			TEXT,
 		);
 	});
@@ -288,6 +299,15 @@ describe('useGatewayCreditsPromotion', () => {
 				useGatewayCreditsPromotion({ nodeType: NODE_TYPE, credentialType: 'typeSafeAiApi' })
 					.promotionText.value,
 			).toBe(GATEWAY_TEXT);
+		});
+
+		it('returns the text for an uninstalled community node keyed with the preview token', () => {
+			setup({ text: TEXT });
+			gateway.promotions = [{ text: GATEWAY_TEXT, nodes: [NODE_TYPE] }];
+
+			expect(useGatewayCreditsPromotion({ nodeType: PREVIEW_NODE_TYPE }).promotionText.value).toBe(
+				GATEWAY_TEXT,
+			);
 		});
 
 		it('falls back to the Strapi promotion when no Gateway promotion matches', () => {
