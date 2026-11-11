@@ -1,3 +1,5 @@
+import { nextTick } from 'vue';
+
 import { render } from '@testing-library/vue';
 
 import { i18n } from '../../locale';
@@ -91,6 +93,135 @@ describe('Spinner', () => {
 		} finally {
 			requestFrame.mockRestore();
 		}
+	});
+
+	describe('brand motion', () => {
+		let frames: Map<number, FrameRequestCallback>;
+		let frameId: number;
+		let time: number;
+		let media: MediaQueryList;
+		let reduced: boolean;
+
+		beforeEach(() => {
+			frames = new Map();
+			frameId = 0;
+			time = 0;
+			reduced = false;
+			const events = new EventTarget();
+			media = {
+				get matches() {
+					return reduced;
+				},
+				media: '(prefers-reduced-motion: reduce)',
+				onchange: null,
+				addEventListener: events.addEventListener.bind(events),
+				removeEventListener: events.removeEventListener.bind(events),
+				dispatchEvent: events.dispatchEvent.bind(events),
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+			};
+			vi.stubGlobal(
+				'matchMedia',
+				vi.fn(() => media),
+			);
+			vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+				frames.set(++frameId, callback);
+				return frameId;
+			});
+			vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+				frames.delete(id);
+			});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+		});
+
+		async function advanceFrames(count: number) {
+			for (let index = 0; index < count; index++) {
+				time += 16;
+				const callbacks = [...frames.values()];
+				frames.clear();
+				callbacks.forEach((callback) => callback(time));
+				await nextTick();
+			}
+		}
+
+		function transforms(container: HTMLElement) {
+			return Array.from(container.querySelectorAll('[data-spinner="brand"] g'), (group) =>
+				group.getAttribute('transform'),
+			);
+		}
+
+		it('moves and scales the stems after the initial hold', async () => {
+			const { container, unmount } = render(Spinner, { props: { type: 'brand' } });
+			const initial = transforms(container);
+			expect(frames.size).toBe(1);
+			await advanceFrames(20);
+			expect(transforms(container)).toEqual(initial);
+			await advanceFrames(20);
+			const animated = transforms(container);
+			expect(animated.filter((_, index) => index % 2 === 0)).not.toEqual(
+				initial.filter((_, index) => index % 2 === 0),
+			);
+			expect(animated.filter((_, index) => index % 2 === 1)).not.toEqual(
+				initial.filter((_, index) => index % 2 === 1),
+			);
+			expect(frames.size).toBe(1);
+			unmount();
+		});
+
+		it('keeps the brand visible and still when reduced motion is set', async () => {
+			reduced = true;
+			const { container, getByRole, unmount } = render(Spinner, { props: { type: 'brand' } });
+			const initial = transforms(container);
+			expect(getByRole('status')).toBeInTheDocument();
+			expect(initial).toHaveLength(12);
+			expect(frames.size).toBe(0);
+			await advanceFrames(60);
+			expect(transforms(container)).toEqual(initial);
+			unmount();
+		});
+
+		it('stops and restarts when the motion preference changes', async () => {
+			const { container, unmount } = render(Spinner, { props: { type: 'brand' } });
+			const initial = transforms(container);
+			await advanceFrames(40);
+			reduced = true;
+			media.dispatchEvent(new Event('change'));
+			await nextTick();
+			expect(frames.size).toBe(0);
+			expect(transforms(container)).toEqual(initial);
+			reduced = false;
+			media.dispatchEvent(new Event('change'));
+			await nextTick();
+			expect(frames.size).toBe(1);
+			await advanceFrames(40);
+			expect(transforms(container)).not.toEqual(initial);
+			unmount();
+		});
+
+		it('stops when changed to grid and restarts when changed to brand', async () => {
+			const { rerender, unmount } = render(Spinner, { props: { type: 'brand' } });
+			expect(frames.size).toBe(1);
+			await rerender({ type: 'grid' });
+			expect(frames.size).toBe(0);
+			await rerender({ type: 'brand' });
+			expect(frames.size).toBe(1);
+			unmount();
+		});
+
+		it('cancels the pending frame on unmount', async () => {
+			const { unmount } = render(Spinner, { props: { type: 'brand' } });
+			await advanceFrames(40);
+			const pendingFrame = frameId;
+			unmount();
+			expect(window.cancelAnimationFrame).toHaveBeenCalledWith(pendingFrame);
+			expect(frames.size).toBe(0);
+			await advanceFrames(60);
+			expect(frames.size).toBe(0);
+		});
 	});
 
 	it('uses the translated brand loading label', () => {
