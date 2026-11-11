@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import type { AiUsageService } from '@/services/ai-usage.service';
+import type { ProxyTokenManager } from '@/services/proxy-token-manager';
 
 import type { InProcessEventBus } from '../../event-bus/in-process-event-bus';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
@@ -741,6 +742,30 @@ describe('SelfHealingAgentService', () => {
 			options.threadId,
 			'thread_cleanup',
 			user.id,
+		);
+	});
+
+	it('gives the context a resolver for pinned utility models on the run proxy', async () => {
+		const tokenManager = mock<ProxyTokenManager>();
+		const haiku = 'anthropic/claude-haiku-5-5';
+		options.createProxyRunConfig = vi
+			.fn()
+			.mockResolvedValue({ proxyBaseUrl: 'https://proxy.base', tokenManager });
+		models.resolveProxyModel.mockResolvedValue('anthropic/claude-opus-5-5');
+		models.resolveUtilityModelConfig.mockResolvedValue(haiku);
+
+		await service.execute(input, options);
+
+		const contextOptions = adapter.createContext.mock.calls[0][1];
+		await expect(contextOptions?.resolveUtilityModel?.(haiku)).resolves.toBe(haiku);
+		expect(models.resolveUtilityModelConfig).toHaveBeenCalledWith(
+			user,
+			{
+				proxyBaseUrl: 'https://proxy.base',
+				tokenManager,
+				proxyContext: { runId: options.runId, threadId: options.threadId },
+			},
+			haiku,
 		);
 	});
 
