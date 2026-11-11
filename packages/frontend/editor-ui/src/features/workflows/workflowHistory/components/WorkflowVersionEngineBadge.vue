@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { N8nBadge } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import type { VersionedWorkflowSettings } from 'n8n-workflow';
+import { pickVersionedSettings, type VersionedWorkflowSettings } from 'n8n-workflow';
 
 const props = defineProps<{
 	settings?: VersionedWorkflowSettings | null;
@@ -15,7 +15,7 @@ const settingsStore = useSettingsStore();
 const label = computed(() => {
 	if (!settingsStore.isModuleActive('engine-v2')) return null;
 
-	const engine = props.settings?.engineType ?? 'v1';
+	const engine = pickVersionedSettings(props.settings).engineType;
 	return i18n.baseText('workflowHistory.item.engine', { interpolate: { engine } });
 });
 </script>
