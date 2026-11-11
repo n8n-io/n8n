@@ -74,24 +74,28 @@ describe('createClientCredentialsTokenSource', () => {
 		expect(calls[0].body.get('scope')).toBe(expected);
 	});
 
-	it('reuses the token until it expires', async () => {
-		const { calls, fetchImpl } = granting(GRANT);
-		const source = createClientCredentialsTokenSource(login(), fetchImpl);
+	describe('the lifetime the login server states', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
 
-		await source.getToken();
-		await source.getToken();
+		it.each<[string, unknown, number]>([
+			['one that outlives the wait, so the token is reused', 600, 1],
+			['the same lifetime written as a string', '600', 1],
+			['one the wait outlives, so the token is minted again', 20, 2],
+			['a token that is already dead on arrival', 0, 2],
+			['a lifetime no server can mean, which falls back to the assumption', -1, 1],
+			['no lifetime at all, which falls back to the assumption', undefined, 1],
+			['one that is not a number, which falls back to the assumption', 'soon', 1],
+		])('mints %s', async (_name, expires_in, mints) => {
+			const { calls, fetchImpl } = granting({ ...GRANT, expires_in });
+			const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
-		expect(calls).toHaveLength(1);
-	});
+			await source.getToken();
+			vi.setSystemTime(Date.now() + 60_000);
+			await source.getToken();
 
-	it('asks again once the token has expired', async () => {
-		const { calls, fetchImpl } = granting({ ...GRANT, expires_in: 1 });
-		const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-		await source.getToken();
-		await source.getToken();
-
-		expect(calls).toHaveLength(2);
+			expect(calls).toHaveLength(mints);
+		});
 	});
 
 	it('asks again after the token is forgotten', async () => {
