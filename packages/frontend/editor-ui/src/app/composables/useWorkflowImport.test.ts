@@ -167,4 +167,15 @@ describe('useWorkflowImport', () => {
 		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 		expect(callOrder).toEqual(['fetchCredentialTypes', 'initialize']);
 	});
+
+	it('should not load credential types when no node needs them', async () => {
+		const credentialsStore = useCredentialsStore();
+
+		const storeRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
+
+		await importWorkflowExact({ workflow: createWorkflowData() });
+
+		expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
+	});
 });
