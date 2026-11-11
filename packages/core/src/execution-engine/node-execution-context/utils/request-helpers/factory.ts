@@ -18,7 +18,11 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
+import {
+	callEvalMockHandler,
+	normalizeLegacyRequest,
+	withEvalEgressProxy,
+} from '@/execution-engine/eval-mock-helpers';
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
@@ -91,7 +95,9 @@ export const getRequestHelperFunctions = (
 			if (Object.keys(traceHeaders).length) {
 				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
-			return await Container.get(OutboundHttp).requests().request(requestOptions);
+			return await Container.get(OutboundHttp)
+				.requests()
+				.request(withEvalEgressProxy(requestOptions, additionalData));
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),

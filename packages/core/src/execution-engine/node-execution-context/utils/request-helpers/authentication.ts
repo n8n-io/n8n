@@ -24,6 +24,7 @@ import {
 	callEvalMockHandler,
 	normalizeLegacyRequest,
 	resolveEvalMockRequestUrl,
+	withEvalEgressProxy,
 } from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
@@ -144,7 +145,9 @@ export async function httpRequestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		return await Container.get(OutboundHttp)
+			.requests()
+			.request(withEvalEgressProxy(requestOptions, additionalData));
 	} catch (error) {
 		// Keep the policy reason visible instead of reporting it as a failed API call.
 		if (hasPolicyRefusalMarker(error)) throw error;
@@ -193,7 +196,9 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
-				return await Container.get(OutboundHttp).requests().request(requestOptions);
+				return await Container.get(OutboundHttp)
+					.requests()
+					.request(withEvalEgressProxy(requestOptions, additionalData));
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
