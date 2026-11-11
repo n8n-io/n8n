@@ -82,6 +82,13 @@ describe('ReloadingHttpRequestClient', () => {
 		expect(built[1].close).toHaveBeenCalledOnce();
 	});
 
+	it('refuses streamed responses, which it cannot track', async () => {
+		await expect(client.request({ url: '/a', encoding: 'stream' })).rejects.toThrow(
+			UnexpectedError,
+		);
+		expect(built[0].request).not.toHaveBeenCalled();
+	});
+
 	it('refuses legacy requests, which it cannot track', async () => {
 		const asClient: HttpRequestClient = client;
 
