@@ -7,11 +7,19 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import type { INode } from 'n8n-workflow';
+
+function hasCredentialOnlyNodes(nodes: INode[]) {
+	return nodes.some((node) => !!node.extendsCredential || isCredentialOnlyNodeType(node.type));
+}
 
 export function useWorkflowImport(
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>,
 ) {
 	const route = useRoute();
+	const credentialsStore = useCredentialsStore();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations();
 
 	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
@@ -23,6 +31,16 @@ export function useWorkflowImport(
 	}) {
 		if (!workflowData.nodes || !workflowData.connections) {
 			throw new Error('Invalid workflow object');
+		}
+
+		// Credential-only nodes resolve their node type from the credential types.
+		// Preview instances do not load credential types on startup, so load them here.
+		if (hasCredentialOnlyNodes(workflowData.nodes)) {
+			try {
+				await credentialsStore.fetchCredentialTypes(false);
+			} catch (error) {
+				console.error('Failed to load credential types for workflow import', error);
+			}
 		}
 
 		resetWorkspace();
