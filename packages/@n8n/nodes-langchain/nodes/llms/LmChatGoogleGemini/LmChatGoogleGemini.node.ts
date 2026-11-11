@@ -48,6 +48,21 @@ export class N8nChatGoogleGenerativeAI extends ChatGoogleGenerativeAI {
 			description: typeof detail === 'string' ? detail : undefined,
 		});
 	}
+
+	// The SDK skips stream responses without candidates and drops their `promptFeedback`,
+	// so a blocked prompt ends the stream with no chunks and no block reason.
+	async *_streamResponseChunks(
+		...args: Parameters<ChatGoogleGenerativeAI['_streamResponseChunks']>
+	) {
+		let empty = true;
+		for await (const chunk of super._streamResponseChunks(...args)) {
+			empty = false;
+			yield chunk;
+		}
+		if (empty && !args[1].signal?.aborted) {
+			throw new OperationalError('Gemini returned an empty response');
+		}
+	}
 }
 
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */

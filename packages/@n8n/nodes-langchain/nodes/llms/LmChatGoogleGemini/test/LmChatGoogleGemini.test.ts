@@ -201,5 +201,29 @@ describe('LmChatGoogleGemini', () => {
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
 		});
+
+		it('should throw an empty response error when a stream has no candidates', async () => {
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			const event = JSON.stringify({ promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } });
+			mockedProxyFetch.mockResolvedValue(new Response(`data: ${event}\n\n`, { status: 200 }));
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			const consume = async () => {
+				for await (const _ of await (response as ChatGoogleGenerativeAI).stream('hello')) {
+					// Drain the stream.
+				}
+			};
+			const error = await consume().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
+		});
 	});
 });
