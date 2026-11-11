@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWorkflowDataProxyData,
 	NodeOutput,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -455,7 +456,7 @@ describe('hitl-tools', () => {
 					}),
 				);
 				context.getParentNodes.mockReturnValue([
-					mock<INode>({
+					mock<NodeTypeAndVersion>({
 						type: CHAT_TRIGGER_NODE_TYPE,
 						disabled: false,
 						parameters: { options: { responseMode: 'responseNodes' } },
