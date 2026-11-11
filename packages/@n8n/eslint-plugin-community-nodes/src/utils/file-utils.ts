@@ -344,7 +344,12 @@ function fileExistsWithCaseSync(filePath: string): boolean {
 	}
 }
 
+/** The n8n server serves icons in these formats only. */
 const ICON_EXTENSIONS = ['.svg', '.png'];
+
+export function isSupportedIconFile(filePath: string): boolean {
+	return ICON_EXTENSIONS.includes(path.extname(filePath).toLowerCase());
+}
 
 export function findSimilarIconFiles(targetPath: string, baseDir: string): string[] {
 	try {
@@ -357,9 +362,7 @@ export function findSimilarIconFiles(targetPath: string, baseDir: string): strin
 			return [];
 		}
 
-		const files = readdirSync(searchDir).filter((file) =>
-			ICON_EXTENSIONS.includes(path.extname(file).toLowerCase()),
-		);
+		const files = readdirSync(searchDir).filter(isSupportedIconFile);
 
 		// Map icon base names to their actual filenames so suggestions keep their extension.
 		const baseNameToFiles = new Map<string, string[]>();

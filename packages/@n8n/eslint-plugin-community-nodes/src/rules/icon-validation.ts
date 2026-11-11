@@ -10,12 +10,15 @@ import {
 	getStringLiteralValue,
 	validateIconPath,
 	findSimilarIconFiles,
+	isSupportedIconFile,
 	isFileType,
 	createRule,
 } from '../utils/index.js';
 
 const messages = {
 	iconFileNotFound: 'Icon file "{{ iconPath }}" does not exist',
+	unsupportedIconFormat:
+		'Icon file "{{ iconPath }}" must be an SVG or PNG file. n8n does not show other image formats.',
 	invalidIconPath: 'Icon path "{{ iconPath }}" must use file: protocol and be a string',
 	missingIcon: 'Node/Credential class must have an icon property defined',
 	addPlaceholder: 'Add icon property with placeholder',
@@ -72,6 +75,15 @@ export const IconValidationRule = createRule({
 					messageId: 'invalidIconPath',
 					data: { iconPath },
 					suggest: suggestions,
+				});
+				return false;
+			}
+
+			if (!isSupportedIconFile(iconPath)) {
+				context.report({
+					node,
+					messageId: 'unsupportedIconFormat',
+					data: { iconPath: iconPath.replace(/^file:/, '') },
 				});
 				return false;
 			}
