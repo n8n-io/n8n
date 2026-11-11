@@ -705,9 +705,10 @@ describe('migrate_workflow', () => {
 		return deps;
 	};
 
-	it('refuses a rule without a built-in fix before touching the workflow', async () => {
+	it('refuses a rule without a built-in fix before changing the workflow', async () => {
 		const deps = makeDeps();
 		deps.migrationRegistry.has.mockReturnValue(false);
+		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
 
 		const result = await createMigrateWorkflowTool(owner, deps).handler({
 			ruleId: 'removed-node',
@@ -719,8 +720,23 @@ describe('migrate_workflow', () => {
 			success: false,
 			error: expect.stringContaining('update_workflow'),
 		});
-		expect(deps.workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 		expect(deps.migrationService.migrateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('checks access to the workflow before it checks the rule', async () => {
+		const deps = makeDeps();
+		deps.migrationRegistry.has.mockReturnValue(false);
+		deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', false));
+
+		const result = await createMigrateWorkflowTool(owner, deps).handler({
+			ruleId: 'removed-node',
+			workflowId: 'wf-1',
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toMatchObject({
+			error: expect.stringContaining('not available in MCP'),
+		});
 	});
 
 	it('refuses a workflow that is not available in MCP', async () => {

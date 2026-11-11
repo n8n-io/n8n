@@ -87,14 +87,15 @@ export const createMigrateWorkflowTool = (
 		};
 
 		try {
+			// The same gate every MCP write applies: access, not archived, available in MCP.
+			await getMcpWorkflow(workflowId, user, ['workflow:update'], deps.workflowFinderService);
+
 			if (!deps.migrationRegistry.has(ruleId)) {
 				throw new UserError(
 					`Rule '${ruleId}' has no built-in fix. Fix the workflow with update_workflow, following the rule's recommendations.`,
 				);
 			}
 
-			// The same gate every MCP write applies: access, not archived, available in MCP.
-			await getMcpWorkflow(workflowId, user, ['workflow:update'], deps.workflowFinderService);
 			await deps.collaborationService.ensureWorkflowEditable(workflowId);
 
 			const result = await deps.migrationService.migrateWorkflow(ruleId, workflowId, user, {
