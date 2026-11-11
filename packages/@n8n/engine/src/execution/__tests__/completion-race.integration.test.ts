@@ -248,8 +248,8 @@ describe('execution completion under racy step:settled delivery (integration)', 
 			 *    │       └──► x ─────┘
 			 *    └─────► t
 			 *
-			 * Between two passes of the loop every step so far has settled, and the
-			 * next pass of B is not planned until x's event is handled.
+			 * Between two passes of the loop no step is queued or running, and the
+			 * next pass of B is not planned until x's `step:settled` event is handled.
 			 */
 			title: 'a terminal step settles between two passes of a loop',
 			graph: {
