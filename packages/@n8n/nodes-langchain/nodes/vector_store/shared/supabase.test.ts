@@ -2,7 +2,12 @@ vi.mock('@supabase/supabase-js', () => ({
 	createClient: vi.fn(),
 }));
 
+vi.mock('@n8n/ai-utilities', () => ({
+	aiClientFetch: vi.fn(),
+}));
+
 import { createClient } from '@supabase/supabase-js';
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { UserError } from 'n8n-workflow';
 
 import { createSupabaseClient, resolveSchema } from './supabase';
@@ -23,6 +28,7 @@ describe('createSupabaseClient', () => {
 		expect(createClient).toHaveBeenCalledWith('https://example.supabase.co', 'service-role-key', {
 			...serverSideAuthOptions,
 			db: { schema: 'public' },
+			global: { fetch: aiClientFetch },
 		});
 	});
 
@@ -32,7 +38,17 @@ describe('createSupabaseClient', () => {
 		expect(createClient).toHaveBeenCalledWith(baseCredentials.host, baseCredentials.serviceRole, {
 			...serverSideAuthOptions,
 			db: { schema: 'myschema' },
+			global: { fetch: aiClientFetch },
 		});
+	});
+
+	it('bounds responses by wiring the shared aiClientFetch as the global fetch', () => {
+		createSupabaseClient(baseCredentials);
+
+		const options = vi.mocked(createClient).mock.calls.at(-1)?.[2] as {
+			global?: { fetch?: unknown };
+		};
+		expect(options.global?.fetch).toBe(aiClientFetch);
 	});
 });
 
@@ -66,6 +82,15 @@ describe('resolveSchema', () => {
 		'resolveSchema(%s, %j) throws UserError',
 		(useCustomSchema, schema) => {
 			expect(() => resolveSchema(useCustomSchema, schema)).toThrow(UserError);
+		},
+	);
+
+	// `RegExp.test` coerces its argument, so a non-string value would otherwise
+	// slip past validation as "undefined"/"null"/"true".
+	it.each([undefined, null, true, false])(
+		'resolveSchema(true, %j) throws UserError for a non-string schema',
+		(schema) => {
+			expect(() => resolveSchema(true, schema as unknown as string)).toThrow(UserError);
 		},
 	);
 });

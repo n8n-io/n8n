@@ -2,6 +2,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
+import { aiClientFetch } from '@n8n/ai-utilities';
+
 // PostgreSQL unquoted identifier syntax, restricted to ASCII for HTTP header safety (RFC 7230).
 const VALID_SCHEMA_REGEX = /^[A-Za-z_][A-Za-z0-9_$]*$/;
 
@@ -19,7 +21,9 @@ const VALID_SCHEMA_REGEX = /^[A-Za-z_][A-Za-z0-9_$]*$/;
 export function resolveSchema(useCustomSchema: boolean, schema: string): string {
 	if (!useCustomSchema) return 'public';
 
-	if (!VALID_SCHEMA_REGEX.test(schema)) {
+	// RegExp.test coerces its argument, so `undefined`/`null`/booleans would
+	// otherwise pass as "undefined"/"null"/"true". Reject non-strings first.
+	if (typeof schema !== 'string' || !VALID_SCHEMA_REGEX.test(schema)) {
 		throw new UserError(
 			`Schema name "${schema}" is invalid. Use only letters, digits, underscores, and dollar signs; must start with a letter or underscore.`,
 		);
@@ -31,6 +35,10 @@ export function resolveSchema(useCustomSchema: boolean, schema: string): string 
 // supabase-js arms a 30s token-refresh interval per client that keeps the
 // whole client graph reachable for the process lifetime. The vector store
 // only talks to PostgREST with a service-role key.
+//
+// supabase-js accepts `global.fetch`, so wire the bounded AI fetch instead of
+// the SDK default transport. This keeps an unbounded body from exhausting the
+// heap if the Supabase endpoint is hostile or misbehaves.
 //
 // The return annotation `: SupabaseClient` is not sufficient on its own: TypeScript
 // structurally checks the inferred return type, SupabaseClient<any, any, string>,
@@ -45,5 +53,6 @@ export function createSupabaseClient(
 	return createClient(credentials.host as string, credentials.serviceRole as string, {
 		auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
 		db: { schema },
+		global: { fetch: aiClientFetch },
 	}) as SupabaseClient;
 }

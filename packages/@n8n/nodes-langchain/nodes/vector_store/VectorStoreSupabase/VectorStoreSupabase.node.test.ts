@@ -24,6 +24,7 @@ vi.mock('@langchain/community/vectorstores/supabase', () => ({
 
 vi.mock('@n8n/ai-utilities', () => ({
 	metadataFilterField: {},
+	aiClientFetch: vi.fn(),
 	createVectorStoreNode: (
 		config: Pick<
 			VectorStoreNodeConstructorArgs<never>,
