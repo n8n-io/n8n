@@ -1,0 +1,60 @@
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.test.ts
+  s_8ac3ccee0e6ce8::t_9d1a018465a0ba 16,20,25-26,55-62,74-78
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 32-33
+packages/modules/insights/frontend/README.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 42-43
+packages/modules/apps/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 15-16
+packages/modules/insights/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 16-17
+packages/modules/inbox/frontend/README.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 66-67
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_8ac3ccee0e6ce8::t_71e6529a660ba3 86,96-104,107,165
+packages/modules/type-availability-policies/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 16-17
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 672-674
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_8ac3ccee0e6ce8::t_5df32271876310 15-16
+packages/modules/apps/frontend/README.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 32-33
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.ts
+  s_8ac3ccee0e6ce8::t_cdf019ffc91b16 20-23,29-30
+packages/modules/otel/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 15-16
+packages/modules/otel/frontend/README.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 41-42
+packages/@n8n/oxlint-config/src/configs/vize.ts
+  s_8ac3ccee0e6ce8::t_71e6529a660ba3 13-17
+packages/modules/inbox/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 15-16
+packages/modules/instance-registry/frontend/README.md
+  s_8ac3ccee0e6ce8::t_d51ea5c32d5946 26-27
+packages/modules/mcp/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 16-17
+packages/modules/self-healing/frontend/package.json
+  s_8ac3ccee0e6ce8::t_5df32271876310 15-16
+scripts/lint-parity/oxlint-gap.json
+  s_8ac3ccee0e6ce8::t_71e6529a660ba3 80,102,109,116,123,130,145,204,211,218,225,232
+  s_8ac3ccee0e6ce8::t_385e78707aadc0 83,90,97
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_8ac3ccee0e6ce8::t_5df32271876310 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0937720b300b35be42181422404e8730b3f030e0",
+  "prompts": {},
+  "sessions": {
+    "s_8ac3ccee0e6ce8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e35438a-dee8-4247-87ca-0c4c57102d3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
