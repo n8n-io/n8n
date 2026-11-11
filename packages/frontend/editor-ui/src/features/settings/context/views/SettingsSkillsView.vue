@@ -448,11 +448,11 @@ async function onSkillFilesPicked(event: Event) {
 	} catch (error) {
 		if (pendingUpload !== request) return;
 		// The same texts as the upload step in the modal, so both paths read alike.
-		const key =
+		const message =
 			error instanceof AgentSkillImportError
-				? error.i18nKey
-				: 'agents.builder.skills.import.invalidFolder';
-		showError(new Error(i18n.baseText(key)), i18n.baseText('settings.context.skills.upload.error'));
+				? i18n.baseText(error.i18nKey, { interpolate: error.interpolate })
+				: i18n.baseText('agents.builder.skills.import.invalidFolder');
+		showError(new Error(message), i18n.baseText('settings.context.skills.upload.error'));
 	} finally {
 		if (pendingUpload === request) dropPendingUpload();
 	}
@@ -1067,12 +1067,20 @@ onMounted(async () => {
 					<N8nText color="text-light">
 						{{ i18n.baseText('settings.context.skills.empty.description') }}
 					</N8nText>
-					<N8nButton
+					<N8nActionDropdown
 						v-if="scopeOptions.length > 0"
-						:label="i18n.baseText('settings.context.skills.actions.create')"
-						data-test-id="skills-empty-create-button"
-						@click="openCreateModal()"
-					/>
+						:items="createMenuItems"
+						placement="bottom"
+						data-test-id="skills-empty-create-menu"
+						@select="onCreateMenuSelect"
+					>
+						<template #activator>
+							<N8nButton data-test-id="skills-empty-create-button">
+								{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nActionDropdown>
 				</div>
 			</template>
 		</SkillsTable>

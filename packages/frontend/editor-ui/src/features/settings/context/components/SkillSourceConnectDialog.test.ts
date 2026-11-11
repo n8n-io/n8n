@@ -25,8 +25,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
 }));
 
-// N8nDialog teleports out of the tree (Reka UI's DialogPortal), so replace it
-// with a render-inline pass-through that keeps the open state and the header.
+// N8nDialog teleports out of the tree (Reka UI's DialogPortal), so it renders inline here. The
+// v2 select and combobox also open in a portal, so they are native controls with the same
+// props and events. The design system tests cover their own search and keyboard behavior.
 vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
@@ -40,7 +41,48 @@ vi.mock('@n8n/design-system', async () => {
 			</div>
 		`,
 	};
-	return { ...actual, N8nDialog };
+	const N8nSelect2 = {
+		name: 'N8nSelect2',
+		props: ['modelValue', 'items', 'disabled', 'placeholder'],
+		emits: ['update:modelValue'],
+		template: `
+			<select
+				:value="modelValue"
+				:disabled="disabled"
+				@change="$emit('update:modelValue', $event.target.value)"
+			>
+				<option
+					v-for="item in items.filter((entry) => entry.type !== 'separator')"
+					:key="item.value"
+					:value="item.value"
+				>{{ item.label }}</option>
+			</select>
+		`,
+	};
+	const N8nCombobox2 = {
+		name: 'N8nCombobox2',
+		props: ['modelValue', 'items', 'placeholder', 'emptyText', 'loading'],
+		emits: ['update:modelValue', 'update:searchTerm'],
+		template: `
+			<div>
+				<input
+					:placeholder="placeholder"
+					data-test-id="repository-search"
+					@input="$emit('update:searchTerm', $event.target.value)"
+				/>
+				<span data-test-id="repository-value">{{ modelValue }}</span>
+				<button
+					v-for="item in items"
+					:key="item.value"
+					type="button"
+					data-test-id="repository-option"
+					@click="$emit('update:modelValue', item.value)"
+				>{{ item.label }}</button>
+				<span v-if="items.length === 0" data-test-id="repository-empty">{{ emptyText }}</span>
+			</div>
+		`,
+	};
+	return { ...actual, N8nDialog, N8nSelect2, N8nCombobox2 };
 });
 
 const SCOPES: AgentSkillModalScopeOption[] = [
@@ -49,6 +91,9 @@ const SCOPES: AgentSkillModalScopeOption[] = [
 	{ value: 'project:team-1', label: 'Marketing', icon: 'layers' },
 ];
 
+const SKILL_MD =
+	'---\nname: brand-voice\ndescription: Write clear copy.\n---\n\nUse short sentences.';
+
 function discovered(overrides: Partial<DiscoveredSkill> = {}): DiscoveredSkill {
 	return {
 		key: 'skills/brand-voice',
@@ -56,6 +101,8 @@ function discovered(overrides: Partial<DiscoveredSkill> = {}): DiscoveredSkill {
 		name: 'brand-voice',
 		description: 'Write clear customer-facing copy.',
 		skippedFiles: [],
+		previewFiles: [{ path: 'SKILL.md', text: SKILL_MD }],
+		previewTruncated: false,
 		nameTaken: false,
 		error: null,
 		check: { verdict: 'pass', findings: [] },
@@ -100,33 +147,39 @@ const REPOSITORIES: SkillSourceRepositoryList = {
 let skillsStore: MockedStore<typeof useSkillsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 
+type View = ReturnType<typeof render>;
+
 function render(scopeOptions = SCOPES) {
 	return renderDialog({ props: { open: true, scopeOptions } });
 }
 
-async function startLinkMode(view: ReturnType<typeof render>) {
-	await userEvent.click(view.getByTestId('skill-source-mode-url'));
+async function selectScope(view: View, value: string) {
+	await userEvent.selectOptions(view.getByTestId('skill-source-scope-select'), value);
 }
 
-async function pick(view: ReturnType<typeof render>, testId: string, text: string) {
-	await userEvent.click(view.getByTestId(testId));
-	const options = await view.findAllByText(text);
-	await userEvent.click(options[options.length - 1]);
+async function selectCredential(view: View, value: string) {
+	const select = view.getByTestId('skill-source-credential-select');
+	await waitFor(() => expect(within(select).getByRole('option', { name: value })).toBeTruthy());
+	await userEvent.selectOptions(select, within(select).getByRole('option', { name: value }));
 }
 
-async function selectScope(view: ReturnType<typeof render>, label: string) {
-	// The scope select is on the link and repository steps, after the start screen.
-	if (view.queryByTestId('skill-source-mode-url')) await startLinkMode(view);
-	await userEvent.click(view.getByTestId('skill-source-scope-select'));
-	await userEvent.click(await view.findByText(label));
+async function typeRepository(view: View, text: string) {
+	await userEvent.type(view.getByTestId('repository-search'), text);
 }
 
-async function pasteLink(view: ReturnType<typeof render>, link: string) {
-	if (view.queryByTestId('skill-source-mode-url')) await startLinkMode(view);
-	const field = view.getByTestId('skill-source-url-input');
-	const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
-	await userEvent.type(input, link);
+async function pickRepository(view: View, label: string) {
+	await userEvent.click(await view.findByRole('button', { name: label }));
+}
+
+async function next(view: View) {
 	await userEvent.click(view.getByTestId('skill-source-next'));
+}
+
+/** Pastes a link with no credential and goes to the review. */
+async function review(view: View, link = 'https://github.com/acme/skills') {
+	await typeRepository(view, link);
+	await next(view);
+	await view.findByTestId('skill-source-review');
 }
 
 describe('SkillSourceConnectDialog', () => {
@@ -142,917 +195,796 @@ describe('SkillSourceConnectDialog', () => {
 			scopes: ['credential:create'],
 		} as Project;
 		projectsStore.myProjects = [
-			{ id: 'team-1', type: 'team', scopes: ['credential:create'] },
-			{ id: 'team-2', type: 'team', scopes: ['credential:read'] },
+			{ id: 'team-1', type: 'team', name: 'Marketing', scopes: ['credential:create'] },
+			{ id: 'team-2', type: 'team', name: 'Sales', scopes: ['credential:read'] },
 		] as ProjectListItem[];
 		showErrorMock.mockClear();
 	});
 
-	it('starts on "Connect a source" with the two ways to connect', () => {
-		const view = render();
-
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Connect a source');
-		expect(view.getByTestId('skill-source-mode-account')).toHaveTextContent('Connect to GitHub');
-		expect(view.getByTestId('skill-source-mode-url')).toHaveTextContent('paste URL manually');
-		expect(skillsStore.fetchSourceCredentials).not.toHaveBeenCalled();
-	});
-
-	it('opens "Paste a GitHub link" with the first scope the user can create in', async () => {
-		const view = render();
-		await startLinkMode(view);
-
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
-		expect(view.getByTestId('skill-source-scope-hint')).toHaveTextContent(
-			'Every project can use the skills. Only admins manage Global. All skills from this source get this scope.',
-		);
-		expect(view.getByTestId('skill-source-next')).toBeDisabled();
-	});
-
-	it('reads the link, lets the user pick skills, and imports them', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const response = {
-			sourceId: 'src-1',
-			imported: [{ key: 'skills/brand-voice', skillId: 'k1', name: 'brand-voice' }],
-			failed: [],
-		};
-		skillsStore.connectSource.mockResolvedValue(response);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills',
-			scope: 'instance',
-		});
-		expect(await view.findByText('Choose skills')).toBeInTheDocument();
-		expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
-		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 2');
-
-		// Unpick one skill: only the other is imported.
-		const seo = view.getByTestId('skill-source-skill-skills/seo-check');
-		await userEvent.click(within(seo).getByRole('checkbox'));
-		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
-		await userEvent.click(view.getByTestId('skill-source-add'));
-
-		expect(skillsStore.connectSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills',
-			scope: 'instance',
-			skillKeys: ['skills/brand-voice'],
-		});
-		await waitFor(() =>
-			expect(view.emitted('connected')).toEqual([
-				[{ response, sourceLabel: 'acme/skills', scopeLabel: 'Global' }],
-			]),
-		);
-		expect(view.emitted('update:open')).toEqual([[false]]);
-	});
-
-	it('sends the project of a project scope', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const view = render([SCOPES[2]]);
-		await startLinkMode(view);
-
-		expect(view.getByTestId('skill-source-scope-hint')).toHaveTextContent(
-			'Members of Marketing can use the skills.',
-		);
-		await pasteLink(view, 'https://github.com/acme/skills/tree/main/skills');
-
-		expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills/tree/main/skills',
-			scope: 'project',
-			projectId: 'team-1',
-		});
-	});
-
-	it('sends a repository link with a query or a fragment to the server', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills?tab=readme-ov-file#skills');
-
-		expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills?tab=readme-ov-file#skills',
-			scope: 'instance',
-		});
-	});
-
-	it.each([
-		{
-			link: 'https://gitlab.com/acme/skills',
-			text: 'Only GitHub links work for now. Use https://github.com/owner/repo.',
-		},
-		{
-			link: 'github.com/acme',
-			text: 'This is not a GitHub repository link. Use https://github.com/owner/repo.',
-		},
-	])('refuses $link without asking the server', async ({ link, text }) => {
-		const view = render();
-
-		await pasteLink(view, link);
-
-		expect(view.getByTestId('skill-source-link-error')).toHaveTextContent(text);
-		expect(skillsStore.discoverSource).not.toHaveBeenCalled();
-	});
-
-	it.each([
-		{
-			name: 'an unreadable link',
-			error: new ResponseError('Bad link', {
-				httpStatusCode: 400,
-				meta: { reason: 'invalid_url' },
-			}),
-			text: 'This is not a GitHub repository link. Use https://github.com/owner/repo.',
-		},
-		{
-			name: 'a private or missing repository',
-			error: new ResponseError('Repository not found', {
-				httpStatusCode: 404,
-				meta: { reason: 'not_found' },
-			}),
-			text: 'n8n cannot read this repository. It is private or does not exist.',
-		},
-		{
-			name: 'a link while skill sync is off',
-			error: new ResponseError('Not Found', { httpStatusCode: 404 }),
-			text: 'Could not read the link',
-		},
-		{
-			name: 'a link without skills',
-			error: new ResponseError('No SKILL.md found in acme/skills', {
-				httpStatusCode: 422,
-				meta: { reason: 'no_skills_found' },
-			}),
-			text: 'n8n found no SKILL.md files at this link.',
-		},
-		{
-			name: 'a link while GitHub limits the requests',
-			error: new ResponseError('GitHub answered with status 403.', {
-				httpStatusCode: 429,
-				meta: { reason: 'rate_limited' },
-			}),
-			text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
-		},
-		{
-			name: 'a link in a repository that is too large',
-			error: new ResponseError('The repository is too large. Link to the folder.', {
-				httpStatusCode: 422,
-				meta: { reason: 'archive_too_large' },
-			}),
-			text: 'This repository is too large for n8n to read.',
-		},
-		{
-			name: 'a link with a reason the editor does not know',
-			error: new ResponseError('Something new', {
-				httpStatusCode: 500,
-				meta: { reason: 'something_new' },
-			}),
-			text: 'Could not read the link',
-		},
-		{
-			name: 'a link to a missing branch',
-			link: 'https://github.com/acme/skills/tree/no-such-branch/skills',
-			error: new ResponseError('Branch not found', {
-				httpStatusCode: 400,
-				meta: { reason: 'invalid_url' },
-			}),
-			text: 'n8n cannot find this branch in the repository. Check the branch name in the link.',
-		},
-	])('says why it cannot read $name', async ({ error, text, link }) => {
-		skillsStore.discoverSource.mockRejectedValue(error);
-		const view = render();
-
-		await pasteLink(view, link ?? 'https://github.com/acme/skills');
-
-		const callout = await view.findByTestId('skill-source-link-error');
-		expect(callout).toHaveTextContent(text);
-		expect(callout).not.toHaveTextContent(error.message);
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
-	});
-
-	it.each([
-		{
-			where: 'global' as const,
-			scope: 'Global',
-			text: 'acme/skills is already connected in Global. Every project can use its skills.',
-		},
-		{
-			where: 'scope' as const,
-			scope: 'Marketing',
-			text: 'acme/skills is already connected in Marketing.',
-		},
-	])('blocks a source already connected in $where', async ({ where, scope, text }) => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({ duplicate: { kind: 'blocked', where, sourceId: null } }),
-		);
-		const view = render();
-		if (scope !== 'Global') await selectScope(view, scope);
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect((await view.findByTestId('skill-source-duplicate')).textContent?.trim()).toBe(text);
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
-		expect(view.getByTestId('skill-source-next')).toBeDisabled();
-	});
-
-	it('opens the visible source from the duplicate message', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: 'source-1' } }),
-		);
-		const view = render();
-		await startLinkMode(view);
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(view.getByTestId('skill-source-next'));
-		await userEvent.click(await view.findByTestId('skill-source-view-existing'));
-		expect(view.emitted('openSource')).toEqual([['source-1']]);
-	});
-
-	it('warns about a source connected in other projects and lets the user go on', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				duplicate: { kind: 'warning', projects: [{ id: 'team-2', name: 'Sales' }] },
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect(await view.findByText('Choose skills')).toBeInTheDocument();
-		expect(view.getByTestId('skill-source-duplicate')).toHaveTextContent(
-			'acme/skills is also connected in Sales. You can connect it here too.',
-		);
-	});
-
-	it('does not let the user pick a skill whose name is taken in the scope', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				skills: [
-					discovered(),
-					discovered({
-						key: 'skills/seo-check',
-						location: 'skills/seo-check',
-						name: 'seo-check',
-						nameTaken: true,
-					}),
-				],
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const taken = await view.findByTestId('skill-source-skill-skills/seo-check');
-		expect(within(taken).getByTestId('skill-source-skill-name-taken')).toHaveTextContent(
-			'Name taken',
-		);
-		expect(within(taken).getByTestId('skill-source-skill-reason')).toHaveTextContent(
-			'A skill named seo-check already exists in Global.',
-		);
-		expect(within(taken).getByRole('checkbox')).toBeDisabled();
-		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
-	});
-
-	it('shows the security check of each skill, and does not let the user pick a blocked one', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				skills: [
-					discovered(),
-					discovered({
-						key: 'skills/web-scraper',
-						location: 'skills/web-scraper',
-						name: 'web-scraper',
-						check: {
-							verdict: 'needs_review',
-							findings: [
-								{
-									rule: 'hidden_unicode',
-									severity: 'needs_review',
-									file: 'SKILL.md',
-									detail: 'Server text',
-								},
-								{
-									rule: 'new_url',
-									severity: 'info',
-									file: 'SKILL.md',
-									domain: 'scraper.example.com',
-									detail: 'Server text',
-								},
-								{
-									rule: 'new_url',
-									severity: 'info',
-									file: 'references/api.md',
-									domain: 'api.example.com',
-									detail: 'Server text',
-								},
-							],
-						},
-					}),
-					discovered({
-						key: 'skills/shell-runner',
-						location: 'skills/shell-runner',
-						name: 'shell-runner',
-						check: {
-							verdict: 'blocked',
-							findings: [
-								{
-									rule: 'over_limit',
-									severity: 'blocked',
-									file: 'references/big.md',
-									detail: 'Server text',
-								},
-								{ rule: 'lossy_conversion', severity: 'needs_review', detail: 'Server text' },
-								{
-									rule: 'new_url',
-									severity: 'info',
-									file: 'SKILL.md',
-									domain: 'shell.example.com',
-									detail: 'Server text',
-								},
-							],
-						},
-					}),
-				],
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const passed = await view.findByTestId('skill-source-skill-skills/brand-voice');
-		expect(within(passed).getByTestId('skill-source-skill-check')).toHaveTextContent('Passed');
-		expect(within(passed).queryByTestId('skill-source-skill-findings')).not.toBeInTheDocument();
-
-		const review = view.getByTestId('skill-source-skill-skills/web-scraper');
-		expect(within(review).getByTestId('skill-source-skill-check')).toHaveTextContent('Review');
-		const reviewFindings = within(review).getByTestId('skill-source-skill-findings');
-		expect(reviewFindings).toHaveTextContent('Hidden Unicode characters in SKILL.md');
-		expect(reviewFindings).not.toHaveTextContent('domain');
-		expect(reviewFindings).not.toHaveTextContent('Server text');
-		expect(within(review).getByTestId('skill-source-skill-domains')).toHaveTextContent(
-			'Links to scraper.example.com, api.example.com',
-		);
-		expect(within(review).getByRole('checkbox')).not.toBeDisabled();
-
-		const blocked = view.getByTestId('skill-source-skill-skills/shell-runner');
-		expect(within(blocked).getByTestId('skill-source-skill-check')).toHaveTextContent('Blocked');
-		expect(within(blocked).getByTestId('skill-source-skill-findings')).toHaveTextContent(
-			'Over the size limits in references/big.md. Content that n8n cannot convert exactly',
-		);
-		expect(within(blocked).queryByTestId('skill-source-skill-domains')).not.toBeInTheDocument();
-		expect(within(blocked).getByRole('checkbox')).toBeDisabled();
-		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 2');
-	});
-
-	it('shows the findings of a blocked skill that n8n cannot read, not the read error', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				skills: [
-					discovered({
-						error: { reason: 'parse_error', message: 'Server text' },
-						check: {
-							verdict: 'blocked',
-							findings: [
-								{
-									rule: 'over_limit',
-									severity: 'blocked',
-									file: 'SKILL.md',
-									detail: 'Server text',
-								},
-							],
-						},
-					}),
-				],
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const row = await view.findByTestId('skill-source-skill-skills/brand-voice');
-		expect(within(row).getByTestId('skill-source-skill-findings')).toHaveTextContent(
-			'Over the size limits in SKILL.md',
-		);
-		expect(within(row).queryByTestId('skill-source-skill-reason')).not.toBeInTheDocument();
-	});
-
-	it('imports a skill that needs review only after "I reviewed the warnings"', async () => {
-		const review = discovered({
-			key: 'skills/web-scraper',
-			location: 'skills/web-scraper',
-			name: 'web-scraper',
-			check: {
-				verdict: 'needs_review',
-				findings: [
-					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
-				],
-			},
-		});
-		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
-		skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const add = await view.findByTestId('skill-source-add');
-		expect(add).toBeDisabled();
-		await userEvent.click(view.getByRole('checkbox', { name: 'I reviewed the warnings' }));
-		expect(add).not.toBeDisabled();
-		await userEvent.click(add);
-
-		expect(skillsStore.connectSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills',
-			scope: 'instance',
-			skillKeys: ['skills/brand-voice', 'skills/web-scraper'],
-			reviewedSkillKeys: ['skills/web-scraper'],
-		});
-	});
-
-	it('clears "I reviewed the warnings" when the user unpicks every skill that needs review', async () => {
-		const review = discovered({
-			key: 'skills/web-scraper',
-			location: 'skills/web-scraper',
-			name: 'web-scraper',
-			check: {
-				verdict: 'needs_review',
-				findings: [
-					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
-				],
-			},
-		});
-		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		await userEvent.click(await view.findByRole('checkbox', { name: 'I reviewed the warnings' }));
-		const row = view.getByTestId('skill-source-skill-skills/web-scraper');
-		await userEvent.click(within(row).getByRole('checkbox'));
-		await userEvent.click(within(row).getByRole('checkbox'));
-
-		expect(view.getByRole('checkbox', { name: 'I reviewed the warnings' })).not.toBeChecked();
-		expect(view.getByTestId('skill-source-add')).toBeDisabled();
-	});
-
-	it('asks for no review when the user unpicks every skill that needs it', async () => {
-		const review = discovered({
-			key: 'skills/web-scraper',
-			location: 'skills/web-scraper',
-			name: 'web-scraper',
-			check: {
-				verdict: 'needs_review',
-				findings: [
-					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
-				],
-			},
-		});
-		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
-		skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const row = await view.findByTestId('skill-source-skill-skills/web-scraper');
-		await userEvent.click(within(row).getByRole('checkbox'));
-		expect(view.queryByTestId('skill-source-reviewed-warnings')).not.toBeInTheDocument();
-		await userEvent.click(view.getByTestId('skill-source-add'));
-
-		expect(skillsStore.connectSource).toHaveBeenCalledWith({
-			url: 'https://github.com/acme/skills',
-			scope: 'instance',
-			skillKeys: ['skills/brand-voice'],
-		});
-	});
-
-	it('says why n8n cannot read a skill in the list, without the server detail', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				skills: [
-					discovered(),
-					discovered({
-						key: 'skills/seo-check',
-						location: 'skills/seo-check',
-						name: null,
-						description: null,
-						error: {
-							reason: 'parse_error',
-							message: 'instructions: Instructions must be 65536 characters or fewer',
-						},
-					}),
-				],
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const broken = await view.findByTestId('skill-source-skill-skills/seo-check');
-		const reason = within(broken).getByTestId('skill-source-skill-reason');
-		expect(reason).toHaveTextContent(
-			'n8n cannot read this SKILL.md. Check its name and description.',
-		);
-		expect(reason).not.toHaveTextContent('65536');
-		expect(within(broken).getByRole('checkbox')).toBeDisabled();
-		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
-	});
-
-	it('says when n8n lists only the first skills of a source', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery({ truncated: true }));
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect(await view.findByTestId('skill-source-truncated')).toHaveTextContent(
-			'This source has more than 200 skills. n8n lists the first 200. Link a folder to see the others.',
-		);
-	});
-
-	it('says when some skills are nested deeper than n8n reads', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery({ tooDeep: 2 }));
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect(await view.findByTestId('skill-source-too-deep')).toHaveTextContent(
-			'The skills are nested deeper than n8n reads. n8n reads SKILL.md files up to 8 folders deep.',
-		);
-	});
-
-	it('does not show the truncated notice for a source that n8n lists in full', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		expect(await view.findByText('Choose skills')).toBeInTheDocument();
-		expect(view.queryByTestId('skill-source-truncated')).not.toBeInTheDocument();
-	});
-
-	it('names the files the import skips for each skill', async () => {
-		skillsStore.discoverSource.mockResolvedValue(
-			discovery({
-				skills: [
-					discovered({ skippedFiles: ['scripts/run.py'] }),
-					discovered({
-						key: 'skills/seo-check',
-						location: 'skills/seo-check',
-						name: 'seo-check',
-						skippedFiles: [
-							'scripts/run.py',
-							'assets/logo.png',
-							'bin/tool',
-							'data/a.bin',
-							'data/b.bin',
-						],
-					}),
-					discovered({ key: 'skills/plain', location: 'skills/plain', name: 'plain' }),
-				],
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-
-		const one = await view.findByTestId('skill-source-skill-skills/brand-voice');
-		expect(within(one).getByTestId('skill-source-skill-skipped')).toHaveTextContent(
-			'Skips 1 file: scripts/run.py',
-		);
-		const many = view.getByTestId('skill-source-skill-skills/seo-check');
-		expect(within(many).getByTestId('skill-source-skill-skipped')).toHaveTextContent(
-			'Skips 5 files: scripts/run.py, assets/logo.png, bin/tool and 2 more',
-		);
-		const none = view.getByTestId('skill-source-skill-skills/plain');
-		expect(within(none).queryByTestId('skill-source-skill-skipped')).not.toBeInTheDocument();
-	});
-
-	it('drops a discover answer when the user changed the scope while n8n read the link', async () => {
-		let answer: (value: SkillSourceDiscovery) => void = () => {};
-		skillsStore.discoverSource.mockReturnValue(
-			new Promise<SkillSourceDiscovery>((resolve) => {
-				answer = resolve;
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await selectScope(view, 'Marketing');
-		answer(discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: null } }));
-		await new Promise(process.nextTick);
-
-		expect(view.queryByTestId('skill-source-duplicate')).not.toBeInTheDocument();
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
-	});
-
-	it('drops a discover answer when the dialog closed while n8n read the link', async () => {
-		let answer: (value: SkillSourceDiscovery) => void = () => {};
-		skillsStore.discoverSource.mockReturnValueOnce(
-			new Promise<SkillSourceDiscovery>((resolve) => {
-				answer = resolve;
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await view.rerender({ open: false });
-		await view.rerender({ open: true });
-		await startLinkMode(view);
-		const field = view.getByTestId('skill-source-url-input');
-		const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
-		await userEvent.type(input, 'https://github.com/acme/skills');
-		answer(discovery());
-		await new Promise(process.nextTick);
-
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
-		expect(view.getByTestId('skill-source-next')).toBeEnabled();
-	});
-
-	it('names a skill that could not come in by its name in the list', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const response = {
-			sourceId: 'src-1',
-			imported: [{ key: 'skills/brand-voice', skillId: 'k1', name: 'brand-voice' }],
-			failed: [{ key: 'skills/seo-check', name: null, reason: 'parse_error' as const }],
-		};
-		skillsStore.connectSource.mockResolvedValue(response);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(await view.findByTestId('skill-source-add'));
-
-		await waitFor(() =>
-			expect(view.emitted('connected')).toEqual([
-				[
-					{
-						response: {
-							...response,
-							failed: [{ key: 'skills/seo-check', name: 'seo-check', reason: 'parse_error' }],
-						},
-						sourceLabel: 'acme/skills',
-						scopeLabel: 'Global',
-					},
-				],
-			]),
-		);
-	});
-
-	it('stays open until the import answers', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		let answer: (value: SkillSourceConnectResponse) => void = () => {};
-		skillsStore.connectSource.mockReturnValue(
-			new Promise<SkillSourceConnectResponse>((resolve) => {
-				answer = resolve;
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(await view.findByTestId('skill-source-add'));
-
-		expect(view.getByTestId('skill-source-cancel')).toBeDisabled();
-		expect(view.getByTestId('skill-source-back')).toBeDisabled();
-		expect(view.emitted('update:open')).toBeUndefined();
-		answer({ sourceId: 'src-1', imported: [], failed: [] });
-		await waitFor(() => expect(view.emitted('update:open')).toEqual([[false]]));
-	});
-
-	it('keeps the dialog open and shows a toast when the import fails', async () => {
-		skillsStore.discoverSource.mockResolvedValue(discovery());
-		skillsStore.connectSource.mockRejectedValue(
-			new ResponseError('Already connected', { httpStatusCode: 409 }),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(await view.findByTestId('skill-source-add'));
-
-		await waitFor(() =>
-			expect(showErrorMock).toHaveBeenCalledWith(
-				expect.any(ResponseError),
-				'Could not add the skills',
-			),
-		);
-		expect(view.emitted('update:open')).toBeUndefined();
-	});
-
-	it('stays on the start when the user goes back while n8n reads the link', async () => {
-		let answer: (value: SkillSourceDiscovery) => void = () => {};
-		skillsStore.discoverSource.mockReturnValue(
-			new Promise<SkillSourceDiscovery>((resolve) => {
-				answer = resolve;
-			}),
-		);
-		const view = render();
-
-		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(view.getByTestId('skill-source-back'));
-		answer(discovery());
-		await new Promise(process.nextTick);
-
-		expect(view.getByTestId('dialog-title')).toHaveTextContent('Connect a source');
-		expect(view.queryByTestId('skill-source-add')).not.toBeInTheDocument();
-	});
-
-	describe('credentials', () => {
-		it('lists the credentials that the server accepts for the scope', async () => {
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
+	describe('the connect form', () => {
+		it('asks for the scope, the credential and the repository in one modal', async () => {
 			const view = render();
-			await startLinkMode(view);
 
-			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledWith({ scope: 'instance' });
-			await userEvent.click(view.getByTestId('skill-source-credential-select'));
-			expect(await view.findByText('None, the repository is public')).toBeInTheDocument();
-			expect(view.getByText('Ada token')).toBeInTheDocument();
-			expect(view.getByText('Acme app')).toBeInTheDocument();
-			expect(view.getByText('+ Connect a new GitHub account')).toBeInTheDocument();
-			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
-				'Global sources use a credential that admins own.',
+			expect(view.getByTestId('dialog-title')).toHaveTextContent('Import skills from GitHub');
+			expect(view.getByText('Who can use these skills')).toBeInTheDocument();
+			expect(view.getByText('GitHub credential')).toBeInTheDocument();
+			expect(view.getByText('Repository')).toBeInTheDocument();
+			expect(view.getByTestId('skill-source-scope-select')).toHaveValue('instance');
+			expect(view.queryByTestId('skill-source-owner-select')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledWith({ scope: 'instance' }),
 			);
+			expect(view.getByTestId('skill-source-next')).toBeDisabled();
 		});
 
-		it('names the project in the credential hint of a project scope', async () => {
-			const view = render([SCOPES[2]]);
-			await startLinkMode(view);
-
-			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledWith({
-				scope: 'project',
-				projectId: 'team-1',
-			});
-			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
-				'Only credentials that Marketing owns or that are shared with it.',
-			);
-		});
-
-		it('reads a link without a credential when "None" stays picked', async () => {
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+		it('takes a pasted link with no credential, and reads it', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery());
 			const view = render();
 
-			await pasteLink(view, 'https://github.com/acme/skills');
+			await typeRepository(view, 'github.com/acme/skills/tree/main/skills');
+			await next(view);
 
 			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-				url: 'https://github.com/acme/skills',
+				url: 'https://github.com/acme/skills/tree/main/skills',
 				scope: 'instance',
 			});
+			expect(await view.findByTestId('skill-source-review')).toBeInTheDocument();
 		});
 
-		it('reads and connects a link with the picked credential', async () => {
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
-			skillsStore.discoverSource.mockResolvedValue(discovery());
-			skillsStore.connectSource.mockResolvedValue({ sourceId: 's', imported: [], failed: [] });
+		it('asks for a link while no credential is picked', async () => {
 			const view = render();
-			await startLinkMode(view);
 
-			await pick(view, 'skill-source-credential-select', 'Ada token');
-			await pasteLink(view, 'https://github.com/acme/skills');
+			await typeRepository(view, 'acme');
 
-			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-				url: 'https://github.com/acme/skills',
-				scope: 'instance',
-				credentialId: 'cred-1',
-			});
-			await userEvent.click(await view.findByTestId('skill-source-add'));
-			expect(skillsStore.connectSource).toHaveBeenCalledWith({
-				url: 'https://github.com/acme/skills',
-				scope: 'instance',
-				credentialId: 'cred-1',
-				skillKeys: ['skills/brand-voice', 'skills/seo-check'],
-			});
+			expect(view.getByTestId('repository-empty')).toHaveTextContent(
+				'Paste a link to a public repository, or pick a credential to list its repositories.',
+			);
+			expect(view.getByTestId('skill-source-next')).toBeDisabled();
 		});
 
-		it('picks a credential, then an owner, then a repository in the account mode', async () => {
+		it('lists the repositories of the credential across all owners, and reads the picked one', async () => {
 			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
 			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
 			skillsStore.discoverSource.mockResolvedValue(discovery());
-			skillsStore.connectSource.mockResolvedValue({ sourceId: 's', imported: [], failed: [] });
 			const view = render();
 
-			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+			await selectCredential(view, 'Ada token');
 
-			expect(view.getByTestId('dialog-title')).toHaveTextContent('Choose a repository');
-			expect(view.queryByTestId('skill-source-url-input')).not.toBeInTheDocument();
-			// The account mode needs a credential, so it starts on the first one.
 			await waitFor(() =>
 				expect(skillsStore.fetchSourceRepositories).toHaveBeenCalledWith({
 					scope: 'instance',
 					credentialId: 'cred-1',
 				}),
 			);
-			expect(
-				view.getByTestId('skill-source-repository-select').querySelector('input'),
-			).toBeDisabled();
-			expect(view.getByTestId('skill-source-next')).toBeDisabled();
+			const options = await view.findAllByTestId('repository-option');
+			expect(options.map((option) => option.textContent)).toEqual([
+				'acme/skills',
+				'acme/playbooks',
+				'ada/notes',
+			]);
 
-			await pick(view, 'skill-source-owner-select', 'acme');
-			await userEvent.click(view.getByTestId('skill-source-repository-select'));
-			expect(await view.findByText('playbooks')).toBeInTheDocument();
-			expect(view.queryByText('notes')).not.toBeInTheDocument();
-			await userEvent.click(view.getAllByText('skills').at(-1)!);
-			await userEvent.click(view.getByTestId('skill-source-next'));
+			await pickRepository(view, 'ada/notes');
+			await next(view);
 
 			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
-				url: 'https://github.com/acme/skills',
+				url: 'https://github.com/ada/notes',
 				scope: 'instance',
 				credentialId: 'cred-1',
 			});
-			await userEvent.click(await view.findByTestId('skill-source-add'));
-			expect(skillsStore.connectSource).toHaveBeenCalledWith(
-				expect.objectContaining({ url: 'https://github.com/acme/skills', credentialId: 'cred-1' }),
-			);
 		});
 
-		it('lists the repositories of another credential when the user picks it', async () => {
+		it('keeps the credential and the picked repository when the new scope can use them', async () => {
 			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
 			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
 			const view = render();
-			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+			await selectCredential(view, 'Ada token');
+			await pickRepository(view, 'ada/notes');
 
-			await pick(view, 'skill-source-credential-select', 'Acme app');
-
+			await selectScope(view, 'project:team-1');
 			await waitFor(() =>
 				expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith({
-					scope: 'instance',
-					credentialId: 'cred-2',
+					scope: 'project',
+					projectId: 'team-1',
+					credentialId: 'cred-1',
 				}),
 			);
+			await view.findAllByTestId('repository-option');
+			await next(view);
+
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/ada/notes',
+				scope: 'project',
+				projectId: 'team-1',
+				credentialId: 'cred-1',
+			});
+		});
+
+		it('clears the credential and the picked repository when the new scope cannot use them', async () => {
+			skillsStore.fetchSourceCredentials.mockImplementation(async (target) =>
+				target.scope === 'instance' ? [TOKEN] : [APP],
+			);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			const view = render();
+			await selectCredential(view, 'Ada token');
+			await pickRepository(view, 'ada/notes');
+
+			await selectScope(view, 'project:team-1');
+
+			await waitFor(() => expect(view.getByTestId('skill-source-next')).toBeDisabled());
+			expect(view.getByTestId('skill-source-credential-select')).toHaveValue('__none__');
+		});
+
+		it('offers a pasted link as the first option next to the repositories of the credential', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			const view = render();
+			await selectCredential(view, 'Ada token');
+			await view.findAllByTestId('repository-option');
+
+			await typeRepository(view, 'https://github.com/acme/other/tree/main/skills/pdf/SKILL.md');
+
+			const options = view.getAllByTestId('repository-option');
+			expect(options[0]).toHaveTextContent(
+				'https://github.com/acme/other/tree/main/skills/pdf/SKILL.md',
+			);
+			expect(view.getByTestId('skill-source-next')).toBeEnabled();
+		});
+
+		it('sends the project of a project scope, and lists the credentials of that project', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = render();
+
+			await selectScope(view, 'project:team-1');
+			await review(view);
+
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenLastCalledWith({
+				scope: 'project',
+				projectId: 'team-1',
+			});
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'project',
+				projectId: 'team-1',
+			});
 		});
 
 		it.each([
 			{
-				scopeOptions: [SCOPES[0]],
-				projectId: 'personal-1',
-				scopeText: 'your personal project',
+				link: 'https://gitlab.com/acme/skills',
+				message: 'Only GitHub links work for now. Use https://github.com/owner/repo.',
 			},
-			{ scopeOptions: [SCOPES[2]], projectId: 'team-1', scopeText: 'Marketing' },
+			{
+				link: 'https://github.com/acme',
+				message: 'This is not a GitHub repository link. Use https://github.com/owner/repo.',
+			},
+		])('says why it cannot read $link, without a request', async ({ link, message }) => {
+			const view = render();
+
+			await typeRepository(view, link);
+			await next(view);
+
+			expect(view.getByTestId('skill-source-link-error')).toHaveTextContent(message);
+			expect(skillsStore.discoverSource).not.toHaveBeenCalled();
+		});
+
+		it('shows the translated reason when the server cannot read the link', async () => {
+			skillsStore.discoverSource.mockRejectedValue(
+				new ResponseError('raw server text', { meta: { reason: 'rate_limited' } }),
+			);
+			const view = render();
+
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			const error = await view.findByTestId('skill-source-link-error');
+			expect(error).toHaveTextContent(
+				'GitHub limits how often n8n can read it. Try again in a few minutes.',
+			);
+			expect(error).not.toHaveTextContent('raw server text');
+		});
+
+		it('opens the visible source from the duplicate message', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: 'source-1' } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			await userEvent.click(await view.findByTestId('skill-source-view-existing'));
+
+			expect(view.emitted('openSource')).toEqual([['source-1']]);
+		});
+
+		it('does not offer to open a source that the user cannot see', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: null } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			expect(await view.findByTestId('skill-source-duplicate')).toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-view-existing')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			{
+				where: 'global' as const,
+				scope: 'project:team-1',
+				message:
+					'acme/skills · main is already connected in Global. Every project can use its skills.',
+			},
+			{
+				where: 'scope' as const,
+				scope: 'project:team-1',
+				message: 'acme/skills · main is already connected in Marketing.',
+			},
 		])(
-			'creates a credential in $projectId and picks it',
-			async ({ scopeOptions, projectId, scopeText }) => {
-				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
-				const view = render(scopeOptions);
-				await startLinkMode(view);
-
-				await pick(view, 'skill-source-credential-select', '+ Connect a new GitHub account');
-
-				expect(uiStore.openNewCredential).toHaveBeenCalledWith(
-					'githubApi',
-					false,
-					false,
-					projectId,
-					undefined,
-					undefined,
-					undefined,
-					expect.objectContaining({ closeOnSave: true, onCredentialCreated: expect.any(Function) }),
+			'blocks a repository that is already connected in $where, under the repository field',
+			async ({ where, scope, message }) => {
+				skillsStore.discoverSource.mockResolvedValue(
+					discovery({ duplicate: { kind: 'blocked', where, sourceId: 'src-1' } }),
 				);
-				const created = { id: 'cred-9', name: 'New token', type: 'githubApi' };
-				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, created]);
-				const options = uiStore.openNewCredential.mock.calls[0][7];
-				options?.onCredentialCreated?.({ id: 'cred-9' });
+				const view = render();
+				await selectScope(view, scope);
 
-				expect(await view.findByTestId('skill-source-credential-created')).toHaveTextContent(
-					`A credential was created in ${scopeText} and is reused for later checks.`,
-				);
-				skillsStore.discoverSource.mockResolvedValue(discovery());
-				await pasteLink(view, 'https://github.com/acme/skills');
-				expect(skillsStore.discoverSource).toHaveBeenCalledWith(
-					expect.objectContaining({ credentialId: 'cred-9' }),
-				);
+				await typeRepository(view, 'https://github.com/acme/skills');
+				await next(view);
+
+				expect(await view.findByTestId('skill-source-duplicate')).toHaveTextContent(message);
+				expect(view.queryByTestId('skill-source-review')).not.toBeInTheDocument();
+				expect(view.getByTestId('skill-source-next')).toBeDisabled();
 			},
 		);
 
-		it('creates a credential in the account mode and lists its repositories', async () => {
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
-			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+		it('drops a discover answer when the user changed the scope while n8n read the link', async () => {
+			let answer: (value: SkillSourceDiscovery) => void = () => {};
+			skillsStore.discoverSource.mockReturnValue(new Promise((resolve) => (answer = resolve)));
 			const view = render();
-			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
 
-			await pick(view, 'skill-source-credential-select', '+ Connect a new GitHub account');
+			await selectScope(view, 'project:team-1');
+			answer(discovery());
+
+			await waitFor(() => expect(view.getByTestId('skill-source-next')).toBeEnabled());
+			expect(view.queryByTestId('skill-source-review')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('the review', () => {
+		const warning = discovered({
+			key: 'skills/hidden',
+			location: 'skills/hidden',
+			name: 'hidden',
+			webUrl: 'https://github.com/acme/skills/tree/main/skills/hidden',
+			previewFiles: [
+				{
+					path: 'SKILL.md',
+					text: '---\nname: hidden\ndescription: d\n---\n\nUse short⟦U+200B⟧ sentences.',
+				},
+				{ path: 'references/tone.md', text: 'Tone.' },
+			],
+			skippedFiles: ['scripts/run.sh', 'references/data.md'],
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{
+						rule: 'hidden_unicode',
+						severity: 'needs_review',
+						file: 'SKILL.md',
+						detail: 'raw detail',
+						location: { line: 6, start: 9, end: 17 },
+					},
+					{ rule: 'file_skipped', severity: 'info', file: 'scripts/run.sh', detail: 'raw' },
+					{ rule: 'file_unstorable', severity: 'info', file: 'references/data.md', detail: 'raw' },
+				],
+			},
+		});
+		const passed = discovered({ key: 'tools/lint', location: 'tools/lint', name: 'lint' });
+		const blocked = discovered({
+			key: 'skills/huge',
+			location: 'skills/huge',
+			name: 'huge',
+			check: {
+				verdict: 'blocked',
+				findings: [
+					{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: 'raw zod text' },
+				],
+			},
+		});
+		const taken = discovered({
+			key: 'skills/taken',
+			location: 'skills/taken',
+			name: 'taken',
+			nameTaken: true,
+		});
+		const unreadable = discovered({
+			key: 'skills/broken',
+			location: 'skills/broken',
+			name: null,
+			check: null,
+			previewFiles: [],
+			error: { reason: 'not_found', message: 'raw server message' },
+		});
+
+		const skills = [passed, warning, blocked, taken, unreadable];
+
+		const tab = (view: View, name: string) => view.getByRole('tab', { name: new RegExp(name) });
+		const rows = (view: View) =>
+			view.getAllByTestId('skill-source-skill').map((row) => row.dataset.skillKey);
+
+		it('shows Warning, Passed and Blocked tabs with counts, and opens on Warning', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+
+			await review(view);
+
+			expect(tab(view, 'Warning')).toHaveTextContent('Warning (1)');
+			expect(tab(view, 'Passed')).toHaveTextContent('Passed (1)');
+			expect(tab(view, 'Blocked')).toHaveTextContent('Blocked (3)');
+			expect(rows(view)).toEqual(['skills/hidden']);
+			expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
+		});
+
+		it('does not let the user tick a blocked skill, and says why in translated text', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+
+			await userEvent.click(tab(view, 'Blocked'));
+
+			const list = view.getByTestId('skill-source-skills');
+			for (const checkbox of within(list).getAllByRole('checkbox')) {
+				expect(checkbox).toBeDisabled();
+			}
+			const reasons = view.getAllByTestId('skill-source-skill-reason').map((r) => r.textContent);
+			expect(reasons).toEqual([
+				'Over the size limits in SKILL.md',
+				'A skill named taken already exists in Global.',
+				'n8n cannot read this repository. It is private or does not exist.',
+			]);
+			expect(list).not.toHaveTextContent('raw');
+			expect(view.getByTestId('skill-source-select-all')).toBeDisabled();
+		});
+
+		it('selects and clears every skill of a tab with select all', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+			expect(view.getByTestId('skill-source-import')).toHaveTextContent(
+				'Import 2 skills to Global',
+			);
+
+			await userEvent.click(tab(view, 'Passed'));
+			await userEvent.click(view.getByTestId('skill-source-select-all'));
+
+			expect(view.getByTestId('skill-source-import')).toHaveTextContent('Import 1 skill to Global');
+
+			await userEvent.click(view.getByTestId('skill-source-select-all'));
+
+			expect(view.getByTestId('skill-source-import')).toHaveTextContent(
+				'Import 2 skills to Global',
+			);
+		});
+
+		it('finds skills in the tab by name, description or folder', async () => {
+			const more = discovered({ key: 'skills/seo', location: 'skills/seo', name: 'seo' });
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [passed, more] }));
+			const view = render();
+			await review(view);
+
+			await userEvent.type(view.getByTestId('skill-source-search'), 'tools');
+
+			expect(rows(view)).toEqual(['tools/lint']);
+		});
+
+		it('groups the skills by folder, with a checkbox for each group', async () => {
+			const pdf = discovered({ key: 'skills/pdf', location: 'skills/pdf', name: 'pdf' });
+			const docx = discovered({ key: 'skills/docx', location: 'skills/docx', name: 'docx' });
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, passed, docx] }));
+			const view = render();
+			await review(view);
+
+			const groups = view.getAllByTestId('skill-source-group');
+			expect(groups.map((group) => group.dataset.folder)).toEqual(['skills', 'tools']);
+
+			await userEvent.click(within(groups[0]).getByTestId('skill-source-group-checkbox'));
+
+			expect(view.getByTestId('skill-source-import')).toHaveTextContent('Import 1 skill to Global');
+		});
+
+		it('shows the skipped files, then each file with its path, a GitHub link and the marked findings', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+
+			const pane = view.getByTestId('skill-source-preview');
+			const skipped = within(pane).getAllByTestId('skill-source-skipped-file');
+			expect(skipped.map((row) => row.textContent)).toEqual([
+				'skills/hidden/scripts/run.sh · A file that n8n leaves out',
+				'skills/hidden/references/data.md · A file that n8n cannot store, because it has a NUL character',
+			]);
+			const files = within(pane).getAllByTestId('skill-source-file');
+			expect(
+				files.map((file) => within(file).getByTestId('skill-source-file-path').textContent),
+			).toEqual(['skills/hidden/SKILL.md', 'skills/hidden/references/tone.md']);
+			expect(within(files[0]).getByRole('link')).toHaveAttribute(
+				'href',
+				'https://github.com/acme/skills/blob/main/skills/hidden/SKILL.md',
+			);
+			const mark = within(files[0]).getByTestId('skill-source-finding-mark');
+			expect(mark).toHaveTextContent('⟦U+200B⟧');
+			expect(mark).toHaveAttribute('title', 'Hidden Unicode characters');
+			// Skipped files come before the content.
+			expect(
+				skipped[0].compareDocumentPosition(files[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
+
+		it('marks the most severe finding where two findings mark the same text', async () => {
+			const location = { line: 4, start: 0, end: 4 };
+			const skill = discovered({
+				previewFiles: [
+					{ path: 'SKILL.md', text: '---\nname: n\ndescription: d\nnote: "x"\n---\n\nBody.' },
+				],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{ rule: 'new_url', severity: 'info', file: 'SKILL.md', detail: 'd', location },
+						{
+							rule: 'hidden_unicode',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'd',
+							location,
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-finding-mark')).toHaveAttribute(
+				'title',
+				'Hidden Unicode characters',
+			);
+		});
+
+		it('lists a finding in a part of the skill that the preview leaves out above the files', async () => {
+			const skill = discovered({
+				previewTruncated: true,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'hidden_unicode',
+							severity: 'needs_review',
+							file: 'references/late.md',
+							detail: 'd',
+							location: { line: 1, start: 0, end: 8 },
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
+				'Hidden Unicode characters in references/late.md',
+			);
+		});
+
+		it('lists a warning above the files when an earlier mark covers its text', async () => {
+			const skill = discovered({
+				previewFiles: [{ path: 'SKILL.md', text: 'See https://evil.example/a⟦U+200B⟧b now.' }],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'new_url',
+							severity: 'info',
+							file: 'SKILL.md',
+							detail: 'd',
+							location: { line: 1, start: 4, end: 36 },
+						},
+						{
+							rule: 'hidden_unicode',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'd',
+							location: { line: 1, start: 26, end: 34 },
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
+				'Hidden Unicode characters in SKILL.md',
+			);
+		});
+
+		it('encodes each part of a file path in its GitHub link', async () => {
+			const skill = discovered({
+				previewFiles: [
+					{ path: 'SKILL.md', text: 'Body.' },
+					{ path: 'references/50% #1?.md', text: 'Notes.' },
+				],
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			const files = view.getAllByTestId('skill-source-file');
+			expect(within(files[1]).getByRole('link')).toHaveAttribute(
+				'href',
+				'https://github.com/acme/skills/blob/main/skills/brand-voice/references/50%25%20%231%3F.md',
+			);
+		});
+
+		it('shows the files of the skill that the user clicks', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+
+			await userEvent.click(tab(view, 'Passed'));
+			await userEvent.click(within(view.getByTestId('skill-source-skills')).getByText('lint'));
+
+			expect(view.getByTestId('skill-source-preview')).toHaveTextContent('tools/lint/SKILL.md');
+		});
+
+		it('says when a skill is too large to show in full', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ skills: [discovered({ previewTruncated: true })] }),
+			);
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-preview-truncated')).toBeInTheDocument();
+		});
+
+		it('names the projects that also connect the repository in one muted line', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					duplicate: { kind: 'warning', projects: [{ id: 'team-2', name: 'Sales' }] },
+				}),
+			);
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-also-connected')).toHaveTextContent(
+				'Also connected in Sales. Each scope gets its own skills and reviews.',
+			);
+		});
+
+		it.each([
+			{ overrides: { truncated: true }, testId: 'skill-source-truncated' },
+			{ overrides: { tooDeep: 2 }, testId: 'skill-source-too-deep' },
+		])('says when n8n does not list every skill ($testId)', async ({ overrides, testId }) => {
+			skillsStore.discoverSource.mockResolvedValue(discovery(overrides));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId(testId)).toBeInTheDocument();
+		});
+	});
+
+	describe('the import', () => {
+		const flagged = discovered({
+			key: 'skills/flagged',
+			location: 'skills/flagged',
+			name: 'flagged',
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'd' },
+				],
+			},
+		});
+		const response: SkillSourceConnectResponse = {
+			sourceId: 'src-1',
+			imported: [{ key: 'skills/brand-voice', skillId: 'skill-1', name: 'brand-voice' }],
+			failed: [],
+		};
+
+		it('imports the ticked skills and names the count, the scope and the repository', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue(response);
+			const view = render();
+			await selectScope(view, 'project:team-1');
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(skillsStore.connectSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'project',
+				projectId: 'team-1',
+				skillKeys: ['skills/brand-voice', 'skills/seo-check'],
+			});
+			expect(view.emitted('connected')).toEqual([
+				[{ response, sourceLabel: 'acme/skills · main', scopeLabel: 'Marketing' }],
+			]);
+			expect(view.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('names the scope in the import button', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = render();
+			await selectScope(view, 'project:team-1');
+			await review(view);
+
+			expect(view.getByTestId('skill-source-import')).toHaveTextContent(
+				'Import 2 skills to Marketing',
+			);
+		});
+
+		it('imports a skill that needs review only after "I have reviewed the warnings"', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [flagged] }));
+			skillsStore.connectSource.mockResolvedValue(response);
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-import')).toBeDisabled();
+
+			await userEvent.click(view.getByText('I have reviewed the warnings'));
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					skillKeys: ['skills/flagged'],
+					reviewedSkillKeys: ['skills/flagged'],
+				}),
+			);
+		});
+
+		it('asks for no review when the user unticks every skill that needs it', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [flagged, discovered()] }));
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByRole('checkbox', { name: 'flagged' }));
+
+			expect(view.queryByTestId('skill-source-reviewed-warnings')).not.toBeInTheDocument();
+			expect(view.getByTestId('skill-source-import')).toBeEnabled();
+		});
+
+		it('names a skill that could not come in by its name in the list', async () => {
+			const unnamed = discovered({ key: 'skills/odd', location: 'skills/odd', name: 'odd' });
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), unnamed] }));
+			skillsStore.connectSource.mockResolvedValue({
+				...response,
+				failed: [{ key: 'skills/odd', name: null, reason: 'blocked_by_check' }],
+			});
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(view.emitted('connected')).toMatchObject([
+				[
+					{
+						response: { failed: [{ key: 'skills/odd', name: 'odd', reason: 'blocked_by_check' }] },
+					},
+				],
+			]);
+		});
+
+		it('stays open with a translated toast when the import fails', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockRejectedValue(
+				new ResponseError('raw', { meta: { reason: 'duplicate_source' } }),
+			);
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('This source is already connected in this scope.'),
+				'Could not add the skills',
+			);
+			expect(view.emitted('update:open')).toBeUndefined();
+		});
+
+		it('shows translated text, not the server message, when the import fails without a reason', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockRejectedValue(
+				new Error('duplicate key value violates unique constraint "PK_skill"'),
+			);
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error(
+					'n8n cannot add the skills. Try again. If the import fails again, ask your admin to check the n8n logs.',
+				),
+				'Could not add the skills',
+			);
+		});
+
+		it('goes back to the form with the repository kept', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-back'));
+
+			expect(view.getByTestId('repository-value')).toHaveTextContent(
+				'https://github.com/acme/skills',
+			);
+			expect(view.getByTestId('skill-source-next')).toBeEnabled();
+		});
+	});
+
+	describe('credentials', () => {
+		it('names the project in the credential hint of a project scope', async () => {
+			const view = render();
+
+			await selectScope(view, 'project:team-1');
+
+			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
+				'Only credentials that Marketing owns or that are shared with it.',
+			);
+		});
+
+		it.each([
+			{ option: '+ Connect a new GitHub account', type: 'githubApi' },
+			{ option: '+ Connect a GitHub App installation', type: 'githubAppApi' },
+		])('opens the credential modal for "$option"', async ({ option, type }) => {
+			const view = render();
+
+			await selectCredential(view, option);
 
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
-				'githubApi',
+				type,
 				false,
 				false,
 				'personal-1',
 				undefined,
 				undefined,
 				undefined,
-				expect.objectContaining({ onCredentialCreated: expect.any(Function) }),
+				expect.objectContaining({ closeOnSave: true }),
 			);
-			const created = { id: 'cred-9', name: 'New token', type: 'githubApi' };
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, created]);
-			const options = uiStore.openNewCredential.mock.calls[0][7];
-			options?.onCredentialCreated?.({ id: 'cred-9' });
-
-			await waitFor(() =>
-				expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith({
-					scope: 'instance',
-					credentialId: 'cred-9',
-				}),
-			);
-			expect(await view.findByTestId('skill-source-credential-created')).toBeInTheDocument();
 		});
 
-		it('says when the credentials cannot load, and lists none', async () => {
-			skillsStore.fetchSourceCredentials.mockRejectedValue(new Error('Network down'));
+		it('picks a credential that the user created from the dialog, and lists its repositories', async () => {
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
 			const view = render();
+			await selectCredential(view, '+ Connect a new GitHub account');
+			const { onCredentialCreated } = uiStore.openNewCredential.mock.calls[0][7] ?? {};
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
 
-			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+			onCredentialCreated?.({ id: 'cred-1' } as never);
+
+			await waitFor(() =>
+				expect(view.getByTestId('skill-source-credential-select')).toHaveValue('cred-1'),
+			);
+			expect(await view.findByTestId('skill-source-credential-created')).toBeInTheDocument();
+			expect(await view.findAllByTestId('repository-option')).toHaveLength(3);
+		});
+
+		it('does not offer a new credential in a project where the user cannot create one', async () => {
+			const view = render([{ value: 'project:team-2', label: 'Sales', icon: 'layers' }]);
+			const select = view.getByTestId('skill-source-credential-select');
+
+			await waitFor(() => expect(skillsStore.fetchSourceCredentials).toHaveBeenCalled());
+
+			expect(within(select).queryByText('+ Connect a new GitHub account')).not.toBeInTheDocument();
+		});
+
+		it('says when the credentials cannot load', async () => {
+			skillsStore.fetchSourceCredentials.mockRejectedValue(new Error('boom'));
+			render();
 
 			await waitFor(() =>
 				expect(showErrorMock).toHaveBeenCalledWith(
@@ -1060,88 +992,16 @@ describe('SkillSourceConnectDialog', () => {
 					'Could not load the credentials',
 				),
 			);
-			expect(skillsStore.fetchSourceRepositories).not.toHaveBeenCalled();
-			expect(view.getByTestId('skill-source-owner-select').querySelector('input')).toBeDisabled();
-			expect(view.getByTestId('skill-source-next')).toBeDisabled();
 		});
-
-		it('opens the credential modal for a GitHub App installation too', async () => {
-			const view = render();
-			await startLinkMode(view);
-
-			await pick(view, 'skill-source-credential-select', '+ Connect a GitHub App installation');
-
-			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
-				'githubAppApi',
-				false,
-				false,
-				'personal-1',
-				undefined,
-				undefined,
-				undefined,
-				expect.any(Object),
-			);
-		});
-
-		it('does not offer a new credential in a project where the user cannot create one', async () => {
-			const view = render([{ value: 'project:team-2', label: 'Sales', icon: 'layers' }]);
-			await startLinkMode(view);
-
-			await userEvent.click(view.getByTestId('skill-source-credential-select'));
-
-			expect(await view.findByText('None, the repository is public')).toBeInTheDocument();
-			expect(view.queryByText('+ Connect a new GitHub account')).not.toBeInTheDocument();
-		});
-
-		it.each([
-			{
-				reason: 'credential_invalid',
-				status: 400,
-				text: 'GitHub rejected this credential. The token is wrong or has expired.',
-			},
-			{
-				reason: 'credential_missing',
-				status: 404,
-				text: 'This credential no longer exists. Pick another one.',
-			},
-			{
-				reason: 'credential_out_of_scope',
-				status: 403,
-				text: 'This scope cannot use this credential. Pick one that it owns or that is shared with it.',
-			},
-			{
-				reason: 'not_found',
-				status: 404,
-				text: 'This credential cannot read this repository, or the repository does not exist.',
-			},
-		])(
-			'says why the credential cannot read the link: $reason',
-			async ({ reason, status, text }) => {
-				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
-				skillsStore.discoverSource.mockRejectedValue(
-					new ResponseError('Server text', { httpStatusCode: status, meta: { reason } }),
-				);
-				const view = render();
-				await startLinkMode(view);
-
-				await pick(view, 'skill-source-credential-select', 'Ada token');
-				await pasteLink(view, 'https://github.com/acme/skills');
-
-				expect(await view.findByTestId('skill-source-link-error')).toHaveTextContent(text);
-			},
-		);
 
 		it('says why the credential cannot list the repositories', async () => {
 			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
 			skillsStore.fetchSourceRepositories.mockRejectedValue(
-				new ResponseError('Bad credentials', {
-					httpStatusCode: 400,
-					meta: { reason: 'credential_invalid' },
-				}),
+				new ResponseError('raw', { meta: { reason: 'credential_invalid' } }),
 			);
 			const view = render();
 
-			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+			await selectCredential(view, 'Ada token');
 
 			expect(await view.findByTestId('skill-source-link-error')).toHaveTextContent(
 				'GitHub rejected this credential. The token is wrong or has expired.',

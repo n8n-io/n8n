@@ -63,7 +63,7 @@ import {
 	type SkillTarget,
 	type SkillUpdate,
 } from '../utils/skill-content';
-import { skillContentHash } from '../utils/skill-content-hash';
+import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
@@ -577,7 +577,13 @@ export class SkillService {
 				);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
-			if (!skill.references?.length) delete skill.references;
+			// Reads return files sorted by path. Sort here too, so the returned skill hashes the same
+			// as the stored version and a caller can send that hash back on its next save.
+			if (skill.references?.length) {
+				skill.references = [...skill.references].sort((a, b) =>
+					compareSkillFilePaths(a.path, b.path),
+				);
+			} else delete skill.references;
 			assertHasInstructions(skill);
 			const content = toSkillContent(
 				skill,

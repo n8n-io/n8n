@@ -95,10 +95,10 @@ export const SKILL_SCAN_RULES = [
 	'invalid_skill',
 	'over_limit',
 	'file_skipped',
+	'file_unstorable',
 	'hidden_unicode',
 	'new_url',
 	'permission_change',
-	'suspicious_phrase',
 	'lossy_conversion',
 ] as const;
 
@@ -109,6 +109,18 @@ export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
 
 export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
 
+/**
+ * Where a finding is in the preview text of its file (`SkillPreviewFile.text`), so the review
+ * can mark it. `start` and `end` are offsets in that line, and they count the visible markers
+ * of hidden characters. A finding over several lines is marked to the end of its first line.
+ */
+export type SkillScanLocation = {
+	/** From 1. */
+	line: number;
+	start: number;
+	end: number;
+};
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
@@ -118,10 +130,23 @@ export type SkillScanFinding = {
 	detail: string;
 	/** The linked domain of a `new_url` finding. */
 	domain?: string;
+	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
+	location?: SkillScanLocation;
 };
 
 /** The most severe finding gives the verdict. No one can override `blocked`. */
 export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
+
+/** One file of a skill as the import keeps it, so a reviewer can read the full skill. */
+export type SkillPreviewFile = {
+	/** `SKILL.md`, or the path of a reference file. */
+	path: string;
+	/**
+	 * The text. SKILL.md shows the name, the description and each frontmatter key on its own
+	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
+	 */
+	text: string;
+};
 
 /** One skill in the picker. */
 export type DiscoveredSkill = {
@@ -134,6 +159,10 @@ export type DiscoveredSkill = {
 	description: string | null;
 	/** Files that the import leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
+	previewFiles: SkillPreviewFile[];
+	/** True when the skill is too large to show in full. `previewFiles` then lists the first files. */
+	previewTruncated: boolean;
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
