@@ -1,4 +1,4 @@
-import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
+import { createInMemoryExecutionChannel } from '../execution-channel/in-memory-execution-channel';
 
 describe('in-memory execution channel', () => {
 	it('delivers a frame to every subscriber of its topic and execution', async () => {

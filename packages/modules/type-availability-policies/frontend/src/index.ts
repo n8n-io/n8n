@@ -9,14 +9,17 @@ export { useTypeAvailability } from './composables/useTypeAvailability';
 export {
 	describeAgentToolRestriction,
 	describeNodeTypeRestriction,
+	describeTypeRestriction,
 	describeRestrictedNodeTypes,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	getRestrictionMessage,
 	getViolationVerdict,
 	isNodeTypeRestricted,
+	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
 	useRestrictionContact,
+	type RestrictedCalloutSurface,
 	type RestrictionMessage,
 	type TypeRestriction,
 } from './composables/useNodeTypeRestriction';
@@ -28,10 +31,13 @@ export {
 } from './composables/useSubWorkflowRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';
-export { default as RestrictedToolCallout } from './components/RestrictedToolCallout.vue';
+export { default as RestrictedTypeCallout } from './components/RestrictedTypeCallout.vue';
 export { default as RestrictedSubWorkflowCallout } from './components/RestrictedSubWorkflowCallout.vue';
 export { default as ContactAdminModal } from './components/ContactAdminModal.vue';
 export { getPolicyViolations } from './policy-violations/policyViolations';
+export { parseExecutionBlockCauses } from './wont-execute/wontExecute';
+export { default as WontExecuteFilter } from './wont-execute/WontExecuteFilter.vue';
+export { default as WontExecuteCallout } from './wont-execute/WontExecuteCallout.vue';
 export { default as PolicyViolationList } from './policy-violations/PolicyViolationList.vue';
 export {
 	useTransferPreview,

@@ -115,7 +115,10 @@ const isNewSession = ref(isNewThread);
 let pendingReferences: InstanceAiAttachment[] = handoff.references;
 let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.context;
 // The lists show a thread opened by URL even when it is older than the recent page.
-if (!isNewThread) void threadsStore.loadThread(props.threadId);
+if (!isNewThread) {
+	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThreadCredits(props.threadId);
+}
 
 /** The first message to send, from the empty view or from a hand-off. */
 function firstMessageOf(
@@ -443,7 +446,11 @@ function removeStagedNodes(chipId: string): void {
 <template>
 	<div ref="threadArea" :class="$style.container" data-test-id="assistant-agent-thread-view">
 		<div :class="$style.chatArea">
-			<InstanceAiViewHeader :title="threadTitle" :thread-id="props.threadId">
+			<InstanceAiViewHeader
+				:title="threadTitle"
+				:thread-id="props.threadId"
+				:thread-credits-used="threadsStore.threadCreditsUsed(props.threadId)"
+			>
 				<template #actions>
 					<N8nTooltip
 						:content="i18n.baseText('instanceAi.thread.new')"
@@ -592,7 +599,11 @@ function removeStagedNodes(chipId: string): void {
 						</template>
 						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
 						<template #footer-start="{ disabled }">
-							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
+							<InstanceAiInputMenu
+								:disabled="disabled"
+								:project-id="props.projectId"
+								@attach-files="panel?.openFilePicker()"
+							/>
 						</template>
 					</AgentChatPanel>
 				</div>

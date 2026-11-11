@@ -27,7 +27,7 @@ import { Start } from '@/commands/start';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
-import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubEventBus } from '@n8n/backend-services';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';

@@ -7,7 +7,7 @@ import AgentSkillFileNav from '@/features/agents/components/AgentSkillFileNav.vu
 import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue';
 import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
-import { skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -22,6 +22,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const skillsStore = useSkillsStore();
+const { openArtifactInNewTab } = useArtifactLinks();
 
 const detail = shallowRef<SkillDetail | null>(null);
 const selectedPath = ref(SKILL_FILE);
@@ -63,7 +64,7 @@ watch(
 );
 
 function openInSkillsHub() {
-	window.open(skillsHubHref(props.skillId), '_blank', 'noopener');
+	openArtifactInNewTab('skill', props.skillId);
 }
 </script>
 

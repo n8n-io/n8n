@@ -83,7 +83,7 @@ tags:
   - name: Promotions
     x-displayName: Promotions
     x-parent: InstanceOperations
-    description: Operations about promotion providers, environments, and package operations
+    description: Beta — breaking changes may still occur without major version bump.
   - name: Role
     x-displayName: Roles
     x-parent: AccessAndOrganization

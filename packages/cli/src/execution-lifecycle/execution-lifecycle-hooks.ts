@@ -1017,13 +1017,15 @@ export function getLifecycleHooksForSubExecutions(
 		parentNode?: INode;
 		/** Editor session of the parent. Only a top-level run has one. */
 		parentPushRef?: string;
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	} = {},
 ): ExecutionLifecycleHooks {
-	const { parentExecution, projectId, projectName, parentNode, parentPushRef } = options;
+	const { parentExecution, projectId, projectName, parentNode, parentPushRef, telemetryMetadata } =
+		options;
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsMemoryGuard(hooks);
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });

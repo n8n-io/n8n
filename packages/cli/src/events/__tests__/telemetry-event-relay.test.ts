@@ -8,6 +8,7 @@ import {
 	type CredentialsRepository,
 	type DbConnection,
 	type IWorkflowDb,
+	type Project,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
 	type User,
@@ -295,7 +296,7 @@ describe('TelemetryEventRelay', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			};
 
@@ -349,7 +350,13 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('memory guard events', () => {
-		it('should track on `memory-guard-execution-stopped` event and send it at once', () => {
+		it('should track on `memory-guard-execution-stopped` event with the workflow owner and send it at once', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'personal' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
+				mock<User>({ id: 'user123' }),
+			);
 			const event: RelayEventMap['memory-guard-execution-stopped'] = {
 				executionId: 'execution123',
 				workflowId: 'workflow123',
@@ -365,10 +372,12 @@ describe('TelemetryEventRelay', () => {
 			};
 
 			eventService.emit('memory-guard-execution-stopped', event);
+			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
 				{
+					user_id: 'user123',
 					workflow_id: 'workflow123',
 					execution_mode: 'webhook',
 					reason: 'critical',
@@ -380,6 +389,57 @@ describe('TelemetryEventRelay', () => {
 					freed_memory: true,
 					workflow_deactivation_started: false,
 				},
+			);
+			expect(telemetry.flushQueue).toHaveBeenCalled();
+		});
+
+		it('should track on `memory-guard-execution-stopped` event with the instance owner for a team project', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'team' }),
+			);
+
+			eventService.emit('memory-guard-execution-stopped', {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'threshold',
+				runningNodeType: undefined,
+				largestDataNodeType: undefined,
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: false,
+				workflowDeactivationStarted: false,
+			});
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				expect.objectContaining({ user_id: 'owner123', workflow_id: 'workflow123' }),
+			);
+		});
+
+		it('should track on `memory-guard-execution-stopped` event without a user when the owner lookup fails', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('db down'));
+
+			eventService.emit('memory-guard-execution-stopped', {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'critical',
+				runningNodeType: undefined,
+				largestDataNodeType: undefined,
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: true,
+				workflowDeactivationStarted: false,
+			});
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				expect.objectContaining({ user_id: undefined, workflow_id: 'workflow123' }),
 			);
 			expect(telemetry.flushQueue).toHaveBeenCalled();
 		});
@@ -4027,6 +4087,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -4795,6 +4873,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
@@ -5560,7 +5663,11 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-created', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'instance',
 				createBranchOnPromotion: true,
@@ -5588,6 +5695,7 @@ describe('TelemetryEventRelay', () => {
 				user,
 				providerId: 'prov-1',
 				providerType: 'gitlab',
+				authType: 'token',
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: 120,
@@ -5615,7 +5723,9 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-provider-deleted', {
 				user,
 				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				authType: 'ssh-key',
 			});
 
 			const payload = { user_id: 'user123', provider_id: 'prov-1', provider_type: 'git' };
@@ -5632,7 +5742,12 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-updated', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'apply',
+				environmentScope: 'instance',
 				changedFields: ['provider', 'settings'],
 			});
 
@@ -5655,6 +5770,10 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-deleted', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'projects',
 			});
@@ -6200,7 +6319,7 @@ describe('TelemetryEventRelay', () => {
 			surfaces: ['public-api', 'instance-mcp'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'on-provision',
 		};
 		const trackedFacets = {
@@ -6210,6 +6329,7 @@ describe('TelemetryEventRelay', () => {
 			identity_subject: 'binding',
 			link_by_email: 'verified-only',
 			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		};
 

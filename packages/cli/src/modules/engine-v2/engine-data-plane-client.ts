@@ -12,14 +12,14 @@ import type {
 	FindLatestExecutionRequest,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { mintIdentityToken } from '@n8n/engine';
+import { mintIdentityToken, parseApprovalCallback } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
@@ -32,6 +32,8 @@ import {
 	type EngineDataPlaneProvider,
 	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
+
+import { EngineTlsMaterial } from './engine-tls-material';
 
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
@@ -54,7 +56,9 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		private readonly engineConfig: EngineConfig,
 		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
+		tlsMaterial: EngineTlsMaterial,
 	) {
+		const { tls } = tlsMaterial;
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
@@ -68,6 +72,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
 			}),
+			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 		});
 	}
 
@@ -184,14 +190,12 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return { cancelled: true, finishedAt: new Date(finishedAt) };
 	}
 
-	async locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>> {
-		return await this.postResume<ResumeTargetResponse>(
-			`/api/workflow-executions/${encodeURIComponent(id)}/resume-target`,
-			request,
-		);
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		return await this.postResume<ResumeTargetResponse>('/api/resume-requests/locate', request);
+	}
+
+	readApprovalCallback(reference: string): string | undefined {
+		return parseApprovalCallback(reference)?.stepId;
 	}
 
 	async resolveStep(
@@ -206,7 +210,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	private async postResume<T>(
 		url: string,
-		body: ResumeTargetRequest | ResolveStepRequest,
+		body: ResumeLocateRequest | ResolveStepRequest,
 	): Promise<ResumeOutcome<T>> {
 		const response = await this.http.request<T | EngineErrorResponse>({
 			url,

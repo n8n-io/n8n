@@ -364,7 +364,7 @@ function onTabChange(tab: string) {
 /* The global Markdown rules size paragraphs from this root. */
 .report:global(.n8n-markdown) {
 	--markdown--spacing: var(--spacing--4xs);
-	--n8n-markdown--base-font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--font-size--sm);
 
 	overflow-wrap: anywhere;
 	min-width: 0;
