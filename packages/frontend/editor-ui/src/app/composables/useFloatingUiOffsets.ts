@@ -2,6 +2,9 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed, type Ref } from 'vue';
 
@@ -18,6 +21,9 @@ export function useFloatingUiOffsets(workflowDocumentId: Readonly<Ref<WorkflowDo
 	const assistantStore = useAssistantStore();
 	const chatPanelStore = useChatPanelStore();
 	const logsStore = useLogsStore();
+	const bannersStore = useBannersStore();
+	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 
 	const ndvStore = computed(() =>
 		workflowDocumentId.value ? useNDVStore(workflowDocumentId.value) : null,
@@ -35,5 +41,8 @@ export function useFloatingUiOffsets(workflowDocumentId: Readonly<Ref<WorkflowDo
 			return `${logsPanelOffset + assistantOffset}px`;
 		}),
 		toastRightOffset: computed(() => (chatPanelStore.isOpen ? `${chatPanelStore.width}px` : '0px')),
+		toastTopOffset: computed(() =>
+			settingsStore.isCanvasOnly ? '0px' : `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		),
 	};
 }

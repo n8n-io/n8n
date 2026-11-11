@@ -11,6 +11,8 @@ import {
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { setActivePinia } from 'pinia';
 import { useFloatingUiOffsets } from './useFloatingUiOffsets';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { reactive, shallowRef, type ShallowRef } from 'vue';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
@@ -89,5 +91,15 @@ describe(useFloatingUiOffsets, () => {
 				expect(toastBottomOffset.value).toBe('58px'); // 42px button + 16px NDV offset
 			},
 		);
+	});
+	describe('toastTopOffset', () => {
+		it('should place top toasts below the header and the banners', () => {
+			const { toastTopOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
+			const headerHeight = useUIStore().headerHeight;
+
+			useBannersStore().updateBannersHeight(40);
+
+			expect(toastTopOffset.value).toBe(`${headerHeight + 40}px`);
+		});
 	});
 });

@@ -62,7 +62,7 @@ const workflowDocumentId = computed<WorkflowDocumentId | null>(
 );
 
 const { setAppZIndexes } = useStyles();
-const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
+const { toastBottomOffset, toastRightOffset, toastTopOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets(workflowDocumentId);
 
 // Initialize undo/redo
@@ -135,6 +135,7 @@ const setLayoutRef = (el: Element) => {
 
 useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--toast--right', toastRightOffset);
+useExposeCssVar('--toast--top', toastTopOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 

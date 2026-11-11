@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
+	describeImportedRestrictions,
 	describeTypeRestriction,
 	describeRestrictedNodeTypes,
 	describeNodeTypeRestriction,
@@ -187,6 +188,41 @@ describe('useNodeTypeRestriction', () => {
 					"Restricted: 'Custom Node'.",
 					'Contact an instance admin or replace these nodes to continue.',
 				].join('\n'),
+			);
+		});
+	});
+
+	describe('describeImportedRestrictions', () => {
+		const PREFIX =
+			"The workflow was imported, but it can't be published or executed until these nodes are replaced or";
+
+		it('points to an instance admin outside a team project', () => {
+			expect(describeImportedRestrictions([{ scope: 'instance' }, { scope: 'project' }])).toBe(
+				`${PREFIX} an instance admin grants access.`,
+			);
+		});
+
+		it('points to a project admin when a project admin can lift every restriction', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'project' }])).toBe(
+				`${PREFIX} a project admin grants access.`,
+			);
+		});
+
+		it('names the opt-in when a project admin can allow every type', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'instance', optInAvailable: true }])).toBe(
+				`${PREFIX} a project admin allows them for this project.`,
+			);
+		});
+
+		it('points to an instance admin when one restriction needs one', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'project' }, { scope: 'instance' }])).toBe(
+				`${PREFIX} an instance admin grants access.`,
 			);
 		});
 	});

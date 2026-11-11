@@ -692,6 +692,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		const result = await importWorkflowData(workflowData, 'paste', {
 			importTags: false,
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 		const ids = result.nodes?.map((node) => node.id) ?? [];
 
@@ -982,6 +983,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 		setStateDirty,
+		warnRestrictedNodes: data.warnRestrictedNodes === true,
 	});
 
 	await nextTick();
@@ -1017,6 +1019,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 
 		await importWorkflowData(workflowData, 'url', {
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 
 		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);

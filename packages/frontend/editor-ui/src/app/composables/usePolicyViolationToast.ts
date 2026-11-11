@@ -29,18 +29,17 @@ const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => bool
 		[CREDENTIAL_TYPE_SUBJECT]: (subject) => (node) => hasNodeCredentialFilled(node, subject),
 	};
 
+export function isWorkflowDocumentOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
+	return (
+		!useUIStore().isReadOnlyView &&
+		createWorkflowDocumentId(useWorkflowsStore().workflowId) === documentId
+	);
+}
+
 export function usePolicyViolationToast() {
 	const toast = useToast();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const uiStore = useUIStore();
 	const { labelOf } = usePolicyViolationLabels();
-
-	function isOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
-		return (
-			!uiStore.isReadOnlyView && createWorkflowDocumentId(workflowsStore.workflowId) === documentId
-		);
-	}
 
 	function nodeIdsFor(
 		{ subject, subjectType }: PolicyViolation,
@@ -70,7 +69,8 @@ export function usePolicyViolationToast() {
 					violations,
 					labelOf,
 					isJumpable: (violation: PolicyViolation) =>
-						isOpenOnCanvas(documentId) && nodeIdsFor(violation, documentId).length > 0,
+						isWorkflowDocumentOpenOnCanvas(documentId) &&
+						nodeIdsFor(violation, documentId).length > 0,
 					onJump: (violation: PolicyViolation) => {
 						const ids = nodeIdsFor(violation, documentId);
 						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });

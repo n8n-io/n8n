@@ -8,6 +8,7 @@ export {
 export { useTypeAvailability } from './composables/useTypeAvailability';
 export {
 	describeAgentToolRestriction,
+	describeImportedRestrictions,
 	describeNodeTypeRestriction,
 	describeTypeRestriction,
 	describeRestrictedNodeTypes,
@@ -39,6 +40,7 @@ export { parseExecutionBlockCauses } from './wont-execute/wontExecute';
 export { default as WontExecuteFilter } from './wont-execute/WontExecuteFilter.vue';
 export { default as WontExecuteCallout } from './wont-execute/WontExecuteCallout.vue';
 export { default as PolicyViolationList } from './policy-violations/PolicyViolationList.vue';
+export { default as PolicyViolationToastBody } from './policy-violations/PolicyViolationToastBody.vue';
 export {
 	useTransferPreview,
 	type TransferPreview,

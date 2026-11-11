@@ -1213,6 +1213,31 @@ describe('NodeView', () => {
 			);
 		});
 
+		it('pastes a restricted node and warns that it is restricted', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+				(name) => ({ name, available: name !== MANUAL_TRIGGER_NODE_TYPE, scope: 'instance' }),
+			);
+			mockShowMessage.mockClear();
+			renderNodeView();
+
+			pasteText(pastedJson);
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ customClass: 'content-toast restricted-import-toast' }),
+				false,
+			);
+		});
+
 		it('does not open the paste nudge for clipboard text that is not workflow JSON', async () => {
 			renderNodeView();
 
