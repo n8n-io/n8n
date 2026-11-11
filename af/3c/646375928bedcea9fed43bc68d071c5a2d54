@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_686a719dabc59f::t_3a288d3e64b6d2 366-367,381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af3c646375928bedcea9fed43bc68d071c5a2d54",
+  "prompts": {},
+  "sessions": {
+    "s_686a719dabc59f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05586da7-f526-45fe-be04-6e4f1f240987",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
