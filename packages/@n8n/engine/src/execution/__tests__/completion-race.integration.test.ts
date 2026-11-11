@@ -57,71 +57,73 @@ const edge = (from: string, to: string, outputIndex = 0): GraphEdge => ({
 });
 const backEdge = (from: string, to: string): GraphEdge => ({ ...edge(from, to), isBackEdge: true });
 
-type Run = Awaited<ReturnType<ReturnType<typeof createSetup>>>;
+type Run = Awaited<ReturnType<typeof setup>>;
 
-function createSetup(dataSource: DataSource) {
-	/**
-	 * Starts an execution whose trigger has completed and whose `queued` nodes
-	 * wait at iteration 0. Steps then move only when the test says so: `complete`
-	 * is a step worker committing an outcome, and `settle` is the orchestration
-	 * worker consuming that step's `step:settled` event.
-	 */
-	return async function setup(graph: WorkflowGraph, queued: string[]) {
-		const { executionStore, stepStore } = createStores(dataSource);
-		const stepQueue = new RecordingQueue<StepMessage>();
-		const publisher = new RecordingPublisher();
-		const handler = new StepSettledHandler(
-			executionStore,
-			stepStore,
-			stepQueue,
-			new RecordingQueue<OrchestrationMessage>(),
-			new LifecycleEventPublisherFactory(publisher),
-			noopExecutionResponseSender,
-		);
-		const executionId = generateId();
+/**
+ * Starts an execution whose trigger has completed and whose `queued` nodes
+ * wait at iteration 0. Steps then move only when the test says so: `complete`
+ * is a step worker committing an outcome, and `settle` is the orchestration
+ * worker consuming that step's `step:settled` event.
+ */
+async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: string[]) {
+	const { executionStore, stepStore } = createStores(dataSource);
+	const stepQueue = new RecordingQueue<StepMessage>();
+	const publisher = new RecordingPublisher();
+	const handler = new StepSettledHandler(
+		executionStore,
+		stepStore,
+		stepQueue,
+		new RecordingQueue<OrchestrationMessage>(),
+		new LifecycleEventPublisherFactory(publisher),
+		noopExecutionResponseSender,
+	);
+	const executionId = generateId();
 
-		await executionStore.createExecution({
-			id: executionId,
-			workflowId: 'wf-completion-race',
-			status: 'running',
-			mode: 'production',
-			graph: { ...graph, seeded: [] },
-			workflow: {},
-			triggerOutputs: null,
-			callerContext: { hostMode: 'trigger' },
-			responseExpectation: { kind: 'none' },
-			parent: null,
-			lifecycleEventSubscription: { kind: 'all' },
-		});
-		await stepStore.createSteps(executionId, [
-			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: items },
-			...queued.map((nodeId) => ({ nodeId, iteration: 0, status: 'queued' as const })),
-		]);
+	await executionStore.createExecution({
+		id: executionId,
+		workflowId: 'wf-completion-race',
+		status: 'running',
+		mode: 'production',
+		graph: { ...graph, seeded: [] },
+		workflow: {},
+		triggerOutputs: null,
+		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
+		parent: null,
+		lifecycleEventSubscription: { kind: 'all' },
+	});
+	await stepStore.createSteps(executionId, [
+		{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: items },
+		...queued.map((nodeId) => ({ nodeId, iteration: 0, status: 'queued' as const })),
+	]);
 
-		async function stepId(nodeId: string, iteration: number) {
-			const key = { nodeId, iteration };
-			const step = (await stepStore.loadStepsByKeys(executionId, [key]))[stepKeyId(key)];
-			expect(step, `no step for ${nodeId}@${iteration}`).toBeDefined();
-			return step.id;
-		}
+	async function stepId(nodeId: string, iteration: number) {
+		const key = { nodeId, iteration };
+		const step = (await stepStore.loadStepsByKeys(executionId, [key]))[stepKeyId(key)];
+		expect(step, `no step for ${nodeId}@${iteration}`).toBeDefined();
+		return step.id;
+	}
 
-		return {
-			stepQueue,
-			async complete(nodeId: string, { iteration = 0, outputs = items } = {}) {
-				const id = await stepId(nodeId, iteration);
-				expect(await stepStore.claimStep(id)).not.toBeNull();
-				expect(await stepStore.completeStep(id, outputs)).toBe(true);
-			},
-			async settle(nodeId: string, iteration = 0) {
-				const id = await stepId(nodeId, iteration);
-				await handler.handle({ type: 'step:settled', executionId, stepId: id });
-			},
-			status: async () => await executionStore.loadExecutionStatus(executionId),
-			endEvents: () =>
-				publisher.events.filter(
-					(event) => event.type === 'execution:completed' || event.type === 'execution:failed',
-				),
-		};
+	return {
+		stepQueue,
+		async complete(nodeId: string, { iteration = 0, outputs = items } = {}) {
+			const id = await stepId(nodeId, iteration);
+			expect(await stepStore.claimStep(id)).not.toBeNull();
+			expect(await stepStore.completeStep(id, outputs)).toBe(true);
+		},
+		async settle(nodeId: string, iteration = 0) {
+			const id = await stepId(nodeId, iteration);
+			await handler.handle({ type: 'step:settled', executionId, stepId: id });
+		},
+		status: async () => await executionStore.loadExecutionStatus(executionId),
+		endEvents: () =>
+			publisher.events.filter(
+				(event) => event.type === 'execution:completed' || event.type === 'execution:failed',
+			),
+		unsettled: async () =>
+			(await stepStore.loadAllSteps(executionId))
+				.filter((step) => step.status === 'queued' || step.status === 'running')
+				.map((step) => step.nodeId),
 	};
 }
 
@@ -137,14 +139,12 @@ function createSetup(dataSource: DataSource) {
 describe('execution completion under racy step:settled delivery (integration)', () => {
 	let container: StartedPostgreSqlContainer;
 	let dataSource: DataSource;
-	let setup: ReturnType<typeof createSetup>;
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
-		setup = createSetup(dataSource);
 	}, 120_000);
 
 	afterAll(async () => {
@@ -235,9 +235,8 @@ describe('execution completion under racy step:settled delivery (integration)', 
 				await run.settle('x');
 			},
 			finish: async (run) => {
-				// skips w
+				// skips w, which settles on creation and ends the run
 				await run.settle('z');
-				await run.settle('w');
 			},
 		},
 		{
@@ -284,10 +283,11 @@ describe('execution completion under racy step:settled delivery (integration)', 
 	it.each(raceCases)(
 		'stays running when $title, and completes once the rest has run',
 		async ({ graph, queued, race, finish }) => {
-			const run = await setup(graph, queued);
+			const run = await setup(dataSource, graph, queued);
 
 			await race(run);
 
+			expect(await run.unsettled()).toEqual([]);
 			expect(await run.status()).toBe('running');
 			expect(run.endEvents()).toEqual([]);
 
@@ -308,7 +308,7 @@ describe('execution completion under racy step:settled delivery (integration)', 
 	};
 
 	it('neither plans a successor twice nor finishes early when every step:settled is delivered twice', async () => {
-		const run = await setup(forkGraph, ['a', 'b']);
+		const run = await setup(dataSource, forkGraph, ['a', 'b']);
 		await run.complete('a');
 		await run.complete('b');
 
@@ -320,11 +320,18 @@ describe('execution completion under racy step:settled delivery (integration)', 
 		expect(run.stepQueue.published).toHaveLength(1);
 		expect(await run.status()).toBe('running');
 		expect(run.endEvents()).toEqual([]);
+
+		await run.complete('y');
+		await run.settle('y');
+		await run.settle('y');
+
+		expect(await run.status()).toBe('completed');
+		expect(run.endEvents().map((event) => event.type)).toEqual(['execution:completed']);
 	});
 
 	it('stays running when a terminal step and its sibling settle concurrently', async () => {
 		for (let round = 0; round < 5; round++) {
-			const run = await setup(forkGraph, ['a', 'b']);
+			const run = await setup(dataSource, forkGraph, ['a', 'b']);
 			await run.complete('a');
 			await run.complete('b');
 
@@ -347,7 +354,7 @@ describe('execution completion under racy step:settled delivery (integration)', 
 		};
 
 		for (let round = 0; round < 5; round++) {
-			const run = await setup(graph, ['a', 'b']);
+			const run = await setup(dataSource, graph, ['a', 'b']);
 			await run.complete('a');
 			await run.complete('b');
 
