@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -84,6 +84,11 @@ async function verifyCloudOAuth2Request(
 		return reject(403);
 	}
 
+	// `jwt.verify` checks `exp` only when the claim is present, so require it.
+	if (typeof payload.exp !== 'number') {
+		return reject(403);
+	}
+
 	// Reject a token issued in the future, beyond the clock-skew allowance.
 	const now = Math.floor(Date.now() / 1000);
 	if (typeof payload.iat === 'number' && payload.iat > now + JWT_CLOCK_TOLERANCE_SECONDS) {
@@ -103,9 +108,10 @@ async function verifyCloudOAuth2Request(
 	}
 
 	// `getAtlassianCloudId` caches the resolved cloudId per credential, so this is a lookup
-	// only on the first delivery per process. A failed lookup is not an auth failure: answer
-	// 503 (which Atlassian retries) rather than 403 (which it does not), so a transient error
-	// does not drop a genuine event.
+	// only on the first delivery per process. A failed lookup request is not an auth failure:
+	// answer 503 (which Atlassian retries) rather than 403 (which it does not), so a transient
+	// error does not drop a genuine event. A site the credential cannot reach is permanent, so
+	// it gets 403 and is not retried.
 	let siteCloudId: string;
 	try {
 		siteCloudId = await getAtlassianCloudId.call(
@@ -118,7 +124,7 @@ async function verifyCloudOAuth2Request(
 		this.logger.warn('Jira Trigger could not resolve the configured site to verify a webhook', {
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return reject(503);
+		return reject(error instanceof NodeApiError ? 503 : 403);
 	}
 
 	if (tokenCloudId !== siteCloudId) {

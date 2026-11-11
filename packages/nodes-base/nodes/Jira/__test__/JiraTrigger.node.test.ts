@@ -1001,6 +1001,24 @@ describe('JiraTrigger', () => {
 			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 
+		test('should reject a token without an expiry', async () => {
+			const token = jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, {
+				algorithm: 'HS256',
+			});
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token signed with another HMAC algorithm', async () => {
+			const token = sign({}, clientSecret, { algorithm: 'HS384' });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
 		test('should reject a token with an unexpected issuer', async () => {
 			const token = sign({ iss: 'someone-else' });
 			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
@@ -1056,6 +1074,24 @@ describe('JiraTrigger', () => {
 			});
 
 			expect(response.status).toHaveBeenCalledWith(503);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should answer 403 when the credential cannot reach the configured site', async () => {
+			// A site that never matches is permanent, so the answer must not be retryable.
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi
+						.fn()
+						.mockResolvedValue([{ id: 'other-cloud-id', url: 'https://other.atlassian.net' }]),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
 			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 	});
