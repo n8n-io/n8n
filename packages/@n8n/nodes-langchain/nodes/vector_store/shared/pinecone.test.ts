@@ -4,7 +4,12 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { Pinecone as PineconeV9, type IndexModel } from '@pinecone-database/pinecone-v9';
 import { mock } from 'vitest-mock-extended';
 
-import { PineconeDocumentStore, getDocumentIndexScoring, getPineconeVectorStore } from './pinecone';
+import {
+	PineconeDocumentStore,
+	assertPineconeIndexAcceptsVectors,
+	getDocumentIndexScoring,
+	getPineconeVectorStore,
+} from './pinecone';
 
 vi.mock('@langchain/pinecone', () => ({ PineconeStore: { fromExistingIndex: vi.fn() } }));
 vi.mock('@pinecone-database/pinecone', () => ({ Pinecone: vi.fn() }));
@@ -242,7 +247,27 @@ describe('getPineconeVectorStore', () => {
 		expect(configuredDoc.metadata).toEqual({ year: 2020, body: 'Body' });
 	});
 
-	it('rejects inserts into a document index', async () => {
+	it('rejects inserts into a document index with a clear error', async () => {
+		const indexName = nextIndexName();
+		describeIndex.mockResolvedValue(indexModel(embedDocument, indexName));
+
+		await expect(assertPineconeIndexAcceptsVectors('key', indexName)).rejects.toThrow(
+			'Inserting into a Pinecone index with a document schema is not supported yet',
+		);
+	});
+
+	it('accepts inserts into classic indexes, and when describe fails', async () => {
+		const classicName = nextIndexName();
+		describeIndex.mockResolvedValueOnce(indexModel(classic, classicName));
+		await expect(assertPineconeIndexAcceptsVectors('key', classicName)).resolves.toBeUndefined();
+
+		describeIndex.mockRejectedValueOnce(new Error('boom'));
+		await expect(
+			assertPineconeIndexAcceptsVectors('key', nextIndexName()),
+		).resolves.toBeUndefined();
+	});
+
+	it('rejects updates through the document store', async () => {
 		const indexName = nextIndexName();
 		describeIndex.mockResolvedValue(indexModel(denseDocument, indexName));
 

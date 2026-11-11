@@ -49,18 +49,43 @@ async function describeIndex(client: PineconeV9, apiKey: string, indexName: stri
 	}
 }
 
+const INSERT_NOT_SUPPORTED =
+	'Inserting into a Pinecone index with a document schema is not supported yet. Use an index without a document schema to insert documents with n8n';
+
+/** Indexes still initializing ('indeterminate') stay on the vectors API */
+function isDocumentIndex(model: IndexModel): boolean {
+	if (classifyIndexShape(model) !== 'documents-api') return false;
+	// A legacy integrated index has a semantic_text field and no vector fields, and the
+	// Records API still serves it
+	return !Object.values(model.schema?.fields ?? {}).some(
+		(f) => 'type' in f && f.type === 'semantic_text',
+	);
+}
+
+/**
+ * Throws for an index with a document schema: the vectors API rejects its upserts.
+ * Runs before any namespace is cleared.
+ */
+export async function assertPineconeIndexAcceptsVectors(
+	apiKey: string,
+	indexName: string,
+): Promise<void> {
+	// A failed describe keeps the vectors API path, so classic indexes fail exactly as before
+	const model = await describeIndex(new PineconeV9({ apiKey }), apiKey, indexName).catch(
+		() => undefined,
+	);
+	if (model && isDocumentIndex(model)) throw new UserError(INSERT_NOT_SUPPORTED);
+}
+
 /**
  * Returns how to score a search on an index with a document schema, or `undefined` for an
  * index that the vectors API serves (classic indexes, legacy integrated indexes, and
  * indexes that are still initializing).
  */
 export function getDocumentIndexScoring(model: IndexModel): ScoreBy | undefined {
-	if (classifyIndexShape(model) !== 'documents-api') return undefined;
+	if (!isDocumentIndex(model)) return undefined;
 
 	const fields = Object.entries(model.schema?.fields ?? {});
-	// A legacy integrated index has a semantic_text field and no vector fields, and the
-	// Records API still serves it
-	if (fields.some(([, f]) => 'type' in f && f.type === 'semantic_text')) return undefined;
 
 	// The connected embeddings model populated a dense field, so prefer it over Pinecone-side embedding
 	const dense = fields.find(([, f]) => 'type' in f && f.type === 'dense_vector');
@@ -99,9 +124,7 @@ export class PineconeDocumentStore extends VectorStore {
 	}
 
 	async addVectors(): Promise<void> {
-		throw new UserError(
-			'Inserting into a Pinecone index with a document schema is not supported yet',
-		);
+		throw new UserError(INSERT_NOT_SUPPORTED);
 	}
 
 	async addDocuments(): Promise<void> {

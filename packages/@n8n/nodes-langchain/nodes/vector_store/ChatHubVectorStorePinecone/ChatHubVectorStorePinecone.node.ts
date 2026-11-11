@@ -11,7 +11,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import { getPineconeVectorStore } from '../shared/pinecone';
+import { assertPineconeIndexAcceptsVectors, getPineconeVectorStore } from '../shared/pinecone';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import {
@@ -177,6 +177,7 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStor
 			);
 		}
 
+		await assertPineconeIndexAcceptsVectors(credentials.apiKey, credentials.pineconeIndex);
 		const pineconeIndex = client.Index(credentials.pineconeIndex);
 
 		await PineconeStore.fromDocuments(filterChatHubInsertDocuments(documents), embeddings, {

@@ -7,7 +7,7 @@ import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
-import { getPineconeVectorStore } from '../shared/pinecone';
+import { assertPineconeIndexAcceptsVectors, getPineconeVectorStore } from '../shared/pinecone';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
@@ -127,6 +127,7 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 			});
 		}
 
+		await assertPineconeIndexAcceptsVectors(credentials.apiKey as string, index);
 		const pineconeIndex = client.Index(index);
 
 		if (options.pineconeNamespace && options.clearNamespace) {
