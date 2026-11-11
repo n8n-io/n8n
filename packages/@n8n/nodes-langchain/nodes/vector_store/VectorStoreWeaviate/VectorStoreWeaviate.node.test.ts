@@ -469,5 +469,31 @@ describe('VectorStoreWeaviate.node', () => {
 
 			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
 		});
+
+		describe('beforeInsert', () => {
+			const clear = async (options: Record<string, unknown>) =>
+				await node.beforeInsert(createContext(options), embeddings, 0);
+
+			it('should do nothing when Clear Data is off', async () => {
+				await clear({});
+
+				expect(connectSpy).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should delete the collection when Clear Data is on', async () => {
+				await clear({ clearStore: true });
+
+				expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+				expect(removeTenants).not.toHaveBeenCalled();
+			});
+
+			it('should remove only the tenant when Clear Data is on and a tenant is set', async () => {
+				await clear({ clearStore: true, tenant: 'tenantA' });
+
+				expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+		});
 	});
 });
