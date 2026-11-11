@@ -189,6 +189,17 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear the Collection/Tenant before inserting new data',
 			},
+			{
+				displayName: 'Collection JSON Schema',
+				name: 'jsonSchema',
+				type: 'json',
+				typeOptions: {
+					rows: 5,
+				},
+				default: '',
+				description:
+					'Weaviate collection definition. The node uses it to create the collection when the collection does not exist. Use the JSON from the Weaviate REST API or from <code>client.collections.exportToJson()</code>, or make it with the <a href="https://weaviate.github.io/weaviate-add-collection/" target="_blank">collection builder</a>. The "class" in the schema must be the same as the collection name, or empty. The node ignores the schema when the collection exists.',
+			},
 		],
 	},
 ];
