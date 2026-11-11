@@ -165,13 +165,15 @@ function parseFilterMember(value: unknown): FilterValue {
 	}
 	// AND, OR and NOT can contain other groups, so parse their members recursively
 	if ('AND' in value) {
-		if (!Array.isArray(value.AND)) {
+		// An empty group has no condition, so it could match all objects
+		if (!Array.isArray(value.AND) || value.AND.length === 0) {
 			throw new UserError("'AND' must contain an array of filters.");
 		}
 		return Filters.and(...value.AND.map(parseFilterMember));
 	}
 	if ('OR' in value) {
-		if (!Array.isArray(value.OR)) {
+		// An empty group has no condition, so it could match all objects
+		if (!Array.isArray(value.OR) || value.OR.length === 0) {
 			throw new UserError("'OR' must contain an array of filters.");
 		}
 		return Filters.or(...value.OR.map(parseFilterMember));
