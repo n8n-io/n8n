@@ -13,6 +13,7 @@ import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -287,6 +288,15 @@ export abstract class AgentChatIntegration {
 
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
+
+	/**
+	 * Credential types that this channel entry accepts. Connect and publish
+	 * validation check the credential against them. Override it when the
+	 * channel settings decide the type.
+	 */
+	acceptedCredentialTypes(_integration: AgentIntegrationConfig): string[] {
+		return this.credentialTypes;
+	}
 
 	// ---------------------------------------------------------------------------
 	// FE display metadata — shown in the trigger-picker and integration cards.
@@ -806,6 +816,8 @@ export interface PlatformActionParams
 	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
+	/** The files of `input.fileIds`, after the read check. Set only for integrations with `requiresChatInstance === false`. */
+	files?: AgentChatAttachment[];
 }
 
 /**

@@ -39,6 +39,7 @@ import type {
 import {
 	UnexpectedError,
 	createRunExecutionData,
+	Expression,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -1419,6 +1420,229 @@ describe('WorkflowExecute', () => {
 				error = e;
 			}
 			expect(error).toBeInstanceOf(UserError);
+		});
+
+		describe('gives a merge node the same inputs as a full run', () => {
+			const append = { mode: 'append' };
+			const chooseBranch = {
+				mode: 'chooseBranch',
+				chooseBranchMode: 'waitForAll',
+				output: 'specifiedInput',
+				useDataOfInput: 1,
+			};
+
+			function createMerge(parameters: INode['parameters']): INode {
+				return {
+					...createNodeData({ name: 'merge', type: 'n8n-nodes-base.merge', parameters }),
+					typeVersion: 3,
+				};
+			}
+
+			//                 ┌────┐ PD
+			//            ┌───►│set1├─────┐
+			//┌───────┐1  │    └────┘     │   ┌─────┐ ►►
+			//│trigger├───┤               ├──►│merge│
+			//└───────┘   │    ┌────┐     │   └─────┘
+			//            └───►│set2├─────┘
+			//                 └────┘
+			function pinnedSibling(parameters: INode['parameters']) {
+				const merge = createMerge(parameters);
+				const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+				const set1 = createNodeData({ name: 'set1' });
+				const set2 = createNodeData({ name: 'set2' });
+				return new DirectedGraph()
+					.addNodes(trigger, set1, set2, merge)
+					.addConnections(
+						{ from: trigger, to: set1 },
+						{ from: trigger, to: set2 },
+						{ from: set1, to: merge, inputIndex: 0 },
+						{ from: set2, to: merge, inputIndex: 1 },
+					);
+			}
+
+			//                      PD
+			//┌───────┐1  ┌─────────────────┐0         ┌─────┐ ►►
+			//│trigger├──►│http (error out.)├─────────►│merge│
+			//└───────┘   └────────┬────────┘       ┌─►│     │
+			//                    1│  ┌───────────┐ │  └─────┘
+			//                     └─►│handleError├─┘
+			//                        └───────────┘
+			function pinnedErrorOutput(parameters: INode['parameters']) {
+				const merge = createMerge(parameters);
+				const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+				const http: INode = { ...createNodeData({ name: 'http' }), onError: 'continueErrorOutput' };
+				const handleError = createNodeData({ name: 'handleError' });
+				return new DirectedGraph()
+					.addNodes(trigger, http, handleError, merge)
+					.addConnections(
+						{ from: trigger, to: http },
+						{ from: http, to: merge, outputIndex: 0, inputIndex: 0 },
+						{ from: http, to: handleError, outputIndex: 1 },
+						{ from: handleError, to: merge, inputIndex: 1 },
+					);
+			}
+
+			//┌───────┐1  ┌──┐1                ┌─────┐ ►►
+			//│trigger├──►│if├────────────────►│merge│
+			//└───────┘   └┬─┘            ┌───►│     │
+			//            0│  ┌───────┐0  │    └─────┘
+			//             └─►│onFalse├───┘
+			//                └───────┘
+			function unusedIfBranch(parameters: INode['parameters']) {
+				const merge = createMerge(parameters);
+				const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+				const ifNode = createNodeData({
+					name: 'if',
+					type: 'n8n-nodes-base.if',
+					parameters: { conditions: { boolean: [{ value1: true, value2: true }] } },
+				});
+				const onFalse = createNodeData({ name: 'onFalse' });
+				return new DirectedGraph()
+					.addNodes(trigger, ifNode, onFalse, merge)
+					.addConnections(
+						{ from: trigger, to: ifNode },
+						{ from: ifNode, to: merge, outputIndex: 0, inputIndex: 0 },
+						{ from: ifNode, to: onFalse, outputIndex: 1 },
+						{ from: onFalse, to: merge, inputIndex: 1 },
+					);
+			}
+
+			test.each<{
+				case: string;
+				graph: DirectedGraph;
+				pinData: IPinData;
+				nodesRunBefore: string[];
+				mergeRuns: boolean;
+			}>([
+				{
+					case: 'a pinned input and an input that did not run yet, append',
+					graph: pinnedSibling(append),
+					pinData: { set1: [{ json: { name: 'set1' } }] },
+					nodesRunBefore: ['trigger'],
+					mergeRuns: true,
+				},
+				{
+					case: 'a pinned input and an input that did not run yet, choose branch',
+					graph: pinnedSibling(chooseBranch),
+					pinData: { set1: [{ json: { name: 'set1' } }] },
+					nodesRunBefore: ['trigger'],
+					mergeRuns: true,
+				},
+				{
+					case: 'an input pinned with no items, choose branch',
+					graph: pinnedSibling(chooseBranch),
+					pinData: { set1: [] },
+					nodesRunBefore: ['trigger'],
+					mergeRuns: false,
+				},
+				{
+					case: 'the error output of a pinned node, append',
+					graph: pinnedErrorOutput(append),
+					pinData: { http: [{ json: { name: 'http' } }] },
+					nodesRunBefore: ['trigger', 'http'],
+					mergeRuns: true,
+				},
+				{
+					case: 'the error output of a pinned node, choose branch',
+					graph: pinnedErrorOutput(chooseBranch),
+					pinData: { http: [{ json: { name: 'http' } }] },
+					nodesRunBefore: ['trigger', 'http'],
+					mergeRuns: false,
+				},
+				{
+					case: 'an IF branch that had no items in the last run, append',
+					graph: unusedIfBranch(append),
+					pinData: {},
+					nodesRunBefore: ['trigger', 'if'],
+					mergeRuns: true,
+				},
+			])('$case', async ({ graph, pinData, nodesRunBefore, mergeRuns }) => {
+				// ARRANGE
+				const toWorkflow = () =>
+					graph.toWorkflow({
+						name: '',
+						active: false,
+						nodeTypes,
+						settings: { executionOrder: 'v1' },
+					});
+				const fullRunPromise = createDeferredPromise<IRun>();
+				const fullRunWorkflow = toWorkflow();
+				await new WorkflowExecute(
+					Helpers.WorkflowExecuteAdditionalData(fullRunPromise),
+					'manual',
+				).run({
+					workflow: fullRunWorkflow,
+					startNode: fullRunWorkflow.getNode('trigger')!,
+					pinData,
+				});
+				const fullRunData = (await fullRunPromise.promise).data.resultData.runData;
+
+				// ACT
+				const partialRunPromise = createDeferredPromise<IRun>();
+				await new WorkflowExecute(
+					Helpers.WorkflowExecuteAdditionalData(partialRunPromise),
+					'manual',
+				).runPartialWorkflow2(
+					toWorkflow(),
+					structuredClone(pick(fullRunData, nodesRunBefore)),
+					pinData,
+					[],
+					{ nodeName: 'merge', mode: 'inclusive' },
+				);
+				const partialRunData = (await partialRunPromise.promise).data.resultData.runData;
+
+				// ASSERT
+				const executedNodes = (runData: IRunData) =>
+					Object.keys(runData)
+						.filter((name) => !(name in pinData))
+						.sort();
+				expect(fullRunData.merge !== undefined).toBe(mergeRuns);
+				expect(executedNodes(partialRunData)).toEqual(executedNodes(fullRunData));
+				expect(partialRunData.merge?.[0]?.data).toEqual(fullRunData.merge?.[0]?.data);
+			});
+
+			test('runs a merge node that gets data on one input only when expressions run in the vm engine', async () => {
+				// ARRANGE
+				await Expression.initExpressionEngine({
+					engine: 'vm',
+					bridgeTimeout: 1000,
+					bridgeMemoryLimit: 128,
+					poolSize: 1,
+					maxCodeCacheSize: 10,
+				});
+
+				try {
+					const waitPromise = createDeferredPromise<IRun>();
+					const workflow = unusedIfBranch(append).toWorkflow({
+						name: '',
+						active: false,
+						nodeTypes,
+						settings: { executionOrder: 'v1' },
+					});
+					const item = { json: { value: 1 } };
+					const runData: IRunData = {
+						trigger: [toITaskData([{ data: { value: 1 } }])],
+						if: [{ ...toITaskData([]), data: { main: [[item], []] } }],
+					};
+
+					// ACT
+					await new WorkflowExecute(
+						Helpers.WorkflowExecuteAdditionalData(waitPromise),
+						'manual',
+					).runPartialWorkflow2(workflow, runData, {}, [], {
+						nodeName: 'merge',
+						mode: 'inclusive',
+					});
+					const result = await waitPromise.promise;
+
+					// ASSERT
+					expect(result.data.resultData.error).toBeUndefined();
+					const mergeOutput = result.data.resultData.runData.merge?.[0]?.data?.main?.[0];
+					expect(mergeOutput?.map(({ json }) => json)).toEqual([item.json]);
+				} finally {
+					await Expression.disposeExpressionEngine();
+				}
+			});
 		});
 	});
 

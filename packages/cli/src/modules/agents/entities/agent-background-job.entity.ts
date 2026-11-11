@@ -160,4 +160,11 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	/** When the parent received the latest result or approval request. */
 	@DateTimeColumn({ precision: 3, nullable: true })
 	notifiedAt: Date | null;
+
+	/**
+	 * Wake attempt that started with this unconsumed result. Recovery marks the
+	 * result consumed instead of running the wake again.
+	 */
+	@Column({ type: 'uuid', nullable: true })
+	wakeAttemptId: string | null;
 }

@@ -242,6 +242,25 @@ export interface BuiltTool {
 	 * Defaults to `true` when absent.
 	 */
 	readonly editable?: boolean;
+	/**
+	 * Marks a tool that runs other tools, such as the tool catalog's `call_tool`.
+	 * The runtime asks it which tool owns each call, so approval, suspension,
+	 * output trust, and result transforms are the owning tool's own.
+	 */
+	readonly dispatch?: ToolDispatch;
+}
+
+export interface ToolDispatch {
+	/**
+	 * The tool that handles this call and the input to give it, or `undefined`
+	 * to run the dispatcher itself (for example, to report an unknown tool).
+	 */
+	resolve(input: unknown): { tool: BuiltTool; input: unknown } | undefined;
+	/**
+	 * The dispatcher input for a model call to `toolName` made directly, or
+	 * `undefined` when this dispatcher does not own that tool.
+	 */
+	wrap(toolName: string, input: unknown): Record<string, unknown> | undefined;
 }
 
 /**

@@ -159,6 +159,14 @@ export class AgentsConfig {
 	channelReconcileIntervalSeconds: number = 60;
 
 	/**
+	 * Most requests that one IP address can send to the agent webhook channel in 5 minutes.
+	 * Each main instance counts its requests separately. Set to 0 to turn off the limit, for
+	 * example when one backend sends the requests of all your users.
+	 */
+	@Env('N8N_AGENTS_WEBHOOK_CHANNEL_RATE_LIMIT', nonnegativeIntSchema)
+	webhookChannelRateLimit: number = 300;
+
+	/**
 	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,
 	 * like the one on the API Setup page in Meta. A channel that uses one stops
 	 * working when the token expires, about a day later.

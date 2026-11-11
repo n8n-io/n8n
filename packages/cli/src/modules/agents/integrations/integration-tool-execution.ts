@@ -358,6 +358,8 @@ export async function executeActionToolOperation(params: {
 			action: operation.action,
 			integrationConnectionId: descriptor.integrationConnectionId,
 			messageContext: actionResult.messageContext,
+			// The resume returns only the user's answer. The chat reads the files of the card from here.
+			...(actionResult.files !== undefined ? { files: actionResult.files } : {}),
 		},
 		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
 		// the action-tool schema here so a follow-up card is not still expecting

@@ -63,6 +63,7 @@ import {
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -280,6 +281,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -723,6 +725,20 @@ export class CredentialsService {
 
 		await this.populateConnectedByMe(result, user);
 		return result;
+	}
+
+	/**
+	 * The credentials the user can use in this workflow or project through their
+	 * own access. The n8n Assistant offers only these.
+	 */
+	async getCredentialsAUserCanUseThemselves(
+		user: User,
+		options: Parameters<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>[1],
+	): Promise<WorkflowCredentialResult[]> {
+		return await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+			user,
+			await this.getCredentialsAUserCanUseInAWorkflow(user, options),
+		);
 	}
 
 	/**
