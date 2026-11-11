@@ -433,6 +433,22 @@ describe('N8nCommandBar', () => {
 		stacked.remove();
 	});
 
+	it('stays open on Cmd+K in a dialog opened over the command bar', async () => {
+		const wrapper = await renderCommandBar();
+		await waitFor(() => expect(getInput()).toHaveFocus());
+		const stacked = document.createElement('div');
+		stacked.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		stacked.appendChild(button);
+		document.body.appendChild(stacked);
+
+		await fireEvent.keyDown(button, { key: 'k', metaKey: true });
+
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+		expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+		stacked.remove();
+	});
+
 	describe('trailing component', () => {
 		const activate = vi.fn();
 		const Trailing = defineComponent({

@@ -188,7 +188,11 @@ export const EmptyTab: StoryFn = () => ({
 
 /** Shows the end of a row as the item draws it. The row element and its active state come with it. */
 const DisabledReason = defineComponent({
-	props: { reason: { type: String, required: true }, isActive: Boolean },
+	props: {
+		reason: { type: String, required: true },
+		rowElement: { type: Object, default: null },
+		isActive: Boolean,
+	},
 	setup: (props) => () => [
 		h('span', props.isActive ? `${props.reason} (active)` : props.reason),
 		h(N8nIcon, { icon: 'lock', size: 'small' }),

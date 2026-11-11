@@ -272,7 +272,10 @@ function moveInputCaret(input: HTMLInputElement, event: KeyboardEvent) {
 	}
 }
 
-/** A dialog opened over the bar keeps its keys, so typing in it does not change the search behind it. */
+/**
+ * A dialog opened over the bar keeps its keys, so typing in it does not change the search behind it.
+ * It also keeps Cmd+K: closing the bar would close that dialog with it.
+ */
 function isInStackedDialog(target: EventTarget | null, input: HTMLInputElement) {
 	const dialog = target instanceof Element ? target.closest('[role="dialog"]') : null;
 	return dialog !== null && !dialog.contains(input);
@@ -282,6 +285,7 @@ function onGlobalKeydown(event: KeyboardEvent) {
 	const isAltGraph = event.getModifierState('AltGraph');
 	if (!isAltGraph && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 		event.preventDefault();
+		if (isOpen.value && inputRef.value && isInStackedDialog(event.target, inputRef.value)) return;
 		isOpen.value = !isOpen.value;
 		return;
 	}
