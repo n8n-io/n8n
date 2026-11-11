@@ -32,7 +32,7 @@ export const Default: Story = {
 			const enabled = ref(true);
 			return { args, enabled };
 		},
-		template: frame(`<N8nSettingsEnableRow v-bind="args" v-model="enabled" />`),
+		template: frame('<N8nSettingsEnableRow v-bind="args" v-model="enabled" />'),
 	}),
 };
 
@@ -85,6 +85,6 @@ export const Disabled: Story = {
 	render: (args) => ({
 		components: { N8nSettingsEnableRow },
 		setup: () => ({ args }),
-		template: frame(`<N8nSettingsEnableRow v-bind="args" />`),
+		template: frame('<N8nSettingsEnableRow v-bind="args" />'),
 	}),
 };
