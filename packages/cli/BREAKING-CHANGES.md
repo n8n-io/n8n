@@ -38,7 +38,21 @@ An import that unpublishes a workflow requires `workflow:deactivate`.
 An import that archives a published workflow requires only `workflow:delete`.
 If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
 
-<<<<<<< HEAD
+## Promotions (preview)
+
+The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
+Read `resources` instead.
+Each resource has a `type`, `id`, `change` and `selectable` field.
+The `change` values are `added`, `modified`, `archived`, `deleted` and `unchanged`.
+They replace the old `status` values.
+A renamed resource has the change `modified` and a `previousName`.
+A moved resource has the change `modified` and a `previousParentKey`.
+The endpoint no longer accepts the `search`, `sort` and `order` query parameters.
+
+The CLI `promotion-environment list-changes` command shows the changed resources of all types.
+It no longer accepts `--search`, `--sort` and `--order`.
+It needs an n8n instance with this change.
+
 # 3.0.0
 
 ### What changed?
@@ -104,22 +118,6 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
-=======
-## Promotions (preview)
-
-The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
-Read `resources` instead.
-Each resource has a `type`, `id`, `change` and `selectable` field.
-The `change` values are `added`, `modified`, `archived`, `deleted` and `unchanged`.
-They replace the old `status` values.
-A renamed resource has the change `modified` and a `previousName`.
-A moved resource has the change `modified` and a `previousParentKey`.
-The endpoint no longer accepts the `search`, `sort` and `order` query parameters.
-
-The CLI `promotion-environment list-changes` command shows the changed resources of all types.
-It no longer accepts `--search`, `--sort` and `--order`.
-It needs an n8n instance with this change.
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 # 2.0.0
 

@@ -51,7 +51,6 @@ const INPUT_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
-<<<<<<< HEAD
 const REMOVED_GLOBAL_THROWERS: ReadonlyArray<[string, () => never]> = (
 	Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<keyof typeof REMOVED_EXPRESSION_GLOBALS>
 ).map((name) => [
@@ -60,7 +59,7 @@ const REMOVED_GLOBAL_THROWERS: ReadonlyArray<[string, () => never]> = (
 		throw new ExpressionError(removedGlobalMessage(name));
 	},
 ]);
-=======
+
 /**
  * Creates a check that returns true when a name is a valid IANA timezone.
  * The check remembers valid names, because luxon builds a new
@@ -105,7 +104,6 @@ function defineLazyValue(
 		configurable: true,
 	});
 }
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 // ============================================================================
 // Build Context Function

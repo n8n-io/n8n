@@ -1,10 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-<<<<<<< HEAD
   "version": "1.2.0",
-=======
-  "version": "0.39.0",
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",

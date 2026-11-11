@@ -1,27 +1,17 @@
-<<<<<<< HEAD
 # [3.2.0](https://github.com/n8n-io/n8n/compare/n8n@2.47.0...n8n@3.2.0) (2026-11-10)
-=======
-# [2.48.0](https://github.com/n8n-io/n8n/compare/n8n@2.47.0...n8n@2.48.0) (2026-11-10)
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 
 ### Bug Fixes
 
 * **ai-builder:** Return the raw body when fetch-url reads JSON, XML, CSV or YAML ([#42949](https://github.com/n8n-io/n8n/issues/42949)) ([6640010](https://github.com/n8n-io/n8n/commit/66400107e7d8b8b707b3a474747e0430c813b464))
 * Align workflow history header dividers ([#43167](https://github.com/n8n-io/n8n/issues/43167)) ([73698d6](https://github.com/n8n-io/n8n/commit/73698d60f823b73c5b23c61d491bcb95eb19ccc8))
-<<<<<<< HEAD
 * Community package supportedNodesApiVersion v3 compatibility ([246e5fd](https://github.com/n8n-io/n8n/commit/246e5fd3323a542a634ea5ded97ed28f26d7af4e))
-=======
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 * **Compression Node:** Preserve custom gzip file names ([#42063](https://github.com/n8n-io/n8n/issues/42063)) ([a196d7d](https://github.com/n8n-io/n8n/commit/a196d7d68f02deef479ce49a3f3138889436c50e))
 * **core:** Apply the redaction policy to log streaming, telemetry and error reports ([#42905](https://github.com/n8n-io/n8n/issues/42905)) ([c4c66d3](https://github.com/n8n-io/n8n/commit/c4c66d36a024621c8d3266ff0d9b89ab9ccc6438))
 * **core:** Decode webhook bodies in the declared charset ([#42037](https://github.com/n8n-io/n8n/issues/42037)) ([71ea718](https://github.com/n8n-io/n8n/commit/71ea71861d149554c40238b1b940b734e5d7654b))
 * **core:** Exclude Nano Banana models from Gemini chat model pickers ([#43082](https://github.com/n8n-io/n8n/issues/43082)) ([5038878](https://github.com/n8n-io/n8n/commit/503887802d58200f99bb59801e7d2af531677931))
-<<<<<<< HEAD
 * **core:** Expand default blocked IP ranges for outbound request guard ([#38912](https://github.com/n8n-io/n8n/issues/38912)) ([40f71ab](https://github.com/n8n-io/n8n/commit/40f71ab7f5f42d105ea0f6887cc28edc9334d9ac))
 * **core:** Guard misconfigured s3 binary data mode at boot and normalize removed-mode detection ([#37337](https://github.com/n8n-io/n8n/issues/37337)) ([561d084](https://github.com/n8n-io/n8n/commit/561d084fd615d4fd10b1f50f538d73a2f01b243b))
-=======
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 * **core:** Keep Anthropic thinking valid in agents after prompt rewrites and web search ([#43160](https://github.com/n8n-io/n8n/issues/43160)) ([92b6fea](https://github.com/n8n-io/n8n/commit/92b6fea0c7b2457bec0510addb89226c958347aa))
 * **core:** Keep observational memory running after a user stops a HITL card ([#43192](https://github.com/n8n-io/n8n/issues/43192)) ([cf28f65](https://github.com/n8n-io/n8n/commit/cf28f65ecbc4d9ec70f78cfcd4b3f61c45535b26))
 * **core:** Keep retry backoff when a trigger fails right after reactivation ([#43105](https://github.com/n8n-io/n8n/issues/43105)) ([b43750c](https://github.com/n8n-io/n8n/commit/b43750c4973b0b1e9cbd4fa9e6b7735b42e5bc22))
@@ -39,7 +29,6 @@
 * Extract document IDs from Drive URLs ([#42478](https://github.com/n8n-io/n8n/issues/42478)) ([fe45950](https://github.com/n8n-io/n8n/commit/fe45950d0e5043ad93748277939bf9edd7b38fc4))
 * Honor Continue On Fail for initial connection errors ([#41118](https://github.com/n8n-io/n8n/issues/41118)) ([ce23494](https://github.com/n8n-io/n8n/commit/ce23494bfddef5338a6b104945874ec73149f91b))
 * Make npm install of n8n work on all platforms again ([#43028](https://github.com/n8n-io/n8n/issues/43028)) ([01c87f9](https://github.com/n8n-io/n8n/commit/01c87f9ccca80d93cf2d6d3e87d109c5acbafdfd))
-<<<<<<< HEAD
 * **node-cli:** Give each n8n image its own dev data volume ([398e426](https://github.com/n8n-io/n8n/commit/398e426f588ea3a931f3a6e34e1ba89877233dd0))
 * **node-cli:** Harden the dev command against shell, timeout and port issues ([590a107](https://github.com/n8n-io/n8n/commit/590a107a416223b1b8148f0767c6ea7470a3a332))
 * **node-cli:** Report why a dev reload did not reach n8n ([96d468a](https://github.com/n8n-io/n8n/commit/96d468a6ad2a1bb12e1e8f129efaf740b2f8538c))
@@ -49,13 +38,7 @@
 * Remove LangChain Code example prompts from Instance AI examples ([7a0d4bf](https://github.com/n8n-io/n8n/commit/7a0d4bf6e2935a8fec9da92e94cce502028d4434))
 * Show the credential redaction cause without sharing permission ([#42711](https://github.com/n8n-io/n8n/issues/42711)) ([b3a40ee](https://github.com/n8n-io/n8n/commit/b3a40eee4e834d1b05592599315169d33a8d51ee))
 * Update Multer to 2.5.0 and preserve upload cleanup ([#43157](https://github.com/n8n-io/n8n/issues/43157)) ([731c17c](https://github.com/n8n-io/n8n/commit/731c17c61eb8d2657917106cd2ede76df1725eb9))
-=======
-* Preserve API version headers regardless of case ([#42473](https://github.com/n8n-io/n8n/issues/42473)) ([d49b632](https://github.com/n8n-io/n8n/commit/d49b63277a0d1d60e95fbaf4efd6c002dab70067))
-* **RabbitMQ Node:** Await queue bindings before returning channel ([#43033](https://github.com/n8n-io/n8n/issues/43033)) ([e87308e](https://github.com/n8n-io/n8n/commit/e87308ea697b08f49aaa137b1f0c271c0695a2bd))
-* Show the credential redaction cause without sharing permission ([#42711](https://github.com/n8n-io/n8n/issues/42711)) ([b3a40ee](https://github.com/n8n-io/n8n/commit/b3a40eee4e834d1b05592599315169d33a8d51ee))
-* Update Multer to 2.5.0 and preserve upload cleanup ([#43157](https://github.com/n8n-io/n8n/issues/43157)) ([731c17c](https://github.com/n8n-io/n8n/commit/731c17c61eb8d2657917106cd2ede76df1725eb9))
 * Use the workflow's owning project for node parameter lookups ([#43179](https://github.com/n8n-io/n8n/issues/43179)) ([8823b65](https://github.com/n8n-io/n8n/commit/8823b6566ce7627036dd9c072e6a7fd75750a8dc))
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 
 ### Features
@@ -63,18 +46,12 @@
 * Add an ability to select an element in Apps preview ([#42930](https://github.com/n8n-io/n8n/issues/42930)) ([b85c9d7](https://github.com/n8n-io/n8n/commit/b85c9d7bcbd8f152c6e5cf789c55bbc9f74eda85))
 * **ai-builder:** Bump the default Assistant model to Claude Opus 5.5 ([#42990](https://github.com/n8n-io/n8n/issues/42990)) ([44bc5b0](https://github.com/n8n-io/n8n/commit/44bc5b0fec5507b401041de0f4271d5644f3f4a8))
 * App bindings UI ([#42986](https://github.com/n8n-io/n8n/issues/42986)) ([2509674](https://github.com/n8n-io/n8n/commit/250967428f63a254afd9b353f3e0da8578b775c0))
-<<<<<<< HEAD
 * Bump N8N_NODES_API_VERSION to 3 ([07e0f31](https://github.com/n8n-io/n8n/commit/07e0f31e55497e36550e2453af3db0816f2ee107))
-* **core:** Add Microsoft Work IQ OAuth2 credential ([#43172](https://github.com/n8n-io/n8n/issues/43172)) ([a3ef7d9](https://github.com/n8n-io/n8n/commit/a3ef7d9fb8e39d501d1053e240a6a817b8a8a0da))
-* **core:** Hide archived workflows in the migration report by default ([#42781](https://github.com/n8n-io/n8n/issues/42781)) ([a070476](https://github.com/n8n-io/n8n/commit/a070476f028bf199f9889408b48e7eecad0feb28))
-* **core:** Stop agent runs when the Gateway credits wallet is empty ([#41473](https://github.com/n8n-io/n8n/issues/41473)) ([5dbef9a](https://github.com/n8n-io/n8n/commit/5dbef9a3f6a9d478f83bc863ec42371e4115efea))
-* **core:** Turn off the chat hub module by default ([#38612](https://github.com/n8n-io/n8n/issues/38612)) ([eb01ddf](https://github.com/n8n-io/n8n/commit/eb01ddf9449391b1dada9aa510d6c4fb5ce84d7a))
-=======
 * **core:** Add Microsoft Work IQ OAuth2 credential ([#43172](https://github.com/n8n-io/n8n/issues/43172)) ([a3ef7d9](https://github.com/n8n-io/n8n/commit/a3ef7d9fb8e39d501d1053e240a6a817b8a8a0da))
 * **core:** Emit telemetry and audit events when a user logs out ([#42413](https://github.com/n8n-io/n8n/issues/42413)) ([612d1d3](https://github.com/n8n-io/n8n/commit/612d1d3d8e2d801951a42d8f8b9f4679360f86e7))
 * **core:** Hide archived workflows in the migration report by default ([#42781](https://github.com/n8n-io/n8n/issues/42781)) ([a070476](https://github.com/n8n-io/n8n/commit/a070476f028bf199f9889408b48e7eecad0feb28))
 * **core:** Stop agent runs when the Gateway credits wallet is empty ([#41473](https://github.com/n8n-io/n8n/issues/41473)) ([5dbef9a](https://github.com/n8n-io/n8n/commit/5dbef9a3f6a9d478f83bc863ec42371e4115efea))
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
+* **core:** Turn off the chat hub module by default ([#38612](https://github.com/n8n-io/n8n/issues/38612)) ([eb01ddf](https://github.com/n8n-io/n8n/commit/eb01ddf9449391b1dada9aa510d6c4fb5ce84d7a))
 * **editor:** Create Listbox primitive for Design System ([#42754](https://github.com/n8n-io/n8n/issues/42754)) ([588918d](https://github.com/n8n-io/n8n/commit/588918deae5e6b2304f0dc37277b7416fde9516b))
 * **editor:** Link Apps to n8n Assistant chats ([#42969](https://github.com/n8n-io/n8n/issues/42969)) ([5339f0c](https://github.com/n8n-io/n8n/commit/5339f0c988dd2fc89040cc5150bd3b991a4c6198))
 * **editor:** Show a message when the migration report takes long to load ([#42996](https://github.com/n8n-io/n8n/issues/42996)) ([c1420c6](https://github.com/n8n-io/n8n/commit/c1420c66253871bacecbe7148754ca050a81e7f2))
@@ -83,7 +60,6 @@
 * Node operation annotations for engine ([#41835](https://github.com/n8n-io/n8n/issues/41835)) ([b3ecad1](https://github.com/n8n-io/n8n/commit/b3ecad1fe5aff95d6df9199a2b4f5e950b089a51))
 * Open the migration report filtered to the recipient from notification emails ([#43089](https://github.com/n8n-io/n8n/issues/43089)) ([010f33c](https://github.com/n8n-io/n8n/commit/010f33c0e59be815e88fedb3498249a45e616e04))
 * **Paddle Node:** Rename node to Paddle Classic ([#43042](https://github.com/n8n-io/n8n/issues/43042)) ([ddabd54](https://github.com/n8n-io/n8n/commit/ddabd543f496b9552f864f748a8c7500174cc740))
-<<<<<<< HEAD
 * Remove dead nodes ([#34327](https://github.com/n8n-io/n8n/issues/34327)) ([460a3b5](https://github.com/n8n-io/n8n/commit/460a3b528fcf0d25e88332c53d057892aa5ba224))
 * Remove Edit Image v1-1.1 ([7b50116](https://github.com/n8n-io/n8n/commit/7b501167ac6668b577adc541053765b937ae9a35))
 
@@ -96,11 +72,6 @@
 
 
 # [3.1.0](https://github.com/n8n-io/n8n/compare/n8n@2.46.0...n8n@3.1.0) (2026-11-03)
-=======
-
-
-# [2.47.0](https://github.com/n8n-io/n8n/compare/n8n@2.46.0...n8n@2.47.0) (2026-11-03)
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 
 ### Bug Fixes

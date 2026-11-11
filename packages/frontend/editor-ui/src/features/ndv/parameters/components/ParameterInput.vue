@@ -71,11 +71,6 @@ import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUt
 import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
-<<<<<<< HEAD
-	APP_MODALS_ELEMENT_ID,
-=======
-	AI_TRANSFORM_NODE_TYPE,
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
@@ -1744,55 +1739,6 @@ onUpdated(async () => {
 						.inputLabelDisplayName(parameter, path)}`"
 					@update:open="onCodeEditDialogOpenUpdate"
 				>
-<<<<<<< HEAD
-					<div class="ignore-key-press-canvas code-edit-dialog">
-						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
-							:id="parameterId"
-							:mode="codeEditorMode"
-							:model-value="modelValueString"
-							:default-value="parameter.default"
-							:language="editorLanguage"
-							:is-read-only="isReadOnly"
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:disable-expression-coloring="!isHtmlNode"
-							:disable-expression-completions="!isHtmlNode"
-							fullscreen
-							@update:model-value="valueChangedDebounced"
-						/>
-						<CssEditor
-							v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced"
-						/>
-						<SqlEditor
-							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
-							:model-value="modelValueString"
-							:dialect="getTypeOption('sqlDialect')"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced"
-						/>
-						<JsEditor
-							v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-=======
 					<N8nDialogBody>
 						<div
 							class="ignore-key-press-canvas code-edit-dialog"
@@ -1841,11 +1787,9 @@ onUpdated(async () => {
 								:model-value="modelValueString"
 								:is-read-only="isReadOnly"
 								:rows="editorRows"
-								:posthog-capture="shouldCaptureForPosthog"
 								fill-parent
 								@update:model-value="valueChangedDebounced"
 							/>
->>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
 							<JsonEditor
 								v-else-if="parameter.type === 'json' && codeEditDialogVisible"
