@@ -62,9 +62,18 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const { client, indexName, tenant } = this.args;
 		if (!indexName) throw new UnexpectedError('The Weaviate store has no collection name');
 		// An earlier item can delete the same collection or tenant, so a missing one is not an error
-		const exists = await collectionOrTenantExists(client, indexName, tenant);
-		if (exists) await clearCollection(client, indexName, tenant);
-		return { deleted: exists, deleteBy: 'collection', collection: indexName, tenant };
+		const result = { deleteBy: 'collection', collection: indexName, tenant };
+		if (!(await collectionOrTenantExists(client, indexName, tenant))) {
+			return { deleted: false, ...result };
+		}
+		try {
+			await clearCollection(client, indexName, tenant);
+		} catch (error) {
+			// A concurrent execution can delete it between the check and this call
+			if (await collectionOrTenantExists(client, indexName, tenant)) throw error;
+			return { deleted: false, ...result };
+		}
+		return { deleted: true, ...result };
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {

@@ -644,6 +644,21 @@ describe('VectorStoreWeaviate.node', () => {
 				expect(result).toEqual(expect.objectContaining({ tenant: 'tenantA' }));
 			});
 
+			it('should not fail when another execution deletes the collection at the same time', async () => {
+				collectionExists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+				deleteCollection.mockRejectedValueOnce(new Error('not found'));
+
+				const result = await runDelete('collection');
+
+				expect(result).toEqual(expect.objectContaining({ deleted: false }));
+			});
+
+			it('should throw the delete error when the collection still exists', async () => {
+				deleteCollection.mockRejectedValueOnce(new Error('forbidden'));
+
+				await expect(runDelete('collection')).rejects.toThrow('forbidden');
+			});
+
 			it('should not fail when an earlier item deleted the collection', async () => {
 				collectionExists.mockResolvedValue(false);
 
