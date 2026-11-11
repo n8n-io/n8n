@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
+import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsEnableRow from './SettingsEnableRow.vue';
 
 const meta = {
@@ -10,7 +11,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A settings row with a switch. Use it for the enable control at the top of a settings screen. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title. A later change replaces these two flags with a feature id. A FeatureBadge component then reads the feature status from a central list.',
+					'A settings row with a switch. Use it for the enable control at the top of a settings screen. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
 			},
 		},
 	},
@@ -19,29 +20,66 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const card = (inner: string) =>
+	`<div style="max-width: 45rem;"><N8nSettingsRowGroup>${inner}</N8nSettingsRowGroup></div>`;
+
 export const Default: Story = {
-	render: () => ({
-		components: { N8nSettingsEnableRow },
+	args: {
+		title: 'Enable Agents',
+		description: 'Allow users to build and run agents on this instance.',
+	},
+	render: (args) => ({
+		components: { N8nSettingsEnableRow, N8nSettingsRowGroup },
 		setup() {
-			const agents = ref(true);
-			const roles = ref(false);
-			return { agents, roles };
+			const enabled = ref(true);
+			return { args, enabled };
+		},
+		template: card(`
+			<N8nSettingsEnableRow v-bind="args" v-model="enabled" />
+		`),
+	}),
+};
+
+export const WithBadges: Story = {
+	name: 'With Badges',
+	args: {
+		title: 'With Preview',
+	},
+	render: () => ({
+		components: { N8nSettingsEnableRow, N8nSettingsRowGroup },
+		setup() {
+			const preview = ref(true);
+			const enterprise = ref(true);
+			const both = ref(true);
+			return { preview, enterprise, both };
 		},
 		template: `
-			<div style="display: flex; flex-direction: column; max-width: 720px;">
-				<N8nSettingsEnableRow
-					v-model="agents"
-					title="Enable Agents"
-					description="Allow users to build and run agents on this instance."
-					show-preview-badge
-				/>
-				<N8nSettingsEnableRow
-					v-model="roles"
-					title="Enable roles"
-					description="Let admins assign project roles to members."
-					show-preview-badge
-					show-enterprise-readiness-badge
-				/>
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--lg); max-width: 45rem;">
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						v-model="preview"
+						title="With Preview"
+						description="Allow users to build and run agents on this instance."
+						show-preview-badge
+					/>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						v-model="enterprise"
+						title="With Enterprise"
+						description="Allow users to build and run agents on this instance."
+						show-enterprise-readiness-badge
+					/>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						v-model="both"
+						title="With Both"
+						description="Allow users to build and run agents on this instance."
+						show-preview-badge
+						show-enterprise-readiness-badge
+					/>
+				</N8nSettingsRowGroup>
 			</div>
 		`,
 	}),
@@ -54,4 +92,9 @@ export const Disabled: Story = {
 		modelValue: false,
 		disabled: true,
 	},
+	render: (args) => ({
+		components: { N8nSettingsEnableRow, N8nSettingsRowGroup },
+		setup: () => ({ args }),
+		template: card(`<N8nSettingsEnableRow v-bind="args" />`),
+	}),
 };
