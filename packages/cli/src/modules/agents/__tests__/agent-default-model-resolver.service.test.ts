@@ -53,10 +53,10 @@ describe('AgentDefaultModelResolverService', () => {
 		const own = { id: 'own', name: 'My OpenAI', type: 'openAiApi' };
 		const colleague = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
 		const { service, modelLookupService } = makeService([own, colleague], [colleague.id]);
-		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-6.1 Terra', value: 'gpt-6.1-terra' }]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'openai/gpt-5.6-terra',
+			model: 'openai/gpt-6.1-terra',
 			credential: 'own',
 		});
 	});
