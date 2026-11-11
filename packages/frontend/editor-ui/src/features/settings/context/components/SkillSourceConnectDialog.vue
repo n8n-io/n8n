@@ -54,6 +54,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	connected: [result: SkillSourceConnected];
+	openSource: [sourceId: string];
 }>();
 
 /** A loose check only: the server reads the link and answers with the exact reason. */
@@ -420,6 +421,9 @@ const sourceLine = computed(() => (discovery.value ? sourceLineOf(discovery.valu
 const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
 
 const isBlocked = computed(() => duplicate.value.kind === 'blocked');
+const duplicateSourceId = computed(() =>
+	duplicate.value.kind === 'blocked' ? duplicate.value.sourceId : null,
+);
 
 /** A repository that is already connected in Global or in the scope is an error of the field. */
 const duplicateError = computed(() => {
@@ -676,6 +680,14 @@ function onInteractOutside(event: Event) {
 					data-test-id="skill-source-duplicate"
 				>
 					{{ duplicateError }}
+					<N8nButton
+						v-if="duplicateSourceId"
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('settings.context.skills.sources.view')"
+						data-test-id="skill-source-view-existing"
+						@click="emit('openSource', duplicateSourceId)"
+					/>
 				</N8nText>
 				<N8nText v-else size="small" color="text-light">
 					{{ i18n.baseText('settings.context.skills.connect.repository.hint') }}

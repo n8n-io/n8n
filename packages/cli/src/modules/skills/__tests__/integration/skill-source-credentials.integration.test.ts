@@ -537,8 +537,11 @@ describe('Skill Sync with credentials', () => {
 		});
 
 		describe('the wait after a rate limit, for each access', () => {
-			const retryAt = () =>
-				Reflect.get(Container.get(SkillSyncService), 'retryAt') as Map<string, number>;
+			const backoff = () =>
+				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+					string,
+					{ until: number; attempts: number }
+				>;
 
 			/** Imports a public repository into the team, with no credential. */
 			const importPublic = async () => {
@@ -560,12 +563,12 @@ describe('Skill Sync with credentials', () => {
 				return data.sourceId;
 			};
 
-			beforeEach(() => retryAt().clear());
+			beforeEach(() => backoff().clear());
 
 			it('still reads a source with a credential while public access waits', async () => {
 				const privateSource = (await importPrivate()).sourceId;
 				const publicSource = await importPublic();
-				retryAt().set('public:github', Date.now() + 3_600_000);
+				backoff().set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
 				github.requests.refs = 0;
 
 				await Container.get(SkillSyncService).checkAll();
@@ -578,7 +581,10 @@ describe('Skill Sync with credentials', () => {
 			it('still reads a public source while a credential waits', async () => {
 				const privateSource = (await importPrivate()).sourceId;
 				const publicSource = await importPublic();
-				retryAt().set(`credential:${teamCredential.id}`, Date.now() + 3_600_000);
+				backoff().set(`credential:${teamCredential.id}`, {
+					until: Date.now() + 3_600_000,
+					attempts: 1,
+				});
 				github.requests.refs = 0;
 
 				await Container.get(SkillSyncService).checkAll();

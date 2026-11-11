@@ -120,7 +120,7 @@ onMounted(() => {
 });
 
 watch(
-	() => [props.projectId, props.agentId, props.currentVersionId],
+	() => [props.projectId, props.agentId, props.currentVersionId, props.hasUnpublishedChanges],
 	() => {
 		void refresh(props.projectId, props.agentId);
 	},

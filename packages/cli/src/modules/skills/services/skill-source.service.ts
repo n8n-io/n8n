@@ -12,6 +12,7 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
 	skillNameKey,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
@@ -50,6 +51,7 @@ import {
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { skillPreview } from '../utils/skill-preview';
+import { skillSourceHealth } from '../utils/skill-source-health';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
@@ -216,6 +218,42 @@ export class SkillSourceService {
 			);
 			throw error;
 		}
+	}
+
+	/** Visible sources and pending update counts for the skills table. */
+	async list(user: User): Promise<SkillSourceListItem[]> {
+		await this.flagGate.assertEnabled(user);
+		const projectIds = await this.skillAccess.visibleSourceProjects(user);
+		const sources = await this.sourceRepository.findVisibleSources(projectIds);
+		const shown = sources.flatMap((source) => {
+			const client = this.clients.get(source.type);
+			return client ? [{ source, client }] : [];
+		});
+		const [counts, projects, canReview] = await Promise.all([
+			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
+			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
+			this.skillAccess.accessCheck(user, 'update'),
+		]);
+		return shown.map(({ source, client }) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
+			return {
+				id: source.id,
+				type: source.type,
+				...client.describe(source.locator),
+				webUrl: client.webUrl(source.locator),
+				projectId: source.projectId,
+				projectName: project?.name ?? null,
+				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
+				projectIcon: project?.icon ?? null,
+				skillCount: count.skills,
+				updatesAvailable: canReview(source) ? count.available : 0,
+				updatesBlocked: canReview(source) ? count.blocked : 0,
+				health: skillSourceHealth(source.lastErrorReason),
+				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				canReview: canReview(source),
+			};
+		});
 	}
 
 	// ---------------------------------------------------------------- steps

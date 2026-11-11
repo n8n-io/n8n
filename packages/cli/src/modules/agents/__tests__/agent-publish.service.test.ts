@@ -316,6 +316,27 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('rejects a newer draft after the editor selected a version for publication', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ versionId: 'newer-draft' }));
+		await expect(
+			service.publishAgent(
+				agentId,
+				projectId,
+				person,
+				byUser,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ versionId: 'selected-draft', skillVersions: {} },
+			),
+		).rejects.toThrow('The agent draft changed');
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+	});
+
 	it('rejects publishing the current draft when validation reports it invalid', async () => {
 		const {
 			service,
@@ -830,6 +851,7 @@ describe('AgentPublishService', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(agent.activeVersion ?? null);
 		const result = await service.publishAgent(agentId, projectId, person, byUser);
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);

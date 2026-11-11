@@ -514,7 +514,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
+			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -835,7 +835,7 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
