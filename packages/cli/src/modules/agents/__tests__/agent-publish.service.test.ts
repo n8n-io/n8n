@@ -1754,7 +1754,7 @@ describe('AgentPublishService', () => {
 			makeAgent({ activeVersionId: versionId, publicationRevision: 2 }),
 		);
 
-		await service.archiveAgent(agentId, projectId, user, undefined, 'mcp');
+		await service.archiveAgent(agentId, projectId, person, undefined, 'mcp');
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 2, null, ctx, {
 			archive: true,
@@ -1764,11 +1764,15 @@ describe('AgentPublishService', () => {
 			TELEMETRY_EVENT.AGENTS.MCP_UNPUBLISHED_AGENT,
 			expect.objectContaining({ agent_id: agentId }),
 		);
-		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', {
+			user: person,
+			agentId,
+			projectId,
+		});
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,
-			user_id: user.id,
+			user_id: person.id,
 			event_version: '1',
 		});
 	});
@@ -1785,9 +1789,13 @@ describe('AgentPublishService', () => {
 		const error = new Error('disconnect failed');
 		chatIntegrationService.disconnectChannel.mockRejectedValue(error);
 
-		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toBe(error);
+		await expect(service.archiveAgent(agentId, projectId, person)).rejects.toBe(error);
 
-		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', {
+			user: person,
+			agentId,
+			projectId,
+		});
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT,
 			expect.objectContaining({ agent_id: agentId }),
@@ -1801,11 +1809,15 @@ describe('AgentPublishService', () => {
 			.mockResolvedValue(makeAgent());
 		agentRepository.setArchived.mockResolvedValue(true);
 
-		await service.archiveAgent(agentId, projectId, user);
+		await service.archiveAgent(agentId, projectId, person);
 
 		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		expect(agentRepository.setArchived).toHaveBeenCalledWith(agentId, true);
-		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', {
+			user: person,
+			agentId,
+			projectId,
+		});
 	});
 
 	it('reports a conflict when the agent is published during the archive', async () => {
@@ -1813,7 +1825,7 @@ describe('AgentPublishService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		agentRepository.setArchived.mockResolvedValue(false);
 
-		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toBeInstanceOf(
+		await expect(service.archiveAgent(agentId, projectId, person)).rejects.toBeInstanceOf(
 			ConflictError,
 		);
 		expect(eventService.emit).not.toHaveBeenCalledWith('agent-archived', expect.anything());
@@ -1824,19 +1836,19 @@ describe('AgentPublishService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
 		agentRepository.setArchived.mockResolvedValue(true);
 
-		await service.unarchiveAgent(agentId, projectId, user);
+		await service.unarchiveAgent(agentId, projectId, person);
 
 		expect(agentRepository.setArchived).toHaveBeenCalledWith(agentId, false);
 		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		expect(eventService.emit).toHaveBeenCalledWith('agent-unarchived', {
-			user,
+			user: person,
 			agentId,
 			projectId,
 		});
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_UNARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,
-			user_id: user.id,
+			user_id: person.id,
 			event_version: '1',
 		});
 	});
@@ -1845,15 +1857,15 @@ describe('AgentPublishService', () => {
 		const { service, agentRepository } = makeService();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		await expect(service.unarchiveAgent(agentId, projectId, user)).rejects.toThrow(
+		await expect(service.unarchiveAgent(agentId, projectId, person)).rejects.toThrow(
 			'Agent is not archived.',
 		);
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
-		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toThrow(
+		await expect(service.archiveAgent(agentId, projectId, person)).rejects.toThrow(
 			'Agent is already archived.',
 		);
-		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+		await expect(service.publishAgent(agentId, projectId, person, byUser)).rejects.toThrow(
 			'Cannot publish an archived agent',
 		);
 		expect(agentRepository.setArchived).not.toHaveBeenCalled();
