@@ -51,9 +51,12 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<nav><button v-for="item in items" :key="item.id" :data-resourceid="item.id" @click="$emit(\'item-selected\', item)">{{ item.label }}</button></nav>',
 	},
-	N8nCard: { template: '<div><slot name="header"/><slot/><slot name="append"/></div>' },
+	N8nCard: {
+		template: '<div><slot name="header"/><slot/><slot name="footer"/><slot name="append"/></div>',
+	},
 	N8nButton: { template: '<button><slot/></button>' },
 	N8nText: { template: '<span><slot/></span>' },
+	N8nTimeAgo: { props: ['date'], template: '<time :datetime="date">{{ date }}</time>' },
 	N8nIcon: { template: '<i />' },
 	N8nActionToggle: { template: '<button data-testid="folder-actions">Actions</button>' },
 	N8nPagination: {
@@ -64,12 +67,18 @@ vi.mock('@n8n/design-system', () => ({
 	},
 }));
 
+const folderDates = {
+	createdAt: '2026-01-01T10:00:00.000Z',
+	updatedAt: '2026-01-02T11:00:00.000Z',
+};
+
 beforeEach(() => {
 	vi.resetAllMocks();
 	mocks.getProjectFolders.mockResolvedValue({
 		data: [
 			{
 				id: 'child',
+				...folderDates,
 				name: 'Triage',
 				path: ['Support', 'Triage'],
 				agentCount: 2,
@@ -118,16 +127,31 @@ describe('AgentFolderBrowser', () => {
 		'shows direct contents like workflow folders: $agentCount Agents and $subFolderCount folders',
 		async ({ agentCount, subFolderCount, agents, folders }) => {
 			mocks.getProjectFolders.mockResolvedValue({
-				data: [{ id: 'sales', name: 'Sales', path: ['Sales'], agentCount, subFolderCount }],
+				data: [
+					{
+						id: 'sales',
+						name: 'Sales',
+						path: ['Sales'],
+						agentCount,
+						subFolderCount,
+						...folderDates,
+					},
+				],
 				count: 1,
 			});
 			const wrapper = render();
 			await flushPromises();
-			const agentCounter = wrapper.find('[data-testid="agent-folder-agent-count"]');
-			const folderCounter = wrapper.find('[data-testid="agent-folder-folder-count"]');
+			const agentCounter = wrapper.find('[data-test-id="agent-folder-resource-count"]');
+			const folderCounter = wrapper.find('[data-test-id="agent-folder-folder-count"]');
 
 			expect(agentCounter.exists()).toBe(agents !== null);
 			expect(folderCounter.exists()).toBe(folders !== null);
+			expect(wrapper.get('[data-test-id="agent-folder-last-updated"]').text()).toBe(
+				`Last updated ${folderDates.updatedAt}`,
+			);
+			expect(wrapper.get('[data-test-id="agent-folder-created"]').text()).toBe(
+				`Created ${folderDates.createdAt}`,
+			);
 
 			if (agents !== null) {
 				expect(agentCounter.text()).toBe(agents);
@@ -138,6 +162,31 @@ describe('AgentFolderBrowser', () => {
 			}
 		},
 	);
+
+	it('requests both dates and shows the workflow subtitle order', async () => {
+		const wrapper = render();
+		await flushPromises();
+
+		expect(mocks.getProjectFolders.mock.lastCall?.[4]).toEqual(
+			expect.arrayContaining(['createdAt', 'updatedAt']),
+		);
+		expect(
+			wrapper
+				.get('[data-test-id="agent-folder-subtitle"]')
+				.findAll('[data-test-id]')
+				.map((field) => field.text()),
+		).toEqual([
+			'2 Agents',
+			`Last updated ${folderDates.updatedAt}`,
+			`Created ${folderDates.createdAt}`,
+		]);
+		expect(
+			wrapper.get('[data-test-id="agent-folder-last-updated"] time').attributes('datetime'),
+		).toBe(folderDates.updatedAt);
+		expect(wrapper.get('[data-test-id="agent-folder-created"] time').attributes('datetime')).toBe(
+			folderDates.createdAt,
+		);
+	});
 
 	it('moves a dragged Agent to root through the native breadcrumb drop', async () => {
 		const wrapper = render();

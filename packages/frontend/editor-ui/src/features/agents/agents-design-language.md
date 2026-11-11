@@ -17,6 +17,14 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+## Folder subtitles
+
+Use the shared `FolderCardSubtitle` for Agent and workflow folder metadata.
+Show direct resource counts, child-folder counts, Last updated, and Created in
+that order. Hide zero counts. Keep timestamps visible for empty folders.
+Hide Created on narrow screens. Keep count labels together when the subtitle
+wraps. Show search paths on a separate line.
+
 ## History entry points
 
 Put `Version history` in the Agent actions menu. Put `View timeline` in the

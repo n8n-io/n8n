@@ -16,6 +16,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import FolderCardSubtitle from '@/features/core/folders/components/FolderCardSubtitle.vue';
 import { getFolderPath, getProjectFolders, moveFolder } from '@/features/core/folders/folders.api';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -88,7 +89,16 @@ async function refresh() {
 			props.search
 				? { name: props.search, parentFolderId: props.folderId ?? PROJECT_ROOT }
 				: { parentFolderId: props.folderId ?? PROJECT_ROOT },
-			['id', 'name', 'parentFolder', 'agentCount', 'subFolderCount', 'path', 'updatedAt'],
+			[
+				'id',
+				'name',
+				'parentFolder',
+				'agentCount',
+				'subFolderCount',
+				'path',
+				'updatedAt',
+				'createdAt',
+			],
 		);
 
 		if (requestGeneration !== generation) return;
@@ -266,34 +276,20 @@ defineExpose({
 					<N8nText tag="h2" size="small" bold>{{ folder.name }}</N8nText>
 				</div>
 			</template>
-			<div :class="$style.counts">
-				<N8nText
-					v-if="(folder.agentCount ?? 0) > 0"
-					:class="$style.counter"
-					size="small"
-					color="text-light"
-					data-testid="agent-folder-agent-count"
-				>
-					{{
+			<template #footer>
+				<FolderCardSubtitle
+					:resource-count="folder.agentCount ?? 0"
+					:resource-label="
 						i18n.baseText('agents.folders.agentCount', {
 							interpolate: { count: folder.agentCount ?? 0 },
 						})
-					}}
-				</N8nText>
-				<N8nText
-					v-if="folder.subFolderCount > 0"
-					:class="$style.counter"
-					size="small"
-					color="text-light"
-					data-testid="agent-folder-folder-count"
-				>
-					{{
-						i18n.baseText('generic.folderCount', {
-							interpolate: { count: folder.subFolderCount },
-						})
-					}}
-				</N8nText>
-			</div>
+					"
+					:sub-folder-count="folder.subFolderCount"
+					:updated-at="folder.updatedAt"
+					:created-at="folder.createdAt"
+					test-id-prefix="agent-folder"
+				/>
+			</template>
 			<N8nText v-if="search" size="small" color="text-light">{{ folder.path.join(' / ') }}</N8nText>
 			<template #append
 				><N8nActionToggle
@@ -329,15 +325,6 @@ defineExpose({
 
 .folder {
 	cursor: pointer;
-}
-
-.counts {
-	display: flex;
-}
-
-.counter + .counter::before {
-	content: '|';
-	margin: 0 var(--spacing--4xs);
 }
 
 .name {
