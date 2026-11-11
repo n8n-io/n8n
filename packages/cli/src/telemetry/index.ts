@@ -600,7 +600,8 @@ export class Telemetry {
 	 * flush() returns as soon as the SDK queue is empty, not when the events reached
 	 * the server. Batches the SDK posted on its own are still in flight then, and a
 	 * process exit loses them. A flush on an empty queue waits for the batch in
-	 * flight, so flush until the queue is empty and then once more.
+	 * flight, so flush until the queue stops shrinking, then once more. The loop
+	 * stops on a queue that cannot drain, for example while the server is down.
 	 */
 	private async drainQueue(): Promise<void> {
 		if (!this.rudderStack) return;
