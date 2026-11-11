@@ -1,0 +1,22 @@
+.github/workflows/test-unit-reusable.yml
+  s_23a256cb6d1055::t_a9092ba822af06 20-24,81,84,135,196,199,240
+  s_23a256cb6d1055::t_443a1867a00b05 82,197
+.github/workflows/ci-master.yml
+  s_23a256cb6d1055::t_a9092ba822af06 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "056efe64acfc29320670399ca4ee2a3d7de41c5a",
+  "prompts": {},
+  "sessions": {
+    "s_23a256cb6d1055": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e36350c08ffepMZoZmE0bmv5JT",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

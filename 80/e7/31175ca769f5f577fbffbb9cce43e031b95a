@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderToolbar.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 1-31,37-66
+  ai_agent 32-36
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 110,668,692,699
+  s_b86bd8b73ec329::t_5db4c5dd860139 786-789
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  ai_agent 227-233
+  s_b86bd8b73ec329::t_74a5fa34189cf3 315-320
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_df89f74b26e0ae 994
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  ai_agent 270-274
+  s_b86bd8b73ec329::t_74a5fa34189cf3 27,34,128-129,219-224,235-238,240-244,261-263,266,306,308,312,319
+  s_b86bd8b73ec329::t_df89f74b26e0ae 239,269,275
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_b86bd8b73ec329::t_a020e2c18f382e 37,39,348,366-380,387,391-394,402-408
+  s_b86bd8b73ec329::t_5db4c5dd860139 96-98,395-401
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_df89f74b26e0ae 102
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_b86bd8b73ec329::t_df89f74b26e0ae 180-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80e731175ca769f5f577fbffbb9cce43e031b95a",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

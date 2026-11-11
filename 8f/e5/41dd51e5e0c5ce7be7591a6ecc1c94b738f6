@@ -1,0 +1,39 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_55f55f81f07d10::t_9948028c42f494 6,519
+  s_55f55f81f07d10::t_469c32bfbb8109 406,430,460,482,488,492-497,504,511-518,520-530
+  s_55f55f81f07d10::t_07bc0487be1528 531-533
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_55f55f81f07d10::t_e267112dacac9d 157-162
+packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
+  s_55f55f81f07d10::t_e267112dacac9d 60-62,69
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_55f55f81f07d10::t_e267112dacac9d 383-388
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_55f55f81f07d10::t_e267112dacac9d 1501
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_55f55f81f07d10::t_469c32bfbb8109 41,486-491
+  s_55f55f81f07d10::t_81b37a34ca259c 492
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_55f55f81f07d10::t_e267112dacac9d 101-102
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_55f55f81f07d10::t_469c32bfbb8109 144,238,822-823
+  s_55f55f81f07d10::t_3758dc3e196d3b 824-833
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_55f55f81f07d10::t_e267112dacac9d 108,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fe541dd51e5e0c5ce7be7591a6ecc1c94b738f6",
+  "prompts": {},
+  "sessions": {
+    "s_55f55f81f07d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7ff5563-439c-4fab-a057-a390228b6a18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
