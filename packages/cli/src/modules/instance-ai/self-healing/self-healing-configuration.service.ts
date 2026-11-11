@@ -18,7 +18,10 @@ import {
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 
+import { Telemetry } from '@/telemetry';
+import { afterCommit, runInTransaction } from '../after-commit';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -27,6 +30,10 @@ import { SelfHealingConfigurationRepository } from './database/self-healing-conf
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
 export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
+
+type ConfigurationChange = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION
+>;
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
@@ -45,7 +52,32 @@ export class SelfHealingConfigurationService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly logger: Logger,
+		private readonly telemetry: Telemetry,
 	) {}
+
+	private trackChange(
+		configuration: SelfHealingConfiguration,
+		change: ConfigurationChange['change'],
+		actorId?: string,
+		reason: ConfigurationChange['reason'] = null,
+		selections?: Pick<UpdateSelfHealingConfigurationDto, 'workflowIds' | 'reviewerIds'>,
+	) {
+		// A system pause is attributed to the user who enabled the configuration.
+		const userId = actorId ?? configuration.enabledById;
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION, {
+			configuration_id: configuration.id,
+			project_id: configuration.projectId,
+			change,
+			reason,
+			...(userId ? { user_id: userId } : {}),
+			enabled: configuration.enabled,
+			enabled_by_id: configuration.enabledById,
+			scope: configuration.scope,
+			include_all_project_members: configuration.includeAllProjectMembers,
+			reviewer_count: selections ? new Set(selections.reviewerIds).size : null,
+			selected_workflow_count: selections ? new Set(selections.workflowIds).size : null,
+		});
+	}
 
 	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
 		await this.configurations.removeWorkflowSelections(workflowIds);
@@ -104,7 +136,7 @@ export class SelfHealingConfigurationService {
 			canEnable = await this.canEnable(user, projectId);
 		}
 
-		const savedId = await this.transactionRunner.run({}, async (ctx) => {
+		const savedId = await runInTransaction(this.transactionRunner, {}, async (ctx) => {
 			let configuration: SelfHealingConfiguration;
 			if (id === undefined) {
 				configuration = new SelfHealingConfiguration();
@@ -124,6 +156,15 @@ export class SelfHealingConfigurationService {
 			if (!(await this.hasEligibleReviewer(configuration, ctx))) {
 				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
 			}
+			afterCommit(ctx, () =>
+				this.trackChange(
+					configuration,
+					id === undefined ? 'created' : 'updated',
+					user.id,
+					null,
+					input,
+				),
+			);
 			return configuration.id;
 		});
 
@@ -136,13 +177,19 @@ export class SelfHealingConfigurationService {
 			canEnable = await this.canEnable(user, projectId);
 		}
 
-		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
+		const threadIds = await runInTransaction(this.transactionRunner, {}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
 			if (enabled && !(await this.hasEligibleReviewer(configuration, ctx))) {
 				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
 			}
+			const changed = configuration.enabled !== enabled;
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
+			if (changed) {
+				afterCommit(ctx, () =>
+					this.trackChange(configuration, enabled ? 'enabled' : 'disabled', user.id),
+				);
+			}
 			return enabled
 				? []
 				: await this.investigations.getUnfinishedThreadIdsForConfiguration(id, ctx);
@@ -240,11 +287,12 @@ export class SelfHealingConfigurationService {
 		configuration.enabled = enabled;
 	}
 
-	async remove(projectId: string, id: number) {
-		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
-			await this.requireConfiguration(id, projectId, ctx);
+	async remove(projectId: string, id: number, user?: User) {
+		const threadIds = await runInTransaction(this.transactionRunner, {}, async (ctx) => {
+			const configuration = await this.requireConfiguration(id, projectId, ctx);
 			const unfinished = await this.investigations.getUnfinishedThreadIdsForConfiguration(id, ctx);
 			await this.configurations.deleteConfiguration(id, ctx);
+			afterCommit(ctx, () => this.trackChange(configuration, 'deleted', user?.id));
 			return unfinished;
 		});
 		await this.cancelInvestigations(threadIds);
@@ -270,7 +318,7 @@ export class SelfHealingConfigurationService {
 	}
 
 	async recheckAccess(id: number, projectId: string, workflowId: string) {
-		await this.transactionRunner.run({}, async (ctx) => {
+		await runInTransaction(this.transactionRunner, {}, async (ctx) => {
 			const configuration = await this.configurations.findForUpdate(id, projectId, ctx);
 			if (configuration) {
 				await this.resolveActorOrPause(configuration, workflowId, ctx);
@@ -289,6 +337,9 @@ export class SelfHealingConfigurationService {
 		if (!(await this.hasEligibleReviewer(configuration, ctx))) {
 			configuration.enabled = false;
 			await this.configurations.saveConfiguration(configuration, ctx);
+			afterCommit(ctx, () =>
+				this.trackChange(configuration, 'auto_paused', undefined, 'no_eligible_reviewer'),
+			);
 			return null;
 		}
 
@@ -311,6 +362,9 @@ export class SelfHealingConfigurationService {
 
 		configuration.enabled = false;
 		await this.configurations.saveConfiguration(configuration, ctx);
+		afterCommit(ctx, () =>
+			this.trackChange(configuration, 'auto_paused', undefined, 'enabling_user_lost_access'),
+		);
 		return null;
 	}
 }

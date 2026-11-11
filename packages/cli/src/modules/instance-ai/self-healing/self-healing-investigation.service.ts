@@ -3,23 +3,32 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
+	isUniqueConstraintError,
 	SharedWorkflowRepository,
 	TransactionRunner,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
+import type { PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
+import { Telemetry } from '@/telemetry';
+
+import { afterCommit, runInTransaction } from '../after-commit';
 import { DurableEventLog } from '../event-bus/durable-event-log';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
+import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import type { SelfHealingResult } from './database/self-healing-result.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
@@ -33,15 +42,25 @@ import {
 
 export const SELF_HEALING_CANNOT_FIX_COOLDOWN_MS = Time.days.toMilliseconds;
 
-type StartInvestigation = {
-	workflowId: string;
-	projectId: string;
-	executionId: string;
-};
+type StartInvestigation = PubSubCommandMap['self-healing-failure'] & { projectId: string };
 
 type ExistingWork =
 	| { kind: 'investigation'; investigationId: string }
 	| { kind: 'result'; resultId: string };
+
+type SkipReason = NonNullable<
+	InferTelemetryProps<
+		typeof TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_EVALUATED_FAILURE
+	>['skip_reason']
+>;
+
+/** A code that says why a run has no result. Never an error message. */
+function noResultReason(run?: SelfHealingRunResult) {
+	if (!run) return 'not_started';
+	if (run.status !== 'completed') return run.status;
+	if (run.finishReason !== 'stop') return run.finishReason ?? 'unknown';
+	return run.output ? 'save_failed' : 'invalid_output';
+}
 
 @Service()
 export class SelfHealingInvestigationService {
@@ -61,6 +80,8 @@ export class SelfHealingInvestigationService {
 		private readonly logger: Logger,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/** Admit an eligible failure. Automatic triggers belong to the caller. */
@@ -73,9 +94,19 @@ export class SelfHealingInvestigationService {
 			input.projectId,
 			input.workflowId,
 		);
-		if (!configuration) return null;
+		if (!configuration) {
+			// Report the failure only when the project uses self-healing.
+			if (await this.configurations.hasConfiguration(input.projectId)) {
+				this.trackEvaluated(input, 'not_watched');
+			}
+			return null;
+		}
+		const skip = (reason: SkipReason) => {
+			this.trackEvaluated(input, reason, configuration);
+			return null;
+		};
 
-		const actor = await this.txRunner.run({}, async (ctx) => {
+		const actor = await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const current = await this.configurations.findForUpdate(
 				configuration.id,
 				input.projectId,
@@ -85,15 +116,17 @@ export class SelfHealingInvestigationService {
 
 			return await this.configurationService.resolveActorOrPause(current, input.workflowId, ctx);
 		});
-		if (!actor) return null;
+		if (!actor) return skip('configuration_paused');
 
 		await this.requireProject(input.workflowId, input.projectId);
 		await this.suggestions.reconcileWorkflow(input.workflowId);
 
-		const existing = await this.findExisting(input);
+		const existing = await this.findExisting(input, configuration);
 		if (existing) return existing;
 
-		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
+		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) {
+			return skip('cooldown');
+		}
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -103,7 +136,9 @@ export class SelfHealingInvestigationService {
 			await this.executions.validateFailure(actor, baseline, input.executionId);
 
 			const claimed = await this.claim(input, baseline, configuration.id);
-			if (!claimed || 'kind' in claimed) return claimed;
+			if (!claimed) return skip('other');
+			if ('kind' in claimed) return claimed;
+			this.trackEvaluated(input, null, configuration, claimed);
 
 			// Return the investigation ID without waiting for the agent to finish.
 			void this.run(claimed, baseline, actor).catch((error: unknown) => {
@@ -114,6 +149,10 @@ export class SelfHealingInvestigationService {
 			});
 			return { kind: 'investigation', investigationId: claimed.id };
 		} catch (error) {
+			// A unique constraint error means that another main started this investigation.
+			if (!isUniqueConstraintError(error)) {
+				skip(error instanceof ConflictError ? 'unpublished_changes' : 'other');
+			}
 			if (error instanceof ForbiddenError) {
 				await this.configurationService.recheckAccess(
 					configuration.id,
@@ -126,8 +165,67 @@ export class SelfHealingInvestigationService {
 		}
 	}
 
+	private trackEvaluated(
+		input: StartInvestigation,
+		skipReason: SkipReason | null,
+		configuration?: SelfHealingConfiguration,
+		investigation?: SelfHealingInvestigation,
+	) {
+		// Each main reaches the same skip decision, so only the leader reports it.
+		if (skipReason && !this.instanceSettings.isLeader) return;
+
+		const userId = configuration?.enabledById;
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_EVALUATED_FAILURE, {
+			execution_id: input.executionId,
+			workflow_id: input.workflowId,
+			project_id: input.projectId,
+			workflow_version_id: input.workflowVersionId ?? null,
+			failed_at: input.failedAt ?? null,
+			error_type: input.errorType ?? null,
+			error_node_type: input.errorNodeType ?? null,
+			configuration_id: configuration?.id ?? null,
+			decision: skipReason ? 'skip' : 'investigate',
+			skip_reason: skipReason,
+			investigation_id: investigation?.id ?? null,
+			...(userId ? { user_id: userId } : {}),
+		});
+	}
+
+	private trackFinished(
+		investigation: SelfHealingInvestigation,
+		reason: string,
+		run?: SelfHealingRunResult,
+		result?: { id: string; outcome: SelfHealingResult['outcome'] } | null,
+	) {
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_FINISHED_INVESTIGATION, {
+			investigation_id: investigation.id,
+			execution_id: investigation.executionId,
+			workflow_id: investigation.workflowId,
+			project_id: investigation.projectId,
+			thread_id: investigation.threadId,
+			run_id: investigation.runId,
+			user_id: investigation.backgroundUserId,
+			baseline_version_id: investigation.publishedVersionId,
+			outcome: result?.outcome ?? 'no_result',
+			termination_reason: reason,
+			result_id: result?.id ?? null,
+			duration_seconds: run?.usage.durationSeconds ?? null,
+			turns: run?.usage.turns ?? null,
+			token_usage_by_model:
+				run?.tokenUsage?.map((usage) => ({
+					model: usage.model,
+					uncached_input: usage.uncachedInput,
+					cache_read: usage.cacheRead,
+					cache_write: usage.cacheWrite,
+					output: usage.output,
+				})) ?? null,
+			credits_charged: run && 'credits' in run.usage ? run.usage.credits : null,
+		});
+	}
+
 	private async findExisting(
 		input: StartInvestigation,
+		configuration: SelfHealingConfiguration,
 		ctx: OperationContext = {},
 	): Promise<ExistingWork | null> {
 		const executionInvestigation = await this.investigations.getForExecution(
@@ -136,6 +234,7 @@ export class SelfHealingInvestigationService {
 			ctx,
 		);
 		if (executionInvestigation) {
+			// Another delivery of this failure started the investigation and sent the event.
 			return { kind: 'investigation', investigationId: executionInvestigation.id };
 		}
 
@@ -144,6 +243,7 @@ export class SelfHealingInvestigationService {
 			ctx,
 		);
 		if (unfinishedInvestigation) {
+			afterCommit(ctx, () => this.trackEvaluated(input, 'investigation_running', configuration));
 			return { kind: 'investigation', investigationId: unfinishedInvestigation.id };
 		}
 
@@ -152,7 +252,9 @@ export class SelfHealingInvestigationService {
 			input.projectId,
 			ctx,
 		);
-		return result ? { kind: 'result', resultId: result.id } : null;
+		if (!result) return null;
+		afterCommit(ctx, () => this.trackEvaluated(input, 'result_awaiting_review', configuration));
+		return { kind: 'result', resultId: result.id };
 	}
 
 	private async claim(
@@ -160,7 +262,7 @@ export class SelfHealingInvestigationService {
 		baseline: WorkflowSuggestionBaseline,
 		configurationId: number,
 	) {
-		return await this.txRunner.run({}, async (ctx) => {
+		return await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const configuration = await this.configurations.findForUpdate(
 				configurationId,
 				input.projectId,
@@ -176,7 +278,7 @@ export class SelfHealingInvestigationService {
 			if (!actor || actor.id !== baseline.backgroundUserId) return null;
 
 			await this.suggestions.readWorkflowTargetForApply(input.workflowId, ctx);
-			const existing = await this.findExisting(input, ctx);
+			const existing = await this.findExisting(input, configuration, ctx);
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
@@ -205,6 +307,7 @@ export class SelfHealingInvestigationService {
 		baseline: WorkflowSuggestionBaseline,
 		user: User,
 	) {
+		let completedRun: SelfHealingRunResult | undefined;
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
@@ -215,8 +318,10 @@ export class SelfHealingInvestigationService {
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
-					onComplete: async (run, signal) =>
-						await this.handleRunCompletion(investigation, baseline, run, signal),
+					onComplete: async (run, signal) => {
+						completedRun = run;
+						await this.handleRunCompletion(investigation, baseline, run, signal);
+					},
 				},
 			);
 		} catch (error) {
@@ -228,7 +333,9 @@ export class SelfHealingInvestigationService {
 				);
 			}
 
-			await this.investigations.finishWithoutResult(investigation.id);
+			if (await this.investigations.finishWithoutResult(investigation.id)) {
+				this.trackFinished(investigation, noResultReason(completedRun), completedRun);
+			}
 			throw error;
 		}
 	}
@@ -241,7 +348,9 @@ export class SelfHealingInvestigationService {
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
 			if (run.error instanceof ForbiddenError) throw run.error;
-			await this.investigations.finishWithoutResult(investigation.id);
+			if (await this.investigations.finishWithoutResult(investigation.id)) {
+				this.trackFinished(investigation, noResultReason(run), run);
+			}
 			return;
 		}
 
@@ -305,7 +414,14 @@ export class SelfHealingInvestigationService {
 
 		await this.suggestions.requireCurrentBaseline(baseline);
 		signal.throwIfAborted();
-		await this.results.complete({ investigationId: investigation.id, baseline, ...result, signal });
+		const saved = await this.results.complete({
+			investigationId: investigation.id,
+			baseline,
+			...result,
+			signal,
+		});
+		// No saved result means that the configuration was paused or deleted during the run.
+		this.trackFinished(investigation, saved ? 'completed' : 'not_saved', run, saved);
 	}
 
 	async reconcile(signal?: AbortSignal) {
@@ -330,13 +446,20 @@ export class SelfHealingInvestigationService {
 			return;
 		}
 		if (!(await this.events.lastFactAt(threadId, runId))) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishInterrupted(investigation);
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
 		if (await this.events.getRunFinish(threadId, runId)) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishInterrupted(investigation);
+		}
+	}
+
+	private async finishInterrupted(investigation: SelfHealingInvestigation) {
+		// Another main can finish the investigation first. Then it sent the event.
+		if (await this.investigations.finishWithoutResult(investigation.id)) {
+			this.trackFinished(investigation, 'crash_interrupted');
 		}
 	}
 

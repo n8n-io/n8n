@@ -1628,6 +1628,11 @@ export type RelayEventMap = ModuleEventMap & {
 		serverSlug: string;
 	};
 
+	/** A pending workflow suggestion closed because its workflow changed. Emitted after commit. */
+	'workflow-suggestion-outdated': {
+		suggestionId: string;
+	};
+
 	'instance-ai-mcp-registry-connection-deleted': {
 		userId: string;
 		serverSlug: string;

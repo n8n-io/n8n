@@ -15,6 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { runInTransaction } from '../after-commit';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
@@ -113,7 +114,7 @@ export class WorkflowSuggestionActionsService {
 		suggestionId: string,
 		ctx: OperationContext = {},
 	): Promise<'discarded' | 'outdated' | 'already_closed' | 'unavailable'> {
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const user = await this.service.requireEditor(actor.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,

@@ -27,7 +27,16 @@ export class SelfHealingTriggerService {
 	async onWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		if (!this.shouldHandleFailure(ctx)) return;
 
-		const failure = { workflowId: ctx.workflow.id, executionId: ctx.executionId };
+		const error = ctx.runData.data.resultData.error;
+		const failure: PubSubCommandMap['self-healing-failure'] = {
+			workflowId: ctx.workflow.id,
+			executionId: ctx.executionId,
+			// Telemetry facts. Send the error class and the node type only, never a message or a name.
+			workflowVersionId: ctx.workflow.versionId,
+			failedAt: (ctx.runData.stoppedAt ?? new Date()).toISOString(),
+			errorType: error?.name,
+			errorNodeType: error && 'node' in error ? error.node?.type : undefined,
+		};
 		if (this.instanceSettings.instanceType === 'main') {
 			// Admission is best-effort and must not delay execution completion.
 			void this.handleFailure(failure);

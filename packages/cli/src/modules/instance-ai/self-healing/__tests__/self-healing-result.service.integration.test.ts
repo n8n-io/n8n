@@ -26,6 +26,7 @@ import {
 	type WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -35,8 +36,9 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ControllerRegistry } from '@/controller.registry';
+import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import { EventService, WorkflowPublishGuardProxy } from '@n8n/backend-services';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createExecution } from '@test-integration/db/executions';
@@ -59,6 +61,7 @@ import {
 	SelfHealingInvestigationService,
 } from '../self-healing-investigation.service';
 import { SelfHealingResultService } from '../self-healing-result.service';
+import { SelfHealingTelemetryEventRelay } from '../self-healing-telemetry.event-relay';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
@@ -2350,5 +2353,136 @@ describe('configuration lifecycle', () => {
 				id: investigation.configurationId,
 			}),
 		).toMatchObject({ enabled: true, enabledById: replacement.id });
+	});
+});
+
+describe('result state telemetry', () => {
+	const event = TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_CHANGED_RESULT_STATE;
+
+	beforeAll(() => {
+		// The module registers the relay only when the rollout flag is on at start.
+		if (Container.get(EventService).listenerCount('workflow-suggestion-outdated') === 0) {
+			Container.get(SelfHealingTelemetryEventRelay).init();
+		}
+	});
+
+	/** Collect the state changes that the code sends from now on. */
+	function trackStateChanges() {
+		// The test server replaces the telemetry service with a mock.
+		const track = vi.mocked(Container.get(Telemetry).track);
+		track.mockClear();
+		return () => {
+			const calls: unknown[][] = track.mock.calls;
+			return calls.filter(([sent]) => sent === event).map(([, properties]) => properties);
+		};
+	}
+
+	it.each([
+		['fix_ready', 'open', true],
+		['could_not_fix', 'closed', false],
+	] as const)('reports a new %s result as %s', async (outcome, state, withSuggestion) => {
+		const sent = trackStateChanges();
+		const { result, user, project, original } = await fixture(outcome, withSuggestion);
+
+		const properties = {
+			result_id: result.id,
+			workflow_id: original.id,
+			project_id: project.id,
+			result_kind: outcome,
+			new_state: state,
+			user_id: user.id,
+			original_action: null,
+			saved_version_id: null,
+			published: null,
+		};
+		expect(sent()).toEqual([properties]);
+		expect(event.getValidationError(properties)).toBeNull();
+	});
+
+	it.each([
+		['apply', false],
+		['approve-and-publish', true],
+	] as const)('reports %s with published=%s', async (action, published) => {
+		const { user, result, original, url } = await fixture('fix_ready', true);
+		const sent = trackStateChanges();
+
+		const originalAction = published ? 'publish' : 'open_editor';
+		await testServer
+			.authAgentFor(user)
+			.post(`${url}/${action}`)
+			.send({ originalAction })
+			.expect(200);
+
+		const saved = await workflows.findOneByOrFail({ id: original.id });
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				result_id: result.id,
+				new_state: 'applied',
+				user_id: user.id,
+				original_action: originalAction,
+				saved_version_id: saved.versionId,
+				published,
+			}),
+		]);
+	});
+
+	it.each([
+		['fix_ready', 'discarded'],
+		['needs_you', 'dismissed'],
+	] as const)('reports a dismissed %s result as %s', async (outcome, state) => {
+		const { user, url } = await fixture(outcome, true);
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/dismiss`).expect(200);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				new_state: state,
+				user_id: user.id,
+				original_action: null,
+				published: null,
+			}),
+		]);
+	});
+
+	it('reports the button that closed a Needs you result', async () => {
+		const { user, url } = await fixture('needs_you', false);
+		const sent = trackStateChanges();
+
+		await testServer
+			.authAgentFor(user)
+			.post(`${url}/dismiss`)
+			.send({ originalAction: 'continue' })
+			.expect(200);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({ new_state: 'dismissed', original_action: 'continue' }),
+		]);
+	});
+
+	it('reports no change when a dismiss request closes nothing', async () => {
+		const { user, url } = await fixture('could_not_fix', false);
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/dismiss`).expect(200);
+
+		expect(sent()).toEqual([]);
+	});
+
+	it('reports a result as outdated when its workflow changed', async () => {
+		const { user, result, original, url } = await fixture('fix_ready', true);
+		await workflows.update(original.id, { settings: { executionTimeout: 60 } });
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/apply`).expect(200);
+
+		await vi.waitFor(() => expect(sent()).toHaveLength(1));
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				result_id: result.id,
+				new_state: 'outdated',
+				user_id: result.backgroundUserId,
+			}),
+		]);
 	});
 });

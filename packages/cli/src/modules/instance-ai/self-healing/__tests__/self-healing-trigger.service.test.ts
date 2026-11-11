@@ -6,7 +6,13 @@ import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
-import { createRunExecutionData, type IRun, type IWorkflowBase } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeOperationError,
+	type INode,
+	type IRun,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Publisher } from '@n8n/backend-services';
@@ -33,6 +39,13 @@ describe('SelfHealingTriggerService', () => {
 		ownership,
 		logger,
 	);
+	const failedAt = new Date('2026-01-01T00:00:00.000Z');
+	const failure = {
+		workflowId: 'workflow',
+		executionId: '42',
+		workflowVersionId: 'version',
+		failedAt: failedAt.toISOString(),
+	};
 	let ctx: WorkflowExecuteAfterContext;
 
 	beforeEach(() => {
@@ -44,9 +57,13 @@ describe('SelfHealingTriggerService', () => {
 
 		ctx = {
 			type: 'workflowExecuteAfter',
-			workflow: { ...mock<IWorkflowBase>({ id: 'workflow' }), settings: {} },
+			workflow: { ...mock<IWorkflowBase>({ id: 'workflow', versionId: 'version' }), settings: {} },
 			mode: 'trigger',
-			runData: mock<IRun>({ status: 'error', data: createRunExecutionData({}) }),
+			runData: mock<IRun>({
+				status: 'error',
+				stoppedAt: failedAt,
+				data: createRunExecutionData({}),
+			}),
 			newStaticData: {},
 			executionId: '42',
 			executedInThisProcess: true,
@@ -61,11 +78,7 @@ describe('SelfHealingTriggerService', () => {
 			await service.onWorkflowExecuteAfter(ctx);
 
 			await vi.waitFor(() => {
-				expect(investigations.start).toHaveBeenCalledWith({
-					workflowId: 'workflow',
-					executionId: '42',
-					projectId: 'project',
-				});
+				expect(investigations.start).toHaveBeenCalledWith({ ...failure, projectId: 'project' });
 			});
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		},
@@ -101,8 +114,26 @@ describe('SelfHealingTriggerService', () => {
 		await vi.waitFor(() => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not start self-healing after a production failure.',
-				{ workflowId: 'workflow', executionId: '42', error },
+				{ ...failure, error },
 			);
+		});
+	});
+
+	it('sends the error class and the node type for telemetry, without the message', async () => {
+		ctx.runData.data.resultData.error = new NodeOperationError(
+			mock<INode>({ type: 'n8n-nodes-base.httpRequest' }),
+			'Secret detail',
+		);
+
+		await service.onWorkflowExecuteAfter(ctx);
+
+		await vi.waitFor(() => {
+			expect(investigations.start).toHaveBeenCalledWith({
+				...failure,
+				projectId: 'project',
+				errorType: 'NodeOperationError',
+				errorNodeType: 'n8n-nodes-base.httpRequest',
+			});
 		});
 	});
 
@@ -119,7 +150,7 @@ describe('SelfHealingTriggerService', () => {
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'self-healing-failure',
-				payload: { workflowId: 'workflow', executionId: '42' },
+				payload: failure,
 			});
 			expect(completed).not.toHaveBeenCalled();
 			expect(ownership.getWorkflowOwningProject).not.toHaveBeenCalled();
@@ -235,7 +266,7 @@ describe('SelfHealingTriggerService', () => {
 
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'self-healing-failure',
-			payload: { workflowId: 'workflow', executionId: '42' },
+			payload: failure,
 		});
 		expect(ownership.getWorkflowOwningProject).not.toHaveBeenCalled();
 		expect(investigations.start).not.toHaveBeenCalled();
@@ -245,7 +276,7 @@ describe('SelfHealingTriggerService', () => {
 		config.workflowSuggestionsEnabled = false;
 
 		await service.onWorkflowExecuteAfter(ctx);
-		await service.handleFailure({ workflowId: 'workflow', executionId: '42' });
+		await service.handleFailure(failure);
 
 		expect(ownership.getWorkflowOwningProject).not.toHaveBeenCalled();
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
@@ -274,11 +305,7 @@ describe('SelfHealingTriggerService', () => {
 			await expect(service.onWorkflowExecuteAfter(ctx)).resolves.toBeUndefined();
 
 			await vi.waitFor(() => {
-				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
-					workflowId: 'workflow',
-					executionId: '42',
-					error,
-				});
+				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { ...failure, error });
 			});
 		},
 	);

@@ -223,6 +223,44 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await whereCoversWorkflow(query, 'configuration', ':workflowId').getOne();
 	}
 
+	async hasConfiguration(projectId: string) {
+		return await this.existsBy({ projectId });
+	}
+
+	/** Count the workflows that an enabled configuration covers. */
+	private async countWatchedWorkflows() {
+		const query = this.manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.innerJoin(SharedWorkflow, 'owner', 'owner.workflowId = workflow.id AND owner.role = :role', {
+				role: 'workflow:owner',
+			})
+			.innerJoin(
+				SelfHealingConfiguration,
+				'configuration',
+				'configuration.projectId = owner.projectId',
+			)
+			.where('workflow.isArchived = :archived', { archived: false })
+			.andWhere('configuration.enabled = :enabled', { enabled: true });
+		// One configuration covers a workflow, so no workflow is counted twice.
+		return await whereCoversWorkflow(query, 'configuration', 'workflow.id').getCount();
+	}
+
+	/** Current adoption counts for the daily telemetry snapshot. */
+	async getAdoptionCounts() {
+		const [configurations, watchedWorkflowCount] = await Promise.all([
+			this.find({ select: { projectId: true, scope: true, enabled: true } }),
+			this.countWatchedWorkflows(),
+		]);
+		const enabled = configurations.filter((configuration) => configuration.enabled);
+		return {
+			configurationCount: configurations.length,
+			enabledProjectCount: new Set(enabled.map(({ projectId }) => projectId)).size,
+			allScopeCount: enabled.filter(({ scope }) => scope === 'all').length,
+			selectedScopeCount: enabled.filter(({ scope }) => scope === 'selected').length,
+			watchedWorkflowCount,
+		};
+	}
+
 	async listProjectWorkflows(projectId: string, workflowIds?: string[]) {
 		if (workflowIds?.length === 0) return [];
 

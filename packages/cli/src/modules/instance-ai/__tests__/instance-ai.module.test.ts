@@ -19,7 +19,7 @@ describe('InstanceAiModule', () => {
 
 		const tasks = await new InstanceAiModule().systemTasks();
 
-		expect(tasks).toEqual([InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask]);
+		expect(tasks).toEqual([SelfHealingReconciliationTask, InstanceAiCheckpointPruningTask]);
 	});
 
 	it('keeps reconciliation scheduled when data pruning is disabled', async () => {

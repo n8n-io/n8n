@@ -15,7 +15,11 @@ import type {
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { selfHealingOutputSchema, type CredentialResolutionResult } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+
+import type { Telemetry } from '@/telemetry';
 
 import type { DurableEventLog } from '../../event-bus/durable-event-log';
 import type { InterruptedRunSweeper } from '../../event-bus/interrupted-run-sweeper';
@@ -61,6 +65,10 @@ describe('SelfHealingInvestigationService', () => {
 		enabled: true,
 		enabledById: user.id,
 	});
+	const telemetry = mock<Telemetry>();
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const { SELF_HEALING_EVALUATED_FAILURE, SELF_HEALING_FINISHED_INVESTIGATION } =
+		TELEMETRY_EVENT.SELF_HEALING;
 	const service = new SelfHealingInvestigationService(
 		investigations,
 		results,
@@ -77,6 +85,8 @@ describe('SelfHealingInvestigationService', () => {
 		logger,
 		configurations,
 		configurationService,
+		telemetry,
+		instanceSettings,
 	);
 	let investigation: SelfHealingInvestigation;
 	let run: SelfHealingRunResult;
@@ -89,11 +99,13 @@ describe('SelfHealingInvestigationService', () => {
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
 		configurationService.resolveActorOrPause.mockResolvedValue(user);
+		investigations.finishWithoutResult.mockResolvedValue(true);
 		execution = undefined;
 		controller = new AbortController();
 		investigation = mock<SelfHealingInvestigation>({
 			...input,
 			id: 'investigation',
+			publishedVersionId: 'version',
 			configurationId: configuration.id,
 			threadId: 'private-thread',
 			runId: 'run',
@@ -142,6 +154,9 @@ describe('SelfHealingInvestigationService', () => {
 		await execution;
 		return response;
 	}
+
+	const tracked = (event: unknown) =>
+		telemetry.track.mock.calls.filter(([entry]) => entry === event).map(([, props]) => props);
 
 	it('does not admit an investigation when workflow suggestions are disabled', async () => {
 		config.workflowSuggestionsEnabled = false;
@@ -375,6 +390,9 @@ describe('SelfHealingInvestigationService', () => {
 		run.output = undefined;
 		await startAndFinish();
 		expect(results.complete).not.toHaveBeenCalled();
+		expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+			expect.objectContaining({ outcome: 'no_result', termination_reason: 'invalid_output' }),
+		]);
 	});
 
 	it('does not run the model again for the same failed execution', async () => {
@@ -385,6 +403,8 @@ describe('SelfHealingInvestigationService', () => {
 		});
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 		expect(executions.validateFailure).not.toHaveBeenCalled();
+		// The first delivery sent the event.
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('returns an open result instead of starting another investigation', async () => {
@@ -547,5 +567,108 @@ describe('SelfHealingInvestigationService', () => {
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
+	});
+	describe('telemetry', () => {
+		it('reports the decision to investigate and the saved result', async () => {
+			results.complete.mockResolvedValue(
+				mock<SelfHealingResult>({ id: 'result', outcome: 'could_not_fix' }),
+			);
+
+			await startAndFinish();
+
+			expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+				expect.objectContaining({
+					execution_id: input.executionId,
+					decision: 'investigate',
+					skip_reason: null,
+					investigation_id: investigation.id,
+					configuration_id: configuration.id,
+					user_id: user.id,
+				}),
+			]);
+			const [finished] = tracked(SELF_HEALING_FINISHED_INVESTIGATION);
+			expect(finished).toMatchObject({
+				investigation_id: investigation.id,
+				outcome: 'could_not_fix',
+				termination_reason: 'completed',
+				result_id: 'result',
+				turns: 3,
+				credits_charged: 2,
+			});
+			expect(SELF_HEALING_FINISHED_INVESTIGATION.getValidationError(finished)).toBeNull();
+		});
+
+		it.each([
+			['cooldown', () => resultRepository.isInCooldown.mockResolvedValue(true)],
+			[
+				'result_awaiting_review',
+				() => resultRepository.getOpenForWorkflow.mockResolvedValue(mock<SelfHealingResult>()),
+			],
+			[
+				'investigation_running',
+				() =>
+					investigations.getUnfinishedForWorkflow.mockResolvedValue(
+						mock<SelfHealingInvestigation>({ executionId: 'other' }),
+					),
+			],
+			[
+				'configuration_paused',
+				() => configurationService.resolveActorOrPause.mockResolvedValue(null),
+			],
+			[
+				'unpublished_changes',
+				() => suggestions.captureBaseline.mockRejectedValue(new ConflictError('Changed')),
+			],
+		] as const)('reports a skip with the reason %s', async (reason, arrange) => {
+			arrange();
+
+			await service.start(input).catch(() => {});
+
+			const events = tracked(SELF_HEALING_EVALUATED_FAILURE);
+			expect(events).toEqual([
+				expect.objectContaining({ decision: 'skip', skip_reason: reason, investigation_id: null }),
+			]);
+			expect(SELF_HEALING_EVALUATED_FAILURE.getValidationError(events[0])).toBeNull();
+		});
+
+		it('reports an unwatched failure only when the project has a configuration', async () => {
+			configurations.findForWorkflow.mockResolvedValue(null);
+			await service.start(input);
+			expect(telemetry.track).not.toHaveBeenCalled();
+
+			configurations.hasConfiguration.mockResolvedValue(true);
+			await service.start(input);
+			expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+				expect.objectContaining({ skip_reason: 'not_watched', configuration_id: null }),
+			]);
+		});
+
+		it('reports a skip only on the leader, and an investigation on each main', async () => {
+			Object.assign(instanceSettings, { isLeader: false });
+			try {
+				resultRepository.isInCooldown.mockResolvedValue(true);
+				await service.start(input);
+				expect(telemetry.track).not.toHaveBeenCalled();
+
+				resultRepository.isInCooldown.mockResolvedValue(false);
+				await startAndFinish();
+				expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+					expect.objectContaining({ decision: 'investigate' }),
+				]);
+			} finally {
+				Object.assign(instanceSettings, { isLeader: true });
+			}
+		});
+
+		it('reports an investigation only when the clean-up task closes it', async () => {
+			investigations.listUnfinished.mockResolvedValue([investigation, investigation]);
+			events.lastFactAt.mockResolvedValue(null);
+			// Another main finished the second investigation first.
+			investigations.finishWithoutResult.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			await service.reconcile();
+			expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+				expect.objectContaining({ termination_reason: 'crash_interrupted', result_id: null }),
+			]);
+		});
 	});
 });

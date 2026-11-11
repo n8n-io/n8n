@@ -17,8 +17,10 @@ it('encodes the full result address and forwards the editor context for each act
 	await fetchSelfHealingResult(context, selection);
 	expect(makeRestApiRequest).toHaveBeenLastCalledWith(context, 'GET', path);
 	for (const action of ['apply', 'approve-and-publish', 'dismiss'] as const) {
-		await reviewSelfHealingResult(context, selection, action);
-		expect(makeRestApiRequest).toHaveBeenLastCalledWith(context, 'POST', `${path}/${action}`);
+		await reviewSelfHealingResult(context, selection, action, 'continue');
+		expect(makeRestApiRequest).toHaveBeenLastCalledWith(context, 'POST', `${path}/${action}`, {
+			originalAction: 'continue',
+		});
 	}
 	expect(makeRestApiRequest).toHaveBeenCalledTimes(4);
 });

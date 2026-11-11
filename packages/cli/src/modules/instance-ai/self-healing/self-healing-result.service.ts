@@ -4,6 +4,7 @@ import {
 	type WorkflowSuggestionGraph,
 	selfHealingResultContentSchema,
 	type SelfHealingExecutionReference,
+	type SelfHealingOriginalAction,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
 	type WorkflowSuggestionActionResult,
@@ -22,9 +23,13 @@ import {
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 
+import { Telemetry } from '@/telemetry';
+
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
+import { afterCommit, runInTransaction } from '../after-commit';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import {
 	WorkflowSuggestionService,
@@ -73,7 +78,38 @@ export class SelfHealingResultService {
 		private readonly roles: RoleService,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
+		private readonly telemetry: Telemetry,
 	) {}
+
+	private trackState(
+		result: SelfHealingResult,
+		newState: SelfHealingResultDetail['reviewState'],
+		change: {
+			userId?: string;
+			originalAction?: SelfHealingOriginalAction;
+			savedVersionId?: string;
+			published?: boolean;
+		} = {},
+	) {
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_CHANGED_RESULT_STATE, {
+			result_id: result.id,
+			workflow_id: result.workflowId,
+			project_id: result.projectId,
+			result_kind: result.outcome,
+			new_state: newState,
+			// A system change is attributed to the user who enabled the configuration.
+			user_id: change.userId ?? result.backgroundUserId,
+			original_action: change.originalAction ?? null,
+			saved_version_id: change.savedVersionId ?? null,
+			published: change.published ?? null,
+		});
+	}
+
+	/** Report the result of a suggestion that closed because its workflow changed. */
+	async trackOutdated(suggestionId: string) {
+		const result = await this.results.findBySuggestionId(suggestionId);
+		if (result) this.trackState(result, 'outdated');
+	}
 
 	private async getInboxAccess(userId: string) {
 		const user = await this.users.findByIdWithRole(userId);
@@ -137,7 +173,7 @@ export class SelfHealingResultService {
 		} = await this.prepareResult(investigation, baseline, input);
 		signal?.throwIfAborted();
 
-		return await this.txRunner.run({}, async (ctx) => {
+		return await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const configuration = await this.configurations.findForUpdate(
 				investigation.configurationId,
 				investigation.projectId,
@@ -191,6 +227,7 @@ export class SelfHealingResultService {
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
 			// Abort before commit so the result and suggestion roll back together.
 			signal?.throwIfAborted();
+			afterCommit(ctx, () => this.trackState(result, getSelfHealingReviewState(result, null)));
 			return result;
 		});
 	}
@@ -316,6 +353,7 @@ export class SelfHealingResultService {
 		resultId: string,
 		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
+		originalAction?: SelfHealingOriginalAction,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer } = await this.getResultForEditor(
 			user,
@@ -349,6 +387,14 @@ export class SelfHealingResultService {
 		}
 
 		const { publishError, ...suggestion } = actionResult;
+		if (suggestion.closedReason === 'applied') {
+			this.trackState(result, 'applied', {
+				userId: reviewer.id,
+				originalAction,
+				savedVersionId: suggestion.appliedVersion?.versionId,
+				published: action === 'approve-and-publish' && publishError === undefined,
+			});
+		}
 		const execution = await this.executionReferences.getReference(
 			reviewer,
 			workflowId,
@@ -360,8 +406,14 @@ export class SelfHealingResultService {
 		};
 	}
 
-	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const outcome = await this.txRunner.run({}, async (ctx) => {
+	async dismiss(
+		user: User,
+		projectId: string,
+		workflowId: string,
+		resultId: string,
+		originalAction?: SelfHealingOriginalAction,
+	) {
+		const outcome = await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -390,6 +442,15 @@ export class SelfHealingResultService {
 				!(await this.results.dismissResult(result.id, user.id, ctx))
 			) {
 				throw new ConflictError('This result is already closed.');
+			}
+			// Only a Needs you result is marked as dismissed. A fix is discarded.
+			if (suggestionId || result.outcome === 'needs_you') {
+				afterCommit(ctx, () =>
+					this.trackState(result, result.outcome === 'needs_you' ? 'dismissed' : 'discarded', {
+						userId: user.id,
+						originalAction,
+					}),
+				);
 			}
 			return 'dismissed';
 		});

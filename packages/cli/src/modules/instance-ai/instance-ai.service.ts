@@ -120,7 +120,10 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
-import { InstanceAiCreditService } from './instance-ai-credit.service';
+import {
+	InstanceAiCreditService,
+	SELF_HEALING_BILLING_USER_ID,
+} from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -1088,7 +1091,8 @@ export class InstanceAiService {
 				signal: abortController.signal,
 				sandbox: this.sandboxService,
 				tracing: this.tracing,
-				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				createProxyRunConfig: async () =>
+					await this.createProxyRunConfig({ id: SELF_HEALING_BILLING_USER_ID }),
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
 				onFinalizing: () => {

@@ -21,6 +21,7 @@ import {
 	wrapMigration,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -29,6 +30,7 @@ import { randomUUID } from 'node:crypto';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { Telemetry } from '@/telemetry';
 import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
@@ -1430,6 +1432,110 @@ describe('project member reviewers', () => {
 					configuration.id,
 				),
 			).toMatchObject({ workflowIds: [uncovered.id] });
+		});
+	});
+});
+
+describe('configuration telemetry', () => {
+	const event = TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION;
+
+	function trackChanges() {
+		// The test server replaces the telemetry service with a mock.
+		const track = vi.mocked(Container.get(Telemetry).track);
+		track.mockClear();
+		return () => {
+			const calls: unknown[][] = track.mock.calls;
+			return calls.filter(([sent]) => sent === event).map(([, properties]) => properties);
+		};
+	}
+
+	it('reports each change of a configuration', async () => {
+		const { user, project, input } = await fixture();
+		await linkUserToProject(user, project, 'project:admin');
+		const sent = trackChanges();
+
+		const { id } = await configurations.save(user, project.id, input);
+		await configurations.setEnabled(user, project.id, id, true);
+		// A repeated request changes nothing, so it sends no event.
+		await configurations.setEnabled(user, project.id, id, true);
+		await configurations.save(user, project.id, input, id);
+		await configurations.setEnabled(user, project.id, id, false);
+		await configurations.remove(project.id, id, user);
+
+		const base = {
+			configuration_id: id,
+			project_id: project.id,
+			reason: null,
+			user_id: user.id,
+			scope: 'selected',
+			enabled: true,
+			enabled_by_id: user.id,
+			include_all_project_members: input.includeAllProjectMembers,
+			reviewer_count: null,
+			selected_workflow_count: null,
+		};
+		// Only a save has the selections.
+		const selections = {
+			reviewer_count: input.reviewerIds.length,
+			selected_workflow_count: input.workflowIds.length,
+		};
+		const properties = [
+			{ ...base, ...selections, change: 'created', enabled: false, enabled_by_id: null },
+			{ ...base, change: 'enabled' },
+			{ ...base, ...selections, change: 'updated' },
+			{ ...base, change: 'disabled', enabled: false },
+			{ ...base, change: 'deleted', enabled: false },
+		];
+		expect(sent()).toEqual(properties);
+		for (const sentProperties of properties) {
+			expect(event.getValidationError(sentProperties)).toBeNull();
+		}
+	});
+
+	it('reports an automatic pause with the enabling user', async () => {
+		const user = await createUser();
+		const project = await createTeamProject(undefined, user);
+		const workflow = await createWorkflow({}, project);
+		const { id } = await configurations.save(user, project.id, {
+			scope: 'all',
+			workflowIds: [],
+			reviewerIds: [user.id],
+			includeAllProjectMembers: false,
+			enabled: true,
+		});
+		await linkUserToProject(user, project, 'project:viewer');
+		const sent = trackChanges();
+
+		await configurations.recheckAccess(id, project.id, workflow.id);
+		// The configuration is paused now, so a second check sends no event.
+		await configurations.recheckAccess(id, project.id, workflow.id);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				configuration_id: id,
+				change: 'auto_paused',
+				reason: 'no_eligible_reviewer',
+				user_id: user.id,
+			}),
+		]);
+	});
+
+	it('counts adoption for the daily snapshot', async () => {
+		const before = await repository.getAdoptionCounts();
+		const { user, project, input } = await fixture();
+		await createWorkflow({}, project);
+		await linkUserToProject(user, project, 'project:admin');
+		// One enabled selection, and one paused all-workflows configuration in the same project.
+		await configurations.save(user, project.id, { ...input, enabled: true });
+		await configurations.save(user, project.id, { ...input, scope: 'all', workflowIds: [] });
+
+		expect(await repository.getAdoptionCounts()).toEqual({
+			configurationCount: before.configurationCount + 2,
+			enabledProjectCount: before.enabledProjectCount + 1,
+			allScopeCount: before.allScopeCount,
+			selectedScopeCount: before.selectedScopeCount + 1,
+			// The paused configuration covers the second workflow, so only one is watched.
+			watchedWorkflowCount: before.watchedWorkflowCount + 1,
 		});
 	});
 });

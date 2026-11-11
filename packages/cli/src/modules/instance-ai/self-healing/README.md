@@ -340,6 +340,37 @@ Use the reviewer's personal project, not the result's `projectId`, for this chat
 Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
+## Telemetry
+
+The events are in the `SELF_HEALING` domain of `@n8n/telemetry`.
+Run `pnpm --filter @n8n/telemetry catalog` for the event names and properties.
+Each service calls `Telemetry.track()` at the place where the change occurs.
+
+| Event                                          | Sender                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `Self healing evaluated failure`               | `SelfHealingInvestigationService.start()`.                         |
+| `Self healing finished investigation`          | `SelfHealingInvestigationService`, also from reconciliation.       |
+| `Self healing changed result state`            | `SelfHealingResultService`: `complete()`, `act()` and `dismiss()`. |
+| `Instance changed self healing configuration`  | `SelfHealingConfigurationService`.                                 |
+| `Instance reported self healing configuration` | `SelfHealingConfigurationSnapshotTask`, one time each day.         |
+| `User viewed self healing result`              | The Inbox result view.                                             |
+| `User clicked self healing action`             | The Inbox result view, before the request.                         |
+
+- Each main evaluates a relayed failure. Only the leader reports a skip. The main that
+  creates the investigation reports it.
+- A main that is not the leader can handle a failure without a relay, for example a webhook
+  run that fails before a worker starts it. A skip of that failure sends no event.
+- A rare repeat is possible. Analytics keeps one row for each `execution_id`,
+  `investigation_id`, or `result_id` with `new_state`.
+- Events are sent after the transaction commits. Code in a transaction registers the call
+  with `afterCommit()`, and `runInTransaction()` runs it after the commit (`../after-commit.ts`).
+- The shared workflow suggestion code does not import this module. It emits
+  `workflow-suggestion-outdated`, and `SelfHealingTelemetryEventRelay` reports the result.
+- A chat that starts from a result adds `result_id` and `result_kind` to
+  `User launched Instance AI thread`. This links the chat to the result.
+- Events carry IDs, counts and codes only. They never carry an error message, a node name or
+  report text.
+
 ## Availability
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable investigations

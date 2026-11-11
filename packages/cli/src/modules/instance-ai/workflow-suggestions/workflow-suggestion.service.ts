@@ -4,6 +4,7 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -23,6 +24,7 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { afterCommit, runInTransaction } from '../after-commit';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 
@@ -65,6 +67,7 @@ export class WorkflowSuggestionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly events: EventService,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -216,7 +219,7 @@ export class WorkflowSuggestionService {
 	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
@@ -260,7 +263,7 @@ export class WorkflowSuggestionService {
 		scope: { workflowId: string; projectId: string },
 		ctx: OperationContext = {},
 	) {
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
 			const suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 			return { suggestion: await this.closeIfOutdated(suggestion, target, ctx), target };
@@ -275,12 +278,16 @@ export class WorkflowSuggestionService {
 		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
 			return suggestion;
 		}
-		await this.suggestions.closePending(
+		const closed = await this.suggestions.closePending(
 			suggestion,
 			'outdated',
 			{ author: 'system', actorId: null },
 			ctx,
 		);
+		if (closed) {
+			const suggestionId = suggestion.id;
+			afterCommit(ctx, () => this.events.emit('workflow-suggestion-outdated', { suggestionId }));
+		}
 		return await this.suggestions.getSuggestion(suggestion.id, suggestion, ctx);
 	}
 

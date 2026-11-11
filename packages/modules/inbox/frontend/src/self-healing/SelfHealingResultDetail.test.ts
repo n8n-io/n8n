@@ -6,6 +6,7 @@ import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { computed, ref } from 'vue';
 
@@ -15,17 +16,19 @@ import * as api from './selfHealingResults.api';
 import { result, resultSelection, suggestion } from './selfHealingResults.test.utils';
 
 vi.mock('./selfHealingResults.api');
-const { push, showError, showMessage, startChat } = vi.hoisted(() => ({
+const { push, showError, showMessage, startChat, track } = vi.hoisted(() => ({
 	push: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 	startChat: vi.fn(),
+	track: vi.fn(),
 }));
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const onItemChange = vi.fn();
 const chatAvailable = ref(true);
@@ -138,6 +141,7 @@ it.each([
 			useRootStore().restApiContext,
 			resultSelection,
 			withSuggestion ? 'apply' : 'dismiss',
+			destination === 'chat' ? 'continue' : 'open_editor',
 		);
 		expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
 		expect(itemChangeCountAtNavigation).toBe(0);
@@ -580,6 +584,7 @@ it('retains applied state and opens the editor when publication returns an error
 		useRootStore().restApiContext,
 		resultSelection,
 		'approve-and-publish',
+		'publish',
 	);
 	expect(useSelfHealingResultStore().detail?.reviewState).toBe('applied');
 	expect(showMessage).toHaveBeenCalledWith(
@@ -698,6 +703,7 @@ it.each(dismissals)(
 			useRootStore().restApiContext,
 			resultSelection,
 			'dismiss',
+			'dismiss',
 		);
 		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
@@ -800,6 +806,7 @@ it('scopes a pending action to its result', async () => {
 		useRootStore().restApiContext,
 		secondSelection,
 		'dismiss',
+		'dismiss',
 	);
 
 	firstAction.resolve(result({ reviewState: 'discarded' }));
@@ -836,4 +843,101 @@ it('does not repeat an action that is still pending when its result is selected 
 	await waitAllPromises();
 	expect(push).toHaveBeenCalledOnce();
 	expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
+});
+
+describe('telemetry', () => {
+	const { USER_VIEWED_SELF_HEALING_RESULT, USER_CLICKED_SELF_HEALING_ACTION } =
+		TELEMETRY_EVENT.SELF_HEALING;
+	const identity = {
+		result_id: resultSelection.id,
+		workflow_id: resultSelection.workflowId,
+		project_id: resultSelection.projectId,
+	};
+	const tracked = (event: unknown) => track.mock.calls.filter(([sent]) => sent === event);
+
+	it('tracks one view each time the user opens a result, not after an action', async () => {
+		const detail = result({ outcome: 'fix_ready', suggestion: suggestion() });
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult(detail));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(track).toHaveBeenCalledExactlyOnceWith(USER_VIEWED_SELF_HEALING_RESULT, {
+			...identity,
+			result_kind: 'fix_ready',
+			current_state: 'open',
+		});
+
+		// The action replaces the detail on screen. It is the same view.
+		view.getByTestId('editor').click();
+		await waitAllPromises();
+		expect(tracked(USER_VIEWED_SELF_HEALING_RESULT)).toHaveLength(1);
+
+		mockResultForEachSelection();
+		await changeSelection(view, secondSelection);
+		expect(tracked(USER_VIEWED_SELF_HEALING_RESULT)).toHaveLength(2);
+	});
+
+	it('does not track a view of a Could not fix result or of a failed load', async () => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'could_not_fix' }));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		vi.mocked(api.fetchSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+		await changeSelection(view, secondSelection);
+
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['approve-and-publish', 'publish', 'approve-and-publish'],
+		['chat', 'continue', 'apply'],
+		['editor', 'open_editor', 'apply'],
+		['dismiss', 'dismiss', 'dismiss'],
+	] as const)(
+		'tracks a click on %s as %s before the request',
+		async (button, originalAction, reviewAction) => {
+			const detail = result({ outcome: 'fix_ready', suggestion: suggestion() });
+			vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+			// The click is tracked even when the request never gets a response.
+			vi.mocked(api.reviewSelfHealingResult).mockImplementation(async () => {
+				expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toHaveLength(1);
+				throw new Error('Disconnected');
+			});
+			const view = renderComponent();
+			await waitAllPromises();
+
+			view.getByTestId(button).click();
+			await waitAllPromises();
+
+			expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toEqual([
+				[
+					USER_CLICKED_SELF_HEALING_ACTION,
+					{ ...identity, result_kind: 'fix_ready', original_action: originalAction },
+				],
+			]);
+			expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
+				useRootStore().restApiContext,
+				resultSelection,
+				reviewAction,
+				originalAction,
+			);
+		},
+	);
+
+	it('does not track a click that starts no request', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockResolvedValue({ name: 'Daily report', scopes: [] });
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			result({ outcome: 'fix_ready', suggestion: suggestion() }),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		// The user has no publish access, so the action does nothing.
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+
+		expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toHaveLength(0);
+		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	});
 });
