@@ -2,7 +2,7 @@ import type { OpenAIClient } from '@langchain/openai';
 import type { ChatOpenAIToolType } from '@langchain/openai/dist/utils/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
-import { isObjectEmpty } from 'n8n-workflow';
+import { isObjectEmpty, type DisplayCondition } from 'n8n-workflow';
 
 import { parseJsonParameter } from '@utils/helpers';
 
@@ -80,6 +80,53 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 	}
 	return tools;
 };
+
+/**
+ * Reasoning-effort support matrix, last checked 12 Nov 2026.
+ * Source: https://developers.openai.com/api/docs/models
+ *
+ * It lists the model IDs that are verified to accept `reasoning_effort: "none"`.
+ * It holds per-model-ID evidence, not family names, because a family shape fails
+ * in both directions: gpt-6-sol accepts `none`, gpt-6-astra rejects it.
+ *
+ * The base pattern covers only the base IDs gpt-5.1, gpt-5.2, gpt-5.4, gpt-5.5
+ * and gpt-5.6. It skips gpt-5.3, and it skips every mini and nano tier, because
+ * those IDs are unverified. Only gpt-5.4-mini and gpt-5.4-nano are confirmed, so
+ * those two stay in the extras list.
+ */
+const NONE_REASONING_BASE = 'gpt-5\\.(1|2|4|5|6)';
+
+// Variants the base pattern cannot express on its own.
+const NONE_REASONING_EXTRAS = [
+	'gpt-5.4-mini',
+	'gpt-5.4-nano',
+	'gpt-5.6-sol',
+	'gpt-5.6-terra',
+	'gpt-5.6-luna',
+	'gpt-6-sol',
+	'gpt-6-luna',
+	'gpt-6.1-terra',
+];
+
+const NONE_REASONING_REGEX_STR = `^(${NONE_REASONING_BASE}|${NONE_REASONING_EXTRAS.map((m) =>
+	m.replace(/\./g, '\\.'),
+).join('|')})(-\\d{4}-\\d{2}-\\d{2})?$`;
+
+/** Display condition for the dropdown variant that adds `none`. */
+export const NONE_REASONING_CONDITION: DisplayCondition = {
+	_cnd: { regex: NONE_REASONING_REGEX_STR },
+};
+
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern derived from a fixed constant; no runtime input
+const NONE_REASONING_PATTERN = new RegExp(NONE_REASONING_REGEX_STR);
+
+/**
+ * True when the model ID is verified to accept `reasoning_effort: "none"`.
+ * Exported so callers and tests share one source of truth.
+ */
+export function isNoneReasoningSupported(model: string): boolean {
+	return NONE_REASONING_PATTERN.test(model);
+}
 
 export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	const body: Partial<ChatResponseRequest> = {

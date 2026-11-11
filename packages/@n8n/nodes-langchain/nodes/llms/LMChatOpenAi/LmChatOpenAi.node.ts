@@ -26,7 +26,12 @@ import {
 	aiClientFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
+import {
+	formatBuiltInTools,
+	isNoneReasoningSupported,
+	NONE_REASONING_CONDITION,
+	prepareAdditionalResponsesParams,
+} from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
 import { Container } from '@n8n/di';
@@ -40,52 +45,12 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	default: '',
 };
 
-// The official API accepts reasoning_effort only on o1 (and its dated versions), o3-mini and later, and gpt-5 models.
+// Recognized reasoning models. This name heuristic decides where low, medium, and
+// high effort are offered. Model IDs that also accept `none` are matched by
+// NONE_REASONING_CONDITION in common.ts.
 const OPENAI_REASONING_MODEL: DisplayCondition = {
 	_cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' },
 };
-
-// Reasoning-effort support map (matrix dated 11 Nov 2026): models verified to
-// accept `reasoning_effort: "none"`. Derived from per-model-ID evidence, not
-// family names — family shapes fail in both directions (e.g. gpt-6-sol accepts
-// `none`, gpt-6-astra rejects it).
-//
-// Base pattern: base IDs for gpt-5.1 through gpt-5.6 only. Mini/nano tiers are
-// NOT covered by the base pattern because only gpt-5.4-mini and gpt-5.4-nano
-// are confirmed; other -mini/-nano variants are unverified and must not be
-// exposed.
-const NONE_REASONING_BASE = 'gpt-5\\.(1|2|4|5|6)';
-
-// Extras: variants the base pattern cannot safely express.
-const NONE_REASONING_EXTRAS = [
-	'gpt-5.4-mini',
-	'gpt-5.4-nano',
-	'gpt-5.6-sol',
-	'gpt-5.6-terra',
-	'gpt-5.6-luna',
-	'gpt-6-sol',
-	'gpt-6-luna',
-	'gpt-6.1-terra',
-];
-
-const NONE_REASONING_REGEX_STR = `^(${NONE_REASONING_BASE}|${NONE_REASONING_EXTRAS.map((m) =>
-	m.replace(/\./g, '\\.'),
-).join('|')})(-\\d{4}-\\d{2}-\\d{2})?$`;
-
-/** Used by the UI display engine to show the none-augmented dropdown. */
-const NONE_REASONING_CONDITION: DisplayCondition = { _cnd: { regex: NONE_REASONING_REGEX_STR } };
-/** Used at runtime to validate that none is not sent to an unsupported model. */
-// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern derived from a fixed constant; no runtime input
-const NONE_REASONING_PATTERN = new RegExp(NONE_REASONING_REGEX_STR);
-
-/**
- * Returns true when the model is confirmed to accept `reasoning_effort: "none"`.
- * Exported so tests can verify map coverage against the actual pattern rather
- * than a reimplemented copy.
- */
-export function isNoneReasoningSupported(model: string): boolean {
-	return NONE_REASONING_PATTERN.test(model);
-}
 
 const reasoningEffort: INodeProperties = {
 	displayName: 'Reasoning Effort',
@@ -890,13 +855,28 @@ export class LmChatOpenAi implements INodeType {
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: Record<string, unknown> = {};
 
-		// Runtime guard: 'none' is only supported by a specific subset of models.
-		// Fail fast so programmatic workflows get a clear error rather than an opaque 400.
-		if (options.reasoningEffort === 'none' && !isNoneReasoningSupported(modelName)) {
+		// `none` is verified only for a fixed set of OpenAI model IDs. Skip the check for a
+		// custom base URL: n8n cannot verify capability there, and the endpoint reports its
+		// own error for a value it rejects.
+		const usesCustomBaseUrl =
+			Boolean(options.baseURL) ||
+			(typeof credentials.url === 'string' &&
+				credentials.url !== '' &&
+				!credentials.url.startsWith('https://api.openai.com'));
+
+		if (
+			options.reasoningEffort === 'none' &&
+			!usesCustomBaseUrl &&
+			!isNoneReasoningSupported(modelName)
+		) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`Reasoning effort 'none' is not supported by model "${modelName}". See the n8n docs for the current list of models that accept it.`,
-				{ itemIndex },
+				`Reasoning effort 'none' is not supported by model "${modelName}"`,
+				{
+					itemIndex,
+					description:
+						'Only the OpenAI model IDs that accept this value can use it. The current list is in the OpenAI model documentation at https://developers.openai.com/api/docs/models.',
+				},
 			);
 		}
 
