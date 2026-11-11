@@ -222,7 +222,7 @@ describe('WebhookChannelService', () => {
 		expect(reply).toMatchObject({
 			status: 200,
 			body: {
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'n8n-agent',
 				conversation: { id: conversationId },
 				output: [{ content: [{ text: 'Hello' }] }],
 			},

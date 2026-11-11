@@ -74,8 +74,10 @@ export function parseResponsesRequest(body: unknown): { input: string; conversat
 	};
 }
 
+/** Stands in for the model field, so the reply does not reveal the agent's model. */
+const RESPONSE_MODEL = 'n8n-agent';
+
 export function toResponseBody(reply: {
-	model: string;
 	conversationId: string;
 	text: string;
 	createdAt: Date;
@@ -85,7 +87,7 @@ export function toResponseBody(reply: {
 		object: 'response',
 		created_at: Math.floor(reply.createdAt.getTime() / 1000),
 		status: 'completed',
-		model: reply.model,
+		model: RESPONSE_MODEL,
 		conversation: { id: reply.conversationId },
 		output: [
 			{

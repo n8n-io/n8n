@@ -74,7 +74,6 @@ export class WebhookChannelService {
 			return {
 				status: 200,
 				body: toResponseBody({
-					model: agent.activeVersion?.schema?.model ?? '',
 					conversationId: conversation.id,
 					text,
 					createdAt,
