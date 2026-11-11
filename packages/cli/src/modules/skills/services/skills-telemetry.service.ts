@@ -184,6 +184,21 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** Reads back only the refs that came as a bare id, in one query. */
 	private async resolve(refs: SkillTelemetryRef[]): Promise<SkillTelemetryTarget[]> {
 		const ids = refs.filter((ref) => typeof ref === 'string');

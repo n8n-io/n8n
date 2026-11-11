@@ -30,6 +30,10 @@ describe('SkillSyncService', () => {
 		mock(),
 		mock(),
 		telemetry,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });
@@ -113,6 +117,10 @@ describe('SkillSyncService', () => {
 				mock(),
 				mock(),
 				telemetry,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
 			const secondId = '4795c2a1-f46c-4b7d-a657-a435cedb7181';

@@ -553,7 +553,15 @@ export class SkillService {
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
-		{ pushRef, allowSynced = false }: { pushRef?: string; allowSynced?: boolean } = {},
+		{
+			pushRef,
+			allowSynced = false,
+			sourceRevision,
+		}: {
+			pushRef?: string;
+			allowSynced?: boolean;
+			sourceRevision?: string;
+		} = {},
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -607,6 +615,7 @@ export class SkillService {
 				content,
 				userId,
 				txCtx,
+				sourceRevision,
 			);
 			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };

@@ -1,6 +1,7 @@
 import {
 	SKILL_SYNC_FLAG,
 	type SkillListItem,
+	type SkillSourceUpdates,
 	type SkillSourceCheckResponse,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
@@ -17,10 +18,18 @@ import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
 
-import { createSkill, deleteAllSkills, findLatestSkillVersion } from '../../testing';
+import {
+	createSkill,
+	createSkillVersion,
+	deleteAllSkills,
+	findLatestSkillVersion,
+	FakeSkillUsage,
+} from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
+import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
+import type { SkillUsage } from '../../services/skill-usage.contracts';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
@@ -143,6 +152,317 @@ describe('Skill source checks', () => {
 			meta?: { reason: string };
 		};
 	};
+
+	describe('reviewing stored updates', () => {
+		const review = async (sourceId: string): Promise<SkillSourceUpdates> =>
+			(await editor.get(`/skill-sources/${sourceId}/updates`).expect(200)).body.data;
+		const accept = async (
+			sourceId: string,
+			reviewed: SkillSourceUpdates,
+			status = 200,
+			reviewedWarnings = false,
+		) =>
+			await editor
+				.post(`/skill-sources/${sourceId}/updates/accept`)
+				.send({
+					updates: reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+						skillId,
+						contentHash,
+						baseVersionId,
+					})),
+					reviewedWarnings,
+				})
+				.expect(status);
+		const changed = async () => {
+			const imported = await importAll();
+			pushChange({
+				'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.'),
+				'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated xlsx.'),
+			});
+			await sync().checkAll();
+			return { ...imported, reviewed: await review(imported.sourceId) };
+		};
+
+		it('saves the reviewed content and revision without another remote request', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const revision = (await linkOf(docx)).pendingRevision;
+			const requests = { ...github.requests };
+			github.failWith = 503;
+			await accept(sourceId, reviewed);
+			expect(await findLatestSkillVersion(docx)).toMatchObject({
+				version: 2,
+				instructions: 'Updated docx.',
+				sourceRevision: revision,
+			});
+			expect(await linkOf(docx)).toMatchObject({
+				pendingContentHash: null,
+				baseContentHash: reviewed.updates.find((update) => update.skillId === docx)?.contentHash,
+			});
+			expect(github.requests).toEqual(requests);
+		});
+
+		it('rejects the whole selection when one pending update changed', async () => {
+			const { sourceId, docx, xlsx, reviewed } = await changed();
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'A newer update.') });
+			await sync().checkAll();
+			const result = await accept(sourceId, reviewed, 409);
+			expect(result.body.meta.reason).toBe('stale');
+			expect((await findLatestSkillVersion(docx))?.version).toBe(1);
+			expect((await findLatestSkillVersion(xlsx))?.version).toBe(1);
+			expect((await linkOf(docx)).pendingContentHash).not.toBeNull();
+		});
+
+		it('rejects a review whose saved version changed', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			await createSkillVersion(docx, { name: 'docx', instructions: 'Another saved version.' });
+			const result = await accept(sourceId, reviewed, 409);
+			expect(result.body.meta.reason).toBe('stale');
+			expect((await findLatestSkillVersion(docx))?.instructions).toBe('Another saved version.');
+		});
+
+		it('rolls back earlier saves and links when a later conditional write loses', async () => {
+			const { sourceId, docx, xlsx, reviewed } = await changed();
+			const repository = Container.get(SkillSourceRepository);
+			const original = repository.acceptPending.bind(repository);
+			vi.spyOn(repository, 'acceptPending')
+				.mockImplementationOnce(original)
+				.mockResolvedValueOnce(false);
+			const telemetry = vi.spyOn(Container.get(SkillsTelemetry), 'reviewedUpdate');
+			await accept(sourceId, reviewed, 409);
+			for (const id of [docx, xlsx]) {
+				expect((await findLatestSkillVersion(id))?.version).toBe(1);
+				expect((await linkOf(id)).pendingContentHash).not.toBeNull();
+			}
+			expect(telemetry.mock.calls.every(([props]) => props.status === 'failure')).toBe(true);
+		});
+
+		it.each(['accept', 'skip'] as const)(
+			'does not restore an update after %s clears the pending hash',
+			async (action) => {
+				const { sourceId, docx } = await importAll();
+				const oldRead = await linkOf(docx);
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.') });
+				await sync().checkAll();
+				const pending = await linkOf(docx);
+				const reviewed = await review(sourceId);
+				if (action === 'accept') await accept(sourceId, reviewed);
+				else
+					await editor
+						.post(`/skill-sources/${sourceId}/updates/${docx}/skip`)
+						.send({ contentHash: pending.pendingContentHash })
+						.expect(200);
+				const stored = await Container.get(SkillSourceRepository).storePending(
+					docx,
+					{
+						content: pending.pendingContent,
+						contentHash: pending.pendingContentHash!,
+						scan: pending.pendingScan!,
+						revision: pending.pendingRevision!,
+						state: 'update_available',
+					},
+					oldRead,
+				);
+				expect(stored).toBe(false);
+				await sync().checkAll();
+				expect((await linkOf(docx)).pendingContentHash).toBeNull();
+				expect((await findLatestSkillVersion(docx))?.version).toBe(action === 'accept' ? 2 : 1);
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'A subsequent update.') });
+				await sync().checkAll();
+				expect((await linkOf(docx)).pendingContentHash).not.toBeNull();
+			},
+		);
+
+		it('requires acknowledgment for warnings and never accepts blocked content', async () => {
+			const { sourceId, docx } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Visit https://new.example.com/docs') });
+			await sync().checkAll();
+			const reviewed = await review(sourceId);
+			expect(reviewed.updates[0].check.verdict).toBe('needs_review');
+			expect((await accept(sourceId, reviewed, 422)).body.meta.reason).toBe('review_required');
+			await accept(sourceId, reviewed, 200, true);
+			pushChange({ 'skills/docx/SKILL.md': '---\ninvalid: [yaml\n---' });
+			await sync().checkAll();
+			const blocked = await review(sourceId);
+			expect(blocked.updates[0].check.verdict).toBe('blocked');
+			expect((await accept(sourceId, blocked, 422, true)).body.meta.reason).toBe(
+				'blocked_by_check',
+			);
+			const update = blocked.updates[0];
+			const detail = await editor
+				.get(`/skill-sources/${sourceId}/updates/${docx}`)
+				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+				.expect(200);
+			expect(detail.body.data.files).toEqual([]);
+		});
+
+		it('shows frontmatter and removed references, then replaces all stored content', async () => {
+			github.push('acme/skills', {
+				'skills/docx/SKILL.md':
+					'---\nname: docx\ndescription: docx description\nlicense: MIT\n---\nFollow docx.',
+				'skills/docx/references/style.md': 'Old reference',
+			});
+			const { sourceId, docx } = await importAll();
+			github.push('acme/skills', { 'skills/docx/SKILL.md': skillMd('docx', 'Follow docx.') });
+			await sync().checkAll();
+			const reviewed = await review(sourceId);
+			const update = reviewed.updates[0];
+			const detail = await editor
+				.get(`/skill-sources/${sourceId}/updates/${docx}`)
+				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+				.expect(200);
+			expect(detail.body.data.files).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						path: 'SKILL.md',
+						before: expect.stringContaining('license: "MIT"'),
+					}),
+					{ path: 'references/style.md', before: 'Old reference', after: '', status: 'removed' },
+				]),
+			);
+			await accept(sourceId, reviewed);
+			expect(await findLatestSkillVersion(docx)).toMatchObject({
+				version: 2,
+				frontmatter: null,
+				files: [],
+			});
+		});
+
+		it('rejects scope name clashes before saving', async () => {
+			const { sourceId, docx } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd('xlsx', 'New name.') });
+			await sync().checkAll();
+			const reviewed = await review(sourceId);
+			expect(reviewed.updates[0].nameClash).toEqual({ name: 'xlsx', where: 'scope' });
+			expect((await accept(sourceId, reviewed, 409)).body.meta.reason).toBe('name_clash');
+			expect((await findLatestSkillVersion(docx))?.version).toBe(1);
+		});
+
+		it('does not disclose agent names when a rename clashes in an agent', async () => {
+			const { sourceId, docx } = await importAll();
+			const proxy = Container.get(SkillUsageProxy);
+			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const usage = new FakeSkillUsage();
+			await usage.seed({
+				agents: [{ key: 'hidden', name: 'Hidden agent name', project: 'other-project' }],
+				skills: [
+					{ key: docx, versions: ['docx'] },
+					{ key: 'other', versions: ['Renamed'] },
+				],
+				drafts: [
+					{ agent: 'hidden', skill: docx },
+					{ agent: 'hidden', skill: 'other' },
+				],
+			});
+			proxy.register(usage);
+			try {
+				pushChange({ 'skills/docx/SKILL.md': skillMd('Renamed') });
+				await sync().checkAll();
+				const reviewed = await review(sourceId);
+				expect(reviewed.updates[0].nameClash).toEqual({ name: 'Renamed', where: 'agent' });
+				expect(JSON.stringify(reviewed)).not.toContain('Hidden agent name');
+				const response = await accept(sourceId, reviewed, 409);
+				expect(response.body.meta.reason).toBe('name_clash');
+				expect(JSON.stringify(response.body)).not.toContain('Hidden agent name');
+			} finally {
+				proxy.register(original);
+			}
+		});
+
+		it('uses the stored commit and tolerates a failed metadata lookup', async () => {
+			const { sourceId, reviewed } = await changed();
+			const revision = reviewed.updates[0].revision;
+			const metadata = nock('https://api.github.com')
+				.get(`/repos/acme/skills/git/commits/${revision}`)
+				.reply(200, {
+					message: 'Update skills',
+					author: { name: 'Alex', date: '2026-11-11T10:00:00Z' },
+				});
+			const response = await editor
+				.get(`/skill-sources/${sourceId}/commit`)
+				.query({ revision })
+				.expect(200);
+			expect(response.body.data).toMatchObject({
+				revision,
+				message: 'Update skills',
+				author: 'Alex',
+			});
+			expect(metadata.isDone()).toBe(true);
+			const failure = nock('https://api.github.com')
+				.get(`/repos/acme/skills/git/commits/${revision}`)
+				.reply(503);
+			const fallback = await editor
+				.get(`/skill-sources/${sourceId}/commit`)
+				.query({ revision })
+				.expect(200);
+			expect(fallback.body.data).toMatchObject({
+				revision,
+				webUrl: `https://github.com/acme/skills/commit/${revision}`,
+				message: null,
+			});
+			expect(failure.isDone()).toBe(true);
+			await accept(sourceId, reviewed);
+		});
+
+		it('requires update permission on every review route', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const { contentHash, baseVersionId, revision } = reviewed.updates[0];
+			for (const [agent, status] of [
+				[viewer, 403],
+				[outsider, 404],
+			] as const) {
+				await agent.get(`/skill-sources/${sourceId}/updates`).expect(status);
+				await agent
+					.get(`/skill-sources/${sourceId}/updates/${docx}`)
+					.query({ contentHash, baseVersionId })
+					.expect(status);
+				await agent.get(`/skill-sources/${sourceId}/commit`).query({ revision }).expect(status);
+				await agent
+					.post(`/skill-sources/${sourceId}/updates/accept`)
+					.send({ updates: [{ skillId: docx, contentHash, baseVersionId }] })
+					.expect(status);
+				await agent
+					.post(`/skill-sources/${sourceId}/updates/${docx}/skip`)
+					.send({ contentHash })
+					.expect(status);
+			}
+		});
+
+		it('refreshes followers after commit and does not expose hidden agent names or change pins', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const proxy = Container.get(SkillUsageProxy);
+			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const usage = new FakeSkillUsage();
+			await usage.seed({
+				agents: [
+					{ key: 'visible', name: 'Visible agent', project: team.id },
+					{ key: 'hidden', name: 'Hidden agent', project: 'another-project' },
+					{ key: 'pinned', name: 'Pinned agent', project: team.id },
+				],
+				skills: [{ key: docx, versions: ['docx'] }],
+				drafts: [
+					{ agent: 'visible', skill: docx },
+					{ agent: 'hidden', skill: docx },
+					{ agent: 'pinned', skill: docx, version: 1 },
+				],
+				publishes: [{ agent: 'visible', pins: [{ skill: docx, version: 1 }] }],
+			});
+			proxy.register(usage);
+			try {
+				const beforePins = (await usage.findUsage(docx, 'all')).pins;
+				const response = await accept(sourceId, reviewed);
+				expect(response.body.data).toMatchObject({
+					agents: [{ id: 'visible', name: 'Visible agent' }],
+					hiddenAgentCount: 1,
+				});
+				expect(usage.refreshed).toEqual([
+					{ agentIds: ['visible', 'hidden'], excludePushRef: undefined },
+				]);
+				expect((await usage.findUsage(docx, 'all')).pins).toEqual(beforePins);
+			} finally {
+				proxy.register(original);
+			}
+		});
+	});
 
 	describe('the check of a source', () => {
 		it('costs one request when the source did not change', async () => {
@@ -516,21 +836,25 @@ describe('Skill source checks', () => {
 			it('stores a pending update only over the one that the check read', async () => {
 				const { docx } = await importAll();
 
-				expect(await repository().storePending(docx, pending('hash-1'), null)).toBe(true);
+				const read = await linkOf(docx);
+				expect(await repository().storePending(docx, pending('hash-1'), read)).toBe(true);
 				// A slower check read the link before hash-1 was stored.
-				expect(await repository().storePending(docx, pending('hash-0'), null)).toBe(false);
-				expect(await repository().storePending(docx, pending('hash-2'), 'hash-1')).toBe(true);
+				expect(await repository().storePending(docx, pending('hash-0'), read)).toBe(false);
+				expect(await repository().storePending(docx, pending('hash-2'), await linkOf(docx))).toBe(
+					true,
+				);
 
 				expect((await linkOf(docx)).pendingContentHash).toBe('hash-2');
 			});
 
 			it('moves the base only when the pending update is the one that the check read', async () => {
 				const { docx } = await importAll();
-				await repository().storePending(docx, pending('hash-1'), null);
+				const read = await linkOf(docx);
+				await repository().storePending(docx, pending('hash-1'), read);
 
-				expect(await repository().moveBase(docx, 'c'.repeat(40), null)).toBe(false);
+				expect(await repository().moveBase(docx, 'c'.repeat(40), read)).toBe(false);
 				expect((await linkOf(docx)).pendingContentHash).toBe('hash-1');
-				expect(await repository().moveBase(docx, 'c'.repeat(40), 'hash-1')).toBe(true);
+				expect(await repository().moveBase(docx, 'c'.repeat(40), await linkOf(docx))).toBe(true);
 				expect(await linkOf(docx)).toMatchObject({
 					pendingContentHash: null,
 					baseRevision: 'c'.repeat(40),
@@ -583,7 +907,7 @@ describe('Skill source checks', () => {
 				const findLinks = repository().findLinksBySource.bind(repository());
 				vi.spyOn(repository(), 'findLinksBySource').mockImplementationOnce(async (id) => {
 					const links = await findLinks(id);
-					await repository().storePending(docx, pending('from-another-main'), null);
+					await repository().storePending(docx, pending('from-another-main'), await linkOf(docx));
 					return links;
 				});
 

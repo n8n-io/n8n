@@ -1,4 +1,6 @@
 import type {
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
 	SkillSourceListItem,
 	ConnectSkillSourceDto,
@@ -162,6 +164,26 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
 	}
 
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+	async function fetchSourceUpdate(
+		sourceId: string,
+		skillId: string,
+		reviewed: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await api.getSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, reviewed);
+	}
+	async function fetchSourceCommit(sourceId: string, revision: string) {
+		return await api.getSkillSourceCommit(rootStore.restApiContext, sourceId, revision);
+	}
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillSourceUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+	async function skipSourceUpdate(sourceId: string, skillId: string, contentHash: string) {
+		await api.skipSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, contentHash);
+	}
+
 	return {
 		skills,
 		count,
@@ -188,5 +210,10 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		collapsedSources,
 		fetchSources,
 		checkSource,
+		fetchSourceUpdates,
+		fetchSourceUpdate,
+		fetchSourceCommit,
+		acceptSourceUpdates,
+		skipSourceUpdate,
 	};
 });

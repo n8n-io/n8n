@@ -60,6 +60,7 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
@@ -784,6 +785,11 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
+const reviewSource = ref<SkillSourceListItem | null>(null);
+
+async function onSourceUpdatesChanged() {
+	await Promise.all([load(), loadSources()]);
+}
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
 
@@ -1046,6 +1052,7 @@ onMounted(async () => {
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@review-source="reviewSource = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1085,6 +1092,12 @@ onMounted(async () => {
 			</template>
 		</SkillsTable>
 
+		<SkillSourceUpdatesDialog
+			v-if="skillSyncEnabled && reviewSource"
+			:source="reviewSource"
+			@close="reviewSource = null"
+			@changed="onSourceUpdatesChanged"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"

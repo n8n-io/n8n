@@ -60,6 +60,7 @@ const emit = defineEmits<{
 	download: [skill: SkillListItem];
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
+	reviewSource: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -346,18 +347,25 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						size="small"
 						data-test-id="skill-group-checking"
 					/>
-					<N8nBadge
+					<button
 						v-else-if="updateCount(sourcesById.get(group)!) > 0"
-						:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-						data-test-id="skill-group-updates"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-updates"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						{{
-							i18n.baseText('settings.context.skills.sources.updates', {
-								interpolate: { count: updateCount(sourcesById.get(group)!) },
-								adjustToNumber: updateCount(sourcesById.get(group)!),
-							})
-						}}
-					</N8nBadge>
+						<N8nBadge
+							:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+							data-test-id="skill-group-updates"
+						>
+							{{
+								i18n.baseText('settings.context.skills.sources.updates', {
+									interpolate: { count: updateCount(sourcesById.get(group)!) },
+									adjustToNumber: updateCount(sourcesById.get(group)!),
+								})
+							}}
+						</N8nBadge>
+					</button>
 				</div>
 			</template>
 
@@ -532,6 +540,15 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 }
 
 .groupRowFoldable {
+	cursor: pointer;
+}
+
+.updateButton {
+	display: inline-flex;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius--sm);
+	background: none;
 	cursor: pointer;
 }
 

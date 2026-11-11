@@ -102,6 +102,8 @@ const SKILL_SOURCE_REASON_KEYS = {
 	blocked_by_check: 'settings.context.skills.connect.error.blockedByCheck',
 	review_required: 'settings.context.skills.connect.error.reviewRequired',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
+	stale: 'settings.context.skills.updates.stale',
+	name_clash: 'settings.context.skills.updates.nameClash',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
 	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
 	credential_missing: 'settings.context.skills.connect.error.credentialMissing',

@@ -484,6 +484,14 @@ describe('SkillsTable', () => {
 			},
 		);
 
+		it('opens the source review without folding the source', async () => {
+			const current = source({ updatesAvailable: 1 });
+			const { getByTestId, emitted } = renderGrouped({ sources: [current] });
+			await userEvent.click(getByTestId('skill-group-updates'));
+			expect(emitted('reviewSource')).toEqual([[current]]);
+			expect(emitted('toggleSource')).toBeUndefined();
+		});
+
 		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
 				sources: [source({ updatesAvailable: 2, canReview: false })],

@@ -9,10 +9,13 @@ import { groupByFolder, isSelectableSkill } from '../skillSourceReview.utils';
 import { useSkillSourceReasons } from '../skills.utils';
 
 const props = defineProps<{
-	discovery: SkillSourceDiscovery;
+	discovery: Pick<SkillSourceDiscovery, 'skills' | 'truncated' | 'tooDeep'>;
+	disabled?: boolean;
 	/** The scope that the user picked, for the reason of a taken name. */
 	scopeLabel: string;
 }>();
+
+const emit = defineEmits<{ preview: [key: string | null] }>();
 
 /** The keys of the ticked skills. */
 const selected = defineModel<string[]>('selected', { required: true });
@@ -83,6 +86,8 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(previewKey, (key) => emit('preview', key), { immediate: true });
 
 const previewSkill = computed(
 	() => props.discovery.skills.find((skill) => skill.key === previewKey.value) ?? null,
@@ -162,7 +167,7 @@ function noteOf(skill: DiscoveredSkill): string {
 				<N8nCheckbox
 					:model-value="selectAll.checked"
 					:indeterminate="selectAll.indeterminate"
-					:disabled="selectAll.keys.length === 0"
+					:disabled="disabled || selectAll.keys.length === 0"
 					:label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
 					data-test-id="skill-source-select-all"
 					@update:model-value="toggleAll(visibleSkills)"
@@ -178,7 +183,7 @@ function noteOf(skill: DiscoveredSkill): string {
 							<N8nCheckbox
 								:model-value="stateOf(group.skills).checked"
 								:indeterminate="stateOf(group.skills).indeterminate"
-								:disabled="stateOf(group.skills).keys.length === 0"
+								:disabled="disabled || stateOf(group.skills).keys.length === 0"
 								:aria-label="group.folder"
 								data-test-id="skill-source-group-checkbox"
 								@update:model-value="toggleAll(group.skills)"
@@ -195,13 +200,14 @@ function noteOf(skill: DiscoveredSkill): string {
 							>
 								<N8nCheckbox
 									:model-value="isSelectableSkill(item) && selected.includes(item.key)"
-									:disabled="!isSelectableSkill(item)"
+									:disabled="disabled || !isSelectableSkill(item)"
 									:aria-label="titleOf(item)"
 									data-test-id="skill-source-skill-checkbox"
 									@update:model-value="toggle(item.key, $event)"
 								/>
 								<button type="button" :class="$style.itemText" @click="previewKey = item.key">
 									<N8nText bold size="small">{{ titleOf(item) }}</N8nText>
+									<slot name="row-details" :skill="item" />
 									<N8nText
 										v-if="activeTab === 'blocked'"
 										size="small"
@@ -219,6 +225,7 @@ function noteOf(skill: DiscoveredSkill): string {
 										{{ noteOf(item) }}
 									</N8nText>
 								</button>
+								<slot name="row-action" :skill="item" />
 							</li>
 						</ul>
 					</li>
@@ -248,7 +255,9 @@ function noteOf(skill: DiscoveredSkill): string {
 				</N8nText>
 			</div>
 			<div :class="$style.right">
-				<SkillSourceFilesView v-if="previewSkill" :skill="previewSkill" />
+				<slot v-if="previewSkill" name="preview" :skill="previewSkill">
+					<SkillSourceFilesView :skill="previewSkill" />
+				</slot>
 			</div>
 		</div>
 	</div>

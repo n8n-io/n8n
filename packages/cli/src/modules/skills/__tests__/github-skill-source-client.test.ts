@@ -115,6 +115,52 @@ describe('GitHubSkillSourceClient', () => {
 
 	describeSkillSourceClientContract(() => contractSubject(false));
 
+	describe('commit details', () => {
+		it.each([undefined, tokenAuth])(
+			'reads the stored revision with optional access %j',
+			async (auth) => {
+				github.push('acme/review', { 'docx/SKILL.md': skillMd('docx') });
+				const locator = await client.parseLocator('https://github.com/acme/review');
+				const revision = 'a'.repeat(40);
+				const request = nock('https://api.github.com', {
+					reqheaders: auth ? { authorization: `Bearer ${TOKEN}` } : undefined,
+				})
+					.get(`/repos/acme/review/git/commits/${revision}`)
+					.reply(200, {
+						message: 'Update document instructions',
+						author: { name: 'Alex', date: '2026-11-11T10:00:00Z' },
+					});
+
+				expect(await client.describeRevision(locator, revision, auth)).toEqual({
+					message: 'Update document instructions',
+					author: 'Alex',
+					date: '2026-11-11T10:00:00Z',
+				});
+				expect(client.revisionUrl(locator, revision)).toBe(
+					`https://github.com/acme/review/commit/${revision}`,
+				);
+				expect(client.webUrl(locator, { path: 'docx' }, revision)).toBe(
+					`https://github.com/acme/review/tree/${revision}/docx`,
+				);
+				expect(request.isDone()).toBe(true);
+			},
+		);
+
+		it('keeps missing commit fields empty', async () => {
+			github.push('acme/review', { 'docx/SKILL.md': skillMd('docx') });
+			const locator = await client.parseLocator('https://github.com/acme/review');
+			nock('https://api.github.com')
+				.get('/repos/acme/review/git/commits/abc')
+				.reply(200, { author: null });
+
+			expect(await client.describeRevision(locator, 'abc')).toEqual({
+				message: null,
+				author: null,
+				date: null,
+			});
+		});
+	});
+
 	describe('on private repositories with a token', () => {
 		beforeEach(() => github.grant(TOKEN, []));
 

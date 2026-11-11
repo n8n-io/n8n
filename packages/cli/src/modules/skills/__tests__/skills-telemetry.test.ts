@@ -172,4 +172,31 @@ describe('SkillsTelemetry', () => {
 		);
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
+	it('reports update review outcomes without content or agent names', async () => {
+		await service.reviewedUpdate(
+			{
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+			'user-1',
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE,
+			{
+				user_id: 'user-1',
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+		);
+	});
 });

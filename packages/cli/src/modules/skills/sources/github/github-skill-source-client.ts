@@ -193,9 +193,29 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return readRef(ref).path || '/';
 	}
 
-	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string {
+	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string {
 		const { owner, repository, branch, path } = readLocator(locator);
-		return gitHubTreeUrl(owner, repository, branch, ref ? readRef(ref).path : path);
+		return gitHubTreeUrl(owner, repository, revision ?? branch, ref ? readRef(ref).path : path);
+	}
+
+	revisionUrl(locator: SkillSourceLocator, revision: string): string {
+		const { owner, repository } = readLocator(locator);
+		return `https://${GITHUB_HOST}/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/commit/${encodeURIComponent(revision)}`;
+	}
+
+	async describeRevision(locator: SkillSourceLocator, revision: string, auth?: SkillSourceAuth) {
+		const { owner, repository } = readLocator(locator);
+		const [o, r, sha] = [owner, repository, revision].map(encodeURIComponent);
+		// The git commit endpoint returns metadata without the potentially large file diff.
+		const body = await this.sendJson(`${API}/repos/${o}/${r}/git/commits/${sha}`, auth);
+		if (!isRecord(body))
+			throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
+		const author = isRecord(body.author) ? body.author : {};
+		return {
+			message: typeof body.message === 'string' ? body.message : null,
+			author: typeof author.name === 'string' ? author.name : null,
+			date: typeof author.date === 'string' ? author.date : null,
+		};
 	}
 
 	async discover(
@@ -433,12 +453,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/** One page of a REST answer as JSON. */
-	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
-			bytes: MAX_REFS_BYTES,
-			message: 'GitHub sent too much data.',
-			reason: 'unreachable',
-		});
+	private async sendJson(url: string, auth?: SkillSourceAuth): Promise<unknown> {
+		const body = await this.send(
+			{ url, method: 'GET', headers: auth ? bearer(auth) : API_HEADERS },
+			auth,
+			{
+				bytes: MAX_REFS_BYTES,
+				message: 'GitHub sent too much data.',
+				reason: 'unreachable',
+			},
+		);
 		try {
 			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {

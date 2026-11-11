@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-// The right pane of the import review: the files of one skill as plain text, with the findings
-// of the security check marked where they are. The review pane polish (CONTEXT-431) replaces it.
-import type { DiscoveredSkill, SkillScanFinding } from '@n8n/api-types';
+// Imports show the full files. Updates use the workflow diff viewer and show flagged excerpts.
+import type { DiscoveredSkill, SkillScanFinding, SkillUpdateFile } from '@n8n/api-types';
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
 import { useSkillSourceReasons } from '../skills.utils';
 
-const props = defineProps<{ skill: DiscoveredSkill }>();
+const props = defineProps<{ skill: DiscoveredSkill; diffFiles?: SkillUpdateFile[] }>();
 
 const i18n = useI18n();
 const { ruleText } = useSkillSourceReasons();
@@ -76,19 +76,35 @@ function segmentsOf(text: string, marks: SkillScanFinding[]): Segment[] {
 	return segments;
 }
 
+const reviewFiles = computed<SkillUpdateFile[]>(
+	() =>
+		props.diffFiles ??
+		props.skill.previewFiles.map((file) => ({
+			path: file.path,
+			before: file.text,
+			after: file.text,
+		})),
+);
+
 const files = computed(() =>
-	props.skill.previewFiles.map((file) => {
+	reviewFiles.value.map((file) => {
 		const marks = findings.value.filter(
 			(finding) => finding.file === file.path && finding.location,
 		);
-		const lines: Line[] = file.text.split('\n').map((text, index) => ({
+
+		const lines: Line[] = file.after.split('\n').map((text, index) => ({
 			number: index + 1,
 			segments: segmentsOf(
 				text,
 				marks.filter((finding) => finding.location?.line === index + 1),
 			),
 		}));
-		return { path: file.path, lines };
+		return {
+			...file,
+			lines: props.diffFiles
+				? lines.filter((line) => line.segments.some((segment) => segment.finding))
+				: lines,
+		};
 	}),
 );
 
@@ -145,15 +161,30 @@ const unplacedFindings = computed(() => {
 				<N8nText size="small" :class="$style.path" data-test-id="skill-source-file-path">{{
 					pathInSource(file.path)
 				}}</N8nText>
-				<N8nLink :href="fileUrl(file.path)" new-window size="small">
+				<N8nText v-if="file.status" size="small">{{
+					i18n.baseText(
+						file.status === 'added'
+							? 'settings.context.skills.updates.fileAdded'
+							: 'settings.context.skills.updates.fileRemoved',
+					)
+				}}</N8nText>
+				<N8nLink
+					v-if="file.status !== 'removed'"
+					:href="fileUrl(file.path)"
+					new-window
+					size="small"
+				>
 					{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
 				</N8nLink>
 			</header>
-			<pre :class="$style.text"><code><span
-				v-for="line in file.lines"
-				:key="line.number"
+			<N8nText v-if="diffFiles && file.lines.length" size="small" :class="$style.findingsTitle">
+				{{ i18n.baseText('settings.context.skills.updates.flaggedLines') }}
+			</N8nText>
+			<pre v-if="file.lines.length" :class="$style.text"><code><span
+				v-for="(line, lineIndex) in file.lines"
+				:key="lineIndex"
 				:class="$style.line"
-			><span :class="$style.number" aria-hidden="true">{{ line.number }}</span><span><template
+			><span :class="$style.number" :aria-hidden="!diffFiles">{{ line.number }}</span><span><template
 				v-for="(segment, index) in line.segments"
 				:key="index"
 			><mark
@@ -162,6 +193,14 @@ const unplacedFindings = computed(() => {
 				:title="ruleText(segment.finding.rule)"
 				data-test-id="skill-source-finding-mark"
 			>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
+			<NodeDiff
+				v-if="diffFiles"
+				:old-string="file.before"
+				:new-string="file.after"
+				language="plaintext"
+				:context="Math.max(file.before.split('\n').length, file.after.split('\n').length)"
+				data-test-id="skill-source-file-diff"
+			/>
 		</section>
 		<N8nText
 			v-if="skill.previewTruncated"
@@ -218,6 +257,11 @@ const unplacedFindings = computed(() => {
 	min-width: 0;
 	overflow-wrap: anywhere;
 	font-family: var(--font-family--monospace);
+}
+
+.findingsTitle {
+	display: block;
+	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 }
 
 .text {
