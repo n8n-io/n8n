@@ -16,8 +16,14 @@ describe('pickVersionedSettings', () => {
 
 	it.each([
 		['undefined settings', undefined],
+		['null settings', null],
 		['empty settings', {}],
 		['only live settings', { availableInMCP: true }],
+		['an unknown engine', { engineType: 'v3' }],
+		['an engine of the wrong type', { engineType: 2 }],
+		['a null engine', { engineType: null }],
+		['settings that are a string', 'not an object'],
+		['settings that are an array', []],
 	])('returns the default engine for %s', (_, settings) => {
 		expect(pickVersionedSettings(settings)).toEqual({ engineType: 'v1' });
 	});

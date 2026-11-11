@@ -1,4 +1,5 @@
 import isEqual from 'lodash/isEqual';
+import { z } from 'zod';
 
 import type { IWorkflowSettings } from './interfaces';
 
@@ -41,34 +42,22 @@ export type VersionedWorkflowSettingKey = {
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
 
-const isVersionedEntry = (
-	entry: [string, WorkflowSettingScope],
-): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
-
-const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
-	WORKFLOW_SETTINGS_SCOPE,
-)
-	.filter(isVersionedEntry)
-	.map(([key]) => key);
-
 /** The value of a version-scoped setting that the workflow settings do not set. */
 const VERSIONED_SETTING_DEFAULTS: Required<VersionedWorkflowSettings> = { engineType: 'v1' };
 
-/**
- * Returns the version-scoped settings, with the default for each setting that is not set.
- * So a new version always stores its engine, and `v1` compares equal to no engine.
- */
-export function pickVersionedSettings(
-	settings?: IWorkflowSettings,
-): Required<VersionedWorkflowSettings> {
-	const result = { ...VERSIONED_SETTING_DEFAULTS };
-	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) {
-		const value = settings?.[key];
-		if (value === undefined || value === null) continue;
-		result[key] = value;
-	}
+// The stored settings are plain JSON, so a value can be missing or invalid.
+const versionedSettingsSchema = z
+	.object({
+		engineType: z.enum(['v1', 'v2']).catch(VERSIONED_SETTING_DEFAULTS.engineType),
+	})
+	.catch(() => ({ ...VERSIONED_SETTING_DEFAULTS }));
 
-	return result;
+/**
+ * Returns the version-scoped settings, with the default for each setting that is missing
+ * or invalid. So a new version always stores its engine, and `v1` compares equal to no engine.
+ */
+export function pickVersionedSettings(settings: unknown): Required<VersionedWorkflowSettings> {
+	return versionedSettingsSchema.parse(settings);
 }
 
 export function versionedSettingsEqual(
