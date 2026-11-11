@@ -9,6 +9,7 @@ import type {
 	NodeEgressFilter,
 	PostReceiveAction,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
@@ -164,5 +165,41 @@ describe('LmChatGoogleGemini', () => {
 				egressFilter,
 			}),
 		);
+	});
+
+	describe('when Gemini returns no candidates', () => {
+		const invokeWithResponse = async (body: object) => {
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			mockedProxyFetch.mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			return await (response as ChatGoogleGenerativeAI).invoke('hello');
+		};
+
+		it('should throw the block reason', async () => {
+			const error = await invokeWithResponse({
+				promptFeedback: { blockReason: 'PROHIBITED_CONTENT', blockReasonMessage: 'Not allowed' },
+			}).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message: 'Gemini blocked the prompt (reason: PROHIBITED_CONTENT)',
+				description: 'Not allowed',
+			});
+		});
+
+		it('should throw an empty response error without a block reason', async () => {
+			const error = await invokeWithResponse({ candidates: [] }).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error).toHaveProperty('message', 'Gemini returned an empty response');
+		});
 	});
 });

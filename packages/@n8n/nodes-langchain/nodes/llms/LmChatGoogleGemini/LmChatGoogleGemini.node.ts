@@ -1,6 +1,7 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { NodeConnectionTypes, OperationalError, UserError } from 'n8n-workflow';
 import type {
 	NodeError,
 	INodeType,
@@ -26,6 +27,28 @@ import {
 } from '@n8n/ai-utilities/model-discovery';
 
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
+/**
+ * Gemini returns no candidates when it blocks a prompt. The SDK then gives an empty
+ * `generations` list, and LangChain fails with a TypeError on `generations[0][0]`.
+ * This class throws an error that tells the user why Gemini did not answer.
+ */
+export class N8nChatGoogleGenerativeAI extends ChatGoogleGenerativeAI {
+	async _generate(...args: Parameters<ChatGoogleGenerativeAI['_generate']>) {
+		const result = await super._generate(...args);
+		if (result.generations.length > 0) return result;
+
+		const feedback: unknown = result.llmOutput?.filters;
+		const blockReason = isRecord(feedback) ? feedback.blockReason : undefined;
+		if (typeof blockReason !== 'string') {
+			throw new OperationalError('Gemini returned an empty response');
+		}
+		const detail = isRecord(feedback) ? feedback.blockReasonMessage : undefined;
+		throw new UserError(`Gemini blocked the prompt (reason: ${blockReason})`, {
+			description: typeof detail === 'string' ? detail : undefined,
+		});
+	}
+}
 
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
@@ -268,7 +291,7 @@ export class LmChatGoogleGemini implements INodeType {
 		) as SafetySetting[];
 
 		const egressFilter = this.helpers.getSecureEgressFilter();
-		const model = new ChatGoogleGenerativeAI({
+		const model = new N8nChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
