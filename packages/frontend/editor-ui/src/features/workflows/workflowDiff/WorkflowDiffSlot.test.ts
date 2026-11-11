@@ -12,9 +12,9 @@ type DiffProps = {
 	sourceLabel?: string;
 	targetLabel?: string;
 	showFullscreenButton?: boolean;
+	requireCanvasFocus?: boolean;
 	canvasIdPrefix?: string;
 	hideTitle?: boolean;
-	requireCanvasFocus?: boolean;
 };
 const { captured } = vi.hoisted(() => ({ captured: [] as DiffProps[] }));
 vi.mock('./WorkflowDiffView.vue', () => ({
@@ -25,15 +25,15 @@ vi.mock('./WorkflowDiffView.vue', () => ({
 			'sourceLabel',
 			'targetLabel',
 			'showFullscreenButton',
+			'requireCanvasFocus',
 			'canvasIdPrefix',
 			'hideTitle',
-			'requireCanvasFocus',
 		],
 		setup(props) {
 			captured.push(props as DiffProps);
 		},
 		template:
-			'<div><slot name="sourceLabel" /><slot name="targetLabel" /><slot name="sourceEmptyText" /></div>',
+			'<div><slot name="sourceLabel" /><slot name="targetLabel" /><slot name="sourceEmptyText" /><slot name="targetEmptyText" /></div>',
 	}),
 }));
 const renderComponent = createComponentRenderer(WorkflowDiffSlot);
@@ -86,7 +86,7 @@ it('maps snapshots to detached non-reactive editor workflows', () => {
 	expect(target.nodes[0].name).toBe('Node');
 });
 
-it('preserves labels, first-publish text, and the canvas controls', () => {
+it('preserves labels, empty-side text, and the canvas controls', () => {
 	const { getByText } = renderComponent({
 		props: {
 			workflowId: 'workflow',
@@ -95,14 +95,15 @@ it('preserves labels, first-publish text, and the canvas controls', () => {
 			sourceLabel: 'Published',
 			targetLabel: 'In review',
 			showFullscreenButton: true,
+			requireCanvasFocus: true,
 			canvasIdPrefix: 'workflow',
 			hideTitle: true,
-			requireCanvasFocus: true,
 		},
 		slots: {
 			sourceLabel: '<span>Previous version</span>',
 			targetLabel: '<span>Proposed version</span>',
 			sourceEmptyText: '<span>First publication</span>',
+			targetEmptyText: '<span>Removed</span>',
 		},
 	});
 	expect(captured[0]).toMatchObject({
@@ -110,13 +111,52 @@ it('preserves labels, first-publish text, and the canvas controls', () => {
 		sourceLabel: 'Published',
 		targetLabel: 'In review',
 		showFullscreenButton: true,
+		requireCanvasFocus: true,
 		canvasIdPrefix: 'workflow',
 		hideTitle: true,
-		requireCanvasFocus: true,
 	});
 	expect(getByText('Previous version')).toBeInTheDocument();
 	expect(getByText('Proposed version')).toBeInTheDocument();
 	expect(getByText('First publication')).toBeInTheDocument();
+	expect(getByText('Removed')).toBeInTheDocument();
+});
+
+it('compares the name, settings, tags, and archive state of each side, ignoring tag order', () => {
+	renderComponent({
+		props: {
+			workflowId: 'workflow',
+			workflowName: 'Workflow',
+			sourceSnapshot: {
+				...snapshot(),
+				workflowName: 'Old name',
+				settings: { executionOrder: 'v1', timezone: 'UTC' },
+				tags: [
+					{ id: 'tag-2', name: 'Finance' },
+					{ id: 'tag-1', name: 'Billing' },
+				],
+			},
+			targetSnapshot: {
+				...snapshot(),
+				isArchived: true,
+				tags: [
+					{ id: 'tag-1', name: 'Billing' },
+					{ id: 'tag-2', name: 'Finance' },
+				],
+			},
+		},
+	});
+	expect(captured[0].sourceWorkflow).toMatchObject({
+		name: 'Old name',
+		settings: { executionOrder: 'v1', timezone: 'UTC' },
+		isArchived: false,
+	});
+	// Tag order is not a change, so both sides list the tags in the same order.
+	expect(captured[0].sourceWorkflow?.tags).toEqual(captured[0].targetWorkflow?.tags);
+	expect(captured[0].targetWorkflow).toMatchObject({
+		name: 'Workflow',
+		settings: { executionOrder: 'v0' },
+		isArchived: true,
+	});
 });
 
 it('keeps graph-only snapshots in separate canvas documents without history metadata', () => {

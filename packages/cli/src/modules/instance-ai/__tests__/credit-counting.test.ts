@@ -566,3 +566,54 @@ describe('claimRunUsage', () => {
 		});
 	});
 });
+
+describe('claimRunUsage on a thread without a current Assistant thread row', () => {
+	function setup(agentTotal: number | undefined) {
+		const threadRepo = createMockThreadRepo(null);
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+		const logger = (service as unknown as { logger: { warn: Mock } }).logger;
+		const agentThreadCredits = {
+			addCredits: vi.fn(async () => agentTotal),
+		};
+		return { service, push, logger, agentThreadCredits };
+	}
+
+	it('adds the claim to the Assistant agent thread and pushes its total', async () => {
+		const { service, push, agentThreadCredits } = setup(3.5);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'agent-thread' })).toBe(0.5);
+		expect(agentThreadCredits.addCredits).toHaveBeenCalledWith(fakeUser, 'agent-thread', 0.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: {
+					creditsQuota: 100,
+					creditsClaimed: 5.5,
+					creditsPerThread: { threadId: 'agent-thread', totalCreditsUsed: 3.5 },
+				},
+			},
+			['user-1'],
+		);
+	});
+
+	it('logs when no thread takes the total', async () => {
+		const { service, push, logger, agentThreadCredits } = setup(undefined);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'missing' })).toBe(0.5);
+		expect(logger.warn).toHaveBeenCalledWith('No thread took the Instance AI credit total', {
+			threadId: 'missing',
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'updateInstanceAiCredits', data: { creditsQuota: 100, creditsClaimed: 5.5 } },
+			['user-1'],
+		);
+	});
+});

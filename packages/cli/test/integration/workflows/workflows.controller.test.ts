@@ -1143,6 +1143,32 @@ describe('default engine', () => {
 });
 
 describe('GET /workflows/:workflowId', () => {
+	describe('home project', () => {
+		afterEach(() => {
+			testServer.license.enable('feat:sharing');
+		});
+
+		test.each([
+			{ sharing: 'enabled', setLicense: () => testServer.license.enable('feat:sharing') },
+			{ sharing: 'disabled', setLicense: () => testServer.license.disable('feat:sharing') },
+		])(
+			'should return homeProject and no shared relation when sharing license is $sharing',
+			async ({ setLicense }) => {
+				setLicense();
+
+				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+				const workflow = await createWorkflow({}, owner);
+
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+				const { data } = response.body as { data: Record<string, unknown> };
+				expect(data.homeProject).toMatchObject({ id: ownerProject.id, type: 'personal' });
+				expect(data.sharedWithProjects).toEqual([]);
+				expect(data).not.toHaveProperty('shared');
+			},
+		);
+	});
+
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -5247,8 +5273,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -5461,8 +5488,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
