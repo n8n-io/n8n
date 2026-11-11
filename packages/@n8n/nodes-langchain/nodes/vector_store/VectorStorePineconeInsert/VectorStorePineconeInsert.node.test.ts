@@ -51,7 +51,10 @@ describe('VectorStorePineconeInsert', () => {
 		await expect(new VectorStorePineconeInsert().execute.call(ctx)).rejects.toThrow(
 			'document schema is not supported yet',
 		);
-		expect(assertPineconeIndexAcceptsVectors).toHaveBeenCalledWith('key', 'docs');
+		expect(assertPineconeIndexAcceptsVectors).toHaveBeenCalledWith(
+			{ context: ctx, credentialType: 'pineconeApi', apiKey: 'key' },
+			'docs',
+		);
 		expect(deleteAll).not.toHaveBeenCalled();
 		expect(PineconeStore.fromDocuments).not.toHaveBeenCalled();
 	});

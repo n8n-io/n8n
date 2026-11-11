@@ -142,12 +142,19 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStor
 		);
 		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
-		const store = await getPineconeVectorStore(embeddings, {
-			apiKey: credentials.apiKey,
-			indexName: credentials.pineconeIndex,
-			namespace: namespaceName,
-			filter,
-		});
+		const store = await getPineconeVectorStore(
+			{
+				context,
+				credentialType: 'chatHubVectorStorePineconeApi',
+				apiKey: credentials.apiKey,
+			},
+			embeddings,
+			{
+				indexName: credentials.pineconeIndex,
+				namespace: namespaceName,
+				filter,
+			},
+		);
 
 		// Both entry points filter, because a document index with integrated embedding searches by
 		// text only. The filter is idempotent, so a text search that delegates to the vector search is fine
@@ -184,7 +191,14 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<VectorStor
 			);
 		}
 
-		await assertPineconeIndexAcceptsVectors(credentials.apiKey, credentials.pineconeIndex);
+		await assertPineconeIndexAcceptsVectors(
+			{
+				context,
+				credentialType: 'chatHubVectorStorePineconeApi',
+				apiKey: credentials.apiKey,
+			},
+			credentials.pineconeIndex,
+		);
 		const pineconeIndex = client.Index(credentials.pineconeIndex);
 
 		await PineconeStore.fromDocuments(filterChatHubInsertDocuments(documents), embeddings, {

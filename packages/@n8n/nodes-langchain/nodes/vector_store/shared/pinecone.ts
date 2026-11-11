@@ -5,18 +5,39 @@ import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import {
-	Pinecone as PineconeV9,
-	classifyIndexShape,
-	type Index as IndexV9,
-	type IndexModel,
-} from '@pinecone-database/pinecone-v9';
-import { UserError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import type { IExecuteFunctions, IHttpRequestOptions, ISupplyDataFunctions } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
+
+// @langchain/pinecone needs SDK 5 (API 2025-01), and the first SDK with the documents API (v9)
+// can't be installed next to it (pnpm deploy rejects two versions of one peer). So the
+// documents API is called directly. Docs: https://docs.pinecone.io/guides/index-data/adopt-the-documents-api
+const API_VERSION = '2026-07';
+const CONTROL_PLANE = 'https://api.pinecone.io';
 
 type ScoreBy = { type: 'dense_vector' | 'embed'; field: string };
+type SchemaField = Record<string, unknown>;
+
+/** The parts of the 2026-07 describe-index response the nodes read */
+export interface PineconeIndexModel {
+	name: string;
+	host: string;
+	ready: boolean;
+	fields: Record<string, SchemaField>;
+}
+
+/** Sends a request with the credential's Api-Key header and the n8n egress rules */
+type PineconeRequest = (options: IHttpRequestOptions) => Promise<unknown>;
+
+export interface PineconeConnection {
+	context: IExecuteFunctions | ISupplyDataFunctions;
+	/** `pineconeApi`, or a credential that extends it */
+	credentialType: string;
+	/** For the SDK 5 client of the vectors API path, and the describe cache key */
+	apiKey: string;
+}
 
 export interface PineconeVectorStoreArgs {
-	apiKey: string;
 	indexName: string;
 	/** Passed as is to the vectors API path. An empty value selects the default namespace */
 	namespace?: string;
@@ -25,21 +46,48 @@ export interface PineconeVectorStoreArgs {
 	textField?: string;
 }
 
+const toRequest =
+	({ context, credentialType }: PineconeConnection): PineconeRequest =>
+	async (options) =>
+		await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
+			...options,
+			headers: { ...options.headers, 'X-Pinecone-API-Version': API_VERSION },
+			json: true,
+		});
+
+export function parseIndexModel(raw: unknown): PineconeIndexModel {
+	if (!isRecord(raw) || typeof raw.name !== 'string' || typeof raw.host !== 'string') {
+		throw new OperationalError('Unexpected Pinecone index description');
+	}
+	const fields = isRecord(raw.schema) && isRecord(raw.schema.fields) ? raw.schema.fields : {};
+	return {
+		name: raw.name,
+		host: raw.host,
+		ready: isRecord(raw.status) && raw.status.ready === true,
+		fields: Object.fromEntries(
+			Object.entries(fields).filter((entry): entry is [string, SchemaField] => isRecord(entry[1])),
+		),
+	};
+}
+
 // The schema of an index can't change after creation, so a short cache only guards
 // against a recreated index with the same name.
 // ponytail: in-process TTL cache, one describe per index per minute on each main/worker
 const DESCRIBE_TTL_MS = 60_000;
-const describeCache = new Map<string, { expires: number; model: Promise<IndexModel> }>();
+const describeCache = new Map<string, { expires: number; model: Promise<PineconeIndexModel> }>();
 
-async function describeIndex(client: PineconeV9, apiKey: string, indexName: string) {
+async function describeIndex(connection: PineconeConnection, indexName: string) {
 	// Keyed by a hash, so the cache holds no API key
-	const key = createHash('sha256').update(`${apiKey}\0${indexName}`).digest('hex');
+	const key = createHash('sha256').update(`${connection.apiKey}\0${indexName}`).digest('hex');
 	const now = Date.now();
 	const cached = describeCache.get(key);
 	if (cached && cached.expires > now) return await cached.model;
 
 	for (const [k, entry] of describeCache) if (entry.expires <= now) describeCache.delete(k);
-	const model = client.describeIndex(indexName);
+	const model = toRequest(connection)({
+		method: 'GET',
+		url: `${CONTROL_PLANE}/indexes/${encodeURIComponent(indexName)}`,
+	}).then(parseIndexModel);
 	describeCache.set(key, { expires: now + DESCRIBE_TTL_MS, model });
 	try {
 		return await model;
@@ -49,31 +97,53 @@ async function describeIndex(client: PineconeV9, apiKey: string, indexName: stri
 	}
 }
 
-const INSERT_NOT_SUPPORTED =
-	'Inserting into a Pinecone index with a document schema is not supported yet. Use an index without a document schema to insert documents with n8n';
+/** A failed describe keeps the vectors API path, so classic indexes fail exactly as before */
+const tryDescribeIndex = async (connection: PineconeConnection, indexName: string) =>
+	await describeIndex(connection, indexName).catch(() => undefined);
+
+const typeOf = (field: SchemaField) => (typeof field.type === 'string' ? field.type : undefined);
+const isVectorField = (field: SchemaField) =>
+	typeOf(field) === 'dense_vector' || typeOf(field) === 'sparse_vector';
+const RESERVED_VECTOR_FIELDS = new Set(['_values', '_sparse_values']);
+
+/**
+ * Port of `classifyIndexShape` in Pinecone SDK 9 (src/control/indexes/legacyAccessors.ts,
+ * https://github.com/pinecone-io/pinecone-ts-client). Only the reserved `_values` and
+ * `_sparse_values` vector fields select the vectors API. Semantic and metadata fields don't count.
+ */
+export function classifyIndexShape(
+	model: PineconeIndexModel,
+): 'vectors-api' | 'documents-api' | 'indeterminate' {
+	const entries = Object.entries(model.fields);
+	const vectors = entries.filter(([, f]) => isVectorField(f));
+	if (vectors.length === 0) {
+		return entries.length === 0 && !model.ready ? 'indeterminate' : 'documents-api';
+	}
+	const reserved = vectors.filter(([name]) => RESERVED_VECTOR_FIELDS.has(name)).length;
+	if (reserved === vectors.length) return 'vectors-api';
+	return reserved === 0 ? 'documents-api' : 'indeterminate';
+}
 
 /** Indexes still initializing ('indeterminate') stay on the vectors API */
-function isDocumentIndex(model: IndexModel): boolean {
+function isDocumentIndex(model: PineconeIndexModel): boolean {
 	if (classifyIndexShape(model) !== 'documents-api') return false;
 	// A legacy integrated index has a semantic_text field and no vector fields, and the
 	// Records API still serves it
-	return !Object.values(model.schema?.fields ?? {}).some(
-		(f) => 'type' in f && f.type === 'semantic_text',
-	);
+	return !Object.values(model.fields).some((f) => typeOf(f) === 'semantic_text');
 }
+
+const INSERT_NOT_SUPPORTED =
+	'Inserting into a Pinecone index with a document schema is not supported yet. Use an index without a document schema to insert documents with n8n';
 
 /**
  * Throws for an index with a document schema: the vectors API rejects its upserts.
  * Runs before any namespace is cleared.
  */
 export async function assertPineconeIndexAcceptsVectors(
-	apiKey: string,
+	connection: PineconeConnection,
 	indexName: string,
 ): Promise<void> {
-	// A failed describe keeps the vectors API path, so classic indexes fail exactly as before
-	const model = await describeIndex(new PineconeV9({ apiKey }), apiKey, indexName).catch(
-		() => undefined,
-	);
+	const model = await tryDescribeIndex(connection, indexName);
 	if (model && isDocumentIndex(model)) throw new UserError(INSERT_NOT_SUPPORTED);
 }
 
@@ -81,16 +151,16 @@ export async function assertPineconeIndexAcceptsVectors(
  * Returns how to score a search on an index with a document schema, or `undefined` for an
  * index that the vectors API serves (classic indexes, legacy integrated indexes, and
  * indexes that are still initializing).
+ * If the schema has a dense vector field and an integrated embedding field, the dense field
+ * wins, because the connected embeddings model populated it. Else the first field of a kind wins.
  */
-export function getDocumentIndexScoring(model: IndexModel): ScoreBy | undefined {
+export function getDocumentIndexScoring(model: PineconeIndexModel): ScoreBy | undefined {
 	if (!isDocumentIndex(model)) return undefined;
 
-	const fields = Object.entries(model.schema?.fields ?? {});
-
-	// The connected embeddings model populated a dense field, so prefer it over Pinecone-side embedding
-	const dense = fields.find(([, f]) => 'type' in f && f.type === 'dense_vector');
+	const fields = Object.entries(model.fields);
+	const dense = fields.find(([, f]) => typeOf(f) === 'dense_vector');
 	if (dense) return { type: 'dense_vector', field: dense[0] };
-	const embed = fields.find(([, f]) => 'type' in f && f.type === 'string' && f.embed);
+	const embed = fields.find(([, f]) => typeOf(f) === 'string' && isRecord(f.embed));
 	if (embed) return { type: 'embed', field: embed[0] };
 
 	throw new UserError(
@@ -98,25 +168,36 @@ export function getDocumentIndexScoring(model: IndexModel): ScoreBy | undefined 
 	);
 }
 
+type ScoringClause =
+	| { type: 'dense_vector'; field: string; values: number[] }
+	| { type: 'embed'; field: string; query: string };
+
 export class PineconeDocumentStore extends VectorStore {
 	declare FilterType: object;
 
 	private readonly vectorFields: Set<string>;
 
+	private readonly searchUrl: string;
+
 	constructor(
 		embeddings: EmbeddingsInterface,
-		private readonly index: IndexV9,
+		private readonly request: PineconeRequest,
 		private readonly scoreBy: ScoreBy,
-		model: IndexModel,
+		model: PineconeIndexModel,
+		namespace?: string,
 		private readonly filter?: object,
 		private readonly textField?: string,
 	) {
 		super(embeddings, {});
 		this.vectorFields = new Set(
-			Object.entries(model.schema?.fields ?? {})
-				.filter(([, f]) => 'type' in f && (f.type === 'dense_vector' || f.type === 'sparse_vector'))
+			Object.entries(model.fields)
+				.filter(([, f]) => isVectorField(f))
 				.map(([name]) => name),
 		);
+		const host = /^https?:\/\//.test(model.host) ? model.host : `https://${model.host}`;
+		// The 2026-07 API names the default namespace `__default__`, as SDK 9 does
+		const ns = encodeURIComponent(namespace || '__default__');
+		this.searchUrl = `${host}/namespaces/${ns}/documents/search`;
 	}
 
 	_vectorstoreType(): string {
@@ -168,20 +249,28 @@ export class PineconeDocumentStore extends VectorStore {
 	}
 
 	private async search(
-		scoreBy:
-			| { type: 'dense_vector'; field: string; values: number[] }
-			| { type: 'embed'; field: string; query: string },
+		scoreBy: ScoringClause,
 		topK: number,
 		filter?: object,
 	): Promise<Array<[Document, number]>> {
 		const activeFilter = filter && Object.keys(filter).length > 0 ? filter : this.filter;
-		const { matches } = await this.index.documents.search({
-			scoreBy: [scoreBy],
-			topK,
-			includeFields: ['*'],
-			...(activeFilter && Object.keys(activeFilter).length > 0 ? { filter: activeFilter } : {}),
+		const response = await this.request({
+			method: 'POST',
+			url: this.searchUrl,
+			body: {
+				score_by: [scoreBy],
+				top_k: topK,
+				include_fields: ['*'],
+				...(activeFilter && Object.keys(activeFilter).length > 0 ? { filter: activeFilter } : {}),
+			},
 		});
-		return matches.map((match) => [this.toDocument(match), match._score ?? 0]);
+		const matches = isRecord(response) && Array.isArray(response.matches) ? response.matches : [];
+		return matches
+			.filter(isRecord)
+			.map((match) => [
+				this.toDocument(match),
+				typeof match._score === 'number' ? match._score : 0,
+			]);
 	}
 
 	private toDocument({ _id, _score, ...fields }: Record<string, unknown>): Document {
@@ -210,29 +299,24 @@ export class PineconeDocumentStore extends VectorStore {
  * index with a document schema, else LangChain's PineconeStore on the vectors API.
  */
 export async function getPineconeVectorStore(
+	connection: PineconeConnection,
 	embeddings: EmbeddingsInterface,
-	{ apiKey, indexName, namespace, filter, textField }: PineconeVectorStoreArgs,
+	{ indexName, namespace, filter, textField }: PineconeVectorStoreArgs,
 ): Promise<VectorStore> {
-	const v9 = new PineconeV9({ apiKey });
-	// A failed describe keeps the vectors API path, so classic indexes fail exactly as before
-	const model = await describeIndex(v9, apiKey, indexName).catch(() => undefined);
+	const model = await tryDescribeIndex(connection, indexName);
 	const scoreBy = model && getDocumentIndexScoring(model);
 
 	if (!model || !scoreBy) {
-		const pineconeIndex = new Pinecone({ apiKey }).Index(indexName);
-		return await PineconeStore.fromExistingIndex(embeddings, {
-			namespace,
-			pineconeIndex,
-			filter,
-		});
+		const pineconeIndex = new Pinecone({ apiKey: connection.apiKey }).Index(indexName);
+		return await PineconeStore.fromExistingIndex(embeddings, { namespace, pineconeIndex, filter });
 	}
 
-	const index = v9.index({ host: model.host, namespace: namespace || undefined });
 	return new PineconeDocumentStore(
 		embeddings,
-		index,
+		toRequest(connection),
 		scoreBy,
 		model,
+		namespace,
 		filter,
 		textField || undefined,
 	);

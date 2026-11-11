@@ -95,12 +95,15 @@ export class VectorStorePineconeLoad implements INodeType {
 			itemIndex,
 		)) as Embeddings;
 
-		const vectorStore = await getPineconeVectorStore(embeddings, {
-			apiKey: credentials.apiKey as string,
-			indexName: index,
-			namespace: namespace || undefined,
-			filter: getMetadataFiltersValues(this, itemIndex),
-		});
+		const vectorStore = await getPineconeVectorStore(
+			{ context: this, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			embeddings,
+			{
+				indexName: index,
+				namespace: namespace || undefined,
+				filter: getMetadataFiltersValues(this, itemIndex),
+			},
+		);
 
 		return {
 			response: logWrapper(vectorStore, this),

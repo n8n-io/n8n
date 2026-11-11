@@ -96,13 +96,16 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		return await getPineconeVectorStore(embeddings, {
-			apiKey: credentials.apiKey as string,
-			indexName: index,
-			namespace: options.pineconeNamespace ?? undefined,
-			filter,
-			textField: options.textField,
-		});
+		return await getPineconeVectorStore(
+			{ context, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			embeddings,
+			{
+				indexName: index,
+				namespace: options.pineconeNamespace ?? undefined,
+				filter,
+				textField: options.textField,
+			},
+		);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
@@ -127,7 +130,10 @@ export class VectorStorePinecone extends createVectorStoreNode<VectorStore>({
 			});
 		}
 
-		await assertPineconeIndexAcceptsVectors(credentials.apiKey as string, index);
+		await assertPineconeIndexAcceptsVectors(
+			{ context, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			index,
+		);
 		const pineconeIndex = client.Index(index);
 
 		if (options.pineconeNamespace && options.clearNamespace) {

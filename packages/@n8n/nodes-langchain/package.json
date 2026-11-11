@@ -289,7 +289,6 @@
     "@n8n/utils": "workspace:*",
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "catalog:",
-    "@pinecone-database/pinecone-v9": "npm:@pinecone-database/pinecone@9.2.0",
     "@qdrant/js-client-rest": "catalog:",
     "@smithy/node-http-handler": "4.5.0",
     "@smithy/types": "4.13.1",

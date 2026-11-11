@@ -119,7 +119,10 @@ export class VectorStorePineconeInsert implements INodeType {
 			apiKey: credentials.apiKey as string,
 		});
 
-		await assertPineconeIndexAcceptsVectors(credentials.apiKey as string, index);
+		await assertPineconeIndexAcceptsVectors(
+			{ context: this, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			index,
+		);
 		const pineconeIndex = client.Index(index);
 
 		if (namespace && clearNamespace) {

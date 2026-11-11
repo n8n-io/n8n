@@ -3861,9 +3861,6 @@ importers:
       '@pinecone-database/pinecone':
         specifier: 'catalog:'
         version: 5.1.2
-      '@pinecone-database/pinecone-v9':
-        specifier: npm:@pinecone-database/pinecone@9.2.0
-        version: '@pinecone-database/pinecone@9.2.0'
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
         version: 1.19.0(@typescript/typescript6@6.0.2)
@@ -14110,10 +14107,6 @@ packages:
   '@pinecone-database/pinecone@5.1.2':
     resolution: {integrity: sha512-z7737KUA1hXwd508q1+o4bnRxj0NpMmzA2beyaFm7Y+EC2TYLT5ABuYsn/qhiwiEsYp8v1qS596eBhhvgNagig==}
     engines: {node: '>=18.0.0'}
-
-  '@pinecone-database/pinecone@9.2.0':
-    resolution: {integrity: sha512-fk2v0nzNoP0MqnYkEilUkMr+cKEzet2csBnb5Tz9qrnwnW/Ft/wOGRWT+HxpTCGwkvA/cFxBld7QPJlTUSGCfw==}
-    engines: {node: '>=22.0.0'}
 
   '@pinia/testing@0.1.6':
     resolution: {integrity: sha512-Q40s3kpjXpjmcnc61l84wyG83yVmkBi5rRdSoPpwQoRfSnNKKr52XjFFt6hP8iBxehYS9NR+D57T1uzgnEVPHg==}
@@ -30874,8 +30867,6 @@ snapshots:
   '@pinecone-database/connect@0.0.4': {}
 
   '@pinecone-database/pinecone@5.1.2': {}
-
-  '@pinecone-database/pinecone@9.2.0': {}
 
   '@pinia/testing@0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))':
     dependencies:

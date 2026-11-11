@@ -53,13 +53,16 @@ describe('VectorStorePinecone', () => {
 
 		await new VectorStorePinecone().supplyData.call(ctx, 0);
 
-		expect(getPineconeVectorStore).toHaveBeenCalledWith(embeddings, {
-			apiKey: 'key',
-			indexName: 'docs',
-			namespace: 'ns',
-			filter: undefined,
-			textField: 'body',
-		});
+		expect(getPineconeVectorStore).toHaveBeenCalledWith(
+			{ context: ctx, credentialType: 'pineconeApi', apiKey: 'key' },
+			embeddings,
+			{
+				indexName: 'docs',
+				namespace: 'ns',
+				filter: undefined,
+				textField: 'body',
+			},
+		);
 	});
 
 	it('rejects an insert into a document index before it clears the namespace', async () => {
@@ -94,7 +97,10 @@ describe('VectorStorePinecone', () => {
 		await expect(new VectorStorePinecone().execute.call(ctx)).rejects.toThrow(
 			'document schema is not supported yet',
 		);
-		expect(assertPineconeIndexAcceptsVectors).toHaveBeenCalledWith('key', 'docs');
+		expect(assertPineconeIndexAcceptsVectors).toHaveBeenCalledWith(
+			{ context: ctx, credentialType: 'pineconeApi', apiKey: 'key' },
+			'docs',
+		);
 		expect(deleteAll).not.toHaveBeenCalled();
 		expect(PineconeStore.fromDocuments).not.toHaveBeenCalled();
 	});
