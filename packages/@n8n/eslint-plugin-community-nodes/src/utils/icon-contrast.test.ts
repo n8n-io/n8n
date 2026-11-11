@@ -35,6 +35,14 @@ test('computes WCAG contrast, including partial transparency', () => {
 	expect(contrastRatio(translucent, white)).toBeCloseTo(3.98, 2);
 });
 
+test('clamps wide-gamut colors to sRGB before computing contrast', () => {
+	const wideGamutRed = parseIconColor('color(display-p3 1 0 0)');
+	const red = parseIconColor('#f00');
+	const white = parseIconColor('#fff');
+	if (!wideGamutRed || !red || !white) throw new Error('Expected parsed colors');
+	expect(contrastRatio(wideGamutRed, white)).toBeCloseTo(contrastRatio(red, white), 2);
+});
+
 test('collects attributes, inline styles, style blocks, and gradient stops', () => {
 	const colors = getSvgPaintColors(`<svg xmlns="http://www.w3.org/2000/svg">
 		<style>.shape { fill: hsl(120 100% 50%); stroke: rebeccapurple }</style>

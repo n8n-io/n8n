@@ -1,4 +1,4 @@
-import { converter, parse, type Rgb } from 'culori';
+import { blend, clampRgb, converter, parse, wcagContrast, type Rgb } from 'culori';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
 const toRgb = converter('rgb');
@@ -22,25 +22,10 @@ export function parseIconColor(value: string): Rgb | undefined {
 	return toRgb(parse(paint));
 }
 
-function luminance(color: Rgb): number {
-	const linear = (channel: number) => {
-		const value = Math.max(0, Math.min(1, channel));
-		return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-	};
-	return 0.2126 * linear(color.r) + 0.7152 * linear(color.g) + 0.0722 * linear(color.b);
-}
-
+/** WCAG contrast of the paint as displayed on the background, after alpha compositing. */
 export function contrastRatio(paint: Rgb, background: Rgb): number {
-	const alpha = Math.max(0, Math.min(1, paint.alpha ?? 1));
-	const displayed: Rgb = {
-		mode: 'rgb',
-		r: paint.r * alpha + background.r * (1 - alpha),
-		g: paint.g * alpha + background.g * (1 - alpha),
-		b: paint.b * alpha + background.b * (1 - alpha),
-	};
-	const a = luminance(displayed);
-	const b = luminance(background);
-	return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+	const displayed = blend([background, clampRgb(paint)], 'normal');
+	return wcagContrast(clampRgb(displayed), background);
 }
 
 export function getSvgPaintColors(svg: string): Rgb[] | null {
