@@ -58,7 +58,11 @@ it.each([
 	);
 	const { operation, refresh } = setup();
 
-	await operation.submit({ workflowIds: ['wf-1'], confirmDestructiveChanges: false });
+	await operation.submit({
+		workflowIds: ['wf-1'],
+		folderIds: [],
+		confirmDestructiveChanges: false,
+	});
 
 	expect(operation.error.value).toEqual({ message, kind });
 	expect(refresh).toHaveBeenCalledTimes(refreshes ? 1 : 0);
