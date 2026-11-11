@@ -23,6 +23,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -117,6 +118,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	Container.get(GlobalConfig).tags.disabled = false;
 	await rm(remoteRoot, { recursive: true, force: true });
 });
 
@@ -579,48 +581,71 @@ it('answers for a destination that has only an apply environment', async () => {
 	await agent.get(endpoint).expect(404);
 }, 30_000);
 
-it('lists nothing after apply, although the destination mints its own version', async () => {
-	const owner = await createOwner();
-	const project = await createTeamProject('Destination', owner);
-	const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	const service = Container.get(PromotionsService);
-	const workflows = Container.get(WorkflowRepository);
-	await initNodeTypes();
-	// The source edits the workflow and promotes it.
-	await workflows.update(workflow.id, {
-		versionId: 'source-version',
-		nodes: [
-			{
-				id: 'set',
-				name: 'Set',
-				type: 'n8n-nodes-base.set',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-		],
-	});
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'Source edit',
-		canExportVariableValues: true,
-	});
-	// The destination still runs the previous content under a version of its own.
-	await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
-	const agent = server.publicApiAgentWithCookie(owner);
-	const endpoint = `/promotions/projects/${project.id}/changes/apply`;
-	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
-	expect(await changed()).toEqual([
-		expect.objectContaining({ id: workflow.id, change: 'modified' }),
-	]);
+it.each([
+	{ scope: 'project', tags: 'enabled' },
+	{ scope: 'project', tags: 'disabled' },
+	{ scope: 'instance', tags: 'enabled' },
+	{ scope: 'instance', tags: 'disabled' },
+])(
+	'lists nothing after apply in the $scope preview with workflow tags $tags',
+	async ({ scope, tags }) => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Destination', owner);
+		const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		const service = Container.get(PromotionsService);
+		const workflows = Container.get(WorkflowRepository);
+		await initNodeTypes();
+		// The source edits the workflow and promotes it.
+		await workflows.update(workflow.id, {
+			versionId: 'source-version',
+			nodes: [
+				{
+					id: 'set',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+		await service.promote(environments.promote.id, owner, {
+			commitMessage: 'Source edit',
+			canExportVariableValues: true,
+		});
+		// The branch file has `tagIds: []`, which a destination without workflow tags does not export.
+		Container.get(GlobalConfig).tags.disabled = tags === 'disabled';
+		// The destination still runs the previous content under a version of its own.
+		await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
+		const agent = server.publicApiAgentWithCookie(owner);
+		const endpoint =
+			scope === 'instance'
+				? `/promotions/environments/${environments.apply.id}/changes`
+				: `/promotions/projects/${project.id}/changes/apply`;
+		const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
+		const summary = (await agent.get(endpoint).expect(200)).body;
+		expect(changedResources(summary)).toEqual([
+			expect.objectContaining({ id: workflow.id, change: 'modified' }),
+		]);
+		const { body } = await agent
+			.post(`${endpoint}/details`)
+			.send({ commitSha: summary.commitSha, keys: [`workflow:${workflow.id}`] })
+			.expect(200);
+		// The card has the revision of the summary, so it is not stale.
+		expect(body.details).toEqual([
+			expect.objectContaining({ revision: changedResources(summary)[0].revision }),
+		]);
 
-	expect((await service.apply(environments.apply.id, owner)).status).toBe('applied');
+		expect((await service.apply(environments.apply.id, owner)).status).toBe('applied');
 
-	expect(await changed()).toEqual([]);
-	const stored = await workflows.findOneByOrFail({ id: workflow.id });
-	expect(stored.nodes).toHaveLength(1);
-	expect(stored.versionId).not.toBe('source-version');
-}, 30_000);
+		expect(await changed()).toEqual([]);
+		const stored = await workflows.findOneByOrFail({ id: workflow.id });
+		expect(stored.nodes).toHaveLength(1);
+		expect(stored.versionId).not.toBe('source-version');
+	},
+	30_000,
+);
 
 it('lists every local workflow as deleted when a valid branch manifest has no entry for the project', async () => {
 	const owner = await createOwner();
@@ -1033,6 +1058,14 @@ describe('resources in the preview', () => {
 					revision: resource.revision,
 				}),
 			]);
+
+			// With workflow tags disabled, Apply changes no tag and no tag mapping.
+			Container.get(GlobalConfig).tags.disabled = true;
+			expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
+			const instancePreview = await agent
+				.get(`/promotions/environments/${environments.apply.id}/changes`)
+				.expect(200);
+			expect(changedResources(instancePreview.body)).toEqual([]);
 		},
 		30_000,
 	);
