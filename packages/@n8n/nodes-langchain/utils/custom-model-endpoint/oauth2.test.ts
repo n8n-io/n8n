@@ -171,11 +171,12 @@ describe('createClientCredentialsTokenSource', () => {
 
 	it('says the deadline passed, rather than handing back the abort the runtime threw', async () => {
 		const controller = new AbortController();
+		const expired = new DOMException('This operation was aborted', 'TimeoutError');
 		const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
 		const stalling = (async (_url: RequestInfo | URL, init?: RequestInit) =>
 			await new Promise<Response>((_resolve, reject) => {
-				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
-				controller.abort(new DOMException('This operation was aborted', 'TimeoutError'));
+				init?.signal?.addEventListener('abort', () => reject(expired));
+				controller.abort(expired);
 			})) as typeof fetch;
 
 		const error = await createClientCredentialsTokenSource(login(), stalling)
