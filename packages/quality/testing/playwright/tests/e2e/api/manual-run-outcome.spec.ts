@@ -29,5 +29,26 @@ test.describe(
 			// "Include Other Input Fields" is off, so test2 is the only key.
 			expect(output).toEqual({ test2: 'a' });
 		});
+
+		// Manual Trigger -> Set (numbers = [1, 2]) -> Split Out -> If (numbers == 1)
+		// -> false branch: Set (number = paired item's numbers from Split Out)
+		test('should resolve a paired item through an If that kept the link of an earlier node @engine:v2', async ({
+			api,
+		}) => {
+			const { workflowId } = await api.workflows.importWorkflowFromFile(
+				'Paired_item_after_if_false_branch.json',
+			);
+
+			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const execution = await api.workflows.waitForExecutionById(executionId);
+
+			expect(execution.status).toBe('success');
+
+			// The false branch received the second item. If passes its items on with
+			// the link Split Out gave them, so the expression must still name item 2.
+			const { resultData } = flatted.parse(execution.data);
+			const output = resultData.runData['Read Split Out'][0].data.main[0][0].json;
+			expect(output).toEqual({ number: 2 });
+		});
 	},
 );

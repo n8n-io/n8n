@@ -374,11 +374,23 @@ describe('M1 acceptance (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 
-		expect(at('one', 2)?.outputs).toEqual([[{ json: { n: 1 } }, { json: { n: 2 } }], null]);
+		expect(at('one', 2)?.outputs).toEqual([
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+			],
+			null,
+		]);
 
 		expect(at('body-two', 0)?.status).toBe('completed');
 		expect(at('body-two', 1)?.status).toBe('completed');
-		expect(at('two', 2)?.outputs).toEqual([[{ json: { n: 1 } }, { json: { n: 2 } }], null]);
+		expect(at('two', 2)?.outputs).toEqual([
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+			],
+			null,
+		]);
 		expect(at('after', 0)?.status).toBe('completed');
 	});
 
@@ -416,7 +428,11 @@ describe('M1 acceptance (integration)', () => {
 
 		// the last pass carries what the body returned across every pass
 		expect(at('loop', 3)?.outputs).toEqual([
-			[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }],
+			[
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 0 } },
+				{ json: { n: 3 }, pairedItem: { item: 0 } },
+			],
 			null,
 		]);
 	});

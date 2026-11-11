@@ -375,6 +375,7 @@ export function toV1ExecuteContext({
 	subExecutionResume,
 	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
+	itemsByConnection = withPairedItemLineage(itemsByConnection);
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -417,4 +418,20 @@ export function toV1ExecuteContext({
 	context.subWorkflowCalls = subWorkflowCalls;
 	context.subExecutionResume = subExecutionResume;
 	return context;
+}
+
+/**
+ * Points every input item's `pairedItem` at its own position, as v1 does before it
+ * runs a node (`WorkflowExecute.addPairedItemLineage`). An item keeps the link its
+ * producer gave it, which points into the producer's input. A node that passes items
+ * through, like If, keeps a link that is already set, so without this the link
+ * would skip a node and name the wrong item.
+ */
+function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
+	return itemsByConnection.map((items, inputIndex) =>
+		items.map((item, itemIndex) => ({
+			...item,
+			pairedItem: inputIndex === 0 ? { item: itemIndex } : { item: itemIndex, input: inputIndex },
+		})),
+	);
 }

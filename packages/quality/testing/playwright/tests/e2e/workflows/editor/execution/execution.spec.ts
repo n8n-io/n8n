@@ -397,8 +397,7 @@ test.describe(
 			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 
-		// TODO(CET-333): engine v2 does not resolve paired items through a Merge node yet.
-		test('Paired items should be correctly mapped after passed through the merge node with more than two inputs @engine:v2-pending', async ({
+		test('Paired items should be correctly mapped after passed through the merge node with more than two inputs @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('merge_node_inputs_paired_items.json');
