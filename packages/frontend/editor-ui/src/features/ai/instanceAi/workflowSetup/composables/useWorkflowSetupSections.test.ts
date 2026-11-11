@@ -39,9 +39,14 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
 	});
 
-	it('carries preferNewCredential from the setup request onto the section', () => {
+	it('carries preferNewCredential and the listed credentials from the setup request onto the section', () => {
+		const existingCredentials = [{ id: 'own', name: 'My Slack' }];
 		const setupRequests = ref([
-			makeSetupRequest({ credentialType: 'slackApi', preferNewCredential: true }),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				preferNewCredential: true,
+				existingCredentials,
+			}),
 			makeSetupRequest({
 				credentialType: 'telegramApi',
 				node: { id: 'telegram', name: 'Telegram' },
@@ -51,6 +56,7 @@ describe('useWorkflowSetupSections', () => {
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value[0].preferNewCredential).toBe(true);
+		expect(sections.value[0].existingCredentials).toEqual(existingCredentials);
 		expect(sections.value[1].preferNewCredential).toBeUndefined();
 	});
 

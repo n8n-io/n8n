@@ -6,8 +6,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nBadge, N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref, watch } from 'vue';
+import { useArtifactLinks } from '../artifactLinks';
 
 const i18n = useI18n();
+const { openArtifactInNewTab } = useArtifactLinks();
 
 const props = defineProps<{
 	type: 'workflow' | 'data-table' | 'agent';
@@ -58,34 +60,19 @@ watch(
 	{ immediate: true },
 );
 
-function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
-	if (resourceType === 'agent') {
-		return projectId ? `/projects/${projectId}/agents/${props.resourceId}` : '/home/agents';
+function handleClick(e: MouseEvent) {
+	if (e.metaKey || e.ctrlKey) {
+		openArtifactInNewTab(props.type, props.resourceId, props.projectId);
+		return;
 	}
 
-	return projectId ? `/projects/${projectId}/datatables/${props.resourceId}` : '/data-tables';
-}
-
-function handleClick(e: MouseEvent) {
 	if (props.type === 'workflow') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(`/workflow/${props.resourceId}`, '_blank');
-			return;
-		}
 		openPreview?.(props.resourceId);
 	} else if (props.type === 'data-table') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(projectResourceUrl(props.projectId, 'data-table'), '_blank');
-			return;
-		}
 		if (props.projectId) {
 			openDataTablePreview?.(props.resourceId, props.projectId);
 		}
 	} else if (props.type === 'agent') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(projectResourceUrl(props.projectId, 'agent'), '_blank');
-			return;
-		}
 		if (props.projectId) {
 			openAgentPreview?.(props.resourceId, props.projectId);
 		}

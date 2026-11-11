@@ -2,7 +2,10 @@ operationId: createUser
 tags:
   - User
 summary: Create multiple users
-description: Create one or more users.
+description: |-
+  Create one or more users.
+
+  Requires the `user:create` API key scope.
 x-required-scope: user:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
