@@ -63,6 +63,12 @@ export class McpClient implements INodeType {
 						value: 'bearerAuth',
 					},
 					{
+						name: 'Generic OAuth2 API',
+						value: 'oAuth2Api',
+						description:
+							'Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
 					},
@@ -77,12 +83,6 @@ export class McpClient implements INodeType {
 					{
 						name: 'None',
 						value: 'none',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2Api',
-						description:
-							'Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.',
 					},
 				],
 				default: 'none',
