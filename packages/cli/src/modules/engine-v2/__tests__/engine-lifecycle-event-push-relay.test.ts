@@ -362,6 +362,19 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(resumed.data.sequenceNumber).toBeGreaterThan(first.data.sequenceNumber);
 		});
 
+		it('shows the resumed run on redelivery when the first send failed', () => {
+			register();
+			relay.relay([stepStarted, stepWaiting]);
+			vi.mocked(push.send).mockImplementationOnce(() => {
+				throw new Error('socket gone');
+			});
+
+			relay.relay([stepResumed, stepResumed]);
+
+			// The first start, the failed attempt and the redelivery.
+			expect(sentOfType('nodeExecuteBefore')).toHaveLength(3);
+		});
+
 		it('shows a second wait after the step resumes', () => {
 			register();
 

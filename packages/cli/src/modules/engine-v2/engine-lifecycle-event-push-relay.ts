@@ -110,8 +110,8 @@ export class EngineLifecycleEventPushRelay {
 			// A resumed wait. Keep the first start time: the editor's logs drop a
 			// start that matches an existing run, and would keep a newer one as a
 			// stale "running" row.
-			known.waiting = false;
 			this.sendNodeExecuteBefore(update.executionId, update.nodeName, known, session);
+			known.waiting = false;
 			return;
 		}
 		if (known) return;
