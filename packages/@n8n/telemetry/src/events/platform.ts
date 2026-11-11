@@ -28,6 +28,10 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The memory guard stopped the running execution that held the most run data, because the instance was running out of memory. Reported once for each stop, after the guard checked whether the stop freed memory.',
 		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe('Owner of the workflow, or the instance owner for a team project'),
 			workflow_id: z.string(),
 			execution_mode: z.string().describe('Mode of the stopped execution, for example webhook'),
 			reason: z

@@ -1,10 +1,9 @@
 import type { User } from '@n8n/db';
-import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, IWorkflowBase, INodeTypes } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
-import type { NodeTypes } from '@/node-types';
 
 import type { PartialUpdateOperation } from './workflow-operations';
 
@@ -224,7 +223,7 @@ function describeCredentialProblem(
  * signalling that every credential reference should be checked as a safe
  * fallback.
  */
-function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<string> | null {
+function computeActiveCredentialTypes(node: INode, nodeTypes: INodeTypes): Set<string> | null {
 	let description: INodeTypeDescription | null = null;
 	try {
 		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
@@ -256,7 +255,7 @@ export async function validateCredentialReferences(
 	existingWorkflow: IWorkflowBase,
 	user: User,
 	credentialsService: CredentialsService,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	scope: CredentialProjectScope,
 ): Promise<CredentialValidationResult> {
 	const nameToNodeMeta = new Map<string, NodeMeta>();
@@ -368,7 +367,7 @@ export async function validateWorkflowCredentialReferences(
 	nodes: INode[],
 	user: User,
 	credentialsService: CredentialsService,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	projectId: string,
 ): Promise<WorkflowCredentialValidationResult> {
 	const getClassifier = createLazyClassifier(user, { projectId }, credentialsService);

@@ -4,7 +4,12 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey, VIEWS } from '@/app/constants';
+import {
+	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+	VIEWS,
+	type EditorEnabledFeatures,
+} from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	createWorkflowDocumentId,
@@ -12,8 +17,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import type { CanvasNodeData } from '../../../../../canvas.types';
-import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
+import {
+	CanvasNodeDirtiness,
+	CanvasNodeRenderType,
+	type CanvasNodeData,
+} from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import { getActivePinia, setActivePinia } from 'pinia';
 import { computed, type ComputedRef } from 'vue';
@@ -116,6 +124,94 @@ describe('CanvasNodeStatusIcons', () => {
 			expect(queryByTestId(pending ? 'node-issues' : 'node-setup-required')).toBeNull();
 		},
 	);
+
+	describe('showNodeIssues host flag', () => {
+		const validationIssues = { visible: true, validation: ['Parameter "Project" is required.'] };
+
+		const renderWithFeatures = (
+			features: EditorEnabledFeatures | undefined,
+			data: Partial<CanvasNodeData> = {},
+		) =>
+			renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data }),
+						...(features ? { [EditorEnabledFeaturesKey]: computed(() => features) } : {}),
+					},
+				},
+			});
+
+		it.each([
+			{ label: 'no host features', features: undefined },
+			{ label: 'the flag omitted', features: {} },
+			{ label: 'the flag set to true', features: { showNodeIssues: true } },
+		])('should render validation issues with $label', ({ features }) => {
+			const { getByTestId } = renderWithFeatures(features, { issues: validationIssues });
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+		});
+
+		it('should hide validation issues when the host sets the flag to false', () => {
+			const { queryByTestId } = renderWithFeatures(
+				{ showNodeIssues: false },
+				{ issues: validationIssues },
+			);
+
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should hide execution errors when the host sets the flag to false', () => {
+			executionIssuesByNodeId.set(
+				'node',
+				computed(() => ['Request failed']),
+			);
+
+			const { queryByTestId } = renderWithFeatures({ showNodeIssues: false });
+
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should hide the credential setup warning when the host sets the flag to false', () => {
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('workflow'));
+			vi.spyOn(document, 'getNodeById').mockReturnValue({
+				...createTestNode({ id: 'node', credentials: {} }),
+				issues: { credentials: { slackApi: ['Select a credential'] } },
+			});
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: { issues: { visible: true, validation: ['Select a credential'] } },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+						[EditorEnabledFeaturesKey]: computed(() => ({
+							credentialSetupWarnings: true,
+							showNodeIssues: false,
+						})),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-setup-required')).not.toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should keep the deprecated icon when the host sets the flag to false', () => {
+			const { getByTestId, queryByTestId } = renderWithFeatures(
+				{ showNodeIssues: false },
+				{
+					issues: validationIssues,
+					render: { type: CanvasNodeRenderType.Default, options: { deprecated: true } },
+				},
+			);
+
+			expect(getByTestId('canvas-node-status-deprecated')).toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+	});
 
 	it('should render correctly for a pinned node', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
