@@ -1,3 +1,11 @@
+## [1.123.94](https://github.com/n8n-io/n8n/compare/n8n@1.123.93...n8n@1.123.94) (2026-11-11)
+
+
+### Bug Fixes
+
+* **core:** Keep retry backoff when a trigger fails right after reactivation ([#43178](https://github.com/n8n-io/n8n/issues/43178)) ([4be543b](https://github.com/n8n-io/n8n/commit/4be543b5c5d897da28cc8b12450ab2904bd0c38b))
+
+
 ## [1.123.93](https://github.com/n8n-io/n8n/compare/n8n@1.123.92...n8n@1.123.93) (2026-11-09)
 
 
