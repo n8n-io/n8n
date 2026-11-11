@@ -106,6 +106,13 @@ oxlintTester.run(
 				),
 			},
 			{
+				name: 'an SFC with no dropdown menu',
+				code: 'const a = 1;',
+				filename: sfcFile(
+					'<script setup lang="ts">\nconst a = 1;\n</script>\n<template><N8nTooltip :teleported="false" /></template>\n',
+				),
+			},
+			{
 				name: 'the second script block, so that the problem is reported once',
 				code: 'const b = 2;',
 				filename: sfcFile(twoScripts),

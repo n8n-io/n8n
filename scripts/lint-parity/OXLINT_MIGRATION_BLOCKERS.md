@@ -98,7 +98,10 @@ node scripts/lint-parity/oxlint-parity.mjs --pkg packages/<package> --eslint /tm
 Do these checks for each package that runs `vize lint`, before you change the `vize` version in the catalog:
 
 1. Run `pnpm lint` in the package. It must pass.
-2. Add an SFC with no `<script>` block that breaks a rule, for example `<template><ul><li v-for="x in [1]">{{ x }}</li></ul></template>`. Run `pnpm lint`. It must fail and report the rule (`vue/require-v-for-key`). Do this for each rule in `@n8n/oxlint-config/vize` that you want to prove. Then delete the file.
+2. For each rule in `@n8n/oxlint-config/vize`, add an SFC that breaks it, run `pnpm lint`, and check that it fails and reports the rule. Then delete the file.
+   - For a `vue/*` template rule, use an SFC with no `<script>` block, for example `<template><ul><li v-for="x in [1]">{{ x }}</li></ul></template>` for `vue/require-v-for-key`.
+   - For a `script/*` rule, the SFC needs a `<script>` block, for example `const total = count + 1` after `const count = ref(1)` for `script/no-ref-as-operand`.
+   - `pnpm lint` runs `vize lint` only when Oxlint passes. If Oxlint fails on the file first, run `pnpm exec vize lint -c vize-lint.config.mjs <file>` instead.
 3. Run `oxlint-parity.mjs` with `--vize`, as above. It must pass.
 4. Try `vue/valid-attribute-name` and `vue/valid-template-root` the same way. If the new version reports them, turn them on in `@n8n/oxlint-config/vize` and remove their entries from `oxlint-gap.json`.
 

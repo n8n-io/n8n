@@ -36,6 +36,10 @@ const guaranteesTeleportation = (prop: AttributeNode | DirectiveNode) => {
 // The Vue template rules report syntax errors, so this rule ignores them.
 const parseSfc = (source: string) => parse(source, { parseMode: 'sfc', onError: () => {} });
 
+// Most SFCs have no dropdown menu, so a text check saves the parse.
+const mentionsDropdown = (source: string) =>
+	[...DROPDOWN_NAMES].some((name) => source.includes(name));
+
 /**
  * Returns the location of each `teleported` attribute that lets an
  * `N8nTooltip` inside an `N8nDropdownMenu` render inline.
@@ -67,7 +71,7 @@ const findUnteleportedTooltips = (root: RootNode): SourceLocation[] => {
 
 /** Exported for tests. */
 export const findUnteleportedTooltipsInSource = (source: string) =>
-	findUnteleportedTooltips(parseSfc(source));
+	mentionsDropdown(source) ? findUnteleportedTooltips(parseSfc(source)) : [];
 
 const isFirstScriptBlock = (root: RootNode, scriptText: string) => {
 	const firstScript = root.children.find(
@@ -115,7 +119,9 @@ export const RequireTeleportedTooltipInDropdownRule = ESLintUtils.RuleCreator.wi
 				// text of that block. Read the SFC, and report from the first block only,
 				// so that each problem is reported once. Oxlint rejects a location outside
 				// the block, so the message carries the template position.
-				const root = parseSfc(readFileSync(context.physicalFilename, 'utf8'));
+				const sfc = readFileSync(context.physicalFilename, 'utf8');
+				if (!mentionsDropdown(sfc)) return;
+				const root = parseSfc(sfc);
 				if (!isFirstScriptBlock(root, context.sourceCode.text)) return;
 
 				for (const { start } of findUnteleportedTooltips(root)) {
