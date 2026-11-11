@@ -1,12 +1,15 @@
 import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { orderColumnRenames, pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
+import { ForbiddenError, UserError } from '@n8n/errors';
+import {
+	type DataTable,
+	DataTableService,
+	orderColumnRenames,
+	pairDataTableColumns,
+} from '@n8n/backend-module-data-table';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { diffDataTableSchema } from './data-table-compat';
@@ -22,7 +25,7 @@ import type {
 	DataTableSchemaOperation,
 	DataTableUpdate,
 } from './data-table.types';
-import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
+import { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
@@ -141,36 +144,6 @@ export class DataTableImporter {
 			failures,
 			matchedCount: matched.length + columnAlignments.length,
 		};
-	}
-
-	/**
-	 * Matched tables that `overwrite-non-destructive` blocks, with every change
-	 * `overwrite` would make. A table has one project, so each id yields at most
-	 * one result.
-	 */
-	async findDestructiveChanges<T extends { id: string; projectId: string }>(
-		references: T[],
-		packageDataTables: SerializedDataTable[],
-	): Promise<Array<DataTableUpdate & { reference: T }>> {
-		if (!this.moduleRegistry.isActive('data-table')) return [];
-
-		const packageTablesById = new Map(
-			packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
-		);
-		const targets = await this.dataTableService.findDataTablesByIds(references.map(({ id }) => id));
-		const targetsById = new Map(targets.map((table) => [table.id, table]));
-
-		return references.flatMap((reference) => {
-			const packageTable = packageTablesById.get(reference.id);
-			const target = matchTargetTable(DataTableMatchingMode.ById, reference, {
-				projectId: reference.projectId,
-				targetsById,
-			});
-			if (!packageTable || !target) return [];
-			const operations = diffDataTableSchema(packageTable, target);
-			if (!operations.some(({ destructive }) => destructive)) return [];
-			return [{ table: packageTable, operations, reference }];
-		});
 	}
 
 	/**

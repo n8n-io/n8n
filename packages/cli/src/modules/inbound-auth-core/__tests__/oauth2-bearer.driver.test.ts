@@ -64,6 +64,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 		status: 'healthy',
 		lastError: null,
 		lastCheckedAt: '2026-10-01T12:00:00.000Z',
+		firstAuthenticatedAt: null,
 		createdAt: '2026-09-30T10:00:00.000Z',
 		updatedAt: '2026-10-01T12:00:00.000Z',
 		config: migrateToLatest(
@@ -72,6 +73,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 				authentication: { type: 'oauth2', ...authentication },
 				surfaces,
 			}),
+			{ managedBy: rest.managedBy ?? 'admin' },
 		),
 		metadata: {
 			version: 1,

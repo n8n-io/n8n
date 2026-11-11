@@ -9,6 +9,7 @@ import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-defi
 import type { ImportContext } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
 import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
+import type { SkillImportPlan } from '../skill/skill-import.types';
 
 export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
@@ -19,6 +20,7 @@ export interface AgentImportPlan {
 	items: AgentPlanItem[];
 	plannedDestinations?: PlannedAgentDestinations;
 	issues: AgentImportIssue[];
+	skills?: SkillImportPlan;
 }
 
 export type PersistedAgentOutcome =

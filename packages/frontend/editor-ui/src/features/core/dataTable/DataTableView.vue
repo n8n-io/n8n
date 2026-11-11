@@ -18,7 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';

@@ -5,7 +5,11 @@ import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
-import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	DataTableProxyProvider,
+	ICredentialsHelper,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {
@@ -80,6 +84,7 @@ export class EngineAdditionalDataBuilder {
 	build(
 		context: AdditionalDataContext,
 		credentialsHelper: ICredentialsHelper,
+		dataTableProxyProvider: DataTableProxyProvider,
 	): IWorkflowExecuteAdditionalData {
 		const webhookBase = this.urlService.getWebhookBaseUrl();
 		const testWebhookBase = this.urlService.getTestWebhookBaseUrl();
@@ -106,6 +111,9 @@ export class EngineAdditionalDataBuilder {
 			mcpTestBaseUrl: testWebhookBase + endpoints.mcpTest,
 			variables: unimplementedVariables,
 			externalSecretsProxy: unimplementedExternalSecretsProxy,
+			// The key the Data Table node's helpers look for. In v1 the data-table
+			// module fills it; here the provider asks the control plane.
+			'data-table': { dataTableProxyProvider },
 			logAiEvent: (eventName, payload) => {
 				eventService.emit(eventName, payload);
 			},
@@ -121,7 +129,10 @@ export class EngineAdditionalDataBuilder {
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),
-			getRunExecutionData: unimplemented('Reading another execution (getRunExecutionData)'),
+			// The Execute Sub-workflow node reads the sub-execution's run data to trace paired
+			// items through it. The data plane has no v1 run data for a sub-execution. The shim
+			// drops the sub-execution items' own marks, so the node pairs them by index.
+			getRunExecutionData: async () => undefined,
 			getRuntimeCredential: unimplemented('Runtime credentials (getRuntimeCredential)'),
 			setExecutionStatus: () => {
 				throw new UnimplementedError(

@@ -98,6 +98,16 @@ export type PackageCommit = Readonly<{
 export type PromotionCacheDescriptor = {
 	schemaVersion: 1;
 	environmentId: string;
+	providerId: string;
 	remoteUrl: string;
 	checkoutBranchName: string;
 };
+
+/**
+ * Why n8n closed a promotion review. The review can never merge from n8n: its environment
+ * is gone, targets another repository, or no longer uses the host of the review.
+ */
+export type PromotionReviewCloseReason =
+	| 'environment_deleted'
+	| 'environment_target_changed'
+	| 'environment_host_changed';

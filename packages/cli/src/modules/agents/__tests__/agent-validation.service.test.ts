@@ -5,7 +5,7 @@ import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
@@ -76,7 +76,7 @@ function makeService() {
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	const agentTaskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 	agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
@@ -1223,6 +1223,79 @@ describe('AgentValidationService — structured issues', () => {
 				},
 			]),
 		);
+	});
+
+	it.each(['publish', 'runtime'] as const)(
+		'flags a tool guardrail ref that points at no configured tool (%s scope)',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					config: {
+						guardrails: {
+							tools: [
+								{
+									kind: 'keywords',
+									id: 'guard_1',
+									stage: 'before',
+									keywords: ['secret'],
+									tools: [{ type: 'workflow', workflowId: 'wf-missing' }],
+								},
+							],
+						},
+					},
+				}),
+			);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				scope,
+			);
+
+			expect(result.status).toBe('invalid');
+			expect(result.issues).toEqual(
+				expect.arrayContaining([
+					{
+						code: 'invalid_value',
+						path: 'config.guardrails.tools.0.tools.0',
+						capability: { kind: 'guardrail', id: 'guard_1' },
+					},
+				]),
+			);
+		},
+	);
+
+	it('reports no guardrail issue when every guardrail ref resolves', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1' }],
+				config: {
+					guardrails: {
+						tools: [
+							{
+								kind: 'nsfw',
+								id: 'guard_1',
+								stage: 'after',
+								tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							},
+						],
+					},
+				},
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues.filter((i) => i.path.startsWith('config.guardrails.tools'))).toEqual([]);
 	});
 
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {

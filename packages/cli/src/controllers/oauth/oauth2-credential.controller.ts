@@ -15,8 +15,12 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
 import { withTokenVersion } from '@/managed-versions';
-import { OauthService, OauthVersion } from '@/oauth/oauth.service';
-import { OAuthRequest } from '@/requests';
+import {
+	isAuthorizationResponseIssuerValid,
+	OauthService,
+	OauthVersion,
+} from '@/oauth/oauth.service';
+import { AuthlessRequest, OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -35,6 +39,12 @@ export class OAuth2CredentialController {
 		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
+	}
+
+	/** Client ID metadata document (CIMD) that OAuth2 servers fetch to identify n8n */
+	@Get('/client-metadata.json', { skipAuth: true, ipRateLimit: true })
+	getClientMetadata(_req: AuthlessRequest, res: Response) {
+		res.json(this.oauthService.getClientMetadataDocument());
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
@@ -69,6 +79,26 @@ export class OAuth2CredentialController {
 					return res.render('admin-consent-callback');
 				}
 
+				const { error, error_description: errorDescription, iss } = req.query;
+				if (typeof error === 'string' && error) {
+					this.logger.warn('OAuth2 server returned an authorization error', {
+						error,
+						errorDescription,
+						iss,
+					});
+					// The MCP spec forbids showing error details when `iss` fails validation (RFC 9207).
+					const flowState = await this.oauthService.peekCallbackFlowState(encodedState);
+					const isIssuerValid = isAuthorizationResponseIssuerValid(flowState, iss);
+					const details =
+						typeof errorDescription === 'string' && errorDescription ? `: ${errorDescription}` : '';
+					const reason = isIssuerValid ? `${error}${details}` : undefined;
+					return this.oauthService.renderCallbackError(
+						res,
+						'The OAuth2 server returned an error.',
+						reason,
+					);
+				}
+
 				return this.oauthService.renderCallbackError(
 					res,
 					'Insufficient parameters for OAuth2 callback.',
@@ -79,6 +109,22 @@ export class OAuth2CredentialController {
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 			credentialType = credential.type;
+
+			// RFC 9207: do not send the code to a token endpoint when `iss` fails validation.
+			// Credentials without automatic registration record no issuer, so n8n cannot check `iss`.
+			const isIssuerRecorded = flowState.issuer !== undefined;
+			const isIssuerValid = isAuthorizationResponseIssuerValid(flowState, req.query.iss);
+			if (isIssuerRecorded && !isIssuerValid) {
+				this.logger.warn('OAuth2 authorization response has an unexpected issuer', {
+					credentialId: credential.id,
+					expectedIssuer: flowState.issuer,
+					iss: req.query.iss,
+				});
+				return this.oauthService.renderCallbackError(
+					res,
+					'The authorization response came from an unexpected OAuth2 server.',
+				);
+			}
 
 			if (typeof state.resource === 'string') {
 				oauthCredentials.resource = state.resource;

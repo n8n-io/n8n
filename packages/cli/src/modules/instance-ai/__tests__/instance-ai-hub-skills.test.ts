@@ -9,6 +9,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { loadHubRunSkills, type AssistantSkillReader } from '../instance-ai-hub-skills';
+import { InstanceAiSkillTelemetry } from '../instance-ai-skill-telemetry';
 import type { AssistantSkillContent } from '@/modules/skills';
 
 const builtIn = {
@@ -76,21 +77,36 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([content()]);
 		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
 		else provider.isEnabled.mockResolvedValue(false);
-		const { source, availabilityNotice } = await load(provider, builtIns);
+		const { source } = await load(provider, builtIns);
 		expect(source.registry).toEqual(builtIns.registry);
 		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
 		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(await source.loadSkill('hub-previously-loaded')).toBeNull();
 		if (flag === 'unavailable') {
-			expect(availabilityNotice).toContain('temporarily unavailable');
+			expect(source.dynamicCatalog?.skillIds).toEqual([]);
+			expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 			expect(source.getLoadError?.('hub-previously-loaded')?.retryable).toBe(true);
 		} else {
-			expect(availabilityNotice).toBeUndefined();
+			expect(source.dynamicCatalog).toBeUndefined();
 			expect(source.getLoadError?.('hub-previously-loaded')).toBeUndefined();
 		}
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{ label: 'empty', contents: [] },
+		{ label: 'invalid', contents: [content({ name: '' })] },
+	])(
+		'omits dynamic catalogue metadata when no valid entries apply ($label)',
+		async ({ contents }) => {
+			const builtIns = createRuntimeSkillSource([builtIn]);
+			const { source } = await load(providerFor(contents), builtIns);
+
+			expect(source.registry).toEqual(builtIns.registry);
+			expect(source.dynamicCatalog).toBeUndefined();
+		},
+	);
 
 	it('discovers summaries, activates one skill, and reads references on demand', async () => {
 		const saved = content({
@@ -102,6 +118,8 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
 		const { source, mapSkillEventForDisplay } = await load(provider);
 		const [entry] = hubEntries(source);
+		expect(source.dynamicCatalog?.skillIds).toEqual(hubEntries(source).map(({ id }) => id));
+		expect(source.dynamicCatalog?.notice).toContain('Load by exact skillId');
 		const catalog = renderSkillCatalogPrompt(source.registry);
 		expect(catalog).toContain(saved.description);
 		expect(catalog).not.toContain(saved.instructions);
@@ -424,7 +442,7 @@ describe('Assistant Hub runtime skills', () => {
 			const provider = providerFor([content()]);
 			if (availability === 'catalog-unavailable')
 				provider.listSkills.mockRejectedValue(new Error('Unavailable'));
-			const { source, availabilityNotice } = await load(provider, builtIns);
+			const { source } = await load(provider, builtIns);
 			const previousHash = source.registry.skillsHash;
 			await source.prepare?.();
 			expect(source.registry.skills[0].hash).toBe('prepared');
@@ -433,10 +451,92 @@ describe('Assistant Hub runtime skills', () => {
 			expect(hubEntries(source)).toHaveLength(availability === 'available' ? 1 : 0);
 			expect(provider.readSkill).not.toHaveBeenCalled();
 			if (availability !== 'available') {
-				expect(availabilityNotice).toContain('temporarily unavailable');
+				expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 				expect(source.getLoadError?.('hub-existing')?.retryable).toBe(true);
 				expect(source.getLoadError?.(builtIn.id)).toBeUndefined();
 			}
 		},
 	);
+});
+
+describe('Hub load telemetry outcomes', () => {
+	it('keeps concurrent reference failures separate', async () => {
+		const provider = providerFor([
+			content({
+				files: [
+					{ path: 'references/temporary.md', content: 'Temporary' },
+					{ path: 'references/missing.md', content: 'Missing' },
+				],
+			}),
+		]);
+		const { source } = await load(provider);
+		const [entry] = hubEntries(source);
+		const tool = createSkillLoadTool(source);
+		await tool.handler?.({ skillId: entry.id }, {});
+		provider.readFile.mockImplementation(async (_context, _id, _version, path) => {
+			if (path === 'references/temporary.md') throw new Error('Temporary error');
+			return null;
+		});
+		const results = await Promise.all([
+			tool.handler?.({ skillId: entry.id, filePath: 'references/temporary.md' }, {}),
+			tool.handler?.({ skillId: entry.id, filePath: 'references/missing.md' }, {}),
+		]);
+		expect(results).toMatchObject([
+			{ success: false, errorCode: 'temporarily_unavailable' },
+			{ success: false, errorCode: 'unavailable' },
+		]);
+	});
+
+	it('reports a temporary catalog failure for a previously known Hub ID', async () => {
+		const provider = providerFor([content()]);
+		const first = await load(provider);
+		const [entry] = hubEntries(first.source);
+		provider.listSkills.mockRejectedValue(new Error('Temporary catalog error'));
+		const next = await load(provider);
+		const tool = createSkillLoadTool(next.source);
+		expect(await tool.handler?.({ skillId: entry.id }, {})).toMatchObject({
+			success: false,
+			errorCode: 'temporarily_unavailable',
+		});
+	});
+
+	it('uses each tool result reason after a transient reference error', async () => {
+		const saved = content({ files: [{ path: 'references/guide.md', content: 'Guide' }] });
+		const provider = providerFor([saved]);
+		const { source } = await load(provider);
+		const [entry] = hubEntries(source);
+		const tool = createSkillLoadTool(source);
+		const telemetry = new InstanceAiSkillTelemetry('orchestrator-1');
+		telemetry.bind(source);
+		async function invoke(key: string, filePath?: string) {
+			const args = { skillId: entry.id, ...(filePath ? { filePath } : {}) };
+			telemetry.observe({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'orchestrator-1',
+				payload: { toolCallId: key, toolName: 'load_skill', args },
+			});
+			const result = await tool.handler?.(args, { loadSkill: source.loadSkill });
+			telemetry.observe({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'orchestrator-1',
+				payload: { toolCallId: key, result },
+			});
+		}
+		await invoke('main');
+		provider.readFile.mockRejectedValue(new Error('Private provider error'));
+		await invoke('transient', 'references/guide.md');
+		await invoke('invalid', 'references/not-registered.md');
+		expect(telemetry.snapshot()).toMatchObject({
+			hub_skill_attempt_count: 1,
+			hub_skill_load_count: 1,
+			hub_skill_loaded_ids: [saved.id],
+			hub_skill_reference_failure_count: 2,
+			hub_skill_failures: [
+				{ operation: 'reference', reason: 'temporarily_unavailable', count: 1 },
+				{ operation: 'reference', reason: 'invalid_reference', count: 1 },
+			],
+		});
+	});
 });

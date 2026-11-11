@@ -18,6 +18,36 @@ const taskWith = (
 	run: async () => {},
 });
 
+it.each([-1, 0.5, Number.NaN, Infinity, 2 ** 31])(
+	'rejects an invalid initial delay of %s',
+	(delay) => {
+		expect(() =>
+			resolveSystemTask({
+				...taskWith({ kind: 'interval', intervalSeconds: 60 }),
+				initialDelaySeconds: delay,
+			}),
+		).toThrow('A system task declares an out-of-range option');
+	},
+);
+
+it.each([0, 17])('keeps the interval with an initial delay of %s', (delay) => {
+	expect(
+		resolveSystemTask({
+			...taskWith({ kind: 'interval', intervalSeconds: 60 }),
+			initialDelaySeconds: delay,
+		}).schedule,
+	).toEqual({ kind: 'interval', intervalSeconds: 60 });
+});
+
+it('rejects an initial delay on a cron schedule', () => {
+	expect(() =>
+		resolveSystemTask({
+			...taskWith({ kind: 'cron', cronExpression: '0 * * * *', timezone: 'UTC' }),
+			initialDelaySeconds: 17,
+		}),
+	).toThrow('Only interval system tasks can declare an initial delay');
+});
+
 it.each([
 	[3600, 3600],
 	[245.99999999999997, 246],

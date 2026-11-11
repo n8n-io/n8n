@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import {
@@ -19,17 +16,16 @@ import type {
 	ResolvedSkillRow,
 } from '../utils/skill-content';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
 }));
 
 describe('SkillRuntimeService', () => {
-	const { skills, skillUsage, txRunner, projectScope, runtime } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, runtime } = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
 
 	describe('Assistant reads', () => {
 		const context: AssistantSkillContext = { user, projectId: 'project-1' };
@@ -56,7 +52,7 @@ describe('SkillRuntimeService', () => {
 			skills.findAssistantSkill.mockImplementation(async (id) =>
 				id === row.skill.id ? row : null,
 			);
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScope.hasScopes.mockResolvedValue(true);
 		});
 
 		it.each([
@@ -96,11 +92,11 @@ describe('SkillRuntimeService', () => {
 
 		it('uses the existing skill permission check for content reads', async () => {
 			row.skill.projectId = 'project-1';
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScope.hasScopes.mockResolvedValue(false);
 			expect(await runtime.readForAssistant(context, 'skill-1')).toBeNull();
-			expect(userHasScopes).toHaveBeenCalledWith(context.user, ['projectSkill:read'], false, {
-				projectId: 'project-1',
-			});
+			expect(projectScope.hasScopes).toHaveBeenCalledWith(context.user, 'project-1', [
+				'projectSkill:read',
+			]);
 		});
 
 		it.each([
@@ -155,14 +151,13 @@ describe('SkillRuntimeService', () => {
 			]);
 		});
 
-		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+		it.each(['disabled', 'other-project', 'permission', 'missing'])(
 			'refuses a reference that is %s',
 			async (reason) => {
 				row.skill.projectId = 'project-1';
 				if (reason === 'disabled') row.skill.availableToAssistant = false;
-				if (reason === 'agent') row.skill.agentId = 'agent-1';
 				if (reason === 'other-project') row.skill.projectId = 'project-2';
-				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
+				if (reason === 'permission') projectScope.hasScopes.mockResolvedValue(false);
 				skills.findAssistantSkillFile.mockResolvedValue(
 					reason === 'missing'
 						? null
@@ -412,18 +407,18 @@ describe('SkillRuntimeService', () => {
 	});
 
 	describe('agent reads', () => {
-		it('findTargets maps each found skill to its project and agent', async () => {
+		it('findTargets maps each found skill to its project', async () => {
 			skills.findByIds.mockResolvedValue([
 				skillRow('skill_a', { projectId: PROJECT }),
-				skillRow('skill_b', { agentId: 'agent-1' }),
+				skillRow('skill_b'),
 			]);
 
 			const targets = await runtime.findTargets(['skill_a', 'skill_b', 'skill_gone'], TX_CTX);
 
 			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_gone'], TX_CTX);
 			expect([...targets]).toEqual([
-				['skill_a', { projectId: PROJECT, agentId: null }],
-				['skill_b', { projectId: null, agentId: 'agent-1' }],
+				['skill_a', { projectId: PROJECT }],
+				['skill_b', { projectId: null }],
 			]);
 		});
 
@@ -458,28 +453,6 @@ describe('SkillRuntimeService', () => {
 					},
 				],
 			]);
-		});
-
-		it('findVersionRefs returns what the repository finds', async () => {
-			const versions = new Map([['skill_a-v2', { skillId: 'skill_a', version: 2 }]]);
-			skills.findVersionRefs.mockResolvedValue(versions);
-
-			expect(await runtime.findVersionRefs(['skill_a-v2'], TX_CTX)).toBe(versions);
-			expect(skills.findVersionRefs).toHaveBeenCalledWith(['skill_a-v2'], TX_CTX);
-		});
-
-		it('reads outside a transaction when the caller gives no context', async () => {
-			skills.findByIds.mockResolvedValue([]);
-			skills.findVersionsByIds.mockResolvedValue(new Map());
-			skills.findVersionRefs.mockResolvedValue(new Map());
-
-			await runtime.findTargets(['skill_a']);
-			await runtime.resolveVersions(['skill_a-v1']);
-			await runtime.findVersionRefs(['skill_a-v1']);
-
-			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a'], {});
-			expect(skills.findVersionsByIds).toHaveBeenCalledWith(['skill_a-v1'], {});
-			expect(skills.findVersionRefs).toHaveBeenCalledWith(['skill_a-v1'], {});
 		});
 	});
 });

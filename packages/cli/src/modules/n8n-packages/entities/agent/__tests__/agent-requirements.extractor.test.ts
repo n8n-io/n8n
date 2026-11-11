@@ -32,7 +32,7 @@ function prepare(config: AgentJsonConfig | null): PreparedAgentExport {
 			source,
 			{
 				schema: config,
-				skills: source.skills,
+				skills: {},
 				tools: source.tools,
 				tasks: new Map(Object.entries(source.tasks)),
 			},
@@ -207,6 +207,22 @@ describe('AgentRequirementsExtractor', () => {
 			});
 		},
 	);
+
+	it('requires no credential that only a channel uses', () => {
+		const snapshot = prepare({
+			name: 'Channels',
+			model: 'openai/gpt-4o',
+			credential: 'model-credential',
+			instructions: '',
+			integrations: [
+				{ type: 'slack', credentialId: 'slack-only' },
+				{ type: 'telegram', credentialId: 'model-credential' },
+			],
+		});
+		expect(extractor.extract(snapshot).credentials).toEqual([
+			{ ...source, credentialId: 'model-credential' },
+		]);
+	});
 
 	it('rejects a workflow tool without an ID', () => {
 		const snapshot = prepare({

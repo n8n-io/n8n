@@ -11,6 +11,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	type Ref,
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
@@ -26,7 +27,9 @@ import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
+	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
+	type AgentSseEvent,
 	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -35,8 +38,11 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -64,7 +70,8 @@ import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
-import { selectLatestAgentPlan } from '../utils/agent-plan';
+import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
+import SessionFilesList from './SessionFilesList.vue';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import {
@@ -87,14 +94,19 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
-import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
-import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
+import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
+import {
+	getChatAttachmentUrl,
+	getSessionFiles,
+	type AgentChatChannel,
+} from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
-import ApprovalCard from './interactive/ApprovalCard.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
+		autofocus?: boolean;
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
@@ -103,6 +115,12 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
+		/**
+		 * Replaces the accepted file types, as an `accept` string. Use it for a
+		 * host whose agent reads more types than its model, for example with a
+		 * file tool.
+		 */
+		acceptedMimeTypes?: string;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -134,6 +152,7 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
@@ -165,6 +184,7 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
 	},
@@ -173,6 +193,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'content-change': [hasContent: boolean];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -192,6 +213,8 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
+	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
+	'stream-event': [event: AgentSseEvent];
 }>();
 
 defineSlots<{
@@ -210,8 +233,11 @@ defineSlots<{
 		chips: AgentChatComposerChip[];
 		removeChip: (id: string) => void;
 	}) => unknown;
-	/** Controls at the start of the composer footer. */
-	'footer-start'?: () => unknown;
+	/**
+	 * Controls at the start of the composer footer. `disabled` is true while the
+	 * composer does not take input, as for the built-in attach button.
+	 */
+	'footer-start'?: (props: { disabled: boolean }) => unknown;
 	'composer-start'?: () => unknown;
 	/** Controls at the end of the composer footer, next to the send button. */
 	'composer-actions'?: () => unknown;
@@ -254,6 +280,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	requestTaskStop,
 	detachStream,
 	resume,
 	cancelAndSteer,
@@ -276,14 +303,13 @@ const {
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
+	onStreamEvent: (event) => emit('stream-event', event),
 });
 
 provide(
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	computed(() => props.interactionExtensions),
 );
-
-const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
 
 const editingQueueId = ref<string>();
 provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
@@ -293,6 +319,7 @@ provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 		props.agentId,
 		attachmentId,
 		props.channel,
+		props.continueSessionId,
 	),
 );
 
@@ -463,58 +490,38 @@ async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: numb
 	if (queueOrder.value !== reordered) return;
 	queueOrder.value = undefined;
 }
+
 const {
-	jobs: backgroundJobs,
+	currentPlan,
+	planExpanded,
+	planStopActive,
+	planCardProps,
+	showPlanCard,
+	backgroundJobs,
+	showBackgroundJobs,
+	canStopBackgroundJobs,
+	backgroundStoppingIds,
+	backgroundStopLabel,
+	tasksStopping,
+	stopDisabled,
+	stopNotice,
+	preparingSummary,
+	summaryMissing,
+	stopTasks,
 	respondToApproval,
-	stopAll,
-	isStopping,
-} = useAgentBackgroundJobs({
+} = useAgentChatTaskControls({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => props.backgroundJobsActive,
 	channel: () => props.channel,
-	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
+	backgroundJobsActive: () => props.backgroundJobsActive,
+	visible: () => props.visible,
+	messages: () => messages.value,
+	requestStop: requestTaskStop,
+	hasPendingApprovals: () => hasPendingApprovals.value,
+	focusInput,
 });
-const canStopBackgroundJobs = computed(() =>
-	backgroundJobs.value.some((job) => job.status === 'running' || job.status === 'suspended'),
-);
-const backgroundStoppingIds = computed(
-	() =>
-		new Set(
-			backgroundJobs.value
-				.filter(
-					(job) =>
-						(job.status === 'running' || job.status === 'suspended') &&
-						(isStopping.value || job.pauseRequested),
-				)
-				.map((job) => job.id),
-		),
-);
 
-async function stopBackgroundJobs(event: MouseEvent) {
-	const button = event.currentTarget;
-	const restoreFocus = button === document.activeElement;
-	const threadId = props.continueSessionId;
-	try {
-		await stopAll();
-	} catch (error) {
-		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
-	}
-	// Disabling the button can clear focus before the task rows disappear.
-	await nextTick();
-	if (
-		!restoreFocus ||
-		disposed ||
-		!props.visible ||
-		props.continueSessionId !== threadId ||
-		hasPendingApprovals.value ||
-		document.activeElement !== document.body
-	)
-		return;
-	if (button instanceof HTMLElement && button.isConnected) button.focus({ preventScroll: true });
-	else focusInput({ preventScroll: true });
-}
 const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
@@ -523,21 +530,20 @@ const backgroundInProgress = computed(
 );
 const backgroundTitle = computed(() => {
 	const stoppingCount = backgroundStoppingIds.value.size;
+
 	if (stoppingCount > 0) {
 		return locale.baseText('agents.chat.backgroundTasks.stoppingCount', {
 			adjustToNumber: stoppingCount,
 			interpolate: { count: stoppingCount },
 		});
 	}
+
 	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
 		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
 	}
+
 	const count = backgroundRunningCount.value;
-	if (count === 0) {
-		return locale.baseText('agents.chat.backgroundTasks.finished', {
-			adjustToNumber: backgroundJobs.value.length,
-		});
-	}
+
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
 		adjustToNumber: count,
 		interpolate: { count },
@@ -585,11 +591,15 @@ const backgroundJobStatuses = computed(() => ({
 
 const backgroundApproval = computed(() => {
 	if (!props.backgroundJobsActive) return undefined;
+
 	for (const job of backgroundJobs.value) {
 		if (job.status !== 'suspended' || !job.approval) continue;
+
 		const input = parseApprovalInput(job.approval.suspendPayload);
+
 		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
 	}
+
 	return undefined;
 });
 const pendingApproval = computed(() => {
@@ -705,13 +715,40 @@ const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
-const showBackgroundJobs = computed(
-	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
-);
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	if (props.visible) chatInput.value?.focus(options);
 }
+
+let forceFocusPending = true;
+watch(
+	[chatInput, () => props.autofocus, () => props.visible],
+	async ([input, autofocus, visible], [, previousAutofocus, wasVisible], onCleanup) => {
+		if (!autofocus || !visible) {
+			forceFocusPending = false;
+			return;
+		}
+		if (!previousAutofocus || !wasVisible) forceFocusPending = true;
+		if (!input) return;
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		await nextTick();
+		if (cancelled || !props.autofocus || !props.visible || chatInput.value !== input) return;
+		const activeElement = document.activeElement;
+		if (
+			!forceFocusPending &&
+			activeElement instanceof HTMLElement &&
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
+		) {
+			return;
+		}
+		forceFocusPending = false;
+		focusInput();
+	},
+);
 
 watch(
 	[
@@ -768,13 +805,19 @@ const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
-const showAttach = computed(() => {
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
+// Data files work with every model, so the attach button shows unless the host turns uploads off.
+const showAttach = computed(() =>
+	props.acceptedMimeTypes !== undefined ? props.acceptedMimeTypes.length > 0 : true,
+);
 const acceptedMimeTypes = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
-	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
+	return [
+		capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : '',
+		AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	]
+		.filter(Boolean)
+		.join(',');
 });
 
 function handleFilesSelected(files: File[]) {
@@ -794,7 +837,7 @@ function handleFilesSelected(files: File[]) {
 			!isFileAcceptedByAccept(
 				file.name,
 				resolveFileMimeType(file.name, file.type),
-				acceptedMimeTypes.value ?? '',
+				acceptedMimeTypes.value,
 			)
 		) {
 			toast.showMessage({
@@ -821,6 +864,18 @@ function handleFilesSelected(files: File[]) {
 	}
 }
 
+/** The composer drops a file whose type is not accepted. Tell the user, the same as for a picked file. */
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: locale.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+}
+
 function handleFileRemove(file: File) {
 	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
 }
@@ -840,6 +895,8 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
+/** The composer takes no input while a send starts or a queued message moves back into it. */
+const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -848,6 +905,8 @@ let handoffPreview: ChatMessage | undefined;
 // Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
 // can drop only its own files and leave the user's own picks alone.
 let externalAttachedFiles: File[] = [];
+// The client context a hand-off sends with its own message only, on top of the `clientContext` prop.
+let externalClientContext: Record<string, unknown> | undefined;
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -918,9 +977,15 @@ const hasOpenSuspension = computed(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
+// Cap stops block Send: only a saved cap change resolves them. A credits stop
+// does not — the wallet tops up outside this flow, and polling it would add a
+// wallet read the gateway already does on the retry. Send again: a topped-up
+// wallet runs, an empty one stops again with a fresh notice.
 const hasBudgetStop = computed(() =>
 	messages.value.some((message) =>
-		message.budgetNotices?.some((notice) => isBudgetStopCode(notice.code)),
+		message.budgetNotices?.some(
+			(notice) => notice.code !== 'budget.credits' && isBudgetStopCode(notice.code),
+		),
 	),
 );
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
@@ -1086,6 +1151,7 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
+		externalClientContext = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
 		queueExpanded.value = false;
@@ -1105,6 +1171,7 @@ watch(
 function consumeQueuedExternalMessage(message: string) {
 	if (queuedExternalMessage !== message) return;
 	queuedExternalMessage = undefined;
+	externalClientContext = undefined;
 	emit('initial-consumed');
 }
 
@@ -1126,23 +1193,29 @@ async function onSubmit(): Promise<SubmitResult> {
 	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
 }
 
+/** Returns a check that is true while the panel still shows the chat it showed at the call. */
+function captureTarget(): () => boolean {
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	return () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
+}
+
 async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
 	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
 	if (ownedHandoffPreview) handoffPreview = undefined;
+	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
-	const target = {
-		projectId: props.projectId,
-		agentId: props.agentId,
-		continueSessionId: props.continueSessionId,
-	};
-	const isCurrentTarget = () =>
-		!disposed &&
-		props.projectId === target.projectId &&
-		props.agentId === target.agentId &&
-		props.continueSessionId === target.continueSessionId;
+	const isCurrentTarget = captureTarget();
 
 	const composerResume = text ? getExtensionComposerResume(text) : undefined;
 	if (composerResume) {
@@ -1166,6 +1239,40 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		return result === 'busy' ? 'busy' : 'sent';
 	}
 
+	return await sendRequest({
+		text,
+		files,
+		fromComposer: true,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	});
+}
+
+interface SendRequest {
+	text: string;
+	files: File[];
+	/**
+	 * The composer holds the message: its staged chips go with it, and an accepted
+	 * send clears the composer. A host send leaves the composer to the user.
+	 */
+	fromComposer: boolean;
+	/** The bubble a hand-off installed before it was sent. */
+	handoffPreview?: ChatMessage;
+	/** Sent with this message only, on top of the `clientContext` prop. */
+	clientContext?: Record<string, unknown>;
+}
+
+async function sendRequest(request: SendRequest): Promise<SubmitResult> {
+	const {
+		text,
+		files,
+		fromComposer,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	} = request;
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
+	const isCurrentTarget = captureTarget();
+
 	isPreparingToSend.value = true;
 	try {
 		try {
@@ -1187,12 +1294,19 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		let accepted = false;
 		// Build the client context after `beforeSend`, so it reflects the host state at
 		// send time. The staged chip patches go on top of it.
-		const sentAttachments = [...composerAttachments.value];
-		const clientContext = mergeClientContextPatches(sentAttachments, props.clientContext?.());
+		const sentAttachments = fromComposer ? [...composerAttachments.value] : [];
+		const hostClientContext = props.clientContext?.();
+		const clientContext = mergeClientContextPatches(
+			sentAttachments,
+			ownedClientContext ? { ...hostClientContext, ...ownedClientContext } : hostClientContext,
+		);
 		const sentFiles = files.length > 0 ? files : undefined;
 		const onAccepted = (queueId?: string) => {
 			accepted = true;
 			if (!isCurrentTarget()) return;
+			// The retry is the wallet re-check: drop the stale credits stop. A
+			// wallet still empty stops this run with a fresh notice.
+			clearBudgetNotices(new Set(['budget.credits']));
 			emit('message-accepted', { text, files, clientContext });
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
 				previewQueueId.value = queueId;
@@ -1204,15 +1318,16 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 					agentConfig: fingerprint,
 				});
 			}
+			queueExpanded.value = false;
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+			if (!fromComposer) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
 			);
 			externalAttachedFiles = [];
-			queueExpanded.value = false;
 			consumeQueuedExternalMessage(text);
-			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		};
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
@@ -1264,9 +1379,28 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-function sendMessageFromOutside(message: string, files?: File[]) {
+/**
+ * Sends a host message without the composer: the user's draft, files, and staged
+ * chips stay where they are. Unlike `sendMessageFromOutside`, a blocked send is
+ * not queued and does not answer an open card; it returns `'busy'` instead.
+ */
+async function sendHostMessage(
+	text: string,
+	clientContext?: Record<string, unknown>,
+): Promise<SubmitResult> {
+	if (!text) return 'rejected';
+	if (isSubmissionBlocked.value || hasOpenInteraction.value) return 'busy';
+	return await sendRequest({ text, files: [], fromComposer: false, clientContext });
+}
+
+function sendMessageFromOutside(
+	message: string,
+	files?: File[],
+	clientContext?: Record<string, unknown>,
+) {
 	queuedExternalMessage = message;
 	externalAttachedFiles = files ?? [];
+	externalClientContext = clientContext;
 	// Staged as the composer's own attachments, with the same count and size checks
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
@@ -1295,6 +1429,8 @@ async function submitQueuedExternalMessage() {
 	// The chat does not retry a busy send either, so its text becomes the user's draft.
 	if ((result === 'rejected' || result === 'busy') && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
+		// The draft is the user's now, so the hand-off's context does not go with it.
+		externalClientContext = undefined;
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
@@ -1324,9 +1460,16 @@ function isDirty(): boolean {
 	return hasDraft.value || composerAttachments.value.length > 0;
 }
 
+watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {
 	inputText.value = text;
+}
+
+/** Clears the composer only while it still holds this text, so the user's edits stay. */
+function clearDraftIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
 }
 
 function openFilePicker() {
@@ -1381,13 +1524,84 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
+// Session files: the preview chat and n8n Chat have the list route.
+const sessionFilesChannel = computed(() =>
+	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
+);
+const posthog = usePostHog();
+const showSessionFilesToggle = computed(
+	() =>
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
+		sessionFilesChannel.value !== undefined &&
+		Boolean(props.continueSessionId),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<AgentSessionFile[]>([]);
+const sessionFilesLoading = ref(false);
+const sessionFilesError = ref(false);
+
+function sessionFileHref(fileId: string) {
+	return getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		fileId,
+		props.channel,
+		props.continueSessionId,
+	);
+}
+
+async function loadSessionFiles() {
+	const threadId = props.continueSessionId;
+	const channel = sessionFilesChannel.value;
+	if (!threadId || !channel) return;
+	sessionFilesLoading.value = true;
+	sessionFilesError.value = false;
+	try {
+		const { files } = await getSessionFiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+			channel,
+		);
+		if (props.continueSessionId === threadId) sessionFiles.value = files;
+	} catch {
+		// A response for a previous session must not change the state of the open one.
+		if (props.continueSessionId === threadId) sessionFilesError.value = true;
+	} finally {
+		if (props.continueSessionId === threadId) sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) await loadSessionFiles();
+}
+
+// A turn stores its sandbox files before it ends, so reload when the stream stops.
+watch(isStreaming, async (streaming) => {
+	if (!streaming && sessionFilesOpen.value) await loadSessionFiles();
+});
+watch(
+	() => props.continueSessionId,
+	() => {
+		sessionFilesOpen.value = false;
+		sessionFiles.value = [];
+		sessionFilesError.value = false;
+		sessionFilesLoading.value = false;
+	},
+);
+
 defineExpose({
 	focusInput,
 	getConversationMarkdown,
 	sendMessageFromOutside,
+	sendHostMessage,
 	clearBudgetStops,
 	isDirty,
 	setDraft,
+	clearDraftIfMatches,
 	openFilePicker,
 	getInputElement,
 	insertText,
@@ -1395,7 +1609,13 @@ defineExpose({
 	removeComposerAttachment,
 	// Read-only views of the chat state, for hosts that derive their own UI from it.
 	messages: readonly(messages),
+	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
+	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
+	isBusy: computed(
+		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
+	),
 	isLoadingHistory: computed(() => isLoadingHistory.value),
 });
 
@@ -1475,7 +1695,16 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<template v-if="displayedMessages.length === 0 && !isStreaming">
+		<template
+			v-if="
+				displayedMessages.length === 0 &&
+				!isStreaming &&
+				!stopNotice &&
+				!preparingSummary &&
+				!summaryMissing &&
+				!$slots['inline-offers']
+			"
+		>
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" />
 			</slot>
@@ -1483,6 +1712,8 @@ onBeforeUnmount(() => {
 		<AgentChatMessageList
 			v-else
 			:messages="displayedMessages"
+			:preparing-summary="preparingSummary"
+			:summary-missing="summaryMissing"
 			:messaging-state="displayedMessagingState"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -1493,6 +1724,9 @@ onBeforeUnmount(() => {
 			:budget-increase-pending="budgetIncreasePending"
 			:retry-message-id="retryMessageId"
 			:retry-disabled="retryDisabled"
+			:task-trace-route="
+				continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+			"
 			@retry="retryMessage"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
@@ -1502,12 +1736,30 @@ onBeforeUnmount(() => {
 			<template v-if="$slots['message-actions']" #message-actions="actionProps">
 				<slot name="message-actions" v-bind="actionProps" />
 			</template>
+			<!-- Host offers end the transcript, so they share its column and scroll with it. -->
+			<template v-if="stopNotice || $slots['inline-offers']" #status>
+				<AgentChatTaskStopNotice
+					v-if="stopNotice"
+					:status="stopNotice"
+					:retry-disabled="stopDisabled"
+					:trace-route="
+						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+					"
+					@retry="stopTasks"
+				/>
+				<slot name="inline-offers" />
+			</template>
 		</AgentChatMessageList>
-
-		<slot name="inline-offers" />
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />
+			<SessionFilesList
+				v-if="sessionFilesOpen"
+				:files="sessionFiles"
+				:file-href="sessionFileHref"
+				:loading="sessionFilesLoading"
+				:error="sessionFilesError"
+			/>
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1584,58 +1836,62 @@ onBeforeUnmount(() => {
 								</span>
 							</N8nLink>
 							<N8nButton
-								v-if="canStopBackgroundJobs"
+								v-if="canStopBackgroundJobs || tasksStopping"
 								ref="backgroundJobStopButton"
 								variant="ghost"
 								size="small"
 								:class="$style.jobStopButton"
-								:disabled="isStopping"
+								:disabled="stopDisabled"
 								data-testid="agent-background-jobs-stop"
-								@click="stopBackgroundJobs"
+								@click="stopTasks"
 							>
 								<span :class="$style.jobTraceLabel">
 									<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
-									{{ locale.baseText('agents.chat.backgroundTasks.stopAll') }}
+									{{ backgroundStopLabel }}
 								</span>
 							</N8nButton>
 						</div>
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
-			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
-				<ApprovalCard
-					v-if="pendingApproval"
-					:key="pendingApproval.toolCallId"
-					:input="pendingApproval.input"
-					:agent-name="agentConfig?.name"
-					:tools="agentConfig?.tools"
-					@submit="
-						resume({
-							runId: pendingApproval.runId,
-							toolCallId: pendingApproval.toolCallId,
-							resumeData: $event,
-						})
+			<div v-if="hasPendingApprovals">
+				<AgentChatPlan
+					v-if="currentPlan && showPlanCard && planStopActive"
+					v-model:expanded="planExpanded"
+					:plan="currentPlan"
+					:trace-route="
+						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 					"
+					v-bind="planCardProps"
+					@stop="stopTasks"
 				/>
-				<div
-					v-else-if="backgroundApproval"
-					:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
-					:class="$style.backgroundApproval"
-				>
-					<N8nText bold size="small">{{
-						locale.baseText('agents.chat.backgroundTasks.approvalFor', {
-							interpolate: { title: backgroundApproval.title },
-						})
-					}}</N8nText>
-					<ApprovalCard
+				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
+					<ToolApprovalCard
+						v-if="pendingApproval"
+						:key="pendingApproval.toolCallId"
+						:input="pendingApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
+						@submit="
+							resume({
+								runId: pendingApproval.runId,
+								toolCallId: pendingApproval.toolCallId,
+								resumeData: $event,
+							})
+						"
+					/>
+					<ToolApprovalCard
+						v-else-if="backgroundApproval"
+						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
 						:input="backgroundApproval.input"
+						:task-title="backgroundApproval.title"
 						:agent-name="agentConfig?.name"
 						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>
+					<slot name="composer-start" />
 				</div>
-				<slot name="composer-start" />
 			</div>
 			<div v-else :class="$style.composer">
 				<ChatInputBase
@@ -1643,6 +1899,11 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:placeholder-preview="
+						!hasOpenInteractiveQuestion && queuedMessages.length === 0
+							? props.placeholderPreview
+							: undefined
+					"
 					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"
@@ -1651,11 +1912,12 @@ onBeforeUnmount(() => {
 					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
-					:disabled="isPreparingToSend || !!editingQueueId"
+					:disabled="isComposerBlocked"
 					data-testid="chat-input"
 					@submit="onSubmit"
 					@stop="stopGenerating"
 					@files-selected="handleFilesSelected"
+					@files-rejected="handleFilesRejected"
 					@keydown="onChatInputKeydown"
 				>
 					<template #above>
@@ -1678,7 +1940,10 @@ onBeforeUnmount(() => {
 							@remove="removeQueuedMessage"
 						/>
 						<AgentChatPlan
-							v-else-if="currentPlan"
+							v-else-if="currentPlan && showPlanCard"
+							v-model:expanded="planExpanded"
+							v-bind="planCardProps"
+							@stop="stopTasks"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
 							:trace-route="
@@ -1736,13 +2001,28 @@ onBeforeUnmount(() => {
 								variant="ghost"
 								:icon="attachButtonIcon"
 								icon-size="large"
-								:disabled="isPreparingToSend || !!editingQueueId"
+								:disabled="isComposerBlocked"
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"
 							/>
 						</N8nTooltip>
-						<slot name="footer-start" />
+						<N8nTooltip
+							v-if="showSessionFilesToggle"
+							:content="locale.baseText('agents.chat.sessionFiles.title')"
+							placement="top"
+						>
+							<N8nIconButton
+								variant="ghost"
+								:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
+								icon-size="large"
+								:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
+								:aria-expanded="sessionFilesOpen"
+								data-test-id="agent-session-files-toggle"
+								@click.stop="toggleSessionFiles"
+							/>
+						</N8nTooltip>
+						<slot name="footer-start" :disabled="isComposerBlocked" />
 					</template>
 					<template v-if="$slots['composer-actions']" #right-actions>
 						<slot name="composer-actions" />
@@ -1818,10 +2098,8 @@ onBeforeUnmount(() => {
 	border-bottom-style: dashed;
 }
 
-.backgroundApproval {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.approvalCards {
+	position: relative;
 }
 
 .backgroundJobList {

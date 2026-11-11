@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { OAuthDiscoveryClient } from '@n8n/backend-services';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,7 +25,7 @@ import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthTokenService } from '../oauth-token.service';
 
@@ -59,7 +59,8 @@ async function mintActiveToken(audience: string): Promise<string> {
 	const tokenService = Container.get(OAuthTokenService);
 	// A registered client is needed only to satisfy the token rows' FK.
 	const clientId = `client-${randomUUID()}`;
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: clientId,
 		name: 'Local authorization server tests',
 		redirectUris: ['https://example.com/callback'],
@@ -121,6 +122,7 @@ beforeAll(async () => {
 		Container.get(TrustedSourceDbStore),
 		client,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	);
 });
 

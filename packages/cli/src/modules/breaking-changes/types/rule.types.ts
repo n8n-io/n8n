@@ -1,5 +1,6 @@
 import type {
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeAssistantAction,
 	BreakingChangeRecommendation,
 	BreakingChangeRuleImpact,
 	BreakingChangeVersion,
@@ -29,6 +30,8 @@ export interface BreakingChangeRuleMetadata {
 	/** What happens if the user does not fix this breaking change. */
 	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
+	/** What n8n Assistant can do with this workflow rule's findings. Defaults to `none`. */
+	assistant?: BreakingChangeAssistantAction;
 }
 
 export interface IBreakingChangeInstanceRule {
@@ -36,6 +39,19 @@ export interface IBreakingChangeInstanceRule {
 	getMetadata(): BreakingChangeRuleMetadata;
 	detect(): Promise<InstanceDetectionReport>;
 }
+
+/**
+ * Data that lives for one scan, so a rule loads it once and not once per workflow.
+ * It has one typed field for each need. Make it generic when more rules need a cache.
+ */
+export interface WorkflowScanContext {
+	/** Slack API credential ID to whether its signature secret is missing. */
+	slackSignatureSecretMissing: Map<string, boolean>;
+}
+
+export const createWorkflowScanContext = (): WorkflowScanContext => ({
+	slackSignatureSecretMissing: new Map(),
+});
 
 export interface IBreakingChangeWorkflowRule {
 	id: string;
@@ -47,6 +63,7 @@ export interface IBreakingChangeWorkflowRule {
 	detectWorkflow(
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context?: WorkflowScanContext,
 	): Promise<WorkflowDetectionReport>;
 }
 

@@ -1,17 +1,20 @@
 import type { AgentTaskStopFailure } from '@n8n/api-types';
 
-/** The latest Stop on a thread. It persists so that later jobs and restarts respect it. */
+import type { AgentChatSurface } from '../utils/agent-thread-access';
+
+/** The chats that offer Stop all tasks. */
+export type AgentTaskStopSurface = Extract<AgentChatSurface, 'preview' | 'n8n-chat'>;
+
+/** The latest Stop on a thread and its captured work. */
 export interface AgentTaskStop {
 	planId: string | null;
 	requestedAt: string;
-	/** Unfinished leaf tasks and empty groups of the plan when Stop was requested. */
-	stoppedTaskIds?: string[];
-	planRevision?: number;
 	/** Work that was active when Stop was requested. */
 	generation: { executionIds: string[]; jobIds: string[]; threadIds: string[] };
 	/** Jobs that did not stop. */
 	failures: AgentTaskStopFailure[];
 	pause: {
+		requestsCompleted?: boolean;
 		/** Set as `pauseRequestId` on the jobs that this Stop targets. */
 		id: string;
 		/** Execution that delivers the stop report. */

@@ -10,8 +10,8 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig, NodesConfig } from '@n8n/config';
-import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
+import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
+import type { Person, Project, TagEntity, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
 	ProjectRepository,
@@ -54,8 +54,8 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -120,7 +120,7 @@ beforeEach(async () => {
 
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -2271,6 +2271,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			nodes: [
@@ -2375,6 +2376,7 @@ describe('POST /workflows', () => {
 		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			settings: {

@@ -12,9 +12,10 @@ describe('timelineColors', () => {
 		['agent', 'purple', 'purple'],
 		['skill', 'neutral', 'orange'],
 		['tool', 'neutral', 'green'],
+		['memory', 'neutral', 'yellow'],
 		['node', 'neutral', 'neutral'],
 		['workflow', 'neutral', 'pink'],
-		['suspension', 'neutral', 'yellow'],
+		['suspension', 'neutral', 'purple'],
 		['hitl-response', 'neutral', 'blue'],
 		['background-task-signal', 'neutral', 'mint'],
 		['background-task', 'neutral', 'mint'],
@@ -45,7 +46,10 @@ describe('timelineColors', () => {
 	});
 
 	it('keeps idle and sub-agent pill colors', () => {
-		expect(timelineColors('idle').pill).toEqual(timelineColors('suspension').pill);
+		expect(timelineColors('idle').pill).toEqual({
+			backgroundColor: 'var(--color--yellow-200)',
+			color: 'var(--color--yellow-950)',
+		});
 		expect(timelineColors('subagent').pill).toEqual(timelineColors('background-task-signal').pill);
 	});
 

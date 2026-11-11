@@ -40,8 +40,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { ConflictError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -80,6 +79,7 @@ import { createAgentCredentialProvider } from './utils/agent-credential-provider
 import type {
 	CompleteAgentDefinition,
 	AgentDefinitionMetadata,
+	AgentSkillWriter,
 	PlannedAgentDestinations,
 } from './utils/agent-definition';
 import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
@@ -93,6 +93,7 @@ type CreateAgentOptions =
 			user: User;
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
+			writeSkills?: AgentSkillWriter;
 	  };
 
 type DraftAgentCreateOptions = {
@@ -424,16 +425,11 @@ export class AgentsService {
 				if (isUniqueConstraintError(error)) throw new ConflictError('Agent already exists');
 				throw error;
 			}
-			const imported = await this.agentSkillRefs.importDraftSkills(
-				agent,
-				skillRefs,
-				definition.skills,
-				user.id,
-				ctx,
-			);
+			await options.writeSkills?.(ctx);
+			const savedRefs = await this.agentSkillRefs.replaceAllDraftRefs(agent, skillRefs, ctx);
 			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
 			await this.definitionService.captureVersion(agent, user, ctx);
-			return imported;
+			return savedRefs;
 		});
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
@@ -494,7 +490,9 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
+		);
 	}
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
@@ -731,7 +729,19 @@ export class AgentsService {
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated(projectIds, options),
+		);
+	}
+
+	private async addListSkillVersions(result: AgentListResult): Promise<AgentListResult> {
+		const versions = await this.agentSkillRefs.findSkillVersionsForAgents(result.data, {});
+		return {
+			...result,
+			data: result.data.map((agent) =>
+				Object.assign(agent, { skillVersions: versions.get(agent.id) ?? {} }),
+			),
+		};
 	}
 
 	/**

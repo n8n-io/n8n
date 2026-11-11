@@ -1625,14 +1625,6 @@
 				"hash": "63742f55819c"
 			}
 		],
-		"packages/cli/src/commands/import/credentials.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 19,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "a5cc02a1d765"
-			}
-		],
 		"packages/cli/src/events/relays/telemetry.event-relay.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",
@@ -1773,22 +1765,6 @@
 				"line": 11,
 				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
 				"hash": "ee4b7ca996c4"
-			}
-		],
-		"packages/cli/src/modules/data-table/data-table-ddl.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 3,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "9d6b2c45c02a"
-			}
-		],
-		"packages/cli/src/modules/data-table/data-table.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 18,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "b1aa220b40ab"
 			}
 		],
 		"packages/cli/src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts": [
@@ -1961,14 +1937,6 @@
 				"line": 45,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "3f27e7921159"
-			}
-		],
-		"packages/cli/src/modules/data-table/utils/sql-utils.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 10,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "9780aefcf874"
 			}
 		],
 		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts": [

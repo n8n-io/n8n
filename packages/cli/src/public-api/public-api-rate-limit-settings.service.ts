@@ -4,12 +4,14 @@ import {
 	type PublicApiRateLimitSettingsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, PublicApiRateLimitConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import type { UserLike } from '@/types/user-like.types';
@@ -45,8 +47,10 @@ export class PublicApiRateLimitSettingsService {
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly eventService: EventService,
+		private readonly publisher: Publisher,
 		private readonly logger: Logger,
 	) {}
 
@@ -54,13 +58,17 @@ export class PublicApiRateLimitSettingsService {
 		return this.globalConfig.publicApi.rateLimit;
 	}
 
-	/** The values that the limiter uses. Stored values apply only after `load()`. */
 	get settings(): PublicApiRateLimitSettings {
 		return this.loaded ?? this.config;
 	}
 
 	async load() {
 		this.loaded = await this.resolveSettings();
+	}
+
+	@OnPubSubEvent('reload-public-api-rate-limit-settings', { instanceType: 'main' })
+	async handleSettingsChanged() {
+		await this.load();
 	}
 
 	async getSettings(): Promise<PublicApiRateLimitSettingsResponse> {
@@ -86,6 +94,8 @@ export class PublicApiRateLimitSettingsService {
 			false,
 			{},
 		);
+		this.loaded = settings;
+		this.notifyOtherMains();
 
 		if (settings.enabled !== previous.enabled) {
 			const { id, email, firstName, lastName, role } = actor;
@@ -97,6 +107,18 @@ export class PublicApiRateLimitSettingsService {
 		}
 
 		return this.toResponse(settings);
+	}
+
+	private notifyOtherMains() {
+		if (!this.instanceSettings.isMultiMain) return;
+
+		void this.publisher
+			.publishCommand({ command: 'reload-public-api-rate-limit-settings' })
+			.catch((error: unknown) => {
+				this.logger.warn('Could not tell the other mains to reload the rate-limit settings', {
+					error: ensureError(error),
+				});
+			});
 	}
 
 	private toResponse(settings: PublicApiRateLimitSettings): PublicApiRateLimitSettingsResponse {

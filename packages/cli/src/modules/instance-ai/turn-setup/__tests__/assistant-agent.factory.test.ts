@@ -174,8 +174,8 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 });
 
 describe('AssistantAgentFactory — model transport', () => {
-	it('passes the configured model transport to the orchestrator agent', async () => {
-		const modelFetch = vi.fn();
+	it.each([true, false])('passes requestLabels %s from the config', async (modelRequestLabels) => {
+		createInstanceAgent.mockClear();
 		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
 		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
 			bindAgentContextReader: vi.fn(),
@@ -183,9 +183,9 @@ describe('AssistantAgentFactory — model transport', () => {
 			buildMcpServers: vi.fn(async () => []),
 			createAgentMemoryOptions: vi.fn(() => ({})),
 			subscribeToAgentErrors: vi.fn(),
-			instanceAiConfig: { thinkingEnabled: true },
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels },
 			_mcpClientManager: {},
-			modelService: { getModelFetch: vi.fn(() => modelFetch) },
+			modelService: { getLabeledModelFetch: vi.fn() },
 		}) as unknown as AssistantAgentFactory;
 
 		await factory.createAgent(
@@ -200,6 +200,102 @@ describe('AssistantAgentFactory — model transport', () => {
 			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
 		);
 
-		expect(createInstanceAgent).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ requestLabels: modelRequestLabels }),
+		);
+	});
+
+	it('passes the labeled model transport to the orchestrator agent', async () => {
+		const modelFetch = vi.fn();
+		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			subscribeToAgentErrors: vi.fn(),
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels: true },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn(() => modelFetch) },
+		}) as unknown as AssistantAgentFactory;
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
+		);
+
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ modelFetch, requestLabels: true }),
+		);
+		expect(
+			(factory as unknown as { modelService: { getLabeledModelFetch: unknown } }).modelService
+				.getLabeledModelFetch,
+		).toHaveBeenCalledWith({ runId: 'run-1', threadId: 'thread-1' });
+	});
+});
+
+describe('AssistantAgentFactory — agent error reports', () => {
+	it('reports a background agent error with the ids and the trace of the turn', async () => {
+		let onError: ((event: unknown) => void) | undefined;
+		const agent = {
+			on: vi.fn((_event: string, handler: (event: unknown) => void) => {
+				onError = handler;
+			}),
+		};
+		createInstanceAgent.mockResolvedValue({ agent, mcpConnectionFailures: [] });
+		const report = vi.fn();
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			instanceAiConfig: { thinkingEnabled: true },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn() },
+			instanceAiErrorReporter: { report },
+		}) as unknown as AssistantAgentFactory;
+		const tracing = { rootRun: { traceId: 'ls-trace-1' } };
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					userId: 'user-1',
+					messageGroupId: 'mg-1',
+				},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{
+				user: { id: 'user-1' } as User,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				tracing: tracing as unknown as NonNullable<
+					Parameters<AssistantAgentFactory['createAgent']>[2]['tracing']
+				>,
+			},
+		);
+		const error = new Error('persist failed');
+		onError?.({ type: 'error', source: 'input-persistence', error });
+
+		expect(report).toHaveBeenCalledWith(error, {
+			component: 'instance-ai-input-persistence',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			messageGroupId: 'mg-1',
+			tracing,
+		});
 	});
 });

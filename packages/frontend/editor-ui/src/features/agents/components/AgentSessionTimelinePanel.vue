@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import type { AgentChatResumeDto, AgentJsonConfig, PushMessage } from '@n8n/api-types';
+import type {
+	AgentChatResumeDto,
+	AgentJsonConfig,
+	AgentThreadMemoryDto,
+	PushMessage,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -35,6 +40,8 @@ import type {
 	TimelineItem,
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -67,6 +74,7 @@ const documentVisibility = useDocumentVisibility();
 const projectId = computed(() => props.projectId);
 
 const executions = ref<AgentExecution[]>([]);
+const memory = ref<AgentThreadMemoryDto>();
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
@@ -151,7 +159,7 @@ const budgetIncreasePending = ref(false);
 const budgetStop = computed<{
 	index: number;
 	executionId: string;
-	code: 'budget.monthly' | 'budget.session';
+	code: 'budget.monthly' | 'budget.session' | 'budget.credits';
 } | null>(() => {
 	const lastExecutionId = executions.value.at(-1)?.id;
 	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
@@ -194,6 +202,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'skill':
 			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -278,6 +288,59 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
+// The resume route returns once the run is started. Keep this thread's card
+// disabled until a refresh shows the session is no longer awaiting.
+const pendingApprovalIdentity = ref<string | null>(null);
+
+const approvalDisabled = computed(() => pendingApprovalIdentity.value === threadIdentity());
+
+// The approval suspension parked on the latest execution, if that execution is
+// still awaiting a decision. Independent of the selected row: the card sits
+// inline in the timeline table.
+const openApprovalItem = computed((): TimelineItem | null => {
+	const latest = executions.value.at(-1);
+	if (!latest || latest.status !== 'awaiting') return null;
+	return (
+		items.value.find(
+			(item) =>
+				item.executionId === latest.id &&
+				item.kind === 'suspension' &&
+				item.hitlRequestType === 'approval',
+		) ?? null
+	);
+});
+
+const sessionApproval = computed((): ApprovalInput | undefined => {
+	const item = openApprovalItem.value;
+	if (!item) return undefined;
+	return parseApprovalInput(item.hitlRequest);
+});
+
+function releasePendingApproval(identity: string) {
+	if (pendingApprovalIdentity.value === identity) pendingApprovalIdentity.value = null;
+}
+
+async function submitSessionApproval(resumeData: ApprovalResume) {
+	const toolCallId = openApprovalItem.value?.toolCallId;
+	const identity = threadIdentity();
+	const { projectId, agentId, threadId } = props;
+	if (!toolCallId || pendingApprovalIdentity.value === identity) return;
+	pendingApprovalIdentity.value = identity;
+	try {
+		await sessionsStore.resumeTaskApproval(projectId, agentId, threadId, {
+			toolCallId,
+			resumeData,
+		});
+	} catch (error) {
+		releasePendingApproval(identity);
+		if (threadIdentity() !== identity) return;
+		toast.showError(error, i18n.baseText('agentSessions.approval.failed'));
+		return;
+	}
+	if (threadIdentity() !== identity) return;
+	refreshThreadDetail();
+}
+
 function selectTimelineItem(index: number | null) {
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
@@ -298,6 +361,7 @@ function loadThreadDetail() {
 	resolvedBudgetStopExecutionId.value = null;
 	pendingApprovalRunIds.value = new Set();
 	executions.value = [];
+	memory.value = undefined;
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
@@ -329,6 +393,13 @@ async function fetchThreadDetail(initial: boolean) {
 		}
 		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
+		memory.value = result.memory;
+		if (
+			pendingApprovalIdentity.value === identity &&
+			result.executions.at(-1)?.status !== 'awaiting'
+		) {
+			pendingApprovalIdentity.value = null;
+		}
 		if (selectedKey) {
 			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
 			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
@@ -465,7 +536,13 @@ useKeybindings({
 				:notice-index="budgetStop?.index"
 				:respond-to-approval="respondToBackgroundApproval"
 				:pending-approval-run-ids="pendingApprovalRunIds"
+				:memory="memory"
+				:on-memory-deleted="refreshThreadDetail"
+				:approval-item="openApprovalItem"
+				:approval="sessionApproval"
+				:approval-disabled="approvalDisabled"
 				@select="onTimelineItemSelect"
+				@approve="submitSessionApproval"
 			>
 				<template v-if="budgetStop" #notice>
 					<AgentBudgetNoticeCard

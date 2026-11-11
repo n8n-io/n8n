@@ -16,6 +16,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
+	type OrchestrationContext,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
@@ -142,7 +143,8 @@ export class AssistantAgentFactory {
 			checkpointStore: runtime.checkpointStore,
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: this.modelService.getLabeledModelFetch({ runId, threadId }),
+			requestLabels: this.instanceAiConfig.modelRequestLabels,
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
@@ -173,7 +175,7 @@ export class AssistantAgentFactory {
 				},
 			});
 		}
-		this.subscribeToAgentErrors(agent, threadId, runId);
+		this.subscribeToAgentErrors(agent, environment.orchestrationContext);
 		return agent;
 	}
 
@@ -323,7 +325,7 @@ export class AssistantAgentFactory {
 	 * the `source`-tagged events — the main agentic-loop errors (no source) already
 	 * reach Sentry via the errored run/stream result.
 	 */
-	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, context: OrchestrationContext): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error) return;
 			if (!event.source) return;
@@ -331,8 +333,11 @@ export class AssistantAgentFactory {
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
 				...(severity ? { severity } : {}),
-				threadId,
-				runId,
+				threadId: context.threadId,
+				runId: context.runId,
+				userId: context.userId,
+				...(context.messageGroupId ? { messageGroupId: context.messageGroupId } : {}),
+				...(context.tracing ? { tracing: context.tracing } : {}),
 			});
 		});
 	}

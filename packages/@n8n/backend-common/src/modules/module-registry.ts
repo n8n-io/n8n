@@ -85,6 +85,7 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'inbox',
+		'promotions',
 		// skills precedes instance-ai and agents: agents keeps its skills in the
 		// skills module, so skills must start first. See `eligibleModules`.
 		'skills',
@@ -96,6 +97,7 @@ export class ModuleRegistry {
 		'agent-evals',
 		'scim',
 		'type-availability-policies',
+		'execution-limits',
 	];
 
 	private readonly activeModules: string[] = [];

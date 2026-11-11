@@ -3,6 +3,7 @@ import { EventService, isBillableExecution } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
+	isPerson,
 	SettingsRepository,
 	StatisticsNames,
 	WorkflowRepository,
@@ -89,8 +90,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		);
 		this.on('executionsCrashed', async ({ executions }) => {
 			// Record one at a time, to keep a large sweep within the database connection pool.
-			for (const { workflowId, workflowName, mode } of executions) {
-				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
+			for (const { workflowId, workflowName, mode, startedAt } of executions) {
+				await this.recordExecutionOutcome({
+					workflowId,
+					workflowName,
+					mode,
+					status: 'crashed',
+					startedAt,
+				});
 			}
 		});
 	}
@@ -123,7 +130,12 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		workflowName,
 		mode,
 		status,
-	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		startedAt,
+	}: {
+		workflowId: string;
+		workflowName?: string;
+		startedAt: Date | null;
+	} & CompletedRunOutcome): Promise<void> {
 		// Contain every failure: this runs from an emitter listener that captures
 		// rejections and has no `error` handler, so a rejection would end the process.
 		try {
@@ -136,7 +148,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				statisticsName,
 				workflowId,
 				workflowName,
-				isRoot: isBillableExecution(outcome),
+				isRoot: isBillableExecution({ ...outcome, startedAt }),
 				firstEventMs: Date.now(),
 			});
 		} catch (error) {
@@ -231,7 +243,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 			userId = owner?.id ?? null;
 
-			if (owner && !owner.settings?.userActivated) {
+			if (owner && isPerson(owner) && !owner.settings?.userActivated) {
 				await this.userService.updateSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,

@@ -123,11 +123,13 @@ export const RESOURCES = {
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
+	workflowSettings: ['manage'] as const,
 	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
 	agent: ['export', 'import', 'read', 'create', 'update', 'publish', 'unpublish'] as const,
+	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,

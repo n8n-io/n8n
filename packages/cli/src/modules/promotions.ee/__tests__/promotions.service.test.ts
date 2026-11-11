@@ -1,6 +1,7 @@
-import type { PromotionBindingPreflightResult } from '@n8n/api-types';
+import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import { Person } from '@n8n/db';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
@@ -25,15 +26,17 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@n8n/backend-services';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import type { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
@@ -42,6 +45,12 @@ import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+
+// These dependencies are injected as mocks. Do not load their implementation graphs.
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
@@ -79,13 +88,12 @@ describe('PromotionsService', () => {
 	const projectService = mock<ProjectService>();
 	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
-	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
-	const actor = mock<User>({
+	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
 		lastName: 'Lovelace',
@@ -93,6 +101,7 @@ describe('PromotionsService', () => {
 	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
+	const publisher = mock<Publisher>();
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
@@ -132,6 +141,7 @@ describe('PromotionsService', () => {
 		await workingDirectory.writeDescriptor({
 			schemaVersion: 1,
 			environmentId: input.environmentId,
+			providerId: input.providerId,
 			remoteUrl: input.remote.remoteUrl,
 			checkoutBranchName: branchName,
 		});
@@ -141,6 +151,7 @@ describe('PromotionsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
+		publisher.publishCommand.mockResolvedValue();
 		folderService.getFoldersByIds.mockResolvedValue([]);
 		// Projects p1 and p2 exist on this instance.
 		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
@@ -169,6 +180,13 @@ describe('PromotionsService', () => {
 			resolver,
 			providersService,
 			workingDirectory,
+			new PromotionCheckoutCleanupService(
+				workingDirectory,
+				mock<PromotionEnvironmentRepository>(),
+				logger,
+				publisher,
+				mock<InstanceSettings>({ isMultiMain: true }),
+			),
 			new WorkingCopyUpdater(
 				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
 				logger,
@@ -179,7 +197,6 @@ describe('PromotionsService', () => {
 			projectService,
 			folderService,
 			n8nPackagesService,
-			bindingPreflight,
 			applyPreviewService,
 			inventoryReader,
 			packageImportConfig,
@@ -218,6 +235,7 @@ describe('PromotionsService', () => {
 				}),
 			);
 			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				providerId: 'prov1',
 				remoteUrl: REMOTE_URL,
 				checkoutBranchName: 'staging',
 			});
@@ -289,6 +307,24 @@ describe('PromotionsService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 			expect(result.hasCheckout).toBe(false);
+		});
+
+		it('asks the other mains to remove their checkouts', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+
+			await service.disconnect(ENVIRONMENT_ID);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'promotion-environment-changed',
+				payload: { environmentIds: [ENVIRONMENT_ID], change: 'checkout-disconnected' },
+			});
+		});
+
+		it('fails when the checkout removal fails', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValueOnce(new Error('EBUSY'));
+
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow('EBUSY');
 		});
 	});
 
@@ -783,6 +819,18 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
+		it('refuses to promote when the checkout was cloned with another provider', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput({ providerId: 'prov2' }));
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				}),
+			).rejects.toThrow('not connected');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
 		it('checks the base commit it reset to in branch mode, without a second fetch', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(
 				operationInput({
@@ -1040,7 +1088,12 @@ describe('PromotionsService', () => {
 		});
 
 		it('commits as n8n when the actor has no name or email', async () => {
-			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
+			const bareActor = Object.assign(new Person(), {
+				id: 'x',
+				firstName: '',
+				lastName: '',
+				email: undefined,
+			});
 
 			await service.promote(ENVIRONMENT_ID, bareActor, {
 				canExportVariableValues: true,
@@ -1058,7 +1111,11 @@ describe('PromotionsService', () => {
 			{ firstName: 'Ada', lastName: '', name: 'Ada' },
 			{ firstName: '', lastName: 'Lovelace', name: 'Lovelace' },
 		])('uses the available profile name: $name', async ({ firstName, lastName, name }) => {
-			const partialActor = mock<User>({ firstName, lastName, email: 'ada@example.com' });
+			const partialActor = Object.assign(new Person(), {
+				firstName,
+				lastName,
+				email: 'ada@example.com',
+			});
 
 			await service.promote(ENVIRONMENT_ID, partialActor, {
 				canExportVariableValues: true,
@@ -1096,7 +1153,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection push mechanics', () => {
-		const actor = mock<User>({
+		const actor = Object.assign(new Person(), {
 			id: 'actor',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
@@ -1747,7 +1804,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection', () => {
-		const actor = mock<User>({ id: 'actor', email: 'ada@example.com' });
+		const actor = Object.assign(new Person(), { id: 'actor', email: 'ada@example.com' });
 
 		// The promote resolves the environment the same way the change preview does,
 		// so a selection pushes to the environment the user previewed.
@@ -1788,7 +1845,12 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: undefined,
 				}),
-				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1', 'w2', 'w4'],
+					deletedWorkflowIds: ['w3'],
+					folderIds: [],
+				},
 				new Map(),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1817,7 +1879,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1839,7 +1901,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1863,21 +1925,9 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map([['w9', 'project "Ops"']]),
 			);
-		});
-
-		it('rejects a selection with duplicate workflow ids', async () => {
-			const promoteSelectionResolved = spyPromoteSelectionResolved();
-
-			await expect(
-				service.promoteProjectSelection('p1', actor, {
-					workflowIds: ['w1', 'w1'],
-					canExportVariableValues: false,
-				}),
-			).rejects.toThrow(BadRequestError);
-			expect(promoteSelectionResolved).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1970,6 +2020,58 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('listMissingProjects', () => {
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForEnvironment.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package projects that do not exist on this instance, sorted by name', async () => {
+			const commitSha = 'a'.repeat(40);
+			gitService.listBranchTree.mockResolvedValue({ commitSha, lsTreeOutput: '' });
+			gitService.readTreeAtCommit.mockResolvedValue(
+				new Map([['projects/billing/project.json', Buffer.from('{}')]]),
+			);
+			inventoryReader.read.mockResolvedValue({
+				projects: [
+					{ id: 'p-support', name: 'Support', path: 'projects/support' },
+					{ id: 'p1', name: 'Exists here', path: 'projects/exists' },
+					{
+						id: 'p-billing',
+						name: 'Billing',
+						icon: { type: 'emoji', value: '💰' },
+						path: 'projects/billing',
+					},
+				],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha, branchName: 'dev' },
+				data: [
+					{ id: 'p-billing', name: 'Billing', icon: { type: 'emoji', value: '💰' } },
+					{ id: 'p-support', name: 'Support' },
+				],
+			});
+		});
+
+		it('lists no projects when the branch has no package yet', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: null,
+				data: [],
+			});
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
@@ -2015,8 +2117,8 @@ describe('PromotionsService', () => {
 			variables: [],
 			dataTables: [],
 		};
-		const checked = (preflight: PromotionBindingPreflightResult) => ({
-			preflight,
+		const checked = (applyCheck: PromotionApplyCheck) => ({
+			...applyCheck,
 			movedWorkflows: [],
 			movedFolders: [],
 		});
@@ -2082,7 +2184,7 @@ describe('PromotionsService', () => {
 				const result = await service.apply(ENVIRONMENT_ID, actor);
 				assert(result.status === 'blocked');
 				expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
-				return result.preflight.conflicts.filter(({ code }) => code === 'moved');
+				return result.check.conflicts.filter(({ code }) => code === 'moved');
 			};
 
 			it('blocks a workflow that the branch holds in another project, and names both projects', async () => {
@@ -2149,7 +2251,7 @@ describe('PromotionsService', () => {
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
-					publishingPolicy: 'match-source',
+					publishingPolicy: 'preserve-target-state',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
@@ -2209,13 +2311,15 @@ describe('PromotionsService', () => {
 				durationMs: expect.any(Number),
 				workflowsChanged: 6,
 				workflowsFailedToPublish: 0,
+				foldersChanged: 7,
+				projectsChanged: 2,
 			});
 		});
 
 		const consumers = [
 			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
 		];
-		const unresolved: PromotionBindingPreflightResult = {
+		const unresolved: PromotionApplyCheck = {
 			missingProjects: [],
 			missingBindings: [
 				{
@@ -2277,7 +2381,7 @@ describe('PromotionsService', () => {
 		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 			'blocks on %s before import or reconciliation',
 			async (group) => {
-				const preflight = {
+				const applyCheck = {
 					missingProjects: [],
 					missingBindings: [],
 					accessRequirements: [],
@@ -2285,12 +2389,12 @@ describe('PromotionsService', () => {
 					warnings: [],
 					[group]: unresolved[group],
 				};
-				check.mockReturnValueOnce(checked(preflight));
+				check.mockReturnValueOnce(checked(applyCheck));
 				expect(await service.apply(ENVIRONMENT_ID, actor)).toEqual({
 					status: 'blocked',
 					environmentId: ENVIRONMENT_ID,
 					git: { commitSha: 'remotesha', branchName: 'dev' },
-					preflight,
+					check: applyCheck,
 				});
 				expect(check).toHaveBeenCalledWith(plan, packageInventory, undefined, noMoves);
 				expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
@@ -2306,13 +2410,13 @@ describe('PromotionsService', () => {
 			check.mockReturnValueOnce(checked(unresolved));
 			expect(await service.apply(ENVIRONMENT_ID, actor)).toMatchObject({
 				status: 'blocked',
-				preflight: unresolved,
+				check: unresolved,
 			});
 			const fresh = { ...unresolved, missingBindings: [] };
 			check.mockReturnValueOnce(checked(fresh));
 			expect(await service.continueApply(ENVIRONMENT_ID, actor, request)).toMatchObject({
 				status: 'blocked',
-				preflight: fresh,
+				check: fresh,
 			});
 			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
 			check.mockReturnValueOnce(
@@ -2349,7 +2453,7 @@ describe('PromotionsService', () => {
 		});
 
 		it.each([{ commitSha: 'older' }, { branchName: 'older' }, { environmentId: 'older' }])(
-			'stops Continue before preflight when source differs: %j',
+			'stops Continue before the check when source differs: %j',
 			async (change) => {
 				expect(
 					await service.continueApply(ENVIRONMENT_ID, actor, {
@@ -2467,14 +2571,17 @@ describe('PromotionsService', () => {
 					selectedProjectId: 'p1',
 					selectedWorkflowIds: selection.selectedWorkflowIds,
 					deletedWorkflowIds: selection.deletedWorkflowIds,
+					selectedFolderIds: [],
 				};
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
 						credentialConflictPolicy: 'overwrite',
+						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
 					},
@@ -2522,7 +2629,7 @@ describe('PromotionsService', () => {
 				{ invalidIds: ['unknown'], label: 'unknown IDs' },
 				{ invalidIds: ['foreign'], label: 'foreign project IDs' },
 				{ invalidIds: ['unknown', 'foreign'], label: 'all invalid IDs together' },
-			])('rejects $label before preflight or import', async ({ invalidIds }) => {
+			])('rejects $label before the check or import', async ({ invalidIds }) => {
 				await expect(
 					service.applyProjectSelection('p1', actor, {
 						workflowIds: ['w1', 'deleted', ...invalidIds],
@@ -2551,7 +2658,7 @@ describe('PromotionsService', () => {
 					await service.applyProjectSelection('p1', actor, { workflowIds: ['moved-in'] }),
 				).toMatchObject({
 					status: 'blocked',
-					preflight: {
+					check: {
 						conflicts: [
 							expect.objectContaining({
 								kind: 'workflow',
@@ -2576,7 +2683,7 @@ describe('PromotionsService', () => {
 					await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }),
 				).toMatchObject({
 					status: 'blocked',
-					preflight: {
+					check: {
 						conflicts: [
 							expect.objectContaining({
 								kind: 'folder',
@@ -2631,7 +2738,7 @@ describe('PromotionsService', () => {
 					it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 						'blocks on scoped %s before import',
 						async (group) => {
-							const preflight = {
+							const applyCheck = {
 								missingProjects: [],
 								missingBindings: [],
 								accessRequirements: [],
@@ -2639,7 +2746,7 @@ describe('PromotionsService', () => {
 								warnings: [],
 								[group]: unresolved[group],
 							};
-							check.mockReturnValueOnce(checked(preflight));
+							check.mockReturnValueOnce(checked(applyCheck));
 							expect(
 								await service[method]('p1', actor, {
 									workflowIds: ['w1', 'deleted'],
@@ -2649,7 +2756,7 @@ describe('PromotionsService', () => {
 								status: 'blocked',
 								environmentId: ENVIRONMENT_ID,
 								git: { branchName: 'dev', commitSha: 'remotesha' },
-								preflight,
+								check: applyCheck,
 							});
 							expect(check).toHaveBeenCalledWith(
 								plan,
@@ -2658,6 +2765,7 @@ describe('PromotionsService', () => {
 									selectedProjectId: 'p1',
 									selectedWorkflowIds: ['w1'],
 									deletedWorkflowIds: ['deleted'],
+									selectedFolderIds: [],
 								},
 								noMoves,
 							);
@@ -2684,12 +2792,13 @@ describe('PromotionsService', () => {
 
 						expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
 						expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledExactlyOnceWith(
-							expect.anything(),
+							expect.objectContaining({ publishingPolicy: 'preserve-target-state' }),
 							expect.any(GitCommitPackageReader),
 							{
 								selectedProjectId: 'p1',
 								selectedWorkflowIds: ['w1'],
 								deletedWorkflowIds: ['deleted'],
+								selectedFolderIds: [],
 							},
 							'enforce',
 						);

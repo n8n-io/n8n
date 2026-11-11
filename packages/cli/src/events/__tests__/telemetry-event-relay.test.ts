@@ -8,6 +8,8 @@ import {
 	type CredentialsRepository,
 	type DbConnection,
 	type IWorkflowDb,
+	type Person,
+	type Project,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
 	type User,
@@ -18,10 +20,12 @@ import {
 	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { TrustedSourceFacets } from '@n8n/inbound-auth';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
@@ -256,6 +260,66 @@ describe('TelemetryEventRelay', () => {
 			expect(setupListenersSpy).toHaveBeenCalled();
 		});
 
+		// On its own emitter, so only the listeners this relay registered can answer.
+		it('registers a listener for every trusted-source event', async () => {
+			globalConfig.diagnostics.enabled = true;
+			const ownEventService = new EventService();
+			const telemetryEventRelay = new TelemetryEventRelay(
+				ownEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			);
+			await telemetryEventRelay.init();
+			const user = {
+				id: 'user-1',
+				email: 'owner@n8n.io',
+				firstName: 'Own',
+				lastName: 'Er',
+				role: { slug: GLOBAL_OWNER_ROLE.slug },
+			};
+			const facets: TrustedSourceFacets = {
+				discoveryMode: 'auto',
+				clientKind: null,
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionPerson: 'off',
+				roleMappingMode: 'off',
+			};
+
+			ownEventService.emit('trusted-source-created', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-updated', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-deleted', { user, sourceId: 's', issuer: 'i' });
+			ownEventService.emit('trusted-source-healthy', { sourceId: 's' });
+			ownEventService.emit('trusted-source-first-authenticated', {
+				sourceId: 's',
+				surface: 'public-api',
+			});
+
+			const tracked = telemetry.track.mock.calls.map(([entry]) => entry);
+			expect(tracked).toEqual([
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+			]);
+		});
+
 		it('with diagnostics disabled, should neither init telemetry nor register listeners', async () => {
 			globalConfig.diagnostics.enabled = false;
 			const telemetryEventRelay = new TelemetryEventRelay(
@@ -287,7 +351,13 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('memory guard events', () => {
-		it('should track on `memory-guard-execution-stopped` event and send it at once', () => {
+		it('should track on `memory-guard-execution-stopped` event with the workflow owner and send it at once', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'personal' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
+				mock<User>({ id: 'user123' }),
+			);
 			const event: RelayEventMap['memory-guard-execution-stopped'] = {
 				executionId: 'execution123',
 				workflowId: 'workflow123',
@@ -303,10 +373,12 @@ describe('TelemetryEventRelay', () => {
 			};
 
 			eventService.emit('memory-guard-execution-stopped', event);
+			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
 				{
+					user_id: 'user123',
 					workflow_id: 'workflow123',
 					execution_mode: 'webhook',
 					reason: 'critical',
@@ -318,6 +390,57 @@ describe('TelemetryEventRelay', () => {
 					freed_memory: true,
 					workflow_deactivation_started: false,
 				},
+			);
+			expect(telemetry.flushQueue).toHaveBeenCalled();
+		});
+
+		it('should track on `memory-guard-execution-stopped` event with the instance owner for a team project', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'team' }),
+			);
+
+			eventService.emit('memory-guard-execution-stopped', {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'threshold',
+				runningNodeType: undefined,
+				largestDataNodeType: undefined,
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: false,
+				workflowDeactivationStarted: false,
+			});
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				expect.objectContaining({ user_id: 'owner123', workflow_id: 'workflow123' }),
+			);
+		});
+
+		it('should track on `memory-guard-execution-stopped` event without a user when the owner lookup fails', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('db down'));
+
+			eventService.emit('memory-guard-execution-stopped', {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'critical',
+				runningNodeType: undefined,
+				largestDataNodeType: undefined,
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: true,
+				workflowDeactivationStarted: false,
+			});
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				expect.objectContaining({ user_id: undefined, workflow_id: 'workflow123' }),
 			);
 			expect(telemetry.flushQueue).toHaveBeenCalled();
 		});
@@ -1877,6 +2000,7 @@ describe('TelemetryEventRelay', () => {
 				method: 'GET',
 				apiVersion: 'v1',
 				userAgent: 'n8n-cli',
+				client: 'editor_ui',
 			};
 
 			eventService.emit('public-api-invoked', event);
@@ -1886,6 +2010,7 @@ describe('TelemetryEventRelay', () => {
 				path: '/api/v1/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'editor_ui',
 				user_agent: 'n8n-cli',
 			});
 		});
@@ -2064,6 +2189,31 @@ describe('TelemetryEventRelay', () => {
 			}
 		});
 
+		it('omits unknown secret properties for a description-only update', () => {
+			eventService.emit('credentials-updated', {
+				user: { id: 'user123' },
+				credentialId: 'cred123',
+				credentialName: 'Reporting',
+				credentialType: 'postgres',
+				credentialDescriptionLength: 9,
+				isDynamic: false,
+				descriptionOnly: true,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+				{
+					source: 'backend',
+					user_id: 'user123',
+					user_role: undefined,
+					credential_id: 'cred123',
+					credential_type: 'postgres',
+					has_description: true,
+					description_length: 9,
+					is_private: false,
+				},
+			);
+		});
+
 		it.each([
 			{ descriptionLength: 0, publicApi: false },
 			{ descriptionLength: 18, publicApi: false },
@@ -2113,6 +2263,35 @@ describe('TelemetryEventRelay', () => {
 						credential_supports_managed_auth: true,
 						credential_uses_managed_auth: true,
 					},
+				);
+			},
+		);
+
+		it.each(['credentials-created', 'credentials-updated'] as const)(
+			'reports the managed app version on `%s`',
+			(eventName) => {
+				eventService.emit(eventName, {
+					credentialName: 'My Notion account',
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					credentialType: 'notionOAuth2Api',
+					credentialId: 'cred123',
+					publicApi: false,
+					supportsManagedAuth: true,
+					usesManagedAuth: true,
+					managedAppVersion: 2,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					eventName === 'credentials-created'
+						? TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS
+						: TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+					expect.objectContaining({ credential_managed_app_version: 2 }),
 				);
 			},
 		);
@@ -2639,7 +2818,7 @@ describe('TelemetryEventRelay', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				} as User,
+				} as Person,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -2680,7 +2859,7 @@ describe('TelemetryEventRelay', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				} as User,
+				} as Person,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -3909,6 +4088,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -4677,6 +4874,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
@@ -4771,6 +4993,67 @@ describe('TelemetryEventRelay', () => {
 					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
 					error_node_id: '1',
 				}),
+			);
+		});
+
+		it('should redact the error message when the workflow policy covers the run', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: false }),
+			);
+
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+			const error = new NodeApiError(
+				errorNode,
+				{ message: 'secret value', httpCode: '401', stack: '' },
+				{ message: 'secret value', level: 'warning', functionality: 'regular' },
+			);
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: createErrorExecutionData(errorNode, error),
+			} as IRun;
+
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(
+				() =>
+					({
+						nodeGraph: { node_types: [], node_connections: [], webhookNodeNames: [] },
+						nameIndices: { Jira: '1' },
+					}) as unknown as INodesGraphResult,
+			);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
+
+			eventService.emit('workflow-post-execute', {
+				workflow: { ...mockWorkflowBase, settings: { redactionPolicy: 'all' } },
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			});
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({ error_message: ERROR_MESSAGE_REDACTED_MESSAGE }),
+			);
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					error_message: ERROR_MESSAGE_REDACTED_MESSAGE,
+					error_node_type: 'n8n-nodes-base.jira',
+				}),
+			);
+			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('secret value');
+			expect(JSON.stringify(vi.mocked(telemetry.trackWorkflowExecution).mock.calls)).not.toContain(
+				'secret value',
 			);
 		});
 
@@ -5381,7 +5664,11 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-created', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'instance',
 				createBranchOnPromotion: true,
@@ -5409,6 +5696,7 @@ describe('TelemetryEventRelay', () => {
 				user,
 				providerId: 'prov-1',
 				providerType: 'gitlab',
+				authType: 'token',
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: 120,
@@ -5436,7 +5724,9 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-provider-deleted', {
 				user,
 				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				authType: 'ssh-key',
 			});
 
 			const payload = { user_id: 'user123', provider_id: 'prov-1', provider_type: 'git' };
@@ -5453,7 +5743,12 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-updated', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'apply',
+				environmentScope: 'instance',
 				changedFields: ['provider', 'settings'],
 			});
 
@@ -5476,6 +5771,10 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-deleted', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'projects',
 			});
@@ -5976,6 +6275,17 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('data table events', () => {
+		it('tracks the storage limit with the existing event name and properties', () => {
+			eventService.emit('data-table-storage-limit-reached', { totalBytes: 200, maxBytes: 100 });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User hit data table storage limit', {
+				total_bytes: 200,
+				max_bytes: 100,
+			});
+		});
+	});
+
 	describe('runner events', () => {
 		it('should track on `runner-disconnected` event', () => {
 			const event: RelayEventMap['runner-disconnected'] = {
@@ -5992,6 +6302,246 @@ describe('TelemetryEventRelay', () => {
 					mode: 'internal',
 				},
 			);
+		});
+	});
+
+	describe('trusted source events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		};
+		const issuer = 'https://idp.example.com';
+		const facets: TrustedSourceFacets = {
+			discoveryMode: 'manual',
+			clientKind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identitySubject: 'binding',
+			linkByEmail: 'verified-only',
+			provisionPerson: 'jit',
+			roleMappingMode: 'on-provision',
+		};
+		const trackedFacets = {
+			discovery_mode: 'manual',
+			client_kind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identity_subject: 'binding',
+			link_by_email: 'verified-only',
+			provision_human: 'jit',
+			provision_person: 'jit',
+			role_mapping_mode: 'on-provision',
+		};
+
+		it.each([
+			['trusted-source-created', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE],
+			['trusted-source-updated', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE],
+		] as const)('should track on `%s` event with the config facets', (eventName, entry) => {
+			eventService.emit(eventName, { user, sourceId: 'source-1', issuer, facets });
+
+			expect(telemetry.track).toHaveBeenCalledWith(entry, {
+				user_id: 'user-1',
+				source_id: 'source-1',
+				...trackedFacets,
+			});
+		});
+
+		it('should track on `trusted-source-deleted` event', () => {
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				{ user_id: 'user-1', source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-healthy` event', () => {
+			eventService.emit('trusted-source-healthy', { sourceId: 'source-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				{ source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-first-authenticated` event with the surface', () => {
+			eventService.emit('trusted-source-first-authenticated', {
+				sourceId: 'source-1',
+				surface: 'instance-mcp',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+				{ source_id: 'source-1', surface: 'instance-mcp' },
+			);
+		});
+
+		it('never sends the issuer of a trusted source', () => {
+			eventService.emit('trusted-source-created', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-updated', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			// The `init` tests above leave extra relays listening, so the call count is not asserted.
+			expect(telemetry.track).toHaveBeenCalled();
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('idp.example.com');
+		});
+	});
+
+	describe('app events', () => {
+		const appId = 'app-1';
+		// The init tests register a second relay on the shared emitter, so this block uses its own.
+		const appEventService = new EventService();
+
+		beforeAll(async () => {
+			await new TelemetryEventRelay(
+				appEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			).init();
+		});
+
+		it.each([
+			[
+				'app-created',
+				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1', visibility: 'project' },
+				TELEMETRY_EVENT.APPS.USER_CREATED_APP,
+				{
+					app_id: appId,
+					project_id: 'p-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					visibility: 'project',
+				},
+			],
+			[
+				'app-visibility-changed',
+				{ userId: 'user-1', appId, from: 'project', to: 'instance' },
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY,
+				{ app_id: appId, user_id: 'user-1', from: 'project', to: 'instance' },
+			],
+			[
+				'app-deleted',
+				{ userId: 'user-1', appId, wasPublished: true },
+				TELEMETRY_EVENT.APPS.USER_DELETED_APP,
+				{ app_id: appId, user_id: 'user-1', was_published: true },
+			],
+			[
+				'app-published',
+				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'instance', isFirstPublish: true },
+				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					access_level: 'instance',
+					is_first_publish: true,
+				},
+			],
+			[
+				'app-unpublished',
+				{ userId: 'user-1', appId },
+				TELEMETRY_EVENT.APPS.USER_UNPUBLISHED_APP,
+				{ app_id: appId, user_id: 'user-1' },
+			],
+			[
+				'app-build-finished',
+				{
+					userId: 'user-1',
+					threadId: 'thread-1',
+					appId,
+					versionId: 'v-1',
+					changeSource: 'chat',
+					status: 'failed',
+					attempts: 2,
+					durationMs: 1200,
+				},
+				TELEMETRY_EVENT.APPS.APP_BUILD_FINISHED,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					change_source: 'chat',
+					status: 'failed',
+					attempts: 2,
+					duration_ms: 1200,
+				},
+			],
+			[
+				'app-opened',
+				{ appId, versionId: 'v-1', userId: 'user-1', isPreview: false },
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'app_opened',
+					is_preview: false,
+				},
+			],
+			[
+				'app-bindings-changed',
+				{
+					appId,
+					projectId: 'project-1',
+					versionId: 'v-2',
+					userId: 'user-1',
+					workflowCount: 1,
+					dataTableCount: 2,
+					agentCount: 0,
+					addedCount: 1,
+					removedCount: 0,
+				},
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_BINDINGS,
+				{
+					app_id: appId,
+					project_id: 'project-1',
+					version_id: 'v-2',
+					user_id: 'user-1',
+					workflow_count: 1,
+					data_table_count: 2,
+					agent_count: 0,
+					added_count: 1,
+					removed_count: 0,
+				},
+			],
+			[
+				'app-interacted',
+				{
+					appId,
+					versionId: 'v-1',
+					userId: 'user-1',
+					interactionType: 'workflow_run',
+					isPreview: true,
+				},
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'workflow_run',
+					is_preview: true,
+				},
+			],
+		] as const)('should track on `%s` event', (eventName, payload, entry, properties) => {
+			appEventService.emit(eventName, payload);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
 		});
 	});
 });

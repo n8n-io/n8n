@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -15,8 +16,9 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import { WorkflowsConfig } from '@n8n/config';
+import { EngineConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	Person,
 	User,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
@@ -35,6 +37,7 @@ import {
 import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import type { MockInstance } from 'vitest';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -72,9 +75,9 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: Person;
+let member: Person;
+let anotherMember: Person;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -1093,7 +1096,80 @@ describe('POST /workflows', () => {
 	});
 });
 
+describe('default engine', () => {
+	const engineConfig = Container.get(EngineConfig);
+	let isActiveSpy: MockInstance<ModuleRegistry['isActive']>;
+
+	beforeEach(() => {
+		isActiveSpy = vi
+			.spyOn(Container.get(ModuleRegistry), 'isActive')
+			.mockImplementation((name) => name === 'engine-v2');
+	});
+
+	afterEach(() => {
+		engineConfig.defaultType = 'v1';
+		isActiveSpy.mockRestore();
+	});
+
+	test('POST /workflows saves a workflow without an engine on the default engine v2', async () => {
+		engineConfig.defaultType = 'v2';
+		const payload = { ...makeWorkflow({ withPinData: false }), settings: { executionOrder: 'v1' } };
+
+		const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
+
+		const created = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(created.settings).toEqual({ executionOrder: 'v1', engineType: 'v2' });
+	});
+
+	test('PATCH /workflows/:workflowId with settings without an engine keeps the stored engine', async () => {
+		engineConfig.defaultType = 'v1';
+		const workflow = await createWorkflow(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			owner,
+		);
+		const payload = {
+			settings: { executionOrder: 'v1', timezone: 'America/New_York' },
+			versionId: workflow.versionId,
+		};
+
+		await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload).expect(200);
+
+		const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.settings).toEqual({
+			executionOrder: 'v1',
+			timezone: 'America/New_York',
+			engineType: 'v2',
+		});
+	});
+});
+
 describe('GET /workflows/:workflowId', () => {
+	describe('home project', () => {
+		afterEach(() => {
+			testServer.license.enable('feat:sharing');
+		});
+
+		test.each([
+			{ sharing: 'enabled', setLicense: () => testServer.license.enable('feat:sharing') },
+			{ sharing: 'disabled', setLicense: () => testServer.license.disable('feat:sharing') },
+		])(
+			'should return homeProject and no shared relation when sharing license is $sharing',
+			async ({ setLicense }) => {
+				setLicense();
+
+				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+				const workflow = await createWorkflow({}, owner);
+
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+				const { data } = response.body as { data: Record<string, unknown> };
+				expect(data.homeProject).toMatchObject({ id: ownerProject.id, type: 'personal' });
+				expect(data.sharedWithProjects).toEqual([]);
+				expect(data).not.toHaveProperty('shared');
+			},
+		);
+	});
+
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -2594,6 +2670,33 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(f1).toBeUndefined();
 		}
+	});
+
+	test('should only return folders from accessible projects when no project filter is set', async () => {
+		const ownerProject = await getPersonalProject(owner);
+		const memberProject = await getPersonalProject(member);
+
+		const [ownerWorkflow, ownerFolder, memberFolder] = await Promise.all([
+			createWorkflow({ name: 'Owner Workflow' }, owner),
+			createFolder(ownerProject, { name: 'Owner Folder' }),
+			createFolder(memberProject, { name: 'Member Folder' }),
+		]);
+
+		const response = await authMemberAgent
+			.get('/workflows')
+			.query({ includeFolders: true })
+			.expect(200);
+
+		const rows = response.body.data as Array<
+			WorkflowFolderUnionFull & { homeProject?: { id: string } | null }
+		>;
+		const ids = rows.map((row) => row.id);
+
+		expect(ids).not.toContain(ownerWorkflow.id);
+		expect(ids).toContain(memberFolder.id);
+		expect(ids).not.toContain(ownerFolder.id);
+		expect(rows.some((row) => row.homeProject?.id === ownerProject.id)).toBe(false);
+		expect(response.body.count).toBe(1);
 	});
 
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
@@ -5171,6 +5274,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
+				locateResume: vi.fn(),
+				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -5383,6 +5489,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
+				locateResume: vi.fn(),
+				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 

@@ -30,10 +30,9 @@ import {
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -417,7 +416,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, thread tabs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.

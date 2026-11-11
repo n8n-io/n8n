@@ -1,7 +1,8 @@
 operationId: getPromotionEnvironmentProjects
 tags:
   - Promotions
-summary: List projects linked to a promotion environment
+summary: 'Beta: List projects linked to a promotion environment'
+description: '**Beta** — breaking changes may still occur without major version bump.'
 x-required-scope: promotions:read
 parameters:
   - schema:
@@ -33,5 +34,7 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

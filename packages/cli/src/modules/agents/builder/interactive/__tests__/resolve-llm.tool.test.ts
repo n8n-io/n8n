@@ -1356,7 +1356,7 @@ describe('agent_builder_resolve_llm tool', () => {
 
 			expect(view.availableModelsTruncated).toBe(true);
 			expect(view.nextStep).toContain('sample');
-			expect(view.nextStep).toContain('agent_builder_ask_questions');
+			expect(view.nextStep).toContain('ask_user');
 		});
 
 		it('tells the model to mention claimed free OpenAI credits', async () => {

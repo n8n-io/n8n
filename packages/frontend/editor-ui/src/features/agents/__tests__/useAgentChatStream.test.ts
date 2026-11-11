@@ -235,6 +235,7 @@ function buildHook(
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -397,6 +398,24 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			usage: undefined,
 			complete: true,
 		});
+	});
+
+	it('passes on every received stream event, in order', async () => {
+		const onStreamEvent = vi.fn();
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Hel' },
+			{ type: 'text-delta', id: 'text-1', delta: 'lo' },
+			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'done', executionId: 'execution-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events));
+		const hook = buildHook('thread-1', { onStreamEvent });
+
+		await hook.sendMessage('hello');
+		await flushPromises();
+
+		expect(onStreamEvent.mock.calls.map(([event]) => event)).toEqual(events);
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {
@@ -1349,6 +1368,81 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		},
 	);
 
+	it('runs the onAccepted callback of a resume once the server starts the run', async () => {
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([{ type: 'text-delta', id: 't-1', delta: 'ok' }, { type: 'done' }]),
+		) as unknown as typeof fetch;
+		const onAccepted = vi.fn();
+
+		const hook = buildHook();
+		const result = await hook.resume(
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+			onAccepted,
+		);
+
+		expect(result).toBe('sent');
+		expect(onAccepted).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		[
+			'refuses a busy turn',
+			() =>
+				makeSseResponse([{ type: 'error', message: 'Busy', errorCode: 'turn_already_running' }]),
+		],
+		[
+			'rejects the resume before the run starts',
+			() => makeSseResponse([{ type: 'error', message: 'Invalid' }], false),
+		],
+		[
+			'answers with an HTTP error',
+			() => new Response(null, { status: 500, statusText: 'Server error' }),
+		],
+	] as const)(
+		'does not run the onAccepted callback of a resume when the server %s',
+		async (_case, response) => {
+			globalThis.fetch = vi.fn(async () => response()) as unknown as typeof fetch;
+			const onAccepted = vi.fn();
+
+			const hook = buildHook();
+			await hook.resume(
+				{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+				onAccepted,
+			);
+			await flushPromises();
+
+			expect(onAccepted).not.toHaveBeenCalled();
+		},
+	);
+
+	it('does not send a resume or run its onAccepted callback while a turn streams', async () => {
+		let signal: AbortSignal | null = null;
+		const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+			signal = init?.signal ?? null;
+			return makeAbortableSseResponse(
+				[{ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' }],
+				signal,
+			);
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const onAccepted = vi.fn();
+
+		const hook = buildHook();
+		void hook.sendMessage('hi');
+		await flushPromises();
+		expect(hook.isStreaming.value).toBe(true);
+
+		const result = await hook.resume(
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+			onAccepted,
+		);
+
+		expect(result).toBe('busy');
+		expect(onAccepted).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledOnce();
+		hook.detachStream();
+	});
+
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
@@ -2153,6 +2247,59 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant[1].hostEvents).toBeUndefined();
 	});
 
+	it('keeps host events sent before the first step on the message of that step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', key: 'turn', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'reasoning-start', id: 'r-1' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Plan the reply.' },
+			{ type: 'reasoning-end', id: 'r-1' },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant).toHaveLength(1);
+		expect(assistant[0].content).toBe('hello');
+		expect(assistant[0].thinkingSegments).toEqual([
+			expect.objectContaining({ content: 'Plan the reply.' }),
+		]);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.prepared', payload: { step: 0 } }),
+		]);
+	});
+
+	it('starts a new message at the next step after a message with step output', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toHaveLength(1);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
 	it('keeps a message with only host events when the turn reports an error', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'host-event', name: 'test.notice', payload: 1 },
@@ -2496,6 +2643,139 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
+	});
+
+	it.each(['chat', 'n8n-chat'] as const)(
+		'shows the files of a respond on the assistant message in the %s channel',
+		async (channel) => {
+			const file = {
+				fileId: 'att-1',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				sizeBytes: 2048,
+			};
+			const events: AgentSseEvent[] = [
+				{ type: 'start-step' },
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					input: { action: 'respond', input: { message: { text: 'Report' }, fileIds: ['att-1'] } },
+				},
+				{ type: 'finish-step' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					output: { ok: true, files: [file] },
+				},
+				{ type: 'done' },
+			];
+			globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+			const hook = buildHook(undefined, { channel: ref(channel) });
+			await hook.sendMessage('send the report');
+			await flushPromises();
+			await nextTick();
+
+			expect(hook.messages.value[1].attachments).toEqual([file]);
+		},
+	);
+
+	describe('files with a card', () => {
+		const file = {
+			fileId: 'att-1',
+			fileName: 'report.pdf',
+			mimeType: 'application/pdf',
+			sizeBytes: 2048,
+		};
+		const cardCall = (components: unknown[]): AgentSseEvent => ({
+			type: 'tool-call',
+			toolCallId: 'tc-card',
+			toolName: N8N_CHAT_ACTION_TOOL_NAME,
+			input: {
+				action: 'respond',
+				input: { message: { card: { components } }, fileIds: ['att-1'] },
+			},
+		});
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'shows the files of a static card in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi.fn(async () =>
+					makeSseResponse([
+						cardCall([{ type: 'section', text: 'The report' }]),
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-card',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							output: { ok: true, files: [file], messageContext: {} },
+						},
+						{ type: 'done' },
+					]),
+				) as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report');
+				await flushPromises();
+
+				expect(hook.messages.value[1].attachments).toEqual([file]);
+			},
+		);
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'keeps the files of an interactive card while suspended and after the answer in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi
+					.fn()
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							cardCall([{ type: 'button', label: 'Approve', value: 'approve' }]),
+							{
+								type: 'tool-call-suspended',
+								payload: {
+									toolCallId: 'tc-card',
+									runId: 'run-card',
+									toolName: N8N_CHAT_ACTION_TOOL_NAME,
+									input: { type: 'integration_action', action: 'respond', files: [file] },
+								},
+							},
+						]),
+					)
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							{
+								type: 'tool-result',
+								toolCallId: 'tc-card',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								output: { value: 'approve' },
+							},
+							{ type: 'text-delta', id: 't1', delta: 'Approved.' },
+							{ type: 'done' },
+						]),
+					) as unknown as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report for approval');
+				await flushPromises();
+
+				const card = hook.messages.value[1];
+				expect(card.status).toBe('awaitingUser');
+				expect(card.attachments).toEqual([file]);
+
+				await hook.resume({
+					runId: 'run-card',
+					toolCallId: 'tc-card',
+					resumeData: { value: 'approve' },
+				});
+				await flushPromises();
+
+				const cardAfterAnswer = hook.messages.value.find(({ id }) => id === card.id);
+				expect(cardAfterAnswer?.toolCalls?.[0].state).toBe('done');
+				expect(cardAfterAnswer?.attachments).toEqual([file]);
+				expect(hook.messages.value.flatMap(({ attachments }) => attachments ?? [])).toEqual([file]);
+			},
+		);
 	});
 
 	it('marks cancellation tool results as cancelled instead of done', async () => {
@@ -3076,6 +3356,57 @@ describe('useAgentChatStream — loadHistory', () => {
 });
 
 describe('useAgentChatStream — done executionId', () => {
+	it.each(['I stopped. You can continue.', ''])(
+		'keeps the Stop reply through streaming and history reload: %s',
+		async (content) => {
+			getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+			globalThis.fetch = vi.fn(async () =>
+				makeSseResponse([
+					{
+						type: 'execution-started',
+						executionId: 'report',
+						sessionId: 'thread-1',
+						stopReport: true,
+					},
+					{ type: 'start-step' },
+					...(content ? [{ type: 'text-delta' as const, id: 'text', delta: content }] : []),
+					{ type: 'finish-step' },
+					{ type: 'done', sessionId: 'thread-1', executionId: 'report' },
+				]),
+			) as typeof fetch;
+			const hook = buildHook('thread-1');
+			await hook.sendMessage('Stop');
+			await flushPromises();
+
+			expect(hook.messages.value.filter((message) => message.stopReport)).toMatchObject([
+				{ role: 'assistant', content, executionId: 'report' },
+			]);
+
+			getChatMessagesMock.mockResolvedValue({
+				messages: [
+					{
+						id: 'report:assistant',
+						role: 'assistant',
+						stopReport: true,
+						executionId: 'report',
+						executionStatus: 'success',
+						content: content ? [{ type: 'text', text: content }] : [],
+					},
+					{ id: 'later', role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+				],
+				openSuspensions: [],
+				activeExecutionId: null,
+			});
+			const reopened = buildHook('thread-1');
+			await reopened.loadHistory();
+
+			expect(reopened.messages.value).toMatchObject([
+				{ role: 'assistant', stopReport: true, content, executionId: 'report' },
+				{ role: 'user', content: 'Continue' },
+			]);
+		},
+	);
+
 	it('stamps executionId from done onto minted messages', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-start', id: 't1' },
@@ -3449,9 +3780,10 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 });
 
 describe('useAgentChatStream — transcript push', () => {
-	it('loads a signal before output without starting a local stream', async () => {
+	it('loads a final summary before output without starting a local stream', async () => {
 		const { hook, dispose } = scopedHook('thread-1');
 		const backgroundJobSignal = {
+			isFinal: true,
 			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 		};
 		getChatMessagesMock.mockResolvedValue({
@@ -3467,12 +3799,18 @@ describe('useAgentChatStream — transcript push', () => {
 			],
 			openSuspensions: [],
 		});
+
 		try {
 			emitPush(update());
 			emitPush(update());
 			await flushPromises();
+
 			expect(hook.messages.value).toHaveLength(1);
-			expect(hook.messages.value[0]).toMatchObject({ backgroundJobSignal, content: '' });
+			expect(hook.messages.value[0]).toMatchObject({
+				backgroundJobSignal,
+				content: '',
+				status: 'streaming',
+			});
 			expect(hook.isStreaming.value).toBe(false);
 			expect(hook.messagingState.value).toBe('idle');
 		} finally {
@@ -4161,6 +4499,36 @@ describe('useAgentChatStream — execution recovery', () => {
 			expect(fetch).toHaveBeenCalledOnce();
 		},
 	);
+
+	it('accepts a queued stop without adding a user bubble or claiming the foreground stream', async () => {
+		vi.mocked(fetch).mockImplementation(async (_url, init) =>
+			makeAbortableSseResponse(
+				[{ type: 'message-queued', queueId: 'report', sessionId: 'thread-1' }],
+				init?.signal ?? null,
+			),
+		);
+		const hook = buildHook('thread-1');
+		await hook.requestTaskStop(null);
+
+		expect(fetch).toHaveBeenCalledWith(
+			expect.stringContaining('/thread-1/task-cancellation/stream'),
+			expect.objectContaining({ body: JSON.stringify({ planId: null }) }),
+		);
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.isStreaming.value).toBe(false);
+
+		hook.detachStream();
+	});
+
+	it('leaves a rejected stop to the inline status', async () => {
+		vi.mocked(fetch).mockResolvedValue(
+			makeSseResponse([{ type: 'error', message: 'Stop failed' }], false),
+		);
+		const hook = buildHook('thread-1');
+
+		await expect(hook.requestTaskStop(null)).rejects.toThrow('Could not confirm');
+		expect(hook.messages.value).toEqual([]);
+	});
 
 	it('detaches the old reader on reload and leaves Stop to an explicit request', async () => {
 		let signal: AbortSignal | null = null;

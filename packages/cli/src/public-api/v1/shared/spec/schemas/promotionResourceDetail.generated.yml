@@ -1,0 +1,928 @@
+oneOf:
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - project
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          description:
+            type: string
+          icon:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - emoji
+                  - icon
+              value:
+                type: string
+            required:
+              - type
+              - value
+          customTelemetryTags:
+            type: array
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+              required:
+                - key
+                - value
+        required:
+          - id
+          - name
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          description:
+            type: string
+          icon:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - emoji
+                  - icon
+              value:
+                type: string
+            required:
+              - type
+              - value
+          customTelemetryTags:
+            type: array
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+              required:
+                - key
+                - value
+        required:
+          - id
+          - name
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - folder
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          parentFolderId:
+            type: string
+            nullable: true
+        required:
+          - id
+          - name
+          - parentFolderId
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          parentFolderId:
+            type: string
+            nullable: true
+        required:
+          - id
+          - name
+          - parentFolderId
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - workflow
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          nodes:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                  minLength: 1
+                type:
+                  type: string
+                  minLength: 1
+                typeVersion:
+                  type: number
+                position:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                parameters:
+                  type: object
+                  additionalProperties: {}
+                credentials:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        nullable: true
+                      name:
+                        type: string
+                      __aiGatewayManaged:
+                        type: boolean
+                    required:
+                      - id
+                disabled:
+                  type: boolean
+                notes:
+                  type: string
+                notesInFlow:
+                  type: boolean
+                continueOnFail:
+                  type: boolean
+                retryOnFail:
+                  type: boolean
+                maxTries:
+                  type: number
+                waitBetweenTries:
+                  type: number
+                alwaysOutputData:
+                  type: boolean
+                executeOnce:
+                  type: boolean
+                onError:
+                  type: string
+                webhookId:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+                - typeVersion
+                - position
+                - parameters
+          connections:
+            type: object
+            additionalProperties:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: array
+                  nullable: true
+                  items:
+                    type: object
+                    properties:
+                      node:
+                        type: string
+                      type:
+                        type: string
+                      index:
+                        type: number
+                    required:
+                      - node
+                      - type
+                      - index
+          nodeGroups:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                  minLength: 1
+                nodeIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                description:
+                  type: string
+              required:
+                - id
+                - name
+                - nodeIds
+          settings:
+            type: object
+            additionalProperties: {}
+          parentFolderId:
+            type: string
+            nullable: true
+          isArchived:
+            type: boolean
+          tagIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+        required:
+          - id
+          - name
+          - nodes
+          - connections
+          - parentFolderId
+          - isArchived
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          nodes:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                  minLength: 1
+                type:
+                  type: string
+                  minLength: 1
+                typeVersion:
+                  type: number
+                position:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                parameters:
+                  type: object
+                  additionalProperties: {}
+                credentials:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        nullable: true
+                      name:
+                        type: string
+                      __aiGatewayManaged:
+                        type: boolean
+                    required:
+                      - id
+                disabled:
+                  type: boolean
+                notes:
+                  type: string
+                notesInFlow:
+                  type: boolean
+                continueOnFail:
+                  type: boolean
+                retryOnFail:
+                  type: boolean
+                maxTries:
+                  type: number
+                waitBetweenTries:
+                  type: number
+                alwaysOutputData:
+                  type: boolean
+                executeOnce:
+                  type: boolean
+                onError:
+                  type: string
+                webhookId:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+                - typeVersion
+                - position
+                - parameters
+          connections:
+            type: object
+            additionalProperties:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: array
+                  nullable: true
+                  items:
+                    type: object
+                    properties:
+                      node:
+                        type: string
+                      type:
+                        type: string
+                      index:
+                        type: number
+                    required:
+                      - node
+                      - type
+                      - index
+          nodeGroups:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                  minLength: 1
+                nodeIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                description:
+                  type: string
+              required:
+                - id
+                - name
+                - nodeIds
+          settings:
+            type: object
+            additionalProperties: {}
+          parentFolderId:
+            type: string
+            nullable: true
+          isArchived:
+            type: boolean
+          tagIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+        required:
+          - id
+          - name
+          - nodes
+          - connections
+          - parentFolderId
+          - isArchived
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - credential
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          type:
+            type: string
+            minLength: 1
+          data:
+            type: object
+            additionalProperties:
+              $ref: promotionCredentialExpressionValue.generated.yml
+          dataIsComplete:
+            type: boolean
+        required:
+          - id
+          - name
+          - type
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+          type:
+            type: string
+            minLength: 1
+          data:
+            type: object
+            additionalProperties:
+              $ref: promotionCredentialExpressionValue.generated.yml
+          dataIsComplete:
+            type: boolean
+        required:
+          - id
+          - name
+          - type
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - dataTable
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+            pattern: ^[a-zA-Z0-9]+$
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                  pattern: ^[a-zA-Z0-9]+$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 63
+                  pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                index:
+                  type: integer
+              required:
+                - name
+                - type
+                - index
+              additionalProperties: false
+        required:
+          - id
+          - name
+          - columns
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+            pattern: ^[a-zA-Z0-9]+$
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                  pattern: ^[a-zA-Z0-9]+$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 63
+                  pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                index:
+                  type: integer
+              required:
+                - name
+                - type
+                - index
+              additionalProperties: false
+        required:
+          - id
+          - name
+          - columns
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+      dataTableChanges:
+        type: array
+        items:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - add-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - remove-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - change-column-type
+                column:
+                  type: string
+                from:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                to:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - from
+                - to
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - rename-column
+                from:
+                  type: string
+                to:
+                  type: string
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - from
+                - to
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - reorder-columns
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - rename-table
+                from:
+                  type: string
+                to:
+                  type: string
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - from
+                - to
+                - destructive
+          type: object
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - variable
+      before:
+        type: object
+        nullable: true
+        properties:
+          name:
+            type: string
+            minLength: 1
+          type:
+            type: string
+            enum:
+              - string
+            default: string
+          value:
+            type: string
+            maxLength: 1000
+        required:
+          - name
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          name:
+            type: string
+            minLength: 1
+          type:
+            type: string
+            enum:
+              - string
+            default: string
+          value:
+            type: string
+            maxLength: 1000
+        required:
+          - name
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+      valueHidden:
+        type: boolean
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - tag
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+        required:
+          - id
+          - name
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+        required:
+          - id
+          - name
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+type: object
