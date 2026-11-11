@@ -98,7 +98,7 @@ describe('Workflows with a service account as the caller', () => {
 	);
 
 	it.each(callers)(
-		'does not let a %s with project:viewer update or delete a workflow',
+		'does not let a %s with project:viewer update, archive or delete a workflow',
 		async (_kind, createCaller) => {
 			const caller = await createCaller();
 			await join(caller, 'project:viewer');
@@ -113,6 +113,10 @@ describe('Workflows with a service account as the caller', () => {
 				),
 			).rejects.toThrow();
 			expect(await workflowService.archive(caller, workflow.id)).toBeUndefined();
+			expect(await workflowService.delete(caller, workflow.id, true)).toBeUndefined();
+			expect(
+				await Container.get(SharedWorkflowRepository).existsBy({ workflowId: workflow.id }),
+			).toBe(true);
 		},
 	);
 
