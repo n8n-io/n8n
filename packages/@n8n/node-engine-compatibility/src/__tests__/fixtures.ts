@@ -9,6 +9,7 @@ import type {
 	CloseFunction,
 	IConnections,
 	IDataObject,
+	INode,
 	INodeCredentials,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -513,6 +514,7 @@ export const v1Workflow = (
 		typeVersion?: number;
 		parameters?: IDataObject;
 		credentials?: INodeCredentials;
+		onError?: INode['onError'];
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>

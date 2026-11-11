@@ -5,10 +5,12 @@ import { setV1Workflow } from './acceptance-fixtures';
 import {
 	converterCorpus,
 	expectEngineAndCheckAccept,
+	expectEngineStillRefuses,
 	expectEngineStillRejects,
 	loadPlaywrightWorkflow,
 	playwrightCorpus,
 } from './eligibility-comparison';
+import { engineRefusals } from './engine-refusals';
 
 describe('engine v2 eligibility check compared with engine v2', () => {
 	describe('every workflow engine v2 runs is eligible', () => {
@@ -21,46 +23,53 @@ describe('engine v2 eligibility check compared with engine v2', () => {
 		});
 	});
 
+	describe('every refusal in engineRefusals still holds', () => {
+		it.each(engineRefusals)('$name', ({ workflow, engineError, check }) => {
+			if ('code' in check) {
+				expectEngineStillRejects(workflow, check.code, engineError);
+			} else {
+				expectEngineStillRefuses(
+					workflow,
+					engineError,
+					`Remove this row from engine-refusals.ts, and do not add the rule planned in ${check.plannedIn}.`,
+				);
+			}
+		});
+	});
+
 	describe('expectEngineStillRejects', () => {
+		// No check rule mirrors a refusal yet, so ERROR_WORKFLOW stands in for one.
+		const code = 'ERROR_WORKFLOW';
 		const withErrorWorkflow = (workflow: IWorkflowBase): IWorkflowBase => ({
 			...workflow,
 			settings: { errorWorkflow: 'error-handler' },
 		});
+		const [errorOutput] = engineRefusals;
+		const refused = withErrorWorkflow(errorOutput.workflow);
 		const accepted = withErrorWorkflow(
 			setV1Workflow([{ name: 'greeting', value: 'hello', type: 'string' }]),
 		);
-		// The converter refuses an error output, so engine v2 rejects this one.
-		const rejected = {
-			...accepted,
-			nodes: accepted.nodes.map((node) =>
-				node.type === 'n8n-nodes-base.set'
-					? { ...node, onError: 'continueErrorOutput' as const }
-					: node,
-			),
-		};
 
-		const engineError = 'onError=continueErrorOutput';
-
-		it('passes when engine v2 rejects the workflow with the expected error and the check reports the code', () => {
-			expectEngineStillRejects(rejected, 'ERROR_WORKFLOW', engineError);
+		it('passes when engine v2 refuses the workflow with the expected error and the check reports the code', () => {
+			expectEngineStillRejects(refused, code, errorOutput.engineError);
 		});
 
 		it('fails and names the rule to remove when engine v2 runs the workflow', () => {
-			expect(() => expectEngineStillRejects(accepted, 'ERROR_WORKFLOW', engineError)).toThrow(
+			expect(() => expectEngineStillRejects(accepted, code, errorOutput.engineError)).toThrow(
 				'Remove the ERROR_WORKFLOW rule',
 			);
 		});
 
-		it('fails when engine v2 rejects the workflow with a different error', () => {
+		it('fails when engine v2 refuses the workflow with a different error', () => {
 			expect(() =>
-				expectEngineStillRejects(rejected, 'ERROR_WORKFLOW', 'more than one edge into input slot'),
+				expectEngineStillRejects(refused, code, 'more than one edge into input slot'),
 			).toThrow('Engine v2 refuses this workflow with a different error');
 		});
 
 		it('fails when the check does not report the code', () => {
-			expect(() => expectEngineStillRejects(rejected, 'REDACTION_POLICY', engineError)).toThrow(
-				'The check does not report REDACTION_POLICY',
-			);
+			expect(() =>
+				expectEngineStillRejects(refused, 'REDACTION_POLICY', errorOutput.engineError),
+			).toThrow('The check does not report REDACTION_POLICY');
 		});
 	});
 });
