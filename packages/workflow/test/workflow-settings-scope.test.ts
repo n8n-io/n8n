@@ -22,7 +22,6 @@ describe('pickVersionedSettings', () => {
 	it.each([
 		['null settings', null],
 		['undefined settings', undefined],
-		['null settings', null],
 		['empty settings', {}],
 		['only live settings', { availableInMCP: true }],
 		['an unknown engine', { engineType: 'v3' }],

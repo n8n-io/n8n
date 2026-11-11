@@ -103,8 +103,9 @@ export function compareWorkflowSettings(
 }
 
 /**
- * Sets the version-scoped settings of a version. A version saved before history stored
- * these settings has none, so a setting that the version does not set keeps its value.
+ * Sets the given version-scoped settings on the workflow settings, and keeps a setting
+ * that `versionSettings` does not set. To apply a stored version, pass the result of
+ * `pickVersionedSettings`, so that a missing value is already the default.
  */
 export function applyVersionedSettings(
 	settings: IWorkflowSettings | null | undefined,
