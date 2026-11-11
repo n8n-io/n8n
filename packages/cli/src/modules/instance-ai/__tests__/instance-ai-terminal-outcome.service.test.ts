@@ -446,7 +446,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 
 		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
-			errorMessage: "You've run out of AI credits.",
+			errorMessage: "You've run out of Assistant credits.",
 			errorCode: 'quota_exhausted',
 		});
 

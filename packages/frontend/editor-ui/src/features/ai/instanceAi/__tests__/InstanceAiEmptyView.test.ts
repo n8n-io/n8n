@@ -1424,7 +1424,9 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1457,7 +1459,9 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'false');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 

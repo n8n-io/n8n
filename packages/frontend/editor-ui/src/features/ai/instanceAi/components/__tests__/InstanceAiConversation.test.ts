@@ -274,7 +274,7 @@ describe('InstanceAiConversation', () => {
 
 		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
 		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
-			"You've run out of AI credits",
+			"You've run out of Assistant credits",
 		);
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
