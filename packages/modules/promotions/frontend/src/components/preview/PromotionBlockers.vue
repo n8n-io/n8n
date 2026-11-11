@@ -315,6 +315,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								<N8nText step="2xs" color="text-light">
 									<PromotionWorkflowLinks
 										:workflows="row.usedBy"
+										list
 										@inspect="emit('inspect', $event)"
 									/>
 								</N8nText>
@@ -406,6 +407,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									<N8nText step="2xs" color="text-light">
 										<PromotionWorkflowLinks
 											:workflows="usedBy(table.consumers)"
+											list
 											@inspect="emit('inspect', $event)"
 										/>
 									</N8nText>
