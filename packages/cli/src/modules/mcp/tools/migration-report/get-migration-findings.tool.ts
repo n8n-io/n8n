@@ -17,7 +17,7 @@ import {
 } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { createLimitSchema } from '../schemas';
-import { trackAndReturnToolError } from '../tool-error.utils';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 import { toolResult } from '../tool-result.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import {
@@ -271,7 +271,7 @@ export const createGetMigrationFindingsTool = (
 
 				return toolResult(payload);
 			} catch (error) {
-				return trackAndReturnToolError(deps.telemetry, telemetryPayload, error);
+				trackAndRethrowToolError(deps.telemetry, telemetryPayload, error);
 			}
 		},
 	};

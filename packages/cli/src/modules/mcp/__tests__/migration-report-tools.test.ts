@@ -323,12 +323,9 @@ describe('get_migration_findings', () => {
 	});
 
 	it('asks for a ruleId or a workflowId', async () => {
-		const result = await createGetMigrationFindingsTool(owner, makeDeps()).handler({});
-
-		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toMatchObject({
-			error: 'Pass a ruleId, a workflowId, or both.',
-		});
+		await expect(createGetMigrationFindingsTool(owner, makeDeps()).handler({})).rejects.toThrow(
+			'Pass a ruleId, a workflowId, or both.',
+		);
 	});
 
 	it('refuses a rule that is not a workflow rule of the target version', async () => {
@@ -343,12 +340,7 @@ describe('get_migration_findings', () => {
 		const tool = createGetMigrationFindingsTool(owner, deps);
 
 		for (const ruleId of ['missing', 'old-rule', 'env-rule']) {
-			const result = await tool.handler({ ruleId });
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: expect.stringContaining('get_migration_report'),
-			});
+			await expect(tool.handler({ ruleId })).rejects.toThrow('get_migration_report');
 		}
 		expect(deps.queryService.getRuleFindings).not.toHaveBeenCalled();
 	});
@@ -572,31 +564,21 @@ describe('get_migration_findings', () => {
 			const deps = makeDeps();
 			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', false));
 
-			const result = await createGetMigrationFindingsTool(owner, deps).handler({
-				workflowId: 'wf-1',
-			});
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: expect.stringContaining('not available in MCP'),
-			});
+			await expect(
+				createGetMigrationFindingsTool(owner, deps).handler({ workflowId: 'wf-1' }),
+			).rejects.toThrow('not available in MCP');
 			expect(deps.syncService.syncWorkflow).not.toHaveBeenCalled();
 			expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
 		});
 
-		it('returns an error instead of stale findings when the re-check fails', async () => {
+		it('fails instead of returning stale findings when the re-check fails', async () => {
 			const deps = makeDeps();
 			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(mcpWorkflow('wf-1', true));
 			deps.syncService.syncWorkflow.mockResolvedValue(false);
 
-			const result = await createGetMigrationFindingsTool(owner, deps).handler({
-				workflowId: 'wf-1',
-			});
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: expect.stringContaining('Could not re-check this workflow'),
-			});
+			await expect(
+				createGetMigrationFindingsTool(owner, deps).handler({ workflowId: 'wf-1' }),
+			).rejects.toThrow('Could not re-check this workflow');
 			expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
 		});
 	});
