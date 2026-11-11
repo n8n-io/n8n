@@ -327,8 +327,8 @@ catalogs:
       specifier: 1.3.2
       version: 1.3.2
     '@modelcontextprotocol/node':
-      specifier: 2.0.0
-      version: 2.0.0
+      specifier: 2.1.0
+      version: 2.1.0
     '@modelcontextprotocol/sdk':
       specifier: 1.32.0
       version: 1.32.0
@@ -893,8 +893,8 @@ catalogs:
       specifier: ^3.5.13
       version: 3.5.26
     vue-i18n:
-      specifier: ^11.4.4
-      version: 11.4.5
+      specifier: 11.4.14
+      version: 11.4.14
     vue-markdown-render:
       specifier: ^2.2.1
       version: 2.2.1
@@ -1001,7 +1001,7 @@ overrides:
   pdf-parse: 2.4.5
   pdfjs-dist: 6.3.289
   tmp: 0.2.7
-  nodemailer: 10.0.14
+  nodemailer: 10.1.4
   validator: 13.15.26
   zod: 3.25.76
   knip>zod: ^4.4.3
@@ -1050,7 +1050,7 @@ overrides:
   postcss@<=8.5.22: 8.5.23
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
-  fast-uri: 3.1.8
+  fast-uri: 3.1.9
   cjs-module-lexer@<2.2.0: 2.2.0
   protobufjs: 7.6.5
   shell-quote: 1.11.0
@@ -1095,7 +1095,7 @@ overrides:
   prosemirror-view@<1.42.3: 1.42.3
   pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
-  toml@<4.2.0: 4.2.0
+  toml@<5.0.1: 5.0.1
   '@langchain/langgraph': 1.4.21
   '@langchain/langgraph-checkpoint': 1.1.6
 
@@ -3368,7 +3368,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -4788,7 +4788,7 @@ importers:
         version: 1.5.0(supports-color@8.1.1)
       '@modelcontextprotocol/node':
         specifier: 'catalog:'
-        version: 2.0.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
+        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
@@ -5120,8 +5120,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.18
       nodemailer:
-        specifier: 10.0.14
-        version: 10.0.14
+        specifier: 10.1.4
+        version: 10.1.4
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -6285,7 +6285,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -7031,7 +7031,7 @@ importers:
         version: 2.2.12
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-json-pretty:
         specifier: 2.6.0
         version: 2.6.0(vue@3.5.26(typescript@6.0.2))
@@ -7555,7 +7555,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -7788,7 +7788,7 @@ importers:
         version: 5.2.0(chart.js@4.4.0)(vue@3.5.26(typescript@6.0.2))
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -8003,7 +8003,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -8257,7 +8257,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -8928,8 +8928,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 10.0.14
-        version: 10.0.14
+        specifier: 10.1.4
+        version: 10.1.4
       oracledb:
         specifier: 'catalog:'
         version: 6.10.0
@@ -11651,20 +11651,20 @@ packages:
   '@internationalized/number@3.6.2':
     resolution: {integrity: sha512-E5QTOlMg9wo5OrKdHD6edo1JJlIoOsylh0+mbf0evi1tHJwMZfJSaBpGtnJV9N7w3jeiioox9EG/EWRWPh82vg==}
 
-  '@intlify/core-base@11.4.5':
-    resolution: {integrity: sha512-lja3F/iKVIvTa48mIwmrIeDcQUFZ0F0drvFvT8AwINOvbwnAzl/S/p8p2DxILZpWEUHRi1qewfWNIkMvhD3kKA==}
+  '@intlify/core-base@11.4.14':
+    resolution: {integrity: sha512-Lox+qRGBLnEYfNz4iajqKpw1zuvSAWl4PtzEk654bEM+0NT1GBy9AbOecxzSh7krsyqn9mGKhgmvtuyBsqS6oQ==}
     engines: {node: '>= 22'}
 
-  '@intlify/devtools-types@11.4.5':
-    resolution: {integrity: sha512-W5vydP9Yq3t82IyWqCM6aR0BTWCZrN5RAwjZEPpH8I2OQWp2RLy03Evh2ANZlSMhcvGAoyDg25k0so85Kwncpw==}
+  '@intlify/devtools-types@11.4.14':
+    resolution: {integrity: sha512-EQHRYveQg6yHQ51kePfsFyaW2WW+0hk3FdVxSpLDyuKtqFtsRFoyQR2QzASZPmY767ujs9ipuxc2DiGJARkuiQ==}
     engines: {node: '>= 22'}
 
-  '@intlify/message-compiler@11.4.5':
-    resolution: {integrity: sha512-IEOZiHtbQopyPc/Dz2M869lOlZYX1SdcniNJwphATDYHhovvIneEKf1EFF37DE7NAABZtza1FNtnwwqZWInfpw==}
+  '@intlify/message-compiler@11.4.14':
+    resolution: {integrity: sha512-y79GatHfMhN672Vooxw0v6mgX/vclFHggO1ENL6aH/QubLXiV529WXu/+FhVUbYF+HLTeDDkQpmnpfvSJddBCg==}
     engines: {node: '>= 22'}
 
-  '@intlify/shared@11.4.5':
-    resolution: {integrity: sha512-g/i5mtdUa9ia/8BaJ4w6ZRHgAXYQd9XyCaQPRMvsd8d5qmZwkjoTmHrNsI28Q/7I8h+2ijUkI4uEnnMCziKupQ==}
+  '@intlify/shared@11.4.14':
+    resolution: {integrity: sha512-f8zSlPs4+Yd9za3CPQfW9OHxAJBOeRQzB/hhOhkbGA7hlqWk0W0bUtSV/LmyrGNwdl8JriBnFtJqZyF140bjGg==}
     engines: {node: '>= 22'}
 
   '@ioredis/as-callback@3.0.0':
@@ -12520,11 +12520,11 @@ packages:
       react-dom:
         optional: true
 
-  '@modelcontextprotocol/node@2.0.0':
-    resolution: {integrity: sha512-Y4hAC2XdGDUdDOCbLDOCA4+aL3NUldjsOWlDL/YwpAxrPhRm1xHd7lZ+mLacvZ9t3PaH28wgNoaLQGrIk1P2pg==}
+  '@modelcontextprotocol/node@2.1.0':
+    resolution: {integrity: sha512-6xg3iWVcOfiL8Y7rI6xUqXD0lI2AY5q3djsa/cOi1IJUSwx06t0gvhSwU/6mIIohrFlt40/ANUG56DQ0HLhILQ==}
     engines: {node: '>=20'}
     peerDependencies:
-      '@modelcontextprotocol/server': ^2.0.0
+      '@modelcontextprotocol/server': ^2.1.0
       hono: 4.13.11
     peerDependenciesMeta:
       hono:
@@ -19138,8 +19138,8 @@ packages:
     resolution: {integrity: sha512-nDA9ADeINN8SA2u2wCtU+siWFTTDqQR37XvgPIDDmboWQeExz7X0mImxuaN+kJddliIqy2FpVRmnvRZ+j8i1/A==}
     engines: {node: '>=18.2.0'}
 
-  fast-uri@3.1.8:
-    resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
+  fast-uri@3.1.9:
+    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
 
   fast-wrap-ansi@0.2.0:
     resolution: {integrity: sha512-rLV8JHxTyhVmFYhBJuMujcrHqOT2cnO5Zxj37qROj23CP39GXubJRBUFF0z8KFK77Uc0SukZUf7JZhsVEQ6n8w==}
@@ -21737,8 +21737,8 @@ packages:
     resolution: {integrity: sha512-7vsKR2Bbs66th6IWCy/7SN4MSwlVt+G6QrHB631BjRUM8/LmvDugtYhi0uAmgvHS/+PVurfNBOmELf30rm0MZg==}
     engines: {node: '>= 10'}
 
-  nodemailer@10.0.14:
-    resolution: {integrity: sha512-eJoLFKg55fesSlzUekmfOv/SBXh4KUYT8oiQc2RLP0tfG0rbNMJBK7wgHJwXTJwqyKlSJMz9UzDZ4v+aHEvo8g==}
+  nodemailer@10.1.4:
+    resolution: {integrity: sha512-EsMnOR2oRv4LGnWvHgcVYkkQ4O2j8KO4WTw6l+PHR4sOXo8SAgIraxtEnGDmotjbhv0hDsu3IuDIFZm8iXwO4A==}
     engines: {node: '>=20.0.0'}
 
   nodemon@3.0.1:
@@ -24007,8 +24007,8 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
-  toml@4.2.0:
-    resolution: {integrity: sha512-TvAJjbHZlYmI323+srtqHQFyJsoWy6mI09ppkuj9+iRsqsVKG9fvTcOP7FHF2UCb0QSYtjEavffrKzdd0XgClg==}
+  toml@5.0.1:
+    resolution: {integrity: sha512-EqYNA/YvUNndrA2B3O2ojzLQoTQrBxeZ9UIjQwk8t10oe6n7dwclBwd9IdZQTOKwe6vWX+AXtl6IntXRbepdxQ==}
     engines: {node: '>=20'}
 
   toposort@2.0.2:
@@ -24808,8 +24808,8 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
 
-  vue-i18n@11.4.5:
-    resolution: {integrity: sha512-rm8YJ6RpjOrkcgS2GLrZwLvs/VbhxbTSuEspbyXDo233+fPK0OMFNLOj3fdQYVKdOgcpSfLW91JhbqgpkkcBWA==}
+  vue-i18n@11.4.14:
+    resolution: {integrity: sha512-oRFZtQjRDRQtfxu7tFlsZlnCa5gPkg/KX89kJDKdC9bz4GIYgo3cAMaD0XFeUx/WHuKoVbDMRTIo9Hvg67HnPw==}
     engines: {node: '>= 22'}
     peerDependencies:
       vue: ^3.0.0
@@ -28671,23 +28671,23 @@ snapshots:
     dependencies:
       '@swc/helpers': 0.5.17
 
-  '@intlify/core-base@11.4.5':
+  '@intlify/core-base@11.4.14':
     dependencies:
-      '@intlify/devtools-types': 11.4.5
-      '@intlify/message-compiler': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/devtools-types': 11.4.14
+      '@intlify/message-compiler': 11.4.14
+      '@intlify/shared': 11.4.14
 
-  '@intlify/devtools-types@11.4.5':
+  '@intlify/devtools-types@11.4.14':
     dependencies:
-      '@intlify/core-base': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/core-base': 11.4.14
+      '@intlify/shared': 11.4.14
 
-  '@intlify/message-compiler@11.4.5':
+  '@intlify/message-compiler@11.4.14':
     dependencies:
-      '@intlify/shared': 11.4.5
+      '@intlify/shared': 11.4.14
       source-map-js: 1.2.2
 
-  '@intlify/shared@11.4.5': {}
+  '@intlify/shared@11.4.14': {}
 
   '@ioredis/as-callback@3.0.0': {}
 
@@ -29577,7 +29577,7 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
-  '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)':
+  '@modelcontextprotocol/node@2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)':
     dependencies:
       '@hono/node-server': 1.19.15(hono@4.13.11)
       '@modelcontextprotocol/server': 2.3.0
@@ -34104,7 +34104,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.8
+      fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -36733,7 +36733,7 @@ snapshots:
       '@babel/runtime': 7.29.7
       tslib: 2.8.1
 
-  fast-uri@3.1.8: {}
+  fast-uri@3.1.9: {}
 
   fast-wrap-ansi@0.2.0:
     dependencies:
@@ -38702,7 +38702,7 @@ snapshots:
       iconv-lite: 0.7.2
       libmime: 5.3.7
       linkify-it: 5.0.2
-      nodemailer: 10.0.14
+      nodemailer: 10.1.4
       punycode.js: 2.3.1
       tlds: 1.261.0
 
@@ -39842,7 +39842,7 @@ snapshots:
       shell-escape: 0.2.0
       ssh2: 1.16.0
 
-  nodemailer@10.0.14: {}
+  nodemailer@10.1.4: {}
 
   nodemon@3.0.1:
     dependencies:
@@ -42020,7 +42020,7 @@ snapshots:
       oauth4webapi: 3.8.6
       open: 7.4.2
       simple-lru-cache: 0.0.2
-      toml: 4.2.0
+      toml: 5.0.1
       winston: 3.14.2
     transitivePeerDependencies:
       - debug
@@ -42784,7 +42784,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
-  toml@4.2.0: {}
+  toml@5.0.1: {}
 
   toposort@2.0.2: {}
 
@@ -43689,11 +43689,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vue-i18n@11.4.5(vue@3.5.26(typescript@6.0.2)):
+  vue-i18n@11.4.14(vue@3.5.26(typescript@6.0.2)):
     dependencies:
-      '@intlify/core-base': 11.4.5
-      '@intlify/devtools-types': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/core-base': 11.4.14
+      '@intlify/devtools-types': 11.4.14
+      '@intlify/shared': 11.4.14
       '@vue/devtools-api': 6.6.4
       vue: 3.5.26(typescript@6.0.2)
 

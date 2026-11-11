@@ -5,7 +5,7 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ActivityEventRepository, WorkflowRepository } from '@n8n/db';
-import type { Project, User, WorkflowEntity, ActivityEvent } from '@n8n/db';
+import type { Project, Person, WorkflowEntity, ActivityEvent } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
@@ -35,7 +35,7 @@ describe('ActivityEventRelay', () => {
 	let eventService: EventService;
 	let project: Project;
 	let workflow: WorkflowEntity;
-	let owner: User;
+	let owner: Person;
 	let postHogClient: PostHogClient;
 
 	/** `activity_event.userId` is a foreign key, so the acting user has to be a real row. */

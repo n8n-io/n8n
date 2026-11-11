@@ -224,9 +224,6 @@ watch(
 	{ immediate: true },
 );
 
-// Show the input disclaimer only once the AI has produced a visible response.
-const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
-
 // ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
 // thinking block plays a thinking beat, then the apps card takes the input slot. Once per
 // mount, so a reload replays it. `isStreaming` on the greeting copy hides the message actions.
@@ -1050,11 +1047,7 @@ defineExpose({
 								</Transition>
 								<slot v-if="hasFloatingConfirmation" name="composer-start" />
 							</div>
-							<slot name="composer-footer">
-								<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-									{{ i18n.baseText('instanceAi.input.disclaimer') }}
-								</p>
-							</slot>
+							<slot name="composer-footer" />
 						</div>
 					</div>
 				</div>
@@ -1196,14 +1189,6 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.disclaimer {
-	margin: 0;
-	text-align: center;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
 }
 
 // The leaving child is detached from layout (see `.input-swap-leave-active`
