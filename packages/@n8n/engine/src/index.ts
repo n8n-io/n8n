@@ -3,6 +3,9 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
+export { assertSecureTransport, createEngineHttpServer, loadEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles } from './tls';
+
 export {
 	ACTION_TOKEN_SPEC,
 	IDENTITY_TOKEN_SPEC,
@@ -55,6 +58,7 @@ export type {
 export {
 	createResponseEmitter,
 	EXECUTION_CHANNEL_TOPICS,
+	MAX_FRAME_BYTES,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,

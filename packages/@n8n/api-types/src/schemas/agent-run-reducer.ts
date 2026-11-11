@@ -25,7 +25,7 @@ import {
 } from './instance-ai-event-lifecycle';
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
-import { resolveBuilderToolName } from '../builder-tool-names';
+import { resolveBuilderToolName, unwrapToolCatalogCall } from '../builder-tool-names';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
@@ -389,15 +389,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// Show the tool that a tool catalog `call_tool` call runs. Events stored
+			// before the server unwrapped these calls still carry `call_tool`.
+			const call = unwrapToolCatalogCall(event.payload.toolName, event.payload.args);
 			// Announced by a preceding tool-input-start: fill in the streamed args
 			// on the existing entry instead of duplicating it.
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
-				announced.args = event.payload.args;
-				announced.toolName = resolveBuilderToolName(
-					event.payload.toolName,
-					event.payload.args.action,
-				);
+				announced.args = call.args;
+				announced.toolName = resolveBuilderToolName(call.toolName, call.args.action);
+				announced.renderHint = getRenderHint(call.toolName);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);
@@ -405,10 +406,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const tc: InstanceAiToolCallState = {
 					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: resolveBuilderToolName(event.payload.toolName, event.payload.args.action),
-					args: event.payload.args,
+					toolName: resolveBuilderToolName(call.toolName, call.args.action),
+					args: call.args,
 					isLoading: true,
-					renderHint: getRenderHint(event.payload.toolName),
+					renderHint: getRenderHint(call.toolName),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;

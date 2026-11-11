@@ -832,13 +832,13 @@ describe('UserService', () => {
 	});
 
 	describe('getUsersAndCount', () => {
-		it('returns paginated users and the unfiltered total count', async () => {
+		it('returns a page of persons and the total count of persons', async () => {
 			const users = [
 				Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE }),
 				Object.assign(new User(), { id: uuid(), role: GLOBAL_OWNER_ROLE }),
 			];
 			userRepository.findManyByIds.mockResolvedValue(users);
-			userRepository.count.mockResolvedValue(10);
+			userRepository.countAccounts.mockResolvedValue(10);
 
 			const ids = [users[0].id];
 			const { users: result, count } = await userService.getUsersAndCount({
@@ -851,16 +851,17 @@ describe('UserService', () => {
 				includeRole: true,
 				offset: 0,
 				limit: 2,
+				kind: 'person',
 			});
-			expect(userRepository.count).toHaveBeenCalled();
+			expect(userRepository.countAccounts).toHaveBeenCalledWith({ kind: 'person' });
 			expect(count).toBe(10);
 			expect(result).toEqual(users);
 		});
 
-		it('lists all users when no ids are given', async () => {
+		it('lists all persons when no ids are given', async () => {
 			const users = [Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE })];
 			userRepository.findMany.mockResolvedValue(users);
-			userRepository.count.mockResolvedValue(1);
+			userRepository.countAccounts.mockResolvedValue(1);
 
 			const { users: result, count } = await userService.getUsersAndCount({
 				limit: 10,
@@ -871,7 +872,9 @@ describe('UserService', () => {
 				includeRole: true,
 				offset: 0,
 				limit: 10,
+				kind: 'person',
 			});
+			expect(userRepository.countAccounts).toHaveBeenCalledWith({ kind: 'person' });
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 			expect(count).toBe(1);
 			expect(result).toEqual(users);
