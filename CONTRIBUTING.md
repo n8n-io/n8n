@@ -674,10 +674,9 @@ long time, and some packages need Docker. CI runs the full suite on each pull
 request, so you do not usually need to run it locally.
 
 `@n8n/typeorm` is a vendored fork of TypeORM. Its `test` script does nothing.
-The upstream TypeORM suite is in the `test:upstream` script. It needs an
-`ormconfig.json` file with database connections. Look at
-`packages/@n8n/typeorm/test/utils/test-utils.ts` for the file locations that
-the suite reads.
+The upstream TypeORM suite is in the `test:upstream` script. Before you run it,
+create `packages/@n8n/typeorm/ormconfig.json` with a JSON array of database
+connections. Git ignores this file.
 
 If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
 
