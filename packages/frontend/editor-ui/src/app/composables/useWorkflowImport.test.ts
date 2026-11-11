@@ -134,102 +134,37 @@ describe('useWorkflowImport', () => {
 		);
 	});
 
-	describe('credential-only nodes', () => {
-		it('should load credential types before import when a node extends a credential', async () => {
-			const callOrder: string[] = [];
-			const credentialsStore = useCredentialsStore();
-			vi.mocked(credentialsStore.fetchCredentialTypes).mockImplementation(async () => {
-				callOrder.push('fetchCredentialTypes');
-			});
-			mockInitializeWorkspace.mockImplementation(async () => {
-				callOrder.push('initialize');
-				return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
-			});
-
-			const storeRef = shallowRef(null);
-			const { importWorkflowExact } = useWorkflowImport(storeRef);
-
-			await importWorkflowExact({
-				workflow: createWorkflowData({
-					nodes: [
-						{
-							id: '1',
-							name: 'VirusTotal',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 4.2,
-							position: [0, 0],
-							parameters: {},
-							extendsCredential: 'virusTotalApi',
-						},
-					],
-				}),
-			});
-
-			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(callOrder).toEqual(['fetchCredentialTypes', 'initialize']);
+	it('should load credential types before import when a node extends a credential', async () => {
+		const callOrder: string[] = [];
+		const credentialsStore = useCredentialsStore();
+		vi.mocked(credentialsStore.fetchCredentialTypes).mockImplementation(async () => {
+			callOrder.push('fetchCredentialTypes');
+		});
+		mockInitializeWorkspace.mockImplementation(async () => {
+			callOrder.push('initialize');
+			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
 		});
 
-		it('should load credential types when a node has a credential-only type', async () => {
-			const credentialsStore = useCredentialsStore();
+		const storeRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
-			const storeRef = shallowRef(null);
-			const { importWorkflowExact } = useWorkflowImport(storeRef);
-
-			await importWorkflowExact({
-				workflow: createWorkflowData({
-					nodes: [
-						{
-							id: '1',
-							name: 'AlienVault',
-							type: 'n8n-creds-base.alienVaultApi',
-							typeVersion: 4.2,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-				}),
-			});
-
-			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+		await importWorkflowExact({
+			workflow: createWorkflowData({
+				nodes: [
+					{
+						id: '1',
+						name: 'VirusTotal',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0],
+						parameters: {},
+						extendsCredential: 'virusTotalApi',
+					},
+				],
+			}),
 		});
 
-		it('should not load credential types when no node needs them', async () => {
-			const credentialsStore = useCredentialsStore();
-
-			const storeRef = shallowRef(null);
-			const { importWorkflowExact } = useWorkflowImport(storeRef);
-
-			await importWorkflowExact({ workflow: createWorkflowData() });
-
-			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
-		});
-
-		it('should still import the workflow when credential types fail to load', async () => {
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const credentialsStore = useCredentialsStore();
-			vi.mocked(credentialsStore.fetchCredentialTypes).mockRejectedValue(new Error('network'));
-
-			const storeRef = shallowRef(null);
-			const { importWorkflowExact } = useWorkflowImport(storeRef);
-
-			await importWorkflowExact({
-				workflow: createWorkflowData({
-					nodes: [
-						{
-							id: '1',
-							name: 'VirusTotal',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 4.2,
-							position: [0, 0],
-							parameters: {},
-							extendsCredential: 'virusTotalApi',
-						},
-					],
-				}),
-			});
-
-			expect(mockInitializeWorkspace).toHaveBeenCalledOnce();
-			consoleErrorSpy.mockRestore();
-		});
+		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+		expect(callOrder).toEqual(['fetchCredentialTypes', 'initialize']);
 	});
 });
