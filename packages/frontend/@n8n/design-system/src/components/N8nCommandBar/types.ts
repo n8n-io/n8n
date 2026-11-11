@@ -25,7 +25,8 @@ export interface CommandBarItem {
 	/**
 	 * Rendered at the end of the row in place of the lock of a disabled item.
 	 * It also receives `rowElement` and `isActive` (selected by the user, not by default).
-	 * When it exposes `activate()`, Enter on its disabled, active row calls it.
+	 * When it exposes `activate()`, Enter on its disabled, active row calls it,
+	 * because the focus stays in the search input.
 	 */
 	trailing?: CommandBarItemComponent;
 	placeholder?: string;

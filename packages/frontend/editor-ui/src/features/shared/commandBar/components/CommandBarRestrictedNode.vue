@@ -3,6 +3,8 @@ import { computed, useTemplateRef } from 'vue';
 import { useElementBounding } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
+	RESTRICTED_NODE_POPOVER_WIDTH,
 	RestrictedNodePopover,
 	SCOPE_LABEL_KEY,
 	type TypeRestriction,
@@ -15,18 +17,18 @@ const props = defineProps<{
 	isActive?: boolean;
 }>();
 
-/** The popover card width plus its gap to the row and a margin to the viewport edge. */
-const SPACE_FOR_CARD_ON_LEFT = 254 + 24 + 8;
+const VIEWPORT_MARGIN = 8;
+const SPACE_FOR_CARD_ON_LEFT =
+	RESTRICTED_NODE_POPOVER_WIDTH + RESTRICTED_NODE_POPOVER_SIDE_OFFSET + VIEWPORT_MARGIN;
+const OFFSET_BELOW_ROW = 4;
 
 const i18n = useI18n();
 const { left: rowLeft } = useElementBounding(() => props.rowElement);
 
-// The command bar is centered and wide. On a narrow viewport the card does not fit beside it.
 const opensBelow = computed(() => rowLeft.value < SPACE_FOR_CARD_ON_LEFT);
 
 const popover = useTemplateRef('popover');
 
-// Enter on the row runs the card's action: the list keeps focus in its search input.
 defineExpose({ activate: () => popover.value?.requestContactAdmin() });
 
 const scopeLabel = computed(() => {
@@ -48,7 +50,7 @@ const scopeLabel = computed(() => {
 			:active="isActive"
 			:side="opensBelow ? 'bottom' : 'left'"
 			:align="opensBelow ? 'end' : 'center'"
-			:side-offset="opensBelow ? 4 : 24"
+			:side-offset="opensBelow ? OFFSET_BELOW_ROW : RESTRICTED_NODE_POPOVER_SIDE_OFFSET"
 		/>
 	</span>
 </template>

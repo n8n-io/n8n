@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { isRecord } from '@n8n/utils/is-record';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
@@ -64,12 +65,7 @@ const selectedKey = ref<string | null>(null);
 const itemRefs = new Map<string, { activateTrailing: () => void }>();
 
 function isCommandBarItemInstance(value: unknown): value is { activateTrailing: () => void } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'activateTrailing' in value &&
-		typeof value.activateTrailing === 'function'
-	);
+	return isRecord(value) && typeof value.activateTrailing === 'function';
 }
 
 function setItemRef(key: string, element: unknown) {

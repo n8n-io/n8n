@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { isRecord } from '@n8n/utils/is-record';
 import { computed, ref } from 'vue';
 
 import type { CommandBarItem, CommandBarSelectOptions } from './types';
@@ -10,7 +11,6 @@ const props = defineProps<{
 	item: CommandBarItem;
 	rowKey: string;
 	isSelected: boolean;
-	/** Selected by the user with the keyboard or the pointer, not by the default first row. */
 	isActive?: boolean;
 	query: string;
 }>();
@@ -24,12 +24,7 @@ const rowRef = ref<HTMLElement | null>(null);
 const trailingRef = ref<unknown>(null);
 
 function hasActivate(value: unknown): value is { activate: () => void } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'activate' in value &&
-		typeof value.activate === 'function'
-	);
+	return isRecord(value) && typeof value.activate === 'function';
 }
 
 function activateTrailing() {

@@ -1,6 +1,8 @@
 export { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
 export {
+	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
+	RESTRICTED_NODE_POPOVER_WIDTH,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
 	type RestrictedTypeKind,

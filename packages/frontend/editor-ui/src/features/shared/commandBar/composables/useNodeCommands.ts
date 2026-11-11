@@ -61,35 +61,36 @@ export function useNodeCommands(): CommandGroup {
 		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];
 	});
 
-	const buildAddNodeItem = (node: SimplifiedNodeType): CommandBarItem => {
+	const buildRestrictionTrailing = (node: SimplifiedNodeType): CommandBarItem['trailing'] => {
 		const restriction = getNodeItemRestriction(node.name);
+		if (!restriction) return undefined;
 		return {
-			id: node.name,
-			title: node.displayName,
-			section: i18n.baseText('commandBar.nodes.addNode'),
-			disabled: restriction !== undefined,
-			trailing: restriction
-				? {
-						component: CommandBarRestrictedNode as Component,
-						props: { nodeTypeName: node.displayName, restriction },
-					}
-				: undefined,
-			keywords: node.codex?.alias ?? [],
-			icon: {
-				component: NodeIcon as Component,
-				props: {
-					nodeType: node,
-					size: 16,
-				},
-			},
-			handler: async () => {
-				const nodes = await addNodes([{ type: node.name }]);
-				if (nodes && nodes.length > 0) {
-					canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
-				}
-			},
+			component: CommandBarRestrictedNode as Component,
+			props: { nodeTypeName: node.displayName, restriction },
 		};
 	};
+
+	const buildAddNodeItem = (node: SimplifiedNodeType): CommandBarItem => ({
+		id: node.name,
+		title: node.displayName,
+		section: i18n.baseText('commandBar.nodes.addNode'),
+		disabled: isNodeItemRestricted(node.name),
+		trailing: buildRestrictionTrailing(node),
+		keywords: node.codex?.alias ?? [],
+		icon: {
+			component: NodeIcon as Component,
+			props: {
+				nodeType: node,
+				size: 16,
+			},
+		},
+		handler: async () => {
+			const nodes = await addNodes([{ type: node.name }]);
+			if (nodes && nodes.length > 0) {
+				canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
+			}
+		},
+	});
 
 	const buildOpenNodeItem = (node: INodeUi): CommandBarItem => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
