@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
@@ -26,6 +27,7 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
+import { registerCustomEndpointChatModel } from './custom-endpoint-chat-openai';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
 import { Container } from '@n8n/di';
@@ -864,6 +866,9 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		const model = new ChatOpenAI(fields);
+		if (isOpenAiCustomEndpoint(configuration.baseURL ?? undefined)) {
+			registerCustomEndpointChatModel(model, fields);
+		}
 
 		if (responsesApiEnabled) {
 			const tools = formatBuiltInTools(
