@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';
 
@@ -164,6 +166,30 @@ describe('createClientCredentialsTokenSource', () => {
 
 		expect(calls[0].signal).toBeInstanceOf(AbortSignal);
 		expect(clientCredentialsTokenRequest(login()).timeout).toBe(30_000);
+	});
+
+	it('says the deadline passed, rather than handing back the abort the runtime threw', async () => {
+		const controller = new AbortController();
+		const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+		const stalling = (async (_url: RequestInfo | URL, init?: RequestInit) =>
+			await new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+				controller.abort(new DOMException('This operation was aborted', 'TimeoutError'));
+			})) as typeof fetch;
+
+		const error = await createClientCredentialsTokenSource(login(), stalling)
+			.getToken()
+			.then(
+				() => undefined,
+				(reason: Error) => reason,
+			);
+
+		expect(deadline).toHaveBeenCalledWith(30_000);
+		expect(error).toBeInstanceOf(UserError);
+		expect(error?.message).toBe(
+			'Could not sign in to the gateway: the login server did not answer within 30 seconds',
+		);
+		deadline.mockRestore();
 	});
 
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {
