@@ -239,7 +239,7 @@ export function useSettingsItems() {
 				id: 'settings-n8n-connect',
 				order: 10,
 				section: 'billing',
-				icon: 'plug-zap',
+				icon: 'circles',
 				label: i18n.baseText(
 					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
 				),
