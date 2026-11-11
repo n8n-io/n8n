@@ -4,6 +4,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
+import { validate as validateUuid } from 'uuid';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
@@ -890,7 +891,8 @@ onMounted(async () => {
 	const { skillId, create, sourceId } = route.query;
 	if (typeof skillId === 'string') {
 		await openEditModal({ id: skillId });
-	} else if (typeof sourceId === 'string' && skillSyncEnabled.value) {
+	} else if (typeof sourceId === 'string' && validateUuid(sourceId) && skillSyncEnabled.value) {
+		// The API refuses a malformed id, which would fail the whole list.
 		await onOpenSource(sourceId);
 	} else if (create === 'true') {
 		openCreateModal();

@@ -1383,6 +1383,35 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(view.getByTestId('skill-group-header')).toHaveFocus());
 			});
 
+			it('opens the page of the source named by ?sourceId', async () => {
+				const sourceId = '01a1c9d1-fddc-739b-843c-6b8061befdbb';
+				routeQuery.sourceId = sourceId;
+				enableSkillSync();
+				skillsStore.fetchSources.mockResolvedValue([source]);
+
+				renderView();
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+						expect.objectContaining({ focusSourceId: sourceId }),
+					),
+				);
+			});
+
+			it('ignores a ?sourceId that is not a source id', async () => {
+				routeQuery.sourceId = 'not-a-uuid';
+				enableSkillSync();
+				skillsStore.fetchSources.mockResolvedValue([source]);
+
+				renderView();
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				await new Promise(process.nextTick);
+
+				expect(skillsStore.fetchSkills).not.toHaveBeenCalledWith(
+					expect.objectContaining({ focusSourceId: expect.anything() }),
+				);
+			});
+
 			it('keeps folds separate for users of the same browser', async () => {
 				mockedStore(useUsersStore).currentUserId = 'alice';
 				const view = await renderWithSource();
