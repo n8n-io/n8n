@@ -1,0 +1,33 @@
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  s_bfb3680951bbc8::t_9ef8e683ba702f 1,16-32
+packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
+  s_bfb3680951bbc8::t_570567a17b2113 120-121
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
+  s_bfb3680951bbc8::t_d28ff3611085cb 10,130-147
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_bfb3680951bbc8::t_764b6c4523c465 13-16,36
+packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
+  s_bfb3680951bbc8::t_3715b7c688183f 19-27,57-60,76-77
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_bfb3680951bbc8::t_fd1fb9a0bcf60d 9-12,22
+packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
+  s_bfb3680951bbc8::t_a034abf46e5ce6 1,98-127
+packages/cli/src/scaling/redis-lock.service.ts
+  s_bfb3680951bbc8::t_c41478b1f334fe 72-73,77,80,82,169-170,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9e798abb0fb0ffe9c81b44b5cb7c22c32a03acb",
+  "prompts": {},
+  "sessions": {
+    "s_bfb3680951bbc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b9e7e40-a75c-4a5a-a07a-3f53514351f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

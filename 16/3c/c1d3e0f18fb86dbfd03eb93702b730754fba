@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/context-budget/__tests__/orchestrator-context-budget.test.ts
+  s_32a073d0bf8f8c::t_37ca709c577608 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "163cc1d3e0f18fb86dbfd03eb93702b730754fba",
+  "prompts": {},
+  "sessions": {
+    "s_32a073d0bf8f8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "501ceb8b-25ed-42b5-9600-d5e867580260",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
