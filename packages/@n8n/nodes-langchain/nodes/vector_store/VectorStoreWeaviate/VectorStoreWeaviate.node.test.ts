@@ -1,11 +1,12 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { Document as LcDocument } from '@langchain/core/documents';
+import { WeaviateStore } from '@langchain/weaviate';
 import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import weaviate from 'weaviate-client';
+import weaviate, { type WeaviateClient } from 'weaviate-client';
 
 const store = vi.hoisted(() => ({
 	fromExistingIndex: vi.fn(),
@@ -374,6 +375,66 @@ describe('VectorStoreWeaviate.node', () => {
 			await expect(vectorStore.similaritySearchVectorWithScore([0.1], 3)).rejects.toThrow(
 				'Unexpected score type: string',
 			);
+		});
+	});
+
+	describe('populateVectorStore', () => {
+		const deleteCollection = vi.fn();
+		const removeTenants = vi.fn();
+		const client = mock<WeaviateClient>({
+			collections: mock<WeaviateClient['collections']>({
+				delete: deleteCollection,
+				get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
+			}),
+		});
+		const documents = [new LcDocument({ pageContent: 'A cat', metadata: {} })];
+		const embeddings = mock<Embeddings>();
+
+		const insert = async (options: Record<string, unknown>) =>
+			await node.populateVectorStore(createContext(options), embeddings, documents, 0);
+
+		beforeEach(() => {
+			connectSpy.mockResolvedValue(client);
+			deleteCollection.mockClear();
+			removeTenants.mockClear();
+			vi.mocked(WeaviateStore.fromDocuments).mockClear();
+		});
+
+		it('should insert the documents with the node options', async () => {
+			await insert({ tenant: 'tenantA', textKey: 'content', metadataKeys: 'source,page' });
+
+			expect(WeaviateStore.fromDocuments).toHaveBeenCalledWith(documents, embeddings, {
+				client,
+				indexName: 'TestCollection',
+				tenant: 'tenantA',
+				textKey: 'content',
+				metadataKeys: ['source', 'page'],
+			});
+			expect(deleteCollection).not.toHaveBeenCalled();
+		});
+
+		it('should use the default text key and metadata keys', async () => {
+			await insert({});
+
+			expect(WeaviateStore.fromDocuments).toHaveBeenCalledWith(
+				documents,
+				embeddings,
+				expect.objectContaining({ tenant: undefined, textKey: 'text', metadataKeys: [] }),
+			);
+		});
+
+		it('should delete the collection before the insert when Clear Data is on', async () => {
+			await insert({ clearStore: true });
+
+			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+			expect(removeTenants).not.toHaveBeenCalled();
+		});
+
+		it('should remove only the tenant when Clear Data is on and a tenant is set', async () => {
+			await insert({ clearStore: true, tenant: 'tenantA' });
+
+			expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+			expect(deleteCollection).not.toHaveBeenCalled();
 		});
 	});
 });
