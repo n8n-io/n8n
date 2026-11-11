@@ -116,7 +116,7 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('A')]),
 		}),
 		engineError: 'Only Split In Batches loops are currently supported',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES' },
 	},
 	{
 		name: 'a loop is entered at a node other than its Split In Batches node',
@@ -125,7 +125,7 @@ export const engineRefusals: EngineRefusal[] = [
 			Body: outputs([to('Loop')]),
 		}),
 		engineError: 'must be entered only through its Split In Batches node',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_ENTERED_MID_BODY' },
 	},
 	{
 		name: 'a loop has two entry edges',
@@ -140,7 +140,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'converging entries on its input slot is not supported yet',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_MULTIPLE_ENTRIES' },
 	},
 	{
 		name: 'a loop has two return edges',
@@ -150,7 +150,7 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('Loop')]),
 		}),
 		engineError: 'multiple returns converge on one input slot',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_MULTIPLE_RETURNS' },
 	},
 	{
 		name: 'a loop sits inside another loop',
@@ -164,7 +164,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'nested loops are not supported yet',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'NESTED_LOOP' },
 	},
 	{
 		name: 'an edge leaves a loop from a node in its body',
@@ -177,7 +177,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'mid-body',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_EXITS_MID_BODY' },
 	},
 	{
 		name: 'an edge leaves a loop from the loop output of its Split In Batches node',
@@ -190,7 +190,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'leaves the loop from the loop slot',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_EXITS_MID_BODY' },
 	},
 	{
 		name: 'two edges feed the same input of a node',
@@ -199,7 +199,7 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('C')]),
 		}),
 		engineError: 'more than one edge into input slot 0',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'INPUT_SLOT_CONVERGENCE' },
 	},
 ];
 

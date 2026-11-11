@@ -1,4 +1,5 @@
 import { findConverterReasons } from './converter-rules';
+import { findGraphReasons } from './graph-rules';
 import { findNodeTypeReasons } from './node-type-rule';
 import { findSettingsReasons } from './settings-rules';
 import { findTriggerIdentityReasons } from './trigger-identity-rule';
@@ -20,6 +21,7 @@ export function checkEngineV2Eligibility(
 		...findTriggerWaitReasons(workflow.nodes),
 		...findNodeTypeReasons(workflow.nodes),
 		...findConverterReasons(workflow.nodes, workflow.connections),
+		...findGraphReasons(workflow.nodes, workflow.connections),
 	];
 	return { eligible: reasons.every((reason) => reason.severity !== 'blocking'), reasons };
 }
