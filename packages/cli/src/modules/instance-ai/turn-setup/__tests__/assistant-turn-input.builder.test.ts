@@ -34,6 +34,9 @@ function resumeAt(messageId: string, at: Date) {
 	};
 }
 
+/** Places a stored message before the resume point that the tests save at 2026-09-01. */
+const beforeResume = { id: 'message-0', createdAt: new Date('2026-08-01T00:00:00.000Z') };
+
 /** A thread memory with an observation log, so the replay reads the post-resume window. */
 function createThreadMemory(): ThreadMemoryMock {
 	return {
@@ -167,7 +170,7 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		const service = createService();
 		// The full history has the same block, so only a replay-window read sends it again.
 		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
+			{ ...storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })), ...beforeResume },
 		]);
 		service.agentMemory.getCursor.mockResolvedValue({
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
@@ -194,7 +197,7 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	it('sends the tabs again when the earlier block was compacted out of the replay window', async () => {
 		const service = createService();
 		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+			{ ...storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })), ...beforeResume },
 		]);
 		service.agentMemory.getCursor.mockResolvedValue({
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
@@ -535,27 +538,29 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			lastObservedMessageId: 'msg-9',
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
 		};
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+		service.agentMemory.getMessages.mockResolvedValue([
+			{ ...storedUserTurn(block), ...beforeResume },
+			{
+				...storedUserTurn(undefined, 'Thanks'),
+				id: 'msg-10',
+				createdAt: new Date('2026-09-02T00:00:00.000Z'),
+			},
+		]);
 		service.agentMemory.getCursor.mockResolvedValue(cursor);
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'obs-1' }]);
 		service.agentMemory.getResumeState.mockResolvedValue(
 			resumeAt(cursor.lastObservedMessageId, cursor.lastObservedAt),
 		);
-		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([
-			storedUserTurn(undefined, 'Thanks'),
-		]);
 
 		const turn = await resolvePreferences(service, boundProject);
 
 		expect(turn.block).toContain('<ai-preferences>');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
-		expect(service.agentMemory.getMessagesForObservationScope).toHaveBeenCalledWith('thread-1', {
-			since: {
-				sinceCreatedAt: cursor.lastObservedAt,
-				sinceMessageId: cursor.lastObservedMessageId,
-			},
+		// A user-scoped thread reads through getMessages, so the resource filter applies.
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-1', {
+			resourceId: 'user-1',
 		});
+		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
 	});
 
 	it('reads the full history when a cursor exists without a resume point, like the runtime', async () => {
