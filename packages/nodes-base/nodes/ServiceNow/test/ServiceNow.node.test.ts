@@ -117,6 +117,34 @@ describe('ServiceNow Node', () => {
 			});
 		});
 
+		it.each([
+			[123456, 789012, '123456', '789012'],
+			[true, false, 'true', ''],
+			[false, true, '', 'true'],
+			[0, 42, '', '42'],
+			[42, 0, '42', ''],
+		])(
+			'normalizes primitive credential expression results (%#)',
+			async (user, password, expectedUser, expectedPassword) => {
+				const result = await testCredentials({ ...data, user, password });
+
+				expect(result.status).toBe('OK');
+				expect(context.helpers.request).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ auth: { user: expectedUser, pass: expectedPassword } }),
+				);
+			},
+		);
+
+		it.each([{ user: {} }, { password: {} }, { user: [] }, { password: [] }])(
+			'rejects non-primitive authentication values before making a request (%#)',
+			async (values) => {
+				const result = await testCredentials({ ...data, ...values });
+
+				expect(result.status).toBe('Error');
+				expect(context.helpers.request).not.toHaveBeenCalled();
+			},
+		);
+
 		describe('subdomain validation', () => {
 			it.each(
 				[

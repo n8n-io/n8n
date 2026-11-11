@@ -183,8 +183,10 @@ export class ServiceNow implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const { user, password, subdomain } = credential.data ?? {};
 				if (
-					typeof user !== 'string' ||
-					typeof password !== 'string' ||
+					(typeof user !== 'string' && typeof user !== 'number' && typeof user !== 'boolean') ||
+					(typeof password !== 'string' &&
+						typeof password !== 'number' &&
+						typeof password !== 'boolean') ||
 					typeof subdomain !== 'string'
 				) {
 					return {
@@ -204,7 +206,8 @@ export class ServiceNow implements INodeType {
 					method: 'GET',
 					uri: `https://${subdomain}.service-now.com/api/now/table/sys_user`,
 					followRedirect: false,
-					auth: { user, pass: password },
+					// Match generic authentication when expressions return primitive values.
+					auth: { user: user ? user.toString() : '', pass: password ? password.toString() : '' },
 					qs: {
 						sysparm_limit: '1',
 						sysparm_fields: 'sys_id',
