@@ -351,6 +351,19 @@ describe('AgentSkillsService', () => {
 			skillService.saveTrusted.mockResolvedValue(saveResult());
 		});
 
+		it('rejects the update of an unpinned skill through an archived agent', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+				isArchived: true,
+			});
+
+			await expect(
+				service.updateSkill(agentId, projectId, 'skill_a', { name: 'Renamed' }, context),
+			).rejects.toThrow('Cannot update an archived agent');
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
+		});
+
 		it('changes where the skill can be added without saving a new version', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
