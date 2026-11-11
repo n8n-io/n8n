@@ -549,15 +549,12 @@ describe('CredentialImporter', () => {
 			).rejects.toThrow(UnprocessableRequestError);
 		});
 
-		it.each([
-			{ enabled: true, expected: { description: 'From the package' } },
-			{ enabled: false, expected: {} },
-		])(
-			'carries the package description on the candidate only when descriptions are on ($enabled)',
-			async ({ enabled, expected }) => {
+		it.each([{ enabled: true }, { enabled: false }])(
+			'treats a description-only difference as an update only when descriptions are on ($enabled)',
+			async ({ enabled }) => {
 				credentialDescriptions.isEnabled.mockResolvedValue(enabled);
-				credentialsFinder.findById.mockResolvedValue(destination());
-				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
+				credentialsFinder.findById.mockResolvedValue(destination({ description: 'Old' }));
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
 
 				const result = await importer.plan(
 					context,
@@ -569,8 +566,9 @@ describe('CredentialImporter', () => {
 					}),
 				);
 
-				expect(result.candidates[0]).toMatchObject(expected);
+				expect(result.candidates).toHaveLength(1);
 				expect(result.candidates[0].description).toBe(enabled ? 'From the package' : undefined);
+				expect(result.updates).toHaveLength(enabled ? 1 : 0);
 			},
 		);
 

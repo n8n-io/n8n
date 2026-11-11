@@ -99,6 +99,7 @@ export class CredentialImporter {
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const destinations = new Map<string, CredentialsEntity | null>();
 		const inScope: Array<{
 			match: CredentialMatch;
@@ -130,7 +131,10 @@ export class CredentialImporter {
 					targetName: destination.name,
 					usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
 				},
-				packageCredential,
+				// With descriptions off, the description decides nothing: no difference, no conflict.
+				packageCredential: descriptionsEnabled
+					? packageCredential
+					: { ...packageCredential, description: undefined },
 				destination,
 				ownerProjectId,
 			});
@@ -146,7 +150,6 @@ export class CredentialImporter {
 						['credential:update'],
 					)
 				: new Set<string>();
-		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const candidates: CredentialUpdateCandidate[] = [];
 		const updates: CredentialUpdateCandidate[] = [];
 		const forbidden: CredentialMatch[] = [];
@@ -163,8 +166,7 @@ export class CredentialImporter {
 				ownerProjectId,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
-				// Like `credentialDiffers`: with descriptions off, the description decides nothing.
-				...(descriptionsEnabled && packageCredential.description !== undefined
+				...(packageCredential.description !== undefined
 					? { description: packageCredential.description }
 					: {}),
 			};
@@ -177,7 +179,6 @@ export class CredentialImporter {
 					data: await this.readStoredData(destination),
 				},
 				packageCredential,
-				descriptionsEnabled,
 			);
 			if (differs) updates.push(candidate);
 		}
@@ -390,12 +391,10 @@ export class CredentialImporter {
 		if (!credential) throw credentialNotFound(update);
 
 		const stored = await this.readStoredData(credential);
-		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (
 			!credentialDiffers(
 				{ name: credential.name, description: credential.description, data: stored },
 				update,
-				descriptionsEnabled,
 			)
 		) {
 			return null;

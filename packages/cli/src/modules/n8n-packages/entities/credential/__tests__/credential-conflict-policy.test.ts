@@ -111,7 +111,6 @@ describe('credentialDiffers', () => {
 			credentialDiffers(
 				{ name: 'Old', data: { token: EXPRESSION } },
 				{ name: 'New', data: { token: EXPRESSION } },
-				false,
 			),
 		).toBe(true);
 	});
@@ -121,7 +120,6 @@ describe('credentialDiffers', () => {
 			credentialDiffers(
 				{ name: 'Same', data: { token: EXPRESSION } },
 				{ name: 'Same', data: { token: OTHER_EXPRESSION } },
-				false,
 			),
 		).toBe(true);
 	});
@@ -131,7 +129,6 @@ describe('credentialDiffers', () => {
 			credentialDiffers(
 				{ name: 'Same', data: { token: 'stored-secret' } },
 				{ name: 'Same', data: { token: EXPRESSION } },
-				false,
 			),
 		).toBe(true);
 	});
@@ -148,7 +145,6 @@ describe('credentialDiffers', () => {
 					},
 				},
 				{ name: 'Same', data: { token: EXPRESSION } },
-				false,
 			),
 		).toBe(false);
 	});
@@ -158,7 +154,6 @@ describe('credentialDiffers', () => {
 			credentialDiffers(
 				{ name: 'Same', data: { headers: [{ name: 'X-Key', value: 'secret' }] } },
 				{ name: 'Same', data: { headers: [{ value: EXPRESSION }, { value: OTHER_EXPRESSION }] } },
-				false,
 			),
 		).toBe(false);
 	});
@@ -168,7 +163,6 @@ describe('credentialDiffers', () => {
 			credentialDiffers(
 				{ name: 'Same', data: { token: 'stored-secret' } },
 				{ name: 'Same', data: { config: { headers: [EXPRESSION] } } },
-				false,
 			),
 		).toBe(false);
 	});
@@ -176,8 +170,8 @@ describe('credentialDiffers', () => {
 	it('compares only the name for a file without data', () => {
 		const stored = { name: 'Same', data: { token: 'stored-secret' } };
 
-		expect(credentialDiffers(stored, { name: 'Same' }, false)).toBe(false);
-		expect(credentialDiffers(stored, { name: 'Other' }, false)).toBe(true);
+		expect(credentialDiffers(stored, { name: 'Same' })).toBe(false);
+		expect(credentialDiffers(stored, { name: 'Other' })).toBe(true);
 	});
 });
 
@@ -414,25 +408,21 @@ describe('plannedCredentialUpdates', () => {
 		const stored = { name: 'Same', data: {}, description: 'Old' };
 
 		it('detects a changed description when descriptions are on', () => {
-			expect(credentialDiffers(stored, { name: 'Same', description: 'New' }, true)).toBe(true);
+			expect(credentialDiffers(stored, { name: 'Same', description: 'New' })).toBe(true);
 		});
 
 		it('detects a description that the package clears', () => {
-			expect(credentialDiffers(stored, { name: 'Same', description: null }, true)).toBe(true);
+			expect(credentialDiffers(stored, { name: 'Same', description: null })).toBe(true);
 		});
 
 		it('treats a missing stored description as null', () => {
 			expect(
-				credentialDiffers({ name: 'Same', data: {} }, { name: 'Same', description: null }, true),
+				credentialDiffers({ name: 'Same', data: {} }, { name: 'Same', description: null }),
 			).toBe(false);
 		});
 
-		it('ignores the description when descriptions are off', () => {
-			expect(credentialDiffers(stored, { name: 'Same', description: 'New' }, false)).toBe(false);
-		});
-
 		it('ignores the description when the package does not decide it', () => {
-			expect(credentialDiffers(stored, { name: 'Same' }, true)).toBe(false);
+			expect(credentialDiffers(stored, { name: 'Same' })).toBe(false);
 		});
 	});
 });
