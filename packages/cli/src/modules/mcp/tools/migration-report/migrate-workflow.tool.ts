@@ -132,8 +132,12 @@ export const createMigrateWorkflowTool = (
 			return trackAndReturnToolError(deps.telemetry, telemetryPayload, error, (message) => ({
 				success: false,
 				workflowId,
-				error: message,
-				...(error instanceof WorkflowMigrationNodeError ? error.meta : {}),
+				...(error instanceof WorkflowMigrationNodeError
+					? {
+							error: `${message} The fix changed nothing. Replace this node with update_workflow.`,
+							...error.meta,
+						}
+					: { error: message }),
 			}));
 		}
 	},

@@ -414,6 +414,7 @@ describe('update-workflow MCP tool', () => {
 					title: 'Cron node removed',
 					impact: 'executionsFail' as const,
 					assistantAction: 'fix' as const,
+					migratable: true,
 					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
 				},
 			],

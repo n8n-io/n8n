@@ -652,6 +652,7 @@ describe('readWorkflowMigrationFindings', () => {
 					title: 'removed-node title',
 					impact: 'executionsFail',
 					assistantAction: 'none',
+					migratable: false,
 					issues: [expect.objectContaining({ nodeName: 'Old' })],
 				},
 				{
@@ -659,6 +660,7 @@ describe('readWorkflowMigrationFindings', () => {
 					title: 'embedded-chat title',
 					impact: 'behaviorChanges',
 					assistantAction: 'review',
+					migratable: false,
 					issues: [expect.objectContaining({ nodeName: 'Chat' })],
 				},
 			],
@@ -676,7 +678,7 @@ describe('readWorkflowMigrationFindings', () => {
 		const result = await readWorkflowMigrationFindings(deps, 'wf-1');
 
 		expect(result?.openFindings).toEqual([
-			expect.objectContaining({ ruleId: 'ai-transform', assistantAction: 'fix' }),
+			expect.objectContaining({ ruleId: 'ai-transform', assistantAction: 'fix', migratable: true }),
 		]);
 	});
 });
@@ -848,7 +850,7 @@ describe('migrate_workflow', () => {
 	it('names the node the fix refused', async () => {
 		const deps = readyToMigrate();
 		deps.migrationService.migrateWorkflow.mockRejectedValue(
-			new WorkflowMigrationNodeError('The prompt cannot be converted', {
+			new WorkflowMigrationNodeError('The prompt cannot be converted.', {
 				nodeId: 'n1',
 				nodeName: 'AI Transform',
 			}),
@@ -863,7 +865,8 @@ describe('migrate_workflow', () => {
 		expect(result.structuredContent).toEqual({
 			success: false,
 			workflowId: 'wf-1',
-			error: 'The prompt cannot be converted',
+			error:
+				'The prompt cannot be converted. The fix changed nothing. Replace this node with update_workflow.',
 			nodeId: 'n1',
 			nodeName: 'AI Transform',
 		});

@@ -70,7 +70,7 @@ export const assertWorkflowRule = (
 	const rule = deps.ruleRegistry.getRule(ruleId);
 	if (!rule || !isWorkflowLevelRule(rule) || rule.getMetadata().version !== deps.targetVersion) {
 		throw new UserError(
-			`No workflow rule with ID '${ruleId}' in the ${deps.targetVersion} migration report. Use a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME}.`,
+			`'${ruleId}' is not a workflow rule of the ${deps.targetVersion} migration report. Use a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME}.`,
 		);
 	}
 };
@@ -137,6 +137,7 @@ export const workflowMigrationFindingsSchema = z
 					title: z.string(),
 					impact: impactSchema,
 					assistantAction: assistantActionSchema,
+					migratable: ruleOutputShape.migratable,
 					issues: z.array(breakingChangeWorkflowIssueSchema),
 				}),
 			)
@@ -203,6 +204,7 @@ export async function readWorkflowMigrationFindings(
 					title: finding.ruleTitle,
 					impact: finding.ruleImpact,
 					assistantAction: workflowRuleAssistantAction(deps.ruleRegistry, finding),
+					migratable: finding.migratable,
 					issues: finding.issues,
 				}))
 				.sort(byImpact),
