@@ -335,7 +335,7 @@ catalogs:
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
-    vue-i18n: ^11.4.4
+    vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
@@ -514,7 +514,7 @@ overrides:
   'pdf-parse>@napi-rs/canvas': 'catalog:'
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
-  'toml@<4.2.0': 4.2.0
+  'toml@<5.0.1': 5.0.1
   # Keep the copies that langchain brings in on the catalog version.
   '@langchain/langgraph': 'catalog:'
   '@langchain/langgraph-checkpoint': 'catalog:'
