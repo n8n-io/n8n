@@ -362,3 +362,56 @@ describe('test-e2e-reusable.yml', () => {
 		});
 	});
 });
+
+describe('trusted publishing setup workflows', () => {
+	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
+	const packageSetup = workflowFile('release-publish-new-package.yml');
+	const releasePublish = workflowFile('release-publish.yml');
+
+	it('exposes unpublished packages and processes them one at a time', () => {
+		assert.equal(
+			triggersOf(orchestrator).workflow_call.outputs.packages.value,
+			'${{ jobs.detect-new-packages.outputs.packages }}',
+		);
+		assert.equal(
+			orchestrator.jobs['detect-new-packages'].outputs.packages,
+			'${{ steps.detect.outputs.packages-json }}',
+		);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
+			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',
+		);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].uses,
+			'./.github/workflows/release-publish-new-package.yml',
+		);
+	});
+
+	it('publishes a throwaway version under the rc tag', () => {
+		const publish = stepNamed(packageSetup, 'publish-to-npm', 'Publish throwaway package version');
+		assert.match(publish.run, /npm pkg set version=0\.0\.0-tp/);
+		assert.match(publish.run, /pnpm publish --access public --tag rc --no-git-checks/);
+	});
+
+	it('configures the release workflow as a trusted publisher', () => {
+		const trust = stepNamed(packageSetup, 'publish-to-npm', 'Configure trusted publishing');
+		assert.match(
+			trust.run,
+			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
+		);
+	});
+
+	it('runs setup only for minor releases and blocks publishing when setup fails', () => {
+		const setup = releasePublish.jobs['setup-trusted-publishing'];
+		const publish = releasePublish.jobs['publish-to-npm'];
+
+		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
+		assert.match(setup.if, /needs\.determine-version-info\.outputs\.bump == 'minor'/);
+		assert.ok(publish.needs.includes('setup-trusted-publishing'));
+		assert.match(publish.if, /always\(\)/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
+	});
+});
