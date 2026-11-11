@@ -835,7 +835,7 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
