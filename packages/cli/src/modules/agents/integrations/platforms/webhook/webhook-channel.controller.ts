@@ -1,9 +1,11 @@
-import { GlobalConfig } from '@n8n/config';
-import { Post, RootLevelController } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import { createIpRateLimit, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 
 import { WebhookChannelService } from './webhook-channel.service';
+
+const agentsConfig = Container.get(AgentsConfig);
 
 /**
  * The public endpoint of the webhook channel. It is a root-level controller, so
@@ -15,7 +17,12 @@ export class WebhookChannelController {
 
 	// Public route: do not add a scope decorator. The caller is not an n8n user,
 	// and the channel's own authentication runs in the service.
-	@Post('/:agentId/responses', { skipAuth: true, allowBots: true, usesTemplates: true })
+	@Post('/:agentId/responses', {
+		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+	})
 	async respond(req: Request<{ agentId: string }>, res: Response) {
 		const abort = new AbortController();
 		// A client that disconnects stops the run.

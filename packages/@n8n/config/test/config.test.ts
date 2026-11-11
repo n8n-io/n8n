@@ -771,6 +771,7 @@ describe('GlobalConfig', () => {
 			maxTotalMb: 1536,
 			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 100,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
