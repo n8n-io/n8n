@@ -2,6 +2,7 @@ import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
+	PersonRepository,
 	ProjectRelationRepository,
 	ServiceAccountRepository,
 	type User,
@@ -56,9 +57,9 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('createUserWithProject()', () => {
+	describe('PersonRepository.createPersonWithProject()', () => {
 		test('should create personal project for a user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:member' },
 			});
@@ -77,7 +78,7 @@ describe('UserRepository', () => {
 		});
 
 		test('should create personal project for a chat user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:chatUser' },
 			});

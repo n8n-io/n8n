@@ -776,6 +776,17 @@ export type {
 } from './schemas/assistant-thread-tabs.schema';
 
 export {
+	assistantAgentTargetSchema,
+	assistantAgentPreviewSessionSchema,
+} from './schemas/assistant-agent-targets.schema';
+export type {
+	AssistantAgentTarget,
+	AssistantAgentPreviewSession,
+	AssistantAgentTargetsState,
+	AssistantAgentTargetsResponse,
+} from './schemas/assistant-agent-targets.schema';
+
+export {
 	instanceAiSetupCredentialSelectionKey,
 	instanceAiSetupCredentialAppliedKey,
 	readPendingInstanceAiSetupCredentialSelections,

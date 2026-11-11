@@ -23,6 +23,13 @@ import { pathToFileURL } from 'node:url';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
+// A digest decides a pinned image; its tag is documentation only.
+const PINNED_IMAGE = /^([^\s:@]+(?::\d+)?\/?[^\s:@]*):[^\s@]+(@sha256:[0-9a-f]{64})$/;
+const withoutPinTags = (args) =>
+	Object.fromEntries(
+		Object.entries(args).map(([key, value]) => [key, value.replace(PINNED_IMAGE, '$1$2')]),
+	);
+
 /** The inputs that decide the image. */
 export function bakeInputs(plan, targets) {
 	const inputs = {};
@@ -32,7 +39,7 @@ export function bakeInputs(plan, targets) {
 			? {
 					dockerfile: target.dockerfile,
 					target: target.target ?? null,
-					args: target.args ?? {},
+					args: withoutPinTags(target.args ?? {}),
 					tags: target.tags ?? [],
 				}
 			: null;

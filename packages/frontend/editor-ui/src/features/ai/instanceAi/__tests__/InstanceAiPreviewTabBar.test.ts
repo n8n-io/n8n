@@ -536,7 +536,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			const thread = reactive<ArtifactThread>({
 				...mock<ArtifactThread>(),
 				id: 'thread-1',
-				messages: [],
+				artifactTurns: [],
 				producedArtifacts: new Map([
 					[skillTab.id, skillTab],
 					[workflowTab.id, workflowTab],
@@ -555,22 +555,15 @@ describe('InstanceAiPreviewTabBar', () => {
 			await hoverTab(container, skillTab.id);
 			expect(getHoverCard()).toHaveTextContent(skillTab.name);
 
-			thread.producedArtifacts.set(skillTab.id, { ...skillTab, name: 'Updated brand voice' });
-			thread.messages.push({
-				id: 'assistant-rename',
-				role: 'assistant',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
-				createdAt: '2026-11-10T00:00:00.000Z',
-				agentTree: {
-					agentId: 'orchestrator',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					children: [],
-					timeline: [],
+			thread.producedArtifacts = new Map(thread.producedArtifacts).set(skillTab.id, {
+				...skillTab,
+				name: 'Updated brand voice',
+			});
+			thread.artifactTurns = [
+				{
+					id: 'assistant-rename',
+					role: 'assistant',
+					isLive: false,
 					toolCalls: [
 						{
 							toolCallId: 'skill-rename',
@@ -584,7 +577,7 @@ describe('InstanceAiPreviewTabBar', () => {
 						},
 					],
 				},
-			});
+			];
 			await rerender({ tabs: preview.openTabs.value, activeTabId: preview.activeTabId.value });
 
 			expect(preview.activeTabId.value).toBe(workflowTab.id);
