@@ -394,7 +394,12 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const credentials = await context.getCredentials('weaviateApi');
 		const client = await createWeaviateClient(credentials as WeaviateCredential);
 
-		await clearCollection(client, collectionName, options.tenant);
+		try {
+			await clearCollection(client, collectionName, options.tenant);
+		} finally {
+			// This client is used only for the clear step, so release its connections
+			await client.close();
+		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {

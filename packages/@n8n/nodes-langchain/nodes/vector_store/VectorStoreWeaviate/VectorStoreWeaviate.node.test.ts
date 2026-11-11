@@ -410,7 +410,9 @@ describe('VectorStoreWeaviate.node', () => {
 	describe('populateVectorStore', () => {
 		const deleteCollection = vi.fn();
 		const removeTenants = vi.fn();
+		const closeClient = vi.fn();
 		const client = mock<WeaviateClient>({
+			close: closeClient,
 			collections: mock<WeaviateClient['collections']>({
 				delete: deleteCollection,
 				get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
@@ -431,6 +433,8 @@ describe('VectorStoreWeaviate.node', () => {
 			connectSpy.mockResolvedValue(client);
 			deleteCollection.mockClear();
 			removeTenants.mockClear();
+			closeClient.mockClear();
+			deleteCollection.mockReset();
 			vi.mocked(WeaviateStore.fromDocuments).mockClear();
 		});
 
@@ -493,6 +497,19 @@ describe('VectorStoreWeaviate.node', () => {
 
 				expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
 				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should close the client after the clear step', async () => {
+				await clear({ clearStore: true });
+
+				expect(closeClient).toHaveBeenCalledTimes(1);
+			});
+
+			it('should close the client when the clear step fails', async () => {
+				deleteCollection.mockRejectedValueOnce(new Error('clear failed'));
+
+				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
+				expect(closeClient).toHaveBeenCalledTimes(1);
 			});
 		});
 	});
