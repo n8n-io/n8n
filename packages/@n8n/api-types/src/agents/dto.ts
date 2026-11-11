@@ -573,6 +573,13 @@ export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
 export class PublishAgentDto extends Z.class({
 	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
+	/** The draft shown before confirmation. Omit when publishing a saved version. */
+	draft: z
+		.object({
+			versionId: z.string().min(1),
+			skillVersions: z.record(z.string(), z.number().int().positive()),
+		})
+		.optional(),
 }) {}
 
 export class RevertAgentToVersionDto extends Z.class({

@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys. Another operation on the same environment returns 423.
+
+  Requires the `promotions:connect` API key scope.
 x-required-scope: promotions:connect
 parameters:
   - schema:

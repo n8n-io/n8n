@@ -9,7 +9,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, PublicUser, User } from '@n8n/db';
+import type { Person, Project, PublicUser, User } from '@n8n/db';
 import {
 	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -57,9 +57,9 @@ const testServer = utils.setupTestServer({
 });
 
 describe('GET /users', () => {
-	let owner: User;
-	let member1: User;
-	let member2: User;
+	let owner: Person;
+	let member1: Person;
+	let member2: Person;
 	/** Team project where `member1` and `member2` are linked (for project-scoped listing as a member). */
 	let sharedListTeamProject: Project;
 	let ownerAgent: SuperAgentTest;
@@ -966,7 +966,7 @@ describe('PATCH /users/:id/settings', () => {
 
 		expect(response.body.data.allowSSOManualLogin).toBe(true);
 
-		const storedMember = await getUserById(member.id);
+		const storedMember = (await getUserById(member.id)) as Person;
 		expect(storedMember.settings?.allowSSOManualLogin).toBe(true);
 	});
 });

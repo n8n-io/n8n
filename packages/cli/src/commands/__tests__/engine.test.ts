@@ -205,11 +205,11 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts no task runner', async () => {
+		it('loads the nodes and starts the task runner module', async () => {
 			await createEngine().init();
 
 			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).not.toHaveBeenCalled();
+			expect(taskRunnerModule.start).toHaveBeenCalled();
 		});
 
 		it('sends execution responses and lifecycle events over Redis', async () => {

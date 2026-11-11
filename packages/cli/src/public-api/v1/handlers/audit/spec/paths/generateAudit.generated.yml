@@ -2,7 +2,10 @@ operationId: generateAudit
 tags:
   - Audit
 summary: Generate an audit
-description: Generate a security audit for your n8n instance.
+description: |-
+  Generate a security audit for your n8n instance.
+
+  Requires the `securityAudit:generate` API key scope.
 x-required-scope: securityAudit:generate
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

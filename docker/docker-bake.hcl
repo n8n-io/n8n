@@ -31,18 +31,18 @@ variable "DEBIAN_BUILDER_IMAGE" {
 
 # Published by build-base-image.yml on master.
 variable "RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
+  default = "n8nio/base:26.13.0-c86615646b167060211ad428f021f59099b62284@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0-debian@sha256:f7c8a059f942c7656154c18b17e1e739c79e23fe3b42475984f65f79eed0156f"
+  default = "n8nio/base:26.13.0-debian-b23a3454e958998b052277c130ee6f9f027427f0@sha256:cbdcf28cd718a9a3c8490cd2ee80dd61869e19e3a663ab0f7b762eb5e7ee2f4a"
 }
 
 # Published by build-node-pc-image.yml on master.
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-dev@sha256:3c61f963d32a93401083fa4b8ed97aa42fb8f4b05c4de2e724a9097d15184311"
+  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0-dev@sha256:13b88649776f735e4c2dd2818eb754f6fcd55a3444a114559d58995e55785b1b"
 }
 variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.13.0@sha256:19679b11bf8a89494668c3d86030f92532c2fbdd92a49eb14c813c59ad09d10d"
+  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0@sha256:16ce0475bc1336d7aaa877bbfc3c346d6355805594f3065c217655ee0fb0c4fc"
 }
 
 # Other base images. The runners take their Python version from the image tag.
