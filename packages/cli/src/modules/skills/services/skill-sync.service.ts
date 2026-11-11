@@ -274,7 +274,7 @@ export class SkillSyncService {
 					}
 				}
 				const followers = [...new Set(saved.flatMap((item) => item.followingAgentIds))];
-				return { saved, followers, ...(await this.visibleAgents(user, followers, ctx)) };
+				return { saved, followers };
 			});
 		} catch (error) {
 			for (const scan of scans.values()) {
@@ -324,10 +324,10 @@ export class SkillSyncService {
 				user.id,
 			);
 		}
+		// Permission reads use a separate connection, so they must run after commit.
 		return {
 			updatedCount: result.saved.length,
-			agents: result.agents,
-			hiddenAgentCount: result.hiddenAgentCount,
+			...(await this.visibleAgents(user, result.followers)),
 		};
 	}
 
@@ -407,13 +407,9 @@ export class SkillSyncService {
 		}
 	}
 
-	private async visibleAgents(
-		user: User,
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<SkillUpdateAgents> {
+	private async visibleAgents(user: User, agentIds: string[]): Promise<SkillUpdateAgents> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
-		const all = await this.skillUsage.findAgents(agentIds, ctx);
+		const all = await this.skillUsage.findAgents(agentIds);
 		const agents = [...all].flatMap(([id, agent]) =>
 			projectIds === null || projectIds.includes(agent.projectId) ? [{ id, name: agent.name }] : [],
 		);
