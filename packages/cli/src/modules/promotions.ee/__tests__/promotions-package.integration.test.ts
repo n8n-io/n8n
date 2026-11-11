@@ -18,7 +18,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -74,6 +74,7 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@n8n/backend-services';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -96,6 +97,7 @@ import { PromotionEnvironmentResolver } from '../promotion-environment.resolver'
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -127,7 +129,7 @@ let linkRepository: PromotionEnvironmentProjectRepository;
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 let packagesService: N8nPackagesService;
-let owner: User;
+let owner: Person;
 let testRoot: string;
 let remoteSeedRoot: string;
 let remoteSeed: Promise<TestRemote> | undefined;
@@ -197,8 +199,16 @@ beforeEach(async () => {
 	const instanceSettings = mock<InstanceSettings>({
 		n8nFolder: path.join(testRoot, 'instance'),
 		instanceId: 'inst-test',
+		isMultiMain: false,
 	});
 	workingDirectory = new PromotionWorkingDirectoryService(instanceSettings);
+	const checkoutCleanup = new PromotionCheckoutCleanupService(
+		workingDirectory,
+		environmentRepository,
+		logger,
+		mock<Publisher>(),
+		instanceSettings,
+	);
 	service = new PromotionsService(
 		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
 		new PromotionProvidersService(
@@ -208,8 +218,10 @@ beforeEach(async () => {
 			cipher,
 			mock<GitHostClients>(),
 			mock<EventService>(),
+			checkoutCleanup,
 		),
 		workingDirectory,
+		checkoutCleanup,
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
@@ -485,10 +497,7 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 
 /** The Apply preview, read through the test's `service` and its working directory. */
 async function loadApplyPreview(projectId: string) {
-	const preview = await changeService().getPreview(owner, projectId, 'apply', {
-		sort: 'name',
-		order: 'asc',
-	});
+	const preview = await changeService().getPreview(owner, projectId, 'apply');
 	assert(preview.check && preview.commitSha && preview.revision);
 	return {
 		...preview,
@@ -503,21 +512,16 @@ function changeService() {
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
-		Container.get(WorkflowRepository),
 		Container.get(SharedWorkflowRepository),
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(PromotionReviewGateService),
-		mockLogger(),
 	);
 }
 
 async function listApplyChanges(projectId: string) {
-	const { changes } = await changeService().getChanges(owner, projectId, 'apply', {
-		sort: 'name',
-		order: 'asc',
-	});
-	return changes;
+	const { resources } = await changeService().getPreview(owner, projectId, 'apply');
+	return resources.filter(({ change }) => change !== 'unchanged');
 }
 
 function dataTableNode(table: { id: string; name: string }): INode {

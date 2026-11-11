@@ -106,25 +106,50 @@ describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
 		expect(invoked).toEqual(['first']);
 	});
 
-	it('rejects non-string nodeName at the bridge boundary', () => {
-		// data.$ is never called when validation fails — capture that.
-		let dollarCalls = 0;
+	it.each([
+		['123', 123],
+		['', null],
+		['', false],
+	])('sends %j to data.$ for $(%j), like the legacy engine', (expected, nodeName) => {
+		const calledNodeNames: string[] = [];
 		const data: Record<string, unknown> = {
-			$: () => {
-				dollarCalls++;
+			$: (name: string) => {
+				calledNodeNames.push(name);
 				return { first: () => ({ json: { ok: true } }) };
 			},
 		};
 
-		// Tournament's runtime polyfill won't normally produce a non-string
-		// nodeName; this asserts the bridge's own type validation rejects
-		// the bad input rather than forwarding it to data.$.
-		// The result is undefined because the runtime error handler
-		// (E() injected by the bridge) swallows generic errors and returns
-		// undefined — same shape as the legacy engine.
-		const result = evaluator.evaluate('{{ $(123).first() }}', data, caller);
-		expect(result).toBeUndefined();
-		expect(dollarCalls).toBe(0);
+		const result = evaluator.evaluate(`{{ $(${JSON.stringify(nodeName)}).first() }}`, data, caller);
+
+		expect(result).toEqual({ json: { ok: true } });
+		expect(calledNodeNames).toEqual([expected]);
+	});
+
+	it('calls data.$ once per node and evaluation, and .first() on every read', () => {
+		const calledNodeNames: string[] = [];
+		let firstCalls = 0;
+		const data: Record<string, unknown> = {
+			$: (name: string) => {
+				calledNodeNames.push(name);
+				return {
+					first: () => {
+						firstCalls++;
+						return { json: { value: firstCalls } };
+					},
+				};
+			},
+		};
+
+		const both = evaluator.evaluate(
+			"{{ [$('Foo').first().json.value, $('Foo').first().json.value] }}",
+			data,
+			caller,
+		);
+		const next = evaluator.evaluate("{{ $('Foo').first().json.value }}", data, caller);
+
+		expect(both).toEqual([1, 2]);
+		expect(next).toBe(3);
+		expect(calledNodeNames).toEqual(['Foo', 'Foo']);
 	});
 
 	it('handles missing data.$ gracefully (returns undefined, does not crash)', () => {

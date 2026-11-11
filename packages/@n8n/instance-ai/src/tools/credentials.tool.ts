@@ -397,7 +397,7 @@ const setupCredentialsSchema = z.object({
 				credentialType: z
 					.string()
 					.describe(
-						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify with `search_credential_types` when unsure.',
+						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify by running `search_credential_types` through `call_tool` when unsure.',
 					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
@@ -826,7 +826,7 @@ async function validateSetupRequests(context: InstanceAiContext, requests: Setup
 				.map((type) => `"${type}"`)
 				.join(
 					', ',
-				)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it with search_credential_types, then retry.`,
+				)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it by running search_credential_types through call_tool, then retry.`,
 			...(Object.keys(suggestions).length > 0 ? { suggestions } : {}),
 		};
 	}

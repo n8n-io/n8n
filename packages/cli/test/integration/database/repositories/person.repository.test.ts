@@ -7,7 +7,7 @@ import {
 	PersonRepository,
 	ProjectRepository,
 	ServiceAccount,
-	UserRepository,
+	User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -18,12 +18,10 @@ import { createMember, createUserWithMfaEnabled } from '../../shared/db/users';
 
 describe('PersonRepository', () => {
 	let personRepository: PersonRepository;
-	let userRepository: UserRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		personRepository = Container.get(PersonRepository);
-		userRepository = Container.get(UserRepository);
 	});
 
 	beforeEach(async () => {
@@ -36,9 +34,44 @@ describe('PersonRepository', () => {
 
 	async function createServiceAccount(attributes: Partial<ServiceAccount> = {}) {
 		const table = Container.get(DataSource).getRepository(ServiceAccount);
-		return await table.save(
-			table.create({ role: GLOBAL_MEMBER_ROLE, password: 'set', ...attributes }),
-		);
+		return await table.save(table.create({ role: GLOBAL_MEMBER_ROLE, ...attributes }));
+	}
+
+	async function reloadPerson(id: string) {
+		return await Container.get(DataSource).getRepository(Person).findOneByOrFail({ id });
+	}
+
+	/** `ServiceAccount` has no `email` property, so read the stored column directly. */
+	async function readStoredEmail(id: string) {
+		const row = await Container.get(DataSource)
+			.getRepository(User)
+			.createQueryBuilder('user')
+			.select('user.email', 'email')
+			.where('user.id = :id', { id })
+			.getRawOne<{ email: string | null }>();
+		return row?.email;
+	}
+
+	/** `mfaEnabled` is protected on `ServiceAccount`, so write and read the stored column directly. */
+	async function setStoredMfaEnabled(id: string) {
+		// Typed as `Person` because `User` hides the column. The update targets `User`, so it reaches any kind.
+		const columns: Partial<Person> = { mfaEnabled: true };
+		await Container.get(DataSource)
+			.createQueryBuilder()
+			.update(User)
+			.set(columns)
+			.where('id = :id', { id })
+			.execute();
+	}
+
+	async function readStoredMfaEnabled(id: string) {
+		const row = await Container.get(DataSource)
+			.getRepository(User)
+			.createQueryBuilder('user')
+			.select('user.mfaEnabled', 'mfaEnabled')
+			.where('user.id = :id', { id })
+			.getRawOne<{ mfaEnabled: boolean | number }>();
+		return Boolean(row?.mfaEnabled);
 	}
 
 	describe('lookups', () => {
@@ -78,7 +111,8 @@ describe('PersonRepository', () => {
 
 		it('counts people with MFA, but not service accounts', async () => {
 			await createUserWithMfaEnabled();
-			await createServiceAccount({ mfaEnabled: true });
+			const serviceAccount = await createServiceAccount();
+			await setStoredMfaEnabled(serviceAccount.id);
 
 			expect(await personRepository.countWithMfaEnabled()).toBe(1);
 		});
@@ -86,12 +120,12 @@ describe('PersonRepository', () => {
 
 	describe('writes', () => {
 		it('does not disable MFA of a service account', async () => {
-			const serviceAccount = await createServiceAccount({ mfaEnabled: true });
+			const serviceAccount = await createServiceAccount();
+			await setStoredMfaEnabled(serviceAccount.id);
 
 			await personRepository.disableMfa(serviceAccount.id);
 
-			const reloaded = await userRepository.findOneByOrFail({ id: serviceAccount.id });
-			expect(reloaded.mfaEnabled).toBe(true);
+			expect(await readStoredMfaEnabled(serviceAccount.id)).toBe(true);
 		});
 
 		it('saves survey answers of a person', async () => {
@@ -99,7 +133,7 @@ describe('PersonRepository', () => {
 
 			await personRepository.saveSurveyAnswers(person.id, { companySize: '20-99' });
 
-			const reloaded = await userRepository.findOneByOrFail({ id: person.id });
+			const reloaded = await reloadPerson(person.id);
 			expect(reloaded.personalizationAnswers).toEqual({ companySize: '20-99' });
 		});
 	});
@@ -112,7 +146,7 @@ describe('PersonRepository', () => {
 			const result = await personRepository.changeEmail(person.id, person.email, newEmail);
 
 			expect(result).toBe('changed');
-			const updated = await userRepository.findOneByOrFail({ id: person.id });
+			const updated = await reloadPerson(person.id);
 			expect(updated.email).toBe(newEmail);
 
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -131,7 +165,7 @@ describe('PersonRepository', () => {
 			);
 
 			expect(result).toBe('stale');
-			const updated = await userRepository.findOneByOrFail({ id: person.id });
+			const updated = await reloadPerson(person.id);
 			expect(updated.email).toBe(person.email);
 		});
 
@@ -150,13 +184,12 @@ describe('PersonRepository', () => {
 			// Pass the stored (null) email, so only the Person filter can return 'stale'.
 			const result = await personRepository.changeEmail(
 				serviceAccount.id,
-				serviceAccount.email,
+				null as unknown as string,
 				randomEmail(),
 			);
 
 			expect(result).toBe('stale');
-			const reloaded = await userRepository.findOneByOrFail({ id: serviceAccount.id });
-			expect(reloaded.email).toBeNull();
+			expect(await readStoredEmail(serviceAccount.id)).toBeNull();
 		});
 	});
 
@@ -184,6 +217,27 @@ describe('PersonRepository', () => {
 
 			expect(users.map((u) => u.id)).toEqual([person.id]);
 			expect(total).toBe(1);
+		});
+	});
+
+	describe('users list', () => {
+		it('lists and counts persons only', async () => {
+			const person = await createMember();
+			await createServiceAccount();
+
+			const { users, count } = await personRepository.listUsers({
+				filter: {},
+				take: 10,
+				skip: 0,
+			});
+
+			expect(users.map((u) => u.id)).toEqual([person.id]);
+			expect(count).toBe(1);
+			await expect(personRepository.countUserListStatuses({})).resolves.toEqual({
+				all: 1,
+				active: 1,
+				deactivated: 0,
+			});
 		});
 	});
 });

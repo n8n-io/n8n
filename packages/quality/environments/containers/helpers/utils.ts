@@ -48,7 +48,7 @@ export function createSilentLogConsumer() {
 export function createReadinessProbe(
 	path: string,
 	port: number,
-	options: { startupTimeoutMs: number; readTimeoutMs: number },
+	options: { startupTimeoutMs: number; readTimeoutMs: number; tls?: boolean },
 ) {
 	let lastBody: string | null = null;
 
@@ -63,6 +63,8 @@ export function createReadinessProbe(
 		.forStatusCode(200)
 		.withStartupTimeout(options.startupTimeoutMs)
 		.withReadTimeout(options.readTimeoutMs);
+	// The probe only checks liveness, so it skips verifying the test certificate.
+	if (options.tls) strategy.usingTls().allowInsecure();
 
 	return {
 		strategy,

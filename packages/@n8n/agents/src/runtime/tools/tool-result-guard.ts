@@ -13,7 +13,7 @@ import { isContentToolResultOutput, type ContentToolResultOutput } from '../mode
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export {
-	EXPIRED_OFFLOADED_TOOL_RESULT,
+	RUN_SCOPED_OFFLOADED_TOOL_RESULT,
 	sanitizeOffloadedToolResultsForMemory,
 } from '../memory/tool-result-memory';
 
