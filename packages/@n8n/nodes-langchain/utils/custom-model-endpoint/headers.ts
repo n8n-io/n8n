@@ -3,12 +3,14 @@ import { UserError } from '@n8n/errors';
 
 import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
 
-/**
- * RFC 6749 section 2.3.1 percent-encodes both halves before base64, unlike the
- * raw bytes RFC 7617 Basic sends. A secret holding ':' is unparseable without it.
- */
+/** The application/x-www-form-urlencoded algorithm, which encodeURIComponent is not. */
+export function formEncoded(value: string): string {
+	return new URLSearchParams({ value }).toString().slice('value='.length);
+}
+
+/** RFC 6749 section 2.3.1 form-encodes both halves before base64, unlike RFC 7617 Basic. */
 export function oauth2BasicCredentials(login: OAuth2Login): string {
-	const pair = `${encodeURIComponent(login.clientId)}:${encodeURIComponent(login.clientSecret)}`;
+	const pair = `${formEncoded(login.clientId)}:${formEncoded(login.clientSecret)}`;
 	return Buffer.from(pair).toString('base64');
 }
 

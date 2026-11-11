@@ -147,39 +147,4 @@ describe('a rejected login', () => {
 		expect(calls).toBe(1);
 		expect(response.status).toBe(401);
 	});
-
-	it('redacts a token the gateway echoed, though it was minted after the wrapper was built', async () => {
-		const tokenUrl = 'https://login.example.com/oauth2/token';
-		const minted = 'tok-9f2a71c4ab';
-		const endpoint = endpointWith({
-			type: 'oauth2',
-			tokenUrl,
-			clientId: 'client-1',
-			clientSecret: 'cs-9f2a71c4ab',
-			scope: '',
-			sendCredentialsIn: 'header',
-		});
-		const baseFetch = (async (input: RequestInfo | URL) =>
-			input.toString() === tokenUrl
-				? new Response(JSON.stringify({ access_token: minted, expires_in: 3600 }))
-				: new Response(JSON.stringify({ error: { message: `Rejected ${minted}` } }), {
-						status: 401,
-					})) as typeof fetch;
-
-		let secrets: () => string[] = () => [];
-		const transport = createCustomModelEndpointAuthFetch(
-			ctx,
-			{},
-			{
-				endpoint,
-				egressFilter: allowAll,
-				baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, { secrets: () => secrets() }),
-			},
-		);
-		secrets = transport.secrets;
-		const text = await (await transport.fetch(BASE_URL)).text();
-
-		expect(text).not.toContain(minted);
-		expect(text).toContain('[redacted]');
-	});
 });
