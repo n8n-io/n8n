@@ -216,7 +216,15 @@ export class ToolCallRunner {
 		}
 
 		// Final result only: a call that suspended reports once, after resume.
-		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
+		if (guardrails && guardCtx) {
+			const stop = await guardrails.afterTool(guardCtx, toolResult);
+			if (stop) {
+				return await this.toolError(
+					params,
+					new Error(`Tool result blocked by guardrail: ${stop.code}`),
+				);
+			}
+		}
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
