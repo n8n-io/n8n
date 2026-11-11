@@ -338,6 +338,87 @@ workloads.w10 = workflow(
 );
 
 mkdirSync(outDir, { recursive: true });
+// The Python workloads have their own id counter, so the ids of the workloads
+// above and of the W14 copies do not change.
+let pyCounter = 0;
+const pyUuid = (prefix) =>
+	`${prefix.padEnd(8, '0').slice(0, 8)}-0000-4000-9000-${String(++pyCounter).padStart(12, '0')}`;
+
+function pyWebhook(path) {
+	return {
+		id: pyUuid('a1'),
+		name: 'Webhook',
+		type: 'n8n-nodes-base.webhook',
+		typeVersion: 2,
+		position: [0, 0],
+		webhookId: pyUuid('b1'),
+		parameters: {
+			httpMethod: 'POST',
+			path,
+			responseMode: 'lastNode',
+			responseData: 'allEntries',
+			options: {},
+		},
+	};
+}
+
+function pyCode(name, pythonCode, x = 200, mode = 'runOnceForAllItems') {
+	return {
+		id: pyUuid('c2'),
+		name,
+		type: 'n8n-nodes-base.code',
+		typeVersion: 2,
+		position: [x, 0],
+		parameters: { mode, language: 'pythonNative', pythonCode },
+	};
+}
+
+// WPY1: one Python Code node that returns its input (the Python twin of W1).
+workloads.wpy1 = workflow(
+	'spikeWPY00000001',
+	'WPY1 one Python Code node',
+	[pyWebhook('spike-wpy1'), pyCode('Code', 'return _items')],
+	chain('Webhook', 'Code'),
+);
+
+// WPY5: five Python Code nodes in a row (the Python twin of W2).
+const wpy5Nodes = [pyWebhook('spike-wpy5')];
+const wpy5Names = ['Webhook'];
+for (let i = 1; i <= 5; i++) {
+	wpy5Nodes.push(
+		pyCode(
+			`Code ${i}`,
+			`return [{"json": {**item["json"], "step${i}": True}} for item in _items]`,
+			200 * i,
+		),
+	);
+	wpy5Names.push(`Code ${i}`);
+}
+workloads.wpy5 = workflow('spikeWPY50000001', 'WPY5 five Python Code nodes', wpy5Nodes, chain(...wpy5Names));
+
+// WMIX: a JS Code node, then a Python Code node, in one execution. A sandbox runs
+// one runtime, so the execution needs two sandboxes.
+workloads.wmix = workflow(
+	'spikeWMIX0000001',
+	'WMIX JS and Python Code nodes',
+	[
+		pyWebhook('spike-wmix'),
+		{
+			id: pyUuid('c3'),
+			name: 'JS',
+			type: 'n8n-nodes-base.code',
+			typeVersion: 2,
+			position: [200, 0],
+			parameters: {
+				mode: 'runOnceForAllItems',
+				jsCode: 'return $input.all().map(i => ({ json: { ...i.json, js: true } }));',
+			},
+		},
+		pyCode('Python', 'return [{"json": {**item["json"], "py": True}} for item in _items]', 400),
+	],
+	chain('Webhook', 'JS', 'Python'),
+);
+
 for (const [name, wf] of Object.entries(workloads)) {
 	writeFileSync(join(outDir, `${name}.json`), JSON.stringify(wf, null, '\t') + '\n');
 }

@@ -20,6 +20,8 @@ export type ReleaseReason =
 export interface Lease {
 	id: number;
 	scopeKey: string;
+	/** The runtime of the sandbox (`n8n-js`, `n8n-py`). A sandbox runs one runtime. */
+	runtime: string;
 	/** The workflow of the first task. For the analysis only. */
 	workflowId?: string;
 	/** Empty while the sandbox is being created. */
@@ -58,6 +60,7 @@ interface TaskWaiter {
 
 interface LeaseGroup {
 	scopeKey: string;
+	runtime: string;
 	sandboxes: Lease[];
 	waiting: TaskWaiter[];
 }
@@ -113,17 +116,25 @@ export class SandboxLeaseManager {
 		return n;
 	}
 
-	/** Reserves a slot for a task of the scope key. */
+	/**
+	 * Reserves a slot for a task of the scope key. The scope key must name
+	 * the runtime too: all sandboxes of a key run the same runtime.
+	 */
 	async acquire(
 		scopeKey: string,
 		executionId: string | undefined,
 		workflowId?: string,
+		runtime: string = this.config.runtime,
 	): Promise<AcquireResult> {
 		if (this.shuttingDown) throw new SandboxCreateError('n8n is shutting down');
 		let group = this.groups.get(scopeKey);
 		if (!group) {
-			group = { scopeKey, sandboxes: [], waiting: [] };
+			group = { scopeKey, runtime, sandboxes: [], waiting: [] };
 			this.groups.set(scopeKey, group);
+		} else if (group.runtime !== runtime) {
+			throw new UnexpectedError('A scope key was used with two runtimes', {
+				extra: { scopeKey, runtime, groupRuntime: group.runtime },
+			});
 		}
 		const result = new Promise<AcquireResult>((resolve, reject) => {
 			group.waiting.push({ executionId, workflowId, enqueuedAt: Date.now(), resolve, reject });
@@ -262,6 +273,7 @@ export class SandboxLeaseManager {
 		const lease: Lease = {
 			id: this.nextLeaseId++,
 			scopeKey: group.scopeKey,
+			runtime: group.runtime,
 			workflowId,
 			sandboxId: '',
 			slots: this.config.slots,
@@ -285,7 +297,7 @@ export class SandboxLeaseManager {
 	private async createSandbox(lease: Lease) {
 		const t0 = Date.now();
 		const sandbox = await this.client.createSandbox({
-			runtime: this.config.runtime,
+			runtime: lease.runtime,
 			slots: lease.slots,
 			taskMemoryMb: this.config.taskMemoryMb,
 			spareWorkers: this.config.spareWorkers,
@@ -367,6 +379,7 @@ export class SandboxLeaseManager {
 		this.timings.lease({
 			scopeMode: this.config.scope,
 			scopeKey: lease.scopeKey,
+			runtime: lease.runtime,
 			sandboxId: lease.sandboxId,
 			workflowId: lease.workflowId,
 			createMs: lease.createMs,
@@ -395,6 +408,7 @@ export class SandboxLeaseManager {
 					const sb = await this.client.getSandbox(sandboxId);
 					this.timings.event('processes', {
 						sandboxId,
+						runtime: sb.runtime,
 						workersStarted: sb.workersStarted,
 						cpuUsageUsec: sb.cpuUsageUsec,
 						memoryPeakBytes: sb.memoryPeakBytes,

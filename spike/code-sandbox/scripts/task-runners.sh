@@ -6,6 +6,7 @@
 #   spike/code-sandbox/scripts/task-runners.sh start|stop|status
 #
 #   RUNNERS_IMAGE  default n8nio/runners:<version of packages/cli>
+#   RUNNER_TYPES   runners that the launcher starts (default: javascript; "javascript python" for both)
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 NAME=n8n-spike-task-runners
@@ -19,10 +20,11 @@ start)
 	docker pull -q "$IMAGE" >/dev/null
 	# Bridge network: the launcher and runner health ports (5680, 5681) would
 	# collide with the echo server on the host network.
+	# shellcheck disable=SC2086 # RUNNER_TYPES is a list of words.
 	docker run -d --name "$NAME" --add-host=host.docker.internal:host-gateway \
 		-e N8N_RUNNERS_TASK_BROKER_URI=http://host.docker.internal:5679 \
 		-e N8N_RUNNERS_AUTH_TOKEN="$TOKEN" \
-		"$IMAGE" javascript >/dev/null
+		"$IMAGE" ${RUNNER_TYPES:-javascript} >/dev/null
 	echo "started $NAME ($IMAGE)"
 	;;
 stop)

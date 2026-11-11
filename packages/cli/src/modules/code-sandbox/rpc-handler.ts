@@ -8,10 +8,6 @@ export const ALLOWED_RPC_METHODS = ['helpers.httpRequest', 'helpers.request'] as
 
 type AllowedMethod = (typeof ALLOWED_RPC_METHODS)[number];
 
-function isAllowedMethod(name: string): name is AllowedMethod {
-	return (ALLOWED_RPC_METHODS as readonly string[]).includes(name);
-}
-
 /**
  * Serializes an error for the RPC result. Only small, known fields go over the
  * wire: an HTTP client error can hold sockets and request objects.
@@ -36,10 +32,23 @@ export function serializeRpcError(e: unknown): Record<string, unknown> {
 export class RpcHandler {
 	rpcCount = 0;
 
-	constructor(private readonly executeFunctions: IExecuteFunctions) {}
+	/**
+	 * @param allowed The methods that the task may call. Python tasks have no
+	 * helpers that call n8n, so they get none: a call from Python user code
+	 * that writes to the control socket by hand is refused. Required, so that a
+	 * caller cannot get the full list by accident.
+	 */
+	constructor(
+		private readonly executeFunctions: IExecuteFunctions,
+		private readonly allowed: readonly AllowedMethod[],
+	) {}
+
+	private isAllowedMethod(name: string): name is AllowedMethod {
+		return (this.allowed as readonly string[]).includes(name);
+	}
 
 	async handleCall(call: { name: string; params: unknown[] }): Promise<RpcReply> {
-		if (!isAllowedMethod(call.name)) {
+		if (!this.isAllowedMethod(call.name)) {
 			return { ok: false, error: { message: 'Method not allowed' } };
 		}
 		this.rpcCount++;

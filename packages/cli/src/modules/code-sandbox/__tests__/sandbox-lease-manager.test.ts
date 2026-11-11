@@ -11,6 +11,8 @@ type Scope = 'node' | 'execution' | 'workflow';
 class FakeClient {
 	created: string[] = [];
 
+	runtimes: string[] = [];
+
 	deleted: string[] = [];
 
 	failCreate = false;
@@ -19,7 +21,8 @@ class FakeClient {
 
 	private n = 0;
 
-	async createSandbox() {
+	async createSandbox(opts: { runtime: string }) {
+		this.runtimes.push(opts.runtime);
 		await new Promise((r) => setTimeout(r, this.createDelayMs));
 		if (this.failCreate) throw new Error('runner unavailable');
 		const id = `00000000-0000-4000-8000-${String(++this.n).padStart(12, '0')}`;
@@ -58,6 +61,24 @@ function setup(scope: Scope, overrides: Partial<CodeSandboxConfig> = {}) {
 }
 
 describe('SandboxLeaseManager', () => {
+	it('creates the sandbox of a key with the runtime of the key', async () => {
+		const { manager, client } = setup('execution');
+		const js = await manager.acquire('e:1', '1');
+		const py = await manager.acquire('e:1:py', '1', undefined, 'n8n-py');
+		expect(client.runtimes).toEqual(['n8n-js', 'n8n-py']);
+		expect(js.lease).not.toBe(py.lease);
+		expect(py.lease.runtime).toBe('n8n-py');
+		await expect(manager.acquire('e:1:py', '1', undefined, 'n8n-js')).rejects.toThrow(
+			'two runtimes',
+		);
+
+		// Both sandboxes of the execution are released at its end.
+		manager.onTaskEnd(js.lease);
+		manager.onTaskEnd(py.lease);
+		manager.releaseForExecution('1', 'execution_end');
+		await vi.waitFor(() => expect(client.deleted).toHaveLength(2));
+	});
+
 	it('shares one create between concurrent tasks of a key', async () => {
 		const { manager, client } = setup('execution');
 		const [a, b] = await Promise.all([manager.acquire('e:1', '1'), manager.acquire('e:1', '1')]);

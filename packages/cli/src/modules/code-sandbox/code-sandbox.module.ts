@@ -17,7 +17,8 @@ export class CodeSandboxModule implements ModuleInterface {
 
 		// Imported for its side effect: `@OnLifecycleEvent` registers on class definition.
 		await import('./code-sandbox-lifecycle.js');
-		Container.get(Logger).info('Code sandbox backend enabled for JavaScript Code tasks', {
+		Container.get(Logger).info('Code sandbox backend enabled for Code tasks', {
+			languages: config.pythonEnabled ? ['javascript', 'python'] : ['javascript'],
 			scope: config.scope,
 			slots: config.slots,
 			idleTimeoutMs: config.idleTimeoutMs,

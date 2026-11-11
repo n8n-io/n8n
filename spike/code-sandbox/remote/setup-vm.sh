@@ -7,7 +7,9 @@
 #
 # It is safe to run again. Steps that are done already are fast.
 #
-#   spike/code-sandbox/remote/setup-vm.sh [all|docker|tools|n8n|service|image|publish|stack|spike]
+#   spike/code-sandbox/remote/setup-vm.sh [all|docker|tools|n8n|service|image|publish|stack|spike|fc]
+#
+# A Firecracker host: docker, tools, n8n, image, fc, spike (see the fc step).
 #
 # A VM that got a copy of a built VM (remote.sh clone) needs only:
 #   docker, tools, publish, stack, spike
@@ -168,6 +170,54 @@ if want stack; then
 		docker exec "$c" docker pull -q registry:5000/n8n-code-sandbox:latest >/dev/null
 	done
 	until curl -sf "$N8N_SANDBOX_SERVICE_URL/healthz" >/dev/null; do sleep 1; done
+	log "API is up at $N8N_SANDBOX_SERVICE_URL"
+fi
+
+# fc: a Firecracker host (bare metal, for example m6i.metal) instead of the
+# Docker stack. Run it after docker, tools, n8n and image, and skip service and
+# stack. Set FC_XFS_DEVICE (for example /dev/nvme1n1, all data on it is lost) to
+# put /srv/firecracker on XFS with reflink, so the rootfs clone of a create is a
+# reflink and not a copy.
+if [[ "$STEP" == "fc" ]]; then
+	[[ -e /dev/kvm ]] || {
+		echo "/dev/kvm is missing: Firecracker needs a bare metal instance or nested virtualization" >&2
+		exit 1
+	}
+	if [[ -n "${FC_XFS_DEVICE:-}" ]] && ! mountpoint -q /srv/firecracker; then
+		log "XFS with reflink on $FC_XFS_DEVICE for /srv/firecracker"
+		sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q xfsprogs >/dev/null
+		sudo mkfs.xfs -f -m reflink=1 "$FC_XFS_DEVICE" >/dev/null
+		sudo mkdir -p /srv/firecracker
+		sudo mount "$FC_XFS_DEVICE" /srv/firecracker
+	fi
+	log "Firecracker host, regular template and snapshot (setup-firecracker-e2e-vm.sh)"
+	# The script builds from ~/project.
+	ln -sfn "$SERVICE_DIR" "$HOME/project"
+	bash "$SERVICE_DIR/scripts/firecracker.ee/setup-firecracker-e2e-vm.sh" >"$REMOTE_DIR/fc-setup.log" 2>&1 || {
+		tail -40 "$REMOTE_DIR/fc-setup.log"
+		exit 1
+	}
+	export PATH="/usr/local/go/bin:$PATH"
+	log "Sandbox service: API, Firecracker runner and code-init binaries"
+	make -C "$SERVICE_DIR" api runner-firecracker >/dev/null
+	(cd "$SERVICE_DIR" && CGO_ENABLED=0 GOOS=linux go build -o bin/code-init ./cmd/code-init.ee)
+	log "Golden code snapshot from n8n-code-sandbox:local"
+	# The log stays readable by the calling user.
+	# shellcheck disable=SC2024
+	sudo env CODE_SANDBOX_IMAGE=n8n-code-sandbox:local CODE_INIT_BIN="$SERVICE_DIR/bin/code-init" \
+		bash "$SERVICE_DIR/scripts/firecracker.ee/build-code-snapshot.sh" >"$REMOTE_DIR/fc-code-snapshot.log" 2>&1 || {
+		tail -40 "$REMOTE_DIR/fc-code-snapshot.log"
+		exit 1
+	}
+	sudo mkdir -p /srv/firecracker/sandboxes
+	grep -q RUNNER_BACKEND "$ENV_FILE" || cat >>"$ENV_FILE" <<'EOF'
+# Firecracker host: the passes run the API and the Firecracker runner as host
+# processes (fc-stack.sh).
+export RUNNER_BACKEND=firecracker
+export COMPOSE=spike/code-sandbox/scripts/fc-stack.sh
+EOF
+	log "Start the stack: spike/code-sandbox/scripts/fc-stack.sh up"
+	SANDBOX_SERVICE_DIR="$SERVICE_DIR" spike/code-sandbox/scripts/fc-stack.sh up
 	log "API is up at $N8N_SANDBOX_SERVICE_URL"
 fi
 

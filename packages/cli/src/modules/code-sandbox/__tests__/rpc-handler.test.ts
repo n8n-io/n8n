@@ -3,12 +3,28 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { ALLOWED_RPC_METHODS, RpcHandler, serializeRpcError } from '../rpc-handler';
 
-function handlerWith(httpRequest: (...args: unknown[]) => Promise<unknown>) {
+function handlerWith(
+	httpRequest: (...args: unknown[]) => Promise<unknown>,
+	allowed: typeof ALLOWED_RPC_METHODS | readonly [] = ALLOWED_RPC_METHODS,
+) {
 	const executeFunctions = mock<IExecuteFunctions>();
 	const helpers = { httpRequest: vi.fn(httpRequest), request: vi.fn(httpRequest) };
 	(executeFunctions as unknown as { helpers: typeof helpers }).helpers = helpers;
-	return { handler: new RpcHandler(executeFunctions), helpers };
+	return { handler: new RpcHandler(executeFunctions, allowed), helpers };
 }
+
+describe('RpcHandler with no allowed methods (Python tasks)', () => {
+	it('refuses every call', async () => {
+		const { handler, helpers } = handlerWith(async () => 'ok', []);
+		await expect(
+			handler.handleCall({ name: 'helpers.httpRequest', params: [{}] }),
+		).resolves.toEqual({
+			ok: false,
+			error: { message: 'Method not allowed' },
+		});
+		expect(helpers.httpRequest).not.toHaveBeenCalled();
+	});
+});
 
 describe('RpcHandler', () => {
 	it('allows only the httpRequest helpers', () => {

@@ -32,6 +32,14 @@ export interface CodeTaskFile {
 	binaries: StagedBinary[];
 }
 
+/** The content of `in/task.json` of a Python task. Same shape as in @n8n/code-runtime-python. */
+export interface PythonCodeTaskFile {
+	taskId: string;
+	language: 'python';
+	/** The settings that the Code node gives to `startJob('python')`, with the input items. */
+	settings: Record<string, unknown>;
+}
+
 export interface BuiltTask {
 	inputs: CodeTaskInput[];
 	bytesTaskJson: number;
@@ -92,7 +100,20 @@ export class CodeTaskBuilder {
 		return this.finish({ taskId, settings, data, nodeTypes, binaries }, inputs);
 	}
 
-	private finish(file: CodeTaskFile, binaryInputs: Array<CodeTaskInput & { size: number }>) {
+	/**
+	 * Builds a Python task. The Code node already put the input items in the
+	 * settings (like for the Python task runner), so `task.json` is the
+	 * settings. Python has no binary helpers, so no binaries are staged.
+	 */
+	buildPython(taskId: string, settings: Record<string, unknown>): BuiltTask {
+		const file: PythonCodeTaskFile = { taskId, language: 'python', settings };
+		return this.finish(file, []);
+	}
+
+	private finish(
+		file: CodeTaskFile | PythonCodeTaskFile,
+		binaryInputs: Array<CodeTaskInput & { size: number }>,
+	) {
 		const taskJson = Buffer.from(JSON.stringify(file));
 		return {
 			inputs: [{ path: 'task.json', content: taskJson }, ...binaryInputs],

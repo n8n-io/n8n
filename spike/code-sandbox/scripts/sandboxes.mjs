@@ -10,6 +10,11 @@
  * SANDBOX_URL (default http://127.0.0.1:8080) and SANDBOX_ADMIN_KEY (default
  * "test") select the API. RUNNER_CONTAINERS (comma list) names the runner
  * containers for `docker exec ... docker stats`.
+ *
+ * RUNNER_BACKEND=firecracker reads the host memory of each Firecracker process
+ * instead (RSS and PSS from /proc/<pid>/smaps_rollup, with `sudo -n`), and the
+ * host MemAvailable. PSS splits the pages of the shared golden snapshot file
+ * between the microVMs that map it.
  */
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
@@ -36,8 +41,47 @@ async function codeSandboxes() {
 	return list.filter((s) => s.kind === 'code');
 }
 
+const FC_MEM_SCRIPT = `
+for p in $(pgrep -x firecracker); do
+  id=$(tr '\\0' ' ' </proc/$p/cmdline | sed -n 's/.*--id \\([^ ]*\\).*/\\1/p')
+  awk -v id="$id" '/^Rss:/ {r=$2} /^Pss:/ {s=$2} END {print id, r, s}' /proc/$p/smaps_rollup 2>/dev/null
+done
+awk '/^MemAvailable:/ {print "MemAvailable", $2}' /proc/meminfo
+`;
+
+/** Host memory of the Firecracker microVMs (KiB from /proc, reported in MiB). */
+function firecrackerMemory() {
+	const out = { vms: 0, totalMiB: 0, pssTotalMiB: 0, perVm: [], hostAvailableMiB: null };
+	try {
+		const text = execFileSync('sudo', ['-n', 'sh', '-c', FC_MEM_SCRIPT], {
+			encoding: 'utf-8',
+			timeout: 20_000,
+		});
+		for (const line of text.trim().split('\n').filter(Boolean)) {
+			const [id, a, b] = line.split(' ');
+			if (id === 'MemAvailable') {
+				out.hostAvailableMiB = Math.round(Number(a) / 1024);
+				continue;
+			}
+			const rss = Number(a) / 1024;
+			const pss = Number(b) / 1024;
+			if (Number.isNaN(rss)) continue;
+			out.vms++;
+			out.totalMiB += rss;
+			out.pssTotalMiB += pss;
+			out.perVm.push({ vmId: id, rssMiB: Math.round(rss), pssMiB: Math.round(pss) });
+		}
+	} catch {
+		// sudo or /proc not readable.
+	}
+	out.totalMiB = Math.round(out.totalMiB);
+	out.pssTotalMiB = Math.round(out.pssTotalMiB);
+	return out;
+}
+
 /** Memory of the code sandbox containers, from the cgroup data of each runner. */
 function memory() {
+	if (process.env.RUNNER_BACKEND === 'firecracker') return firecrackerMemory();
 	const out = { containers: 0, totalMiB: 0, perContainerMiB: [] };
 	for (const runner of runners) {
 		try {

@@ -14,6 +14,7 @@ export interface TaskTimingRecord {
 	workflowId?: string;
 	nodeId: string;
 	taskId: string;
+	language?: string;
 	nodeMode?: string;
 	reuseWorkers?: boolean;
 	leaseHit?: boolean;
@@ -43,6 +44,8 @@ export interface TaskTimingRecord {
 	rpc_post_count?: number;
 	output_bytes?: number;
 	binSentUnused?: boolean;
+	/** Python: print calls of the task, logged to the node output. */
+	print_count?: number;
 	sandboxOutOutsideBinary?: number;
 	outcome: TaskOutcome;
 	error?: string;
@@ -52,6 +55,7 @@ export interface TaskTimingRecord {
 export interface LeaseRecord {
 	scopeMode: string;
 	scopeKey: string;
+	runtime?: string;
 	sandboxId: string;
 	workflowId?: string;
 	createMs?: number;

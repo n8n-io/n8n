@@ -9,6 +9,7 @@ import type { CodeSandboxConfig } from '../code-sandbox.config';
 import { CodeSandboxBackend, CodeSandboxInfraError } from '../code-sandbox-backend';
 import type { CodeSandboxTimings, TaskTimingRecord } from '../code-sandbox-timings';
 import type { BuiltTask, CodeTaskBuilder } from '../code-task-builder';
+import { ALLOWED_RPC_METHODS } from '../rpc-handler';
 import type { Lease, SandboxLeaseManager } from '../sandbox-lease-manager';
 import {
 	TaskApiError,
@@ -46,7 +47,15 @@ const untilAborted = async (signal: AbortSignal) =>
 		);
 	});
 
-function setup(runTask: RunTask) {
+type Lang = {
+	language: 'javascript' | 'python';
+	runtime: string;
+	rpcMethods: typeof ALLOWED_RPC_METHODS | readonly [];
+};
+const JS: Lang = { language: 'javascript', runtime: 'n8n-js', rpcMethods: ALLOWED_RPC_METHODS };
+const PY: Lang = { language: 'python', runtime: 'n8n-py', rpcMethods: [] };
+
+function setup(runTask: RunTask, lang: Lang = JS) {
 	const posted: Array<{ callId: string; reply: RpcReply }> = [];
 	const client = {
 		runTask: vi.fn(runTask),
@@ -58,7 +67,12 @@ function setup(runTask: RunTask) {
 	};
 	const leases = { client, markBroken: vi.fn() } as unknown as SandboxLeaseManager;
 	const backend = new CodeSandboxBackend(
-		mock<CodeSandboxConfig>({ inlineResultMaxBytes: 1024 * 1024 }),
+		mock<CodeSandboxConfig>({
+			inlineResultMaxBytes: 1024 * 1024,
+			scope: 'execution',
+			runtime: 'n8n-js',
+			pythonRuntime: 'n8n-py',
+		}),
 		leases,
 		mock<CodeTaskBuilder>(),
 		mock<CodeSandboxTimings>(),
@@ -88,10 +102,12 @@ function setup(runTask: RunTask) {
 			backend as unknown as {
 				runOnLease: (...args: unknown[]) => Promise<unknown>;
 			}
-		).runOnLease(lease, 'e:1', 't1', built, executeFunctions, rec);
+		).runOnLease(lease, 'e:1', 't1', built, executeFunctions, rec, lang);
 
 	return {
 		run,
+		backend,
+		executeFunctions,
 		client,
 		leases,
 		posted,
@@ -207,5 +223,67 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 		await expect(t.run()).resolves.toBeDefined();
 		expect(t.helperCalls).toHaveLength(0);
+	});
+});
+
+describe('CodeSandboxBackend Python tasks', () => {
+	it('gives Python tasks their own scope key', () => {
+		const { backend } = setup(async () => doneEvent);
+		expect(backend.scopeKey('1', 'n', 'w', 'python').key).toBe('e:1:py');
+		expect(backend.scopeKey('1', 'n', 'w', 'javascript').key).toBe('e:1');
+	});
+
+	it('refuses RPC calls of a Python task', async () => {
+		const t = setup(async (_s, _spec, _i, onEvent) => {
+			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent(rpcEvent);
+			await vi.waitFor(() => expect(t.posted).toHaveLength(1));
+			return doneEvent;
+		}, PY);
+
+		await expect(t.run()).resolves.toBeDefined();
+		expect(t.helperCalls).toHaveLength(0);
+		expect(t.posted[0].reply).toEqual({ ok: false, error: { message: 'Method not allowed' } });
+	});
+
+	it('logs the print output of a failed Python task and keeps it out of the error', async () => {
+		const t = setup(async (_s, _spec, _i, onEvent) => {
+			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			return {
+				type: 'error',
+				code: 'user_error',
+				message: 'user code threw an error',
+				userError: { message: 'boom', description: '', printArgs: [["'a'", '1', { x: 1 }], 'bad'] },
+			};
+		}, PY);
+
+		const err = await t.run().catch((e: unknown) => e);
+		expect((err as { payload: unknown }).payload).toEqual({ message: 'boom', description: '' });
+		expect(
+			(t.executeFunctions as unknown as { logNodeOutput: unknown }).logNodeOutput,
+		).toHaveBeenCalledWith("'a'", '1');
+	});
+
+	it('does not store output binaries of a Python task', async () => {
+		const done: CodeTaskDoneEvent = {
+			type: 'done',
+			result: {
+				result: [
+					{
+						json: {},
+						binary: { data: { id: 'sandbox-out:00000000-0000-4000-8000-000000000000' } },
+					},
+				],
+				printArgs: [],
+			},
+			outputs: [{ path: 'result.json', size: 10 }],
+		};
+		const t = setup(async (_s, _spec, _i, onEvent) => {
+			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			return done;
+		}, PY);
+
+		await expect(t.run()).resolves.toEqual(done.result);
+		expect(t.client.getOutput).not.toHaveBeenCalled();
 	});
 });

@@ -32,7 +32,7 @@ import {
 	type TaskTimingRecord,
 } from './code-sandbox-timings';
 import { CodeTaskBuilder, type BuiltTask } from './code-task-builder';
-import { RpcHandler } from './rpc-handler';
+import { ALLOWED_RPC_METHODS, RpcHandler } from './rpc-handler';
 import { SandboxLeaseManager, type Lease } from './sandbox-lease-manager';
 import {
 	readAll,
@@ -61,7 +61,23 @@ interface CodeTaskResultFile {
 	customData?: Record<string, string>;
 	staticData?: IDataObject;
 	binaries?: Record<string, { fileName?: string; mimeType?: string }>;
+	/** Python: the formatted arguments of each print call, like the Python task runner sends. */
+	printArgs?: unknown[][];
 }
+
+export type CodeLanguage = 'javascript' | 'python';
+
+/** What a task needs to know about its language. */
+interface LanguageSpec {
+	language: CodeLanguage;
+	runtime: string;
+	/** The helpers that the task may call in n8n. Python tasks have none. */
+	rpcMethods: typeof ALLOWED_RPC_METHODS | readonly [];
+}
+
+/** The task output is untrusted: bound what n8n logs from `printArgs`. */
+const MAX_PRINT_CALLS = 1000;
+const MAX_PRINT_ARGS_PER_CALL = 100;
 
 /** An infrastructure failure of the code sandbox (not a user error). */
 export class CodeSandboxInfraError extends UnexpectedError {}
@@ -96,9 +112,10 @@ class LineSplitter {
 }
 
 /**
- * Runs JavaScript Code tasks in code sandboxes of the sandbox service. It
- * replaces `TaskRequester.startTask` for `javascript` jobs when
- * N8N_CODE_EXECUTION_BACKEND=sandbox, and returns the same result shape.
+ * Runs JavaScript and Python Code tasks in code sandboxes of the sandbox
+ * service. It replaces `TaskRequester.startTask` for `javascript` and `python`
+ * jobs when N8N_CODE_EXECUTION_BACKEND=sandbox, and returns the same result
+ * shape.
  */
 @Service()
 export class CodeSandboxBackend {
@@ -112,28 +129,46 @@ export class CodeSandboxBackend {
 		private readonly logger: Logger,
 	) {}
 
+	/**
+	 * The scope key of a task. A sandbox runs one runtime, so the tasks of
+	 * each language get their own sandboxes (suffix `:py` for Python).
+	 */
 	scopeKey(
 		executionId: string | undefined,
 		nodeId: string | undefined,
 		workflowId: string | undefined,
+		language: CodeLanguage = 'javascript',
 	): { key: string; random: boolean } {
+		const suffix = language === 'python' ? ':py' : '';
 		switch (this.config.scope) {
 			case 'node':
-				if (executionId && nodeId) return { key: `n:${executionId}:${nodeId}`, random: false };
+				if (executionId && nodeId)
+					return { key: `n:${executionId}:${nodeId}${suffix}`, random: false };
 				break;
 			case 'execution':
-				if (executionId) return { key: `e:${executionId}`, random: false };
+				if (executionId) return { key: `e:${executionId}${suffix}`, random: false };
 				break;
 			case 'workflow':
-				if (workflowId) return { key: `w:${workflowId}`, random: false };
+				if (workflowId) return { key: `w:${workflowId}${suffix}`, random: false };
 				break;
 		}
-		return { key: `r:${nanoid()}`, random: true };
+		return { key: `r:${nanoid()}${suffix}`, random: true };
+	}
+
+	private languageSpec(jobType: string): LanguageSpec {
+		if (jobType === 'python') {
+			return { language: 'python', runtime: this.config.pythonRuntime, rpcMethods: [] };
+		}
+		return {
+			language: 'javascript',
+			runtime: this.config.runtime,
+			rpcMethods: ALLOWED_RPC_METHODS,
+		};
 	}
 
 	async runTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
-		_jobType: string,
+		jobType: string,
 		settings: unknown,
 		executeFunctions: IExecuteFunctions,
 		inputData: ITaskDataConnections,
@@ -153,7 +188,8 @@ export class CodeSandboxBackend {
 		const execSettings = settings as JSExecSettings;
 		const executionId = additionalData.executionId;
 		const taskId = `t_${nanoid()}`;
-		const { key, random } = this.scopeKey(executionId, node.id, workflow.id);
+		const lang = this.languageSpec(jobType);
+		const { key, random } = this.scopeKey(executionId, node.id, workflow.id, lang.language);
 		const rec: TaskTimingRecord = {
 			scopeMode: this.config.scope,
 			scopeKey: key,
@@ -161,6 +197,7 @@ export class CodeSandboxBackend {
 			workflowId: workflow.id,
 			nodeId: node.id,
 			taskId,
+			language: lang.language,
 			nodeMode: execSettings.nodeMode,
 			reuseWorkers: this.config.reuseWorkers,
 			randomKey: random,
@@ -190,7 +227,10 @@ export class CodeSandboxBackend {
 
 		try {
 			const tBuild = performance.now();
-			const built = this.builder.build(taskId, execSettings, taskData);
+			const built =
+				lang.language === 'python'
+					? this.builder.buildPython(taskId, settings as Record<string, unknown>)
+					: this.builder.build(taskId, execSettings, taskData);
 			rec.t_build = ms(performance.now() - tBuild);
 			rec.bytes_task_json = built.bytesTaskJson;
 			rec.bin_in_count = built.binaryCount;
@@ -205,7 +245,12 @@ export class CodeSandboxBackend {
 				built,
 				executeFunctions,
 				rec,
+				lang,
 			);
+			// Like the Python task runner: the print output after the task.
+			if (lang.language === 'python') {
+				this.logPrintArgs(executeFunctions, resultFile.printArgs, rec);
+			}
 
 			// Same as TaskRequester.startTask.
 			if (resultFile.customData) {
@@ -241,13 +286,14 @@ export class CodeSandboxBackend {
 		built: BuiltTask,
 		executeFunctions: IExecuteFunctions,
 		rec: TaskTimingRecord,
+		lang: LanguageSpec,
 	): Promise<CodeTaskResultFile> {
 		for (;;) {
 			rec.attempts++;
 			const tAcquire = performance.now();
 			let lease: Lease;
 			try {
-				const acq = await this.leases.acquire(key, executionId, workflowId);
+				const acq = await this.leases.acquire(key, executionId, workflowId, lang.runtime);
 				lease = acq.lease;
 				rec.leaseHit = acq.leaseHit;
 				rec.slotWaitMs = acq.slotWaitMs;
@@ -270,7 +316,7 @@ export class CodeSandboxBackend {
 			rec.sandboxId = lease.sandboxId;
 
 			try {
-				return await this.runOnLease(lease, key, taskId, built, executeFunctions, rec);
+				return await this.runOnLease(lease, key, taskId, built, executeFunctions, rec, lang);
 			} catch (e) {
 				if (e instanceof RetryableTaskError) {
 					if (rec.attempts === 1) {
@@ -297,6 +343,7 @@ export class CodeSandboxBackend {
 		built: BuiltTask,
 		executeFunctions: IExecuteFunctions,
 		rec: TaskTimingRecord,
+		lang: LanguageSpec,
 	): Promise<CodeTaskResultFile> {
 		if (lease.scopeKey !== key) {
 			throw new UnexpectedError('A lease took a task of another scope key', {
@@ -306,7 +353,7 @@ export class CodeSandboxBackend {
 		const client = this.leases.client;
 		const sandboxId = lease.sandboxId;
 		const timeoutMs = this.taskRunnersConfig.taskTimeout * 1000;
-		const rpc = new RpcHandler(executeFunctions);
+		const rpc = new RpcHandler(executeFunctions, lang.rpcMethods);
 		const controller = new AbortController();
 		let brokenReason: string | undefined;
 		let cancelling: 'timeout' | 'cancelled' | undefined;
@@ -477,6 +524,18 @@ export class CodeSandboxBackend {
 		}
 
 		if (terminal.type === 'error') {
+			// Python: a failed task still has print output. Log it, and keep it
+			// out of the error that the node shows.
+			const userError = terminal.userError as { printArgs?: unknown[][] } | undefined;
+			if (
+				lang.language === 'python' &&
+				userError &&
+				typeof userError === 'object' &&
+				'printArgs' in userError
+			) {
+				this.logPrintArgs(executeFunctions, userError.printArgs, rec);
+				delete userError.printArgs;
+			}
 			throw this.toTaskError(terminal, accepted, cancelling, lease);
 		}
 
@@ -490,12 +549,32 @@ export class CodeSandboxBackend {
 				const text = await readAll(await client.getOutput(sandboxId, taskId, 'result.json'));
 				resultFile = JSON.parse(text) as CodeTaskResultFile;
 			}
-			await this.storeOutputBinaries(sandboxId, taskId, resultFile, executeFunctions, rec);
+			// Python has no binary helpers, so a Python task writes no binaries.
+			if (lang.language === 'javascript') {
+				await this.storeOutputBinaries(sandboxId, taskId, resultFile, executeFunctions, rec);
+			}
 			return resultFile;
 		} finally {
 			rec.t_outputs = ms(performance.now() - tOutputs);
 			client.deleteTask(sandboxId, taskId).catch(() => {});
 		}
+	}
+
+	private logPrintArgs(
+		executeFunctions: IExecuteFunctions,
+		printArgs: unknown,
+		rec: TaskTimingRecord,
+	) {
+		if (!Array.isArray(printArgs)) return;
+		const ctx = executeFunctions as unknown as { logNodeOutput?: (...args: unknown[]) => void };
+		for (const args of printArgs.slice(0, MAX_PRINT_CALLS)) {
+			if (!Array.isArray(args)) continue;
+			const strings = args
+				.slice(0, MAX_PRINT_ARGS_PER_CALL)
+				.filter((a): a is string => typeof a === 'string');
+			ctx.logNodeOutput?.(...strings);
+		}
+		rec.print_count = printArgs.length;
 	}
 
 	private toTaskError(

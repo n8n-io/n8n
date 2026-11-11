@@ -1029,8 +1029,8 @@ export async function getBase({
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			// Spike: JavaScript tasks run in code sandboxes of the sandbox service.
-			if (jobType === 'javascript' && Container.get(CodeSandboxConfig).enabled) {
+			// Spike: JavaScript and Python tasks run in code sandboxes of the sandbox service.
+			if (Container.get(CodeSandboxConfig).handles(jobType)) {
 				const { CodeSandboxBackend } = await import(
 					'@/modules/code-sandbox/code-sandbox-backend.js'
 				);
@@ -1079,7 +1079,7 @@ export async function getBase({
 			eventService.emit('hitl-response-actioned', payload);
 		},
 		getRunnerStatus: (taskType: string) =>
-			taskType === 'javascript' && Container.get(CodeSandboxConfig).enabled
+			Container.get(CodeSandboxConfig).handles(taskType)
 				? { available: true as const }
 				: Container.get(TaskRequester).getRunnerStatus(taskType),
 	};

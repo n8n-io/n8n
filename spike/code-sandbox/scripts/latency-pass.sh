@@ -44,6 +44,18 @@ want W2 && run W2 --path spike-w2 --runs "$RUNS" --warmup "$WARMUP"
 want W3 && run W3 --path spike-w3 --runs "$W3_RUNS" --warmup 2
 want W5b && run W5b-1mb --path spike-w5b --query size=1mb --runs "$RUNS" --warmup "$WARMUP"
 want W6 && run W6 --path spike-w6 --query mode=ten --runs "$RUNS" --warmup "$WARMUP"
+# Python: WPY1 and WPY5 are the twins of W1 and W2. WMIX has a JS and a Python
+# Code node in one execution.
+want WPY1 && run WPY1 --path spike-wpy1 --runs "$RUNS" --warmup "$WARMUP"
+want WPY5 && run WPY5 --path spike-wpy5 --runs "$RUNS" --warmup "$WARMUP"
+want WMIX && run WMIX --path spike-wmix --runs "$RUNS" --warmup "$WARMUP"
+# THROUGHPUT: "workload:concurrency:seconds ...", for example "WPY1:5:60". Each
+# entry is a time-based run at that concurrency, after 10 warm-up executions.
+for spec in ${THROUGHPUT:-}; do
+	IFS=: read -r wl conc secs <<<"$spec"
+	run "$wl-c$conc" --path "spike-$(echo "$wl" | tr '[:upper:]' '[:lower:]')" --concurrency "$conc" \
+		--duration "$secs" --warmup 10
+done
 # WFILE: the W5 binary workflow (streams), one size after the other.
 if want WFILE; then
 	for spec in ${FILE_RUNS:-1mb:20 100mb:10 1gb:5}; do

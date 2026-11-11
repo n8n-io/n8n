@@ -12,9 +12,8 @@ const DEFAULT_SLOTS: Record<CodeSandboxScope, number> = { node: 1, execution: 2,
 
 /**
  * Configuration of the code sandbox backend (spike). With
- * `N8N_CODE_EXECUTION_BACKEND=sandbox`, JavaScript Code tasks run in code
- * sandboxes of the sandbox service instead of task runners. Python keeps
- * using task runners.
+ * `N8N_CODE_EXECUTION_BACKEND=sandbox`, JavaScript and Python Code tasks run in
+ * code sandboxes of the sandbox service instead of task runners.
  */
 @Config
 export class CodeSandboxConfig {
@@ -69,6 +68,14 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_RUNTIME')
 	runtime: string = 'n8n-js';
 
+	/** Also run Python Code tasks in code sandboxes. Off: Python keeps task runners. */
+	@Env('N8N_CODE_SANDBOX_PYTHON')
+	pythonEnabled: boolean = true;
+
+	/** The Python runtime of the code sandbox image. */
+	@Env('N8N_CODE_SANDBOX_PYTHON_RUNTIME')
+	pythonRuntime: string = 'n8n-py';
+
 	/** Results larger than this are downloaded as `result.json` instead of inline. */
 	@Env('N8N_CODE_SANDBOX_INLINE_RESULT_MAX_BYTES')
 	inlineResultMaxBytes: number = 1024 * 1024;
@@ -82,6 +89,13 @@ export class CodeSandboxConfig {
 
 	get enabled() {
 		return this.backend === 'sandbox';
+	}
+
+	/** True if tasks of this job type (`javascript`, `python`) run in code sandboxes. */
+	handles(jobType: string) {
+		if (!this.enabled) return false;
+		if (jobType === 'javascript') return true;
+		return jobType === 'python' && this.pythonEnabled;
 	}
 
 	get slots() {

@@ -46,3 +46,6 @@
 # === code sandbox image (docker/images/code-sandbox/Dockerfile, spike) ===
 !dist/code-runtime
 !dist/code-runtime/**
+!packages/@n8n/code-runtime-python
+!packages/@n8n/code-runtime-python/src
+!packages/@n8n/code-runtime-python/src/**

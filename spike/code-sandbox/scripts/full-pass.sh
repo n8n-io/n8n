@@ -19,8 +19,25 @@
 #   FRESH_RUNS=50 FRESH_LOOP_RUNS=10 FILE_RUNS="1mb:20 100mb:10 1gb:5"
 #   LOAD_DURATION=60
 #
+# Workloads (defaults: the JS passes of the v2 results):
+#   TR_WORKLOADS="W1 W2 W3 W6"     task runner latency pass
+#   MODE_WORKLOADS="W1 W2 W3 W6"   latency pass of each mode × option
+#   FRESH_WORKLOADS="W1 W2 W3"     fresh latency pass
+#   THROUGHPUT=""                  time-based runs, see latency-pass.sh (for example "WPY1:5:60")
+#   POOL_RUNTIMES="n8n-js"         one warm pool per runtime (for example "n8n-js n8n-py")
+#   RUNNER_TYPES="javascript"      runners in the task runners container ("javascript python")
+#   BENCH_VUS="1 5"                empty: no n8n benchmark (it has a JS scenario only)
+#
 # COMPOSE runs docker compose for the local sandbox service stack (restarts the
 # API for the pools; a restart empties the API store).
+#
+# Firecracker (RUNNER_BACKEND=firecracker, COMPOSE=.../fc-stack.sh): the runner
+# serves the options of its golden code snapshot only (`execution` + `shared`).
+# Use SCOPES=execution OPTIONS="shared shared-pool". The direct phase then skips
+# the process start (no snapshot without spare workers), limits the idle step to
+# execution:shared and adds the refill step (`refill` phase).
+#   REFILL_CONCURRENCY="2 4 8"   pool refill concurrency of each refill run
+#   DIRECT_REFILL_ROUNDS=10      rounds of each refill run
 set -uo pipefail
 cd "$(dirname "$0")/../../.." || exit 1
 
@@ -34,22 +51,36 @@ export N8N_USER_FOLDER="$SPIKE_DIR/user"
 export N8N_RESTRICT_FILE_ACCESS_TO="$SPIKE_DIR;$(realpath "$SPIKE_DIR")"
 export SANDBOX_URL="$API" SANDBOX_ADMIN_KEY="$KEY"
 export RUNNER_CONTAINERS="${RUNNER_CONTAINERS:-n8n-sandbox-service-runner-dind-local-1,n8n-sandbox-service-runner-dind-local-2}"
+export RUNNER_BACKEND="${RUNNER_BACKEND:-docker}"
+FC=false
+[[ "$RUNNER_BACKEND" == "firecracker" ]] && FC=true
+# The create that checks that a runner takes creates. A Firecracker runner
+# takes the options of its code snapshot only.
+PROBE_CREATE_OPTIONS='{"slots":1}'
+$FC && PROBE_CREATE_OPTIONS='{"runtime":"n8n-js","slots":2,"taskMemoryMb":512,"spareWorkers":true,"reuseWorkers":true}'
 AB="${AB_DIR:-$SPIKE_DIR/v2}"
 mkdir -p "$AB"
 S=spike/code-sandbox/scripts
 
 PHASES="${PHASES:-direct taskrunners modes fresh load file}"
+REFILL_CONCURRENCY="${REFILL_CONCURRENCY:-2 4 8}"
 RUNS="${RUNS:-200}"
 WARMUP="${WARMUP:-20}"
 LOOP_RUNS="${LOOP_RUNS:-20}"
 BENCH_DURATION="${BENCH_DURATION:-1m}"
-BENCH_VUS="${BENCH_VUS:-1 5}"
+BENCH_VUS="${BENCH_VUS-1 5}"
 SCOPES="${SCOPES:-node execution workflow}"
 OPTIONS="${OPTIONS:-fresh-spare shared shared-pool}"
 FRESH_RUNS="${FRESH_RUNS:-50}"
 FRESH_LOOP_RUNS="${FRESH_LOOP_RUNS:-10}"
 LOAD_DURATION="${LOAD_DURATION:-60}"
 export FILE_RUNS="${FILE_RUNS:-1mb:20 100mb:10 1gb:5}"
+TR_WORKLOADS="${TR_WORKLOADS:-W1 W2 W3 W6}"
+MODE_WORKLOADS="${MODE_WORKLOADS:-W1 W2 W3 W6}"
+FRESH_WORKLOADS="${FRESH_WORKLOADS:-W1 W2 W3}"
+POOL_RUNTIMES="${POOL_RUNTIMES:-n8n-js}"
+export THROUGHPUT="${THROUGHPUT:-}"
+export RUNNER_TYPES="${RUNNER_TYPES:-javascript}"
 
 LOCK="$SPIKE_DIR/.full-pass.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
@@ -102,14 +133,16 @@ restart_api() {
 	# A pool refill that runs during the restart leaves containers that the new
 	# API store does not know. Stop the API, then remove all sandbox containers.
 	$COMPOSE stop api >>"$AB/compose.log" 2>&1
-	for r in ${RUNNER_CONTAINERS//,/ }; do
-		docker exec "$r" sh -c 'docker ps -aq --filter name=sandbox- | xargs -r docker rm -f' >/dev/null 2>&1
-	done
+	if ! $FC; then
+		for r in ${RUNNER_CONTAINERS//,/ }; do
+			docker exec "$r" sh -c 'docker ps -aq --filter name=sandbox- | xargs -r docker rm -f' >/dev/null 2>&1
+		done
+	fi
 	SANDBOX_CODE_POOLS="$pools" $COMPOSE up -d --no-deps --force-recreate api >>"$AB/compose.log" 2>&1
 	until curl -sf "$API/healthz" >/dev/null; do sleep 1; done
 	# Wait until a runner takes creates.
 	for i in $(seq 1 120); do
-		id=$(curl -sf -X POST -H "X-Api-Key: $KEY" -H "Content-Type: application/json" -d '{"slots":1}' "$API/v1/code/sandboxes" |
+		id=$(curl -sf -X POST -H "X-Api-Key: $KEY" -H "Content-Type: application/json" -d "$PROBE_CREATE_OPTIONS" "$API/v1/code/sandboxes" |
 			node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s||"{}").id??""))')
 		if [[ -n "$id" ]]; then
 			curl -s -o /dev/null -X DELETE -H "X-Api-Key: $KEY" "$API/v1/code/sandboxes/$id"
@@ -121,7 +154,15 @@ restart_api() {
 	sleep 5
 }
 
-pool_json() { echo "[{\"runtime\":\"n8n-js\",\"slots\":$1,\"taskMemoryMb\":512,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$2}]"; }
+# pool_json SLOTS SIZE: one pool of SIZE per runtime of POOL_RUNTIMES.
+pool_json() {
+	local rt out=""
+	for rt in $POOL_RUNTIMES; do
+		out+="${out:+,}{\"runtime\":\"$rt\",\"slots\":$1,\"taskMemoryMb\":512,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$2}"
+	done
+	echo "[$out]"
+}
+pool_count() { echo $(($1 * $(wc -w <<<"$POOL_RUNTIMES"))); }
 slots_of() { case "$1" in node) echo 1 ;; execution) echo 2 ;; workflow) echo 4 ;; esac; }
 pool_size_of() { case "$1" in node) echo "${POOL_NODE:-8}" ;; execution) echo "${POOL_EXECUTION:-8}" ;; workflow) echo "${POOL_WORKFLOW:-4}" ;; esac; }
 
@@ -160,16 +201,32 @@ if has direct; then
 	log "direct: creates"
 	node "$S/direct-pass.mjs" creates --out "$D" --seq "${DIRECT_SEQ:-200}" \
 		--burst10 "${DIRECT_BURST10:-20}" --burst50 "${DIRECT_BURST50:-4}" >>"$AB/direct.log" 2>&1
-	log "direct: process start"
-	node "$S/direct-pass.mjs" procstart --out "$D" --tasks "${DIRECT_TASKS:-200}" >>"$AB/direct.log" 2>&1
+	idle_combos=""
+	if $FC; then
+		idle_combos="execution:shared"
+	else
+		log "direct: process start"
+		node "$S/direct-pass.mjs" procstart --out "$D" --tasks "${DIRECT_TASKS:-200}" >>"$AB/direct.log" 2>&1
+	fi
 	log "direct: idle sandboxes"
-	node "$S/direct-pass.mjs" idle --out "$D" --per "${DIRECT_IDLE_PER:-5}" --wait 30 >>"$AB/direct.log" 2>&1
+	node "$S/direct-pass.mjs" idle --out "$D" --per "${DIRECT_IDLE_PER:-5}" --wait 30 --combos "$idle_combos" >>"$AB/direct.log" 2>&1
 	ps="${POOL_EXECUTION:-8}"
 	restart_api "$(pool_json 2 "$ps")" "$ps"
 	log "direct: claims"
 	node "$S/direct-pass.mjs" claims --out "$D" --pool-size "$ps" --seq "${DIRECT_SEQ:-200}" >>"$AB/direct.log" 2>&1
 	log "direct: claim bursts"
 	node "$S/direct-pass.mjs" claim-burst --out "$D" --pool-size "$ps" --rounds "${DIRECT_CLAIM_ROUNDS:-13}" >>"$AB/direct.log" 2>&1
+fi
+
+if has refill; then
+	D="$AB/direct"
+	ps="${POOL_EXECUTION:-8}"
+	for c in $REFILL_CONCURRENCY; do
+		SANDBOX_CODE_POOL_REFILL_CONCURRENCY="$c" restart_api "$(pool_json 2 "$ps")" "$ps"
+		log "direct: refill concurrency=$c"
+		node "$S/direct-pass.mjs" refill --out "$D" --pool-size "$ps" --rounds "${DIRECT_REFILL_ROUNDS:-10}" \
+			--label "c$c" >>"$AB/direct.log" 2>&1
+	done
 fi
 
 if has taskrunners; then
@@ -181,7 +238,7 @@ if has taskrunners; then
 	N8N_RUNNERS_BROKER_LISTEN_ADDRESS="$(ip -4 -o addr show docker0 2>/dev/null | awk '{print $4}' | cut -d/ -f1)"
 	export N8N_RUNNERS_BROKER_LISTEN_ADDRESS="${N8N_RUNNERS_BROKER_LISTEN_ADDRESS:-0.0.0.0}"
 	"$S/task-runners.sh" start >>"$AB/taskrunners.log" 2>&1
-	SPIKE_DIR="$AB" BACKEND=task-runners RUNS="$RUNS" WARMUP="$WARMUP" W3_RUNS="$LOOP_RUNS" WORKLOADS="W1 W2 W3 W6" \
+	SPIKE_DIR="$AB" BACKEND=task-runners RUNS="$RUNS" WARMUP="$WARMUP" W3_RUNS="$LOOP_RUNS" WORKLOADS="$TR_WORKLOADS" \
 		"$S/latency-pass.sh" >>"$AB/taskrunners.log" 2>&1
 	for vus in $BENCH_VUS; do
 		log "task runners (external): benchmark vus=$vus"
@@ -201,7 +258,7 @@ if has modes; then
 			[[ "$opt" != "fresh-spare" ]] && reuse=true
 			if [[ "$opt" == "shared-pool" ]]; then
 				size="$(pool_size_of "$scope")"
-				restart_api "$(pool_json "$(slots_of "$scope")" "$size")" "$size"
+				restart_api "$(pool_json "$(slots_of "$scope")" "$size")" "$(pool_count "$size")"
 				suffix="-pool"
 			else
 				size=0
@@ -210,10 +267,10 @@ if has modes; then
 			start_poll "$AB/poll-$name.jsonl"
 			log "$name: latency"
 			SPIKE_DIR="$AB" BACKEND=sandbox SCOPE="$scope" REUSE="$reuse" RUNS="$RUNS" WARMUP="$WARMUP" W3_RUNS="$LOOP_RUNS" \
-				WORKLOADS="W1 W2 W3 W6" NAME="$name" "$S/latency-pass.sh" >>"$AB/modes.log" 2>&1
+				WORKLOADS="$MODE_WORKLOADS" NAME="$name" "$S/latency-pass.sh" >>"$AB/modes.log" 2>&1
 			for vus in $BENCH_VUS; do
 				stop_n8n
-				[[ "$size" -gt 0 ]] && wait_pool "$size"
+				[[ "$size" -gt 0 ]] && wait_pool "$(pool_count "$size")"
 				log "$name: benchmark vus=$vus"
 				SPIKE_DIR="$AB" BACKEND=sandbox SCOPE="$scope" REUSE="$reuse" VUS="$vus" DURATION="$BENCH_DURATION" \
 					NAME_SUFFIX="$suffix" "$S/benchmark-pass.sh" >>"$AB/modes.log" 2>&1
@@ -229,12 +286,14 @@ if has fresh; then
 	start_poll "$AB/poll-execution-fresh.jsonl"
 	log "execution-fresh: latency"
 	SPIKE_DIR="$AB" BACKEND=sandbox SCOPE=execution REUSE=false SPARE=false RUNS="$FRESH_RUNS" WARMUP=5 \
-		W3_RUNS="$FRESH_LOOP_RUNS" WORKLOADS="W1 W2 W3" NAME="execution-fresh" "$S/latency-pass.sh" >>"$AB/fresh.log" 2>&1
+		W3_RUNS="$FRESH_LOOP_RUNS" WORKLOADS="$FRESH_WORKLOADS" NAME="execution-fresh" "$S/latency-pass.sh" >>"$AB/fresh.log" 2>&1
 	stop_n8n
-	log "execution-fresh: benchmark vus=1"
-	N8N_CODE_SANDBOX_SPARE_WORKERS=false SPIKE_DIR="$AB" BACKEND=sandbox SCOPE=execution REUSE=false VUS=1 \
-		DURATION="$BENCH_DURATION" NAME_SUFFIX="-fresh" "$S/benchmark-pass.sh" >>"$AB/fresh.log" 2>&1
-	stop_n8n
+	if [[ -n "$BENCH_VUS" ]]; then
+		log "execution-fresh: benchmark vus=1"
+		N8N_CODE_SANDBOX_SPARE_WORKERS=false SPIKE_DIR="$AB" BACKEND=sandbox SCOPE=execution REUSE=false VUS=1 \
+			DURATION="$BENCH_DURATION" NAME_SUFFIX="-fresh" "$S/benchmark-pass.sh" >>"$AB/fresh.log" 2>&1
+		stop_n8n
+	fi
 	stop_poll
 fi
 

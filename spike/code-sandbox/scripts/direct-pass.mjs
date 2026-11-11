@@ -8,6 +8,15 @@
  *   node direct-pass.mjs idle        --out DIR [--per 5] [--wait 30]
  *   node direct-pass.mjs claims      --out DIR --pool-size 8 [--seq 200]
  *   node direct-pass.mjs claim-burst --out DIR --pool-size 8 [--rounds 13]
+ *   node direct-pass.mjs refill      --out DIR --pool-size 8 [--rounds 10] [--label c2]
+ *
+ * refill: claims the full pool at once, then polls the pool count every 25 ms
+ * until the pool is full again. One record per round with the time of each
+ * refilled sandbox and the refill rate (sandboxes per second).
+ *
+ * idle --combos limits the idle step to some mode:option pairs (for example
+ * "execution:shared"), for a runner that serves one set of options only (the
+ * Firecracker code snapshot).
  *
  * creates, procstart and idle need an API without pools. claims and
  * claim-burst need a pool of `poolOptions` (below) with --pool-size sandboxes.
@@ -31,7 +40,9 @@ const { values: args, positionals } = parseArgs({
 		per: { type: 'string', default: '5' },
 		wait: { type: 'string', default: '30' },
 		'pool-size': { type: 'string', default: '8' },
-		rounds: { type: 'string', default: '13' },
+		rounds: { type: 'string' },
+		label: { type: 'string', default: '' },
+		combos: { type: 'string', default: '' },
 	},
 });
 const step = positionals[0];
@@ -211,6 +222,10 @@ switch (step) {
 				combos.push({ mode, option, opts: { ...poolOptions, slots, reuseWorkers } });
 			}
 		}
+		if (args.combos) {
+			const want = new Set(args.combos.split(',').map((c) => c.trim()));
+			combos.splice(0, combos.length, ...combos.filter((c) => want.has(`${c.mode}:${c.option}`)));
+		}
 		const per = Number(args.per);
 		const created = [];
 		for (const c of combos) {
@@ -252,9 +267,48 @@ switch (step) {
 	}
 	case 'claim-burst': {
 		const size = Number(args['pool-size']);
-		for (let r = 0; r < Number(args.rounds); r++) {
+		for (let r = 0; r < Number(args.rounds ?? 13); r++) {
 			await waitPool(size);
 			await burst(size * 2, poolOptions, { kind: 'claim-burst', round: r, poolSize: size });
+		}
+		break;
+	}
+	case 'refill': {
+		const size = Number(args['pool-size']);
+		for (let r = 0; r < Number(args.rounds ?? 10); r++) {
+			await waitPool(size);
+			// Let the last refill settle (pool manager tick, runner cleanup).
+			await sleep(2000);
+			const t0 = performance.now();
+			const claims = await Promise.allSettled(Array.from({ length: size }, async () => await create(poolOptions)));
+			const claimMs = performance.now() - t0;
+			const ids = claims.filter((c) => c.status === 'fulfilled').map((c) => c.value.sb.id);
+			const pooled = claims.filter((c) => c.status === 'fulfilled' && c.value.sb.pooled === true).length;
+			// The claimed sandboxes stay alive until the pool is full, so their
+			// deletes do not compete with the refill.
+			const fillMs = [];
+			let last = await poolCount();
+			while (last < size && performance.now() - t0 < 180_000) {
+				await sleep(25);
+				const n = await poolCount();
+				for (let i = last; i < n; i++) fillMs.push(Math.round(performance.now() - t0));
+				last = Math.max(last, n);
+			}
+			const fullMs = fillMs.at(-1);
+			record({
+				kind: 'refill',
+				label: args.label,
+				round: r,
+				poolSize: size,
+				claimed: ids.length,
+				pooled,
+				claimMs: Math.round(claimMs),
+				fillMs,
+				fullMs,
+				full: last >= size,
+				ratePerSec: fullMs ? +(fillMs.length / (fullMs / 1000)).toFixed(2) : null,
+			});
+			await Promise.all(ids.map(async (id) => await del(id).catch(() => {})));
 		}
 		break;
 	}

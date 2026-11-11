@@ -34,4 +34,8 @@ if [[ "$N8N_RUNNERS_MODE" == "external" ]]; then
 	export N8N_RUNNERS_BROKER_LISTEN_ADDRESS="${N8N_RUNNERS_BROKER_LISTEN_ADDRESS:-0.0.0.0}"
 fi
 
+# CPUSET pins n8n to the CPUs of the sandbox stack (Firecracker host).
+if [[ -n "${CPUSET:-}" ]]; then
+	exec taskset -c "$CPUSET" packages/cli/bin/n8n start
+fi
 exec packages/cli/bin/n8n start
