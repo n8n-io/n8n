@@ -2,7 +2,6 @@ import { jsonParse } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { WeaviateClient } from 'weaviate-client';
 
 /** Integration name that Weaviate telemetry reports for n8n traffic. */
 const INTEGRATION_NAME = 'n8n-langchain';
@@ -75,21 +74,16 @@ export async function getIntegrationVersion(): Promise<string> {
 }
 
 /**
- * Adds the integration header to a Weaviate client. Never throws.
+ * Gives the integration header for a new Weaviate client. Never throws.
  *
- * The JS client has no public API for integrations (the Python client has
- * one). But `getConnectionDetails()` returns the live `headers` object, and the
- * client sends that object with each HTTP and gRPC request. If the client
- * changes shape in a later version, the header is skipped and the node works.
+ * Pass the result as the `headers` connect option. The client then sends the
+ * header with each HTTP and gRPC request, also with the startup checks.
  */
-export async function registerIntegrationHeader(client: WeaviateClient): Promise<void> {
+export async function getIntegrationHeaders(): Promise<Record<string, string>> {
 	try {
-		const { headers } = await client.getConnectionDetails();
-		// The client spreads only the object form into requests
-		if (headers && !Array.isArray(headers)) {
-			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${await getIntegrationVersion()}`;
-		}
+		return { [INTEGRATION_HEADER]: `${INTEGRATION_NAME}/${await getIntegrationVersion()}` };
 	} catch {
 		// Telemetry is best effort, so an error here must not stop the node
+		return {};
 	}
 }

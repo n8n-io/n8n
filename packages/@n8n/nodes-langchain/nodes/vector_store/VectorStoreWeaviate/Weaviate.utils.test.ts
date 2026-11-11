@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { mock } from 'vitest-mock-extended';
 import weaviate, { Filters, type WeaviateClient } from 'weaviate-client';
 
-import { getIntegrationVersion } from './Weaviate.integration';
+import { getIntegrationVersion, INTEGRATION_HEADER } from './Weaviate.integration';
 import {
 	createWeaviateClient,
 	parseCompositeFilter,
@@ -166,6 +166,18 @@ describe('createWeaviateClient', () => {
 		expect(rest.requests.at(-1)?.['x-weaviate-client-integration']).toBe(expected);
 	});
 
+	it('should send the integration header with the startup checks', async () => {
+		rest.requests.length = 0;
+		// The fake server does not answer the checks correctly, so only the requests matter
+		await createWeaviateClient(credentials(), { init: 2 }, undefined, false)
+			.then(async (client) => await client.close())
+			.catch(() => {});
+
+		const expected = `n8n-langchain/${await getIntegrationVersion()}`;
+		expect(rest.requests.length).toBeGreaterThan(0);
+		expect(rest.requests[0]['x-weaviate-client-integration']).toBe(expected);
+	});
+
 	it('should start TLS inside the proxy tunnel for a secure gRPC connection', async () => {
 		const firstChunks: Buffer[] = [];
 		const tlsProxy = http.createServer().on('connect', (_req, socket) => {
@@ -268,6 +280,13 @@ describe('parseCompositeFilter', () => {
 
 describe('createWeaviateClient connection options', () => {
 	const client = mock<WeaviateClient>();
+	let integrationHeaders: Record<string, string>;
+
+	beforeAll(async () => {
+		integrationHeaders = {
+			[INTEGRATION_HEADER]: `n8n-langchain/${await getIntegrationVersion()}`,
+		};
+	});
 	const baseCredentials: WeaviateCredential = {
 		weaviate_cloud_endpoint: '',
 		weaviate_api_key: '',
@@ -300,6 +319,7 @@ describe('createWeaviateClient connection options', () => {
 		expect(result).toBe(client);
 		expect(connect).toHaveBeenCalledWith('https://cluster.weaviate.cloud', {
 			authCredentials: new weaviate.ApiKey('cloud-key'),
+			headers: integrationHeaders,
 			timeout: { query: 5 },
 			skipInitChecks: true,
 		});
@@ -318,6 +338,7 @@ describe('createWeaviateClient connection options', () => {
 			grpcPort: 50051,
 			grpcSecure: true,
 			authCredentials: new weaviate.ApiKey('custom-key'),
+			headers: integrationHeaders,
 			timeout: undefined,
 			proxies: undefined,
 			skipInitChecks: false,
