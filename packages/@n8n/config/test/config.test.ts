@@ -372,7 +372,7 @@ describe('GlobalConfig', () => {
 			mcpServers: '',
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
 			reflectorObservationTokens: 40_000,
 			midRunObservation: false,
 			sandboxEnabled: false,

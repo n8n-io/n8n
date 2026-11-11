@@ -28,6 +28,7 @@ function setupAgentMock(responseText: string) {
 
 async function generate(userText = 'do it') {
 	return await generateValidatedJson('test-agent', {
+		model: 'anthropic/claude-haiku-5-5',
 		instructions: 'instructions',
 		userText,
 		schema,
@@ -111,25 +112,41 @@ describe('generateValidatedJson', () => {
 		});
 	});
 
-	it('forwards the fallback model config to agent creation', async () => {
+	it('forwards the model as a resolved model to agent creation', async () => {
 		setupAgentMock('{"ok": true}');
-		const fallbackModelConfig = {
-			id: 'anthropic/claude-opus-4-8' as const,
+		const model = {
+			id: 'anthropic/claude-haiku-5-5' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
 		const modelFetch = vi.fn();
 		await generateValidatedJson('test-agent', {
+			model,
+			effort: 'low',
 			instructions: 'instructions',
 			userText: 'do it',
 			schema,
-			fallbackModelConfig,
 			modelFetch,
 		});
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'test-agent',
-			expect.objectContaining({ fallbackModelConfig, modelFetch }),
+			expect.objectContaining({ resolvedModel: model, effort: 'low', modelFetch }),
 		);
+	});
+
+	it('reports generation_failed without calling a model when none is available', async () => {
+		const result = await generateValidatedJson('test-agent', {
+			model: undefined,
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+		});
+		expect(result).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'No model is available',
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
 });
 

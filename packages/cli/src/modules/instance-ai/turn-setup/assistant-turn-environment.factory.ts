@@ -90,7 +90,7 @@ export interface AssistantTurnEnvironment {
 	taskStorage: ThreadTaskStorage;
 	workflowTasks: WorkflowTaskService;
 	modelId: ModelConfig;
-	memoryModelId: ModelConfig | undefined;
+	utilityModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
 	instanceContextEnabled: boolean;
@@ -270,7 +270,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
-		const memoryModelId = await this.modelService.resolveMemoryModelConfig(user, modelId, {
+		const utilityModelId = await this.modelService.resolveUtilityModelConfig(user, modelId, {
 			proxyBaseUrl,
 			tokenManager,
 			proxyContext,
@@ -338,6 +338,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
@@ -584,7 +585,7 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			workflowTasks,
 			modelId,
-			memoryModelId,
+			utilityModelId,
 			orchestrationContext,
 			conversationHistory,
 			// Reuse the gate results so a rollout change cannot split this turn.

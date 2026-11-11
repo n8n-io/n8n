@@ -1536,7 +1536,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							declaredOutputFixtures: compiled.declaredOutputFixtures,
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
-							fallbackModelConfig: context.modelId,
+							model: context.modelId,
+							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
 							logger: context.logger,
 						});

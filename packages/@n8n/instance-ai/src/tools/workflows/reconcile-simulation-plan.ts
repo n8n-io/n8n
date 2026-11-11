@@ -80,12 +80,14 @@ export async function reconcileSimulationPlan(args: {
 	buildOutcome: WorkflowBuildOutcome;
 	workflow: WorkflowJSON;
 	availableCredentials: CredentialMap;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. The classifier prefers it over `model`. */
+	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig, modelFetch } = args;
+	const { buildOutcome, workflow, availableCredentials, model, utilityModel, modelFetch } = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -135,7 +137,8 @@ export async function reconcileSimulationPlan(args: {
 			workflow,
 			nodeNames: satisfiedNames,
 			mockedNodeNames: remainingMockedNames,
-			fallbackModelConfig,
+			model,
+			utilityModel,
 			modelFetch,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));

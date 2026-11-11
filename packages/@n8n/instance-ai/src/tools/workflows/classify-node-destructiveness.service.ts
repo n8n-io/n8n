@@ -29,7 +29,6 @@ import type { ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
-export const DESTRUCTIVENESS_CLASSIFIER_MODEL = 'anthropic/claude-haiku-5-5';
 export const DESTRUCTIVENESS_CLASSIFIER_EFFORT: AnthropicThinkingEffort = 'low';
 
 type WorkflowNode = WorkflowJSON['nodes'][number];
@@ -40,8 +39,10 @@ export interface ClassifyNodesForSimulationInput {
 	mockedNodeNames?: string[];
 	/** Classify only these names. Keep the full graph for tool discovery. */
 	nodeNames?: ReadonlySet<string>;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. The classifier prefers it over `model`. */
+	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -362,7 +363,7 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
-	fallbackModelConfig?: ModelConfig,
+	model?: ModelConfig,
 	logger?: Logger,
 	modelFetch?: FetchFn,
 ): Promise<NodeSimulationVerdict[]> {
@@ -375,12 +376,11 @@ async function classifyAmbiguousNodes(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-destructiveness-classifier', {
-		model: DESTRUCTIVENESS_CLASSIFIER_MODEL,
+		model,
 		effort: DESTRUCTIVENESS_CLASSIFIER_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: LlmVerdictSchema,
-		fallbackModelConfig,
 		modelFetch,
 	});
 	if (!result.ok) {
@@ -448,7 +448,7 @@ export async function classifyNodesForSimulation(
 		try {
 			for (const verdict of await classifyAmbiguousNodes(
 				ambiguous,
-				input.fallbackModelConfig,
+				input.utilityModel ?? input.model,
 				input.logger,
 				input.modelFetch,
 			)) {

@@ -586,9 +586,10 @@ export class InstanceAiAdapterService {
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
-			/** Host-resolved model for the run — fallback for utility LLM calls
-			 *  (simulation fixtures, destructiveness classification). */
+			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
+			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
+			utilityModelId?: ModelConfig;
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -615,6 +616,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -653,6 +655,7 @@ export class InstanceAiAdapterService {
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			...(utilityModelId ? { utilityModelId } : {}),
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,

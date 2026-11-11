@@ -80,12 +80,12 @@ export class InstanceAiConfig {
 	observerMessageTokens: number = 30_000;
 
 	/**
-	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * Smaller model for n8n Assistant background tasks, such as conversation memory, thread titles, and the test data for workflow verification. Use the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
 	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
-	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 * When unset, n8n uses `claude-haiku-5-5` for Anthropic and `gpt-6-luna` for OpenAI. With other providers, or with a custom base URL, it uses the main model.
 	 */
-	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
-	memoryModel: string = '';
+	@Env('N8N_INSTANCE_AI_UTILITY_MODEL')
+	utilityModel: string = '';
 
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')

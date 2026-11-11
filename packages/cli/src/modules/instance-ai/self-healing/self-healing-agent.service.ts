@@ -383,6 +383,11 @@ export class SelfHealingAgentService {
 						proxyContext,
 					)
 				: await this.models.resolveAgentModelConfig(user, proxyContext);
+		const utilityModelId = await this.models.resolveUtilityModelConfig(user, modelId, {
+			proxyBaseUrl: proxy.proxyBaseUrl,
+			tokenManager: proxy.tokenManager,
+			proxyContext,
+		});
 
 		const shareParameters = await this.aiUsage.isParameterValueSharingAllowed();
 		const context = this.adapter.createContext(user, {
@@ -390,6 +395,7 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			utilityModelId,
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

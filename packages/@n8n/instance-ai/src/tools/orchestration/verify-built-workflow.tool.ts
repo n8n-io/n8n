@@ -231,7 +231,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				domainContext: target.domainContext,
 				workflowTaskService,
 				logger: context.logger,
-				fallbackModelConfig: context.modelId,
+				model: context.modelId,
 				modelFetch: context.modelFetch,
 			});
 

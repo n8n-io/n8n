@@ -45,7 +45,6 @@ import { generateValidatedJson } from '../../utils/generate-validated-json';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
-export const SIMULATION_FIXTURES_MODEL = 'anthropic/claude-sonnet-5-5';
 export const SIMULATION_FIXTURES_EFFORT: AnthropicThinkingEffort = 'low';
 
 /**
@@ -65,8 +64,10 @@ export interface GenerateSimulationFixturesInput {
 	 * structure instead of the model's guess at the service's response shape.
 	 */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. Fixture generation prefers it over `model`. */
+	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -452,12 +453,11 @@ export async function generateSimulationFixtures(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {
-		model: SIMULATION_FIXTURES_MODEL,
+		model: input.utilityModel ?? input.model,
 		effort: SIMULATION_FIXTURES_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: FixturesResponseSchema,
-		fallbackModelConfig: input.fallbackModelConfig,
 		modelFetch: input.modelFetch,
 	});
 	if (!result.ok) {
