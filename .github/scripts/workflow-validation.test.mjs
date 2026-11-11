@@ -366,6 +366,7 @@ describe('test-e2e-reusable.yml', () => {
 describe('trusted publishing setup workflows', () => {
 	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
 	const packageSetup = workflowFile('release-publish-new-package.yml');
+	const releasePublish = workflowFile('release-publish.yml');
 
 	it('exposes unpublished packages and processes them one at a time', () => {
 		assert.equal(
@@ -400,5 +401,17 @@ describe('trusted publishing setup workflows', () => {
 			trust.run,
 			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
 		);
+	});
+
+	it('runs setup only for minor releases and blocks publishing when setup fails', () => {
+		const setup = releasePublish.jobs['setup-trusted-publishing'];
+		const publish = releasePublish.jobs['publish-to-npm'];
+
+		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
+		assert.match(setup.if, /needs\.determine-version-info\.outputs\.bump == 'minor'/);
+		assert.ok(publish.needs.includes('setup-trusted-publishing'));
+		assert.match(publish.if, /always\(\)/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
 	});
 });

@@ -441,6 +441,8 @@ ci-master.yml
     └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
+    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (minor releases)
+    │                                 └──────────▶  release-publish-new-package.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
@@ -491,6 +493,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  STAGE 3: Publish                                                          │
 │  ───────────────                                                           │
 │  release-publish.yml (triggered on merge to release/*)                     │
+│  ├─ setup-trusted-publishing (minor releases only)                          │
 │  ├─ publish-to-npm                                                         │
 │  │   ├─ trim-fe-packageJson.js ───▶ Strip devDeps                          │
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
