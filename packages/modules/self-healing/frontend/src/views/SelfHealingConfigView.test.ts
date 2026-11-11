@@ -9,6 +9,8 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
 import * as api from '../self-healing.api';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import { useSelfHealingStore } from '../self-healing.store';
 import SelfHealingConfigView from './SelfHealingConfigView.vue';
 
@@ -92,6 +94,24 @@ beforeEach(() => {
 	vi.spyOn(store, 'load').mockResolvedValue();
 	vi.mocked(api.fetchWorkflowDependencies).mockResolvedValue({});
 });
+
+it.each([
+	[true, 'Self-healing uses your Assistant credits each time it investigates a failed workflow.'],
+	[
+		false,
+		'Self-healing uses tokens from your AI provider each time it investigates a failed workflow.',
+	],
+])(
+	'explains the cost of investigations when the credit proxy is %s',
+	async (proxyEnabled, text) => {
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'instance-ai': { proxyEnabled },
+		} as typeof settingsStore.moduleSettings;
+		const view = await renderView('new');
+		expect(await view.findByTestId('self-healing-cost-note')).toHaveTextContent(text);
+	},
+);
 
 it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();

@@ -27,6 +27,7 @@ import {
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
@@ -41,6 +42,7 @@ const PROJECT_MEMBERS_OPTION = '__project-members__';
 const props = defineProps<{ projectId: string; configurationId: string }>();
 const store = useSelfHealingStore();
 const users = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -48,6 +50,14 @@ const router = useRouter();
 const route = useRoute();
 
 const pageRef = ref<HTMLElement | null>(null);
+// With the proxy, the Assistant spends n8n credits. Without it, it calls the instance's own AI provider.
+const costNote = computed(() =>
+	i18n.baseText(
+		settingsStore.moduleSettings['instance-ai']?.proxyEnabled
+			? 'selfHealing.config.costCredits'
+			: 'selfHealing.config.costProvider',
+	),
+);
 const loading = ref(true);
 const saving = ref(false);
 const loadError = ref(false);
@@ -373,17 +383,24 @@ onBeforeRouteUpdate(async (to, from) => {
 			</N8nButton>
 		</div>
 		<N8nSettingsLayout :class="$style.layout" data-test-id="self-healing-config-page">
-			<N8nSettingsPageHeader
-				:title="title"
-				:description="
-					i18n.baseText(
-						isPersonalTab
-							? 'selfHealing.config.personalDescription'
-							: 'selfHealing.config.description',
-					)
-				"
-				:show-docs-link="false"
-			/>
+			<N8nSettingsPageHeader :title="title" :show-docs-link="false">
+				<template #description>
+					<N8nText size="medium" color="text-base">{{
+						i18n.baseText(
+							isPersonalTab
+								? 'selfHealing.config.personalDescription'
+								: 'selfHealing.config.description',
+						)
+					}}</N8nText>
+					<N8nText
+						size="medium"
+						color="text-base"
+						:class="$style.costNote"
+						data-test-id="self-healing-cost-note"
+						>{{ costNote }}</N8nText
+					>
+				</template>
+			</N8nSettingsPageHeader>
 			<div v-if="loading" data-test-id="self-healing-config-loading">
 				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
 					<N8nSettingsRowGroup>
@@ -626,6 +643,11 @@ onBeforeRouteUpdate(async (to, from) => {
 </template>
 
 <style module lang="scss">
+.costNote {
+	display: block;
+	margin-top: var(--spacing--2xs);
+}
+
 .page {
 	width: 100%;
 }

@@ -11081,6 +11081,8 @@
 	"agents.channels.teams.managed.createBot.checking": "Looking for an Azure subscription n8n can use…",
 	"agents.channels.teams.managed.createBot.retry": "Check again for an Azure subscription",
 	"selfHealing.config.heading": "Self-healing",
+	"selfHealing.config.costCredits": "Self-healing uses your Assistant credits each time it investigates a failed workflow. Only one investigation runs per workflow at a time.",
+	"selfHealing.config.costProvider": "Self-healing uses tokens from your AI provider each time it investigates a failed workflow. Only one investigation runs per workflow at a time.",
 	"selfHealing.config.description": "Choose which workflows the n8n Assistant watches and who reviews its fixes. A fix is published only after a reviewer approves it.",
 	"selfHealing.config.create": "Add configuration",
 	"selfHealing.config.new": "New self-healing configuration",
