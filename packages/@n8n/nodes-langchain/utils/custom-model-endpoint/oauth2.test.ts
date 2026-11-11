@@ -1,4 +1,4 @@
-import { createClientCredentialsTokenSource } from './oauth2';
+import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';
 
 const TOKEN_URL = 'https://login.example.com/oauth2/token';
@@ -22,6 +22,7 @@ const granting = (body: Record<string, unknown>, status = 200) => {
 		headers: Headers;
 		body: URLSearchParams;
 		redirect?: RequestRedirect;
+		signal?: AbortSignal | null;
 	}> = [];
 	const fetchImpl = async (url: RequestInfo | URL, init?: RequestInit) => {
 		calls.push({
@@ -29,6 +30,7 @@ const granting = (body: Record<string, unknown>, status = 200) => {
 			headers: new Headers(init?.headers ?? {}),
 			body: new URLSearchParams(String(init?.body ?? '')),
 			redirect: init?.redirect,
+			signal: init?.signal,
 		});
 		return new Response(JSON.stringify(body), { status });
 	};
@@ -149,6 +151,15 @@ describe('createClientCredentialsTokenSource', () => {
 		await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).rejects.toThrow(
 			'no access token',
 		);
+	});
+
+	it('gives the token request a deadline of its own, not the one an inference request gets', async () => {
+		const { calls, fetchImpl } = granting(GRANT);
+
+		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
+
+		expect(calls[0].signal).toBeInstanceOf(AbortSignal);
+		expect(clientCredentialsTokenRequest(login()).timeout).toBe(30_000);
 	});
 
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {

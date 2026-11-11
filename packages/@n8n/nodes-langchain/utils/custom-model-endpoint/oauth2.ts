@@ -5,6 +5,7 @@ import { truncateMessage } from './error-handling';
 import type { OAuth2Login } from './types';
 
 const CLOCK_SKEW_MARGIN_MS = 30_000;
+const TOKEN_REQUEST_TIMEOUT_MS = 30_000;
 const ASSUMED_LIFETIME_SECONDS = 3600;
 
 export interface AccessTokenSource {
@@ -23,6 +24,8 @@ export interface TokenRequest {
 	body: string;
 	/** A token endpoint has no reason to redirect a POST, and following one replays the secret. */
 	redirect: 'manual';
+	/** A mint answers in well under a second, so it must not wait as long as a completion. */
+	timeout: number;
 }
 
 /** Shared so the credential's own HTTP path mints a token exactly like the node transport does. */
@@ -43,7 +46,13 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 		headers.authorization = `Basic ${pair}`;
 	}
 
-	return { method: 'POST', headers, body: body.toString(), redirect: 'manual' };
+	return {
+		method: 'POST',
+		headers,
+		body: body.toString(),
+		redirect: 'manual',
+		timeout: TOKEN_REQUEST_TIMEOUT_MS,
+	};
 }
 
 function reasonFor(text: string, status: number, login: OAuth2Login): string {
@@ -103,7 +112,11 @@ export function createClientCredentialsTokenSource(
 	let inFlight: Promise<CachedToken> | undefined;
 
 	const request = async (): Promise<CachedToken> => {
-		const response = await fetchToken(login.tokenUrl, clientCredentialsTokenRequest(login));
+		const { timeout, ...init } = clientCredentialsTokenRequest(login);
+		const response = await fetchToken(login.tokenUrl, {
+			...init,
+			signal: AbortSignal.timeout(timeout),
+		});
 		const text = await response.text();
 		if (!response.ok) {
 			const reason = reasonFor(text, response.status, login);
