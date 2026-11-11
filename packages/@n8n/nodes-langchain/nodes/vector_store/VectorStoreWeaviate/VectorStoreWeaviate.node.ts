@@ -8,7 +8,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { type MetadataKeys, type TimeoutParams } from 'weaviate-client';
+import { type MetadataKeys, type TimeoutParams, type WeaviateClient } from 'weaviate-client';
 import { UnexpectedError } from '@n8n/errors';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
@@ -98,6 +98,15 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			k,
 			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 		);
+	}
+}
+
+/** Deletes the collection, or only the tenant when one is given. */
+async function clearCollection(client: WeaviateClient, collectionName: string, tenant?: string) {
+	if (!tenant) {
+		await client.collections.delete(collectionName);
+	} else {
+		await client.collections.get(collectionName).tenants.remove([{ name: tenant }]);
 	}
 }
 
@@ -371,6 +380,22 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			validFilter,
 		);
 	},
+	// Version 1.1+: runs once before the batches, so that later batches do not delete earlier ones
+	async beforeInsert(context, _embeddings, itemIndex) {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			tenant?: string;
+			clearStore?: boolean;
+		};
+		if (!options.clearStore) return;
+
+		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const credentials = await context.getCredentials('weaviateApi');
+		const client = await createWeaviateClient(credentials as WeaviateCredential);
+
+		await clearCollection(client, collectionName, options.tenant);
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
 			extractValue: true,
@@ -397,13 +422,9 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 
-		if (options.clearStore) {
-			if (!options.tenant) {
-				await client.collections.delete(collectionName);
-			} else {
-				const collection = client.collections.get(collectionName);
-				await collection.tenants.remove([{ name: options.tenant }]);
-			}
+		// From version 1.1, beforeInsert clears the store once before the batches
+		if (options.clearStore && context.getNode().typeVersion < 1.1) {
+			await clearCollection(client, collectionName, options.tenant);
 		}
 
 		await WeaviateStore.fromDocuments(documents, embeddings, config);
