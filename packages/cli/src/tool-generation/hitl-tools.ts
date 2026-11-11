@@ -89,7 +89,7 @@ function filterHitlToolProperties(
 		name: 'message',
 		type: 'string',
 		default:
-			'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters }}',
+			'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters.toJsonString() }}',
 		required: true,
 		typeOptions: { rows: 3 },
 		description:
