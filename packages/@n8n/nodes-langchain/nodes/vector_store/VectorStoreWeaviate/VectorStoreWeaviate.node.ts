@@ -181,7 +181,8 @@ async function prepareCollection(
 	options: InsertOptions,
 	itemIndex: number,
 ) {
-	// Parse first, so that an invalid schema does not clear the store
+	// Parse first, so that malformed JSON or a wrong class name does not clear the store.
+	// Weaviate checks the schema content only when it creates the collection, after the clear.
 	const schema = parseCollectionSchema(context, collectionName, options.jsonSchema, itemIndex);
 
 	if (!options.clearStore && !schema) return;
