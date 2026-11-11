@@ -13,6 +13,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 export class LmChatGroq implements INodeType {
@@ -138,6 +139,7 @@ export class LmChatGroq implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('groqApi');
+		const apiKey = getRequiredApiKey(this.getNode(), credentials);
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -147,7 +149,7 @@ export class LmChatGroq implements INodeType {
 
 		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new ChatGroq({
-			apiKey: credentials.apiKey as string,
+			apiKey,
 			model: modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
