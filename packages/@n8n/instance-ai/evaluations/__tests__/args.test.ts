@@ -305,3 +305,33 @@ describe('parseCliArgs --build-via-mcp', () => {
 		expect(() => parseCliArgs(['--build-max-attempts', 'lots'])).toThrow();
 	});
 });
+
+describe('parseCliArgs --assistant-runtime', () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('defaults to v1', () => {
+		expect(parseCliArgs([]).assistantRuntime).toBe('v1');
+	});
+
+	it.each(['v1', 'agents'] as const)('accepts %s', (runtime) => {
+		expect(parseCliArgs(['--assistant-runtime', runtime]).assistantRuntime).toBe(runtime);
+	});
+
+	it('rejects an unknown runtime', () => {
+		expect(() => parseCliArgs(['--assistant-runtime', 'v2'])).toThrow();
+	});
+
+	it('requires a value', () => {
+		expect(() => parseCliArgs(['--assistant-runtime'])).toThrow(
+			'Missing value for --assistant-runtime',
+		);
+	});
+
+	it('rejects the agents runtime with --build-via-mcp', () => {
+		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+		expect(() => parseCliArgs(['--build-via-mcp', '--assistant-runtime', 'agents'])).toThrow(
+			/--assistant-runtime applies to Assistant builds/,
+		);
+	});
+});

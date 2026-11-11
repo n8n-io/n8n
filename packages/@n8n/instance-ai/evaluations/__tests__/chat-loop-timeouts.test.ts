@@ -30,6 +30,7 @@ function makeClient(): N8nClient & { cancelRun: ReturnType<typeof vi.fn> } {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		getThreadStatus: vi.fn().mockResolvedValue({ backgroundTasks: [], memoryTasks: [] }),
+		assistantAgents: () => undefined,
 	} as unknown as N8nClient & { cancelRun: ReturnType<typeof vi.fn> };
 }
 
