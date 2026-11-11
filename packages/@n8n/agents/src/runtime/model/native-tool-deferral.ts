@@ -4,6 +4,7 @@ import type { ModelMessage, Tool, ToolSet } from 'ai';
 import type { ModelConfig, NativeToolDeferralConfig } from '../../types/sdk/agent';
 import { loadAi } from './lazy-ai';
 import { hasAnthropicCacheControl, mergeProviderOptions } from './prompt-cache';
+import { tokenize } from '../tools/tool-search';
 
 type NativeToolDeferralProvider = 'openai' | 'anthropic';
 
@@ -80,8 +81,9 @@ export function eagerTools(tools: ToolSet): ToolSet {
  * the description, which the search splits into words.
  */
 function searchableDescription(name: string, description: string | undefined) {
-	const words = name.replace(/[^a-zA-Z0-9]+/g, ' ').trim();
-	if (words === name) return description;
+	const tokens = tokenize(name);
+	if (tokens.length < 2) return description;
+	const words = tokens.join(' ');
 	return description ? `${description} (${words})` : `(${words})`;
 }
 

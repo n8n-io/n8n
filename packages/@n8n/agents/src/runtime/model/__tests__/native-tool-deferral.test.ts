@@ -383,11 +383,13 @@ describe('native tool catalog', () => {
 		async (_provider, implementation) => {
 			const tools = toAiSdkTools([
 				makeTool('my-workflow-3'),
+				makeTool('Linear_getIssue'),
 				makeTool('Slack'),
 				makeTool('workspace_read_file'),
 			]);
 			const { tools: native } = await applyNativeToolDeferral(tools, implementation, policy);
 			expect(native['my-workflow-3'].description).toBe('Run my-workflow-3. (my workflow 3)');
+			expect(native.Linear_getIssue.description).toBe('Run Linear_getIssue. (linear get issue)');
 			expect(native.Slack.description).toBe('Run Slack.');
 			expect(native.workspace_read_file.description).toBe('Run workspace_read_file.');
 		},
