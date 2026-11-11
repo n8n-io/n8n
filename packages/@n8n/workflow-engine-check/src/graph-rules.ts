@@ -259,7 +259,7 @@ function toTriggerGraph(
 
 function dedupe(edges: Edge[]): Edge[] {
 	const byKey = new Map<string, Edge>();
-	for (const e of edges) byKey.set(`${e.from}|${e.to}|${e.outputIndex}|${e.inputIndex}`, e);
+	for (const e of edges) byKey.set(JSON.stringify([e.from, e.to, e.outputIndex, e.inputIndex]), e);
 	return [...byKey.values()];
 }
 

@@ -56,6 +56,17 @@ describe('graph rules', () => {
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
 		},
 		{
+			shape: 'a cycle whose node names contain "|"',
+			connections: [
+				['Trigger', 'A'],
+				['A', 'B|C'],
+				['B|C', 'A|B'],
+				['A|B', 'C'],
+				['C', 'A'],
+			],
+			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+		},
+		{
 			shape: 'a loop entered at a body node',
 			connections: [
 				['Trigger', 'Body'],
