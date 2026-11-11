@@ -6914,7 +6914,7 @@
 	"settings.security.workflowReviews.promotion.enable.title": "Enable promotion reviews",
 	"settings.security.workflowReviews.promotion.enable.description": "Allow users to request approval before promoting. An open review blocks promoting.",
 	"settings.security.workflowReviews.approval.label": "Approval policy",
-	"settings.security.workflowReviews.approval.option.configurable": "Optional",
+	"settings.security.workflowReviews.approval.option.configurable": "Only when configured",
 	"settings.security.workflowReviews.approval.option.required": "Always required",
 	"settings.security.workflowReviews.promotion.success.enabled": "Promotion reviews enabled",
 	"settings.security.workflowReviews.promotion.success.disabled": "Promotion reviews disabled",
