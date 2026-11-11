@@ -35,4 +35,16 @@ describe('pii guardrail', () => {
 		expect(result.tripwireTriggered).toBe(true);
 		expect(result.info?.maskEntities?.ORDER_ID).toEqual(['ORD-1234', 'ORD-5678']);
 	});
+
+	it('does not throw on a null or undefined custom regex value', async () => {
+		for (const value of [null, undefined]) {
+			const result = await createPiiCheckFn({
+				entities: [],
+				customRegex: [{ name: 'BROKEN', value: value as unknown as string }],
+			})('some text');
+
+			expect(result.tripwireTriggered).toBe(true);
+			expect(Object.keys(result.info?.maskEntities ?? {})).toContain('BROKEN');
+		}
+	});
 });

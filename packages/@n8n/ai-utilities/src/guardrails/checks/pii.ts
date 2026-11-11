@@ -255,7 +255,7 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	}
 	if (config.customRegex?.length) {
 		for (const regex of config.customRegex) {
-			matchAgainstPattern(regex.name, parseRegexLiteral(regex.value));
+			matchAgainstPattern(regex.name, parseRegexLiteral(regex.value || ''));
 		}
 	}
 
