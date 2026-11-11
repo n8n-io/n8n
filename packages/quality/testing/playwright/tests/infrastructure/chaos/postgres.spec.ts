@@ -5,7 +5,7 @@ import { test, expect } from '../../../fixtures/base';
 // Enable observability to use VictoriaLogs for log queries
 test.use({ capability: 'observability' });
 
-// @CATS team to look at this.  This works locally, but not in CI. Maybe IP table rules are not working in CI?
+// Core Execution team to look at this. This works locally, but not in CI. Maybe IP table rules are not working in CI?
 // eslint-disable-next-line playwright/no-skipped-test
 test.skip(
 	'Database connection timeout health check bug @mode:postgres @chaostest',
