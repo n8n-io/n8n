@@ -52,10 +52,8 @@ context.
    service-specific nodes.
 2. **Read definitions.** Plan every node first, including utility nodes such as
    Set, IF, Switch, Code, Wait, Sort and output parsers. Then call
-   `get_node_types` with the exact node IDs and discriminators of the whole plan
-   (up to ten per call). When the plan has more than ten nodes, send all the
-   calls in the same response, so that no planning step comes between them.
-   Fetch again only for a node the plan did not expect. Follow `@builderHint`,
+   `get_node_types` once with the exact node IDs and discriminators of the whole
+   plan. Fetch again only for a node the plan did not expect. Follow `@builderHint`,
    `@default`, enum values, credential types and display conditions.
 3. **Resolve real values.** For each `searchListMethod`, `loadOptionsMethod` or
    `resourceLocator` parameter, call `get_node_parameter_options` when a
