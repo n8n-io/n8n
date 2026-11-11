@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
+	type Person,
 	RoleRepository,
 	RoleMappingRuleRepository,
 	Settings,
@@ -795,13 +796,13 @@ export class ProvisioningService {
 	}
 
 	async provisionExpressionMappedRolesForUser(
-		user: User,
+		person: Person,
 		context: RoleResolverContext,
 	): Promise<void> {
 		if (!(await this.isExpressionMappingEnabled())) return;
 
-		const previousInstanceRole = user.role.slug;
-		const previousProjectRoles = await this.getPreviousProjectRoles(user.id);
+		const previousInstanceRole = person.role.slug;
+		const previousProjectRoles = await this.getPreviousProjectRoles(person.id);
 
 		const config = await this.buildRoleMappingConfig();
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
@@ -813,7 +814,7 @@ export class ProvisioningService {
 		]);
 
 		this.logger.debug('SSO role resolution complete', {
-			userId: user.id,
+			userId: person.id,
 			provider: context.$provider,
 			claimKeys: Object.keys(context.$claims ?? {}).sort(),
 			matchedInstanceRuleId: resolved.instanceRole.matchedRuleId,
@@ -821,7 +822,7 @@ export class ProvisioningService {
 			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
 		});
 
-		await this.applyResolvedRoles(user, resolved, {
+		await this.applyResolvedRoles(person, resolved, {
 			instanceRole: instanceRolesManaged,
 			projectRoles: projectRolesManaged,
 		});
@@ -839,8 +840,8 @@ export class ProvisioningService {
 			: [];
 
 		this.eventService.emit('expression-mapping-roles-resolved', {
-			userId: user.id,
-			userEmail: user.email,
+			userId: person.id,
+			userEmail: person.email,
 			provider: context.$provider,
 			instanceRole: {
 				...newInstanceRole,

@@ -33,6 +33,8 @@ export {
 	TimeoutError,
 	SecurityViolationError,
 	SyntaxError,
+	HostCallError,
+	RuntimeRestartingError,
 } from './types';
 export { IsolateError } from '@n8n/errors';
 

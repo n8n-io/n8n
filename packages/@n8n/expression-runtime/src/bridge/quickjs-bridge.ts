@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
-import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import {
+	DEFAULT_BRIDGE_CONFIG,
+	HostCallError,
+	MemoryLimitError,
+	RuntimeRestartingError,
+	TimeoutError,
+} from '../types';
 import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import { isArrayIndexKey } from '../runtime/utils';
@@ -529,6 +535,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * one on a new module.
 	 */
 	private broken = false;
+
+	/** The name of the host error that broke the runtime. A nested call keeps the first one. */
+	private hostErrorName = 'Error';
 
 	/** The bundle that the runtime loaded. A rebuild loads it again. */
 	private runtimeBundle: string | undefined;
@@ -1382,6 +1391,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
+				if (!this.broken) {
+					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+				}
 				this.broken = true;
 				throw error;
 			}
@@ -1436,7 +1448,12 @@ export class QuickJsBridge implements RuntimeBridge {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			// A host error, for example a WASM trap, can name memory without the
 			// guest reaching its memory limit.
-			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			if (this.broken) {
+				throw new HostCallError(
+					`Expression evaluation failed: ${errorMessage}`,
+					this.hostErrorName,
+				);
+			}
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1505,7 +1522,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			loadQuickJSWasm().catch((error: unknown) => {
 				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
 			});
-			throw new Error(
+			throw new RuntimeRestartingError(
 				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
 			);
 		}
