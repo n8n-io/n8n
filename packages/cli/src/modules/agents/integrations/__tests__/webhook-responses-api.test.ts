@@ -108,7 +108,6 @@ describe('toResponseBody', () => {
 describe('toResponseBody with approvals', () => {
 	it('renders one approval request for each action after the message', () => {
 		const body = toResponseBody({
-			model: 'anthropic/claude-sonnet-4-5',
 			conversationId: 'c-1',
 			text: '',
 			approvals: [

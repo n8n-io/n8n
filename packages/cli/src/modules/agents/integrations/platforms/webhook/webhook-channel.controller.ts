@@ -34,6 +34,7 @@ export class WebhookChannelController {
 	}
 
 	@Post('/:agentId/approvals/:conversationId/:runId/:toolCallId', {
+		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
