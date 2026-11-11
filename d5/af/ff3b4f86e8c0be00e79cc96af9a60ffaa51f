@@ -1,0 +1,82 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue
+  s_b6dc6f2178bdeb::t_22f817a1a09037 235
+packages/frontend/editor-ui/src/features/ndv/panel/components/TriggerPanel.vue
+  s_b6dc6f2178bdeb::t_0e2a25b0121715 465
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  s_b6dc6f2178bdeb::t_86e8183d1b43d7 11,77
+  s_b6dc6f2178bdeb::t_4562beaa63a7a9 28-31
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/index.d.ts
+  s_b6dc6f2178bdeb::t_861df13e46175e 8-11
+  s_b6dc6f2178bdeb::t_71dbb9aea46331 12
+packages/frontend/@n8n/design-system/src/components/N8nLoading/Loading.stories.ts
+  s_b6dc6f2178bdeb::t_af2e9560848eda 83-85
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.test.ts
+  s_b6dc6f2178bdeb::t_5f78e5269304f7 156
+  s_b6dc6f2178bdeb::t_1a2c94dd981eb0 154-155,157-158
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_b6dc6f2178bdeb::t_f7b015ac112d4a 1817,1828
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.stories.ts
+  s_b6dc6f2178bdeb::t_981ce15d7dbebb 11,47
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_b6dc6f2178bdeb::t_88658be080bf3e 307
+  s_b6dc6f2178bdeb::t_a8a6c983130b72 308,556
+  s_ddeec58b065b3a::t_57222b1333079b 343
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_b6dc6f2178bdeb::t_5c384315d6a762 8
+  s_b6dc6f2178bdeb::t_4f757d9b7f016a 99
+  s_b6dc6f2178bdeb::t_012b0b7b49886a 98,100
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  s_b6dc6f2178bdeb::t_0df61bf521ebde 60,85
+packages/@n8n/mcp-apps/src/components/mcp-fallback-card.vue
+  s_b6dc6f2178bdeb::t_19a9e6687e16f0 14
+packages/@n8n/mcp-apps/src/components/workflow-preview/workflow-preview-card.vue
+  s_b6dc6f2178bdeb::t_b27538051e9aab 141
+packages/@n8n/mcp-apps/src/apps/workflow-preview/App.vue
+  s_b6dc6f2178bdeb::t_bc86d0a6701dc0 123
+packages/frontend/editor-ui/src/app/views/LoadingView.vue
+  s_dafb04fe0f4f08::t_3f72c98cf06403 8
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/ExecutionPreviewHost.vue
+  s_4b751b08b815c9::t_9414c87f23bdfe 5,124,140
+packages/frontend/@n8n/design-system/src/components/N8nButton/__snapshots__/Button.test.ts.snap
+  s_ddeec58b065b3a::t_63590d9d8c33f6 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5afff3b4f86e8c0be00e79cc96af9a60ffaa51f",
+  "prompts": {},
+  "sessions": {
+    "s_4b751b08b815c9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9df-fc3d-75a0-9d4c-747168cc1385",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b6dc6f2178bdeb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9d6-d381-75a0-9d4c-746cbe86df53",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_dafb04fe0f4f08": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9dc-9474-75a0-9d4c-746febb01f66",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ddeec58b065b3a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9e4-6de0-75a0-9d4c-7473223835cb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
