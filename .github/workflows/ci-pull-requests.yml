@@ -46,7 +46,8 @@ jobs:
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       affected_base: ${{ steps.affected-base.outputs.sha }}
-      merge_base: ${{ steps.ci-filter.outputs.merge-base }}
+      # The merge base, or the last green commit when this run tests only the newer commits.
+      diff_base: ${{ steps.ci-filter.outputs.diff-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
@@ -73,11 +74,23 @@ jobs:
           MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
 
+      # Finds the newest PR commit that passed this workflow, so that ci-filter tests
+      # only the newer commits. The merge queue tests the whole PR on the latest master.
+      - name: Find last green commit
+        id: last-green
+        if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+        continue-on-error: true
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/find-last-green-commit.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check for relevant changes
         uses: ./.github/actions/ci-filter
         id: ci-filter
         with:
           mode: filter
+          incremental-base: ${{ steps.last-green.outputs.result }}
           filters: |
             ci:
               **
@@ -262,6 +275,16 @@ jobs:
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
 
+      - name: Report incremental scope
+        if: steps.ci-filter.outputs.incremental == 'true'
+        env:
+          DIFF_BASE: ${{ steps.ci-filter.outputs.diff-base }}
+        run: |
+          {
+            echo "This run tests only the changes after $DIFF_BASE, the last commit of this PR that passed CI."
+            echo "To test the whole PR, add the \`force-full-ci\` label and re-run all jobs."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
@@ -289,7 +312,7 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
-          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.diff-base }}
         run: |
           JANITOR=packages/quality/testing/janitor/dist/cli.js
           # Without a built janitor (a workflow-only PR skips the build), report no
@@ -443,10 +466,10 @@ jobs:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
           fetch-depth: 1
 
-      # Impact selection reads package.json at the merge base.
-      - name: Fetch merge base
+      # Impact selection reads package.json at the diff base.
+      - name: Fetch diff base
         env:
-          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
         run: |
           if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
             git fetch --no-tags --depth=1 origin "$MERGE_BASE"
@@ -465,7 +488,7 @@ jobs:
         id: generate-matrix
         env:
           CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
-          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.diff_base }}
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
