@@ -310,7 +310,12 @@ function onAgentPublished(updated: AgentResource) {
 
 function openMove(agent: AgentResource) {
 	moveProjectId.value = agent.projectId;
-	moveAction.value = { mode: 'moveAgent', id: agent.id, parentFolderId: agent.parentFolderId };
+	moveAction.value = {
+		mode: 'moveAgent',
+		id: agent.id,
+		name: agent.name,
+		parentFolderId: agent.parentFolderId,
+	};
 }
 
 watch([projectId, folderId, showFolders], () => {

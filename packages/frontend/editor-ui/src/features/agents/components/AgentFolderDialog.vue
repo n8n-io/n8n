@@ -17,6 +17,10 @@ import {
 import { invalidateProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { moveAgent } from '../composables/useAgentApi';
 import AgentModal from './modals/AgentModal.vue';
+import MoveToFolderDropdown from '@/features/core/folders/components/MoveToFolderDropdown.vue';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import type { ChangeLocationSearchResult } from '@/features/core/folders/folders.types';
+import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
 
 export type AgentFolderAction = {
 	mode: 'create' | 'rename' | 'moveFolder' | 'moveAgent' | 'delete';
@@ -32,6 +36,7 @@ const emit = defineEmits<{ close: []; saved: [] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(computed(() => props.projectId));
 const name = ref('');
 const target = ref(PROJECT_ROOT);
 const removal = ref('relocate');
@@ -42,14 +47,40 @@ const error = ref('');
 const count = ref(0);
 let generation = 0;
 const destinations = ref<Array<{ id: string; label: string }>>([]);
+const selectedLocation = ref<ChangeLocationSearchResult | null>(null);
 const isNaming = computed(() => props.action?.mode === 'create' || props.action?.mode === 'rename');
 const isDelete = computed(() => props.action?.mode === 'delete');
+const isMoving = computed(
+	() => props.action?.mode === 'moveAgent' || props.action?.mode === 'moveFolder',
+);
+const moveLabel = computed(() =>
+	props.action?.mode === 'moveAgent'
+		? i18n.baseText('agents.folders.moveAgent')
+		: i18n.baseText('folders.move.modal.confirm', {
+				interpolate: { resourceTypeLabel: i18n.baseText('generic.folder').toLowerCase() },
+			}),
+);
 const title = computed(() => {
 	if (props.action?.mode === 'create') return i18n.baseText('agents.folders.create');
 	if (props.action?.mode === 'rename') return i18n.baseText('agents.folders.rename');
 	if (isDelete.value) return i18n.baseText('agents.folders.deleteTitle');
 
-	return i18n.baseText('agents.folders.move');
+	if (props.action?.mode === 'moveAgent') {
+		return i18n
+			.baseText('agents.folders.moveAgentTitle', {
+				interpolate: { name: props.action.name ?? '' },
+			})
+			.trim();
+	}
+
+	return i18n
+		.baseText('folders.move.modal.title', {
+			interpolate: {
+				resourceTypeLabel: i18n.baseText('generic.folder').toLowerCase(),
+				folderName: props.action?.name ?? '',
+			},
+		})
+		.trim();
 });
 
 watch(
@@ -59,6 +90,7 @@ watch(
 		destinations.value = [];
 		loading.value = false;
 		loadFailed.value = false;
+		selectedLocation.value = null;
 
 		if (!action) return;
 
@@ -68,7 +100,7 @@ watch(
 		error.value = '';
 		count.value = 0;
 
-		if (isNaming.value) return;
+		if (isNaming.value || isMoving.value) return;
 
 		loading.value = true;
 
@@ -121,10 +153,23 @@ watch(
 	{ immediate: true },
 );
 
+function onLocationSelected(location: ChangeLocationSearchResult) {
+	selectedLocation.value = location;
+	target.value = location.resource === 'project' ? PROJECT_ROOT : location.id;
+	loadFailed.value = false;
+}
+
+function onDestinationError(cause: unknown) {
+	loadFailed.value = true;
+	toast.showError(cause, i18n.baseText('agents.folders.error'));
+}
+
 async function save() {
 	const action = props.action;
 
 	if (!action || loading.value || loadFailed.value || busy.value) return;
+
+	if (isMoving.value && !selectedLocation.value) return;
 
 	if (isNaming.value) {
 		const result = folderNameSchema.safeParse(name.value);
@@ -186,7 +231,7 @@ async function save() {
 	<AgentModal
 		:open="action !== null"
 		:title="title"
-		size="small"
+		:size="isMoving ? 'medium' : 'small'"
 		:busy="busy"
 		@update:open="!$event && emit('close')"
 	>
@@ -200,6 +245,43 @@ async function save() {
 					data-testid="agent-folder-name"
 				/>
 				<N8nText v-if="error" color="danger">{{ error }}</N8nText>
+			</template>
+			<template v-else-if="isMoving">
+				<div :class="$style.field">
+					<label for="agent-move-project">{{
+						i18n.baseText('folders.move.modal.project.label')
+					}}</label>
+					<N8nInput
+						id="agent-move-project"
+						:model-value="projectName ?? ''"
+						readonly
+						:title="i18n.baseText('agents.folders.sameProject')"
+						data-testid="agent-move-project"
+					>
+						<template #prefix>
+							<ProjectIcon :icon="projectIcon" size="small" border-less />
+						</template>
+					</N8nInput>
+				</div>
+				<div :class="$style.field">
+					<label for="agent-folder-target">{{
+						i18n.baseText('folders.move.modal.folder.label')
+					}}</label>
+					<MoveToFolderDropdown
+						:key="action?.id"
+						input-id="agent-folder-target"
+						:selected-location="selectedLocation"
+						:selected-project-id="projectId"
+						:current-project-id="projectId"
+						:current-folder-id="action?.mode === 'moveFolder' ? action.id : undefined"
+						:parent-folder-id="action?.parentFolderId ?? undefined"
+						resource-type="agent"
+						:teleported="false"
+						data-testid="agent-folder-target"
+						@location:selected="onLocationSelected"
+						@load:error="onDestinationError"
+					/>
+				</div>
 			</template>
 			<template v-else>
 				<N8nSelect
@@ -245,14 +327,16 @@ async function save() {
 			<N8nButton
 				:variant="isDelete && removal === 'delete' ? 'destructive' : 'solid'"
 				:loading="busy"
-				:disabled="loading || loadFailed"
+				:disabled="loading || loadFailed || (isMoving && !selectedLocation)"
 				data-testid="agent-folder-save"
 				@click="save"
 			>
 				{{
 					isDelete && removal === 'delete'
 						? i18n.baseText('agents.folders.permanent')
-						: i18n.baseText('generic.save')
+						: isMoving
+							? moveLabel
+							: i18n.baseText('generic.save')
 				}}
 			</N8nButton>
 		</template>
@@ -263,6 +347,12 @@ async function save() {
 .fields {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--md);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 </style>

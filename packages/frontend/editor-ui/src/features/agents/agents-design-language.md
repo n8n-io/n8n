@@ -31,6 +31,13 @@ List folders before Agents, as workflow lists do. Use one total, page size, and
 pager for both resource types. Fill the remaining page slots with Agents when a
 page contains the last folders. Keep the global overview flat.
 
+## Folder moves
+
+Match the workflow move dialog. Name the Agent or folder in the title. Show the
+current project and its icon above the shared searchable folder picker. Keep the
+project fixed. Offer project root and show nested folder paths. Use `Move Agent`
+or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
+
 ## Agent card subtitles
 
 Use a separate element for each separator between metadata fields, as workflow

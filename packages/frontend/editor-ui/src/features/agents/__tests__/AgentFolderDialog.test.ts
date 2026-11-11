@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import type { ChangeLocationSearchResult } from '@/features/core/folders/folders.types';
 import AgentFolderDialog from '../components/AgentFolderDialog.vue';
 
 const api = vi.hoisted(() => ({
@@ -24,15 +25,42 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: api.showError }) }));
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+vi.mock('../composables/useAgentProjectBreadcrumb', async () => {
+	const { ref } = await import('vue');
+
+	return {
+		useAgentProjectBreadcrumb: () => ({
+			projectName: ref('Customer operations'),
+			projectIcon: ref({ type: 'icon', value: 'layers' }),
+		}),
+	};
+});
+vi.mock('@/features/collaboration/projects/components/ProjectIcon.vue', () => ({
+	default: { props: ['icon'], template: '<span>{{ icon.value }}</span>' },
+}));
+vi.mock('@/features/core/folders/components/MoveToFolderDropdown.vue', () => ({
+	default: {
+		name: 'MoveToFolderDropdown',
+		props: [
+			'selectedLocation',
+			'selectedProjectId',
+			'currentProjectId',
+			'currentFolderId',
+			'parentFolderId',
+			'resourceType',
+			'teleported',
+		],
+		emits: ['location:selected', 'load:error'],
+		template: '<div />',
+	},
 }));
 vi.mock('@n8n/design-system', () => ({
 	N8nInput: {
-		props: ['modelValue'],
+		props: ['modelValue', 'readonly'],
+		inheritAttrs: false,
 		emits: ['update:modelValue'],
 		template:
-			'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<div><slot name="prefix" /><input v-bind="$attrs" :value="modelValue" :readonly="readonly" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
 	},
 	N8nSelect: {
 		props: ['modelValue'],
@@ -48,8 +76,22 @@ vi.mock('@n8n/design-system', () => ({
 	},
 }));
 vi.mock('../components/modals/AgentModal.vue', () => ({
-	default: { template: '<div><slot /><slot name="footerActions" /></div>' },
+	default: {
+		props: ['title', 'size'],
+		template: '<div><h1>{{ title }}</h1><slot /><slot name="footerActions" /></div>',
+	},
 }));
+
+const destination: ChangeLocationSearchResult = {
+	id: 'target',
+	name: 'Triage',
+	path: ['Support', 'Triage'],
+	resource: 'folder',
+	createdAt: '',
+	updatedAt: '',
+	workflowCount: 0,
+	subFolderCount: 0,
+};
 
 function render(action: NonNullable<InstanceType<typeof AgentFolderDialog>['$props']['action']>) {
 	return mount(AgentFolderDialog, { props: { projectId: 'project', action } });
@@ -85,30 +127,85 @@ describe('AgentFolderDialog', () => {
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
 
 		expect(api.renameFolder).not.toHaveBeenCalled();
-		expect(wrapper.text()).toContain('agents.folders.invalidName');
+		expect(wrapper.text()).toContain('Use a valid folder name');
 	});
 
-	it('offers all Agent destinations and moves an Agent to root', async () => {
-		api.getProjectFolders
-			.mockResolvedValueOnce({ data: [{ id: 'one', path: ['One'] }], count: 2 })
-			.mockResolvedValueOnce({ data: [{ id: 'two', path: ['One', 'Two'] }], count: 2 });
-		const wrapper = render({ mode: 'moveAgent', id: 'agent', parentFolderId: 'one' });
+	it('shows the Agent name and fixed project, and uses the workflow picker to move to root', async () => {
+		const wrapper = render({
+			mode: 'moveAgent',
+			id: 'agent',
+			name: 'Weekly insights',
+			parentFolderId: 'one',
+		});
 		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+		const save = wrapper.get('[data-testid="agent-folder-save"]');
 
-		expect(api.getProjectFolders).toHaveBeenLastCalledWith(
-			{ baseUrl: '/rest' },
-			'project',
-			{ resourceType: 'agent', skip: 1, take: 100, sortBy: 'name:asc' },
-			{},
-			['id', 'name', 'path', 'updatedAt'],
+		expect(wrapper.get('h1').text()).toBe('Move Agent Weekly insights');
+		expect(wrapper.get('[data-testid="agent-move-project"]').element).toHaveValue(
+			'Customer operations',
 		);
-		expect(wrapper.text()).toContain('One / Two');
+		expect(wrapper.get('[data-testid="agent-move-project"]').attributes('readonly')).toBeDefined();
+		expect(picker.props()).toMatchObject({
+			selectedProjectId: 'project',
+			currentProjectId: 'project',
+			parentFolderId: 'one',
+			resourceType: 'agent',
+			teleported: false,
+		});
+		expect(save.text()).toBe('Move Agent');
+		expect(save.attributes('disabled')).toBeDefined();
 
-		await wrapper.get('[data-testid="agent-folder-target"]').setValue(PROJECT_ROOT);
-		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
+		picker.vm.$emit('location:selected', { ...destination, id: 'project', resource: 'project' });
+		await flushPromises();
+		await save.trigger('click');
 		await flushPromises();
 
 		expect(api.moveAgent).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'project', 'agent', null);
+	});
+
+	it('names a folder move and excludes the source subtree in the shared picker', async () => {
+		const wrapper = render({
+			mode: 'moveFolder',
+			id: 'source',
+			name: 'Research',
+			parentFolderId: 'parent',
+		});
+		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+
+		expect(wrapper.get('h1').text()).toBe('Move folder Research');
+		expect(picker.props()).toMatchObject({
+			currentFolderId: 'source',
+			parentFolderId: 'parent',
+			resourceType: 'agent',
+			selectedProjectId: 'project',
+		});
+		expect(wrapper.get('[data-testid="agent-folder-save"]').text()).toBe('Move folder');
+
+		picker.vm.$emit('location:selected', destination);
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
+		await flushPromises();
+
+		expect(api.moveFolder).toHaveBeenCalledWith(
+			{ baseUrl: '/rest' },
+			'project',
+			'source',
+			'target',
+		);
+	});
+
+	it('blocks a move and reports a folder-picker failure', async () => {
+		const wrapper = render({ mode: 'moveAgent', id: 'agent', name: 'Support' });
+		const failure = new Error('Could not load folders');
+		wrapper.findComponent({ name: 'MoveToFolderDropdown' }).vm.$emit('load:error', failure);
+		await flushPromises();
+		await wrapper.get('form').trigger('submit');
+
+		expect(api.moveAgent).not.toHaveBeenCalled();
+		expect(api.showError).toHaveBeenCalledWith(failure, expect.any(String));
+		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
 	});
 
 	it('relocates contents to root by default and excludes the deleted subtree', async () => {
@@ -132,7 +229,7 @@ describe('AgentFolderDialog', () => {
 		const wrapper = render({ mode: 'delete', id: 'folder', canRelocate: false });
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('agents.folders.deleteDescription');
+		expect(wrapper.text()).toContain('This permanently deletes');
 		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
 
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');

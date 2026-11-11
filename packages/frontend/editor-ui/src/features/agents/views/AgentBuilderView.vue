@@ -2968,6 +2968,7 @@ async function onHeaderAction(action: string) {
 		folderMoveAction.value = {
 			mode: 'moveAgent',
 			id: agentId.value,
+			name: agent.value?.name,
 			parentFolderId: agent.value?.parentFolderId,
 		};
 

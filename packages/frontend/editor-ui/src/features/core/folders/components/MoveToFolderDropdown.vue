@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '../folders.types';
 import { useFoldersStore } from '../folders.store';
 import { computed, ref, watch } from 'vue';
+import type { FolderResourceType } from '@n8n/api-types';
 
 import { N8nIcon, N8nLoading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 /**
@@ -18,6 +19,9 @@ type Props = {
 	currentProjectId?: string; // The project where the resource is currently located
 	currentFolderId?: string;
 	parentFolderId?: string;
+	resourceType?: FolderResourceType;
+	teleported?: boolean;
+	inputId?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,10 +29,14 @@ const props = withDefaults(defineProps<Props>(), {
 	currentProjectId: undefined,
 	currentFolderId: undefined,
 	parentFolderId: undefined,
+	resourceType: 'workflow',
+	teleported: true,
+	inputId: undefined,
 });
 
 const emit = defineEmits<{
 	'location:selected': [value: ChangeLocationSearchResult];
+	'load:error': [cause: unknown];
 }>();
 
 const i18n = useI18n();
@@ -50,49 +58,64 @@ const selectedLocationId = computed<string | null>({
 
 const loading = ref(false);
 const initialLoading = ref(true);
+const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
+let generation = 0;
 
 const fetchAvailableLocations = async (query?: string) => {
+	const requestGeneration = ++generation;
 	loading.value = true;
-	const folders = await foldersStore.fetchFoldersAvailableForMove(
-		props.selectedProjectId,
-		props.currentFolderId,
-		{ name: query ?? undefined },
-	);
-	if (!props.parentFolderId) {
-		availableLocations.value = folders;
-	} else {
-		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
+
+	try {
+		const folders = await foldersStore.fetchFoldersAvailableForMove(
+			props.selectedProjectId,
+			props.currentFolderId,
+			{ name: query ?? undefined },
+			props.resourceType,
+		);
+
+		if (requestGeneration !== generation) return;
+
+		if (!props.parentFolderId) {
+			availableLocations.value = folders;
+		} else {
+			availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
+		}
+
+		const rootFolderName = i18n.baseText('folders.move.project.root.name');
+		const isQueryMatchesRoot =
+			!query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
+
+		// Finally always add project root to the results
+		const projectRoot: ChangeLocationSearchResult = {
+			id: props.selectedProjectId,
+			name: rootFolderName,
+			resource: 'project',
+			createdAt: '',
+			updatedAt: '',
+			workflowCount: 0,
+			subFolderCount: 0,
+			path: [],
+		};
+		if (isQueryMatchesRoot) {
+			availableLocations.value.unshift(projectRoot);
+		}
+
+		// Auto-select project root if no location is selected (initial load, not search)
+		if (!query && !props.selectedLocation) {
+			emit('location:selected', projectRoot);
+		}
+	} catch (cause) {
+		if (requestGeneration === generation) emit('load:error', cause);
+	} finally {
+		if (requestGeneration === generation) {
+			loading.value = false;
+			initialLoading.value = false;
+		}
 	}
-
-	const rootFolderName = i18n.baseText('folders.move.project.root.name');
-	const isQueryMatchesRoot = !query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
-
-	// Finally always add project root to the results
-	const projectRoot: ChangeLocationSearchResult = {
-		id: props.selectedProjectId,
-		name: rootFolderName,
-		resource: 'project',
-		createdAt: '',
-		updatedAt: '',
-		workflowCount: 0,
-		subFolderCount: 0,
-		path: [],
-	};
-	if (isQueryMatchesRoot) {
-		availableLocations.value.unshift(projectRoot);
-	}
-
-	// Auto-select project root if no location is selected (initial load, not search)
-	if (!query && !props.selectedLocation) {
-		emit('location:selected', projectRoot);
-	}
-
-	loading.value = false;
-	initialLoading.value = false;
 };
 
 watch(
-	() => [props.selectedProjectId, props.currentFolderId, props.parentFolderId],
+	() => [props.selectedProjectId, props.currentFolderId, props.parentFolderId, props.resourceType],
 	() => {
 		availableLocations.value = [];
 		initialLoading.value = true;
@@ -115,11 +138,14 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 		<N8nSelect
 			v-else
 			ref="moveFolderDropdown"
+			:id="inputId"
 			v-model="selectedLocationId"
 			:filterable="true"
 			:remote="true"
 			:remote-method="fetchAvailableLocations"
 			:loading="loading"
+			:teleported="teleported"
+			:popper-options="teleported ? undefined : inPlacePopperOptions"
 			:placeholder="i18n.baseText('folders.move.modal.folder.placeholder')"
 			:no-data-text="i18n.baseText('folders.move.modal.folder.noData.label')"
 			option-label="name"

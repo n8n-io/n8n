@@ -1078,6 +1078,26 @@ describe('AgentBuilderView — preview routing', () => {
 		},
 	);
 
+	it('includes the Agent name when opening the move dialog from the builder', async () => {
+		const wrapper = await renderView({
+			stubs: {
+				AgentFolderDialog: {
+					name: 'AgentFolderDialog',
+					props: ['projectId', 'action'],
+					template: '<div />',
+				},
+			},
+		});
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'move-folder');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toMatchObject({
+			mode: 'moveAgent',
+			id: 'a1',
+			name: 'Agent One',
+		});
+	});
+
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
