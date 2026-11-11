@@ -15,7 +15,7 @@ import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -28,6 +28,7 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
+const { artifactHref: resolveArtifactHref } = useArtifactLinks();
 const thread = useArtifactThread();
 const project = computed(() => {
 	// The project id arrives with thread hydration. Until then the lookup is
@@ -148,23 +149,8 @@ const artifactIconMap: Record<string, IconName> = {
 };
 
 function artifactHref(artifact: ResourceEntry) {
-	if (artifact.type === 'workflow') return `/workflow/${artifact.id}`;
-	if (artifact.type === 'data-table') {
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
-			: '/data-tables';
-	}
-	if (artifact.type === 'agent') {
-		if (artifact.pending) return '#';
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/agents/${artifact.id}`
-			: '/home/agents';
-	}
-	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
-	if (artifact.type === 'app' && artifact.projectId) {
-		return appHref(artifact.projectId, artifact.id);
-	}
-	return '#';
+	if (artifact.type === 'agent' && artifact.pending) return '#';
+	return resolveArtifactHref(artifact.type, artifact.id, artifact.projectId) ?? '#';
 }
 
 function openArtifactLabel(name: string) {

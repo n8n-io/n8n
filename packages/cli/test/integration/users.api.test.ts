@@ -19,6 +19,7 @@ import {
 	ProjectRepository,
 	RoleMappingRuleRepository,
 	RoleRepository,
+	ServiceAccountRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -1947,5 +1948,60 @@ describe('GET /users account status', () => {
 			.get('/users')
 			.query({ filter: JSON.stringify({ status: 'pending' }) })
 			.expect(400);
+	});
+});
+
+describe('GET /users with a service account', () => {
+	let owner: User;
+	let member: User;
+	let project: Project;
+
+	beforeAll(async () => {
+		await testDb.truncate([
+			'SharedWorkflow',
+			'SharedCredentials',
+			'WorkflowEntity',
+			'CredentialsEntity',
+			'Folder',
+			'ProjectRelation',
+			'Project',
+			'User',
+		]);
+
+		owner = await createOwner();
+		member = await createMember();
+		const serviceAccount = await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+		project = await createTeamProject('service-account-project', member);
+		await linkUserToProject(serviceAccount, project, 'project:editor');
+	});
+
+	const idsOf = (items: Array<{ id: string }>) => items.map(({ id }) => id).sort();
+
+	test('should list persons only, with matching status counts', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ includeStatusCounts: true })
+			.expect(200);
+
+		const { count, items, statusCounts } = response.body.data;
+		expect(count).toBe(2);
+		expect(idsOf(items)).toEqual([owner.id, member.id].sort());
+		expect(statusCounts).toEqual({ all: 2, active: 2, deactivated: 0 });
+	});
+
+	test('should list persons only when filtering by project', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ filter: JSON.stringify({ projectId: project.id }) })
+			.expect(200);
+
+		const { count, items } = response.body.data;
+		expect(count).toBe(1);
+		expect(idsOf(items)).toEqual([member.id]);
 	});
 });

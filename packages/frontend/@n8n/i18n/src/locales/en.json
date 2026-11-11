@@ -9631,6 +9631,7 @@
 	"agents.builder.budget.session.suffix": "per session",
 	"agents.builder.budget.session.stop": "The agent stops when a session reaches this cap.",
 	"agents.builder.budget.notSet": "Not set",
+	"agents.builder.budget.coverage.caption": "Both limits cover estimated costs for this agent’s AI model, including memory. n8n Assistant usage is not included.",
 	"agents.builder.budget.currencyPrefix": "$",
 	"agents.chat.budget.notNow": "Not now",
 	"agents.chat.budget.increase": "Increase cap",
