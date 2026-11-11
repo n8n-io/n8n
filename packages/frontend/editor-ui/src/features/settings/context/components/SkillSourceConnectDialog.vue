@@ -143,6 +143,8 @@ let credentialsRun = 0;
 let repositoriesRun = 0;
 /** Counts the opens and closes, so a credential made for an earlier session is dropped. */
 let dialogSession = 0;
+/** A GitHub sign-in is open. The OAuth helper holds one at a time, so the select waits. */
+const signingIn = ref(false);
 
 function resetRepositories() {
 	repositoriesRun += 1;
@@ -177,6 +179,7 @@ watch(
 	() => props.open,
 	(open) => {
 		dialogSession += 1;
+		signingIn.value = false;
 		if (!open) {
 			// A GitHub sign-in that is still open belongs to this session, so it stops here.
 			credentialOAuth.cancelAuthorize();
@@ -485,10 +488,17 @@ async function onCredentialCreated(id: string, target: NewCredentialTarget) {
  * browser allows the popup.
  */
 async function signInWithGitHub(target: NewCredentialTarget) {
-	const credential = await credentialOAuth.createAndAuthorize(OAUTH2_CREDENTIAL_TYPE, undefined, {
-		projectId: target.projectId,
-	});
-	if (credential) await onCredentialCreated(credential.id, target);
+	if (signingIn.value) return;
+	signingIn.value = true;
+	try {
+		const credential = await credentialOAuth.createAndAuthorize(OAUTH2_CREDENTIAL_TYPE, undefined, {
+			projectId: target.projectId,
+		});
+		if (credential) await onCredentialCreated(credential.id, target);
+	} finally {
+		// A close or a new open already reset the flag for the next session.
+		if (target.session === dialogSession) signingIn.value = false;
+	}
 }
 
 function createCredential(type: GitHubSkillSourceCredentialType) {
@@ -730,7 +740,7 @@ function onInteractOutside(event: Event) {
 						:model-value="credentialId || NO_CREDENTIAL"
 						:items="credentialItems"
 						size="large"
-						:disabled="credentialsLoading || credentialTypesLoading"
+						:disabled="credentialsLoading || credentialTypesLoading || signingIn"
 						data-test-id="skill-source-credential-select"
 						@update:model-value="onCredentialSelect(String($event ?? ''))"
 					>

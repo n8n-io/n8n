@@ -1115,6 +1115,22 @@ describe('SkillSourceConnectDialog', () => {
 			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
 		});
 
+		it('runs one GitHub sign-in at a time: the select waits until it ends', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredentialOptionsLoaded(view);
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalledTimes(1));
+
+			const select = view.getByTestId('skill-source-credential-select');
+			expect(select).toBeDisabled();
+			finish(null);
+
+			await waitFor(() => expect(select).not.toBeDisabled());
+			expect(oauth.createAndAuthorize).toHaveBeenCalledTimes(1);
+		});
+
 		it('cancels a pending GitHub sign-in when the dialog unmounts', async () => {
 			pendingSignIn();
 			const view = render();
