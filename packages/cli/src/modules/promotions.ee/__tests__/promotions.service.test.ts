@@ -661,7 +661,7 @@ describe('PromotionsService', () => {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					dependencyPolicy: ExportDependencyPolicy.Fail,
 					versionPolicy: ExportVersionPolicy.Latest,
 				},
@@ -1273,7 +1273,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					projectIds: ['p1'],
 					projectWorkflowIds: ['w1', 'w2'],
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,

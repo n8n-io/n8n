@@ -114,10 +114,10 @@ requestBody:
             default: expression-values-only
             description: Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`). A literal value travels only when it decides whether another credential field shows (a toggle or an auth type, for example) and an exported expression sits in that field. No other literal value travels. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.
             example: expression-values-only
-          includeArchivedWorkflows:
+          includeArchived:
             type: boolean
             default: false
-            description: 'Whether folder and project exports include their archived workflows. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` always export, also when archived.'
+            description: 'Whether folder exports include archived workflows and project exports include archived workflows and agents. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` and agents listed in `agentIds` always export, also when archived.'
             example: false
         additionalProperties: false
 responses:

@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
@@ -32,6 +33,7 @@ import {
 	NONE_REASONING_CONDITION,
 	prepareAdditionalResponsesParams,
 } from './common';
+import { registerCustomEndpointChatModel } from './custom-endpoint-chat-openai';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
 import { Container } from '@n8n/di';
@@ -858,11 +860,7 @@ export class LmChatOpenAi implements INodeType {
 		// `none` is verified only for a fixed set of OpenAI model IDs. Skip the check for a
 		// custom base URL: n8n cannot verify capability there, and the endpoint reports its
 		// own error for a value it rejects.
-		const usesCustomBaseUrl =
-			Boolean(options.baseURL) ||
-			(typeof credentials.url === 'string' &&
-				credentials.url !== '' &&
-				!credentials.url.startsWith('https://api.openai.com'));
+		const usesCustomBaseUrl = isOpenAiCustomEndpoint(configuration.baseURL ?? undefined);
 
 		if (
 			options.reasoningEffort === 'none' &&
@@ -929,6 +927,9 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		const model = new ChatOpenAI(fields);
+		if (isOpenAiCustomEndpoint(configuration.baseURL ?? undefined)) {
+			registerCustomEndpointChatModel(model, fields);
+		}
 
 		if (responsesApiEnabled) {
 			const tools = formatBuiltInTools(
