@@ -318,6 +318,21 @@ describe('ProvisioningService', () => {
 			);
 		});
 
+		it('should not assign the agent role from a claim', async () => {
+			const user = mock<User>({ role: { slug: 'global:member' } });
+			roleRepository.findOne.mockResolvedValue(
+				mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+			);
+
+			await provisioningService.provisionInstanceRoleForUser(user, 'global:agent');
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${user.id}`,
+				{ userId: user.id, roleSlug: 'global:agent' },
+			);
+		});
+
 		it('sends telemetry event', async () => {
 			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
 			const roleSlug = 'global:admin';
@@ -581,6 +596,15 @@ describe('ProvisioningService', () => {
 
 				await expect(
 					provisioningService.assertSsoLoginAllowed(context, 'global:owner'),
+				).rejects.toThrow(ForbiddenError);
+				expect(roleRepository.findOne).not.toHaveBeenCalled();
+			});
+
+			it('should throw when the claim is the agent role, which provisioning never assigns', async () => {
+				setDirectClaimConfig(BLOCK_ACCESS_ASSIGNMENT);
+
+				await expect(
+					provisioningService.assertSsoLoginAllowed(context, 'global:agent'),
 				).rejects.toThrow(ForbiddenError);
 				expect(roleRepository.findOne).not.toHaveBeenCalled();
 			});
@@ -1232,6 +1256,18 @@ describe('ProvisioningService', () => {
 				expect(settingsRepository.upsert).not.toHaveBeenCalled();
 			});
 
+			it('should reject the agent role', async () => {
+				stubGetConfigs(provisioningConfigDto, provisioningConfigDto);
+				roleRepository.findOne.mockResolvedValue(
+					mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+				);
+
+				await expect(
+					provisioningService.patchConfig({ defaultInstanceRole: 'global:agent' }),
+				).rejects.toThrow(BadRequestError);
+				expect(settingsRepository.upsert).not.toHaveBeenCalled();
+			});
+
 			it('should clear the field when patched with null', async () => {
 				const current: ProvisioningConfigDto = {
 					...provisioningConfigDto,
@@ -1378,6 +1414,31 @@ describe('ProvisioningService', () => {
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('global:owner'),
+				expect.objectContaining({ userId: user.id }),
+			);
+		});
+
+		it('should not assign the agent role via expression mapping', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:agent',
+					matchedRuleId: 'rule-1',
+					expression: '{{ true }}',
+					isFallback: false,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:agent', roleType: 'global' }),
+			);
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${user.id}`,
 				expect.objectContaining({ userId: user.id }),
 			);
 		});

@@ -1470,6 +1470,7 @@ describe('PATCH /users/:id/role', () => {
 		test.each([
 			['is missing', {}],
 			['is `owner`', { newRoleName: 'global:owner' }],
+			['is `agent`', { newRoleName: 'global:agent' }],
 			['is an array', { newRoleName: ['global:owner'] }],
 		])('%s', async (_, payload) => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);

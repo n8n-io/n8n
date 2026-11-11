@@ -636,6 +636,21 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(await bindings.count()).toBe(0);
 		});
 
+		it('rejects with no-role when the fallback role is the agent role and writes nothing', async () => {
+			const source = await seedSource({
+				...jit,
+				roleMapping: { ...roleMapping, fallbackInstanceRole: 'global:agent' },
+			});
+
+			const result = await service.identify(
+				verified(source, { sub: 'bob', email: 'bob@example.com', email_verified: true }),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await bindings.count()).toBe(0);
+		});
+
 		it('refuses to provision from an unverified email under verified-only', async () => {
 			const source = await seedSource({ ...jit, linkByEmail: 'verified-only' });
 			const userCount = await users.count();

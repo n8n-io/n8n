@@ -22,6 +22,13 @@ describe('role-mapping-rule.validation', () => {
 			);
 		});
 
+		it('should reject the agent role for instance mapping', () => {
+			const agentRole = { roleType: 'global', slug: 'global:agent' } as Role;
+			expect(() => assertRoleCompatibleWithMappingType(agentRole, 'instance')).toThrow(
+				'Instance mapping rules cannot use the agent role',
+			);
+		});
+
 		it('should accept project role for project mapping', () => {
 			expect(() => assertRoleCompatibleWithMappingType(projectRole, 'project')).not.toThrow();
 		});

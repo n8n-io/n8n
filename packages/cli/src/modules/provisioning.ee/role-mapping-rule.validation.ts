@@ -1,4 +1,5 @@
 import type { Role } from '@n8n/db';
+import { GLOBAL_AGENT_ROLE_SLUG } from '@n8n/permissions';
 
 import { BadRequestError } from '@n8n/errors';
 
@@ -8,6 +9,10 @@ export function assertRoleCompatibleWithMappingType(
 ): void {
 	if (type === 'instance' && role.roleType !== 'global') {
 		throw new BadRequestError('Instance mapping rules must use a global role');
+	}
+
+	if (type === 'instance' && role.slug === GLOBAL_AGENT_ROLE_SLUG) {
+		throw new BadRequestError('Instance mapping rules cannot use the agent role');
 	}
 
 	if (type === 'project' && role.roleType !== 'project') {

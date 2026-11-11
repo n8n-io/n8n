@@ -19,7 +19,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { GLOBAL_OWNER_ROLE_SLUG, isReservedGlobalRole } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -82,9 +82,9 @@ export class ProvisioningService {
 			return;
 		}
 
-		if (dbRole.slug === globalOwnerRoleSlug && user.role.slug !== globalOwnerRoleSlug) {
+		if (isReservedGlobalRole(dbRole.slug) && user.role.slug !== dbRole.slug) {
 			this.logger.warn(
-				`Skipping instance role provisioning. Cannot assign owner role: ${globalOwnerRoleSlug} to user: ${user.id}`,
+				`Skipping instance role provisioning. Cannot assign reserved role: ${dbRole.slug} to user: ${user.id}`,
 				{ userId: user.id, roleSlug: dbRole.slug },
 			);
 			return;
@@ -152,7 +152,7 @@ export class ProvisioningService {
 		const fallbackRole = await this.roleRepository.findOne({
 			where: { slug: defaultInstanceRole },
 		});
-		if (fallbackRole?.roleType !== 'global') {
+		if (fallbackRole?.roleType !== 'global' || isReservedGlobalRole(fallbackRole.slug)) {
 			this.logger.warn(
 				`Skipping instance role provisioning. Default condition role ${defaultInstanceRole} is not an assignable global role`,
 				{ userId: user.id },
@@ -408,7 +408,7 @@ export class ProvisioningService {
 				? await this.roleRepository.findOne({ where: { slug: value } })
 				: null;
 
-		if (!role || role.roleType !== 'global' || role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+		if (!role || role.roleType !== 'global' || isReservedGlobalRole(role.slug)) {
 			throw new BadRequestError(
 				`defaultInstanceRole must be "${BLOCK_ACCESS_ASSIGNMENT}" or the slug of an assignable global role`,
 			);
@@ -627,10 +627,10 @@ export class ProvisioningService {
 			return;
 		}
 
-		if (dbRole.slug === GLOBAL_OWNER_ROLE_SLUG && user.role.slug !== GLOBAL_OWNER_ROLE_SLUG) {
+		if (isReservedGlobalRole(dbRole.slug) && user.role.slug !== dbRole.slug) {
 			this.logger.warn(
-				`Skipping instance role provisioning. Cannot assign owner role: ${GLOBAL_OWNER_ROLE_SLUG} to user: ${user.id}`,
-				{ userId: user.id, roleSlug: GLOBAL_OWNER_ROLE_SLUG },
+				`Skipping instance role provisioning. Cannot assign reserved role: ${dbRole.slug} to user: ${user.id}`,
+				{ userId: user.id, roleSlug: dbRole.slug },
 			);
 			return;
 		}
@@ -788,9 +788,9 @@ export class ProvisioningService {
 
 	private async isAssignableGlobalRole(roleSlug: unknown): Promise<boolean> {
 		if (typeof roleSlug !== 'string' || roleSlug.length === 0) return false;
-		// Provisioning can never assign owner, so an owner claim does not count
-		// as a role assignment and cannot bypass a Block default condition.
-		if (roleSlug === GLOBAL_OWNER_ROLE_SLUG) return false;
+		// Provisioning can never assign a reserved role, so such a claim does not
+		// count as a role assignment and cannot bypass a Block default condition.
+		if (isReservedGlobalRole(roleSlug)) return false;
 		const role = await this.roleRepository.findOne({ where: { slug: roleSlug } });
 		return role?.roleType === 'global';
 	}
