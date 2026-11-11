@@ -6,12 +6,10 @@ import { computed } from 'vue';
 import type { IMenuSettingItem, SettingsSectionId } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
-import { isContextEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
@@ -126,14 +124,13 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
-				// The flag is read here because the middleware check does not run route guards.
 				id: 'settings-context',
 				order: 40,
 				section: 'ai',
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
 				position: 'top',
-				available: isContextEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+				available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
 				preview: true,
 			},
@@ -201,7 +198,7 @@ export function useSettingsItems() {
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
-			// Operations (modules add Log streaming at 40 and OpenTelemetry at 50)
+			// Operations (modules add Promotions at 20, Log streaming at 40 and OpenTelemetry at 50)
 			{
 				id: 'settings-source-control',
 				order: 10,
@@ -211,17 +208,6 @@ export function useSettingsItems() {
 				position: 'top',
 				available: !isPromotionsEnabled.value && canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
-			},
-			{
-				id: 'settings-promotions',
-				order: 20,
-				section: 'operations',
-				icon: 'git-branch',
-				label: i18n.baseText('settings.promotions.title'),
-				position: 'top',
-				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
-				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
-				preview: true,
 			},
 			{
 				id: 'settings-workersview',
@@ -252,7 +238,7 @@ export function useSettingsItems() {
 				id: 'settings-n8n-connect',
 				order: 10,
 				section: 'billing',
-				icon: 'plug-zap',
+				icon: 'circles',
 				label: i18n.baseText(
 					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
 				),

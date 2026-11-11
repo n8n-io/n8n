@@ -3,9 +3,9 @@ import {
 	ASSISTANT_TRACE_EVENT,
 	type AssistantTracePayload,
 	type InstanceAiEvent,
-	type InstanceAiFileAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifactsContext,
+	unwrapToolCatalogCall,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -45,7 +45,10 @@ import {
 	buildSuspensionTraceMetadata,
 	buildSuspensionTraceOutputs,
 } from '../tracing/suspension-trace';
-import { buildAssistantTurnTraceInput } from '../turn-setup/assistant-turn-trace-input';
+import {
+	buildAssistantTurnTraceInput,
+	type TraceFileAttachment,
+} from '../turn-setup/assistant-turn-trace-input';
 
 /** Checkpoint host metadata key that carries the trace of a turn to its resume. */
 const ASSISTANT_TRACE_METADATA_KEY = 'assistantTrace';
@@ -152,7 +155,7 @@ export interface AssistantTraceTurnSetup {
 	/** The chat message group of the turn. */
 	messageGroupId: string;
 	proxyConfig?: ServiceProxyConfig;
-	fileAttachments: InstanceAiFileAttachment[];
+	fileAttachments: TraceFileAttachment[];
 	contextAttachments: InstanceAiResourceAttachment[];
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 }
@@ -289,11 +292,18 @@ export class AssistantTurnTrace {
 				}
 				break;
 			case 'tool-call':
-				this.signals.push({ kind: 'tool-call', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'tool-call',
+					toolName: unwrapToolCatalogCall(chunk.toolName, isRecord(chunk.input) ? chunk.input : {})
+						.toolName,
+				});
 				break;
 			case 'tool-call-suspended':
 				this.suspension = parseSuspension(chunk) ?? undefined;
-				this.signals.push({ kind: 'hitl', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'hitl',
+					toolName: this.suspension?.targetToolName ?? chunk.toolName,
+				});
 				break;
 			case 'message-steered':
 				this.recordSteeredMessage(chunk);

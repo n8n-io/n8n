@@ -155,7 +155,7 @@ describe('AssistantAtMentionPicker', () => {
 		expect(queryByText('Artifacts')).toBeNull();
 	});
 
-	it('hides the workflows section when only artifacts are available', async () => {
+	it('shows open workflows without a section header', async () => {
 		const { findByText, queryByText } = renderComponent({
 			props: {
 				modelValue: true,
@@ -166,12 +166,12 @@ describe('AssistantAtMentionPicker', () => {
 		});
 
 		expect(await findByText('Orders')).toBeVisible();
-		expect(await findByText('Artifacts')).toBeVisible();
+		expect(queryByText('Artifacts')).toBeNull();
 		expect(queryByText('Workflows')).toBeNull();
 		expect(queryByText('No recent workflows')).toBeNull();
 	});
 
-	it('renders ten skeleton rows while workflows load', async () => {
+	it('shows a spinner while workflows load', async () => {
 		setActivePinia(createTestingPinia());
 		const { useRecentWorkflowsStore } = await import('@/app/stores/recentWorkflows.store');
 		const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
@@ -182,7 +182,8 @@ describe('AssistantAtMentionPicker', () => {
 			props: { modelValue: true, query: '', projectId: 'project-1' },
 		});
 
-		await waitFor(() => expect(document.querySelectorAll('.n8n-loading')).toHaveLength(10));
+		await waitFor(() => expect(document.querySelector('.n8n-spinner')).toBeVisible());
+		expect(document.querySelectorAll('.n8n-loading')).toHaveLength(0);
 		expect(document.body).not.toHaveTextContent('Loading workflows');
 		response.resolve([]);
 	});
@@ -231,8 +232,8 @@ describe('AssistantAtMentionPicker', () => {
 		expect(groupResult.querySelector('[data-icon="group"]')).toBeVisible();
 		expect(nodeResult.querySelector('.n8n-node-icon')).toBeVisible();
 		expect(
-			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map((element) =>
-				element.textContent?.trim(),
+			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map(
+				(element) => element.getAttribute('aria-label')?.trim() || element.textContent?.trim(),
 			),
 		).toEqual(['Orders', '>', 'If checks', '>']);
 		expect(getNodeType).toHaveBeenCalledWith('n8n-nodes-base.if', 2.2);
@@ -438,7 +439,7 @@ describe('AssistantAtMentionPicker', () => {
 		vi.mocked(recentWorkflowsStore.resolveRecentWorkflows).mockRejectedValue(
 			new Error('Request failed'),
 		);
-		const { findByText, getByRole } = renderComponent({
+		const { findByText, getByRole, queryByText } = renderComponent({
 			props: {
 				modelValue: true,
 				query: '',
@@ -449,6 +450,8 @@ describe('AssistantAtMentionPicker', () => {
 
 		expect(await findByText('Orders')).toBeVisible();
 		expect(await findByText("Workflows couldn't load. Try again.")).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('Artifacts')).toBeNull();
 		await userEvent.click(getByRole('menuitem', { name: 'Retry' }));
 		expect(recentWorkflowsStore.resolveRecentWorkflows).toHaveBeenCalledTimes(2);
 	});

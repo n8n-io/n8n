@@ -19,8 +19,10 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { packagedModules } from '@/modules/modules.manifest';
+import { NodeTypes } from '@/node-types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -160,6 +162,7 @@ export const setupTestServer = ({
 	beforeAll(async () => {
 		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
+		Container.get(NodeTypesProxy).registerProvider(Container.get(NodeTypes));
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 
