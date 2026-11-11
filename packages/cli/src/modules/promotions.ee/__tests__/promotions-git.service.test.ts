@@ -356,7 +356,11 @@ describe('PromotionsGitService (git operations)', () => {
 			{
 				credentials: { authType: 'ssh-key' as const, privateKey: 'fake-private-key' },
 				secrets: ['fake-private-key'],
-				env: [['GIT_SSH_COMMAND', expect.stringContaining('StrictHostKeyChecking=accept-new')]],
+				env: [
+					['GIT_SSH_COMMAND', expect.stringContaining('StrictHostKeyChecking=accept-new')],
+					// The SSH command line is visible to other processes, so the key must stay in a file.
+					['GIT_SSH_COMMAND', expect.not.stringContaining('fake-private-key')],
+				],
 			},
 		])(
 			'passes $credentials.authType credentials and the C locale through the operation environment',
