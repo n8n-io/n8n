@@ -1,9 +1,18 @@
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { type Role, ServiceAccount, ServiceAccountDetails } from '../entities';
+import {
+	Project,
+	ProjectRelation,
+	type Role,
+	ServiceAccount,
+	ServiceAccountDetails,
+	SharedCredentials,
+	SharedWorkflow,
+} from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 class ServiceAccountTable extends BaseRepository<ServiceAccount> {
@@ -56,5 +65,49 @@ export class ServiceAccountRepository {
 			);
 			return serviceAccount;
 		});
+	}
+
+	/**
+	 * Creates the account, its details, its personal project and the owner
+	 * relation in one transaction. The project takes the account name, because a
+	 * service account has no email.
+	 */
+	async createWithPersonalProject(account: NewServiceAccount, ctx: OperationContext = {}) {
+		return await this.table.runInTransaction(ctx, async (tx, txCtx) => {
+			const serviceAccount = await this.create(account, txCtx);
+			const project = await tx.save(
+				tx.create(Project, {
+					type: 'personal',
+					name: account.name,
+					creatorId: serviceAccount.id,
+				}),
+			);
+			await tx.save(
+				tx.create(ProjectRelation, {
+					projectId: project.id,
+					userId: serviceAccount.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+				}),
+			);
+			return { serviceAccount, project };
+		});
+	}
+
+	/** True when the personal project of the account owns a workflow or a credential. */
+	async personalProjectOwnsResources(serviceAccountId: string, ctx: OperationContext = {}) {
+		const manager = this.table.managerFor(ctx);
+		const project = await manager.findOne(Project, {
+			where: { type: 'personal', creatorId: serviceAccountId },
+			select: ['id'],
+		});
+		if (!project) return false;
+		// One after the other: a transaction holds a single connection.
+		return (
+			(await manager.existsBy(SharedWorkflow, { projectId: project.id, role: 'workflow:owner' })) ||
+			(await manager.existsBy(SharedCredentials, {
+				projectId: project.id,
+				role: 'credential:owner',
+			}))
+		);
 	}
 }
