@@ -533,7 +533,6 @@ function toAssistantAiMessages(
 	msg: Message,
 	messageIndex: number,
 	replayReasoningText: boolean,
-	dropReasoning: boolean,
 ): ModelMessage[] {
 	const assistantParts: AiContentPart[] = [];
 	const resultMessages: ModelMessage[] = [];
@@ -542,7 +541,6 @@ function toAssistantAiMessages(
 	for (const [blockIndex, block] of msg.content.entries()) {
 		assistantParts.push(...(positionedResults.get(blockIndex) ?? []));
 		if (block.type !== 'tool-call') {
-			if (dropReasoning && block.type === 'reasoning') continue;
 			const part = toAiContent(block, replayReasoningText);
 			if (part) assistantParts.push(part);
 			continue;
@@ -580,7 +578,6 @@ function toAiMessageList(
 	msg: Message,
 	messageIndex: number,
 	replayReasoningText = false,
-	dropReasoning = false,
 ): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
@@ -601,7 +598,7 @@ function toAiMessageList(
 		}
 
 		case 'assistant':
-			return toAssistantAiMessages(msg, messageIndex, replayReasoningText, dropReasoning);
+			return toAssistantAiMessages(msg, messageIndex, replayReasoningText);
 
 		case 'tool': {
 			// Legacy role: 'tool' messages (from old DB rows). Don't emit them.
@@ -620,18 +617,12 @@ function toAiMessageList(
  * `PROVIDER_QUIRKS[provider].replayReasoningText`).
  */
 export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
-	const quirks = providerId === undefined ? {} : getProviderQuirks(providerId);
-	const replayReasoningText = quirks.replayReasoningText ?? false;
-	const replayReasoningOnlyInToolChain = quirks.replayReasoningOnlyInToolChain ?? false;
-	// The current tool chain is the messages after the last user message.
+	const replayReasoningText =
+		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
+	// Text replay covers only the current tool chain: the messages after the last user message.
 	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
 	const modelMessages = messages.flatMap((message, index) =>
-		toAiMessageList(
-			message,
-			index,
-			replayReasoningText && index > lastUserIndex,
-			replayReasoningOnlyInToolChain && index < lastUserIndex,
-		),
+		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex),
 	);
 	const result: ModelMessage[] = [];
 

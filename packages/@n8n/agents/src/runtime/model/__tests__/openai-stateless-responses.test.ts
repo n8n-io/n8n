@@ -28,7 +28,7 @@ const history = [
 	{ role: 'user', content: [{ type: 'text', text: 'again' }] },
 ] as unknown as Message[];
 
-async function captureBody(url?: string, messages = history) {
+async function captureBody(url?: string) {
 	let body: Record<string, unknown> = {};
 	const fetch = async (_url: unknown, init?: { body?: unknown }) => {
 		body = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -40,7 +40,7 @@ async function captureBody(url?: string, messages = history) {
 	);
 	await generateText({
 		model,
-		messages: toAiMessages(messages, 'openai'),
+		messages: toAiMessages(history, 'openai'),
 		providerOptions: { openai: { promptCacheKey: 'agent-cache-key' } },
 		maxRetries: 0,
 	}).catch(() => {});
@@ -70,42 +70,5 @@ describe('OpenAI Responses replay', () => {
 			{ role: 'assistant', content: 'hello' },
 			{ role: 'user', content: [{ type: 'input_text', text: 'again' }] },
 		]);
-	});
-
-	it('replays encrypted reasoning only on the current tool chain', async () => {
-		// Encrypted reasoning only decrypts in the org that produced it. Earlier
-		// turns can come from another key, so only the current turn replays it.
-		const reasoning = (id: string) => ({
-			type: 'reasoning',
-			text: '',
-			providerMetadata: { openai: { itemId: id, reasoningEncryptedContent: `enc_${id}` } },
-		});
-		const body = await captureBody(undefined, [
-			{ role: 'user', content: [{ type: 'text', text: 'hi' }] },
-			{
-				role: 'assistant',
-				content: [reasoning('rs_gateway_org'), { type: 'text', text: 'hello' }],
-			},
-			{ role: 'user', content: [{ type: 'text', text: 'look it up' }] },
-			{
-				role: 'assistant',
-				content: [
-					reasoning('rs_current_turn'),
-					{
-						type: 'tool-call',
-						toolCallId: 'call_1',
-						toolName: 'lookup',
-						input: {},
-						state: 'resolved',
-						output: 'found',
-					},
-				],
-			},
-		] as unknown as Message[]);
-
-		const input = JSON.stringify(body.input);
-		expect(input).not.toContain('enc_rs_gateway_org');
-		expect(input).toContain('enc_rs_current_turn');
-		expect(input).toContain('"type":"function_call"');
 	});
 });

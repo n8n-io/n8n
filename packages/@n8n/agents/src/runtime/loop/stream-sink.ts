@@ -16,6 +16,7 @@ import { classifyModelTurnError, mergeUsage, resolveAiFinishReason } from './run
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
+import { isEncryptedReasoningRejected } from '../model/encrypted-reasoning';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -280,6 +281,14 @@ export class StreamSink implements RunOutputSink<void> {
 
 		for await (const chunk of chunkStream) {
 			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
+			// The runtime retries this without the rejected reasoning. Do not forward it.
+			if (
+				chunk.type === 'error' &&
+				!attemptState.streamedContent &&
+				isEncryptedReasoningRejected(chunk.error)
+			) {
+				throw chunk.error;
+			}
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
