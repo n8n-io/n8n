@@ -1,7 +1,13 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import {
+	ExecutionData,
+	ExecutionDataRepository,
+	ExecutionRepository,
+	TransactionRunner,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { DbStore } from '../db-store';
 import { MissingExecutionDataError } from '../missing-execution-data.error';
@@ -10,7 +16,7 @@ import type { ExecutionDataPayload } from '../types';
 import { payload, workflowId } from './mocks';
 
 let dbStore: DbStore;
-let repository: ExecutionDataRepository;
+let repository: Repository<ExecutionData>;
 let executionRepository: ExecutionRepository;
 let em: EntityManager;
 
@@ -30,7 +36,7 @@ async function createExecution() {
 
 beforeAll(async () => {
 	await testDb.init();
-	repository = Container.get(ExecutionDataRepository);
+	repository = Container.get(DataSource).getRepository(ExecutionData);
 	executionRepository = Container.get(ExecutionRepository);
 	em = executionRepository.manager;
 	dbStore = Container.get(DbStore);
@@ -187,5 +193,47 @@ describe('readWorkflowData', () => {
 		const result = await dbStore.readWorkflowData(createExecutionRef(workflowId, '999'));
 
 		expect(result).toBeNull();
+	});
+});
+
+describe('getDataByteSize', () => {
+	it('should return the stored data length without the workflow snapshot', async () => {
+		const execution = await createExecution();
+		const ref = createExecutionRef(workflowId, execution.id);
+		await dbStore.write(ref, payload, em);
+
+		await expect(dbStore.getDataByteSize(ref)).resolves.toBe(payload.data.length);
+	});
+
+	it('should return null for a missing row', async () => {
+		await expect(
+			dbStore.getDataByteSize(createExecutionRef(workflowId, '999')),
+		).resolves.toBeNull();
+	});
+});
+
+describe('ExecutionDataRepository', () => {
+	it('should read payloads, snapshots and sizes in the active transaction', async () => {
+		const execution = await createExecution();
+		await dbStore.write(createExecutionRef(workflowId, execution.id), payload, em);
+		const executionDataRepository = Container.get(ExecutionDataRepository);
+
+		await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await expect(
+				executionDataRepository.findPayloadByExecutionId(execution.id, ctx),
+			).resolves.toEqual(payload);
+			await expect(
+				executionDataRepository.findWorkflowSnapshotByExecutionId(execution.id, ctx),
+			).resolves.toEqual({
+				workflowData: payload.workflowData,
+				workflowVersionId: payload.workflowVersionId,
+			});
+			await expect(
+				executionDataRepository.findPayloadsByExecutionIds([execution.id], ctx),
+			).resolves.toEqual([{ ...payload, executionId: execution.id }]);
+			await expect(executionDataRepository.getDataByteSize(execution.id, ctx)).resolves.toBe(
+				payload.data.length,
+			);
+		});
 	});
 });

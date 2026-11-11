@@ -6,12 +6,14 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { randomUUID } from 'node:crypto';
 
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@n8n/backend-services';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
+import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentPlanService } from '../agent-plan.service';
 import { planLeaves } from '../plans/agent-plan-state';
 import { isFinal as isFinalPlanStatus } from '../plans/agent-plan.validation';
@@ -126,7 +128,10 @@ export class AgentWakeService {
 		]);
 		const jobs = pending.filter(
 			(job) =>
-				job.parentResourceId === resourceId && job.status !== 'suspended' && !job.pauseRequestId,
+				job.parentResourceId === resourceId &&
+				job.status !== 'suspended' &&
+				!job.pauseRequestId &&
+				!job.wakeAttemptId,
 		);
 		if (jobs.length === 0 && !stoppedHere) return undefined;
 
@@ -197,6 +202,13 @@ export class AgentWakeService {
 			);
 		}
 
+		// A started wake already received these results. Finish its consumption update.
+		const received = pending.filter((job) => job.wakeAttemptId);
+		if (received.length > 0) {
+			if (!(await this.consumeReceived(threadId, received))) return;
+			pending = pending.filter((job) => !job.wakeAttemptId);
+		}
+
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {
@@ -223,6 +235,12 @@ export class AgentWakeService {
 			return;
 		}
 
+		const ids = jobs.map((job) => job.id);
+		// The claim persists before the agent starts, so recovery on any main can tell
+		// that the agent received these results, also after a restart.
+		const wakeAttemptId = randomUUID();
+		let ran = false;
+		let started = false;
 		try {
 			const { agent, identity } = await this.resolveWakeTarget(first);
 			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
@@ -230,23 +248,70 @@ export class AgentWakeService {
 				threadId,
 			);
 			if (running || suspendedCheckpoint !== null) return;
-			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal);
+			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal, {
+				onAdmitted: async () => await this.jobRepository.claimForWake(threadId, ids, wakeAttemptId),
+				onRuntimeStarted: () => {
+					started = true;
+				},
+			});
+			ran = true;
 
 			if (signal.aborted) return;
 			await this.backgroundJobService.markMailConsumed(
 				threadId,
-				jobs.map((job) => job.id),
+				ids,
 				Boolean(first.pauseRequestId),
 			);
 			this.failures.delete(threadId);
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
-			if (signal.aborted) return;
+		} catch (error) {
+			if (signal.aborted) {
+				// The agent did not run. Release the claim so a later wake delivers these results.
+				if (!started) await this.releaseClaim(threadId, wakeAttemptId);
+				return;
+			}
+			if (ran || isStartedRecordingFailure(error)) {
+				// The agent ran. Another run would repeat its tool actions.
+				await this.consumeReceived(threadId, jobs);
+				return;
+			}
+			// Ordinary failures retry. Release the claim so the next wake can select these results.
+			await this.releaseClaim(threadId, wakeAttemptId);
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation);
+		}
+	}
+
+	private async releaseClaim(threadId: string, wakeAttemptId: string): Promise<void> {
+		try {
+			await this.jobRepository.releaseWakeClaim(threadId, wakeAttemptId);
+		} catch (error) {
+			// Recovery then treats the results as received. No replay is safer than a lost retry.
+			this.logger.warn('Failed to release background job results after a failed wake', {
+				threadId,
+				error,
+			});
+		}
+	}
+
+	/** Mark results consumed that a started wake received. Recovery retries on failure. */
+	private async consumeReceived(threadId: string, jobs: AgentBackgroundJob[]): Promise<boolean> {
+		try {
+			await this.backgroundJobService.markMailConsumed(
+				threadId,
+				jobs.map((job) => job.id),
+				true,
+			);
+			return true;
+		} catch (error) {
+			this.logger.warn('Failed to mark background job results consumed after a wake', {
+				threadId,
+				error,
+			});
+			return false;
 		}
 	}
 
@@ -376,6 +441,7 @@ export class AgentWakeService {
 		threadId: string,
 		resourceId: string,
 		signal: AbortSignal,
+		{ onAdmitted, onRuntimeStarted }: Pick<ExecuteForWakeConfig, 'onAdmitted' | 'onRuntimeStarted'>,
 	): Promise<void> {
 		this.activeWakes.add(threadId);
 
@@ -410,9 +476,15 @@ export class AgentWakeService {
 				memory: { threadId, resourceId },
 				identity,
 				abortSignal: signal,
+				onAdmitted,
+				onRuntimeStarted,
 			});
 		} finally {
 			this.activeWakes.delete(threadId);
 		}
 	}
+}
+
+function isStartedRecordingFailure(error: unknown): boolean {
+	return error instanceof AgentExecutionRecordingError && error.executionStarted;
 }
