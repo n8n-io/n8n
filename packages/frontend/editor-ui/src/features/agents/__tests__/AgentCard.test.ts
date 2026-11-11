@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
+import { N8nPlugin } from '@n8n/design-system/plugin';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
@@ -28,7 +30,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => (key === 'agents.new.defaultName' ? 'Untitled' : key),
+		baseText: (key: string) => {
+			if (key === 'agents.new.defaultName') return 'Untitled';
+			if (key === 'projects.menu.personal') return 'Personal';
+			return key;
+		},
 	}),
 }));
 
@@ -40,6 +46,10 @@ const favoritesStoreMock = {
 
 vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => favoritesStoreMock,
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({ personalProject: { id: 'personal-project' } }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -141,11 +151,11 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	};
 }
 
-async function renderComponent(agent: AgentResource = createAgent()) {
+async function renderComponent(agent: AgentResource = createAgent(), showOwnershipBadge = false) {
 	const { default: AgentCard } = await import('../components/AgentCard.vue');
 	return mount(AgentCard, {
-		props: { agent, projectId: 'project-1' },
-		global: { stubs: STUBS },
+		props: { agent, projectId: 'project-1', showOwnershipBadge },
+		global: { plugins: [N8nPlugin], stubs: STUBS },
 	});
 }
 
@@ -193,6 +203,65 @@ describe('AgentCard', () => {
 		const badge = wrapper.find('[data-test-id="agent-card-readonly-badge"]');
 		expect(badge.exists()).toBe(true);
 		expect(badge.text()).toBe('agents.list.readonly');
+	});
+
+	it.each<{
+		label: string;
+		project: NonNullable<AgentResource['project']>;
+		text: string;
+		icon: { type: string; value: string };
+	}>([
+		{
+			label: 'a team project',
+			project: {
+				id: 'project-1',
+				name: 'Support Team',
+				type: 'team',
+				icon: { type: 'icon', value: 'star' },
+			},
+			text: 'Support Team',
+			icon: { type: 'icon', value: 'star' },
+		},
+		{
+			label: 'the current user’s personal space',
+			project: { id: 'personal-project', name: 'Test User', type: 'personal', icon: null },
+			text: 'Personal',
+			icon: { type: 'icon', value: 'user' },
+		},
+		{
+			label: 'another user’s personal space',
+			project: {
+				id: 'other-personal-project',
+				name: 'Another User <user@example.com>',
+				type: 'personal',
+				icon: null,
+			},
+			text: 'Another User',
+			icon: { type: 'icon', value: 'user' },
+		},
+	])('identifies $label on an overview card', async ({ project, text, icon }) => {
+		const wrapper = await renderComponent(createAgent({ project }), true);
+
+		expect(wrapper.get('[data-test-id="card-badge"]').text()).toBe(text);
+		expect(wrapper.findComponent(ProjectIcon).props('icon')).toEqual(icon);
+	});
+
+	it.each([undefined, null])(
+		'hides the ownership badge when project metadata is %s',
+		async (project) => {
+			const wrapper = await renderComponent(createAgent({ project }), true);
+
+			expect(wrapper.find('[data-test-id="card-badge"]').exists()).toBe(false);
+			expect(wrapper.get('[data-test-id="agent-card-name"]').text()).toBe('My Agent');
+		},
+	);
+
+	it('hides the ownership badge on a project card', async () => {
+		const wrapper = await renderComponent(
+			createAgent({ project: { id: 'project-1', name: 'Support Team', type: 'team', icon: null } }),
+		);
+
+		expect(wrapper.find('[data-test-id="card-badge"]').exists()).toBe(false);
 	});
 
 	it('starts a new test from the dedicated flask button', async () => {

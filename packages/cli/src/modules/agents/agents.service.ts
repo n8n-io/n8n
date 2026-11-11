@@ -730,7 +730,9 @@ export class AgentsService {
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.addListSkillVersions(
-			await this.agentRepository.findByProjectIdsPaginated(projectIds, options),
+			await this.agentRepository.findByProjectIdsPaginated(projectIds, options, {
+				withProject: true,
+			}),
 		);
 	}
 
