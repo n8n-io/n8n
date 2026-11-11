@@ -9,7 +9,6 @@ import {
 import type { PublicUser } from '@n8n/db';
 import {
 	User,
-	UserRepository,
 	PersonRepository,
 	AuthenticatedRequest,
 	GLOBAL_ADMIN_ROLE,
@@ -45,7 +44,6 @@ const ownUserDetailSchema = userDetailSchema.omit({ disabled: true });
 @RestController('/users')
 export class UsersController {
 	constructor(
-		private readonly userRepository: UserRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
