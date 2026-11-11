@@ -137,6 +137,21 @@ const approval = (toolCallId: string, overrides: Record<string, unknown> = {}) =
 		resumeSchema: approvalResumeSchema,
 	}) as AgentExecutionStreamChunk;
 
+type PendingToolCall = SerializableAgentState['pendingToolCalls'][string];
+
+/** A tool call of run-1 that waits for an approval. */
+const suspendedCall = (overrides: Record<string, unknown> = {}) =>
+	({
+		toolCallId: 'call-1',
+		toolName: 'send_email',
+		input: {},
+		suspended: true,
+		runId: 'run-1',
+		suspendPayload: approvalPayload({ supportsSessionApproval: true }),
+		resumeSchema: approvalResumeSchema,
+		...overrides,
+	}) as PendingToolCall;
+
 /** The checkpoint of run-1 in conversation c-1, which waits for a decision on call-1. */
 function pendingCheckpoint(
 	overrides: Partial<SerializableAgentState> = {},
@@ -144,17 +159,7 @@ function pendingCheckpoint(
 	return {
 		status: 'suspended',
 		persistence: { threadId: 'agent-1:webhook:c-1', resourceId: 'integration:webhook:c-1' },
-		pendingToolCalls: {
-			'call-1': {
-				toolCallId: 'call-1',
-				toolName: 'send_email',
-				input: {},
-				suspended: true,
-				runId: 'run-1',
-				suspendPayload: approvalPayload({ supportsSessionApproval: true }),
-				resumeSchema: approvalResumeSchema,
-			},
-		},
+		pendingToolCalls: { 'call-1': suspendedCall() },
 		...overrides,
 	} as unknown as SerializableAgentState;
 }
@@ -479,10 +484,9 @@ describe('WebhookChannelService', () => {
 
 		it('declines each action that the declined run asks for next', async () => {
 			const { respond, orchestrator, checkpointStorage } = makePendingService();
-			const next = pendingCheckpoint();
-			next.pendingToolCalls = {
-				'call-2': { ...next.pendingToolCalls['call-1'], toolCallId: 'call-2', runId: 'run-2' },
-			};
+			const next = pendingCheckpoint({
+				pendingToolCalls: { 'call-2': suspendedCall({ toolCallId: 'call-2', runId: 'run-2' }) },
+			});
 			checkpointStorage.findSuspendedForThread
 				.mockResolvedValueOnce(pendingCheckpoint())
 				.mockResolvedValueOnce(next)
@@ -513,8 +517,9 @@ describe('WebhookChannelService', () => {
 
 		it('cancels a run that waits for other input without a resume', async () => {
 			const { respond, orchestrator, checkpointStorage, chatExecution } = makePendingService();
-			const other = pendingCheckpoint();
-			other.pendingToolCalls['call-1'].resumeSchema = { type: 'object' };
+			const other = pendingCheckpoint({
+				pendingToolCalls: { 'call-1': suspendedCall({ resumeSchema: { type: 'object' } }) },
+			});
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(other);
 
 			await respond(continueConversation);
