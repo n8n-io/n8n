@@ -27,13 +27,14 @@ on:
         default: 'queue'
 
 env:
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
   HELM_CHART_REF: ${{ inputs.helm-chart-ref || 'main' }}
 
 jobs:
   build:
     name: 'Build Docker Image'
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    outputs:
+      ghcr_repository: ${{ steps.normalize-ghcr-owner.outputs.ghcr_repository }}
     permissions:
       packages: write
       contents: read
@@ -43,6 +44,13 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
+
+      - name: Normalize GHCR owner
+        id: normalize-ghcr-owner
+        shell: bash
+        run: |
+          echo "ghcr_org=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "ghcr_repository=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
@@ -59,9 +67,9 @@ jobs:
           docker-cache-key: n8n-io/n8n
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
-          IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
+          IMAGE_BASE_NAME: ghcr.io/${{ steps.normalize-ghcr-owner.outputs.ghcr_repository }}
           IMAGE_TAG: ci-${{ github.run_id }}
-          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
+          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ steps.normalize-ghcr-owner.outputs.ghcr_org }}/runners
 
   helm-e2e:
     name: "Helm E2E (${{ inputs.mode || 'queue' }})"
@@ -94,6 +102,7 @@ jobs:
 
       - name: Start K3s + Helm stack
         env:
+          DOCKER_IMAGE: ghcr.io/${{ needs.build.outputs.ghcr_repository }}:ci-${{ github.run_id }}
           TESTCONTAINERS_RYUK_DISABLED: 'true'
         run: |
           # tsx is a devDependency of n8n-containers, not the repo root, so it
@@ -169,10 +178,17 @@ jobs:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
+      - name: Normalize GHCR owner
+        id: normalize-ghcr-owner
+        shell: bash
+        run: |
+          echo "ghcr_org=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "ghcr_repository=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Delete images from GHCR
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_ORG: ${{ github.repository_owner }}
-          GHCR_REPO: ${{ github.event.repository.name }}
+          GHCR_ORG: ${{ steps.normalize-ghcr-owner.outputs.ghcr_org }}
+          GHCR_REPO: ${{ steps.normalize-ghcr-owner.outputs.ghcr_repository }}
         run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}
