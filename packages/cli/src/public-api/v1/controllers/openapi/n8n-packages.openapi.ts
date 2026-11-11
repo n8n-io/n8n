@@ -68,6 +68,7 @@ export const IMPORT_DESCRIPTION =
 	'workflow needs `workflow:delete`. Restoring and publishing a workflow requires both ' +
 	'`workflow:delete` and `workflow:activate`. Archiving or restoring a matched Agent needs ' +
 	'`agent:delete`. ' +
+	'Creating a missing credential requires `credential:create`. ' +
 	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
