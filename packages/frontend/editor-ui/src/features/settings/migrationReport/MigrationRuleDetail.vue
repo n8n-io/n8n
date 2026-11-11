@@ -263,7 +263,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: (showMigrate.value ? 160 : 0) + (canNotify.value ? 110 : 0),
+			width: (showMigrate.value ? 160 : 0) + (canNotify.value ? 140 : 0),
 			disableSort: true,
 		});
 	}
