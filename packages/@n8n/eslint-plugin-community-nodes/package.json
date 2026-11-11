@@ -29,13 +29,14 @@
   },
   "dependencies": {
     "@n8n/utils": "workspace:*",
-    "@resvg/resvg-js": "2.6.2",
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
     "culori": "^4.0.2",
     "fastest-levenshtein": "catalog:",
-    "pluralize": "^8.0.0"
+    "pluralize": "^8.0.0",
+    "postcss": "^8.4.38",
+    "saxes": "^6.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
