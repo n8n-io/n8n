@@ -57,6 +57,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.
   s_d11d42e9f72c97::t_4fbcdf461ae9bd 521-526
   s_d11d42e9f72c97::t_2af5b843f1e61e 528
   s_64d1a4ab791a69::t_fa7039a69435c7 1,10,35,38-40,45-48,64-70,79-82,85-86,95-101,112-115,129,140-163,178-193,201-214,219-236,241,246-268,278-283,288-289,302,335-355,370-371,398-404,412-415,429-431,439-440,500-502
+  s_1eef7eb511fae6::t_3749866deb0405 83-84,105-106
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
   s_1d829d17757cb3::t_bd41edcd42937b 1007
 packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
@@ -81,6 +82,14 @@ packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
       "agent_id": {
         "tool": "pi",
         "id": "01a1c50b-9b9d-728a-aad4-dcf867b27cfb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_1eef7eb511fae6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ca45-84aa-75a0-9d4c-74797cfa9134",
         "model": "gpt-6.1-sol"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
