@@ -61,6 +61,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const tagBan = requireBan('element-plus', 'ElTag');
 const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
@@ -270,6 +271,11 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 					data: { name: 'SeparatorRoot', library: 'reka-ui' },
 				},
 			],
+		},
+		{
+			name: 'an element-plus tag import',
+			code: "import { ElTag } from 'element-plus';",
+			errors: [error('ElTag', tagBan)],
 		},
 		{
 			name: 'an element-plus component that is not migrated and not allowlisted',

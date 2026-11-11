@@ -159,6 +159,14 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'element-plus',
+		names: ['ElTag'],
+		componentPaths: ['tag'],
+		templateNames: ['el-tag', 'ElTag'],
+		allowedFolders: ['components/N8nTag'],
+		replacement: 'N8nTag',
+	},
+	{
+		library: 'element-plus',
 		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
 		componentPaths: ['menu', 'menu-item', 'sub-menu'],
 		templateNames: ['el-menu', 'ElMenu', 'el-sub-menu', 'ElSubMenu', 'el-menu-item', 'ElMenuItem'],

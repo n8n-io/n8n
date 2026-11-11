@@ -8,8 +8,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 
-import { ElTag } from 'element-plus';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nTag } from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary;
 }>();
@@ -119,9 +118,7 @@ const onTagsEditEsc = () => {
 				@click="onTagsEditEnable"
 			>
 				<span v-for="tag in tags" :key="tag.id" class="clickable">
-					<ElTag :title="tag.name" type="info" size="small" :disable-transitions="true">
-						{{ tag.name }}
-					</ElTag>
+					<N8nTag :title="tag.name" :text="tag.name" :clickable="false" />
 				</span>
 				<span :class="$style.addTagWrapper">
 					<N8nButton
@@ -175,21 +172,6 @@ const onTagsEditEsc = () => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	max-width: 360px;
-
-	:global(.el-tag) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: max-content;
-		height: var(--tag--height);
-		padding: var(--tag--padding);
-		line-height: var(--tag--line-height);
-		color: var(--tag--color--text);
-		background-color: var(--tag--color--background);
-		border: 1px solid var(--tag--border-color);
-		border-radius: var(--tag--radius);
-		font-size: var(--tag--font-size);
-	}
 }
 
 .addTagWrapper {
