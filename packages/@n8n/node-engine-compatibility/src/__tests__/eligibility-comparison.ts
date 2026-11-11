@@ -89,11 +89,15 @@ export function expectEngineAndCheckAccept(workflow: IWorkflowBase): void {
 }
 
 /**
- * Pins a check rule to a workflow that engine v2 still refuses. When an engine
- * change makes the workflow run, this fails, because the rule now blocks
- * workflows that engine v2 runs.
+ * Pins a check rule to a workflow that engine v2 still refuses with `engineError`
+ * (a message substring or pattern). When an engine change makes the workflow run,
+ * this fails, because the rule now blocks workflows that engine v2 runs.
  */
-export function expectEngineStillRejects(workflow: IWorkflowBase, code: EngineV2ReasonCode): void {
+export function expectEngineStillRejects(
+	workflow: IWorkflowBase,
+	code: EngineV2ReasonCode,
+	engineError: string | RegExp,
+): void {
 	const { reasons } = checkEngineV2Eligibility(workflow, []);
 	expect(
 		reasons.map((reason) => reason.code),
@@ -103,4 +107,8 @@ export function expectEngineStillRejects(workflow: IWorkflowBase, code: EngineV2
 		() => assertEngineAccepts(workflow),
 		`Engine v2 now runs this workflow. Remove the ${code} rule from @n8n/workflow-engine-check.`,
 	).toThrow();
+	expect(
+		() => assertEngineAccepts(workflow),
+		'Engine v2 refuses this workflow with a different error',
+	).toThrow(engineError);
 }

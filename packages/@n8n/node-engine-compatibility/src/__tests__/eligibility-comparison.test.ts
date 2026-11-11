@@ -39,18 +39,26 @@ describe('engine v2 eligibility check compared with engine v2', () => {
 			),
 		};
 
-		it('passes when engine v2 rejects the workflow and the check reports the code', () => {
-			expectEngineStillRejects(rejected, 'ERROR_WORKFLOW');
+		const engineError = 'onError=continueErrorOutput';
+
+		it('passes when engine v2 rejects the workflow with the expected error and the check reports the code', () => {
+			expectEngineStillRejects(rejected, 'ERROR_WORKFLOW', engineError);
 		});
 
 		it('fails and names the rule to remove when engine v2 runs the workflow', () => {
-			expect(() => expectEngineStillRejects(accepted, 'ERROR_WORKFLOW')).toThrow(
+			expect(() => expectEngineStillRejects(accepted, 'ERROR_WORKFLOW', engineError)).toThrow(
 				'Remove the ERROR_WORKFLOW rule',
 			);
 		});
 
+		it('fails when engine v2 rejects the workflow with a different error', () => {
+			expect(() =>
+				expectEngineStillRejects(rejected, 'ERROR_WORKFLOW', 'more than one edge into input slot'),
+			).toThrow('Engine v2 refuses this workflow with a different error');
+		});
+
 		it('fails when the check does not report the code', () => {
-			expect(() => expectEngineStillRejects(rejected, 'REDACTION_POLICY')).toThrow(
+			expect(() => expectEngineStillRejects(rejected, 'REDACTION_POLICY', engineError)).toThrow(
 				'The check does not report REDACTION_POLICY',
 			);
 		});
