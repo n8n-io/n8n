@@ -60,6 +60,51 @@ const REMOVED_GLOBAL_THROWERS: ReadonlyArray<[string, () => never]> = (
 	},
 ]);
 
+/**
+ * Creates a check that returns true when a name is a valid IANA timezone.
+ * The check remembers valid names, because luxon builds a new
+ * `Intl.DateTimeFormat` for each validation.
+ */
+function createTimezoneCheck(): (timezone: string) => boolean {
+	const validTimezones = new Set<string>();
+	return (timezone) => {
+		if (!validTimezones.has(timezone) && IANAZone.isValidZone(timezone)) {
+			validTimezones.add(timezone);
+		}
+		return validTimezones.has(timezone);
+	};
+}
+
+const isValidTimezone = createTimezoneCheck();
+
+/**
+ * Defines a property whose value is created on the first read and then kept.
+ * A write replaces the value, as with a plain data property.
+ */
+function defineLazyValue(
+	target: Record<string, unknown>,
+	key: string,
+	create: () => unknown,
+): void {
+	let value: unknown;
+	let isCreated = false;
+	defineProperty(target, key, {
+		get: () => {
+			if (!isCreated) {
+				value = create();
+				isCreated = true;
+			}
+			return value;
+		},
+		set: (newValue: unknown) => {
+			value = newValue;
+			isCreated = true;
+		},
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 // ============================================================================
 // Build Context Function
 // ============================================================================

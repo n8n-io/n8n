@@ -141,6 +141,9 @@ async function nonWhiteBounds(
 	return { left, top, right, bottom };
 }
 
+// Removing a font unregisters every family loaded from the same file.
+let renderFontFamily: string | undefined;
+
 function renderTextBounds({
 	font,
 	text,
@@ -162,58 +165,43 @@ function renderTextBounds({
 	width: number;
 	height: number;
 }): { left: number; top: number; right: number; bottom: number } {
-	const family = 'n8n-edit-image-test-font';
-	const fontKey = GlobalFonts.registerFromPath(font, family);
-	if (!fontKey) throw new Error('Expected the test font to load');
-
-	try {
-		const context = createCanvas(width, height).getContext('2d');
-		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, width, height);
-		context.font = `${fontSize}px "${family}"`;
-		context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
-		context.textBaseline = 'alphabetic';
-		const x = horizontalAlignment === 'east' ? width - positionX : positionX;
-		const y = verticalAlignment === 'south' ? height - positionY : positionY;
-		context.fillStyle = '#111111';
-		context.fillText(text, x, y);
-
-		const pixels = context.getImageData(0, 0, width, height).data;
-		let left = width;
-		let top = height;
-		let right = 0;
-		let bottom = 0;
-
-		for (let pixelY = 0; pixelY < height; pixelY++) {
-			for (let pixelX = 0; pixelX < width; pixelX++) {
-				const index = (pixelY * width + pixelX) * 4;
-				if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
-				left = Math.min(left, pixelX);
-				top = Math.min(top, pixelY);
-				right = Math.max(right, pixelX + 1);
-				bottom = Math.max(bottom, pixelY + 1);
-			}
+	if (!renderFontFamily) {
+		const family = 'n8n-edit-image-test-font';
+		if (!GlobalFonts.registerFromPath(font, family)) {
+			throw new Error('Expected the test font to load');
 		}
-
-		return { left, top, right, bottom };
-	} finally {
-		GlobalFonts.remove(fontKey);
+		renderFontFamily = family;
 	}
 
 	const context = createCanvas(width, height).getContext('2d');
-	context.font = `${fontSize}px "${measureFontFamily}"`;
+	context.fillStyle = '#ffffff';
+	context.fillRect(0, 0, width, height);
+	context.font = `${fontSize}px "${renderFontFamily}"`;
 	context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
 	context.textBaseline = 'alphabetic';
-	const metrics = context.measureText(text);
 	const x = horizontalAlignment === 'east' ? width - positionX : positionX;
 	const y = verticalAlignment === 'south' ? height - positionY : positionY;
+	context.fillStyle = '#111111';
+	context.fillText(text, x, y);
 
-	return {
-		left: Math.max(0, Math.floor(x - metrics.actualBoundingBoxLeft)),
-		top: Math.max(0, Math.floor(y - metrics.actualBoundingBoxAscent)),
-		right: Math.min(width, Math.ceil(x + metrics.actualBoundingBoxRight)),
-		bottom: Math.min(height, Math.ceil(y + metrics.actualBoundingBoxDescent)),
-	};
+	const pixels = context.getImageData(0, 0, width, height).data;
+	let left = width;
+	let top = height;
+	let right = 0;
+	let bottom = 0;
+
+	for (let pixelY = 0; pixelY < height; pixelY++) {
+		for (let pixelX = 0; pixelX < width; pixelX++) {
+			const index = (pixelY * width + pixelX) * 4;
+			if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
+			left = Math.min(left, pixelX);
+			top = Math.min(top, pixelY);
+			right = Math.max(right, pixelX + 1);
+			bottom = Math.max(bottom, pixelY + 1);
+		}
+	}
+
+	return { left, top, right, bottom };
 }
 
 function createExecuteFunctions({

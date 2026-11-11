@@ -38,6 +38,7 @@
 * Remove LangChain Code example prompts from Instance AI examples ([7a0d4bf](https://github.com/n8n-io/n8n/commit/7a0d4bf6e2935a8fec9da92e94cce502028d4434))
 * Show the credential redaction cause without sharing permission ([#42711](https://github.com/n8n-io/n8n/issues/42711)) ([b3a40ee](https://github.com/n8n-io/n8n/commit/b3a40eee4e834d1b05592599315169d33a8d51ee))
 * Update Multer to 2.5.0 and preserve upload cleanup ([#43157](https://github.com/n8n-io/n8n/issues/43157)) ([731c17c](https://github.com/n8n-io/n8n/commit/731c17c61eb8d2657917106cd2ede76df1725eb9))
+* Use the workflow's owning project for node parameter lookups ([#43179](https://github.com/n8n-io/n8n/issues/43179)) ([8823b65](https://github.com/n8n-io/n8n/commit/8823b6566ce7627036dd9c072e6a7fd75750a8dc))
 
 
 ### Features
@@ -47,6 +48,7 @@
 * App bindings UI ([#42986](https://github.com/n8n-io/n8n/issues/42986)) ([2509674](https://github.com/n8n-io/n8n/commit/250967428f63a254afd9b353f3e0da8578b775c0))
 * Bump N8N_NODES_API_VERSION to 3 ([07e0f31](https://github.com/n8n-io/n8n/commit/07e0f31e55497e36550e2453af3db0816f2ee107))
 * **core:** Add Microsoft Work IQ OAuth2 credential ([#43172](https://github.com/n8n-io/n8n/issues/43172)) ([a3ef7d9](https://github.com/n8n-io/n8n/commit/a3ef7d9fb8e39d501d1053e240a6a817b8a8a0da))
+* **core:** Emit telemetry and audit events when a user logs out ([#42413](https://github.com/n8n-io/n8n/issues/42413)) ([612d1d3](https://github.com/n8n-io/n8n/commit/612d1d3d8e2d801951a42d8f8b9f4679360f86e7))
 * **core:** Hide archived workflows in the migration report by default ([#42781](https://github.com/n8n-io/n8n/issues/42781)) ([a070476](https://github.com/n8n-io/n8n/commit/a070476f028bf199f9889408b48e7eecad0feb28))
 * **core:** Stop agent runs when the Gateway credits wallet is empty ([#41473](https://github.com/n8n-io/n8n/issues/41473)) ([5dbef9a](https://github.com/n8n-io/n8n/commit/5dbef9a3f6a9d478f83bc863ec42371e4115efea))
 * **core:** Turn off the chat hub module by default ([#38612](https://github.com/n8n-io/n8n/issues/38612)) ([eb01ddf](https://github.com/n8n-io/n8n/commit/eb01ddf9449391b1dada9aa510d6c4fb5ce84d7a))
