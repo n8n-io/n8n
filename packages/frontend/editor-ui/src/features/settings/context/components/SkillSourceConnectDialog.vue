@@ -8,7 +8,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryOption,
 } from '@n8n/api-types';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -141,6 +141,8 @@ const reviewed = ref(false);
 let discoverRun = 0;
 let credentialsRun = 0;
 let repositoriesRun = 0;
+/** Counts the opens and closes, so a credential made for an earlier session is dropped. */
+let dialogSession = 0;
 
 function resetRepositories() {
 	repositoriesRun += 1;
@@ -174,7 +176,12 @@ async function loadCredentialTypes() {
 watch(
 	() => props.open,
 	(open) => {
-		if (!open) return;
+		dialogSession += 1;
+		if (!open) {
+			// A GitHub sign-in that is still open belongs to this session, so it stops here.
+			credentialOAuth.cancelAuthorize();
+			return;
+		}
 		void loadCredentialTypes();
 		discoverRun += 1;
 		credentialsRun += 1;
@@ -197,6 +204,8 @@ watch(
 	},
 	{ immediate: true },
 );
+
+onBeforeUnmount(() => credentialOAuth.cancelAuthorize());
 
 // A new scope, credential or repository needs a new read, so the old answer and its
 // messages go.
@@ -427,7 +436,12 @@ const credentialModalOpen = computed(
 );
 
 /** Where a credential made from this dialog goes, and what its success box says. */
-type NewCredentialTarget = { projectId: string; requestedScope: string; scopeLabel: string };
+type NewCredentialTarget = {
+	projectId: string;
+	requestedScope: string;
+	scopeLabel: string;
+	session: number;
+};
 
 function newCredentialTarget(): NewCredentialTarget | null {
 	const project = credentialProject.value;
@@ -437,7 +451,7 @@ function newCredentialTarget(): NewCredentialTarget | null {
 		parseScope(requestedScope).scope === 'instance'
 			? i18n.baseText('settings.context.skills.connect.credential.created.personal')
 			: (selectedScope.value?.label ?? '');
-	return { projectId: project.id, requestedScope, scopeLabel };
+	return { projectId: project.id, requestedScope, scopeLabel, session: dialogSession };
 }
 
 function openCredentialModal(type: GitHubSkillSourceCredentialType, target: NewCredentialTarget) {
@@ -452,8 +466,15 @@ function openCredentialModal(type: GitHubSkillSourceCredentialType, target: NewC
 }
 
 async function onCredentialCreated(id: string, target: NewCredentialTarget) {
-	// The user may have closed the dialog or picked another scope while the modal was open.
-	if (!props.open || step.value !== 'repository' || target.requestedScope !== scope.value) return;
+	// The user may have closed or reopened the dialog, or picked another scope, in the meantime.
+	if (
+		!props.open ||
+		target.session !== dialogSession ||
+		step.value !== 'repository' ||
+		target.requestedScope !== scope.value
+	) {
+		return;
+	}
 	await loadCredentials(id);
 	if (credentialId.value === id) createdCredential.value = { id, scopeLabel: target.scopeLabel };
 }

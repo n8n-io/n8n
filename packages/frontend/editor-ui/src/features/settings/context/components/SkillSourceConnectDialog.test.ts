@@ -25,6 +25,7 @@ const showErrorMock = vi.fn();
 const oauth = vi.hoisted(() => ({
 	canOAuthCredentialQuickConnect: vi.fn(() => false),
 	createAndAuthorize: vi.fn(),
+	cancelAuthorize: vi.fn(),
 }));
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => oauth,
@@ -213,6 +214,7 @@ describe('SkillSourceConnectDialog', () => {
 	beforeEach(() => {
 		oauth.canOAuthCredentialQuickConnect.mockReset().mockReturnValue(false);
 		oauth.createAndAuthorize.mockReset();
+		oauth.cancelAuthorize.mockReset();
 		createTestingPinia();
 		skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSourceCredentials.mockResolvedValue([]);
@@ -1058,17 +1060,70 @@ describe('SkillSourceConnectDialog', () => {
 			expect(view.getByTestId('skill-source-oauth-warning')).toBeInTheDocument();
 		});
 
-		it('reloads nothing when the user closes the GitHub sign-in', async () => {
+		/** A sign-in that stays open until the test ends it, as the GitHub popup does. */
+		function pendingSignIn() {
+			let finish: (credential: { id: string } | null) => void = () => {};
 			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
-			oauth.createAndAuthorize.mockResolvedValue(null);
+			oauth.createAndAuthorize.mockReturnValue(
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+			);
+			return (credential: { id: string } | null) => finish(credential);
+		}
+
+		it('keeps the picked credential when the user cancels a pending GitHub sign-in', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
 			const view = render();
-			await waitFor(() => expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1));
+			await selectCredential(view, 'Ada token');
 
 			await selectCredential(view, '+ Sign in with GitHub');
-
 			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+			// The composable gives null when the user closes the popup.
+			finish(null);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			// The token stays picked: its repositories loaded once, and no other read started.
+			expect(skillsStore.fetchSourceRepositories).toHaveBeenCalledTimes(1);
+			expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith(
+				expect.objectContaining({ credentialId: TOKEN.id }),
+			);
 			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1);
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
 			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
+		});
+
+		it('drops a GitHub sign-in that finishes after the dialog closed and opened again', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+
+			await view.rerender({ open: false, scopeOptions: SCOPES });
+			expect(oauth.cancelAuthorize).toHaveBeenCalled();
+			await view.rerender({ open: true, scopeOptions: SCOPES });
+			await selectCredential(view, 'Ada token');
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, OAUTH]);
+			finish({ id: OAUTH.id });
+
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			// The old result reloads nothing, so the token of the new session stays picked.
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(2);
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
+		});
+
+		it('cancels a pending GitHub sign-in when the dialog unmounts', async () => {
+			pendingSignIn();
+			const view = render();
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+
+			view.unmount();
+
+			expect(oauth.cancelAuthorize).toHaveBeenCalled();
 		});
 
 		it('warns about write access while an OAuth2 credential is picked', async () => {
