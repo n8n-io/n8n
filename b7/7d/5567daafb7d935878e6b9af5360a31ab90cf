@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/test/LmChatGoogleGemini.test.ts
+  s_56cda363ebf265::t_c8a35badb4ec99 12
+  s_56cda363ebf265::t_e23242c662c433 169-198,203-204
+  s_56cda363ebf265::t_0c272ef0a1bd36 199-202
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+  s_56cda363ebf265::t_f695bd14e9bdf8 31-52
+  s_56cda363ebf265::t_403a623be6f082 3-4,294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b77d5567daafb7d935878e6b9af5360a31ab90cf",
+  "prompts": {},
+  "sessions": {
+    "s_56cda363ebf265": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6142fd-7528-40b8-8f7b-77178fe0a97e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
