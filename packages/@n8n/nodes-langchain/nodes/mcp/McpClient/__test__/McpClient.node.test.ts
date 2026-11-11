@@ -387,40 +387,60 @@ describe('McpClient', () => {
 		});
 	});
 
-	it('should return an error as json if the tool result has isError: true and continueOnFail is true (version 1.1+)', async () => {
-		executeFunctions.getNode.mockReturnValue({
-			id: '123',
-			name: 'MCP Client',
-			type: '@n8n/n8n-nodes-langchain.mcpClient',
-			typeVersion: 1.1,
-			position: [0, 0],
-			parameters: {},
-		});
-		executeFunctions.getNodeParameter.mockImplementation(
-			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
-		);
-		client.callTool.mockResolvedValue({
-			isError: true,
-			content: [{ type: 'text', text: 'simulated tool-level error' }],
-		});
-		executeFunctions.continueOnFail.mockReturnValue(true);
+	it.each([
+		{
+			scenario: 'remote text',
+			content: [{ type: 'text' as const, text: 'The caller does not have permission' }],
+			message: 'The caller does not have permission',
+		},
+		{
+			scenario: 'no text content',
+			content: [],
+			message: 'Tool "get_weather" returned an error',
+		},
+	])(
+		'should preserve the error message with $scenario when continuing on fail (version 1.1+)',
+		async ({ content, message }) => {
+			executeFunctions.getNode.mockReturnValue({
+				id: '123',
+				name: 'MCP Client',
+				type: '@n8n/n8n-nodes-langchain.mcpClient',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: {},
+			});
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+			client.callTool.mockResolvedValue({
+				isError: true,
+				content,
+			});
+			executeFunctions.continueOnFail.mockReturnValue(true);
 
-		const result = await new McpClient().execute.call(executeFunctions);
+			const result = await new McpClient().execute.call(executeFunctions);
 
-		expect(result).toEqual([
-			[
-				{
-					json: {
-						error: {
-							message: 'MCP server returned an error for tool "get_weather"',
-							description: expect.stringContaining('simulated tool-level error'),
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							error: {
+								message,
+								description: expect.stringContaining(
+									'MCP server returned an error for tool "get_weather"',
+								),
+							},
 						},
+						pairedItem: { item: 0 },
 					},
-					pairedItem: { item: 0 },
-				},
-			],
-		]);
-	});
+				],
+			]);
+			expect(result).toMatchObject([
+				[{ json: { error: { description: expect.stringContaining(message) } } }],
+			]);
+		},
+	);
 
 	it('should throw a generic error if isError: true with no text content (version 1.1+)', async () => {
 		executeFunctions.getNode.mockReturnValue({

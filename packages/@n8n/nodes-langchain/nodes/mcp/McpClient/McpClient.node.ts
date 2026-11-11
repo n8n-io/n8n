@@ -268,10 +268,14 @@ export class McpClient implements INodeType {
 							textContent && 'text' in textContent
 								? textContent.text
 								: `Tool "${tool}" returned an error`;
+						const serverMessage = `MCP server returned an error for tool "${tool}"`;
+						const description = `${errorMessage}\n\nCheck the tool parameters and permissions on the MCP server. If you use OAuth2, check that the credential has the required scopes for this operation.`;
+						const continueOnFail = this.continueOnFail();
 						throw new NodeOperationError(node, errorMessage, {
 							itemIndex,
-							message: `MCP server returned an error for tool "${tool}"`,
-							description: `${errorMessage}\n\nCheck the tool parameters and permissions on the MCP server. If you use OAuth2, check that the credential has the required scopes for this operation.`,
+							// Keep the message used by existing continue-on-fail expressions.
+							message: continueOnFail ? errorMessage : serverMessage,
+							description: continueOnFail ? `${serverMessage}\n\n${description}` : description,
 						});
 					}
 
