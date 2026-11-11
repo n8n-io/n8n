@@ -154,13 +154,17 @@ describe('buildMatrix', () => {
 		);
 	});
 
-	it('keeps only SQLite in sqlite scope', () => {
-		const legs = buildMatrix(versions(), 'sqlite');
+	it('keeps SQLite and the primary Postgres leg without coverage in queue scope', () => {
+		const legs = buildMatrix(versions(), 'queue');
 
 		assert.deepEqual(
-			legs.map((leg) => leg.name),
-			['SQLite Pooled'],
+			legs.map((leg) => [leg.name, leg.collectCoverage]),
+			[
+				['SQLite Pooled', 'false'],
+				['Postgres 18', 'false'],
+			],
 		);
+		assert.equal(legs[1]['schema-check-cmd'], 'pnpm --filter=@n8n/db schema:check:postgres');
 	});
 
 	it('keeps every Postgres leg in full scope', () => {
@@ -251,24 +255,16 @@ describe('buildJobMatrices', () => {
 		);
 	});
 
-	it('runs the SQLite integration, migrations and schema check in sqlite scope', () => {
-		const { integration, migration } = buildJobMatrices(versions(), 'sqlite');
+	it('moves the SQLite schema check to the primary Postgres leg in queue scope', () => {
+		const { integration } = buildJobMatrices(versions(), 'queue', { cliIntegrationRuns: true });
 
 		assert.deepEqual(
 			integration.map((job) => job.name),
-			['SQLite Pooled Integration (1/2)', 'SQLite Pooled Integration (2/2)'],
+			['Postgres 18 Integration (1/2)', 'Postgres 18 Integration (2/2)'],
 		);
-		assert.equal(integration[0]['schema-check-cmd'], 'pnpm --filter=@n8n/db schema:check:sqlite');
-		assert.deepEqual(
-			migration.map((job) => job.name),
-			['SQLite Pooled Migrations'],
-		);
-	});
-
-	it('rejects the CLI integration signal in sqlite scope, so the SQLite schema check is not lost', () => {
-		assert.throws(
-			() => buildJobMatrices(versions(), 'sqlite', { cliIntegrationRuns: true }),
-			/no Postgres leg/,
+		assert.equal(
+			integration[0]['schema-check-cmd'],
+			'pnpm --filter=@n8n/db schema:check:postgres && pnpm --filter=@n8n/db schema:check:sqlite',
 		);
 	});
 
