@@ -5,6 +5,8 @@
 		"method": "POST",
 		"body": {
 			"model": "gpt-5-mini",
+			"store": false,
+			"include": ["reasoning.encrypted_content"],
 			"input": [
 				{
 					"role": "developer",

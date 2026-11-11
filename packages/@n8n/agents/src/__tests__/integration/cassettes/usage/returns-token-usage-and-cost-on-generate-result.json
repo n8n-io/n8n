@@ -5,6 +5,7 @@
 		"path": "/v1/responses",
 		"body": {
 			"model": "gpt-4o-mini",
+			"store": false,
 			"input": [
 				{
 					"role": "system",
