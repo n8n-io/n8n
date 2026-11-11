@@ -113,18 +113,20 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
-	it('runs on the utility model when one is given', async () => {
+	it('runs on the utility model with the given transport', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
 		const utilityModel = 'anthropic/claude-haiku-5-5';
+		const modelFetch = vi.fn();
 		await generateSimulationFixtures({
 			model: MAIN_MODEL,
 			utilityModel,
+			modelFetch,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-simulation-fixtures',
-			expect.objectContaining({ resolvedModel: utilityModel }),
+			expect.objectContaining({ resolvedModel: utilityModel, modelFetch }),
 		);
 	});
 

@@ -236,6 +236,24 @@ describe('SelfHealingAgentService', () => {
 		},
 	);
 
+	it('passes the resolved utility model to the context', async () => {
+		models.resolveUtilityModelConfig.mockResolvedValueOnce('anthropic/claude-haiku-5-5');
+
+		await service.execute(input, options);
+
+		expect(models.resolveUtilityModelConfig).toHaveBeenCalledWith(
+			user,
+			'test/model',
+			expect.objectContaining({
+				proxyContext: { runId: options.runId, threadId: options.threadId },
+			}),
+		);
+		expect(adapter.createContext).toHaveBeenCalledWith(
+			user,
+			expect.objectContaining({ utilityModelId: 'anthropic/claude-haiku-5-5' }),
+		);
+	});
+
 	it('prepares the captured baseline and binds verification', async () => {
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
 			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });

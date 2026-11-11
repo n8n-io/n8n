@@ -2119,6 +2119,29 @@ function createNodeAdapterServiceForTests(
 	};
 }
 
+describe('createContext models', () => {
+	it('keeps the main and utility models on the context', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const utilityModelId = 'anthropic/claude-haiku-5-5';
+
+		const context = service.createContext(mockUser, {
+			modelId: 'anthropic/claude-opus-5-5',
+			utilityModelId,
+		});
+
+		expect(context.modelId).toBe('anthropic/claude-opus-5-5');
+		expect(context.utilityModelId).toBe(utilityModelId);
+	});
+
+	it('leaves the utility model unset when none is resolved', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
+
+		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
+
 describe('executeNodeService adapter', () => {
 	const executeRequest = {
 		type: 'n8n-nodes-base.set',

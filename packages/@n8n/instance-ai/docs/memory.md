@@ -85,4 +85,4 @@ conversations.
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
 | `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | 30 | Thread TTL. Threads older than this expire, taking their memory with them. `0` disables expiry. |
 
-Observer and Reflector use the orchestrator agent's model.
+Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`). Without a utility model they use the orchestrator agent's model.

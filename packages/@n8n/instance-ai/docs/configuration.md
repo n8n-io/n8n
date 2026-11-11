@@ -121,7 +121,7 @@ reclaim idle remote sandboxes.
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Token threshold for Observer to trigger compression |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | `40000` | Token threshold for Reflector to condense observations |
 
-Observer and Reflector use the same model as the orchestrator agent (see `@n8n/agents` observational memory defaults).
+Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`, see Core). Without a utility model they use the orchestrator agent's model.
 
 ### Builder templates
 

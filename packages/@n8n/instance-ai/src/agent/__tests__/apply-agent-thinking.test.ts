@@ -80,6 +80,14 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('uses an explicit effort for OpenAI models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openai/gpt-6-luna', 'low');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'low',
+		});
+	});
+
 	it('enables mapped low reasoning effort for known custom Kimi K3 models', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/Kimi-K3');
