@@ -12,16 +12,33 @@ const store = vi.hoisted(() => ({
 	fromExistingIndex: vi.fn(),
 	similaritySearchVectorWithScore: vi.fn(),
 	hybridSearch: vi.fn(),
+	addVectors: vi.fn(),
 	returnForeignInstance: false,
 }));
 
-vi.mock('@langchain/weaviate', () => {
+vi.mock('@langchain/weaviate', async () => {
+	const actual = await vi.importActual<typeof import('@langchain/weaviate')>('@langchain/weaviate');
 	class WeaviateStore {
 		static async fromExistingIndex(...args: unknown[]) {
 			store.fromExistingIndex(...args);
 			return store.returnForeignInstance ? new WeaviateStore() : new this();
 		}
-		static fromDocuments = vi.fn();
+		// Like LangChain: create an instance of the called class, then add the documents
+		static fromDocuments = vi.fn(async function (
+			this: new (
+				...args: unknown[]
+			) => { addVectors: (...args: unknown[]) => Promise<string[]> },
+			documents: unknown[],
+			embeddings: unknown,
+			args: unknown,
+		) {
+			const instance = new this(embeddings, args);
+			await instance.addVectors(
+				documents.map(() => [0.5]),
+				documents,
+			);
+			return instance;
+		});
 		// Prototype methods, so the subclass overrides still call them through `super`.
 		async similaritySearchVectorWithScore(...args: unknown[]) {
 			return await store.similaritySearchVectorWithScore(...args);
@@ -29,8 +46,11 @@ vi.mock('@langchain/weaviate', () => {
 		async hybridSearch(...args: unknown[]) {
 			return await store.hybridSearch(...args);
 		}
+		async addVectors(...args: unknown[]) {
+			return await store.addVectors(...args);
+		}
 	}
-	return { WeaviateStore };
+	return { WeaviateStore, flattenObjectForWeaviate: actual.flattenObjectForWeaviate };
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -447,6 +467,7 @@ describe('VectorStoreWeaviate.node', () => {
 				tenant: 'tenantA',
 				textKey: 'content',
 				metadataKeys: ['source', 'page'],
+				batchMode: 'auto',
 			});
 			expect(deleteCollection).not.toHaveBeenCalled();
 		});
