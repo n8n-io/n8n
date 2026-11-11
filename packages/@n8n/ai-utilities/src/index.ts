@@ -148,6 +148,7 @@ export {
 	supplyModel,
 	getSuppliedModelOptions,
 	type SuppliedModel,
+	isOpenAiModel,
 	type SupplyModelOptions,
 	type OpenAiModel,
 } from './suppliers/supplyModel';

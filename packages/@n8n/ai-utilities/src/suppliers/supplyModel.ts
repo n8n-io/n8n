@@ -15,7 +15,7 @@ export type OpenAiModel = OpenAIModelOptions & {
 };
 export type SupplyModelOptions = ChatModel | OpenAiModel;
 
-function isOpenAiModel(model: SupplyModelOptions): model is OpenAiModel {
+export function isOpenAiModel(model: SupplyModelOptions): model is OpenAiModel {
 	return 'type' in model && model.type === 'openai' && !(model instanceof BaseChatModel);
 }
 
