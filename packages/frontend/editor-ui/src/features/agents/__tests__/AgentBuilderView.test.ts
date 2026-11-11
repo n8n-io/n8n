@@ -2357,6 +2357,20 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 	});
 
+	it('does not generate eval cases for an unsaved agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView({ waitForAsyncSetup: true });
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('generate-eval-cases');
+		await flushPromises();
+
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
 	it('generates eval cases and confirms the result with a toast', async () => {
 		generateDraftCasesMock.mockResolvedValue({
 			datasetId: 'd1',

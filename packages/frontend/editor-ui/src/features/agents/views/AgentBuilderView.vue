@@ -1206,7 +1206,7 @@ function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boo
 async function onGenerateEvalCases() {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	if (!targetProjectId || !targetAgentId) return;
+	if (!targetProjectId || !targetAgentId || isUnsaved.value) return;
 
 	try {
 		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
