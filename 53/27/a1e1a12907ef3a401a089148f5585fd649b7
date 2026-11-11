@@ -1,0 +1,27 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_08690fb8a4caf5::t_267de95ef93bac 323,445,497,3054-3059,3061-3062,3065-3066,3068-3071,3074
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_08690fb8a4caf5::t_54ef93f38c9baf 147,150
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_08690fb8a4caf5::t_6c8d7e214a88d8 76
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_08690fb8a4caf5::t_442ae4f03076fe 35
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_08690fb8a4caf5::t_5f048c03364a81 521,1078,1080,1082-1083,1086,1090,1094,1097-1098,2097-2099
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5327a1e1a12907ef3a401a089148f5585fd649b7",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

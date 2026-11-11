@@ -1,0 +1,34 @@
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_f43be259ffc82d::t_a8cc6835f268e5 267-272
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_f43be259ffc82d::t_01bf51ebb9a582 136-155
+  s_f43be259ffc82d::t_13c28834da2fc7 10-11,20,23
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_f43be259ffc82d::t_05704376731e85 35-41
+  s_f43be259ffc82d::t_5014f82421e87f 19
+  s_f43be259ffc82d::t_60f0daeeb68a76 98
+  s_f43be259ffc82d::t_a2507f1598e041 145-151,160,164-166
+  s_f43be259ffc82d::t_4f85c9840a135d 6
+  s_f43be259ffc82d::t_3b2fe93c18da41 176-180
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_f43be259ffc82d::t_b06a7c40217b07 4
+  s_f43be259ffc82d::t_ca6727ef96fdcc 93,180
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_f43be259ffc82d::t_3d1d2dac72b50a 26,121,584-630,632,634-640,1053-1056
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78d6a21ce54bc59f4fff36078b00c3d5fa9d6f96",
+  "prompts": {},
+  "sessions": {
+    "s_f43be259ffc82d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5babdb2-c762-402d-be70-cefee3534b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
