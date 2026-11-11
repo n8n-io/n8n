@@ -2,11 +2,15 @@ import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-import type {
-	IDataObject,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
+import {
+	jsonParse,
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { type MetadataKeys, type TimeoutParams, type WeaviateClient } from 'weaviate-client';
 import { UnexpectedError } from '@n8n/errors';
@@ -14,6 +18,7 @@ import { UnexpectedError } from '@n8n/errors';
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { isRecord } from '@n8n/utils/is-record';
 import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
@@ -107,6 +112,83 @@ async function clearCollection(client: WeaviateClient, collectionName: string, t
 		await client.collections.delete(collectionName);
 	} else {
 		await client.collections.get(collectionName).tenants.remove([{ name: tenant }]);
+	}
+}
+
+type CollectionSchema = Parameters<WeaviateClient['collections']['createFromJson']>[0];
+
+type InsertOptions = {
+	tenant?: string;
+	textKey?: string;
+	clearStore?: boolean;
+	metadataKeys?: string;
+	jsonSchema?: string | IDataObject;
+};
+
+/** Parses the "Collection JSON Schema" option, and sets the class to the collection name. */
+function parseCollectionSchema(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	collectionName: string,
+	jsonSchema: InsertOptions['jsonSchema'],
+	itemIndex: number,
+): CollectionSchema | undefined {
+	if (!jsonSchema) return undefined;
+
+	let schema: unknown;
+	try {
+		schema = typeof jsonSchema === 'string' ? jsonParse<unknown>(jsonSchema) : jsonSchema;
+	} catch {
+		throw new NodeOperationError(
+			context.getNode(),
+			'The collection JSON schema is not valid JSON',
+			{
+				itemIndex,
+			},
+		);
+	}
+	if (!isCollectionSchema(schema)) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'The collection JSON schema must be an object',
+			{
+				itemIndex,
+			},
+		);
+	}
+	if (schema.class && schema.class !== collectionName) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'The "class" in the collection JSON schema must match the collection name',
+			{ itemIndex },
+		);
+	}
+	// Copy, so that the node parameter does not change
+	return { ...schema, class: collectionName };
+}
+
+function isCollectionSchema(value: unknown): value is CollectionSchema {
+	return isRecord(value) && (value.class === undefined || typeof value.class === 'string');
+}
+
+/**
+ * Clears the store if the user asks for it, and then creates the collection from
+ * the schema if it does not exist. LangChain then only inserts the documents.
+ */
+async function prepareCollection(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	client: WeaviateClient,
+	collectionName: string,
+	options: InsertOptions,
+	itemIndex: number,
+) {
+	// Parse first, so that an invalid schema does not clear the store
+	const schema = parseCollectionSchema(context, collectionName, options.jsonSchema, itemIndex);
+
+	if (options.clearStore) {
+		await clearCollection(client, collectionName, options.tenant);
+	}
+	if (schema && !(await client.collections.exists(collectionName))) {
+		await client.collections.createFromJson(schema);
 	}
 }
 
@@ -393,11 +475,8 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 	},
 	// Version 1.1+: runs once before the batches, so that later batches do not delete earlier ones
 	async beforeInsert(context, _embeddings, itemIndex) {
-		const options = context.getNodeParameter('options', itemIndex, {}) as {
-			tenant?: string;
-			clearStore?: boolean;
-		};
-		if (!options.clearStore) return;
+		const options = context.getNodeParameter('options', itemIndex, {}) as InsertOptions;
+		if (!options.clearStore && !options.jsonSchema) return;
 
 		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
 			extractValue: true,
@@ -406,9 +485,9 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const client = await createWeaviateClient(credentials as WeaviateCredential);
 
 		try {
-			await clearCollection(client, collectionName, options.tenant);
+			await prepareCollection(context, client, collectionName, options, itemIndex);
 		} finally {
-			// This client is used only for the clear step, so release its connections
+			// This client is used only to prepare the collection, so release its connections
 			await client.close();
 		}
 	},
@@ -417,12 +496,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			extractValue: true,
 		}) as string;
 
-		const options = context.getNodeParameter('options', itemIndex, {}) as {
-			tenant?: string;
-			textKey?: string;
-			clearStore?: boolean;
-			metadataKeys?: string;
-		};
+		const options = context.getNodeParameter('options', itemIndex, {}) as InsertOptions;
 
 		const credentials = await context.getCredentials('weaviateApi');
 
@@ -438,9 +512,9 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 
-		// From version 1.1, beforeInsert clears the store once before the batches
-		if (options.clearStore && context.getNode().typeVersion < 1.1) {
-			await clearCollection(client, collectionName, options.tenant);
+		// From version 1.1, beforeInsert prepares the collection once before the batches
+		if (context.getNode().typeVersion < 1.1) {
+			await prepareCollection(context, client, collectionName, options, itemIndex);
 		}
 
 		await WeaviateStore.fromDocuments(documents, embeddings, config);
