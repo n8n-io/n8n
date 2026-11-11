@@ -194,7 +194,7 @@ describe('useNodeTypeRestriction', () => {
 
 	describe('describeImportedRestrictions', () => {
 		const PREFIX =
-			"The workflow was imported, but it can't be published or executed until these nodes are replaced or";
+			"The workflow was imported, but it can't be published or executed until these restricted nodes or credentials are replaced or";
 
 		it('points to an instance admin outside a team project', () => {
 			expect(describeImportedRestrictions([{ scope: 'instance' }, { scope: 'project' }])).toBe(

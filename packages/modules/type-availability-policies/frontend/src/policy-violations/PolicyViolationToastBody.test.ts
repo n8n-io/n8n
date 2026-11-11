@@ -16,7 +16,7 @@ const slackOnInstance: PolicyViolation = {
 
 const renderComponent = createComponentRenderer(PolicyViolationToastBody, {
 	props: {
-		title: 'Imported with 1 restricted node',
+		title: 'Imported with 1 restricted item',
 		description: 'The workflow was imported.',
 		violations: [slackOnInstance],
 		labelOf: () => 'Slack',
@@ -27,7 +27,7 @@ describe('PolicyViolationToastBody', () => {
 	it('shows the title, the description and the grouped violations', () => {
 		const { getByText, getByTestId } = renderComponent();
 
-		expect(getByText('Imported with 1 restricted node')).toBeVisible();
+		expect(getByText('Imported with 1 restricted item')).toBeVisible();
 		expect(getByText('The workflow was imported.')).toBeVisible();
 		expect(getByText('Restricted on this instance')).toBeVisible();
 		expect(getByTestId('policy-violation')).toHaveTextContent('Slack node');

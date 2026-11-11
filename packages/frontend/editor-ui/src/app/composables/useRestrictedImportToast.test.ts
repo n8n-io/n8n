@@ -35,7 +35,7 @@ const SET = 'n8n-nodes-base.set';
 const DISPLAY_NAMES: Record<string, string> = { [SLACK]: 'Slack', [GMAIL]: 'Gmail' };
 
 const DESCRIPTION_PREFIX =
-	"The workflow was imported, but it can't be published or executed until these nodes are replaced or";
+	"The workflow was imported, but it can't be published or executed until these restricted nodes or credentials are replaced or";
 
 const OPEN_AI = '@n8n/n8n-nodes-langchain.openAi';
 const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
@@ -100,7 +100,7 @@ describe('useRestrictedImportToast', () => {
 		useRestrictedImportToast().warnIfImportHasRestrictedNodes(imported);
 
 		const { getByText, getAllByTestId } = renderMessage();
-		expect(getByText('Imported with 2 restricted nodes')).toBeVisible();
+		expect(getByText('Imported with 2 restricted items')).toBeVisible();
 		const items = getAllByTestId('policy-violation-jump');
 		expect(items.map((item) => item.textContent?.trim())).toEqual([
 			'Slack node',
@@ -170,7 +170,7 @@ describe('useRestrictedImportToast', () => {
 		});
 
 		const { getByText, getAllByTestId } = renderMessage();
-		expect(getByText('Imported with 2 restricted nodes')).toBeVisible();
+		expect(getByText('Imported with 2 restricted items')).toBeVisible();
 		expect(getByText(`${DESCRIPTION_PREFIX} an instance admin grants access.`)).toBeVisible();
 		expect(getByText('Restricted on this instance')).toBeVisible();
 		expect(getAllByTestId('policy-violation').map((item) => item.textContent?.trim())).toEqual([
@@ -187,7 +187,7 @@ describe('useRestrictedImportToast', () => {
 			node('node-8', SLACK),
 		]);
 
-		expect(renderMessage().getByText('Imported with 1 restricted node')).toBeVisible();
+		expect(renderMessage().getByText('Imported with 1 restricted item')).toBeVisible();
 	});
 
 	it('groups types by scope and points to the admin who can lift them all', () => {
