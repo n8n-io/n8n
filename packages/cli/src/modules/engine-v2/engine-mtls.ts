@@ -85,6 +85,7 @@ export class EngineMtls {
 					// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
 					connectionPool: {
 						...options.connectionPool,
+						skipSslCertificateValidation: false,
 						agentOptions: {
 							...options.connectionPool?.agentOptions,
 							...tls.current,

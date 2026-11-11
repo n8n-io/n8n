@@ -117,7 +117,10 @@ describe('EngineMtls', () => {
 
 			expect(outboundHttp.requests).toHaveBeenCalledExactlyOnceWith({
 				...options,
-				connectionPool: { agentOptions: { ...tlsOf('old'), rejectUnauthorized: true } },
+				connectionPool: {
+					skipSslCertificateValidation: false,
+					agentOptions: { ...tlsOf('old'), rejectUnauthorized: true },
+				},
 			});
 		});
 
@@ -130,7 +133,20 @@ describe('EngineMtls', () => {
 			expect(outboundHttp.requests).toHaveBeenCalledExactlyOnceWith({
 				...options,
 				connectionPool: {
+					skipSslCertificateValidation: false,
 					agentOptions: { keepAlive: false, ...tlsOf('old'), rejectUnauthorized: true },
+				},
+			});
+		});
+
+		it('verifies the peer even when the caller asks to skip certificate validation', () => {
+			mtls.requests({ ...options, connectionPool: { skipSslCertificateValidation: true } });
+
+			expect(outboundHttp.requests).toHaveBeenCalledExactlyOnceWith({
+				...options,
+				connectionPool: {
+					skipSslCertificateValidation: false,
+					agentOptions: { ...tlsOf('old'), rejectUnauthorized: true },
 				},
 			});
 		});
