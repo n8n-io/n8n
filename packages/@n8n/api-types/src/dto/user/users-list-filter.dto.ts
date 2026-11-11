@@ -2,6 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
+import { booleanFromString } from '../../schemas/boolean-from-string';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const USERS_LIST_SORT_OPTIONS = [
@@ -33,6 +34,15 @@ const userSelectSchema = z.array(
 	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role']),
 );
 
+/**
+ * Account status of a user in the users list.
+ * - `active`: the user can sign in.
+ * - `deactivated`: an admin or the identity provider disabled the user.
+ */
+export const USERS_LIST_STATUSES = ['active', 'deactivated'] as const;
+
+export type UsersListStatus = (typeof USERS_LIST_STATUSES)[number];
+
 const userFilterSchema = z.object({
 	ids: z.array(z.string()).optional(),
 	isOwner: z.boolean().optional(),
@@ -44,6 +54,7 @@ const userFilterSchema = z.object({
 	fullText: z.string().optional(), // Full text search across firstName, lastName, and email
 	isPending: z.boolean().optional(),
 	projectId: z.string().optional(),
+	status: z.enum(USERS_LIST_STATUSES).optional(),
 });
 
 const filterValidatorSchema = z
@@ -83,4 +94,6 @@ export class UsersListFilterDto extends Z.class({
 	expand: userExpandSchema.optional(),
 	// Default sort order is role:asc, secondary sort criteria is name:asc
 	sortBy: usersListSortByValidator,
+	// Adds `statusCounts` to the response. Only callers with `user:create` can ask for it.
+	includeStatusCounts: booleanFromString.optional(),
 }) {}

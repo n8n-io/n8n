@@ -43,7 +43,6 @@ interface SummaryJson {
 	};
 	interactivity: {
 		askUserCount: number;
-		planToolCount: number;
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
@@ -90,7 +89,6 @@ interface ResultRecord {
 		extraWorkflowCount: number;
 		interactivity: {
 			askUserCount: number;
-			planToolCount: number;
 			autoApprovedSuspensions: number;
 			mockedCredentialTypes: string[];
 		};
@@ -357,10 +355,7 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 	const exampleId = `${idPrefix}-${record.exampleId}-${record.iteration}`;
 	const interact = record.build.interactivity;
 	const interactBits: string[] = [];
-	if (interact.askUserCount > 0)
-		interactBits.push(`workflow_builder_ask_user ×${interact.askUserCount}`);
-	if (interact.planToolCount > 0)
-		interactBits.push(`workflow_builder_create_tasks ×${interact.planToolCount}`);
+	if (interact.askUserCount > 0) interactBits.push(`ask_user ×${interact.askUserCount}`);
 	if (interact.autoApprovedSuspensions > 0)
 		interactBits.push(`suspend ×${interact.autoApprovedSuspensions}`);
 	if (interact.mockedCredentialTypes.length > 0)
@@ -468,13 +463,11 @@ function renderRun(run: Run, index: number): string {
     </div>
     ${
 			s.interactivity.askUserCount > 0 ||
-			s.interactivity.planToolCount > 0 ||
 			s.interactivity.autoApprovedSuspensions > 0 ||
 			s.interactivity.mockedCredentialTypes.length > 0
 				? `<div class="run-interactivity">
           <strong>Interactivity:</strong>
-          workflow_builder_ask_user ×${s.interactivity.askUserCount} ·
-          workflow_builder_create_tasks ×${s.interactivity.planToolCount} ·
+          ask_user ×${s.interactivity.askUserCount} ·
           suspend ×${s.interactivity.autoApprovedSuspensions} ·
           mocked creds: ${s.interactivity.mockedCredentialTypes.map(escapeHtml).join(', ') || 'none'}
         </div>`

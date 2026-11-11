@@ -275,12 +275,24 @@ describe('ProjectExporter', () => {
 			folderExporter.export.mockResolvedValue({
 				entries: [{ id: 'f1', name: 'F1', target: 'projects/billing/folders/f1' }],
 				workflowEntries: [
-					{ id: 'w-in-f1', name: 'In F1', target: 'projects/billing/folders/f1/workflows/x' },
+					{
+						id: 'w-in-f1',
+						name: 'In F1',
+						target: 'projects/billing/folders/f1/workflows/x',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w-root', name: 'Root', target: 'projects/billing/workflows/root' }],
+				entries: [
+					{
+						id: 'w-root',
+						name: 'Root',
+						target: 'projects/billing/workflows/root',
+						isArchived: false,
+					},
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -312,7 +324,9 @@ describe('ProjectExporter', () => {
 			});
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w1']);
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1' }],
+				entries: [
+					{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1', isArchived: false },
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -346,7 +360,12 @@ describe('ProjectExporter', () => {
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w-published', 'w-unpublished']);
 			workflowExporter.export.mockResolvedValue({
 				entries: [
-					{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' },
+					{
+						id: 'w-published',
+						name: 'Published',
+						target: 'projects/billing/workflows/pub',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
@@ -364,34 +383,37 @@ describe('ProjectExporter', () => {
 			expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-published']);
 		});
 
-		it('writes the project shell only for an empty selection', async () => {
-			const project = makeProject();
-			const { exporter, workflowFinder, workflowExporter } = makeExporter({
-				projects: [project],
-			});
-			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
-			workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
-			const writer = new CapturingWriter();
+		it.each([{ workflowIds: [] }, { folderIds: [] }])(
+			'writes the project shell only for an empty selection: %j',
+			async (selection) => {
+				const project = makeProject();
+				const { exporter, workflowFinder, workflowExporter } = makeExporter({
+					projects: [project],
+				});
+				workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
+				workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
+				const writer = new CapturingWriter();
 
-			const result = await exporter.export({
-				user,
-				projectIds: [project.id],
-				workflowIds: [],
-				writer,
-				includeTags: true,
-				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
-			});
+				const result = await exporter.export({
+					user,
+					projectIds: [project.id],
+					...selection,
+					writer,
+					includeTags: true,
+					versionPolicy: 'latest',
+					includeArchivedWorkflows: false,
+				});
 
-			expect(workflowExporter.export).not.toHaveBeenCalled();
-			expect(result.entries).toEqual([
-				{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
-			]);
-			expect(result.workflowEntries).toEqual([]);
-			expect(writer.files.map((f) => f.path)).toEqual([
-				'projects/billing-projectbilling01/project.json',
-			]);
-		});
+				expect(workflowExporter.export).not.toHaveBeenCalled();
+				expect(result.entries).toEqual([
+					{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
+				]);
+				expect(result.workflowEntries).toEqual([]);
+				expect(writer.files.map((f) => f.path)).toEqual([
+					'projects/billing-projectbilling01/project.json',
+				]);
+			},
+		);
 	});
 
 	it('exports a personal project', async () => {

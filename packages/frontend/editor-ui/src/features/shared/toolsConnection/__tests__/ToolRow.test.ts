@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { defineComponent } from 'vue';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
@@ -101,7 +101,7 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
-	it('switches a detached skill on and an attached skill off', async () => {
+	describe('skill rows', () => {
 		const skill: SkillConnectionItem = {
 			id: 'skill:tone',
 			kind: 'skill',
@@ -110,17 +110,111 @@ describe('ToolRow', () => {
 			status: 'none',
 			attached: false,
 		};
-		const detached = render(skill);
-		expect(detached.getByText('Detached')).toBeInTheDocument();
-		await userEvent.click(detached.getByTestId('tools-connection-row-attach'));
-		expect(detached.emitted('connect')).toEqual([[skill]]);
-		detached.unmount();
 
-		const attachedSkill = { ...skill, attached: true };
-		const attached = render(attachedSkill);
-		expect(attached.getByText('Attached')).toBeInTheDocument();
-		await userEvent.click(attached.getByTestId('tools-connection-row-attach'));
-		expect(attached.emitted('disconnect')).toEqual([[attachedSkill]]);
+		function renderSkill(item: SkillConnectionItem) {
+			return renderRow({
+				props: {
+					item,
+					connectLabel: 'Add skill',
+					connectAriaLabel: 'Add Support tone',
+					connectedLabel: 'Added',
+				},
+				pinia: createTestingPinia(),
+			});
+		}
+
+		it('adds a skill that is not on the agent', async () => {
+			const { getByRole, emitted } = renderSkill(skill);
+
+			const add = getByRole('button', { name: 'Add Support tone' });
+			expect(add).toHaveTextContent('Add skill');
+			await userEvent.click(add);
+
+			expect(emitted('connect')).toEqual([[skill]]);
+		});
+
+		it('shows an added skill as static text with no action', () => {
+			const { getByTestId, queryByTestId, getAllByRole } = renderSkill({
+				...skill,
+				attached: true,
+			});
+
+			expect(getByTestId('tools-connection-row-added')).toHaveTextContent('Added');
+			expect(queryByTestId('tools-connection-row-attach')).toBeNull();
+			// Only the row itself, which opens the skill, stays a button.
+			expect(getAllByRole('button')).toEqual([getByTestId('tools-connection-row-main')]);
+		});
+
+		it('moves focus to the row when a focused add button turns into added', async () => {
+			const { getByTestId, rerender } = renderSkill(skill);
+
+			getByTestId('tools-connection-row-attach').focus();
+			await userEvent.keyboard('{Enter}');
+			await rerender({ item: { ...skill, attached: true } });
+
+			await waitFor(() => expect(getByTestId('tools-connection-row-main')).toHaveFocus());
+		});
+
+		it('leaves focus alone when the add button did not have it', async () => {
+			const { getByTestId, rerender } = renderSkill(skill);
+
+			await fireEvent.click(getByTestId('tools-connection-row-attach'));
+			await rerender({ item: { ...skill, attached: true } });
+
+			expect(getByTestId('tools-connection-row-main')).not.toHaveFocus();
+		});
+
+		describe('long descriptions', () => {
+			const description = 'Write every answer in a calm tone. '.repeat(20).trim();
+			const tooltipStub = {
+				props: ['content', 'disabled'],
+				template:
+					'<span><slot /><span v-if="!disabled" data-test-id="stub-tooltip-content"><slot name="content" /></span></span>',
+			};
+
+			function renderLong(heights: { scrollHeight: number; clientHeight: number }) {
+				vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(
+					heights.scrollHeight,
+				);
+				vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(
+					heights.clientHeight,
+				);
+				return renderRow({
+					props: { item: { ...skill, description } },
+					pinia: createTestingPinia(),
+					global: { stubs: { N8nTooltip: tooltipStub } },
+				});
+			}
+
+			afterEach(() => vi.restoreAllMocks());
+
+			it('cuts the description and shows the full text on hover', async () => {
+				const { getByTestId, findByTestId } = renderLong({ scrollHeight: 80, clientHeight: 32 });
+
+				const text = getByTestId('tools-connection-row-description');
+				await waitFor(() => expect(text).toHaveAttribute('data-cut', 'true'));
+				await userEvent.hover(text);
+
+				expect(await findByTestId('stub-tooltip-content')).toHaveTextContent(description);
+			});
+
+			it('shows no tooltip for a description that fits', async () => {
+				const { getByTestId, queryByTestId } = renderLong({ scrollHeight: 32, clientHeight: 32 });
+
+				await userEvent.hover(getByTestId('tools-connection-row-description'));
+
+				expect(queryByTestId('stub-tooltip-content')).toBeNull();
+			});
+		});
+
+		it('falls back to the shared labels', () => {
+			const detached = render(skill);
+			expect(detached.getByTestId('tools-connection-row-attach')).toHaveTextContent('Add');
+			detached.unmount();
+
+			const attached = render({ ...skill, attached: true });
+			expect(attached.getByTestId('tools-connection-row-added')).toHaveTextContent('Added');
+		});
 	});
 
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {

@@ -9,6 +9,7 @@ import type { ProjectListItem } from '@/features/collaboration/projects/projects
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 const storeState = reactive({
 	id: 'thread-1',
@@ -40,6 +41,7 @@ vi.mock('../instanceAi.store', () => ({
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 	pinia: createTestingPinia(),
 	global: {
+		plugins: [createArtifactTestRouter()],
 		provide: {
 			// Lucide-only icons (outside the curated set) need the async body loader.
 			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
@@ -469,6 +471,38 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
 	});
 
+	it('opens skill artifacts in preview and keeps the chat tab when the skill is already shown', () => {
+		// Returns false when the skill tab is already active.
+		const openSkillPreview = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['skill-1', { type: 'skill', id: 'skill-1', name: 'Plan trips' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openSkillPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Plan trips' });
+		expect(artifactLink).toHaveAttribute('href', '/settings/context/skills?skillId=skill-1');
+		expect(artifactLink).not.toHaveAttribute('target');
+		expect(artifactLink.querySelector('[data-icon="book-open"]')).toBeInTheDocument();
+
+		const firstClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(firstClick)).toBe(false);
+
+		// The row has no target="_blank", so a click that is not prevented would
+		// navigate the chat tab away.
+		const secondClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(secondClick)).toBe(false);
+
+		expect(openSkillPreview).toHaveBeenNthCalledWith(1, 'skill-1');
+		expect(openSkillPreview).toHaveBeenNthCalledWith(2, 'skill-1');
+	});
+
 	it('shows a spinner on the artifact row while the AI is building it', () => {
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([
 			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
@@ -596,5 +630,23 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasDefaultPreventedByComponent).toBe(false);
 		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
+	it('keeps the router base in artifact links', () => {
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['wf-1', { type: 'workflow', id: 'wf-1', name: 'Sales workflow' }],
+			['dt-1', { type: 'data-table', id: 'dt-1', name: 'Orphan table' }],
+			['app-1', { type: 'app', id: 'app-1', name: 'Unscoped app' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: { plugins: [createArtifactTestRouter('/n8n/')] },
+		});
+
+		const hrefOf = (name: string) =>
+			getByRole('link', { name: `Open ${name}` }).getAttribute('href');
+		expect(hrefOf('Sales workflow')).toBe('/n8n/workflow/wf-1');
+		expect(hrefOf('Orphan table')).toBe('/n8n/home/datatables');
+		expect(hrefOf('Unscoped app')).toBe('#');
 	});
 });

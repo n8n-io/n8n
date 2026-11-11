@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { accountSummary, accountFirstName, isPerson, PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -34,13 +34,10 @@ function formatRevokedAt(date: Date): string {
 	return REVOKED_AT_FORMATTER.format(date);
 }
 
-function formatRevokedBy(user: {
-	firstName?: string | null;
-	lastName?: string | null;
-	email: string;
-}): string {
-	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-	return fullName || user.email;
+function formatRevokedBy(user: User): string {
+	const { firstName, lastName, email } = accountSummary(user);
+	const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+	return fullName || email || '';
 }
 
 type Template = HandlebarsTemplateDelegate<unknown>;
@@ -72,7 +69,7 @@ export class UserManagementMailer {
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 	) {
@@ -135,7 +132,8 @@ export class UserManagementMailer {
 		apiKey: ApiKey;
 		revoker: User;
 	}): Promise<SendEmailResult> {
-		if (!this.mailer) return { emailSent: false };
+		// Only a person has an email to send to.
+		if (!this.mailer || !isPerson(apiKey.user)) return { emailSent: false };
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const template = await this.getTemplate('api-key-revoked');
@@ -331,12 +329,27 @@ export class UserManagementMailer {
 	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
+		reason = 'crashes',
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
+		reason?: 'crashes' | 'memory-pressure';
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const text = {
+			crashes: {
+				reason: 'its executions repeatedly crashed',
+				nextStep:
+					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'memory-pressure': {
+				reason:
+					'n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				nextStep:
+					"Each time, this workflow's execution held the most data on the instance. Memory can also run high because of other work. Reactivate the workflow when ready.",
+			},
+		}[reason];
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'workflow-deactivated',
@@ -345,6 +358,7 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				...text,
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
 			messageType: 'Workflow auto-deactivated',
@@ -360,7 +374,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		workflow: IWorkflowBase;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -371,7 +385,7 @@ export class UserManagementMailer {
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has shared an n8n workflow with you`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has shared an n8n workflow with you`,
 			messageType: 'Workflow shared',
 		});
 	}
@@ -385,7 +399,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		credentialsName: string;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -396,7 +410,7 @@ export class UserManagementMailer {
 				credentialsName,
 				credentialsListUrl: `${baseUrl}/home/credentials`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has shared an n8n credential with you`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has shared an n8n credential with you`,
 			messageType: 'Credentials shared',
 		});
 	}
@@ -410,7 +424,7 @@ export class UserManagementMailer {
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newSharees.map((s) => s.userId));
+		const recipients = await this.personRepository.getEmailsByIds(newSharees.map((s) => s.userId));
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		// Merge recipient data with role
@@ -434,7 +448,7 @@ export class UserManagementMailer {
 				projectName: project.name,
 				projectUrl: `${baseUrl}/projects/${project.id}`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has invited you to a project`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has invited you to a project`,
 			messageType: 'Project shared',
 		});
 	}

@@ -6,14 +6,19 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	Project,
+	ProjectRelation,
 	type Role,
+	type ServiceAccount,
+	PersonRepository,
+	ServiceAccountRepository,
 	UserRepository,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
-import type { DeepPartial } from '@n8n/typeorm';
+import { getApiKeyScopesForRole, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { DataSource, type DeepPartial } from '@n8n/typeorm';
 import { hash } from 'bcryptjs';
 
 import { MfaService } from '@/mfa/mfa.service';
@@ -58,7 +63,7 @@ export async function newUser(attributes: DeepPartial<User> = {}): Promise<User>
 /** Store a user object in the DB */
 export async function createUser(attributes: DeepPartial<User> = {}): Promise<User> {
 	const userInstance = await newUser(attributes);
-	const { user } = await Container.get(UserRepository).createUserWithProject(userInstance);
+	const { user } = await Container.get(PersonRepository).createPersonWithProject(userInstance);
 	return user;
 }
 
@@ -165,8 +170,32 @@ export async function createUserShell(role: Role): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	const { user } = await Container.get(UserRepository).createUserWithProject(shell);
+	const { user } = await Container.get(PersonRepository).createPersonWithProject(shell);
 	return user;
+}
+
+/** A service account with its own personal project, as the user setup gives a person. */
+export async function createServiceAccountWithProject(
+	role: Role = GLOBAL_MEMBER_ROLE,
+	name = 'Deploy bot',
+): Promise<ServiceAccount> {
+	const manager = Container.get(DataSource).manager;
+	const serviceAccount = await Container.get(ServiceAccountRepository).create({ name, role });
+	const project = await manager.save(
+		manager.create(Project, {
+			type: 'personal',
+			name: 'Service account project',
+			creatorId: serviceAccount.id,
+		}),
+	);
+	await manager.save(
+		manager.create(ProjectRelation, {
+			projectId: project.id,
+			userId: serviceAccount.id,
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
+		}),
+	);
+	return serviceAccount;
 }
 
 /**
@@ -181,7 +210,7 @@ export async function createManyUsers(
 			.fill(0)
 			.map(async () => {
 				const userInstance = await newUser(attributes);
-				return await Container.get(UserRepository).createUserWithProject(userInstance);
+				return await Container.get(PersonRepository).createPersonWithProject(userInstance);
 			}),
 	);
 	return result.map((result) => result.user);

@@ -97,11 +97,23 @@ describe('validateAuth', () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
 		});
 
-		it('should skip validation for the setup webhook, and identify nobody', async () => {
+		it('should skip validation for the setup webhook in hostedChat mode, and identify nobody', async () => {
+			mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('hostedChat');
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getHeaderData.mockReturnValue({});
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+		});
+
+		it('should require the n8n-auth cookie for the setup webhook in webhook mode', async () => {
+			mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('webhook');
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getHeaderData.mockReturnValue({});
+
+			await expect(validateAuth(mockContext)).rejects.toMatchObject({
+				responseCode: 401,
+				message: 'User not authenticated!',
+			});
 		});
 
 		it('should throw 401 when no n8n-auth cookie is present', async () => {

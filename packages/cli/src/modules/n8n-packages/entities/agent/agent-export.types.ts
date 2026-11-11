@@ -33,6 +33,7 @@ export interface AgentSelectionExportRequest {
 
 export interface AgentSelectionExportResult {
 	agentEntries: ManifestEntry[];
+	skillEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
 	projectTargetsById: Map<string, string>;
 	requirements: ExportRequirements;

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { useMessage } from '@/app/composables/useMessage';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
 import {
 	useAgentTelemetry,
 	type AgentSessionFilterName,
@@ -61,7 +62,7 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const message = useMessage();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
 let disposed = false;
@@ -69,6 +70,7 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
@@ -120,9 +122,12 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function statusColor(status: AgentSessionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+function statusColor(
+	status: AgentSessionStatus,
+): 'success' | 'danger' | 'warning' | 'secondary' | 'text-base' {
 	if (status === 'succeeded') return 'success';
 	if (status === 'error') return 'danger';
+	if (status === 'awaiting') return 'secondary';
 	if (status === 'running') return 'text-base';
 	return 'warning';
 }
@@ -139,6 +144,8 @@ function statusLabel(status: AgentSessionStatus): string {
 			return i18n.baseText('agentSessions.status.cancelled');
 		case 'interrupted':
 			return i18n.baseText('agentSessions.status.interrupted');
+		case 'awaiting':
+			return i18n.baseText('agentSessions.status.awaiting');
 	}
 }
 
@@ -189,6 +196,15 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
 	const actions: Array<ActionDropdownItem<string>> = [];
+	if (thread.status === 'running' && canStop.value) {
+		actions.push({
+			id: 'stop',
+			label: i18n.baseText('agentSessions.stop'),
+			icon: 'square',
+			variant: 'destructive',
+			disabled: stoppingSessionIds.value.has(thread.id),
+		});
+	}
 
 	if (thread.parentThreadId && thread.parentAgentId) {
 		actions.push({
@@ -221,6 +237,16 @@ function onViewTrace(target: TraceTarget) {
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {
+	if (actionId === 'stop') {
+		if (thread.status !== 'running') return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		if (await stopSession(thread.id)) {
+			await sessionsStore.refreshThreads(targetProjectId, targetAgentId);
+		}
+		return;
+	}
+
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
 		onViewTrace({
@@ -232,15 +258,13 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 
 	if (actionId !== 'delete') return;
 
-	const confirmed = await message.confirm(
-		i18n.baseText('agentSessions.deleteConfirm.message'),
-		i18n.baseText('agentSessions.deleteConfirm.headline'),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
-			cancelButtonText: '',
-		},
-	);
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+		description: i18n.baseText('agentSessions.deleteConfirm.message'),
+		isDestructive: true,
+		confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
 
 	if (confirmed !== MODAL_CONFIRM) return;
 
@@ -593,6 +617,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 		border-left-color: var(--border-color--warning);
 	}
 
+	&[data-status='awaiting'] .titleCell {
+		border-left-color: var(--color--secondary);
+	}
+
 	&:hover {
 		background-color: var(--execution-card--color--background--hover);
 	}
@@ -666,6 +694,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			border-left-color: var(--border-color--warning);
 		}
 
+		&[data-status='awaiting'] {
+			border-left-color: var(--color--secondary);
+		}
+
 		td {
 			display: block;
 			width: auto;
@@ -707,6 +739,13 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			display: block;
 			width: 100%;
 		}
+	}
+
+	// A block td treats `height` as fixed, not as a minimum like a table cell does.
+	// Let the two-line empty state grow instead of being clipped.
+	.wrapper .sessionsTable .lastRow td {
+		height: auto;
+		min-height: var(--height--2xl);
 	}
 
 	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {

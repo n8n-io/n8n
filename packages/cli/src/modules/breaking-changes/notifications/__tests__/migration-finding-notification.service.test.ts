@@ -1,6 +1,6 @@
 import type { UrlService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, UserRepository } from '@n8n/db';
+import { Person, type UserRepository } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -15,18 +15,21 @@ import type {
 import type { MigrationWorkflowOwnerRepository } from '../../database/repositories/migration-workflow-owner.repository';
 import type { MigrationWorkflowOwner } from '../../database/entities/migration-workflow-owner.entity';
 import type { IBreakingChangeRule } from '../../types';
-import { MigrationFindingNotificationService } from '../migration-finding-notification.service';
+import {
+	MigrationFindingNotificationService,
+	REMINDER_COOLDOWN_MS,
+} from '../migration-finding-notification.service';
 
 const RULE_ID = 'removed-nodes-v3';
-const notifier = {
+const notifier = Object.assign(new Person(), {
 	id: 'admin',
 	firstName: 'Ada',
 	lastName: 'Lovelace',
 	email: 'ada@n8n.io',
-} as User;
+});
 
-function user(id: string, email: string | null = `${id}@example.com`): User {
-	return { id, firstName: id, lastName: null, email } as unknown as User;
+function user(id: string, email: string | null = `${id}@example.com`): Person {
+	return Object.assign(new Person(), { id, firstName: id, lastName: null, email });
 }
 
 function finding(
@@ -45,6 +48,7 @@ function finding(
 			name: `Flow ${workflowId}`,
 			activeVersionId: null,
 			updatedAt: new Date(),
+			isArchived: false,
 		},
 	};
 }
@@ -124,7 +128,7 @@ describe('MigrationFindingNotificationService', () => {
 					{ id: 'wf-1', name: 'Flow wf-1' },
 					{ id: 'wf-2', name: 'Flow wf-2' },
 				],
-				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}`,
+				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}?owner=me`,
 			});
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([1, 2], expect.anything());
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([3], expect.anything());
@@ -215,6 +219,37 @@ describe('MigrationFindingNotificationService', () => {
 			expect(result).toEqual({
 				notifiedWorkflowIds: [],
 				skipped: [{ workflowId: 'wf-1', reason: 'send_failed' }],
+			});
+		});
+
+		it('skips a finding notified within the cooldown and reminds one notified before it', async () => {
+			const now = Date.now();
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				{
+					...finding(1, 'wf-1', 'notified'),
+					notifiedAt: new Date(now - REMINDER_COOLDOWN_MS + 5_000),
+				},
+				{
+					...finding(2, 'wf-2', 'notified'),
+					notifiedAt: new Date(now - REMINDER_COOLDOWN_MS - 5_000),
+				},
+			]);
+			ownerRepository.findByWorkflowIds.mockResolvedValue([
+				ownerRow('wf-1', 'alice'),
+				ownerRow('wf-2', 'alice'),
+			]);
+			userRepository.findManyByIds.mockResolvedValue([user('alice')]);
+
+			const result = await service.notifyOwners(RULE_ID, ['wf-1', 'wf-2'], notifier);
+
+			expect(mailer.migrationFindings).toHaveBeenCalledTimes(1);
+			expect(mailer.migrationFindings).toHaveBeenCalledWith(
+				expect.objectContaining({ workflows: [{ id: 'wf-2', name: 'Flow wf-2' }] }),
+			);
+			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([2], expect.anything());
+			expect(result).toEqual({
+				notifiedWorkflowIds: ['wf-2'],
+				skipped: [{ workflowId: 'wf-1', reason: 'recently_notified' }],
 			});
 		});
 

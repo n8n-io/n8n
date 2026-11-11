@@ -1,7 +1,9 @@
+import type { ScimUserCreateDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Mocked } from 'vitest';
-import type { Role, RoleRepository, User, UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import type { Person, PersonRepository, Role, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@n8n/backend-services';
@@ -10,14 +12,17 @@ import type { UrlService } from '@n8n/backend-services';
 
 import {
 	ScimConflictError,
+	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
 	ScimResourceNotFoundError,
 } from '../scim.errors';
 import type { ScimUserRepository } from '../database/scim-user.repository';
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY } from '../scim-settings.service';
 import { ScimService } from '../scim.service';
 
-const createTestUser = (overrides: Partial<User> = {}): User =>
+const createTestPerson = (overrides: Partial<Person> = {}): Person =>
 	({
 		id: 'user-1',
 		email: 'user@example.com',
@@ -28,22 +33,29 @@ const createTestUser = (overrides: Partial<User> = {}): User =>
 		updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 		authIdentities: [],
 		...overrides,
-	}) as User;
+	}) as Person;
 
 describe('ScimService', () => {
 	let userRepository: Mocked<UserRepository>;
-	let roleRepository: Mocked<RoleRepository>;
+	let personRepository: Mocked<PersonRepository>;
 	let urlService: Mocked<UrlService>;
 	let eventService: Mocked<EventService>;
 	let passwordUtility: Mocked<PasswordUtility>;
 	let globalConfig: GlobalConfig;
 	let scimUserRepository: Mocked<ScimUserRepository>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let service: ScimService;
 
 	beforeEach(() => {
 		userRepository = mock<UserRepository>();
+		personRepository = mock<PersonRepository>();
+		// The service loads people by id and checks emails through `PersonRepository`.
+		// Every lookup reads one ordered mock, so a test sets one call sequence.
+		const findOne = async () => (await userRepository.findOne({})) as Person | null;
+		personRepository.findByIdWithRole.mockImplementation(findOne);
+		personRepository.findByIdWithAuthIdentities.mockImplementation(findOne);
+		personRepository.findByEmail.mockImplementation(findOne);
 		scimUserRepository = mock<ScimUserRepository>();
-		roleRepository = mock<RoleRepository>();
 		urlService = mock<UrlService>();
 		eventService = mock<EventService>();
 		passwordUtility = mock<PasswordUtility>();
@@ -53,25 +65,29 @@ describe('ScimService', () => {
 
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		passwordUtility.hash.mockResolvedValue('hashed-password');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.getPolicy.mockResolvedValue({
+			...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+		});
 
 		service = new ScimService(
 			mock<Logger>(),
-			userRepository,
 			scimUserRepository,
-			roleRepository,
 			urlService,
 			globalConfig,
 			passwordUtility,
 			eventService,
+			personRepository,
+			scimDeprovisioningService,
 		);
 	});
 
 	describe('getUserById', () => {
 		it('should map the user entity to a SCIM user', async () => {
-			const user = createTestUser({
+			const user = createTestPerson({
 				authIdentities: [
 					{ providerId: 'okta-external-id', providerType: 'saml' },
-				] as User['authIdentities'],
+				] as Person['authIdentities'],
 			});
 			userRepository.findOne.mockResolvedValue(user);
 
@@ -91,8 +107,18 @@ describe('ScimService', () => {
 			});
 		});
 
+		it('should not expose the role, which SCIM does not manage', async () => {
+			userRepository.findOne.mockResolvedValue(
+				createTestPerson({ role: { slug: 'global:admin' } as Role }),
+			);
+
+			const result = await service.getUserById('user-1');
+
+			expect(result).not.toHaveProperty('roles');
+		});
+
 		it('should mark disabled users as inactive', async () => {
-			userRepository.findOne.mockResolvedValue(createTestUser({ disabled: true }));
+			userRepository.findOne.mockResolvedValue(createTestPerson({ disabled: true }));
 
 			const result = await service.getUserById('user-1');
 
@@ -106,12 +132,45 @@ describe('ScimService', () => {
 		});
 	});
 
+	describe('people only', () => {
+		// `UserRepository` would return the account. SCIM must read people through
+		// `PersonRepository`, which skips service accounts.
+		let serviceAccount: Person;
+
+		beforeEach(() => {
+			serviceAccount = createTestPerson({ id: 'sa-1', email: 'sa@example.com' });
+			userRepository.findOne.mockResolvedValue(serviceAccount);
+			personRepository.findByIdWithRole.mockResolvedValue(null);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValue(null);
+		});
+
+		it('does not return a service account', async () => {
+			expect(await service.getUserById('sa-1')).toBeNull();
+			expect(personRepository.findByIdWithAuthIdentities).toHaveBeenCalledWith('sa-1');
+		});
+
+		it('does not change or delete a service account', async () => {
+			const patch = { schemas: [], Operations: [{ op: 'replace', path: 'active', value: false }] };
+
+			await expect(service.patchUser('sa-1', patch as never)).rejects.toThrow(
+				ScimResourceNotFoundError,
+			);
+			await expect(
+				service.updateUser('sa-1', { schemas: [], userName: 'sa@example.com' } as never),
+			).rejects.toThrow(ScimResourceNotFoundError);
+			await expect(service.deleteUser('sa-1')).rejects.toThrow(ScimResourceNotFoundError);
+			expect(personRepository.findByIdWithRole).toHaveBeenCalledTimes(3);
+			expect(serviceAccount).toEqual(createTestPerson({ id: 'sa-1', email: 'sa@example.com' }));
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getUsers', () => {
-		const pageOf = (users: User[], total = users.length) =>
+		const pageOf = (users: Person[], total = users.length) =>
 			scimUserRepository.findPage.mockResolvedValue([users, total]);
 
 		it('should return a SCIM list response with pagination metadata', async () => {
-			pageOf([createTestUser()], 5);
+			pageOf([createTestPerson()], 5);
 
 			const result = await service.getUsers({ startIndex: 3, count: 2 });
 
@@ -128,7 +187,7 @@ describe('ScimService', () => {
 		});
 
 		it('should filter by userName', async () => {
-			pageOf([createTestUser()]);
+			pageOf([createTestPerson()]);
 
 			await service.getUsers({ filter: 'userName eq "User@Example.com"' });
 
@@ -179,8 +238,8 @@ describe('ScimService', () => {
 		});
 
 		beforeEach(() => {
-			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createTestUser());
-			scimUserRepository.createProvisioned.mockResolvedValue(createTestUser({ id: 'u1' }));
+			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createTestPerson());
+			scimUserRepository.createProvisioned.mockResolvedValue(createTestPerson({ id: 'u1' }));
 		});
 
 		const emailUsed = () =>
@@ -225,16 +284,17 @@ describe('ScimService', () => {
 			active: true,
 		};
 
-		const provisions = (user: User) => scimUserRepository.createProvisioned.mockResolvedValue(user);
+		const provisions = (user: Person) =>
+			scimUserRepository.createProvisioned.mockResolvedValue(user);
 
 		it('should reject duplicate userName with a conflict', async () => {
-			userRepository.findOne.mockResolvedValue(createTestUser());
+			userRepository.findOne.mockResolvedValue(createTestPerson());
 
 			await expect(service.createUser(scimUserCreate)).rejects.toThrow(ScimConflictError);
 		});
 
 		it('should create a member with a personal project and an unusable password', async () => {
-			const createdUser = createTestUser({ id: 'new-user', email: 'new.user@example.com' });
+			const createdUser = createTestPerson({ id: 'new-user', email: 'new.user@example.com' });
 			userRepository.findOne
 				.mockResolvedValueOnce(null) // duplicate check
 				.mockResolvedValue(createdUser); // getUserById after creation
@@ -258,7 +318,7 @@ describe('ScimService', () => {
 		});
 
 		it('should link an SSO auth identity when externalId is provided', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -273,7 +333,7 @@ describe('ScimService', () => {
 		});
 
 		it('should emit a user-signed-up event', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -286,49 +346,36 @@ describe('ScimService', () => {
 			});
 		});
 
-		it('should create the user with the global role sent in roles', async () => {
-			const adminRole = { slug: 'global:admin', roleType: 'global' } as Role;
-			const createdUser = createTestUser({ id: 'new-user', role: adminRole });
+		it('should create a member when roles are sent, since SCIM does not manage roles', async () => {
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
-			roleRepository.findOne.mockResolvedValue(adminRole);
 			provisions(createdUser);
 
 			await service.createUser({
 				...scimUserCreate,
 				roles: [{ value: 'global:admin', primary: true }],
-			});
+			} as ScimUserCreateDto);
 
-			expect(roleRepository.findOne).toHaveBeenCalledWith({
-				where: { slug: 'global:admin', roleType: 'global' },
-			});
 			expect(scimUserRepository.createProvisioned).toHaveBeenCalledWith(
-				expect.objectContaining({ role: { slug: 'global:admin' } }),
+				expect.objectContaining({ role: { slug: 'global:member' } }),
 				expect.anything(),
 				{},
 			);
 		});
 
-		it('should reject a role that is not an existing global role', async () => {
-			userRepository.findOne.mockResolvedValue(null);
-			roleRepository.findOne.mockResolvedValue(null);
+		it('should create an active user when active is omitted', async () => {
+			const createdUser = createTestPerson({ id: 'new-user' });
+			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
+			provisions(createdUser);
 
-			await expect(
-				service.createUser({ ...scimUserCreate, roles: [{ value: 'project:admin' }] }),
-			).rejects.toThrow(ScimInvalidValueError);
-			expect(scimUserRepository.createProvisioned).not.toHaveBeenCalled();
-		});
+			const { active: _, ...withoutActive } = scimUserCreate;
+			await service.createUser(withoutActive);
 
-		it('should reject more than one role entry', async () => {
-			userRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				service.createUser({
-					...scimUserCreate,
-					roles: [{ value: 'global:admin' }, { value: 'global:member' }],
-				}),
-			).rejects.toThrow(ScimInvalidValueError);
-			expect(roleRepository.findOne).not.toHaveBeenCalled();
-			expect(scimUserRepository.createProvisioned).not.toHaveBeenCalled();
+			expect(scimUserRepository.createProvisioned).toHaveBeenCalledWith(
+				expect.objectContaining({ disabled: false }),
+				expect.anything(),
+				{},
+			);
 		});
 	});
 
@@ -351,7 +398,7 @@ describe('ScimService', () => {
 		});
 
 		it('should deactivate a user via an explicit active path', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -360,7 +407,7 @@ describe('ScimService', () => {
 			);
 
 			expect(user.disabled).toBe(true);
-			expect(userRepository.save).toHaveBeenCalledWith(user);
+			expect(personRepository.save).toHaveBeenCalledWith(user);
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
@@ -368,7 +415,7 @@ describe('ScimService', () => {
 		});
 
 		it('should apply path-less object values as sent by Entra ID', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -386,7 +433,7 @@ describe('ScimService', () => {
 		});
 
 		it('should update the email via a work-email path as sent by Okta', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -400,7 +447,7 @@ describe('ScimService', () => {
 		});
 
 		it('should update the email via a userName replace', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -412,8 +459,8 @@ describe('ScimService', () => {
 		});
 
 		it('should reject an email change that collides with another user', async () => {
-			const user = createTestUser();
-			const otherUser = createTestUser({ id: 'user-2', email: 'taken@example.com' });
+			const user = createTestPerson();
+			const otherUser = createTestPerson({ id: 'user-2', email: 'taken@example.com' });
 			userRepository.findOne
 				.mockResolvedValueOnce(user) // load target user
 				.mockResolvedValueOnce(otherUser); // conflict check on save
@@ -427,13 +474,48 @@ describe('ScimService', () => {
 		});
 
 		it('should not persist anything when no supported attribute changed', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser('user-1', patchRequest([{ op: 'remove', path: 'phoneNumbers' }]));
 
-			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(personRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not persist anything when the values equal the stored state', async () => {
+			const user = createTestPerson({ disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([
+					{ op: 'replace', path: 'active', value: false },
+					{ op: 'replace', path: 'userName', value: user.email.toUpperCase() },
+					{ op: 'replace', value: { name: { givenName: user.firstName } } },
+				]),
+			);
+
+			expect(personRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should record only the fields that changed', async () => {
+			const user = createTestPerson();
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([
+					{ op: 'replace', path: 'active', value: true },
+					{ op: 'replace', path: 'name.givenName', value: 'Updated' },
+				]),
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: ['firstName'],
+			});
 		});
 	});
 
@@ -446,7 +528,7 @@ describe('ScimService', () => {
 		};
 
 		it('should replace email, name and active state', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne
 				.mockResolvedValueOnce(user) // load target user
 				.mockResolvedValueOnce(null) // conflict check on save
@@ -464,6 +546,20 @@ describe('ScimService', () => {
 			});
 		});
 
+		it('should keep a disabled user disabled when active is omitted', async () => {
+			const user = createTestPerson({ disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			const { active: _, ...withoutActive } = putBody;
+			await service.updateUser('user-1', { ...withoutActive, userName: user.email });
+
+			expect(user.disabled).toBe(true);
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: expect.not.arrayContaining(['disabled']),
+			});
+		});
+
 		it('should throw not-found for unknown users', async () => {
 			userRepository.findOne.mockResolvedValue(null);
 
@@ -473,116 +569,149 @@ describe('ScimService', () => {
 		});
 	});
 
-	describe('role provisioning', () => {
+	// SSO role mapping owns the instance role. SCIM accepts `roles` so that an
+	// IdP does not fail, but never applies it.
+	describe('roles', () => {
 		const memberRole = { slug: 'global:member', roleType: 'global' } as Role;
-		const adminRole = { slug: 'global:admin', roleType: 'global' } as Role;
-
-		const putBodyWithRole = (slug: string) => ({
-			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
-			userName: 'user@example.com',
-			roles: [{ value: slug, primary: true }],
-			active: true,
-		});
-
-		it('should apply a valid role change via PUT', async () => {
-			const user = createTestUser({ role: memberRole });
-			userRepository.findOne.mockResolvedValue(user);
-			roleRepository.findOne.mockResolvedValue(adminRole);
-
-			await service.updateUser('user-1', putBodyWithRole('global:admin'));
-
-			expect(roleRepository.findOne).toHaveBeenCalledWith({
-				where: { slug: 'global:admin', roleType: 'global' },
-			});
-			expect(user.role).toBe(adminRole);
-			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
-				user,
-				fieldsChanged: ['role'],
-			});
-		});
-
-		it('should apply a role change via PATCH with a roles path', async () => {
-			const user = createTestUser({ role: memberRole });
-			userRepository.findOne.mockResolvedValue(user);
-			roleRepository.findOne.mockResolvedValue(adminRole);
-
-			await service.patchUser('user-1', {
+		const patchRequest = (operations: Array<{ op: string; path?: string; value?: unknown }>) =>
+			({
 				schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
-				Operations: [
-					{ op: 'replace', path: 'roles', value: [{ value: 'global:admin', primary: true }] },
-				],
-			} as Parameters<ScimService['patchUser']>[1]);
+				Operations: operations,
+			}) as Parameters<ScimService['patchUser']>[1];
 
-			expect(user.role).toBe(adminRole);
-		});
-
-		it('should reject an unknown role', async () => {
-			const user = createTestUser({ role: memberRole });
-			userRepository.findOne.mockResolvedValue(user);
-			roleRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				service.updateUser('user-1', putBodyWithRole('global:superuser')),
-			).rejects.toThrow(ScimInvalidValueError);
-		});
-
-		it('should reject multiple role entries', async () => {
-			const user = createTestUser({ role: memberRole });
+		it('should ignore roles sent via PUT', async () => {
+			const user = createTestPerson({ role: memberRole });
 			userRepository.findOne.mockResolvedValue(user);
 
-			await expect(
-				service.updateUser('user-1', {
-					schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
-					userName: 'user@example.com',
-					roles: [{ value: 'global:admin' }, { value: 'global:member' }],
-					active: true,
-				}),
-			).rejects.toThrow(ScimInvalidValueError);
-			expect(roleRepository.findOne).not.toHaveBeenCalled();
+			await service.updateUser('user-1', {
+				schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+				userName: 'user@example.com',
+				roles: [{ value: 'global:admin', primary: true }],
+				active: true,
+			} as ScimUserCreateDto);
+
+			expect(user.role).toBe(memberRole);
+			expect(personRepository.save).not.toHaveBeenCalled();
 		});
 
-		it('should never assign the owner role', async () => {
-			const user = createTestUser({ role: memberRole });
+		it.each([
+			['a roles path', [{ op: 'replace', path: 'roles', value: [{ value: 'global:admin' }] }]],
+			['a path-less value', [{ op: 'replace', value: { roles: [{ value: 'global:admin' }] } }]],
+		])('should ignore roles sent via PATCH with %s', async (_, operations) => {
+			const user = createTestPerson({ role: memberRole });
 			userRepository.findOne.mockResolvedValue(user);
 
-			await expect(service.updateUser('user-1', putBodyWithRole('global:owner'))).rejects.toThrow(
-				ScimInvalidValueError,
+			await service.patchUser('user-1', patchRequest(operations));
+
+			expect(user.role).toBe(memberRole);
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('owner guard', () => {
+		const ownerRole = { slug: 'global:owner', roleType: 'global' } as Role;
+		const createOwner = () =>
+			createTestPerson({ id: 'owner-1', email: 'owner@example.com', role: ownerRole });
+		const patchRequest = (operations: Array<{ op: string; path?: string; value?: unknown }>) =>
+			({
+				schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+				Operations: operations,
+			}) as Parameters<ScimService['patchUser']>[1];
+		const putBody = (over: Partial<ScimUserCreateDto> = {}): ScimUserCreateDto => ({
+			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+			userName: 'owner@example.com',
+			...over,
+		});
+
+		it.each([
+			['userName', [{ op: 'replace', path: 'userName', value: 'new@example.com' }]],
+			[
+				'a work email',
+				[{ op: 'replace', path: 'emails[type eq "work"].value', value: 'new@example.com' }],
+			],
+			['active', [{ op: 'replace', path: 'active', value: false }]],
+			['a path-less active', [{ op: 'replace', value: { active: false } }]],
+		])('should reject a PATCH of %s on the owner', async (_, operations) => {
+			userRepository.findOne.mockResolvedValue(createOwner());
+
+			await expect(service.patchUser('owner-1', patchRequest(operations))).rejects.toThrow(
+				ScimForbiddenError,
 			);
-			expect(roleRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.save).not.toHaveBeenCalled();
 		});
 
-		it('should never change the role of the instance owner', async () => {
-			const owner = createTestUser({
-				role: { slug: 'global:owner', roleType: 'global' } as Role,
+		it.each([
+			['a new userName', putBody({ userName: 'new@example.com' })],
+			['active false', putBody({ active: false })],
+		])('should reject a PUT with %s on the owner', async (_, body) => {
+			userRepository.findOne.mockResolvedValue(createOwner());
+
+			await expect(service.updateUser('owner-1', body)).rejects.toThrow(ScimForbiddenError);
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
+
+		// The guard blocks a change. Repeating the stored state is not a change.
+		it.each([
+			[
+				'PATCH',
+				async () =>
+					await service.patchUser(
+						'owner-1',
+						patchRequest([{ op: 'replace', path: 'active', value: false }]),
+					),
+			],
+			['PUT', async () => await service.updateUser('owner-1', putBody({ active: false }))],
+		])('should treat a %s with active false on a disabled owner as a no-op', async (_, request) => {
+			const owner = createTestPerson({
+				id: 'owner-1',
+				email: 'owner@example.com',
+				role: ownerRole,
+				disabled: true,
 			});
 			userRepository.findOne.mockResolvedValue(owner);
-			roleRepository.findOne.mockResolvedValue(adminRole);
 
-			await expect(service.updateUser('user-1', putBodyWithRole('global:admin'))).rejects.toThrow(
-				ScimInvalidValueError,
-			);
+			await request();
+
+			expect(personRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('should not persist anything when the role is unchanged', async () => {
-			const user = createTestUser({ role: memberRole });
-			userRepository.findOne.mockResolvedValue(user);
-			roleRepository.findOne.mockResolvedValue(memberRole);
+		it('should reject a DELETE of the owner', async () => {
+			userRepository.findOne.mockResolvedValue(createOwner());
 
-			await service.updateUser('user-1', putBodyWithRole('global:member'));
+			await expect(service.deleteUser('owner-1')).rejects.toThrow(ScimForbiddenError);
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
 
-			expect(userRepository.save).not.toHaveBeenCalled();
+		it('should allow a name change and an unchanged email on the owner', async () => {
+			const owner = createOwner();
+			userRepository.findOne.mockResolvedValue(owner);
+
+			await service.patchUser(
+				'owner-1',
+				patchRequest([
+					{ op: 'replace', path: 'userName', value: 'Owner@Example.com' },
+					{ op: 'replace', path: 'name.givenName', value: 'Renamed' },
+					{ op: 'replace', path: 'active', value: true },
+				]),
+			);
+
+			expect(owner.firstName).toBe('Renamed');
+			expect(owner.email).toBe('owner@example.com');
+			expect(owner.disabled).toBe(false);
+			expect(personRepository.save).toHaveBeenCalledWith(owner);
 		});
 	});
 
 	describe('deleteUser', () => {
 		it('should soft-delete by disabling the user', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.deleteUser('user-1');
 
 			expect(user.disabled).toBe(true);
-			expect(userRepository.save).toHaveBeenCalledWith(user);
+			expect(personRepository.save).toHaveBeenCalledWith(user);
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
@@ -593,6 +722,22 @@ describe('ScimService', () => {
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+		});
+
+		// The identity provider sends the DELETE again after a failed delete.
+		it('should apply the delete policy to a user that an earlier DELETE deactivated', async () => {
+			const policy = {
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			} as const;
+			scimDeprovisioningService.getPolicy.mockResolvedValue(policy);
+			const user = createTestPerson({ role: GLOBAL_MEMBER_ROLE, disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.deleteUser('user-1');
+
+			expect(scimDeprovisioningService.deleteUser).toHaveBeenCalledWith(user, policy);
 		});
 	});
 });

@@ -9,14 +9,19 @@ import type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeLocateRequest,
+	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { mintIdentityToken } from '@n8n/engine';
+import { mintIdentityToken, parseApprovalCallback } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -25,7 +30,10 @@ import {
 	EngineRejectedWorkflowError,
 	type CancelExecutionOutcome,
 	type EngineDataPlaneProvider,
+	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
+
+import { EngineTlsMaterial } from './engine-tls-material';
 
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
@@ -48,7 +56,9 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		private readonly engineConfig: EngineConfig,
 		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
+		tlsMaterial: EngineTlsMaterial,
 	) {
+		const { tls } = tlsMaterial;
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
@@ -62,6 +72,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
 			}),
+			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 		});
 	}
 
@@ -135,6 +147,26 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return response.body as SearchExecutionsResponse;
 	}
 
+	async findLatestExecution(
+		request: FindLatestExecutionRequest,
+	): Promise<ExecutionSnapshot | undefined> {
+		const response = await this.http.request<ExecutionSnapshot | EngineErrorResponse>({
+			url: '/api/workflow-executions/search/latest',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		if (response.statusCode === 404) return undefined;
+
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+
+		return response.body as ExecutionSnapshot;
+	}
+
 	async cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined> {
 		const response = await this.http.request<CancelExecutionResponse | EngineErrorResponse>({
 			url: `/api/workflow-executions/${encodeURIComponent(id)}/cancel`,
@@ -156,6 +188,57 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 		const { finishedAt } = response.body as CancelExecutionResponse;
 		return { cancelled: true, finishedAt: new Date(finishedAt) };
+	}
+
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		return await this.postResume<ResumeTargetResponse>('/api/resume-requests/locate', request);
+	}
+
+	readApprovalCallback(reference: string): string | undefined {
+		return parseApprovalCallback(reference)?.stepId;
+	}
+
+	async resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>> {
+		return await this.postResume<ResolveStepResponse>(
+			`/api/step-executions/${encodeURIComponent(stepId)}/resolve`,
+			request,
+		);
+	}
+
+	private async postResume<T>(
+		url: string,
+		body: ResumeLocateRequest | ResolveStepRequest,
+	): Promise<ResumeOutcome<T>> {
+		const response = await this.http.request<T | EngineErrorResponse>({
+			url,
+			method: 'POST',
+			body,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		// A 5xx is an engine failure, not a refusal. 501 is a refusal: the engine
+		// has no resume secret.
+		if (response.statusCode >= 500 && response.statusCode !== 501) {
+			throw this.toError(response.statusCode, response.body);
+		}
+
+		if (response.statusCode >= 300) {
+			const { error } = this.parseErrorResponse(response.body);
+			// The engine refuses this plane's own identity with a 401 too. Only a
+			// refused resume token is an answer about the request.
+			if (response.statusCode === 401 && error !== 'invalid_token') {
+				throw this.toError(response.statusCode, response.body);
+			}
+			return { ok: false, status: response.statusCode, error: error ?? 'engine_error' };
+		}
+
+		return { ok: true, value: response.body as T };
 	}
 
 	/** The status a `not_cancellable` response names. */

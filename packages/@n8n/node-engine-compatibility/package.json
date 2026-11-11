@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-engine-compatibility",
-  "version": "0.13.0",
+  "version": "0.16.0",
   "description": "Adapts v1 nodes and workflows to the Engine v2 execution model",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -24,7 +24,8 @@
   "dependencies": {
     "@n8n/engine": "workspace:*",
     "n8n-core": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -38,7 +39,6 @@
     "oxlint-tsgolint": "catalog:",
     "supertest": "^7.1.1",
     "typescript": "catalog:typescript",
-    "uuid": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

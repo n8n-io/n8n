@@ -9,6 +9,7 @@ import {
 	shallowReactive,
 	useTemplateRef,
 	watch,
+	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
 import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
@@ -31,10 +32,10 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
@@ -56,7 +57,6 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
 import type {
-	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -82,30 +82,41 @@ import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builder
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
-const props = defineProps<{
-	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
-	beforeSend?: () => Promise<void>;
-	/**
-	 * The live embed subject (an agent in the builder today). When it refers to
-	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
-	 * context chip follows this subject's `name` instead of the snapshot taken
-	 * at thread mint — so a rename in the host updates the chip live. Optional:
-	 * the full thread view passes no subject and keeps the stashed-name behavior.
-	 */
-	subject?: InstanceAiEmbedSubject;
-	/** Extra scroll space for a panel that overlays messages above the input. */
-	aboveInputOverlapHeight?: number;
-	/** Enables the dormant mention integration after the rollout gate resolves true. */
-	mentionsEnabled?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
+		beforeSend?: () => Promise<void>;
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		autofocus?: boolean;
+		composerHeight?: string;
+		/**
+		 * The live embed subject (an agent in the builder today). When it refers to
+		 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
+		 * context chip follows this subject's `name` instead of the snapshot taken
+		 * at thread mint — so a rename in the host updates the chip live. Optional:
+		 * the full thread view passes no subject and keeps the stashed-name behavior.
+		 */
+		subject?: InstanceAiEmbedSubject;
+		/** Extra scroll space for a panel that overlays messages above the input. */
+		aboveInputOverlapHeight?: number;
+		/** Enables the dormant mention integration after the rollout gate resolves true. */
+		mentionsEnabled?: boolean;
+	}>(),
+	{ autofocus: undefined },
+);
 
 const emit = defineEmits<{
 	'thread-missing': [];
+	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
 }>();
 
 defineSlots<{
 	'above-input'?: () => unknown;
+	'composer-start'?: () => unknown;
+	'composer-footer'?: () => unknown;
 	'inline-offers'?: () => unknown;
 	/** A host's welcome state, rendered until the thread has its first message. */
 	empty?: () => unknown;
@@ -120,11 +131,21 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
-const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
-	'openWorkflowPreview',
+watch(
+	() => thread.messages.some((message) => message.role === 'user'),
+	(hasMessages) => {
+		if (hasMessages) emit('message-sent');
+	},
+	{ immediate: true },
+);
+// Shows the tab of a workflow a sent message mentions. Only a host with a
+// preview provides it; an embedding panel without mentions has none.
+const showMentionedWorkflow = inject<((workflowId: string) => boolean) | undefined>(
+	'showMentionedWorkflow',
 	undefined,
 );
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -180,21 +201,6 @@ const mentionActiveWorkflowId = computed(() => {
 		? activeArtifactId
 		: undefined;
 });
-
-function addMentionReference(reference: AssistantMentionArtifactReference): void {
-	thread.upsertTransientWorkflowReference({
-		...reference,
-		...(thread.projectId ? { projectId: thread.projectId } : {}),
-	});
-}
-
-function removeMentionReference(referenceId: string): void {
-	thread.removeTransientWorkflowReference(referenceId);
-}
-
-function openMentionWorkflow(workflowId: string): void {
-	void nextTick(() => openWorkflowPreview?.(workflowId));
-}
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -460,8 +466,10 @@ watch(
 
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 
 function focusChatInputIfFocusIsIdle() {
+	if (props.autofocus === false) return;
 	const activeElement = document.activeElement;
 	if (
 		activeElement instanceof HTMLElement &&
@@ -474,11 +482,30 @@ function focusChatInputIfFocusIsIdle() {
 	chatInputRef.value?.focus();
 }
 
-// Focus input on initial render (ref rebinds when messages load)
-watch(chatInputRef, (el) => {
-	if (el) {
-		void nextTick(focusChatInputIfFocusIsIdle);
-	}
+// Confirmations can remount the composer while the user edits another field.
+let hasMountedChatInput = false;
+watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAutofocus]) => {
+	if (!input) return;
+	const forceFocus = autofocus === true && (!hasMountedChatInput || previousAutofocus !== true);
+	hasMountedChatInput = true;
+	if (autofocus === false) return;
+	void nextTick(() => {
+		if (chatInputRef.value !== input || props.autofocus === false) return;
+		if (forceFocus) input.focus();
+		else focusChatInputIfFocusIsIdle();
+	});
+});
+
+watch(hasFloatingConfirmation, (isFloating) => {
+	if (isFloating) return;
+	void nextTick(() => {
+		// The leaving panel can still hold focus during its transition.
+		if (inputSwapRef.value?.contains(document.activeElement)) {
+			chatInputRef.value?.focus();
+			return;
+		}
+		focusChatInputIfFocusIsIdle();
+	});
 });
 
 watch(
@@ -488,16 +515,13 @@ watch(
 	},
 );
 
-watch(
-	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
-	([input, draft, planReview]) => {
-		if (!input || !draft || planReview) return;
-		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
-		generatedComposerDraft.value = draft.text;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	generatedComposerDraft.value = draft.text;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
 
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
@@ -616,16 +640,6 @@ function restoreFailedSubmission(restoreDraft: () => boolean) {
 	restoreDraft();
 }
 
-/**
- * A plan change request is in flight. `confirmAction` never touches the send
- * counter, so without this the composer stays live for the round trip and a
- * second Enter is dropped by the runtime's duplicate guard without a trace.
- */
-const isPlanChangeInFlight = computed(() => {
-	const requestId = thread.pendingPlanReview?.requestId;
-	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
-});
-
 // --- Message handlers ---
 async function handleSubmit(
 	message: string,
@@ -633,7 +647,6 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
-	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -657,39 +670,6 @@ async function handleSubmit(
 
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-
-	// While a plan review is pending every message is feedback on that plan —
-	// the user does not have to click "Ask for edits" first.
-	const planReview = thread.pendingPlanReview;
-	if (planReview) {
-		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
-			if (!sent) {
-				restoreFailedSubmission(restoreDraft);
-				return;
-			}
-			acceptDraft();
-			// Only an accepted request revises the plan. Tracking up front would
-			// also count a dropped or failed submit the run never saw.
-			telemetry.track('User finished providing input', {
-				thread_id: thread.id,
-				input_thread_id: planReview.inputThreadId ?? '',
-				instance_id: rootStore.instanceId,
-				type: 'plan-review',
-				provided_inputs: [
-					{
-						label: 'plan',
-						options: ['approve', 'ask-for-edits', 'deny'],
-						option_chosen: 'ask-for-edits',
-					},
-				],
-				skipped_inputs: [],
-				num_tasks: planReview.taskCount,
-				feedback: scrubSecretsInText(message),
-				plan_feedback_type: 'changes_requested',
-			});
-		});
-		return;
-	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
 	const submittedGeneratedDraft = generatedComposerDraft.value;
@@ -729,12 +709,17 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
-			acceptDraft();
+			// A mentioned workflow gets its tab from the message it rides on, so it
+			// shows only now that the message is sent, not when it was picked. The
+			// first mention is the one shown, as with the attachments of a hand-off.
+			const [firstMentionedWorkflowId] = mentionedWorkflowIds;
+			if (firstMentionedWorkflowId) showMentionedWorkflow?.(firstMentionedWorkflowId);
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 					node_count: nodeCount,
+					runtime: 'instance-ai',
 				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
@@ -805,9 +790,7 @@ function applyHandoff(context: InstanceAiHandoffContext, initialDraft?: PendingC
 		clearGeneratedDraft();
 	}
 
-	if (!thread.pendingPlanReview) {
-		void nextTick(() => chatInputRef.value?.focus());
-	}
+	void nextTick(() => chatInputRef.value?.focus());
 }
 
 function clearPendingComposerHandoff() {
@@ -883,6 +866,7 @@ function resetScroll() {
 }
 
 defineExpose({
+	focus: () => chatInputRef.value?.focus(),
 	isDirty,
 	applyHandoff,
 	dismissPendingComposerContext,
@@ -959,7 +943,7 @@ defineExpose({
 							:agent-node="builder"
 						/>
 					</div>
-					<!-- Inline confirmations (plan review, text, setup, credential,
+					<!-- Inline confirmations (text, setup, credential,
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
@@ -974,8 +958,8 @@ defineExpose({
 					<InstanceAiStatusBar />
 				</div>
 
-				<!-- Floating input slot - replaced by the confirmation panel while a
-					 floating interaction is pending. The credit banner stays
+				<!-- Floating input slot - the confirmation panel takes the place of the
+					 hidden input while a floating interaction is pending. The credit banner stays
 					 anchored above the slot in both states. The leaving child is
 					 positioned absolutely during the cross-fade so the in-flow child
 					 can size the slot to its natural height. -->
@@ -1009,39 +993,39 @@ defineExpose({
 							<LimitedModeNotice />
 							<CreditWarningBanner
 								v-if="isOutOfCredits || creditBanner.visible.value"
-								:credits-remaining="store.creditsRemaining"
-								:credits-quota="store.creditsQuota"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
 								:message="outOfCreditsMessage"
 								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
 							<slot name="above-input" />
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
-									<InstanceAiConfirmationPanel
-										v-if="hasFloatingConfirmation"
-										key="floating-confirmation"
-										kind="floating"
-									/>
+									<InstanceAiConfirmationPanel v-if="hasFloatingConfirmation" kind="floating" />
+								</Transition>
+								<!-- Hidden, not unmounted, so the unsent draft survives the confirmation. -->
+								<Transition name="input-swap">
 									<InstanceAiInput
-										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-show="!hasFloatingConfirmation"
 										ref="chatInputRef"
-										key="chat-input"
 										:is-streaming="thread.isStreaming"
 										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
-											isPlanChangeInFlight ||
 											thread.hydrationStatus === 'idle' ||
 											thread.isHydratingThread
 										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder="props.placeholder"
+										:placeholder-preview="props.placeholderPreview"
+										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
 										"
@@ -1051,18 +1035,26 @@ defineExpose({
 										:mention-artifacts="mentionArtifacts"
 										:mention-active-workflow-id="mentionActiveWorkflowId"
 										:reserved-attachment-count="reservedComposerAttachmentCount"
+										@content-change="emit('content-change', $event)"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
-										@mention-reference-added="addMentionReference"
-										@mention-reference-removed="removeMentionReference"
-										@mention-workflow-open="openMentionWorkflow"
-									/>
+									>
+										<template
+											v-if="$slots['composer-start'] && !hasFloatingConfirmation"
+											#footer-start
+										>
+											<slot name="composer-start" />
+										</template>
+									</InstanceAiInput>
 								</Transition>
+								<slot v-if="hasFloatingConfirmation" name="composer-start" />
 							</div>
-							<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-								{{ i18n.baseText('instanceAi.input.disclaimer') }}
-							</p>
+							<slot name="composer-footer">
+								<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+									{{ i18n.baseText('instanceAi.input.disclaimer') }}
+								</p>
+							</slot>
 						</div>
 					</div>
 				</div>
@@ -1117,7 +1109,7 @@ defineExpose({
 
 .messageList {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: min(800px, 100%);
+	max-width: min(var(--instance-ai-chat-max-width, 800px), 100%);
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;
@@ -1182,7 +1174,7 @@ defineExpose({
 }
 
 .inputContainer {
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	padding: var(--instance-ai-input-padding, 0 var(--spacing--lg) var(--spacing--sm));
 	// Fades into the host's surface: the thread view paints `light-2`, an
 	// embedding panel overrides the variable with its own background.
 	background: linear-gradient(
@@ -1198,7 +1190,7 @@ defineExpose({
 
 .inputConstraint {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 750px;
+	max-width: var(--instance-ai-input-max-width, 750px);
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	display: flex;

@@ -4,14 +4,18 @@ import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
 /**
- * Floor for the CP → DP shared secret. Kept in step with the engine's identity
- * verifier, which rejects anything shorter.
+ * Floor for the CP → DP shared secret and the resume secret. Kept in step with
+ * the engine, which rejects anything shorter.
  */
-const AUTH_SECRET_MIN_LENGTH = 32;
+const SECRET_MIN_LENGTH = 32;
 
 const engineModeSchema = z.enum(['in-process', 'remote']);
 
 export type EngineMode = z.infer<typeof engineModeSchema>;
+
+const engineDefaultTypeSchema = z.enum(['v1', 'v2']);
+
+export type EngineDefaultType = z.infer<typeof engineDefaultTypeSchema>;
 
 @Config
 export class EngineConfig {
@@ -26,6 +30,16 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
+
+	/**
+	 * Execution engine for new workflows that don't set one, either `v1` or `v2`. When
+	 * `N8N_ENABLED_MODULES` doesn't include `engine-v2`, new workflows use `v1` instead.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_DEFAULT_TYPE', engineDefaultTypeSchema)
+	defaultType: EngineDefaultType = 'v1';
+
 	/** Port the engine HTTP server listens on. */
 	@Env('N8N_ENGINE_PORT')
 	port: number = 3000;
@@ -64,8 +78,19 @@ export class EngineConfig {
 	 *
 	 * This is in development and not ready for use.
 	 */
-	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
+	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(SECRET_MIN_LENGTH))
 	authSecret: string = '';
+
+	/**
+	 * Secret the data plane derives resume tokens from. A control plane in remote
+	 * mode refuses to start with it set. Unset, the engine accepts no resume
+	 * request. A value shorter than 32 characters counts as unset. A change
+	 * invalidates every open resume URL.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_RESUME_SECRET', z.string().min(SECRET_MIN_LENGTH))
+	resumeSecret: string = '';
 
 	/** Port the control plane server listens on. Its own, so it can be firewalled off from the editor API. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_PORT')
@@ -78,6 +103,39 @@ export class EngineConfig {
 	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
+
+	/**
+	 * Path to this process's TLS certificate, in PEM format. The control plane
+	 * and the engine use it as the server certificate and as the client
+	 * certificate. It needs the `serverAuth` and `clientAuth` key usages, and its
+	 * subject alternative name must match the host in the URL the other side
+	 * dials. Set it together with `N8N_ENGINE_TLS_KEY_FILE` and
+	 * `N8N_ENGINE_TLS_CA_FILE`.
+	 */
+	@Env('N8N_ENGINE_TLS_CERT_FILE')
+	tlsCertFile: string = '';
+
+	/**
+	 * Path to the private key of `N8N_ENGINE_TLS_CERT_FILE`, in PEM format.
+	 */
+	@Env('N8N_ENGINE_TLS_KEY_FILE')
+	tlsKeyFile: string = '';
+
+	/**
+	 * Path to the certificate authority bundle, in PEM format. The control plane
+	 * and the engine accept only a peer whose certificate this authority signed.
+	 */
+	@Env('N8N_ENGINE_TLS_CA_FILE')
+	tlsCaFile: string = '';
+
+	/**
+	 * Whether a control plane in remote mode and the engine can talk over plain
+	 * HTTP. Without the three `N8N_ENGINE_TLS_*` files, both refuse to start
+	 * unless you set this to `true`. Plain HTTP sends tokens and credentials
+	 * unencrypted, so use it only for local development.
+	 */
+	@Env('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP')
+	tlsInsecureAllowPlainHttp: boolean = false;
 
 	/**
 	 * How long (in ms) the control plane waits for a run to answer before it

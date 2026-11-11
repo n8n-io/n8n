@@ -65,6 +65,8 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 } from './sdk/agent';
 export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
@@ -78,6 +80,7 @@ export type {
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	BuiltTool,
+	ToolDispatch,
 	BuiltProviderTool,
 } from './sdk/tool';
 
@@ -88,6 +91,7 @@ export type {
 	BuiltEpisodicMemoryStore,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,
@@ -96,14 +100,16 @@ export type {
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
-	EpisodicMemoryReflectFn,
-	EpisodicMemoryReflectResult,
-	EpisodicMemoryReflection,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidation,
+	EpisodicMemoryConsolidationFact,
+	EpisodicMemoryConsolidationNeighbour,
+	EpisodicMemoryConsolidatorInput,
+	EpisodicMemoryFactRelation,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
-	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryReflectionResult,
-	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
 	EpisodicScopeDecision,
 	ResolvedEpisodicScope,

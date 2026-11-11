@@ -273,6 +273,32 @@ export class McpOAuthApiHelper {
 	}
 
 	/**
+	 * Runs the signed-in user's login at an authorization URL that another party
+	 * built, such as a Form or Chat trigger that sends a visitor to n8n. Approves
+	 * the consent when n8n asks for it. Returns the redirect URL with `code` and
+	 * `state`.
+	 */
+	async loginAtAuthorizeUrl(authorizationUrl: string): Promise<URL> {
+		const response = await this.api.request.get(authorizationUrl, { maxRedirects: 0 });
+		const location = response.headers().location;
+		if (response.status() !== 302 || !location) {
+			throw new TestError(
+				`Authorize did not redirect: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const redirectUrl = new URL(location, authorizationUrl);
+		// n8n skips the consent screen when the user approved this client before.
+		if (redirectUrl.searchParams.has('code')) return redirectUrl;
+
+		const flow = redirectUrl.searchParams.get('flow');
+		if (!flow) {
+			throw new TestError(`Authorize redirected to neither consent nor the client: ${location}`);
+		}
+		return await this.submitConsentOrFail(true, undefined, flow);
+	}
+
+	/**
 	 * Runs the full authorization code + PKCE flow for the signed-in user:
 	 * register client → authorize → approve consent → exchange code for tokens.
 	 */

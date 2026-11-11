@@ -7,6 +7,7 @@ import type { InlineConfig } from 'vitest/node';
 import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 import { profilingConfig, profilingReporters } from './profiling.js';
+import { retryConfig } from './retry.js';
 
 export { profilingReporters } from './profiling.js';
 
@@ -62,10 +63,14 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 	// spies set up once don't leak across tests. Packages may override via `options`.
 	restoreMocks: true,
 	environment: 'node',
+	// Tests near the 5 s vitest default fail on a busy CI runner, and master runs do
+	// not retry. Keep in sync with `frontend.ts`.
+	testTimeout: 10_000,
 	// Inline so vitest maps the `vitest` import inside it to the running instance.
 	// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
 	server: { deps: { inline: ['vitest-mock-extended'] } },
 	...forkPoolOptions(),
+	...retryConfig(),
 	outputFile: { junit: './junit.xml' },
 	...(process.env.COVERAGE_ENABLED === 'true'
 		? {

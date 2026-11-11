@@ -9,12 +9,12 @@ import {
 } from '../promotion-operations.dto';
 
 describe('PromotePackageDto', () => {
-	it('requires a non-blank commit message and accepts an optional force flag', () => {
+	it('accepts an optional non-blank commit message and an optional force flag', () => {
+		expect(PromotePackageDto.safeParse({}).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update projects' }).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update', force: true }).success).toBe(
 			true,
 		);
-		expect(PromotePackageDto.safeParse({}).success).toBe(false);
 		expect(PromotePackageDto.safeParse({ commitMessage: '   ' }).success).toBe(false);
 	});
 
@@ -100,8 +100,9 @@ describe.each([
 	const workflowIds = ['workflow1', 'workflow2'];
 	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
-	it('rejects an empty workflow list', () => {
-		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
+	it('accepts a selection without workflows, and an empty one that applies only the project', () => {
+		expect(dto.safeParse({ folderIds: ['folder1'], expectedSource }).success).toBe(true);
+		expect(dto.safeParse({ expectedSource }).success).toBe(true);
 	});
 
 	it('rejects a workflow list with duplicate ids', () => {
@@ -177,7 +178,7 @@ describe('ApplyPackageResultDto', () => {
 		environmentId: 'env1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
-	const preflight = {
+	const check = {
 		missingProjects: [],
 		missingBindings: [],
 		accessRequirements: [],
@@ -189,10 +190,10 @@ describe('ApplyPackageResultDto', () => {
 		expect(ApplyPackageResultDto.name).toBe('ApplyPackageResultDto');
 		expect(ApplyPackageResultDto.schema).toBe(applyPackageResultSchema);
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', preflight, counts: {} }),
-		).toEqual({ ...identity, status: 'blocked', preflight });
+			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', check, counts: {} }),
+		).toEqual({ ...identity, status: 'blocked', check });
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', preflight, counts: {} }),
+			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', check, counts: {} }),
 		).toEqual({ ...identity, status: 'source-changed' });
 	});
 
@@ -200,7 +201,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity },
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
-		{ ...identity, status: 'blocked', preflight: { ...preflight, missingProjects: undefined } },
+		{ ...identity, status: 'blocked', check: { ...check, missingProjects: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

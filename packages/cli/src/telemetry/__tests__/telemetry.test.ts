@@ -240,6 +240,34 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('should count runs that use personal credentials in the aggregate, not as events', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: false,
+				success: true,
+				personal_credentials_count: 2,
+			};
+
+			const firstProdExecTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeTestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution({ ...payload, success: false });
+
+			const manualExecTime = fakeTestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution({ ...payload, is_manual: true });
+
+			telemetry.trackWorkflowExecution({ ...payload, personal_credentials_count: undefined });
+
+			expect(spyTrack).not.toHaveBeenCalled();
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].personal_credentials_prod?.count).toBe(2);
+			expect(execBuffer['1'].personal_credentials_prod?.first).toEqual(firstProdExecTime);
+			expect(execBuffer['1'].personal_credentials_manual?.count).toBe(1);
+			expect(execBuffer['1'].personal_credentials_manual?.first).toEqual(manualExecTime);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',
@@ -739,6 +767,8 @@ describe('Telemetry', () => {
 							tool_call_count: 1,
 							num_skills: 2,
 							turn_count: 1,
+							skill_load_count: 0,
+							loaded_skill_ids: new Set(),
 						},
 					},
 				}),
@@ -789,6 +819,8 @@ describe('Telemetry', () => {
 				token_count_sum: 15500,
 				tool_call_count_sum: 18,
 				num_skills_sum: 6,
+				skill_load_count_sum: 0,
+				loaded_skill_ids: [],
 				counts_by_source: {
 					chat: {
 						session_count: 2,
@@ -798,6 +830,8 @@ describe('Telemetry', () => {
 						token_count_sum: 5500,
 						tool_call_count_sum: 8,
 						num_skills_sum: 4,
+						skill_load_count_sum: 0,
+						loaded_skill_ids: [],
 					},
 					'instance-ai': {
 						session_count: 2,
@@ -807,6 +841,8 @@ describe('Telemetry', () => {
 						token_count_sum: 10000,
 						tool_call_count_sum: 10,
 						num_skills_sum: 4,
+						skill_load_count_sum: 0,
+						loaded_skill_ids: [],
 					},
 				},
 			});
@@ -819,6 +855,54 @@ describe('Telemetry', () => {
 			// Saved agents carry no agent_type (the exact toEqual above also
 			// guards against it sneaking in).
 			expect(payload).not.toHaveProperty('agent_type');
+		});
+
+		test('should sum skill loads and report the distinct loaded skills', () => {
+			for (const [thread_id, source, skill_load_count, loaded_skill_ids] of [
+				['thread-1', 'chat', 2, ['skill_b', 'skill_a']],
+				['thread-1', 'chat', 1, ['skill_a']],
+				['thread-2', 'slack', 1, ['skill_c']],
+				['thread-3', 'slack', 0, []],
+			] as const) {
+				telemetry.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id,
+					source,
+					run_type: 'production',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms: 100,
+					cost: 10,
+					token_count: 1000,
+					tool_call_count: skill_load_count,
+					skill_load_count,
+					loaded_skill_ids: [...loaded_skill_ids],
+				});
+			}
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS,
+			)?.[1];
+			expect(payload).toEqual(
+				expect.objectContaining({
+					skill_load_count_sum: 4,
+					loaded_skill_ids: ['skill_a', 'skill_b', 'skill_c'],
+					counts_by_source: {
+						chat: expect.objectContaining({
+							skill_load_count_sum: 3,
+							loaded_skill_ids: ['skill_a', 'skill_b'],
+						}),
+						slack: expect.objectContaining({
+							skill_load_count_sum: 1,
+							loaded_skill_ids: ['skill_c'],
+						}),
+					},
+				}),
+			);
+			expect(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS.getValidationError(payload)).toBeNull();
 		});
 
 		test('should carry agent_type through to the flushed payload for inline runs', () => {
@@ -1022,6 +1106,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1030,6 +1115,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1038,6 +1124,7 @@ describe('Telemetry', () => {
 				method: 'POST',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1048,6 +1135,7 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
 			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
 			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, other: 3 });
 		});
 
 		test('should handle missing user_agent', () => {
@@ -1056,6 +1144,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1071,6 +1160,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1079,6 +1169,7 @@ describe('Telemetry', () => {
 				method: 'POST',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1087,6 +1178,48 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
 			expect(buffer['user2'].total_calls).toBe(1);
 			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
+		});
+
+		test('should count calls for the editor_ui client in the same entry', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/executions',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer).toStrictEqual({
+				user1: {
+					clients: { editor_ui: 1, other: 2 },
+					total_calls: 3,
+					endpoints: {
+						'GET /workflows': 2,
+						'GET /executions': 1,
+					},
+					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
+					first: expect.any(Date),
+					user_agents: {},
+				},
+			});
 		});
 
 		test('should not buffer when rudderStack is not initialized', () => {
@@ -1098,6 +1231,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1524,13 +1658,19 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			telemetry.flushBuffers();
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Public API usage',
-				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+				expect.objectContaining({
+					user_id: 'user1',
+					total_calls: 1,
+					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
+					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
+				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});

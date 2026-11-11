@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -10,6 +9,7 @@ import {
 	ModulesConfig,
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -29,7 +29,8 @@ import {
 	StorageConfig,
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
-import { Expression, UnexpectedError } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -52,7 +53,6 @@ import { POLICY_MODULES } from '@/policy/policy-modules';
 import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -123,50 +123,13 @@ export abstract class BaseCommand<F = never> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const {
-			backendDsn,
-			environment,
-			deploymentName,
-			profilesSampleRate,
-			tracesSampleRate,
-			tracesSlowSpanThresholdMs,
-			webhookTracesSampleRate,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			eventLoopBlockDetectionEnabled,
-		} = this.globalConfig.sentry;
-		await this.errorReporter.init({
-			serverType: this.instanceSettings.instanceType,
-			dsn: backendDsn,
-			environment,
-			release: `n8n@${N8N_VERSION}`,
-			serverName: deploymentName,
-			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			tracesSampleRate,
-			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
-			webhookEndpoint: this.globalConfig.endpoints.webhook,
-			webhookTracesSampleRate,
-			profilesSampleRate,
-			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
-			eligibleIntegrations: {
-				Express: true,
-				Http: true,
-				Postgres: this.globalConfig.database.type === 'postgresdb',
-				Redis:
-					this.globalConfig.executions.mode === 'queue' ||
-					this.globalConfig.cache.backend === 'redis',
-			},
-		});
-
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =
 			this.globalConfig.executions.mode === 'queue' ||

@@ -192,7 +192,7 @@ export class Server extends AbstractServer {
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
-		// sequentially — the first strategy that returns a non-null result wins.
+		// sequentially — the first strategy that does not abstain wins.
 		// API key auth is registered first so existing behavior is preserved.
 		// Session cookie auth is registered last: an explicit but wrong API
 		// key/bearer token fails fast rather than silently falling back to an
@@ -285,9 +285,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(LogStreamingEventRelay).init();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup

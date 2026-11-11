@@ -11,8 +11,14 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import {
+	createContextCueProvider,
+	type ContextCueProviderOptions,
+	type ContextCueSet,
+} from '../context-cues';
+import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
+	type ContextCueProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -20,15 +26,14 @@ import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
+import { resolveNativeToolDeferral } from '../runtime/model/model-factory';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { assertFunctionId } from '../runtime/telemetry/function-id';
 import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
-import {
-	LOAD_TOOL_TOOL_NAME,
-	SEARCH_TOOLS_TOOL_NAME,
-} from '../runtime/tools/deferred-tool-manager';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from '../runtime/tools/tool-catalog';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -74,6 +79,7 @@ import type {
 	Provider,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
 	ReasoningLevel,
 	RunOptions,
 	StreamResult,
@@ -87,7 +93,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
-import { modelConfigToId } from '../utils/model';
+import { getCatalogModelId, modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -117,6 +123,10 @@ interface DeferredToolOptions {
 	search?: {
 		topK?: number;
 	};
+	/** Tool catalog mode: the tool group these tools are listed under. Default: `tools`. */
+	group?: string;
+	/** Tool catalog mode: one line on what the tool group holds, shown next to its tool names. */
+	groupDescription?: string;
 }
 
 type ActiveRuntime = {
@@ -150,6 +160,7 @@ export interface AgentSnapshot {
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
 	nativeToolDeferral: NativeToolDeferralConfig | null;
+	toolDeferral: ToolDeferralConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -175,6 +186,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelFetchValue?: FetchFn;
 
+	private functionIdValue?: string;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -186,6 +199,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredToolSearchTopK: number | undefined;
 
 	private nativeToolDeferralConfig?: NativeToolDeferralConfig;
+
+	private toolDeferralConfig?: ToolDeferralConfig;
+
+	private deferredToolGroups: Record<string, string> = {};
+
+	private deferredToolGroupDescriptions: Record<string, string> = {};
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -238,6 +257,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
+	private contextCueProviders: ContextCueProvider[] = [];
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -282,11 +303,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * Provide a proxy-aware `fetch` for the agent's model and catalog calls. When unset, model
 	 * construction falls back to the ambient HTTP_PROXY resolver.
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Name the caller of this agent's model calls, sent as the `x-n8n-function-id`
+	 * header (for example `instance-ai.orchestrator`). Sub-agents send
+	 * `<id>.subagent`. When unset, no header is sent. Only `[A-Za-z0-9._-]`: fetch
+	 * rejects a header value outside Latin-1 on every call.
+	 */
+	functionId(id: string): this {
+		assertFunctionId(id);
+		this.functionIdValue = id;
 		return this;
 	}
 
@@ -301,6 +334,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
 		return this;
+	}
+
+	/** Add a provider of context cues that the runtime appends to the conversation before each model call. */
+	contextCueProvider(provider: ContextCueProvider): this {
+		this.contextCueProviders.push(provider);
+		return this;
+	}
+
+	/**
+	 * Add skill-scoped context cues. Before each model call, the runtime
+	 * retrieves the cues that match the current step and adds them to the conversation.
+	 * Without an embedding model, retrieval uses BM25.
+	 */
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options: Omit<ContextCueProviderOptions, 'sets'> = {},
+	): this {
+		return this.contextCueProvider(createContextCueProvider({ ...options, sets }));
 	}
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
@@ -322,19 +373,33 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this.tool(store.asTool(options));
 	}
 
-	/** Use provider tool search when the model and endpoint support it. */
+	/** Set which tools stay eager under provider tool search, the default deferral mode. */
 	nativeToolDeferral(config: NativeToolDeferralConfig): this {
 		this.nativeToolDeferralConfig = { eagerToolNames: [...config.eagerToolNames] };
 		return this;
 	}
 
-	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	/**
+	 * Choose how deferred tools reach the model. `provider` (default) uses the
+	 * provider's tool search when the model supports it. `tool-catalog` lists tool
+	 * names in the prompt and runs them through `find_tools` and `call_tool`.
+	 */
+	toolDeferral(config: ToolDeferralConfig): this {
+		this.toolDeferralConfig = { mode: config.mode };
+		return this;
+	}
+
+	/** Add tools that the model discovers on demand. See `toolDeferral()` for how. */
 	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
 			const built = 'build' in tool ? tool.build() : tool;
 			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
+			if (options?.group) this.deferredToolGroups[built.name] = options.group;
+		}
+		if (options?.group && options.groupDescription) {
+			this.deferredToolGroupDescriptions[options.group] = options.groupDescription;
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
@@ -582,6 +647,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	private readonly prewarmWorkspace = (): void => {
+		this.workspaceInstance?.prewarm();
+	};
+
 	/**
 	 * Attach a workspace to this agent. Workspace tools and instructions
 	 * are injected at build time.
@@ -589,6 +658,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	workspace(ws: Workspace): this {
 		this.workspaceInstance = ws;
 		return this;
+	}
+
+	/** The workspace attached with {@link workspace}, if any. */
+	getWorkspace(): Workspace | undefined {
+		return this.workspaceInstance;
 	}
 
 	/**
@@ -713,20 +787,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	get snapshot(): AgentSnapshot {
 		let model: AgentSnapshot['model'];
-		const rawModelId =
-			typeof this.modelConfig === 'string'
-				? this.modelConfig
-				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
-					? this.modelConfig.id
-					: undefined;
+		const rawModelId = this.modelConfig ? modelConfigToId(this.modelConfig) : undefined;
 
 		if (rawModelId) {
 			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
 				model = { provider: null, name: rawModelId };
 			} else {
+				// A pre-built model reports `<provider>.<api>`, for example `anthropic.messages`.
+				const provider = rawModelId.slice(0, slashIdx).split('.')[0];
 				model = {
-					provider: rawModelId.slice(0, slashIdx),
+					provider: provider || null,
 					name: rawModelId.slice(slashIdx + 1),
 				};
 			}
@@ -748,6 +819,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			nativeToolDeferral: this.nativeToolDeferralConfig
 				? { eagerToolNames: [...this.nativeToolDeferralConfig.eagerToolNames] }
 				: null,
+			toolDeferral: this.toolDeferralConfig ? { ...this.toolDeferralConfig } : null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -1060,8 +1132,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
 		const reservedDeferredToolNames = new Set([
-			SEARCH_TOOLS_TOOL_NAME,
-			LOAD_TOOL_TOOL_NAME,
+			FIND_TOOLS_TOOL_NAME,
+			CALL_TOOL_TOOL_NAME,
 			...RUNTIME_SKILL_TOOL_NAMES,
 		]);
 		const deferredNames = new Set<string>();
@@ -1080,6 +1152,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error(
 				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
 			);
+		}
+
+		// The tool catalog adds find_tools and call_tool, and would silently replace a direct
+		// or MCP tool with the same name. Provider tool search adds neither.
+		const usesToolCatalog =
+			this.toolDeferralConfig?.mode === 'tool-catalog' ||
+			!this.modelConfig ||
+			resolveNativeToolDeferral(this.modelConfig) === undefined;
+		if (finalDeferredTools.length > 0 && usesToolCatalog) {
+			const toolCatalogNames = new Set([FIND_TOOLS_TOOL_NAME, CALL_TOOL_TOOL_NAME]);
+			const reserved = [...finalStaticTools, ...mcpTools]
+				.filter((t) => toolCatalogNames.has(t.name))
+				.map((t) => t.name);
+			if (reserved.length > 0) {
+				throw new Error(
+					`Tool name collision — the following tool names are reserved for the tool catalog: ${reserved.join(', ')}`,
+				);
+			}
 		}
 
 		const collisions = mcpTools
@@ -1112,7 +1202,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+			const dynamicIds = new Set(this.skillSource.dynamicCatalog?.skillIds);
+			instructions = appendSkillCatalogToInstructions(instructions, {
+				...this.skillSource.registry,
+				skills: this.skillSource.registry.skills.filter(
+					(skill) =>
+						!dynamicIds.has(skill.id) &&
+						(!skill.parents || skill.parents.some((parentId) => !dynamicIds.has(parentId))),
+				),
+			});
 		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
@@ -1140,13 +1238,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
-			const modelId =
-				typeof modelConfig === 'string'
-					? modelConfig
-					: 'id' in modelConfig && typeof modelConfig.id === 'string'
-						? modelConfig.id
-						: undefined;
-			modelCost = modelId ? await getModelCost(modelId) : undefined;
+			modelCost = await getModelCost(getCatalogModelId(modelConfig), this.modelFetchValue);
 		} catch {
 			modelCost = undefined;
 		}
@@ -1155,6 +1247,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.functionIdValue !== undefined ? { functionId: this.functionIdValue } : {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
@@ -1162,6 +1255,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
 				? { workspaceFilesystem: this.workspaceInstance.filesystem }
 				: {}),
+			...(this.workspaceInstance ? { prewarmWorkspace: this.prewarmWorkspace } : {}),
 			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
@@ -1176,6 +1270,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			nativeToolDeferral: this.nativeToolDeferralConfig,
+			toolDeferral: this.toolDeferralConfig,
+			deferredToolGroups: this.deferredToolGroups,
+			deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1185,6 +1282,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
+			...(this.contextCueProviders.length > 0
+				? { contextCueProviders: [...this.contextCueProviders] }
 				: {}),
 		};
 	}
@@ -1315,6 +1415,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				// Inherit the parent's transport so children can't bypass a
 				// guarded/instrumented fetch via the ambient default.
 				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+				...(this.functionIdValue !== undefined
+					? { functionId: `${this.functionIdValue}.subagent` }
+					: {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
@@ -1324,6 +1427,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
 				nativeToolDeferral: this.nativeToolDeferralConfig,
+				toolDeferral: this.toolDeferralConfig,
+				deferredToolGroups: this.deferredToolGroups,
+				deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),

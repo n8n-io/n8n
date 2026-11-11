@@ -152,12 +152,15 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStoreMock,
 }));
 
+const credentialsStoreMock = vi.hoisted(() => ({
+	allCredentials: [] as Array<{ id: string }>,
+	fetchAllCredentials: vi.fn(),
+	fetchCredentialTypes: vi.fn(),
+	getCredentialsByType: vi.fn(),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => ({
-		fetchAllCredentials: vi.fn().mockResolvedValue([]),
-		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
-		getCredentialsByType: vi.fn().mockReturnValue([]),
-	}),
+	useCredentialsStore: () => credentialsStoreMock,
 }));
 
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
@@ -214,6 +217,7 @@ const ToolsConnectionModalStub = defineComponent({
 		'items',
 		'categories',
 		'showSuggestionFooter',
+		'loading',
 	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
@@ -352,6 +356,46 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		} satisfies McpRegistryDiscoveryResponse);
 		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
+		credentialsStoreMock.allCredentials = [];
+		credentialsStoreMock.fetchAllCredentials.mockResolvedValue([]);
+		credentialsStoreMock.fetchCredentialTypes.mockResolvedValue(undefined);
+		credentialsStoreMock.getCredentialsByType.mockReturnValue([]);
+	});
+
+	it('shows the loading screen until the first credentials fetch resolves', async () => {
+		let resolveFetch: (value: []) => void = () => {};
+		credentialsStoreMock.fetchAllCredentials.mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		renderComponent();
+
+		expect(modalProps.loading).toBe(true);
+
+		resolveFetch([]);
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('stops loading when the first credentials fetch fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		credentialsStoreMock.fetchAllCredentials.mockRejectedValue(new Error('Network error'));
+		renderComponent();
+
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('refreshes loaded credentials without the loading screen', () => {
+		credentialsStoreMock.allCredentials = [{ id: 'cred-1' }];
+		credentialsStoreMock.fetchAllCredentials.mockReturnValue(new Promise(() => {}));
+		renderComponent();
+
+		expect(credentialsStoreMock.fetchAllCredentials).toHaveBeenCalledTimes(1);
+		expect(modalProps.loading).toBe(false);
 	});
 
 	it('configures the suggestion footer copy', () => {

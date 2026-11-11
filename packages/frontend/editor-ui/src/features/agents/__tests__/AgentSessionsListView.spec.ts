@@ -1,8 +1,10 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import type * as AgentThreadsApiModule from '../composables/useAgentThreadsApi';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { readFileSync } from 'node:fs';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
@@ -39,11 +41,23 @@ const {
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
+const stopSession = vi.hoisted(() => vi.fn());
+const agentPermissions = vi.hoisted(() => ({ canExecute: { value: true } }));
+
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissions,
+}));
+
+vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof AgentThreadsApiModule>()),
+	stopSession,
+}));
+
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ pushRef: 'session-xyz' }),
+	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: {} }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -71,6 +85,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
 					'agentSessions.status.interrupted': 'Interrupted',
+					'agentSessions.status.awaiting': 'Awaiting',
 				}[key] ?? key
 			);
 		},
@@ -150,10 +165,6 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
@@ -161,10 +172,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../utils/thread-title', () => ({
 	useThreadTitle: () => (thread: { title?: string | null; firstMessage?: string | null }) =>
 		thread.title ?? thread.firstMessage ?? 'Session',
-}));
-
-vi.mock('@/app/constants', () => ({
-	MODAL_CONFIRM: 'modal-confirm',
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -251,6 +258,8 @@ async function mountView({
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
 		storeState.autoRefresh = true;
+		agentPermissions.canExecute.value = true;
+		stopSession.mockReset().mockResolvedValue({ cancelRequested: true });
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
 		setFilters.mockReset();
@@ -263,6 +272,66 @@ describe('AgentSessionsListView', () => {
 	afterEach(() => {
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
+	});
+
+	it('offers Stop for a running session and refreshes after stopping it', async () => {
+		const wrapper = await mountView({
+			threads: [makeThread({ status: 'running', source: 'slack' })],
+		});
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: false })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'project-1', 'agent-1', 'thread-1');
+		expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+		wrapper.unmount();
+	});
+
+	it.each(['succeeded', 'error', 'cancelled', 'interrupted'] as const)(
+		'hides Stop for a %s session',
+		async (status) => {
+			const wrapper = await mountView({ threads: [makeThread({ status })] });
+			const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+			expect(menu.props('items')).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+			);
+			menu.vm.$emit('select', 'stop');
+			await flushPromises();
+			expect(stopSession).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('hides Stop without execute permission', async () => {
+		agentPermissions.canExecute.value = false;
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('disables Stop while the request runs', async () => {
+		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
+		stopSession.mockReturnValueOnce(pending.promise);
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: true })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		expect(stopSession).toHaveBeenCalledTimes(1);
+		pending.resolve({ cancelRequested: true });
+		await flushPromises();
+		wrapper.unmount();
 	});
 
 	it('opens the trace from the row and keeps a native title button', async () => {
@@ -298,6 +367,7 @@ describe('AgentSessionsListView', () => {
 		['error', 'Error', 'danger', true],
 		['cancelled', 'Canceled', 'warning', true],
 		['interrupted', 'Interrupted', 'warning', true],
+		['awaiting', 'Awaiting', 'secondary', true],
 		['running', 'Running', 'text-base', false],
 	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
 		const wrapper = await mountView({
@@ -397,6 +467,19 @@ describe('AgentSessionsListView', () => {
 		expect(wrapper.get('[data-test-id="agent-sessions-empty-description"]').text()).toBe(
 			'Sessions will appear here after you preview your agent.',
 		);
+	});
+
+	it('lets the empty-state row grow in the narrow layout', async () => {
+		const wrapper = await mountView({ threads: [] });
+		const emptyRow = wrapper.get('[data-test-id="agent-sessions-empty"]').element.closest('tr');
+		expect(emptyRow?.className).toContain('lastRow');
+
+		// jsdom does not evaluate container queries, so check the rule itself.
+		// A block cell keeps a fixed `height` and clips the two-line empty state.
+		const source = readFileSync('src/features/agents/views/AgentSessionsListView.vue', 'utf8');
+		const narrowLayout = source.slice(source.indexOf('@container sessions (max-width: 44rem)'));
+		const lastRowCell = narrowLayout.match(/\.wrapper \.sessionsTable \.lastRow td \{([^}]*)\}/);
+		expect(lastRowCell?.[1]).toMatch(/height:\s*auto;/);
 	});
 
 	it('shows the filtered empty state when no sessions match', async () => {

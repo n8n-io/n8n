@@ -2,7 +2,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiRenameThreadRequestDto,
-	InstanceAiThreadTabsRequestDto,
+	AssistantThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
@@ -12,29 +12,10 @@ import {
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiThreadHistoryQuery,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
-	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalAgentExecutionRequest,
-	InstanceAiEvalCredentialAllowlistRequest,
-	InstanceAiEvalCredentialTestTargetRequest,
-	InstanceAiEvalRestoreThreadRequest,
-	InstanceAiEvalSeedDataTableRowsRequest,
-	findSeedFolderIssues,
-	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiEvent,
-	InstanceAiThreadTabsResponse,
-} from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import type { InstanceAiEvent, AssistantThreadTabsResponse } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -44,19 +25,13 @@ import {
 	Put,
 	Patch,
 	Delete,
-	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
-import {
-	buildAgentTreeFromEvents,
-	clearedAgentBuilderTargetMetadata,
-	meterEvalUsage,
-	seedAgentBuilderTargetMetadata,
-} from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	OversizedAttachmentError,
 	UnsupportedAttachmentError,
@@ -66,32 +41,31 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { EvalAgentExecutionService } from './eval/agent-execution.service';
-import { EvalExecutionService } from './eval/execution.service';
-import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
-import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
-import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 type FlushableResponse = Response & { flush?: () => void };
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
+/**
+ * Routes that only the current Assistant runtime uses. They are removed with
+ * that runtime, so do not add routes here. Routes that both runtimes use go in
+ * `AssistantController`, and routes that only the Assistant agent uses go in
+ * `AssistantAgentController`.
+ */
 @RestController('/instance-ai')
 export class InstanceAiController {
 	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
@@ -103,18 +77,11 @@ export class InstanceAiController {
 		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly modelCatalogService: InstanceAiModelCatalogService,
-		private readonly evalExecutionService: EvalExecutionService,
-		private readonly evalAgentExecutionService: EvalAgentExecutionService,
-		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
-		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
 		private readonly durableLogMetrics: DurableLogMetrics,
-		private readonly moduleRegistry: ModuleRegistry,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
@@ -220,13 +187,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
-		// The override is an eval knob. It changes how often the observer runs, so a
-		// plain chat caller must not be able to set it.
+		// The override is an eval knob that changes how often the observer runs, so it
+		// follows the same gate as the eval routes.
 		if (
 			payload.observerThresholdTokens !== undefined &&
-			!hasGlobalScope(req.user, 'instanceAi:eval')
+			(!this.instanceAiConfig.evalInstance || !hasGlobalScope(req.user, 'instanceAi:manage'))
 		) {
-			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+			throw new ForbiddenError(
+				'observerThresholdTokens requires an eval instance and the instanceAi:manage scope',
+			);
 		}
 
 		const runId = this.instanceAiService.startRun(
@@ -712,137 +681,6 @@ export class InstanceAiController {
 		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
 	}
 
-	// ── Credits ──────────────────────────────────────────────────────────────
-
-	@Get('/credits')
-	@GlobalScope('instanceAi:message')
-	async getCredits(req: AuthenticatedRequest) {
-		this.requireInstanceAiEnabled();
-		return await this.instanceAiService.getCredits(req.user);
-	}
-
-	// ── Admin settings (owner/admin only) ──────────────────────────────────
-
-	@Get('/settings')
-	@GlobalScope('instanceAi:manage')
-	async getAdminSettings(_req: AuthenticatedRequest) {
-		return await this.settingsService.getAdminSettings();
-	}
-
-	@Get('/settings/models')
-	@GlobalScope('instanceAi:manage')
-	async getModelCatalog(_req: AuthenticatedRequest) {
-		return await this.modelCatalogService.getModels();
-	}
-
-	@Put('/settings')
-	@GlobalScope('instanceAi:manage')
-	async updateAdminSettings(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiAdminSettingsUpdateRequest,
-	) {
-		const result = await this.settingsService.updateAdminSettings(payload, req.user);
-		const [publishResult] = await Promise.allSettled([
-			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
-			this.applyAdminSettingsSideEffects(result),
-		]);
-
-		if (publishResult.status === 'rejected') {
-			this.instanceAiErrorReporter.report(publishResult.reason, {
-				component: 'settings-publish',
-				threadId: 'admin-settings',
-			});
-		}
-
-		return result;
-	}
-
-	@Post('/settings/verify/model')
-	@GlobalScope('instanceAi:manage')
-	async verifyModel(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifyModelRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
-	}
-
-	@Post('/settings/verify/sandbox')
-	@GlobalScope('instanceAi:manage')
-	async verifySandbox(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifySandboxRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
-	}
-
-	@Post('/settings/verify/search')
-	@GlobalScope('instanceAi:manage')
-	async verifySearch(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifySearchRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
-	}
-
-	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
-	async reloadAdminSettings() {
-		await this.settingsService.reloadFromDb();
-		await this.applyAdminSettingsSideEffects({
-			enabled: this.settingsService.isInstanceAiEnabled(),
-			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
-		});
-	}
-
-	private async applyAdminSettingsSideEffects(
-		settings: Pick<InstanceAiAdminSettingsResponse, 'enabled' | 'browserUseEnabled'>,
-	) {
-		const sideEffects: Array<() => Promise<void> | void> = [
-			async () => {
-				await this.moduleRegistry.refreshModuleSettings('instance-ai');
-			},
-			async () => {
-				await this.moduleRegistry.refreshModuleSettings('agents');
-			},
-		];
-		if (!settings.enabled || !settings.browserUseEnabled) {
-			sideEffects.push(async () => await this.browserSessionService.shutdown());
-		}
-
-		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
-		for (const result of results) {
-			if (result.status === 'rejected') {
-				this.instanceAiErrorReporter.report(result.reason, {
-					component: 'settings-side-effects',
-					threadId: 'admin-settings',
-				});
-			}
-		}
-	}
-
-	// ── User preferences (per-user, self-service) ──────────────────────────
-
-	@Get('/preferences')
-	@GlobalScope('instanceAi:message')
-	async getUserPreferences(req: AuthenticatedRequest) {
-		return await this.settingsService.getUserPreferences(req.user);
-	}
-
-	@Get('/settings/service-credentials')
-	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(_req: AuthenticatedRequest) {
-		return await this.settingsService.listInstanceServiceCredentials();
-	}
-
-	@Get('/settings/model-credentials')
-	@GlobalScope('instanceAi:manage')
-	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
-		return await this.settingsService.listInstanceModelCredentials();
-	}
-
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
@@ -954,7 +792,7 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-	): Promise<InstanceAiThreadTabsResponse> {
+	): Promise<AssistantThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
@@ -966,8 +804,8 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiThreadTabsRequestDto,
-	): Promise<InstanceAiThreadTabsResponse> {
+		@Body payload: AssistantThreadTabsRequestDto,
+	): Promise<AssistantThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		// The DTO strips unknown keys, so the payload is the state to save.
@@ -1111,298 +949,6 @@ export class InstanceAiController {
 			threadId,
 			runs: this.instanceAiService.listThreadDebugRuns(threadId),
 		};
-	}
-
-	// ── Evaluation endpoints ──────────────────────────────────────────────────
-
-	// Runs for minutes; the eval client (N8nClient) disables undici's 300s timeout for it.
-	@Post('/eval/execute-with-llm-mock/:workflowId')
-	@GlobalScope('instanceAi:eval')
-	async executeWithLlmMock(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('workflowId') workflowId: string,
-		@Body payload: InstanceAiEvalExecutionRequest,
-	) {
-		// The mocks run on the eval model; the caller adds their usage to the case's cost.
-		const { result, usage } = await meterEvalUsage(
-			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
-		);
-		return { ...result, llmUsage: usage };
-	}
-
-	// Runs for minutes; same client timeout handling as the workflow variant.
-	@Post('/eval/execute-agent-with-llm-mock/:agentId')
-	@GlobalScope('instanceAi:eval')
-	async executeAgentWithLlmMock(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: InstanceAiEvalAgentExecutionRequest,
-	) {
-		const { result, usage } = await meterEvalUsage(
-			async () =>
-				await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload),
-		);
-		return { ...result, llmUsage: usage };
-	}
-
-	/**
-	 * Pin a build thread's credential view to a declared set. Only narrows:
-	 * `list()` results are intersected with these IDs, so the caller cannot see
-	 * anything they couldn't already access. The thread must exist — entries are
-	 * cleared with the thread's state, so pins for never-created threads would
-	 * be uncollectable.
-	 */
-	@Post('/eval/thread-credential-allowlist')
-	@GlobalScope('instanceAi:eval')
-	async setThreadCredentialAllowlist(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		this.evalCredentialAllowlists.set(
-			payload.threadId,
-			payload.credentialIds,
-			payload.bypassCredentialTest,
-		);
-		return { ok: true };
-	}
-
-	/**
-	 * Send the thread's connection tests for one credential type to a provider
-	 * stand-in, so the agent's own test checks the captured secret.
-	 */
-	@Post('/eval/thread-credential-test-target')
-	@GlobalScope('instanceAi:eval')
-	async setThreadCredentialTestTarget(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		// Redirecting a credential test sends its secret elsewhere, so only a
-		// throwaway eval instance offers it.
-		if (!this.instanceAiConfig.evalInstance) {
-			throw new NotFoundError('Credential test targets are only available on an eval instance');
-		}
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const { threadId, ...target } = payload;
-		this.evalCredentialAllowlists.setTestTarget(threadId, target);
-		return { ok: true };
-	}
-
-	/**
-	 * Observational memory for a thread, for a context eval to assert on.
-	 *
-	 * Returns the observation text, an LLM-written summary of the user's conversation.
-	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
-	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
-	 */
-	@Get('/eval/threads/:threadId/memory')
-	@GlobalScope('instanceAi:eval')
-	async getEvalThreadMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	): Promise<InstanceAiEvalThreadMemoryResponse> {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
-	}
-
-	/**
-	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the artifacts the history references — workflows (node credentials
-	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
-	 * and agents — publish the workflows the seed flags `published`, then write the
-	 * native message log verbatim. The thread then continues as if the
-	 * conversation really happened, so an eval can drive the next turn live.
-	 */
-	@Post('/eval/restore-thread')
-	@GlobalScope('instanceAi:eval')
-	async restoreEvalThread(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalRestoreThreadRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
-		if (!projectId) {
-			throw new BadRequestError('Thread is not bound to a project');
-		}
-
-		const workflows = payload.workflows ?? [];
-		const agents = payload.agents ?? [];
-		const folders = payload.folders ?? [];
-		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
-		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
-		// dead tool (or binds an unrelated ambient workflow of the same name).
-		const unbacked = findUnbackedSeedWorkflowTools(payload);
-		if (unbacked.length > 0) {
-			throw new BadRequestError(
-				unbacked
-					.map(
-						({ agentId, target }: { agentId: string; target: unknown }) =>
-							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
-					)
-					.join('; '),
-			);
-		}
-		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
-		// Checked before anything is created, so a typo costs no rollback.
-		const folderIssues = findSeedFolderIssues({ folders, workflows });
-		if (folderIssues.length > 0) {
-			throw new BadRequestError(folderIssues.join('; '));
-		}
-		// Folders first: the workflows are created inside them. `restoreFolders`
-		// rolls its own partial work back, so nothing else exists yet if it fails.
-		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
-		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
-		// can pair each created id with the seed folder it came from.
-		const folderIds = folders.flatMap((folder) => {
-			const id = folderIdMap.get(folder.id);
-			return id === undefined ? [] : [id];
-		});
-		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak folders/tables/workflows/agents into the shared eval
-		// project.
-		let restored = 0;
-		let dataTableIds: string[] = [];
-		let createdWorkflowIds: string[] = [];
-		let publishedWorkflowIds: string[] = [];
-		let createdAgentIds: string[] = [];
-		// Captured so the binding write is undoable: the message write happens after
-		// it, and without this a message failure left a binding pointing at agents the
-		// rollback had already deleted.
-		let priorMetadata: Record<string, unknown> | undefined;
-		let bindingWritten = false;
-		// Seed node credentials resolve within the thread's pinned credential view,
-		// so a same-named credential of a concurrent case is never picked.
-		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
-		try {
-			// Data tables before workflows: the workflows reference them, and their ids
-			// are rewritten to the recreated tables' ids during workflow restore.
-			const idMap = await this.evalThreadRestore.restoreDataTables(
-				payload.dataTables ?? [],
-				projectId,
-				{ uniquifyNames: payload.uniquifyNames ?? true },
-			);
-			dataTableIds = [...idMap.values()];
-			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
-				workflows,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-				folderIdMap,
-			);
-			// BEFORE the messages, which the rollback cannot undo: a refused activation
-			// (no trigger, webhook conflict, unresolved credential) must fail while the
-			// restore is still fully rollback-able. The rollback unpublishes.
-			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(
-				agents,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-			);
-			// Built (and validated) BEFORE the message write: a rejected binding — two
-			// agents whose refs collide — must fail while the restore is still fully
-			// rollback-able, not after the messages have committed.
-			const binding =
-				createdAgentIds.length > 0
-					? seedAgentBuilderTargetMetadata(
-							agents.map((agent) => ({
-								agentId: agent.id,
-								projectId,
-								name: agent.config.name,
-								ref: agent.config.name,
-							})),
-							payload.messages,
-						)
-					: undefined;
-			// Bind the thread as the conversation that built these agents would have, or
-			// the live turn's first `agent_builder_build_agent` call is rejected as an unknown agentRef.
-			// BEFORE the messages, and undoable: the catch restores the prior metadata,
-			// so a message failure can't leave a binding pointing at deleted agents, and
-			// a binding failure can't leave messages referencing them.
-			if (binding) {
-				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
-				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
-				bindingWritten = true;
-			}
-			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
-			if (payload.messages.length > 0) {
-				({ restored } = await this.memoryService.restoreThreadMessages(
-					req.user.id,
-					payload.threadId,
-					payload.messages,
-				));
-			}
-		} catch (error) {
-			if (bindingWritten) {
-				try {
-					// `updateThread` MERGES, so the prior snapshot alone would leave the
-					// binding keys standing — this names them and restores each.
-					await this.memoryService.updateThread(payload.threadId, {
-						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
-					});
-				} catch {
-					// Best-effort, like the artifact deletes: never throw over the failure
-					// that triggered the rollback.
-				}
-			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId, req.user);
-			// Every seed this restore published, not only the created ones: a re-applied
-			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
-			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
-			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
-			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
-			// Last, with the contents moved to the root: a re-applied seed workflow
-			// (moved into the folder, not created) is kept by this rollback, so the
-			// folder must not take it down.
-			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
-			throw error;
-		}
-		return {
-			ok: true,
-			threadId: payload.threadId,
-			restored,
-			workflowIds: workflows.map((workflow) => workflow.id),
-			dataTableIds,
-			agentIds: createdAgentIds,
-			folderIds,
-		};
-	}
-
-	/**
-	 * Reset an existing data table's rows to exactly the supplied set
-	 * (clear-then-insert). The eval harness pre-creates a case's scenario data
-	 * tables empty before the build turn (so the agent binds the real table id),
-	 * then calls this per scenario to swap in that scenario's rows (TRUST-311
-	 * follow-up). Auth + project scoping mirror restore-thread: the table must be
-	 * in the thread's project.
-	 */
-	@Post('/eval/seed-data-table-rows')
-	@GlobalScope('instanceAi:eval')
-	async seedEvalDataTableRows(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalSeedDataTableRowsRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
-		if (!projectId) {
-			throw new BadRequestError('Thread is not bound to a project');
-		}
-		await this.evalThreadRestore.reseedDataTableRows(payload.tableId, projectId, payload.rows);
-		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
 	}
 
 	// ── Browser Use endpoints ───────────────────────────────────────────────────

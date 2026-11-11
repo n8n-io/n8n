@@ -11,7 +11,8 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
+| `N8N_INSTANCE_AI_ENABLED` | boolean | unset | Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant. When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in Settings > Assistant overrides this variable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-5-5` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. To keep Opus 4.8: `anthropic/claude-opus-4-8`. Vertex Claude: `google-vertex-anthropic/claude-opus-5-5`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | Explicit API key for the environment-selected model. It works with built-in providers and custom endpoints. When it is empty, built-in providers can use their standard API-key environment variable. Some local endpoints do not require a key. |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON. |
@@ -44,7 +45,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED` | boolean | `false` | Enable workflow suggestions, internal self-healing investigations, and result review routes. Restart n8n after changing this setting. Investigations require a backend caller. This does not add automatic triggers. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `list_workflows`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 
@@ -63,6 +64,8 @@ the wizard.
 | `N8N_INSTANCE_AI_TRACE_INTERNAL` / `N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL` | boolean | `false` | Include internal orchestration data in trace inputs. Either variable enables it. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
 | `N8N_INSTANCE_AI_EVAL_MODEL` | string | unset | Optional model override for evaluation helper agents. Falls back to `N8N_INSTANCE_AI_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_URL` | string | unset | Base URL for `N8N_INSTANCE_AI_EVAL_MODEL` when it differs from the builder model, for example a `custom/*` OpenAI-compatible endpoint. A judge or helper with a fixed model id uses this URL only when its id equals `N8N_INSTANCE_AI_EVAL_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY` | string | unset | API key for `N8N_INSTANCE_AI_EVAL_MODEL_URL`. A `custom/*` eval model may omit it. Other keys are never sent to that URL. |
 | `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation, verification) with `N8N_INSTANCE_AI_MODEL_URL`. |
 
 ### Web Research
@@ -241,7 +244,7 @@ in Instance AI settings.
 
 ```bash
 # Configure the model. The instance-ai module is enabled by default.
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-5-5
 N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
 # With MCP servers
@@ -273,7 +276,7 @@ N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Direct Google Vertex Claude (no AI assistant proxy)
 # Keep N8N_AI_ASSISTANT_BASE_URL unset/empty.
-N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-5-5
 N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
 N8N_INSTANCE_AI_VERTEX_LOCATION=global
 N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
@@ -302,7 +305,7 @@ services:
       - "8888:8080"  # optional: expose to host
   n8n:
     environment:
-      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-8
+      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-5-5
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 

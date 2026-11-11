@@ -1,9 +1,12 @@
 operationId: addProjectToPromotionEnvironment
 tags:
   - Promotions
-summary: Link a project to a promotion environment
-description: Links a team project to a project-scoped environment. A project can have one environment for each direction. A direction without a project environment uses the instance environment.
-x-required-scope: gitConnection:manageProjects
+summary: 'Beta: Link a project to a promotion environment'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Links a team project to a project-scoped environment. A project can have one environment for each direction. A direction without a project environment uses the instance environment.
+x-required-scope: promotions:manageProjects
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
@@ -50,5 +53,7 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

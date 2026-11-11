@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	AgentEvalDatasetRepository,
@@ -29,7 +30,7 @@ describe('agent-eval scoped repository reads (integration)', () => {
 	}
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table', 'agents']);
+		await testModules.loadModules(['data-table', 'agents'], packagedModules);
 		await testDb.init();
 		datasetRepository = Container.get(AgentEvalDatasetRepository);
 		runRepository = Container.get(AgentEvalRunRepository);

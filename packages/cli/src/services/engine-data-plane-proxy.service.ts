@@ -2,12 +2,17 @@ import { Service } from '@n8n/di';
 import type {
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeLocateRequest,
+	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 
@@ -34,13 +39,28 @@ export type CancelExecutionOutcome =
 	| { cancelled: false; status: ExecutionStatus };
 
 /**
- * Starts, reads, and cancels executions on the engine v2 data plane.
+ * The data plane's answer to a resume request. Returned, not thrown: each
+ * caller maps the status to its own answer.
+ */
+export type ResumeOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; status: number; error: string };
+
+/**
+ * Starts, reads, resumes, and cancels executions on the engine v2 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	/** One page of the executions that match `request`. */
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
+
+	/**
+	 * The newest execution matching `request`, with its steps, in one round trip.
+	 * `undefined` when none matches.
+	 */
+	findLatestExecution(request: FindLatestExecutionRequest): Promise<ExecutionSnapshot | undefined>;
 
 	/**
 	 * Throws {@link EngineRejectedWorkflowError} or {@link EngineDidNotAdmitError}
@@ -60,6 +80,25 @@ export interface EngineDataPlaneProvider {
 
 	/** `undefined` when the data plane holds no execution under that id. */
 	cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined>;
+
+	/**
+	 * Phase one of a resume request: the execution's snapshot with its steps,
+	 * and the one step that accepts the request, or `null` when none does. The
+	 * data plane verifies the token; this plane forwards it unread.
+	 */
+	locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>>;
+
+	/** Phase two: ends the wait of one step with the output of the node's resume method. */
+	resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>>;
+
+	/**
+	 * The step id that an engine v2 approval callback names, or `undefined` for
+	 * any other reference. Does not verify the callback: `locateResume` does.
+	 */
+	readApprovalCallback(reference: string): string | undefined;
 }
 
 /**
@@ -87,6 +126,13 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return await this.provider.searchExecutions(request);
 	}
 
+	async findLatestExecution(
+		request: FindLatestExecutionRequest,
+	): Promise<ExecutionSnapshot | undefined> {
+		if (!this.provider) return undefined;
+		return await this.provider.findLatestExecution(request);
+	}
+
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
 			throw new UserError(
@@ -112,5 +158,27 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return undefined;
 
 		return await this.provider.cancelExecution(id);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
+
+		return await this.provider.locateResume(request);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
+	async resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>> {
+		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
+
+		return await this.provider.resolveStep(stepId, request);
+	}
+
+	/** No provider, no engine v2 callback. */
+	readApprovalCallback(reference: string): string | undefined {
+		return this.provider?.readApprovalCallback(reference);
 	}
 }

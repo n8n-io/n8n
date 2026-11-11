@@ -86,6 +86,8 @@ function makeModuleSettings(
 		workflowBuilderAvailable: true,
 		sandboxUnavailableReason: null,
 		runDebugEnabled: false,
+		workflowSuggestionsEnabled: false,
+		assistantAgentEnabled: false,
 		...overrides,
 	};
 }
@@ -251,6 +253,22 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('isAssistantAgentEnabled', () => {
+		it('is true when the backend registered the Assistant agent', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+
+			expect(store.isAssistantAgentEnabled).toBe(true);
+		});
+
+		it('is false when the Assistant is off, or when the backend has no agent', () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+			expect(store.isAssistantAgentEnabled).toBe(false);
+
+			setModuleSettings(settingsStore, {});
+			expect(store.isAssistantAgentEnabled).toBe(false);
+		});
+	});
+
 	describe('settings persistence', () => {
 		const response = {
 			enabled: true,
@@ -292,6 +310,14 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.settings).toEqual(response);
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps the Assistant agent setting when it applies saved settings', async () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+
+			await store.persistEnabled(true);
+
+			expect(settingsStore.moduleSettings['instance-ai']?.assistantAgentEnabled).toBe(true);
 		});
 	});
 
@@ -407,11 +433,12 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('syncInstanceAiFlagIntoGlobalModuleSettings', () => {
-		it('preserves cloudManaged when syncing admin settings', async () => {
+		it('preserves module flags when syncing admin settings', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
+				workflowSuggestionsEnabled: true,
 			});
 
 			const adminResponse = {
@@ -435,6 +462,7 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const ms = settingsStore.moduleSettings['instance-ai'];
 			expect(ms?.cloudManaged).toBe(true);
+			expect(ms?.workflowSuggestionsEnabled).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
 			expect(ms?.sandboxEnabled).toBe(false);

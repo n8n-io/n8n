@@ -15,6 +15,10 @@ declare module '@n8n_io/riot-tmpl' {
 	let tmpl: Tmpl;
 }
 
+declare module 'generate-schema' {
+	export function json(schema: unknown): unknown;
+}
+
 interface BigInt {
 	toJSON(): string;
 }

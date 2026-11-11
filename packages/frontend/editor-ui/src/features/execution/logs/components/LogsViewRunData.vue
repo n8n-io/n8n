@@ -47,14 +47,8 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
-const {
-	canReveal,
-	isDynamicCredentials,
-	isSubWorkflowRedaction,
-	revealData,
-	credentialToShare,
-	openCredentialSharing,
-} = useExecutionRedaction();
+const { canReveal, reason, revealData, credentialToShare, openCredentialSharing } =
+	useExecutionRedaction();
 
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
@@ -162,8 +156,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 						paneType === 'output' ? 'ndv.output.redacted.title' : 'ndv.input.redacted.title',
 					)
 				"
-				:is-dynamic-credentials="isDynamicCredentials"
-				:is-sub-workflow-redaction="isSubWorkflowRedaction"
+				:reason="reason"
 				:can-reveal="canReveal"
 				:credential-to-share="credentialToShare"
 				@share-credential="openCredentialSharing"

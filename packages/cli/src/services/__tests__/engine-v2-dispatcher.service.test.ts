@@ -1,5 +1,6 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import { NotImplementedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -11,11 +12,12 @@ import type {
 	StartNodeData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
 	type EngineDataPlaneProxyService,
@@ -136,11 +138,13 @@ describe('EngineV2Dispatcher', () => {
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
 	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
+	const lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 
 	let dispatcher: EngineV2Dispatcher;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		lifecycleSubscriptions.subscribe.mockResolvedValue(undefined);
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
@@ -248,6 +252,25 @@ describe('EngineV2Dispatcher', () => {
 			},
 		);
 
+		it('subscribes to lifecycle events for a run with a push ref', async () => {
+			await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
+			);
+		});
+
+		it.each([
+			['a manual run without a push ref', runData()],
+			['an active trigger run', triggerRunData()],
+			['a webhook run', webhookRunData()],
+		])('does not subscribe to lifecycle events for %s', async (_name, data) => {
+			await dispatcher.start(data);
+
+			const [request] = proxy.startExecution.mock.calls[0];
+			expect(request.lifecycleEventSubscription).toBeUndefined();
+		});
+
 		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
 			const workflowData = workflow();
 
@@ -270,6 +293,36 @@ describe('EngineV2Dispatcher', () => {
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 			});
+		});
+
+		it('stores the pin data of a manual run beside the workflow', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ pinData }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('falls back to the pin data saved on the workflow for a manual run', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ workflowData: workflow({ pinData }) }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('stores no pin data for a production run, as v1 ignores it there', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			const data = webhookRunData();
+			data.workflowData.pinData = pinData;
+
+			await dispatcher.start(data);
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document).not.toHaveProperty('pinData');
 		});
 
 		it('passes the v1 mode and the caller to the data plane', async () => {
@@ -811,6 +864,45 @@ describe('EngineV2Dispatcher', () => {
 				expect(pushRegistry.register).not.toHaveBeenCalled();
 			});
 
+			it('subscribes to the lifecycle events before it dispatches', async () => {
+				const executionId = await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(lifecycleSubscriptions.subscribe).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeGreaterThan(
+					pushRegistry.register.mock.invocationCallOrder[0],
+				);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
+					proxy.startExecution.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('does not subscribe when nothing is watching the run', async () => {
+				await dispatcher.start(runData());
+
+				expect(lifecycleSubscriptions.subscribe).not.toHaveBeenCalled();
+			});
+
+			it('does not start the run when the subscription fails', async () => {
+				const failure = new Error('Redis is unavailable');
+				lifecycleSubscriptions.subscribe.mockRejectedValueOnce(failure);
+				const data = runData({
+					pushRef: 'push-1',
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+				});
+
+				await expect(dispatcher.start(data)).rejects.toBe(failure);
+
+				const [executionId] = pushRegistry.register.mock.calls[0];
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+				expect(pushRegistry.release).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([
+					[{ json: { from: 'trigger' } }],
+				]);
+			});
+
 			it('releases the session when the data plane refused the run', async () => {
 				proxy.startExecution.mockRejectedValueOnce(new Error('down'));
 
@@ -911,6 +1003,144 @@ describe('EngineV2Dispatcher', () => {
 				// payload defaults to.
 				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([[{ json: {} }]]);
 			});
+		});
+	});
+
+	describe('resume', () => {
+		const executionId = createExecutionIdV2();
+		const engineResume = { stepId: 'step-1', token: 'token' };
+		const existing: ResumableExecution = { executionId, expectedStatus: 'waiting', engineResume };
+
+		/**
+		 * What `prepareExecutionData` leaves on the stack after the node's `webhook()`
+		 * ran. A plain object, not `mock()`: the items are compared by value.
+		 */
+		const resumeData = (main: Array<INodeExecutionData[] | null>) =>
+			({
+				workflowData: workflow(),
+				userId: 'user-1',
+				executionData: createRunExecutionData({
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [
+							{
+								node: node('wait-id', 'Wait', 'n8n-nodes-base.wait'),
+								data: { main },
+								source: null,
+							},
+						],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: null,
+					},
+				}),
+			}) as unknown as IWorkflowExecutionDataProcess;
+
+		beforeEach(() => {
+			proxy.resolveStep.mockResolvedValue({ ok: true, value: { executionId, stepId: 'step-1' } });
+		});
+
+		it('ends the wait with the items the resume method produced, under the located step and token', async () => {
+			await expect(
+				dispatcher.resume(existing, resumeData([[{ json: { approved: true } }]])),
+			).resolves.toBe(executionId);
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [[{ json: { approved: true } }]],
+			});
+			expect(proxy.startExecution).not.toHaveBeenCalled();
+		});
+
+		it('checks the credential permissions before it reaches the data plane', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow('no access');
+
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
+		});
+
+		it('answers a wait that is over with a conflict, as v1 does', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+			const resumed = dispatcher.resume(existing, resumeData([[]]));
+
+			await expect(resumed).rejects.toThrow(ConflictError);
+			await expect(resumed).rejects.toThrow(`The execution "${executionId}" is not waiting.`);
+		});
+
+		it('answers any other refusal of the data plane with a user error', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 501, error: 'unimplemented' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(UserError);
+		});
+
+		it('sends an empty slot of the resume payload as a dead edge', async () => {
+			await dispatcher.resume(existing, resumeData([null, [{ json: {} }]]));
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [null, [{ json: {} }]],
+			});
+		});
+
+		it('fails when the stack carries no payload for the waiting node', async () => {
+			const data = {
+				workflowData: workflow(),
+				userId: 'user-1',
+			} as unknown as IWorkflowExecutionDataProcess;
+
+			await expect(dispatcher.resume(existing, data)).rejects.toThrow('carries no payload');
+		});
+
+		describe('the files the resume method stored', () => {
+			const main = [
+				[
+					{
+						json: {},
+						binary: { data: { data: '', mimeType: 'text/plain', id: 'filesystem-v2:file-1' } },
+					},
+				],
+			];
+
+			it('deletes them when the data plane refuses the resume', async () => {
+				proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow(ConflictError);
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('deletes them when the credential check refuses the resume', async () => {
+				credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('no access');
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(main);
+			});
+
+			it('keeps them when the data plane fails, since it may have accepted the step', async () => {
+				proxy.resolveStep.mockRejectedValueOnce(new Error('engine down'));
+
+				await expect(dispatcher.resume(existing, resumeData(main))).rejects.toThrow('engine down');
+
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
+			});
+		});
+
+		it('answers a step that went away with its execution as a missing execution', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 401, error: 'invalid_token' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(NotFoundError);
+		});
+
+		it('refuses a resume that names no wait on the data plane', async () => {
+			await expect(
+				dispatcher.resume({ executionId, expectedStatus: 'waiting' }, resumeData([[]])),
+			).rejects.toThrow('A v2 resume needs the step');
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
 		});
 	});
 });

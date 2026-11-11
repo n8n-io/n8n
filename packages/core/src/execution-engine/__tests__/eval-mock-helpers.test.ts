@@ -8,6 +8,7 @@ import {
 	callEvalMockHandler,
 	isSecretCredentialProperty,
 	normalizeLegacyRequest,
+	resolveEvalMockRequestUrl,
 	serializeMockToHttpResponse,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
@@ -632,6 +633,98 @@ describe('eval-mock-helpers', () => {
 			const result = normalizeLegacyRequest(requestObj);
 
 			expect(result.body).toEqual({ fromBody: true });
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// resolveEvalMockRequestUrl
+	// -----------------------------------------------------------------------
+	describe('resolveEvalMockRequestUrl', () => {
+		it('should build a path-style S3 URL from service, path and query', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'GET',
+					url: '',
+					qs: {
+						service: 's3',
+						path: '/my-bucket/',
+						query: { 'list-type': 2 },
+						_region: 'eu-west-1',
+					},
+				},
+				'aws',
+			);
+
+			expect(result.url).toBe('https://s3.eu-west-1.amazonaws.com/my-bucket/?list-type=2');
+			expect(result.qs).toBeUndefined();
+		});
+
+		it('should take the region from the request when qs has none', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'POST',
+					url: '',
+					qs: { service: 'lambda', path: '/2015-03-31/functions/fn/invocations' },
+					region: 'ap-southeast-2',
+				} as IHttpRequestOptions,
+				'awsAssumeRole',
+			);
+
+			expect(result.url).toBe(
+				'https://lambda.ap-southeast-2.amazonaws.com/2015-03-31/functions/fn/invocations',
+			);
+		});
+
+		it('should use the China domain for cn- regions', () => {
+			const result = resolveEvalMockRequestUrl(
+				{ method: 'GET', url: '', qs: { service: 'sqs', path: '/', _region: 'cn-north-1' } },
+				'aws',
+			);
+
+			expect(result.url).toBe('https://sqs.cn-north-1.amazonaws.com.cn/');
+		});
+
+		it('should not mutate the original request', () => {
+			const original: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my-bucket.s3', path: '', query: { location: '' } },
+			};
+
+			resolveEvalMockRequestUrl(original, 'aws');
+
+			expect(original.url).toBe('');
+			expect(original.qs).toEqual({ service: 'my-bucket.s3', path: '', query: { location: '' } });
+		});
+
+		it('should return a request that already has a URL unchanged', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://custom.example.com/bucket',
+				qs: { service: 's3' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the service makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my bucket.s3', path: '/', _region: 'eu-west-1' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the region makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 's3', path: '/my-bucket/', _region: 'EU (Ireland)' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
 		});
 	});
 

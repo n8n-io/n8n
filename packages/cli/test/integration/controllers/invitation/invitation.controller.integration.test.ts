@@ -124,10 +124,12 @@ describe('InvitationController', () => {
 		});
 
 		test('should fail with invalid payloads', async () => {
-			const memberShell = await userRepository.save({
-				email: randomEmail(),
-				role: { slug: 'global:member' },
-			});
+			const memberShell = await userRepository.save(
+				userRepository.create({
+					email: randomEmail(),
+					role: { slug: 'global:member' },
+				}),
+			);
 			const validToken = invitationToken(instanceOwner.id, memberShell.id);
 
 			const invalidPayloads = [

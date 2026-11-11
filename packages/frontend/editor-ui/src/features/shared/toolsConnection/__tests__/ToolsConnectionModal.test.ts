@@ -93,6 +93,7 @@ function renderWith(
 		detailMode: 'detail' | 'settings';
 		showSuggestionFooter: boolean;
 		groupSearchResults: boolean;
+		hideEmptyCategories: boolean;
 		createAction: {
 			category?: ToolCategoryKey;
 			label: string;
@@ -109,6 +110,7 @@ function renderWith(
 			detailMode: props.detailMode,
 			showSuggestionFooter: props.showSuggestionFooter,
 			groupSearchResults: props.groupSearchResults,
+			hideEmptyCategories: props.hideEmptyCategories,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -215,14 +217,24 @@ describe('ToolsConnectionModal', () => {
 			nodeTypeName: 'n8n-nodes-base.gmailTool',
 			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'instance' },
 		};
-		const restrictedApp: ToolConnectionItem = {
+		const restrictedGatewayDuplicate: ToolConnectionItem = {
+			...restrictedGateway,
 			id: 'nodeType:gmail',
+			category: 'app-action',
+			freeCredits: undefined,
+		};
+		const restrictedApp: ToolConnectionItem = {
+			id: 'nodeType:outlook',
 			kind: 'node',
-			title: 'Gmail',
+			title: 'Outlook',
 			status: 'none',
 			category: 'app-action',
-			nodeTypeName: 'n8n-nodes-base.gmailTool',
-			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'project' },
+			nodeTypeName: 'n8n-nodes-base.microsoftOutlookTool',
+			restriction: {
+				name: 'n8n-nodes-base.microsoftOutlookTool',
+				available: false,
+				scope: 'project',
+			},
 		};
 		const usableApp: ToolConnectionItem = {
 			id: 'nodeType:sheets',
@@ -235,23 +247,69 @@ describe('ToolsConnectionModal', () => {
 		const { getAllByTestId, getByTestId } = renderWith({
 			// Restricted first, and one of them gateway-backed: the all-tab rank sort alone
 			// would keep it above the usable tool.
-			items: [restrictedGateway, restrictedApp, usableApp],
+			items: [restrictedGateway, restrictedGatewayDuplicate, restrictedApp, usableApp],
 			categories: ['all', 'app-action'],
 		});
 
+		// The restricted plain Gmail row is a gateway duplicate, so "All" shows Gmail once.
 		const titlesOnAll = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+		expect(titlesOnAll).toHaveLength(3);
 		expect(titlesOnAll[0]).toContain('Google Sheets');
 		expect(titlesOnAll[1]).toContain('Gmail');
-		expect(titlesOnAll[2]).toContain('Gmail');
+		expect(titlesOnAll[2]).toContain('Outlook');
 		expect(getAllByTestId('node-restricted-icon')).toHaveLength(2);
 
 		await fireEvent.click(getByTestId('tab-app-action'));
 		await waitFor(() => {
 			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
-			expect(titles).toHaveLength(2);
+			expect(titles).toHaveLength(3);
 			expect(titles[0]).toContain('Google Sheets');
 			expect(titles[1]).toContain('Gmail');
+			expect(titles[2]).toContain('Outlook');
 		});
+	});
+
+	it('lists a gateway-backed node once on the all tab and in both of its own tabs', async () => {
+		const gatewayRow: ToolConnectionItem = {
+			id: 'n8n-connect:browserbase',
+			kind: 'node',
+			title: 'Browserbase',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.browserbaseTool',
+		};
+		const plainRow: ToolConnectionItem = {
+			id: 'nodeType:browserbase',
+			kind: 'node',
+			title: 'Browserbase',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.browserbaseTool',
+		};
+		const connectedRow: ToolConnectionItem = {
+			...plainRow,
+			id: 'tool:browserbase-1',
+			status: 'connected',
+		};
+		const { getAllByTestId, getByTestId } = renderWith({
+			items: [gatewayRow, plainRow, connectedRow],
+			categories: ['all', 'n8n-connect', 'app-action'],
+		});
+
+		const hasFreeCreditsPill = () =>
+			getAllByTestId('tools-connection-row').map((row) =>
+				Boolean(row.textContent?.includes('Free credits')),
+			);
+
+		expect(getByTestId('tab-all').textContent).toContain('(2)');
+		expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)');
+		expect(getByTestId('tab-app-action').textContent).toContain('(2)');
+		// The already-added instance stays, then the gateway row; the plain row is gone.
+		expect(hasFreeCreditsPill()).toEqual([false, true]);
+
+		await fireEvent.click(getByTestId('tab-app-action'));
+		await waitFor(() => expect(hasFreeCreditsPill()).toEqual([false, false]));
 	});
 
 	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {
@@ -463,6 +521,77 @@ describe('ToolsConnectionModal', () => {
 		expect(populated.queryByTestId('tab-community')).toBeTruthy();
 	});
 
+	describe('with hideEmptyCategories', () => {
+		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'global'];
+
+		function skill(id: string, category: ToolCategoryKey, attached = false): ToolConnectionItem {
+			return {
+				id: `skill:${id}`,
+				kind: 'skill',
+				skillId: id,
+				title: id,
+				category,
+				status: 'none',
+				attached,
+			};
+		}
+
+		it('hides empty tabs but keeps the all tab', () => {
+			const { getByTestId, queryByTestId } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'project')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			expect(getByTestId('tab-all').textContent).toContain('(2)');
+			expect(getByTestId('tab-project').textContent).toContain('(2)');
+			expect(queryByTestId('tab-global')).toBeNull();
+		});
+
+		it('hides the tab strip when only the all tab is left', () => {
+			const empty = renderWith({
+				items: [],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(empty.queryByTestId('tools-connection-tabs')).toBeNull();
+			empty.unmount();
+
+			const oneScope = renderWith({
+				items: [skill('tone', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(oneScope.getByTestId('tab-global')).toBeTruthy();
+		});
+
+		it('keeps every tab while a search matches nothing in it', async () => {
+			const { getByTestId, getByPlaceholderText } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			await fireEvent.update(getByPlaceholderText('Search all tools...'), 'tone');
+
+			await waitFor(() => {
+				expect(getByTestId('tab-global').textContent).toContain('(0)');
+			});
+		});
+	});
+
+	it('opens on the first visible tab when the first declared one starts hidden', () => {
+		const withoutCommunity = realisticItems.filter((item) => item.category !== 'community');
+		const { getByTestId, queryByTestId } = renderWith({
+			items: withoutCommunity,
+			categories: ['community', 'mcp', 'workflows'],
+		});
+
+		expect(queryByTestId('tab-community')).toBeNull();
+		expect(getByTestId('tab-mcp')).toHaveAttribute('aria-selected', 'true');
+		expect(queryByTestId('tools-connection-empty')).toBeNull();
+	});
+
 	it('states a count on every tab, zero included', () => {
 		const items = realisticItems.filter((item) => item.status !== 'connected');
 		const { getByTestId } = renderWith({ items, categories: ALL_CATEGORIES });
@@ -649,13 +778,41 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
-	it('feeds every flattened row through to the scroller', async () => {
+	it('feeds every flattened row through to the scroller', () => {
 		const items = makeLargeMcpList(300);
-		const { getAllByTestId } = renderWith({ items, categories: ['mcp'] });
+		const { getAllByTestId } = renderModal({
+			props: { open: true, items, categories: ['mcp'] },
+			pinia: createTestingPinia(),
+			// Check the full list without mounting hundreds of row component trees.
+			global: {
+				stubs: {
+					ToolRow: {
+						props: ['item'],
+						template: '<div data-test-id="tools-connection-row">{{ item.title }}</div>',
+					},
+				},
+			},
+		});
 
+		expect(getAllByTestId('tools-connection-row').map((row) => row.textContent)).toEqual(
+			items.map((item) => item.title),
+		);
+	});
+
+	it('shows a loading screen instead of the list while loading', async () => {
+		const { getByTestId, getByPlaceholderText, queryByTestId, rerender } = renderModal({
+			props: { open: true, items: realisticItems, categories: ALL_CATEGORIES, loading: true },
+			pinia: createTestingPinia(),
+		});
+
+		expect(getByTestId('tools-connection-loading')).toBeInTheDocument();
+		expect(queryByTestId('tools-connection-search')).toBeNull();
+
+		await rerender({ loading: false });
+
+		expect(queryByTestId('tools-connection-loading')).toBeNull();
 		await waitFor(() => {
-			const rendered = getAllByTestId('tools-connection-row');
-			expect(rendered.length).toBe(300);
+			expect(document.activeElement).toBe(getByPlaceholderText('Search all tools...'));
 		});
 	});
 });

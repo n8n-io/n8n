@@ -25,6 +25,7 @@ on:
 
 jobs:
   release-notification:
+    name: Send version release notifications
     runs-on: ubuntu-slim
     environment: release
     steps:

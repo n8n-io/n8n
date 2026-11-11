@@ -4,7 +4,10 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_MEMBER_ROLE,
+	isPerson,
+	PersonRepository,
 	UserRepository,
+	type Person,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -50,6 +53,7 @@ export class IdentityResolutionService {
 		private readonly trustedKeyService: TrustedKeyService,
 		private readonly roleService: RoleService,
 		private readonly config: TokenExchangeConfig,
+		private readonly personRepository: PersonRepository,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -133,13 +137,10 @@ export class IdentityResolutionService {
 
 		// Path 2: email fallback
 		if (email) {
-			const existingUser = await this.userRepository.findOne({
-				where: { email },
-				relations: ['authIdentities', 'role'],
-			});
+			const existingPerson = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-			if (existingUser) {
-				return await this.resolveByEmail(claims, email, existingUser, allowedRoles, tokenContext);
+			if (existingPerson) {
+				return await this.resolveByEmail(claims, email, existingPerson, allowedRoles, tokenContext);
 			}
 		}
 
@@ -176,7 +177,7 @@ export class IdentityResolutionService {
 	private async resolveByEmail(
 		claims: ExternalTokenClaims,
 		email: string,
-		existingUser: User,
+		existingPerson: Person,
 		allowedRoles: string[] | undefined,
 		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
 	): Promise<User> {
@@ -184,25 +185,25 @@ export class IdentityResolutionService {
 			sub: claims.sub,
 			email,
 		});
-		this.assertKeyMayActAsUser(existingUser, allowedRoles);
+		this.assertKeyMayActAsUser(existingPerson, allowedRoles);
 		this.assertEmailVerified(claims, tokenContext);
 		const resolvedRole = await this.resolveRoleForExistingUser(
 			claims.role,
 			allowedRoles,
-			existingUser.role?.slug,
+			existingPerson.role?.slug,
 		);
 		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
 		await this.authIdentityRepository.save(
-			AuthIdentity.create(existingUser, qualifiedSub, 'token-exchange'),
+			AuthIdentity.create(existingPerson, qualifiedSub, 'token-exchange'),
 		);
 		this.eventService.emit('token-exchange-identity-linked', {
-			userId: existingUser.id,
+			userId: existingPerson.id,
 			sub: claims.sub,
 			email,
 			kid: tokenContext?.kid ?? '',
 			issuer: tokenContext?.issuer ?? claims.iss,
 		});
-		return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
+		return await this.syncProfile(existingPerson, claims, resolvedRole, tokenContext);
 	}
 
 	/** Path 3: JIT-provision a new user with a personal project and identity link. */
@@ -221,7 +222,7 @@ export class IdentityResolutionService {
 		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
+			const { user: newUser } = await this.personRepository.createPersonWithProject(
 				{
 					email,
 					firstName: trimName(claims.given_name),
@@ -371,17 +372,17 @@ export class IdentityResolutionService {
 	): Promise<User> {
 		let needsReload = false;
 
-		// Sync profile fields (firstName, lastName)
-		const profileUpdates: Pick<Partial<User>, 'firstName' | 'lastName'> = {};
+		// Sync profile fields (firstName, lastName). Only a person has a name.
+		const profileUpdates: Pick<Partial<Person>, 'firstName' | 'lastName'> = {};
 
-		if (claims.given_name !== undefined) {
+		if (isPerson(user) && claims.given_name !== undefined) {
 			const trimmed = trimName(claims.given_name);
 			if (trimmed !== user.firstName) {
 				profileUpdates.firstName = trimmed;
 			}
 		}
 
-		if (claims.family_name !== undefined) {
+		if (isPerson(user) && claims.family_name !== undefined) {
 			const trimmed = trimName(claims.family_name);
 			if (trimmed !== user.lastName) {
 				profileUpdates.lastName = trimmed;
@@ -389,8 +390,7 @@ export class IdentityResolutionService {
 		}
 
 		if (Object.keys(profileUpdates).length > 0) {
-			// oxlint-disable-next-line typescript/no-deprecated
-			await this.userRepository.update(user.id, profileUpdates);
+			await this.userService.update(user.id, profileUpdates);
 			needsReload = true;
 		}
 
@@ -412,10 +412,11 @@ export class IdentityResolutionService {
 		}
 
 		if (needsReload) {
-			return await this.userRepository.findOneOrFail({
-				where: { id: user.id },
-				relations: ['role'],
-			});
+			const reloaded = await this.userRepository.findByIdWithRole(user.id);
+			if (!reloaded) {
+				throw new TokenExchangeAuthError(TokenExchangeFailureReason.Other, 'User not found');
+			}
+			return reloaded;
 		}
 
 		return user;
