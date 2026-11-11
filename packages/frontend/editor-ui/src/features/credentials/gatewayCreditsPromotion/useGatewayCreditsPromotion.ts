@@ -86,15 +86,16 @@ export function useGatewayCreditsPromotion({
 		const nodeTypeName = toValue(nodeType);
 		const credentialTypeName = toValue(credentialType);
 
-		if (!credentialTypeName) {
-			return nodeTypeName ? promotionForNode(nodeTypeName, now)?.text : undefined;
+		// The credential modal follows the node that opened it, when that node uses the credential.
+		if (
+			nodeTypeName &&
+			(!credentialTypeName || nodeUsesCredential(nodeTypeName, credentialTypeName))
+		) {
+			return promotionForNode(nodeTypeName, now)?.text;
 		}
-
-		const nodePromotion =
-			nodeTypeName && nodeUsesCredential(nodeTypeName, credentialTypeName)
-				? promotionForNode(nodeTypeName, now)
-				: undefined;
-		return (nodePromotion ?? communityPromotionForCredential(credentialTypeName, now))?.text;
+		return credentialTypeName
+			? communityPromotionForCredential(credentialTypeName, now)?.text
+			: undefined;
 	});
 
 	return { promotionText };

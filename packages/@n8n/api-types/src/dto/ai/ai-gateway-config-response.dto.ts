@@ -31,6 +31,16 @@ export class AiGatewayConfigDto extends Z.class({
 	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 	minNodeTypeVersion: z.record(z.number()).optional(),
 	hiddenNodeProperties: z.record(z.array(z.string())).optional(),
-	// A malformed promotion must not make the whole config invalid.
-	promotions: z.array(aiGatewayPromotionSchema).optional().catch(undefined),
+	// Drop each malformed promotion on its own, so it cannot hide valid promotions
+	// or make the whole config invalid.
+	promotions: z
+		.array(z.unknown())
+		.transform((items) =>
+			items.flatMap((item) => {
+				const parsed = aiGatewayPromotionSchema.safeParse(item);
+				return parsed.success ? [parsed.data] : [];
+			}),
+		)
+		.optional()
+		.catch(undefined),
 }) {}

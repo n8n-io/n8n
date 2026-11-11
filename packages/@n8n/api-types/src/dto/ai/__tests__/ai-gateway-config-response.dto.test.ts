@@ -37,8 +37,20 @@ describe('AiGatewayConfigDto', () => {
 		['a non-string text', { text: 42, nodes: ['@n8n/n8n-nodes-langchain.googleGemini'] }],
 		['no nodes', { text: 'Free this week.' }],
 		['empty nodes', { text: 'Free this week.', nodes: [] }],
-	])('drops promotions with %s and keeps the rest of the config', (_, promotion) => {
-		const result = AiGatewayConfigDto.safeParse({ ...baseConfig, promotions: [promotion] });
+	])('drops a promotion with %s and keeps the valid ones', (_, invalid) => {
+		const valid = {
+			text: 'Free until December 1, 2026.',
+			nodes: ['@n8n/n8n-nodes-langchain.googleGemini'],
+		};
+
+		const result = AiGatewayConfigDto.safeParse({ ...baseConfig, promotions: [invalid, valid] });
+
+		expect(result.success).toBe(true);
+		expect(result.data?.promotions).toEqual([valid]);
+	});
+
+	it('drops promotions that are not a list and keeps the rest of the config', () => {
+		const result = AiGatewayConfigDto.safeParse({ ...baseConfig, promotions: { text: 'Free' } });
 
 		expect(result.success).toBe(true);
 		expect(result.data?.promotions).toBeUndefined();

@@ -17,15 +17,20 @@ const gateway = {
 	promotions: undefined as AiGatewayPromotion[] | undefined,
 };
 
-vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/app/stores/aiGateway.store')>()),
-	useAiGatewayStore: () => ({
-		config: { promotions: gateway.promotions },
-		fetchConfig: vi.fn().mockResolvedValue(undefined),
-		isCredentialTypeSupported: (type: string) => gateway.supportedCredentialTypes.includes(type),
-		isNodeSupported: (name: string) => gateway.supportedNodes.includes(name.replace(/Tool$/, '')),
-	}),
-}));
+vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/aiGateway.store')>();
+	return {
+		...actual,
+		useAiGatewayStore: () => ({
+			config: { promotions: gateway.promotions },
+			fetchConfig: vi.fn().mockResolvedValue(undefined),
+			isCredentialTypeSupported: (type: string) => gateway.supportedCredentialTypes.includes(type),
+			isNodeSupported: (name: string) =>
+				gateway.supportedNodes.includes(name) ||
+				gateway.supportedNodes.includes(actual.stripToolSuffix(name)),
+		}),
+	};
+});
 
 const setGatewayEnabled = (enabled: boolean) => {
 	useSettingsStore().settings = { aiGateway: { enabled } } as FrontendSettings;
@@ -158,22 +163,20 @@ describe('useGatewayCreditsPromotion', () => {
 			gateway.promotions = [{ text: GATEWAY_TEXT, nodes: [GEMINI], ...promotion }];
 			Object.assign(useNodeTypesStore(), {
 				getNodeType: (name: string) =>
-					[GEMINI, `${GEMINI}Tool`, EMBEDDINGS].includes(name)
+					[GEMINI, `${GEMINI}Tool`, `${GEMINI}HitlTool`, EMBEDDINGS].includes(name)
 						? ({ name, credentials: [{ name: GEMINI_CREDENTIAL }] } as INodeTypeDescription)
 						: null,
 			});
 		};
 
-		it('returns the text for a listed node and its Tool variant', () => {
-			setupBuiltIn();
+		it.each([GEMINI, `${GEMINI}Tool`, `${GEMINI}HitlTool`])(
+			'returns the text for the listed node variant %s',
+			(nodeType) => {
+				setupBuiltIn();
 
-			expect(useGatewayCreditsPromotion({ nodeType: GEMINI }).promotionText.value).toBe(
-				GATEWAY_TEXT,
-			);
-			expect(useGatewayCreditsPromotion({ nodeType: `${GEMINI}Tool` }).promotionText.value).toBe(
-				GATEWAY_TEXT,
-			);
-		});
+				expect(useGatewayCreditsPromotion({ nodeType }).promotionText.value).toBe(GATEWAY_TEXT);
+			},
+		);
 
 		it('returns nothing for an unlisted node with the same credential', () => {
 			setupBuiltIn();
@@ -252,6 +255,26 @@ describe('useGatewayCreditsPromotion', () => {
 			vi.setSystemTime(new Date('2026-06-02T00:00:00Z'));
 
 			expect(useGatewayCreditsPromotion({ nodeType: GEMINI }).promotionText.value).toBeUndefined();
+		});
+
+		it("does not show another node's Strapi promotion in a modal opened from a node without one", () => {
+			setup({ text: TEXT });
+			gateway.supportedNodes = [NODE_TYPE, GEMINI];
+			Object.assign(useNodeTypesStore(), {
+				getNodeType: (name: string) =>
+					[NODE_TYPE, GEMINI].includes(name)
+						? ({ name, credentials: [{ name: 'typeSafeAiApi' }] } as INodeTypeDescription)
+						: null,
+			});
+
+			expect(
+				useGatewayCreditsPromotion({ nodeType: GEMINI, credentialType: 'typeSafeAiApi' })
+					.promotionText.value,
+			).toBeUndefined();
+			expect(
+				useGatewayCreditsPromotion({ nodeType: NODE_TYPE, credentialType: 'typeSafeAiApi' })
+					.promotionText.value,
+			).toBe(TEXT);
 		});
 
 		it('takes precedence over the Strapi promotion of a community node', () => {
