@@ -25,11 +25,9 @@ export interface TokenRequest {
 	body: string;
 	/** A token endpoint has no reason to redirect a POST, and following one replays the secret. */
 	redirect: 'manual';
-	/** A mint answers in well under a second, so it must not wait as long as a completion. */
 	timeout: number;
 }
 
-/** Shared so the credential's own HTTP path mints a token exactly like the node transport does. */
 export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest {
 	const body = new URLSearchParams({ grant_type: 'client_credentials' });
 	if (login.scope) body.set('scope', login.scope);
@@ -87,7 +85,6 @@ function statedLifetime(parsed: unknown): number {
 	return NaN;
 }
 
-/** A login server can mint a token that is already dead, and caching that one for an hour 401s every request after it. */
 function lifetimeSeconds(parsed: unknown): number {
 	const stated = statedLifetime(parsed);
 	return Number.isFinite(stated) ? stated : ASSUMED_LIFETIME_SECONDS;
@@ -108,10 +105,7 @@ function readToken(text: string): CachedToken {
 	};
 }
 
-/**
- * The credential stores no token: this one lives in memory for as long as the
- * gateway said, and is fetched again on expiry or after the gateway rejects it.
- */
+/** The credential stores no token: this one lives in memory only. */
 export function createClientCredentialsTokenSource(
 	login: OAuth2Login,
 	fetchToken: typeof fetch,
