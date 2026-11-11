@@ -1,4 +1,4 @@
-import { type SecretKeysConfig, secretKeysCheck } from '../../actions/checks/secretKeys';
+import { type SecretKeysConfig, secretKeysCheck } from '../secret-keys';
 
 describe('secretKeys guardrail', () => {
 	it('detects secrets', async () => {
