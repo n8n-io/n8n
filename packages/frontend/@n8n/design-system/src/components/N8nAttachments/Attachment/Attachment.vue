@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { formatBytes } from '@n8n/utils/number/bytes';
-import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { usePreferredReducedMotion } from '@vueuse/core';
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '../../../composables/useI18n';
@@ -161,19 +160,6 @@ function finishReturn(event: TransitionEvent) {
 	}
 }
 
-const displayFileName = computed(() => {
-	const extensionIndex = props.fileName.lastIndexOf('.');
-	const suffixLength = extensionIndex > 0 ? props.fileName.length - extensionIndex + 2 : 5;
-
-	/** Keep room for the full suffix and skip word-based truncation for file names. */
-	return truncateBeforeLast(
-		props.fileName,
-		Math.max(MAX_FILE_NAME_CHARS, suffixLength + 2),
-		suffixLength,
-		Infinity,
-	);
-});
-
 const fileType = computed(() => {
 	const mimeType = props.mimeType.split(';')[0].trim().toLowerCase();
 	const fileName = props.fileName.toLowerCase();
@@ -252,12 +238,11 @@ const hasImagePreview = computed(
 						size="xsmall"
 						:class="[$style.fileName, { [$style.scrolling]: isHovered && marqueeDistance > 0 }]"
 						@transitionend="finishReturn"
-						>{{ isHovered || isReturning ? fileName : displayFileName }}</N8nText
 					>
+						{{ fileName }}
+						{{ sizeBytes ? ` • ${formatBytes(sizeBytes)}` : null }}
+					</N8nText>
 				</span>
-				<N8nText v-if="sizeBytes !== undefined" size="xsmall">
-					• {{ formatBytes(sizeBytes) }}</N8nText
-				>
 			</component>
 		</component>
 		<div v-if="isRemovable && !isRemoving" :class="$style.toolbar">
