@@ -541,7 +541,7 @@ const toolGuardrailBaseShape = {
 		),
 	name: z.string().trim().min(1).optional(),
 	stage: z.enum(['before', 'after']),
-	tools: z.array(ToolGuardrailToolRefSchema).nonempty(),
+	tools: z.array(ToolGuardrailToolRefSchema).min(1),
 };
 
 const modelToolGuardrailShape = {
@@ -558,13 +558,13 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('keywords'),
 		...toolGuardrailBaseShape,
-		keywords: z.array(z.string().min(1)).nonempty(),
+		keywords: z.array(z.string().min(1)).min(1),
 	}),
 	z.object({
 		kind: z.literal('pii'),
 		...toolGuardrailBaseShape,
 		type: z.enum(['all', 'selected']),
-		entities: z.array(z.enum(TOOL_GUARDRAIL_PII_ENTITIES)).nonempty().optional(),
+		entities: z.array(z.enum(TOOL_GUARDRAIL_PII_ENTITIES)).min(1).optional(),
 	}),
 	z.object({
 		kind: z.literal('secretKeys'),
@@ -582,7 +582,7 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('customRegex'),
 		...toolGuardrailBaseShape,
-		regex: z.array(z.object({ name: z.string().min(1), value: z.string().min(1) })).nonempty(),
+		regex: z.array(z.object({ name: z.string().min(1), value: z.string().min(1) })).min(1),
 	}),
 	z.object({
 		kind: z.literal('jailbreak'),
