@@ -93,7 +93,7 @@ function filterHitlToolProperties(
 		required: true,
 		typeOptions: { rows: 3 },
 		description:
-			'Message to send for approval. Use expressions to include tool details: {{ $tool.parameters }}, {{ $json.toolCallId }}',
+			'Message to send for approval. Use expressions to include tool details: {{ $tool.parameters.toJsonString() }}, {{ $json.toolCallId }}.',
 	});
 
 	for (const prop of properties) {
@@ -208,7 +208,7 @@ export function convertNodeToHitlTool<
 			...item.description.builderHint,
 			inputs: { [NodeConnectionTypes.AiTool]: { required: true } },
 			searchHint:
-				'Approval tool that gates other tools. Attach it to the AI Agent in subnodes.tools, and put the gated tools in its own subnodes.tools. The type definition is the base node: only the send-and-wait parameters apply. Use {{ $tool.name }} and {{ $tool.parameters }} in the message to show what the agent wants to run.',
+				'Approval tool that gates other tools. Attach it to the AI Agent in subnodes.tools, and put the gated tools in its own subnodes.tools. The type definition is the base node: only the send-and-wait parameters apply. Use {{ $tool.name }} and {{ $tool.parameters.toJsonString() }} in the message to show what the agent wants to run.',
 		};
 
 		// Filter and adjust properties for HITL use case

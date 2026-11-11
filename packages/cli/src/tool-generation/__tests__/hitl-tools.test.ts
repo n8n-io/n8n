@@ -255,7 +255,7 @@ describe('hitl-tools', () => {
 			const searchHint = result.description.builderHint?.searchHint;
 			expect(searchHint).not.toContain('Use for Slack');
 			expect(searchHint).toContain('subnodes.tools');
-			expect(searchHint).toContain('$tool.parameters');
+			expect(searchHint).toContain('{{ $tool.parameters.toJsonString() }}');
 		});
 
 		describe('workflow validation', () => {
