@@ -23,7 +23,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'Gmail Trigger always runs with version 1.4 behavior',
 			description:
-				'Gmail Trigger versions below 1.4 are removed and every Gmail Trigger node runs with v1.4 behavior: the number of emails fetched per poll is limited by "Max Emails per Poll" (default 10, the remainder is picked up in later polls), drafts are excluded unless the "Include Drafts" filter is enabled, and sent (non-inbox) and scheduled emails no longer trigger the workflow.',
+				'Gmail Trigger versions below 1.4 are removed and every Gmail Trigger node runs with v1.4 behavior: the number of emails fetched per poll is limited by "Max Emails per Poll" (default 10, the remainder is picked up in later polls), drafts are excluded unless the "Include Drafts" filter is enabled, and sent (non-inbox) and scheduled emails no longer trigger the workflow. Check that each affected Gmail Trigger node still receives the emails its workflow needs.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
 			assistant: 'review',
@@ -36,9 +36,9 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Review Gmail Trigger nodes on versions below 1.4',
+				action: 'Adjust Gmail Trigger nodes on versions below 1.4',
 				description:
-					'Each trigger event now emits at most 10 emails by default (configurable via "Max Emails per Poll"); the rest are picked up in later polls. Drafts only trigger workflows if "Include Drafts" is enabled in Filters. Sent (non-inbox) and scheduled emails no longer trigger workflows at all — if a workflow depends on them, use a Schedule Trigger with a Gmail "Get Many messages" operation (e.g. search "in:sent") instead.',
+					'If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, replace the trigger with a Schedule Trigger and a Gmail "Get Many messages" operation, for example with the search "in:sent".',
 			},
 		];
 	}

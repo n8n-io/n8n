@@ -20,7 +20,7 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 			version: 'v3',
 			title: 'SSRF protection blocks more IP ranges by default',
 			description:
-				'The built-in blocked IP ranges expand to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. Only the default list changes. You can allow the hosts you need, or keep the current list.',
+				'The built-in blocked IP ranges expand to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. Only the default list changes. If a workflow calls hosts in these ranges, add them to N8N_SSRF_ALLOWED_IP_RANGES or N8N_SSRF_ALLOWED_HOSTNAMES.',
 			category: BreakingChangeCategory.environment,
 			impact: 'executionsMightFail',
 			documentationUrl:

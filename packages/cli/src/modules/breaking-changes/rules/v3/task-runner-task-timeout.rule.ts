@@ -17,7 +17,7 @@ export class TaskRunnerTaskTimeoutRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Task runner timeout default is reduced to 1 minute',
 			description:
-				'The default of N8N_RUNNERS_TASK_TIMEOUT goes down from 300 seconds (5 minutes) to 60 seconds (1 minute). Only the default changes. You can set the variable to keep the current timeout.',
+				'The default of N8N_RUNNERS_TASK_TIMEOUT goes down from 300 seconds (5 minutes) to 60 seconds (1 minute). Only the default changes. To keep the current timeout, set N8N_RUNNERS_TASK_TIMEOUT=300.',
 			category: BreakingChangeCategory.environment,
 			impact: 'executionsMightFail',
 		};

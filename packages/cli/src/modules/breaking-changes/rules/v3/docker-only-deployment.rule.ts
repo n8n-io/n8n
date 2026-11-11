@@ -20,7 +20,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Docker becomes the only supported deployment method',
 			description:
-				'Support for running n8n via npm is removed. The new version must be run via the official Docker image.',
+				'Support for running n8n via npm is removed. Move this instance to the official Docker image before you update.',
 			category: BreakingChangeCategory.infrastructure,
 			impact: 'upgradeBlocked',
 			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n',
@@ -46,7 +46,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 				{
 					action: 'Migrate to a Docker-based deployment',
 					description:
-						'Move this instance to the official Docker image before updating, reusing your existing database and encryption key.',
+						'Move this instance to the official Docker image before updating. Connect it to the same database, and set N8N_ENCRYPTION_KEY to your current encryption key so that n8n can read your saved credentials.',
 				},
 			],
 		};

@@ -20,7 +20,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'In-memory binary data storage is removed',
 			description:
-				'The in-memory binary data storage mode (`default`) is removed. Instances using it must switch to `filesystem`, `s3`, or `database`.',
+				'The in-memory binary data storage mode (`default`) is removed. Before you update, set N8N_DEFAULT_BINARY_DATA_MODE to `filesystem`, `s3` or `database`.',
 			category: BreakingChangeCategory.infrastructure,
 			impact: 'behaviorChanges',
 		};
