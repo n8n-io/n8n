@@ -13,7 +13,7 @@ describe('WebhookChannelController route access scopes', () => {
 		(handlerName) => {
 			const route = getRoutesByHandlerName(WebhookChannelController).get(handlerName);
 
-			expect(route?.ipRateLimit).toEqual({ limit: 100 });
+			expect(route?.ipRateLimit).toEqual({ limit: 300 });
 		},
 	);
 });

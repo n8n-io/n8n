@@ -157,7 +157,7 @@ export class AgentsConfig {
 	 * example when one backend sends the requests of all your users.
 	 */
 	@Env('N8N_AGENTS_WEBHOOK_CHANNEL_RATE_LIMIT', nonnegativeIntSchema)
-	webhookChannelRateLimit: number = 100;
+	webhookChannelRateLimit: number = 300;
 
 	/**
 	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,
