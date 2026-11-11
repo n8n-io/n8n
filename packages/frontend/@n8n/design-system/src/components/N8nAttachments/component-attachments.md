@@ -5,7 +5,7 @@ Reusable presentation for files and images. Feature components prepare data, man
 - **Component names:** N8nAttachment and N8nAttachmentGroup
 - **Figma component:** TBD
 - **Implementation:** Custom Vue components
-- **Status:** Target contract. `Attachment.vue` currently renders only a file name or its default slot. `AttachmentGroup.vue` has an initial stacked layout. This document does not imply that all behavior below is implemented.
+- **Status:** File and image cards with a horizontal scrolling group. Feature adapters retain attachment state and actions.
 
 ## Scope and boundaries
 
@@ -32,19 +32,22 @@ Reusable presentation for files and images. Feature components prepare data, man
 | `sizeBytes` | `number` | Optional file size in bytes. Omit the size label when absent. Zero is a valid size. |
 | `src` | `string` | Optional image preview URL. |
 | `isRemovable` | `boolean` | Shows a remove control when true. Default: `true`. |
-| `href` | `string` | Optional file URL. Opens in a new tab when supplied. Without it, the attachment is not a link. |
+| `href` | `string` | Optional file URL. Opens in a new tab unless `download` is supplied. |
+| `download` | `string` | Optional file name for a native download link. |
 
 **Events**
 
 | Event | Payload | Purpose |
 | --- | --- | --- |
+| `remove-start` | None | Reports the start of removal. Consumers can block submission. |
 | `remove` | None | Requests removal. The parent identifies and removes the item. |
+| `remove-end` | None | Reports completion after `remove`, or cleanup when unmount interrupts removal. Consumers can unblock submission. |
 | `load` | None | Reports that the image preview loaded. |
 | `error` | None | Reports that the image preview failed to load. |
 
 **Slots**
 
-- `default`: The current placeholder accepts content in place of the file name. The final customization contract remains open. Do not depend on this slot to replace controls or accessible labels until that contract is set.
+None.
 
 ### Target behavior
 
@@ -89,17 +92,15 @@ The initial props do not define loading, upload progress, error messages, or una
 
 ### Layout and interaction
 
-The initial implementation uses a horizontal stack, not a wrapping grid:
+The implementation uses a horizontal scrolling row, not a wrapping grid:
 
 - Direct child elements do not shrink.
-- Items overlap and alternate their rotation in the resting state.
-- Pointer entry spreads the items. Pointer exit restores the stack.
+- Items remain in a single row without overlap.
 - The group uses horizontal scrolling for overflow.
-- Child offsets follow rendered order, including items rendered through Vue list fragments.
-- Offsets reverse in right-to-left layouts.
+- Left and right arrow keys move focus between items. Their direction follows the text direction.
 - Motion respects the reduced-motion preference.
 
-Before release, ensure keyboard users can reach each item and its controls without pointer hover. Consider spreading the stack on `focus-within`, so focused controls are not hidden by adjacent items. This is a target accessibility requirement, not current behavior.
+The exposed `focus()` method focuses the first item. Escape returns focus to the previous control. Focus after animated removal needs integration review.
 
 The group does not select, sort, remove, or collapse items. Wrapping, collapse limits, and overflow counters are future options, not part of the initial API. An empty slot must not create an empty-state message.
 

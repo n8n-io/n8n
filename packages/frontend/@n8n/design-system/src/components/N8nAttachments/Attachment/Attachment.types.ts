@@ -12,10 +12,16 @@ export interface AttachmentProps {
 	isRemovable?: boolean;
 	/** Optional file URL to open in a new tab. */
 	href?: string;
+	/** File name for a native download link instead of a new-tab link. */
+	download?: string;
 }
 
 /** Events for one attachment. The parent retains the original file. */
 export interface AttachmentEmits {
+	/** Report that removal has started. */
+	'remove-start': [];
+	/** Report that removal has finished or the removing component has unmounted. */
+	'remove-end': [];
 	/** Request removal of this attachment. */
 	remove: [];
 	/** Report a loaded image preview. */

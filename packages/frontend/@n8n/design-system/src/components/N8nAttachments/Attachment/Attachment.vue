@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatBytes } from '@n8n/utils/number/bytes';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { usePreferredReducedMotion } from '@vueuse/core';
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
@@ -50,8 +51,16 @@ const reducedMotion = usePreferredReducedMotion();
 const attachmentRoot = useTemplateRef<HTMLDivElement>('attachmentRoot');
 
 let removalEmitted = false;
+let removalEnded = false;
 let collapseTimeout: ReturnType<typeof setTimeout> | undefined;
 let removalTimeout: ReturnType<typeof setTimeout> | undefined;
+
+/** Balance each removal start, including removal interrupted by unmount. */
+function endRemoval() {
+	if (!isRemoving.value || removalEnded) return;
+	removalEnded = true;
+	emit('remove-end');
+}
 
 function finishRemoval() {
 	if (!isRemoving.value || removalEmitted) return;
@@ -60,6 +69,7 @@ function finishRemoval() {
 	isSpaceReleased.value = true;
 	removalEmitted = true;
 	emit('remove');
+	endRemoval();
 }
 
 function startPlayback() {
@@ -78,6 +88,7 @@ function removeAttachment() {
 	if (isRemoving.value) return;
 	poofRect.value = attachmentRoot.value?.getBoundingClientRect();
 	isRemoving.value = true;
+	emit('remove-start');
 	if (reducedMotion.value === 'reduce') {
 		finishRemoval();
 	} else if (spriteReady.value) {
@@ -117,6 +128,7 @@ watch(reducedMotion, (preference) => {
 onBeforeUnmount(() => {
 	clearTimeout(removalTimeout);
 	clearTimeout(collapseTimeout);
+	endRemoval();
 });
 
 const marqueeDistance = ref(0);
@@ -190,9 +202,12 @@ const hasImagePreview = computed(
 		<component
 			:is="props.href ? 'a' : 'figure'"
 			:href="!isRemoving ? href : undefined"
-			:target="href ? '_blank' : undefined"
+			:download="href ? download : undefined"
+			:target="href && download === undefined ? '_blank' : undefined"
 			:rel="href ? 'noopener noreferrer' : undefined"
-			:aria-label="href ? `${fileName}: ${t('commandBar.openInNewTab')}` : undefined"
+			:aria-label="
+				href && download === undefined ? `${fileName}: ${t('commandBar.openInNewTab')}` : undefined
+			"
 			:class="['n8n-attachment', $style.attachment]"
 			:aria-hidden="isRemoving || undefined"
 			:data-type="fileType === 'image' && !hasImagePreview ? 'file' : fileType"
@@ -240,6 +255,9 @@ const hasImagePreview = computed(
 						>{{ isHovered || isReturning ? fileName : displayFileName }}</N8nText
 					>
 				</span>
+				<N8nText v-if="sizeBytes !== undefined" size="xsmall">
+					• {{ formatBytes(sizeBytes) }}</N8nText
+				>
 			</component>
 		</component>
 		<div v-if="isRemovable && !isRemoving" :class="$style.toolbar">
@@ -269,6 +287,10 @@ const hasImagePreview = computed(
 					:src="poofSprite"
 					role="presentation"
 					:class="$style.sprite"
+					:style="{
+						width: `${(poofRect?.width ?? 0) * 4}px`,
+						height: `${(poofRect?.height ?? 0) * 3}px`,
+					}"
 					@load="startPlayback"
 					@error="finishRemoval"
 					@animationend="finishPoof"
@@ -307,10 +329,13 @@ const hasImagePreview = computed(
 }
 
 .sprite {
+	/** Keep each sheet cell the same size as the fixed clipping viewport. */
+	position: absolute;
+	inset: 0 auto auto 0;
 	display: block;
-	width: 400%;
 	max-width: none;
-	height: 300%;
+	max-height: none;
+	object-fit: fill;
 }
 
 .playing {

@@ -2,6 +2,7 @@
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
 import {
+	N8nAttachmentGroup,
 	N8nButton,
 	N8nCallout,
 	N8nChatActions,
@@ -100,6 +101,9 @@ const attachments = computed(() =>
 	}),
 );
 
+const resourceAttachments = computed(() => attachments.value.filter((item) => item.type !== 'file'));
+const fileAttachments = computed(() => attachments.value.filter((item) => item.type === 'file'));
+
 /**
  * Answered questions that end the timeline, like the onboarding card that the host answers with
  * no model turn. They render below the actions, so copy and read aloud stay under the assistant
@@ -187,11 +191,19 @@ function formatJson(value: unknown): string {
 				]"
 			>
 				<AttachmentPreview
-					v-for="(attachment, index) in attachments"
+					v-for="(attachment, index) in resourceAttachments"
 					:key="index"
 					:attachment="attachment"
 					:is-removable="false"
 				/>
+				<N8nAttachmentGroup v-if="fileAttachments.length > 0" :class="$style.fileAttachments">
+					<AttachmentPreview
+						v-for="(attachment, index) in fileAttachments"
+						:key="index"
+						:attachment="attachment"
+						:is-removable="false"
+					/>
+				</N8nAttachmentGroup>
 			</div>
 		</template>
 
@@ -303,6 +315,11 @@ function formatJson(value: unknown): string {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+
+.fileAttachments {
+	min-width: 0;
+	width: 100%;
+}
 
 .userAttachmentsAfterText {
 	margin-top: var(--spacing--2xs);
