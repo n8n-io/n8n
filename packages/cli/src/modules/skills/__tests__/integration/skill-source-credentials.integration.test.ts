@@ -12,7 +12,7 @@ import {
 	mockInstance,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { GithubAppApi } from 'n8n-nodes-base/credentials/GithubAppApi.credentials';
@@ -28,9 +28,14 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { OauthService } from '@/oauth/oauth.service';
 import { PostHogClient } from '@/posthog';
 
-import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
+import {
+	encryptCredentialData,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { initCredentialsTypes, setupTestServer } from '@test-integration/utils';
@@ -326,6 +331,74 @@ describe('Skill Sync with credentials', () => {
 
 			expect(exchange.isDone()).toBe(true);
 			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
+		it('uses the token that another caller refreshed first, with no second exchange', async () => {
+			const expiring = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				oauthTokenData: {
+					access_token: 'ghu_expired',
+					refresh_token: 'ghr_first',
+					token_type: 'bearer',
+					expires_in: 28800,
+					n8n_expires_at: String(Date.now() - 1000),
+				},
+			};
+			const expired = await saveCredential(
+				{ name: 'Raced OAuth', type: 'githubOAuth2Api', data: expiring },
+				{ project: team, role: 'credential:owner' },
+			);
+			const exchange = nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+				access_token: 'ghu_unexpected',
+				refresh_token: 'ghr_unexpected',
+				token_type: 'bearer',
+				expires_in: 28800,
+			});
+			// Another caller saves a new token after this resolve read the old one, and before
+			// its refresh runs.
+			const oauthService = Container.get(OauthService);
+			const refresh = oauthService.refreshOAuth2CredentialById.bind(oauthService);
+			const refreshSpy = vi
+				.spyOn(oauthService, 'refreshOAuth2CredentialById')
+				.mockImplementation(async (...args) => {
+					const refreshed = Object.assign(new CredentialsEntity(), {
+						id: expired.id,
+						name: expired.name,
+						type: expired.type,
+						data: {
+							...expiring,
+							oauthTokenData: {
+								...expiring.oauthTokenData,
+								access_token: TOKEN,
+								refresh_token: 'ghr_second',
+								n8n_expires_at: String(Date.now() + 28_800_000),
+							},
+						},
+					});
+					await encryptCredentialData(refreshed);
+					await Container.get(CredentialsRepository).update(expired.id, {
+						data: refreshed.data,
+					});
+					return await refresh(...args);
+				});
+
+			try {
+				const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+					url: PRIVATE,
+					...scope(),
+					credentialId: expired.id,
+				});
+
+				expect(refreshSpy).toHaveBeenCalledWith(expired.id, team.id, {
+					accessToken: 'ghu_expired',
+					expiresAt: Number(expiring.oauthTokenData.n8n_expires_at),
+				});
+				expect(exchange.isDone()).toBe(false);
+				expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+			} finally {
+				refreshSpy.mockRestore();
+			}
 		});
 
 		it('imports from a private repository and stores the credential on the source', async () => {
