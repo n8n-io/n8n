@@ -56,8 +56,8 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills telemetry. Callers emit only once the write commits, and only while the agents
- * module is on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills
+ * are on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {

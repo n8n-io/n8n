@@ -117,11 +117,19 @@ export function canWriteInstanceSkillScope(): boolean {
 }
 
 /**
- * Skills are on while the agents module is on. The skills module cannot be
- * disabled then. The skills routes answer 404 while skills are off.
+ * Skills are on while agents, n8n Assistant or instance MCP access is on, and the
+ * agents module is active. The backend `SkillsGate` uses the same rule. The skills
+ * routes answer 404 while skills are off.
  */
 export function isContextSkillsEnabled(): boolean {
-	return useSettingsStore().isModuleActive('agents');
+	const settingsStore = useSettingsStore();
+	const { moduleSettings } = settingsStore;
+	return (
+		settingsStore.isModuleActive('agents') === true &&
+		(moduleSettings.agents?.enabled === true ||
+			moduleSettings['instance-ai']?.enabled === true ||
+			moduleSettings.mcp?.mcpAccessEnabled === true)
+	);
 }
 
 /** The service builds the cap message from the scope and the number, so match the fixed part. */

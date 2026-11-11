@@ -34,7 +34,7 @@ export class SkillsController {
 		private readonly skillsGate: SkillsGate,
 	) {}
 
-	/** Runs before the request is validated, so every request answers 404 while the agents module is off. */
+	/** Runs before the request is validated, so every request answers 404 while skills are off. */
 	@Middleware()
 	requireSkillsEnabled(_req: Request, res: Response, next: NextFunction) {
 		if (!this.skillsGate.isEnabled) {

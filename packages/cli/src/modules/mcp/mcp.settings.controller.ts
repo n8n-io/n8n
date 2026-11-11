@@ -1,8 +1,16 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
+import {
+	Body,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	OnPubSubEvent,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@n8n/errors';
@@ -26,6 +34,7 @@ export class McpSettingsController {
 		private readonly workflowService: WorkflowService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly eventService: EventService,
+		private readonly publisher: Publisher,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -48,6 +57,13 @@ export class McpSettingsController {
 		}
 
 		await this.refreshMcpModuleSettings();
+		try {
+			await this.publisher.publishCommand({ command: 'reload-mcp-settings' });
+		} catch (error) {
+			this.logger.warn('Failed to notify other main processes of the MCP settings', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		// Always return both values (read back from the source of truth) so the
 		// client can sync local state without a follow-up module-settings fetch.
@@ -126,7 +142,8 @@ export class McpSettingsController {
 		return result;
 	}
 
-	private async refreshMcpModuleSettings() {
+	@OnPubSubEvent('reload-mcp-settings', { instanceType: 'main' })
+	async refreshMcpModuleSettings() {
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {

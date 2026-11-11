@@ -57,6 +57,7 @@ export type PubSubCommandMap = {
 		executionId: string;
 	};
 	'reload-agents-settings': never;
+	'reload-mcp-settings': never;
 
 	// #region Community packages
 
