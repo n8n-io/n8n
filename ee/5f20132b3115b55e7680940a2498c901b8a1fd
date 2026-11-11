@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 14,224-271
+  s_aaae4c49b59975::t_fa91042a2779dd 272
+packages/frontend/AGENTS.md
+  s_aaae4c49b59975::t_70abcde0493fb6 13-16
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 16,36-54,316-324
+packages/cli/test/integration/project.api.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 13,24,40,56,552-636
+  s_aaae4c49b59975::t_37898e448c9467 637-638
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 398-403
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_aaae4c49b59975::t_70abcde0493fb6 771
+packages/frontend/editor-ui/src/Interface.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 109-110
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 159-252,259,343-384,386-391,393-402,652-667,671-672,674-675,734-745,940-945,951-952
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 29-34,204-219
+  s_aaae4c49b59975::t_7ea000b652bae4 220
+packages/frontend/editor-ui/src/app/components/FocusPanel.vue
+  s_aaae4c49b59975::t_70abcde0493fb6 406
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 4,93,180
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_aaae4c49b59975::t_7281fbdf833029 191,241,397,402,404-408,417,419-422
+  s_aaae4c49b59975::t_70abcde0493fb6 7,20,45-51,144,296-298
+  s_aaae4c49b59975::t_cf1ef5aff4a966 299-300
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 26,121,592-621,626-638,640,642-648,1061-1064
+  s_aaae4c49b59975::t_cbb883b2e89eca 584-591,622-625,1065-1068
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 167-171
+packages/cli/test/integration/users.api.test.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 950-973
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 842-843,863-864,872,882-883,887-938,941-942
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_aaae4c49b59975::t_70abcde0493fb6 10-11,20,23,136-154
+  s_aaae4c49b59975::t_5adc299f7ff5f7 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee5f20132b3115b55e7680940a2498c901b8a1fd",
+  "prompts": {},
+  "sessions": {
+    "s_aaae4c49b59975": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c665-0dbc-7db1-b7c1-9a9cf8ae6d8e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
