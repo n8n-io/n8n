@@ -349,7 +349,16 @@ export class MemoryOrchestrator {
 		const [{ cursor }, saved, all] = await Promise.all([
 			readObservationState(memory, threadId),
 			resume.load(),
-			memory.getMessages(threadId, { resourceId }),
+			withMemorySpan(
+				'query_memory',
+				this.config.name,
+				telemetry,
+				() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
+				async () => {
+					const messages = await memory.getMessages(threadId, { resourceId });
+					return { result: messages, attributes: this.queryResultAttributes(messages) };
+				},
+			),
 		]);
 		this.knownCursor = cursor ?? undefined;
 		const state = validResumeState(saved, cursor);

@@ -265,8 +265,9 @@ export class AssistantAgentFactory {
 
 	/**
 	 * Memory policy options from config. Thresholds are shares of the model's
-	 * window, like Agents get from the SDK defaults; the fixed token thresholds
-	 * apply only when the window is unknown. A per-run observer threshold (from
+	 * window (capped by the max window), like Agents get from the SDK defaults.
+	 * An unknown window falls back to the cap, so the fixed token thresholds
+	 * apply only when the cap is 0 and the window is unknown. A per-run observer threshold (from
 	 * eval requests) wins over window shares.
 	 */
 	private buildObservationPolicy(

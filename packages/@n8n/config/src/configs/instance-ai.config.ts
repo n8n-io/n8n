@@ -82,7 +82,8 @@ export class InstanceAiConfig {
 
 	/**
 	 * Token threshold for Observer to trigger compression of message history.
-	 * Applies only when n8n can't find the model's context window. Otherwise, thresholds are shares of the window.
+	 * Applies only when `N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS` is `0` and n8n can't find the model's context window.
+	 * Otherwise, thresholds are shares of the model's window or of the max window, whichever is smaller.
 	 */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
