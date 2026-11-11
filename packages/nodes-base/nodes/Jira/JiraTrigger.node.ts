@@ -40,6 +40,8 @@ function isRetryableLookupError(error: unknown): boolean {
  * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
  * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
  * app client id as the issuer and the delivering site's cloudId in the `context` claim.
+ * Atlassian documents only that the token is signed with the client secret. The algorithm
+ * and the claims are observed from real deliveries.
  *
  * Returns a response that ends the request when the token is missing or invalid, or `undefined`
  * when the request is verified and processing should continue. Fails closed: any error rejects.
