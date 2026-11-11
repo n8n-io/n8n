@@ -1,0 +1,61 @@
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_e9500be876154b::t_2e31314012f737 89-90,145
+  s_e9500be876154b::t_cf3a274520cabd 27
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_e9500be876154b::t_5332d7174b1906 66,70,87,91,94
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_e9500be876154b::t_2e31314012f737 28,48-49,371,388,458
+packages/@n8n/instance-ai/src/tools/orchestration/verification/reconcile-plan.ts
+  s_e9500be876154b::t_cf3a274520cabd 54
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_e9500be876154b::t_6f8d8960556014 208-216,310-312,380-384,415
+  s_e9500be876154b::t_a2ce491f153f75 25,170
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_e9500be876154b::t_5ab69fc846059c 71
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_e9500be876154b::t_cf3a274520cabd 139
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_e9500be876154b::t_2e31314012f737 43,73-74,464
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_e9500be876154b::t_7c1d1ce42f1ed0 655,657-661
+  s_e9500be876154b::t_a7a32528f890d7 620-654,656,662-680
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-agent.service.test.ts
+  s_e9500be876154b::t_93890a3444d1ce 239-265
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_e9500be876154b::t_2e31314012f737 64-65,358,372,401
+  s_e9500be876154b::t_cf3a274520cabd 38
+packages/@n8n/instance-ai/src/index.ts
+  s_e9500be876154b::t_088902349cad02 751
+packages/@n8n/instance-ai/src/utils/__tests__/generate-validated-json.test.ts
+  s_e9500be876154b::t_cc236c6522a2df 137-193
+packages/@n8n/agents/src/index.ts
+  s_e9500be876154b::t_ca436a08c56080 570
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_e9500be876154b::t_5ab69fc846059c 1056,1422
+  s_e9500be876154b::t_7c1d1ce42f1ed0 953,1320
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_e9500be876154b::t_cf3a274520cabd 1542
+packages/@n8n/instance-ai/src/types.ts
+  s_e9500be876154b::t_86d1aff4f5db1a 15,1745-1746,2000-2010
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_e9500be876154b::t_088902349cad02 11-13,41-42
+  s_e9500be876154b::t_2e31314012f737 19,55-73,94
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_e9500be876154b::t_6f8d8960556014 105-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d36feb5331dda534937bcf73f5ab2c65797f367c",
+  "prompts": {},
+  "sessions": {
+    "s_e9500be876154b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291e6860-30e1-4c99-b5ca-73824ab19abe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
