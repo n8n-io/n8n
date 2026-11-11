@@ -58,6 +58,8 @@
 	"inbox.selfHealing.action.discardAndClose": "Discard and close",
 	"inbox.selfHealing.action.error": "Couldn't update result",
 	"inbox.selfHealing.action.openEditorError": "Couldn't open the workflow. Try opening it again.",
+	"inbox.selfHealing.action.published.title": "Fix published | Fix published to {count} workflows",
+	"inbox.selfHealing.action.published.message": "<a href=\"{url}\" target=\"_blank\">Open workflow</a>",
 	"inbox.selfHealing.action.publishError": "The fix was saved, but publication could not be confirmed. Check the workflow's publication status.",
 	"inbox.selfHealing.action.publishErrorMultiple": "The fix was saved, but a workflow could not be published. n8n tried to restore the previous published versions where possible. Check the publication status of each workflow.",
 	"inbox.selfHealing.action.restorationError": "Couldn't restore the previous published version of {workflow}",

@@ -148,11 +148,32 @@ function onDetailTabChange(tab: 'activity' | 'changes') {
 	else delete query.tab;
 	void router.replace({ query });
 }
+function nextItemAfter(change: InboxItemChange) {
+	const items = sections.value.flatMap((section) => section.items);
+	const index = items.findIndex(({ type, id }) => type === change.type && id === change.id);
+	if (index === -1) return undefined;
+	return items[index + 1] ?? items[index - 1];
+}
+
 function onItemChange(change: InboxItemChange) {
 	if (!change.state && !isActive()) return;
+	// Read the neighbor before the closed row leaves the list.
+	const next = change.advance ? nextItemAfter(change) : undefined;
 	// A successful decision still updates shared state after this view unmounts.
 	store.reconcileItemChange(change);
 	if (!isOnInbox()) return;
+	const selectedNow = selectionFromRoute(router.currentRoute.value);
+	if (
+		change.advance &&
+		change.state === 'closed' &&
+		activeTab.value !== 'closed' &&
+		selectedNow?.type === change.type &&
+		selectedNow.id === change.id
+	) {
+		if (next) onSelect(next);
+		else onClearSelection();
+		return;
+	}
 	// Closed can load before the decision commits, so it can miss the review.
 	if (!change.state || (change.state === 'closed' && activeTab.value === 'closed')) {
 		void store.fetchActiveTab();

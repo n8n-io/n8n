@@ -23,7 +23,12 @@ const { push, showError, showMessage, startChat } = vi.hoisted(() => ({
 }));
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: () => ({ push }),
+	useRouter: () => ({
+		push,
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/workflow/${params.workflowId}`,
+		}),
+	}),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
 
@@ -168,7 +173,7 @@ it.each([
 	},
 );
 
-it.each(['editor', 'approve-and-publish', 'chat'] as const)(
+it.each(['editor', 'chat'] as const)(
 	'keeps the result open until %s navigation finishes',
 	async (action) => {
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult());
@@ -877,11 +882,41 @@ it.each(dismissals)(
 		);
 		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({ id: resultSelection.id, state: 'closed' }),
+			expect.objectContaining({ id: resultSelection.id, state: 'closed', advance: true }),
 		);
 		expect(showError).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 		expect(startChat).not.toHaveBeenCalled();
+	},
+);
+
+it.each([
+	{ count: 1, title: 'Fix published' },
+	{ count: 2, title: 'Fix published to 2 workflows' },
+])(
+	'stays in the Inbox after publishing $count workflows and links to the workflow',
+	async ({ count, title }) => {
+		const suggestions = Array.from({ length: count }, (_, index) =>
+			suggestion({ workflowId: `workflow-${index}` }),
+		);
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ suggestions }));
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult({ suggestions }));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+
+		expect(push).not.toHaveBeenCalled();
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+			type: 'success',
+			title,
+			message: `<a href="/workflow/${resultSelection.workflowId}" target="_blank">Open workflow</a>`,
+		});
+		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ id: resultSelection.id, state: 'closed', advance: true }),
+		);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
 	},
 );
 

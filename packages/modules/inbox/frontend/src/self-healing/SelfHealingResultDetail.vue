@@ -116,6 +116,7 @@ function notifyResultClosed(
 	before: SelfHealingResultDetail,
 	after: SelfHealingResultDetail,
 	onItemChange: (change: InboxItemChange) => void,
+	advance = false,
 ) {
 	if (before.reviewState === 'open' && after.reviewState !== 'open') {
 		onItemChange({
@@ -123,8 +124,26 @@ function notifyResultClosed(
 			id: after.resultId,
 			state: 'closed',
 			updatedAt: after.updatedAt,
+			...(advance ? { advance } : {}),
 		});
 	}
+}
+
+function showPublished(result: SelfHealingResultActionResponse) {
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: result.workflowId },
+	});
+	showMessage({
+		type: 'success',
+		title: i18n.baseText('inbox.selfHealing.action.published.title', {
+			adjustToNumber: result.suggestions.length,
+			interpolate: { count: String(result.suggestions.length) },
+		}),
+		message: i18n.baseText('inbox.selfHealing.action.published.message', {
+			interpolate: { url: href },
+		}),
+	});
 }
 
 async function openEditor(workflowId: string) {
@@ -201,6 +220,8 @@ async function onAction(action: SelfHealingResultAction) {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
+	// A confirmed publish or dismissal stays in the Inbox and moves on to the next item.
+	let advance = false;
 
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
@@ -214,7 +235,9 @@ async function onAction(action: SelfHealingResultAction) {
 		const closed = result.reviewState === closedState;
 		if (!isSelected(target.id) || !closed) return false;
 
-		if (action === 'chat') {
+		if (action === 'dismiss') {
+			advance = !responseLost;
+		} else if (action === 'chat') {
 			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
@@ -251,6 +274,10 @@ async function onAction(action: SelfHealingResultAction) {
 						message: result.restorationError.error,
 					});
 				}
+			} else if (action === 'approve-and-publish') {
+				showPublished(result);
+				advance = true;
+				return true;
 			}
 
 			await openEditor(result.workflowId);
@@ -263,7 +290,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 		await continueAfterClose(result, false);
 		store.acceptResult(result);
-		notifyResultClosed(before, result, onItemChange);
+		notifyResultClosed(before, result, onItemChange, advance);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		const reconcile = async (current: SelfHealingResultDetail) => {

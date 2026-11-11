@@ -337,6 +337,37 @@ it('follows a selected item to Closed after its detail reports the new state', a
 	expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1?state=closed');
 });
 
+describe('advancing after a decision', () => {
+	const other = { ...reviewItem(), id: 'req-2' };
+
+	it('selects the next open item instead of following the item to Closed', async () => {
+		await router.replace('/inbox/reviews/req-1');
+		store.lists.waiting.items = [reviewItem(), other];
+		renderComponent();
+		reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed', advance: true });
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-2');
+	});
+
+	it('selects the previous item when the last one closes', async () => {
+		await router.replace('/inbox/reviews/req-2');
+		store.lists.waiting.items = [reviewItem(), other];
+		renderComponent();
+		reportChange({ type: 'workflow_review', id: 'req-2', state: 'closed', advance: true });
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
+	});
+
+	it('clears the selection when no open item remains', async () => {
+		await router.replace('/inbox/reviews/req-1');
+		store.lists.waiting.items = [reviewItem()];
+		renderComponent();
+		reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed', advance: true });
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	});
+});
+
 describe('first item selection', () => {
 	function loadTab(key: 'waiting' | 'authored' | 'closed', items: InboxItem[]) {
 		store.lists[key].items = items;
