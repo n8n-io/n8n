@@ -150,7 +150,7 @@ function charDiversity(s: string): number {
  */
 function containsAllowedPattern(text: string): boolean {
 	// Check if it's a URL pattern
-	const urlPattern = /^https?:\/\/[a-zA-Z0-9.-]+\/?[a-zA-Z0-9.\/_-]*$/i;
+	const urlPattern = /^https?:\/\/[a-zA-Z0-9.-]+\/?[a-zA-Z0-9./_-]*$/i;
 	if (urlPattern.test(text)) {
 		// If it's a URL, check if it contains any secret patterns
 		// If it contains secrets, don't allow it
