@@ -64,6 +64,7 @@ let repository: SelfHealingConfigurationRepository;
 
 beforeAll(async () => {
 	await import('../self-healing-configurations.controller.js');
+	await import('../self-healing-status.controller.js');
 	Container.get(ControllerRegistry).activate(server.app);
 	await Container.get(AuthHandlerRegistry).init();
 	configurations = Container.get(SelfHealingConfigurationService);
@@ -465,6 +466,22 @@ it('lets a personal project owner manage self-healing in their personal project'
 	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(200);
 	await agent.delete(`${url}/${id}`).expect(200);
 	expect(await configurations.list(project.id)).toEqual([]);
+});
+
+it('reports whether a configuration sends results to the current user', async () => {
+	const { user, project, url, input } = await fixture();
+	const member = await createMember();
+	await linkUserToProject(member, project, 'project:editor');
+	const status = async (reviewer: User) =>
+		(await server.authAgentFor(reviewer).get('/self-healing/status').expect(200)).body.data;
+
+	const personalProjectId = (await getPersonalProject(user)).id;
+
+	expect(await status(user)).toEqual({ isReviewer: false, setupProjectId: personalProjectId });
+
+	await server.authAgentFor(user).post(url).send(input).expect(200);
+	expect(await status(user)).toMatchObject({ isReviewer: true });
+	expect(await status(member)).toMatchObject({ isReviewer: false });
 });
 
 async function expectNoConfigurationAccess(user: User, projectId: string, id: number) {

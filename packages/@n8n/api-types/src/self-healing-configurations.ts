@@ -36,3 +36,10 @@ export type SelfHealingConfigurationOptions = {
 		lastName: string | null;
 	}>;
 };
+
+export type SelfHealingStatusDto = {
+	/** True when a configuration sends its results to the current user. */
+	isReviewer: boolean;
+	/** The user's personal project, where the user can always add a configuration. */
+	setupProjectId: string | null;
+};

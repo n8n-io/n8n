@@ -420,6 +420,13 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		await this.managerFor(ctx).delete(SelfHealingConfiguration, { id });
 	}
 
+	async isReviewerOfAny(userId: string) {
+		const query = this.manager
+			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
+			.setParameter('reviewerId', userId);
+		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
+	}
+
 	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(SelfHealingConfiguration, 'configuration')

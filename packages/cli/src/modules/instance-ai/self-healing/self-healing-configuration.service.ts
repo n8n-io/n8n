@@ -1,6 +1,7 @@
 import type {
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
+	SelfHealingStatusDto,
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -60,6 +61,14 @@ export class SelfHealingConfigurationService {
 
 		const [relation] = await this.projectRelations.findByUserAndProjects(user.id, [projectId]);
 		return relation?.role.slug === PROJECT_OWNER_ROLE_SLUG;
+	}
+
+	async getStatus(user: User): Promise<SelfHealingStatusDto> {
+		const [isReviewer, personalProject] = await Promise.all([
+			this.configurations.isReviewerOfAny(user.id),
+			this.projects.getPersonalProjectForUser(user.id),
+		]);
+		return { isReviewer, setupProjectId: personalProject?.id ?? null };
 	}
 
 	async list(projectId: string) {

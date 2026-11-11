@@ -442,3 +442,59 @@ it('loads the counts when an approved review is not in a loaded page', async () 
 		expect(store.closedCount).toBe(2);
 	});
 });
+
+describe('empty state kind', () => {
+	function setAvailableTypes(availableTypes: Array<'workflow_review' | 'self_healing_result'>) {
+		useSettingsStore().settings.inbox = { enabled: true, availableTypes, failedTypes: [] };
+	}
+
+	it.each([
+		[['workflow_review'], 'reviews'],
+		[['workflow_review', 'self_healing_result'], 'reviewsAndSelfHealing'],
+	] as const)('uses review copy when workflow reviews are available: %j', async (types, kind) => {
+		setAvailableTypes([...types]);
+		vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue({
+			isReviewer: false,
+			setupProjectId: 'personal',
+		});
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(store.emptyKind).toBe(kind);
+	});
+
+	it.each([
+		[{ isReviewer: false, setupProjectId: 'personal' }, 'selfHealingSetup'],
+		[{ isReviewer: true, setupProjectId: 'personal' }, 'selfHealing'],
+		[{ isReviewer: false, setupProjectId: null }, 'selfHealing'],
+	] as const)('uses self-healing copy for status %j', async (status, kind) => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue(status);
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(api.fetchSelfHealingStatus).toHaveBeenCalledTimes(1);
+		expect(store.emptyKind).toBe(kind);
+	});
+
+	it('shows no setup prompt when the status request fails', async () => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(api.fetchSelfHealingStatus).mockRejectedValue(new Error('offline'));
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(store.emptyKind).toBe('selfHealing');
+	});
+
+	it('does not request the status when self-healing is unavailable', async () => {
+		setAvailableTypes(['workflow_review']);
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(api.fetchSelfHealingStatus).not.toHaveBeenCalled();
+	});
+});

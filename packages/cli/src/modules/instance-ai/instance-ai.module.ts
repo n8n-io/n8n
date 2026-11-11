@@ -61,6 +61,7 @@ export class InstanceAiModule implements ModuleInterface {
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
 			await import('./self-healing/self-healing-configurations.controller.js');
+			await import('./self-healing/self-healing-status.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'
