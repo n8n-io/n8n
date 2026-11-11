@@ -164,6 +164,7 @@ describe('CredentialsService', () => {
 		transactionRunner,
 		policyEnforcementService,
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	beforeEach(() => {

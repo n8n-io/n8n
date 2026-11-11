@@ -200,12 +200,12 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		entries.push(pendingEntry);
 	}
 
-	for (const message of [...thread.messages].reverse()) {
-		if (message.role !== 'user' || !message.context) continue;
+	for (const turn of [...thread.artifactTurns].reverse()) {
+		if (turn.role !== 'user' || !turn.context) continue;
 
-		const key = handoffContextKey(message.context);
+		const key = handoffContextKey(turn.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
-		const entry = contextEntryFor(message.context);
+		const entry = contextEntryFor(turn.context);
 		if (!entry) continue;
 		seen.add(key);
 		entries.push(entry);

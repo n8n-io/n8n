@@ -19,6 +19,7 @@ export {
 	TimeoutError,
 	SecurityViolationError,
 	SyntaxError,
+	HostCallError,
 } from '../../../@n8n/expression-runtime/src/types';
 
 export {
