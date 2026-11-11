@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
@@ -3837,9 +3838,7 @@ useKeybindings({
 					:project-id="projectId"
 					:agent-id="agentId"
 					:current-version-id="agent?.versionId"
-					:has-unpublished-changes="
-						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
-					"
+					:has-unpublished-changes="hasAgentUnpublishedChanges(agent)"
 					:agent-name="agent?.name ?? agentName"
 					:editing-locked="isEditingLocked"
 					:before-publish="flushBeforePublish"
