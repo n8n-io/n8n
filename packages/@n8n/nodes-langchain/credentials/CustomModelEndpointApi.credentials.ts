@@ -34,7 +34,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
-			typeOptions: { expirable: true },
+			typeOptions: { expirable: true, password: true },
 			default: '',
 		},
 		{
