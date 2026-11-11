@@ -2,7 +2,10 @@ operationId: updateTag
 tags:
   - Tags
 summary: Update a tag
-description: Update a tag.
+description: |-
+  Update a tag.
+
+  Requires the `tag:update` API key scope.
 x-required-scope: tag:update
 parameters:
   - schema:

@@ -18,6 +18,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowEditorLockedError,
 		FolderResolutionError,
 		formatRedactedError,
+		resolveSampleFileMarkers: (item: unknown) => ({ json: item }),
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -6476,6 +6477,35 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('refuses a run the user cannot make through their own access, before it starts', async () => {
+		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests({ id: 'wf-1', nodes: [node] }, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		const message = 'Node "Send" uses the credential "Bot", which you cannot use';
+		const description = 'Ask an admin of the project "Team" to share this credential with you.';
+		checker.checkForUser.mockRejectedValue(new UserError(message, { description }));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		await expect(adapter.run('wf-1')).resolves.toEqual({
+			executionId: '',
+			status: 'error',
+			error: `${message}. ${description}`,
+		});
+		expect(checker.checkForUser).toHaveBeenCalledWith('user-1', [node], {
+			ignoreGlobalUseScope: true,
+		});
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		// The description names the project, so telemetry gets the message only.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error', error: message }),
+		);
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
@@ -6721,6 +6751,30 @@ describe('createExecutionAdapter runStep()', () => {
 
 		await expect(runStep('wf-1', 'Nope', undefined)).rejects.toThrow('has no node named "Nope"');
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step the user cannot run through their own access, before it starts', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.checkForUser.mockRejectedValue(
+			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', undefined)).resolves.toMatchObject({
+			executionId: '',
+			status: 'error',
+			error: 'Node "Send" uses the credential "Bot", which you cannot use',
+		});
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(harness.mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('rejects a disabled node instead of starting a run the engine would refuse', async () => {
