@@ -65,6 +65,52 @@ describe('Spinner', () => {
 		expect(dots.container.querySelector('.n8n-icon')).not.toBeNull();
 	});
 
+	it.each([
+		['xsmall', 10],
+		['small', 12],
+		['medium', 14],
+		['large', 16],
+		['xlarge', 20],
+		['xxlarge', 40],
+	] as const)('renders accessible brand at %s height', (size, height) => {
+		const { container, getByRole } = render(Spinner, { props: { type: 'brand', size } });
+		expect(getByRole('status')).toHaveAttribute('aria-label');
+		const svg = container.querySelector('[data-spinner="brand"]');
+		expect(svg).toHaveAttribute('width', String((height * 336) / 160));
+		expect(svg).toHaveAttribute('height', String(height));
+		expect(svg?.style.width).toBe(`${(height * 336) / 160}px`);
+		expect(svg?.style.height).toBe(`${height}px`);
+		expect(svg).toHaveAttribute('viewBox', '42 0 336 160');
+		expect(svg).toHaveAttribute('aria-hidden', 'true');
+	});
+
+	it.each(['grid', 'dots', 'ring'] as const)('does not start a frame loop for %s', (type) => {
+		const requestFrame = vi.spyOn(window, 'requestAnimationFrame');
+		try {
+			const { unmount } = render(Spinner, { props: { type } });
+			expect(requestFrame).not.toHaveBeenCalled();
+			unmount();
+		} finally {
+			requestFrame.mockRestore();
+		}
+	});
+
+	it('uses the translated brand loading label', () => {
+		i18n((key) => (key === 'spinner.loading' ? 'Chargement…' : key));
+		const { getByRole } = render(Spinner, { props: { type: 'brand' } });
+		expect(getByRole('status', { name: 'Chargement…' })).toBeInTheDocument();
+	});
+
+	it('clips brand instances without document IDs', () => {
+		const first = render(Spinner, { props: { type: 'brand' } });
+		const second = render(Spinner, { props: { type: 'brand' } });
+		for (const { container } of [first, second]) {
+			expect(container.querySelector('[id]')).toBeNull();
+			expect(container.querySelectorAll('path')).toHaveLength(6);
+			expect(container.querySelector('rect')).toHaveAttribute('height', '18');
+		}
+	});
+
 	it('renders grid paths in left-to-right row order', () => {
 		const { container } = render(Spinner, { props: { type: 'grid' } });
 		const svg = container.querySelector('svg');
