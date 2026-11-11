@@ -1,6 +1,6 @@
 import { UserError } from '@n8n/errors';
 import { X509Certificate } from 'node:crypto';
-import { readFileSync, watch } from 'node:fs';
+import { readFileSync, watch, type FSWatcher } from 'node:fs';
 import { createServer as createHttpServer, type RequestListener, type Server } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { dirname } from 'node:path';
@@ -173,15 +173,24 @@ export function openEngineTls(
 
 	let timer: NodeJS.Timeout | undefined;
 	const directories = new Set([files.tlsCertFile, files.tlsKeyFile, files.tlsCaFile].map(dirname));
-	const watchers = [...directories].map((directory) =>
-		// Not persistent, so the watch alone does not keep the process running.
-		watch(directory, { persistent: false }, () => {
-			clearTimeout(timer);
-			timer = setTimeout(reload, debounceMs).unref();
-		}).on('error', (error) => {
-			logger.error('Stopped watching the engine TLS files', { directory, error });
-		}),
-	);
+	const watchers: FSWatcher[] = [];
+	for (const directory of directories) {
+		try {
+			// Not persistent, so the watch alone does not keep the process running.
+			const watcher = watch(directory, { persistent: false }, () => {
+				clearTimeout(timer);
+				timer = setTimeout(reload, debounceMs).unref();
+			}).on('error', (error) => {
+				logger.error('Stopped watching the engine TLS files', { directory, error });
+			});
+			watchers.push(watcher);
+		} catch (error) {
+			for (const watcher of watchers) watcher.close();
+			throw new UserError(`Cannot watch ${directory} for changes to ${ALL_ENV_NAMES}`, {
+				cause: error,
+			});
+		}
+	}
 
 	return {
 		get current() {

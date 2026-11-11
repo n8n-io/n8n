@@ -18,6 +18,18 @@ import {
 
 const LOOPBACK = ['DNS:localhost', 'IP:127.0.0.1'];
 
+/** Set to make `fs.watch` throw, as it does when the inotify watch limit is reached. */
+const watchFailure = vi.hoisted(() => ({ error: undefined as Error | undefined }));
+
+vi.mock('node:fs', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs')>();
+	const watch = ((...args: Parameters<typeof actual.watch>) => {
+		if (watchFailure.error) throw watchFailure.error;
+		return actual.watch(...args);
+	}) as typeof actual.watch;
+	return { ...actual, watch };
+});
+
 describe('engine TLS', () => {
 	let dir: string;
 	let otherDir: string;
@@ -126,6 +138,23 @@ describe('engine TLS', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP'),
 			);
+		});
+	});
+
+	describe('openEngineTls', () => {
+		it('stops the boot with an error that names the TLS settings when it cannot watch the files', () => {
+			watchFailure.error = new Error('ENOSPC: System limit for number of file watchers reached');
+			try {
+				expect(() => openEngineTls(filesOf('server'), { info: vi.fn(), error: vi.fn() })).toThrow(
+					expect.objectContaining({
+						constructor: UserError,
+						message: expect.stringContaining('N8N_ENGINE_TLS_CERT_FILE'),
+						cause: watchFailure.error,
+					}),
+				);
+			} finally {
+				watchFailure.error = undefined;
+			}
 		});
 	});
 
