@@ -31,7 +31,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
-	isCredentialAgentIntegration,
+	integrationNeedsCredential,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -48,6 +48,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypesProxy } from '@n8n/backend-services';
@@ -520,6 +521,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -814,7 +816,7 @@ export class AgentsBuilderToolsService {
 		return (agent?.integrations ?? [])
 			.filter(
 				(integration) =>
-					isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					integrationNeedsCredential(integration) && !isDraftIntegration(integration),
 			)
 			.map((integration) => integration.credentialId);
 	}
@@ -826,7 +828,16 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 	): BuiltTool {
 		return buildResolveLlmTool({
-			credentialProvider,
+			// The model picker offers only credentials the user can use through their
+			// own access. Validation and test runs keep the full provider.
+			credentialProvider: {
+				resolve: async (credentialId) => await credentialProvider.resolve(credentialId),
+				list: async () =>
+					await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+						user,
+						await credentialProvider.list(),
+					),
+			},
 			modelLookup,
 			isProviderServedByGateway: async (provider) => {
 				try {

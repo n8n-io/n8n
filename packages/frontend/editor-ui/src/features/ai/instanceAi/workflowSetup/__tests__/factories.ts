@@ -62,5 +62,8 @@ export function makeWorkflowSetupSection(
 		],
 		...(overrides.setupHint ? { setupHint: overrides.setupHint } : {}),
 		...(overrides.preferNewCredential ? { preferNewCredential: true } : {}),
+		...(overrides.existingCredentials
+			? { existingCredentials: overrides.existingCredentials }
+			: {}),
 	};
 }

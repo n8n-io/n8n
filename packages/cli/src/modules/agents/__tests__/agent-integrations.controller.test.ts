@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { UrlService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -31,6 +32,7 @@ function makeController({
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	instanceSettings = mock<InstanceSettings>(),
 	agentWriteLockService = mock<AgentWriteLockService>(),
+	urlService = mock<UrlService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -40,6 +42,7 @@ function makeController({
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	instanceSettings?: Mocked<InstanceSettings>;
 	agentWriteLockService?: Mocked<AgentWriteLockService>;
+	urlService?: Mocked<UrlService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -54,6 +57,7 @@ function makeController({
 			statusReporter,
 			instanceSettings,
 			agentWriteLockService,
+			urlService,
 		),
 		managementService,
 		chatIntegrationService,
@@ -73,6 +77,7 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['connectIntegration', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
+		['webhookUrl', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -698,5 +703,32 @@ describe('AgentIntegrationsController channel status', () => {
 				'agent-1',
 			),
 		).rejects.toThrow('Agent "agent-1" not found');
+	});
+});
+
+describe('AgentIntegrationsController webhook channel URL', () => {
+	it('returns the channel URL of the agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>());
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		expect(urlService.getAgentWebhookUrl).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('returns the URL of an agent that is not saved yet', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
 	});
 });

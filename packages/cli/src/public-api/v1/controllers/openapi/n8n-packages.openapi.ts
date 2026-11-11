@@ -117,7 +117,7 @@ export const IMPORT_SELECTION_DESCRIPTION =
 	'cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted ' +
 	'here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` ' +
 	'are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default ' +
-	'16). The caller is authorised through the `workflow:import` scope. ' +
+	'16). ' +
 	'The API key also needs `project:create` when the selected project does not exist. The ' +
 	'import never changes an existing project, so it never needs `project:update`. It needs ' +
 	'`folder:create` and a license that supports folders only when it creates a folder for a ' +
