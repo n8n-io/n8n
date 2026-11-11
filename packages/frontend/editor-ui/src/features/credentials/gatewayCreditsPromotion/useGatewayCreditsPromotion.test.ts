@@ -213,6 +213,14 @@ describe('useGatewayCreditsPromotion', () => {
 			).toBeUndefined();
 		});
 
+		it('returns nothing without a node type or a credential type', () => {
+			setupBuiltIn();
+
+			expect(
+				useGatewayCreditsPromotion({ nodeType: () => undefined }).promotionText.value,
+			).toBeUndefined();
+		});
+
 		it('returns nothing when the gateway does not support the node', () => {
 			setupBuiltIn();
 			gateway.supportedNodes = [];
