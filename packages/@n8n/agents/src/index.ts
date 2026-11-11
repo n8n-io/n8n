@@ -363,6 +363,7 @@ export type {
 
 export { createModel, mintAzureFoundryDeploymentsToken } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export { createOpenAiConfigModel } from './runtime/model/openai-config-model';
 export {
 	hasAzureApiKey,
 	hasAzureEntraToken,
