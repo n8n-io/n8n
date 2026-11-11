@@ -37,6 +37,12 @@ type ElementPlusBan = {
 export const wrappedComponentBans = [
 	{
 		library: 'reka-ui',
+		prefixes: ['Accordion'],
+		allowedFolders: ['components/N8nAccordion'],
+		replacement: 'N8nAccordion',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['Checkbox'],
 		allowedFolders: ['v2/components/Checkbox'],
 		replacement: 'N8nCheckbox',
