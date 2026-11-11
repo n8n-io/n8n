@@ -426,6 +426,9 @@ export function toV1ExecuteContext({
  * producer gave it, which points into the producer's input. A node that passes items
  * through, like If, keeps a link that is already set, so without this the link
  * would skip a node and name the wrong item.
+ *
+ * v1 also keeps a tool call's `sourceOverwrite`. Engine v2 runs no tool calls: the
+ * converter rejects every connection that is not `main`.
  */
 function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
 	return itemsByConnection.map((items, inputIndex) =>
