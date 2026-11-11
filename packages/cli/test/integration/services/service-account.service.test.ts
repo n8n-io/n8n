@@ -48,15 +48,19 @@ describe('ServiceAccountService', () => {
 		await testDb.terminate();
 	});
 
-	/** Every row that a service account owns, so a test can assert all of them at once. */
-	async function rowsOf(serviceAccountId: string) {
+	/**
+	 * Every row that a service account owns, so a test can assert all of them at
+	 * once. The project is found by its id: a deleted account sets `creatorId` to
+	 * null, so a query by creator would miss a project that was left behind.
+	 */
+	async function rowsOf(serviceAccountId: string, projectId: string) {
 		return {
 			user: await manager.findOne(User, {
 				where: { id: serviceAccountId },
 				relations: { role: true },
 			}),
 			details: await manager.findOneBy(ServiceAccountDetails, { userId: serviceAccountId }),
-			project: await manager.findOneBy(Project, { type: 'personal', creatorId: serviceAccountId }),
+			project: await manager.findOneBy(Project, { id: projectId }),
 			relations: await manager.find(ProjectRelation, {
 				where: { userId: serviceAccountId },
 				relations: { role: true },
@@ -68,7 +72,7 @@ describe('ServiceAccountService', () => {
 		it('creates the account, its details and a personal project that it owns', async () => {
 			const { serviceAccount, project } = await service.create('Support agent');
 
-			const rows = await rowsOf(serviceAccount.id);
+			const rows = await rowsOf(serviceAccount.id, project.id);
 			expect(rows.user?.kind).toBe('service');
 			expect(rows.user?.role.slug).toBe('global:agent');
 			expect(rows.details?.name).toBe('Support agent');
@@ -105,7 +109,7 @@ describe('ServiceAccountService', () => {
 
 			await service.remove(serviceAccount.id, person);
 
-			expect(await rowsOf(serviceAccount.id)).toEqual({
+			expect(await rowsOf(serviceAccount.id, project.id)).toEqual({
 				user: null,
 				details: null,
 				project: null,
@@ -118,12 +122,15 @@ describe('ServiceAccountService', () => {
 
 		it('also removes an identity binding of the account', async () => {
 			const person = await createMember();
-			const { serviceAccount } = await service.create('Support agent');
+			const { serviceAccount, project } = await service.create('Support agent');
 			await manager.save(AuthIdentity.create(serviceAccount, 'agent-subject', 'oidc'));
 
 			await service.remove(serviceAccount.id, person);
 
-			expect(await rowsOf(serviceAccount.id)).toMatchObject({ user: null, project: null });
+			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
+				user: null,
+				project: null,
+			});
 			expect(await manager.existsBy(AuthIdentity, { userId: serviceAccount.id })).toBe(false);
 		});
 
@@ -135,7 +142,10 @@ describe('ServiceAccountService', () => {
 
 			await service.remove(serviceAccount.id, person, target.id);
 
-			expect(await rowsOf(serviceAccount.id)).toMatchObject({ user: null, project: null });
+			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
+				user: null,
+				project: null,
+			});
 			const owner = await manager.findOneByOrFail(SharedWorkflow, {
 				workflowId: workflow.id,
 				role: 'workflow:owner',
@@ -150,7 +160,10 @@ describe('ServiceAccountService', () => {
 
 			await service.remove(serviceAccount.id, person);
 
-			expect(await rowsOf(serviceAccount.id)).toMatchObject({ user: null, project: null });
+			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
+				user: null,
+				project: null,
+			});
 			expect(await manager.existsBy(WorkflowEntity, { id: workflow.id })).toBe(false);
 		});
 
