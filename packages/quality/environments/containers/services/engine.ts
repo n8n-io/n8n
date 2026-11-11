@@ -12,6 +12,12 @@
  *   `container` mode only.
  */
 import { createHash } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { generateTlsCerts } from '../helpers/tls-certs';
+import type { FileToMount } from './types';
 
 export type EngineMode = 'in-process' | 'container';
 
@@ -33,12 +39,67 @@ export const ENGINE_CONTROL_PLANE_PORT = 3001;
  * a response. The stack mounts one host dir here in both containers. The stack
  * owns the path: a caller's `N8N_STORAGE_PATH` or deprecated
  * `N8N_BINARY_DATA_STORAGE_PATH` would point the planes at different dirs, or
- * fail the start when the two differ.
+ * fail the start when the two differ. The mode is pinned too: in queue mode
+ * n8n defaults to `database`, which the engine cannot reach.
  */
 export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
 
+/** Where each plane finds its own TLS certificate and key and the shared CA. */
+const ENGINE_TLS_DIR = '/home/node/engine-tls';
+
+export const ENGINE_TLS_ENV = {
+	N8N_ENGINE_TLS_CERT_FILE: `${ENGINE_TLS_DIR}/tls.crt`,
+	N8N_ENGINE_TLS_KEY_FILE: `${ENGINE_TLS_DIR}/tls.key`,
+	N8N_ENGINE_TLS_CA_FILE: `${ENGINE_TLS_DIR}/ca.crt`,
+};
+
+/**
+ * One CA and one certificate per plane for `container` mode, as files to copy
+ * into the main and the engine at the paths `ENGINE_TLS_ENV` names. Each
+ * certificate names the host the other plane dials. The stack creates these
+ * once, so a replaced main still trusts the running engine.
+ */
+export function createEngineTlsFiles(
+	projectName: string,
+): Record<'main' | 'engine', FileToMount[]> {
+	const dir = mkdtempSync(join(tmpdir(), `${projectName}-engine-tls-`));
+	try {
+		const { caFile, leaves } = generateTlsCerts(dir, {
+			main: [`DNS:${mainHostname(projectName)}`],
+			engine: [`DNS:${engineHostname(projectName)}`],
+		});
+		const filesOf = (plane: 'main' | 'engine'): FileToMount[] => [
+			{ content: readFileSync(caFile, 'utf8'), target: ENGINE_TLS_ENV.N8N_ENGINE_TLS_CA_FILE },
+			{
+				content: readFileSync(leaves[plane].certFile, 'utf8'),
+				target: ENGINE_TLS_ENV.N8N_ENGINE_TLS_CERT_FILE,
+			},
+			{
+				content: readFileSync(leaves[plane].keyFile, 'utf8'),
+				target: ENGINE_TLS_ENV.N8N_ENGINE_TLS_KEY_FILE,
+			},
+		];
+		return { main: filesOf('main'), engine: filesOf('engine') };
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+/**
+ * MockServer (the `proxy` capability) intercepts TLS and drops the client
+ * certificate, so traffic between the planes must not go through it.
+ */
+function bypassProxyBetweenPlanes(env: Record<string, string>, projectName: string): void {
+	const hosts = (env.NO_PROXY ?? '').split(',').filter(Boolean);
+	for (const host of [engineHostname(projectName), mainHostname(projectName)]) {
+		if (!hosts.includes(host)) hosts.push(host);
+	}
+	env.NO_PROXY = hosts.join(',');
+}
+
 function applySharedStoragePath(env: Record<string, string>): void {
 	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
+	env.N8N_DEFAULT_BINARY_DATA_MODE = 'filesystem';
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
 }
 
@@ -151,7 +212,8 @@ export function applyEngineEnv(
 	if (engine === 'container') {
 		if (!authSecret) throw new Error('Container engine mode needs a shared auth secret');
 		env.N8N_ENGINE_MODE = 'remote';
-		env.N8N_ENGINE_BASE_URL = `http://${engineHostname(projectName)}:${ENGINE_PORT}`;
+		env.N8N_ENGINE_BASE_URL = `https://${engineHostname(projectName)}:${ENGINE_PORT}`;
+		Object.assign(env, ENGINE_TLS_ENV);
 		// Loopback by default; the engine container dials it over the stack network.
 		// The stack owns the port too: the engine env dials it and a caller's
 		// `env` must not move it.
@@ -159,6 +221,7 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
 		applySharedStoragePath(env);
+		bypassProxyBetweenPlanes(env, projectName);
 		// The main never touches the data plane database in this mode, and it
 		// refuses to start with the resume secret.
 		delete env.N8N_ENGINE_DATABASE_URL;
@@ -195,13 +258,15 @@ export function engineContainerEnv(
 	);
 
 	applySharedStoragePath(env);
+	bypassProxyBetweenPlanes(env, projectName);
 
 	return {
 		...env,
 		N8N_ENGINE_DATABASE_URL: databaseUrl,
 		N8N_ENGINE_AUTH_SECRET: authSecret,
 		N8N_ENGINE_RESUME_SECRET: resumeSecret(projectName),
-		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
+		...ENGINE_TLS_ENV,
+		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `https://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
 		// The main dials this address and the stack probes it, so a caller's `env`
 		// must not move it or bind it to loopback.
 		N8N_ENGINE_HOST: '0.0.0.0',

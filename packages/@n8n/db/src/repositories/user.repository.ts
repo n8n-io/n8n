@@ -1,18 +1,11 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type {
-	DeepPartial,
-	EntityManager,
-	FindOptionsWhere,
-	Repository,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, User, type UserKind } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -63,8 +56,10 @@ const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
  * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
  * `ServiceAccountRepository` when only one kind can appear.
  *
- * The query methods below predate service accounts. They stay here until their
- * callers move to `PersonRepository`, so that a caller sees no change.
+ * Person-only queries live in `PersonRepository`.
+ *
+ * The list and count methods take an optional `kind`. Without it, they return
+ * accounts of both kinds.
  */
 @Service()
 export class UserRepository extends BaseRepository<User> {
@@ -90,6 +85,7 @@ export class UserRepository extends BaseRepository<User> {
 			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
+			kind?: UserKind;
 		},
 	) {
 		const relations = [
@@ -97,7 +93,7 @@ export class UserRepository extends BaseRepository<User> {
 			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
 		];
 		return await this.find({
-			where: { id: In(userIds) },
+			where: { id: In(userIds), ...(options?.kind && { kind: options.kind }) },
 			skip: options?.offset,
 			take: options?.limit,
 			relations: relations.length > 0 ? relations : undefined,
@@ -105,8 +101,14 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findMany(options?: { includeRole?: boolean; offset?: number; limit?: number }) {
+	async findMany(options?: {
+		includeRole?: boolean;
+		offset?: number;
+		limit?: number;
+		kind?: UserKind;
+	}) {
 		return await this.find({
+			where: options?.kind && { kind: options.kind },
 			skip: options?.offset,
 			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
@@ -121,7 +123,8 @@ export class UserRepository extends BaseRepository<User> {
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
 		return await this.find({
-			relations: ['role', 'authIdentities'],
+			// `details` holds a service account's name, which eager loading would otherwise load.
+			relations: ['role', 'authIdentities', 'details'],
 			order: { id: 'ASC' },
 			loadEagerRelations: false,
 		});
@@ -130,13 +133,6 @@ export class UserRepository extends BaseRepository<User> {
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
 		return await this.managerFor(ctx).findOne(User, {
 			where: { id },
-			relations: ['role'],
-		});
-	}
-
-	async findByEmailWithRole(email: string): Promise<User | null> {
-		return await this.findOne({
-			where: { email },
 			relations: ['role'],
 		});
 	}
@@ -153,8 +149,10 @@ export class UserRepository extends BaseRepository<User> {
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
 			.leftJoinAndSelect('user.role', 'role')
 			.leftJoinAndSelect('role.scopes', 'scopes')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('user.details', 'details')
 			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select(['user', 'role', 'scopes'])
+			.select(['user', 'role', 'scopes', 'details'])
 			.getOne();
 
 		return keyOwner;
@@ -176,22 +174,6 @@ export class UserRepository extends BaseRepository<User> {
 		return await super.update(...args);
 	}
 
-	/**
-	 * True when a claimed instance owner exists. A claimed owner has logged in
-	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
-	 * before the first login, so the password check is required. The unclaimed
-	 * "shell" owner that first boot creates matches neither condition.
-	 */
-	async hasClaimedInstanceOwner(): Promise<boolean> {
-		return await this.exists({
-			where: [
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
-			],
-			relations: ['role'],
-		});
-	}
-
 	async deleteAllExcept(user: User) {
 		await this.delete({ id: Not(user.id) });
 	}
@@ -200,24 +182,25 @@ export class UserRepository extends BaseRepository<User> {
 		return await transaction.find(User, { where: { id: In(ids) } });
 	}
 
-	async findManyByEmail(emails: string[]) {
-		return await this.find({
-			where: { email: In(emails) },
-			select: ['email', 'password', 'id'],
-		});
-	}
-
 	async deleteMany(userIds: string[]) {
 		return await this.delete({ id: In(userIds) });
 	}
 
+	async countAccounts({ kind }: { kind?: UserKind } = {}): Promise<number> {
+		return await this.count({ where: kind && { kind } });
+	}
+
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
-	async countUsersByRole() {
-		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
-		const rows = (await this.createQueryBuilder()
+	async countUsersByRole(kind?: UserKind) {
+		const { driver } = this.manager.connection;
+		const escapedRoleSlug = driver.escape('roleSlug');
+		const queryBuilder = this.createQueryBuilder()
 			.select([escapedRoleSlug, `COUNT(${escapedRoleSlug}) as count`])
-			.groupBy(escapedRoleSlug)
-			.execute()) as Array<{ roleSlug: string; count: string }>;
+			.groupBy(escapedRoleSlug);
+		if (kind) {
+			queryBuilder.where(`${driver.escape('kind')} = :kind`, { kind });
+		}
+		const rows = (await queryBuilder.execute()) as Array<{ roleSlug: string; count: string }>;
 		return rows.reduce(
 			(acc, row) => {
 				acc[row.roleSlug] = parseInt(row.count, 10);
@@ -225,49 +208,6 @@ export class UserRepository extends BaseRepository<User> {
 			},
 			{} as Record<string, number>,
 		);
-	}
-
-	async createUserWithProject(
-		user: DeepPartial<User>,
-		transactionManager?: EntityManager,
-	): Promise<{ user: User; project: Project }> {
-		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user);
-			const savedUser = await entityManager.save<User>(newUser);
-			const userWithRole = await entityManager.findOne(User, {
-				where: { id: savedUser.id },
-				relations: ['role'],
-			});
-			if (!userWithRole) throw new Error('Failed to create user!');
-			const savedProject = await entityManager.save<Project>(
-				entityManager.create(Project, {
-					type: 'personal',
-					name: userWithRole.createPersonalProjectName(),
-					creatorId: savedUser.id,
-				}),
-			);
-
-			await entityManager.save<ProjectRelation>(
-				entityManager.create(ProjectRelation, {
-					projectId: savedProject.id,
-					userId: savedUser.id,
-					role: {
-						slug:
-							userWithRole.role.slug !== 'global:chatUser'
-								? PROJECT_OWNER_ROLE_SLUG
-								: PROJECT_VIEWER_ROLE_SLUG,
-					},
-				}),
-			);
-
-			return { user: userWithRole, project: savedProject };
-		};
-		if (transactionManager) {
-			return await createInner(transactionManager);
-		}
-		// TODO: use a transactions
-		// This is blocked by TypeORM having concurrency issues with transactions
-		return await createInner(this.manager);
 	}
 
 	/**
@@ -367,7 +307,19 @@ export class UserRepository extends BaseRepository<User> {
 			if (!select.includes('id')) {
 				select.unshift('id'); // Ensure id is always selected
 			}
-			queryBuilder.select(select.map((field) => `user.${field}`));
+			// TypeORM picks `Person` or `ServiceAccount` from `kind`. Without it, the
+			// row loads as a bare `User` and drops the person columns.
+			queryBuilder.select([...select.map((field) => `user.${field}`), 'user.kind']);
+		}
+		return queryBuilder;
+	}
+
+	private applyUserListKind(
+		queryBuilder: SelectQueryBuilder<User>,
+		kind: UserKind | undefined,
+	): SelectQueryBuilder<User> {
+		if (kind !== undefined) {
+			queryBuilder.andWhere('user.kind = :userListKind', { userListKind: kind });
 		}
 		return queryBuilder;
 	}
@@ -376,7 +328,10 @@ export class UserRepository extends BaseRepository<User> {
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
 		roleSlugs?: string[],
+		kind?: UserKind,
 	): SelectQueryBuilder<User> {
+		this.applyUserListKind(queryBuilder, kind);
+
 		if (roleSlugs !== undefined) {
 			if (roleSlugs.length === 0) {
 				queryBuilder.andWhere('1 = 0');
@@ -483,12 +438,18 @@ export class UserRepository extends BaseRepository<User> {
 	async countUsersListStatuses(
 		filter: UsersListFilterDto['filter'],
 		roleSlugs?: string[],
+		kind?: UserKind,
 	): Promise<{ all: number; active: number; deactivated: number }> {
 		const queryBuilder = this.createQueryBuilder('user')
 			.select('COUNT(*)', 'total')
 			.addSelect(`SUM(CASE WHEN ${DEACTIVATED_USER_CONDITION} THEN 1 ELSE 0 END)`, 'deactivated')
 			.setParameters(DEACTIVATED_USER_PARAMETERS);
-		this.applyUserListFilter(queryBuilder, filter && { ...filter, status: undefined }, roleSlugs);
+		this.applyUserListFilter(
+			queryBuilder,
+			filter && { ...filter, status: undefined },
+			roleSlugs,
+			kind,
+		);
 
 		const counts = await queryBuilder.getRawOne<{
 			total: number | string;
@@ -557,18 +518,19 @@ export class UserRepository extends BaseRepository<User> {
 	buildUserQuery(
 		listQueryOptions?: UsersListFilterDto,
 		roleSlugs?: string[],
+		kind?: UserKind,
 	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
 
 		if (listQueryOptions === undefined) {
-			return queryBuilder;
+			return this.applyUserListKind(queryBuilder, kind);
 		}
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
 		this.applyUserListSelect(queryBuilder, select);
-		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs, kind);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);

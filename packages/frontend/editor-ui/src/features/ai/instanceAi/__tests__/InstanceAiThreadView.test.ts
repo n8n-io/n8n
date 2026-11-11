@@ -1791,7 +1791,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
+	it('hides the chat input behind the floating panel when a generic approval is pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-floating',
@@ -1807,13 +1807,13 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
-	it('swaps the chat input for the floating panel when questions are pending', () => {
+	it('hides the chat input behind the floating panel when questions are pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-questions',
@@ -1835,10 +1835,10 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
@@ -1967,32 +1967,14 @@ describe('InstanceAiThreadView', () => {
 				textContent: '',
 				reasoning: '',
 				timeline: [],
-				children: [
-					{
-						agentId: 'agent-builder-child',
-						role: 'agent-builder',
-						kind: 'agent-builder',
-						status: 'completed',
-						textContent: '',
-						reasoning: '',
-						timeline: [],
-						children: [],
-						toolCalls: [],
-						targetResource: {
-							type: 'agent',
-							id: 'agent-1',
-							projectId: 'proj-1',
-							name: 'SEO Auditor',
-						},
-					},
-				],
+				children: [],
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'agent_builder_build_agent',
-						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+						toolName: 'agent_builder_select_agent',
+						args: { name: 'SEO Auditor' },
 						isLoading: false,
-						result: { ok: true, builderReply: 'Created the agent.' },
+						result: { ok: true, agentId: 'agent-1', projectId: 'proj-1', agentChange: 'created' },
 					},
 				],
 			},

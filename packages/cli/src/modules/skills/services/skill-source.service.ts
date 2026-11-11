@@ -12,6 +12,7 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	skillNameKey,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -52,7 +53,7 @@ import { skillPreview } from '../utils/skill-preview';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
-import { isNameTaken } from './skill.policy';
+import { isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -305,16 +306,23 @@ export class SkillSourceService {
 					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
 					throw error;
 				}
-				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
-				// adds its name, so two picked skills with one name do not both come in.
-				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				// Read in the transaction, so a skill created meanwhile is not shadowed. A name that
+				// the scope already had fails. A source can hold two skills with one name, so a name
+				// that this import took gets the first free number ("ponytail 2").
+				const existing = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				const names = [...existing];
 				for (const read of importable) {
-					const { skill, fetched } = read;
-					if (!skill || !fetched) continue;
-					if (isNameTaken(skill.name, names)) {
-						failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
+					const { skill: fetchedSkill, fetched } = read;
+					if (!fetchedSkill || !fetched) continue;
+					if (isNameTaken(fetchedSkill.name, existing)) {
+						failed.push({ key: read.key, name: fetchedSkill.name, reason: 'name_taken' });
 						continue;
 					}
+					const name = nextFreeName(
+						fetchedSkill.name,
+						new Set(names.map((taken) => skillNameKey(taken.name))),
+					);
+					const skill = { ...fetchedSkill, name };
 					const { frontmatter } = fetched.content;
 					const skillId = await this.skillService.createTrusted(
 						{
@@ -334,13 +342,14 @@ export class SkillSourceService {
 							sourceId,
 							remoteRef: read.ref,
 							baseRevision: fetched.revision,
-							baseContentHash: skillContentHash(toSkillContent(skill, frontmatter)),
+							// The source content, so the check does not take the new name for an update.
+							baseContentHash: skillContentHash(toSkillContent(fetchedSkill, frontmatter)),
 							skippedFiles: fetched.skippedFiles,
 						},
 						ctx,
 					);
-					names.push({ skillId, name: skill.name });
-					imported.push({ key: read.key, skillId, name: skill.name });
+					names.push({ skillId, name });
+					imported.push({ key: read.key, skillId, name });
 					skippedFiles += fetched.skippedFiles.length;
 					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}

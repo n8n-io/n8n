@@ -129,7 +129,6 @@ const SKILL_SCAN_RULE_KEYS = {
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
-	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
 

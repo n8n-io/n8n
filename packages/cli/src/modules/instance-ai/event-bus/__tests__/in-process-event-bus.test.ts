@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { DurableEventLog } from '../durable-event-log';
 import { InProcessEventBus } from '../in-process-event-bus';

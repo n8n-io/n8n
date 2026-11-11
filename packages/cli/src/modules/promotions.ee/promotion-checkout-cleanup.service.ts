@@ -1,0 +1,212 @@
+import type { PromotionEnvironmentRemote } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Publisher } from '@n8n/backend-services';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+
+import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
+import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
+import { resolvePromotionGitRemote } from './git-hosts/git-host-remote';
+import { resolveStoredConfig } from './promotion-config-settings';
+import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
+import { buildCacheDescriptor } from './promotions-git.utils';
+
+type EnvironmentChangedCommand = PubSubCommandMap['promotion-environment-changed'];
+
+type EnvironmentChange = EnvironmentChangedCommand['change'];
+
+@Service()
+export class PromotionCheckoutCleanupService {
+	constructor(
+		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly environmentRepository: PromotionEnvironmentRepository,
+		private readonly logger: Logger,
+		private readonly publisher: Publisher,
+		private readonly instanceSettings: InstanceSettings,
+	) {
+		this.logger = this.logger.scoped('promotions');
+	}
+
+	/** Also removes the host keys, because a deleted environment cannot connect again. */
+	async removeDeletedEnvironment(environmentId: string): Promise<void> {
+		await this.purge(environmentId);
+		this.publishToOtherMains([environmentId], 'deleted');
+	}
+
+	/**
+	 * Unlike the other cleanups, a failed removal fails the request. Disconnect changes
+	 * nothing in the database, so a checkout left behind still matches the stored
+	 * settings and later operations would use it.
+	 */
+	async resetCheckoutAfterDisconnect(environmentId: string): Promise<void> {
+		try {
+			await this.workingDirectory.resetCheckout(environmentId);
+		} finally {
+			this.publishToOtherMains([environmentId], 'checkout-disconnected');
+		}
+	}
+
+	async resetCheckoutAfterSettingsChange(environmentId: string): Promise<void> {
+		await this.reset([environmentId]);
+		this.publishToOtherMains([environmentId], 'updated');
+	}
+
+	/** A new host URL changes the remote URL of every environment that stores a repository path. */
+	async resetCheckoutsForHostChange(providerId: string): Promise<void> {
+		let environmentIds: string[];
+		try {
+			environmentIds =
+				await this.environmentRepository.findIdsWithRepositoryPathByProvider(providerId);
+		} catch (error) {
+			this.warn('Failed to find the promotion checkouts to reset', { providerId }, error);
+			return;
+		}
+		await this.reset(environmentIds);
+		this.publishToOtherMains(environmentIds, 'updated');
+	}
+
+	/**
+	 * Catches the folders that a failed removal or a lost message leaves behind.
+	 * Lists the folders before it reads the database, so a folder that a new
+	 * environment creates during the check is never removed. Every main runs it, so
+	 * it does not publish.
+	 */
+	async removeOrphanedCheckouts(): Promise<void> {
+		try {
+			const folderIds = await this.workingDirectory.listEnvironmentIds();
+			const existingIds = await this.environmentRepository.findExistingIds(folderIds);
+			const orphanedIds = folderIds.filter((id) => !existingIds.has(id));
+			if (orphanedIds.length === 0) return;
+			this.logger.debug('Removing promotion checkouts of deleted environments', {
+				environmentIds: orphanedIds,
+			});
+			for (const environmentId of orphanedIds) {
+				await this.purge(environmentId);
+			}
+		} catch (error) {
+			this.warn('Failed to check for promotion checkouts of deleted environments', {}, error);
+		}
+	}
+
+	/** The message can arrive late or twice. It never publishes, so messages cannot loop. */
+	@OnPubSubEvent('promotion-environment-changed', { instanceType: 'main' })
+	async handleEnvironmentChangeFromOtherMain({
+		environmentIds,
+		change,
+	}: EnvironmentChangedCommand): Promise<void> {
+		try {
+			if (change === 'deleted') {
+				await this.purgeIfDeleted(environmentIds);
+			} else if (change === 'checkout-disconnected') {
+				// The database stores no connected state, so there is nothing to check.
+				await this.reset(environmentIds);
+			} else {
+				await Promise.all(environmentIds.map(async (id) => await this.resetIfStale(id)));
+			}
+		} catch (error) {
+			this.warn(
+				'Failed to clean up the promotion checkouts for another main',
+				{ environmentIds, change },
+				error,
+			);
+		}
+	}
+
+	private async purgeIfDeleted(environmentIds: string[]) {
+		const existingIds = await this.environmentRepository.findExistingIds(environmentIds);
+		for (const environmentId of environmentIds) {
+			if (existingIds.has(environmentId)) {
+				this.logger.warn('Kept the promotion checkout of an environment that still exists', {
+					environmentId,
+				});
+				continue;
+			}
+			await this.purge(environmentId);
+		}
+	}
+
+	private async resetIfStale(environmentId: string) {
+		try {
+			const environment = await this.environmentRepository.findByIdWithProvider(environmentId);
+			if (!environment) {
+				await this.purge(environmentId);
+				return;
+			}
+			if (!(await this.matchesCurrentSettings(environment))) await this.reset([environmentId]);
+		} catch (error) {
+			this.warn('Failed to check the local promotion checkout', { environmentId }, error);
+		}
+	}
+
+	/**
+	 * Same check as `checkoutStateFor`, so the reported state and the cleanup agree.
+	 * Settings or a remote that this version cannot read do not match, because no
+	 * operation can use that checkout.
+	 */
+	private async matchesCurrentSettings(environment: PromotionEnvironment): Promise<boolean> {
+		const config = resolveStoredConfig(environment);
+		if (!config) return false;
+		let remote: PromotionEnvironmentRemote;
+		try {
+			remote = resolvePromotionGitRemote(environment.provider, environment.remote);
+		} catch {
+			return false;
+		}
+		return await this.workingDirectory.matchesDescriptor(
+			buildCacheDescriptor({
+				environmentId: environment.id,
+				providerId: environment.providerId,
+				remote,
+				config,
+			}),
+		);
+	}
+
+	private async purge(environmentId: string) {
+		try {
+			await this.workingDirectory.purge(environmentId);
+		} catch (error) {
+			this.warn('Failed to remove the local promotion checkout', { environmentId }, error);
+		}
+	}
+
+	private async reset(environmentIds: string[]) {
+		await Promise.all(
+			environmentIds.map(async (environmentId) => {
+				try {
+					await this.workingDirectory.resetCheckout(environmentId);
+				} catch (error) {
+					this.warn('Failed to reset the local promotion checkout', { environmentId }, error);
+				}
+			}),
+		);
+	}
+
+	/**
+	 * A lost message only leaves disk in use, and the startup check removes the
+	 * folders of deleted environments, so the request does not wait for the publish.
+	 */
+	private publishToOtherMains(environmentIds: string[], change: EnvironmentChange) {
+		if (!this.instanceSettings.isMultiMain || environmentIds.length === 0) return;
+		void this.publisher
+			.publishCommand({
+				command: 'promotion-environment-changed',
+				payload: { environmentIds, change },
+			})
+			.catch((error: unknown) => {
+				this.warn(
+					'Failed to ask the other mains to remove their promotion checkouts',
+					{ environmentIds, change },
+					error,
+				);
+			});
+	}
+
+	private warn(message: string, context: Record<string, unknown>, error: unknown) {
+		this.logger.warn(message, {
+			...context,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}

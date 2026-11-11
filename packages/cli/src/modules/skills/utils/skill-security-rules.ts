@@ -53,9 +53,14 @@ export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
 	return findings;
 }
 
+/** Extensions of scripts and code. A skill that runs a left-out script can stop working. */
+const CODE_FILE =
+	/\.(?:sh|bash|zsh|fish|ps1|bat|cmd|py|rb|pl|php|lua|r|js|mjs|cjs|ts|mts|cts|jsx|tsx|go|rs|java|kt|swift|c|cc|cpp|h|hpp|cs)$/i;
+
 /**
  * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
- * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list.
+ * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list,
+ * and a left-out script or code file needs review.
  */
 export function listSkippedFiles({
 	skippedFiles,
@@ -69,12 +74,20 @@ export function listSkippedFiles({
 					file,
 					detail: 'n8n leaves this file out. It has a NUL character, which n8n cannot store.',
 				}
-			: {
-					rule: 'file_skipped',
-					severity: 'info',
-					file,
-					detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
-				},
+			: CODE_FILE.test(file)
+				? {
+						rule: 'file_skipped',
+						severity: 'needs_review',
+						file,
+						detail:
+							'n8n leaves this script out. A skill that runs it can stop working. A skill keeps only SKILL.md and references/*.md.',
+					}
+				: {
+						rule: 'file_skipped',
+						severity: 'info',
+						file,
+						detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
+					},
 	);
 }
 
@@ -226,152 +239,6 @@ function permissionKeys(content: SkillContent): Map<string, unknown> {
 			PERMISSION_KEYS.has(kebabCase(key)),
 		),
 	);
-}
-
-/**
- * Phrases that try to take over the model, hide actions from the user, or send data away. A
- * match is a hint for a reviewer, not proof: a skill about security can quote them.
- */
-/** A phrase that a pattern found, and where it starts in the text. */
-type PhraseMatch = { text: string; index: number };
-
-const SUSPICIOUS_PHRASES: Array<{
-	label: string;
-	find: (text: string) => PhraseMatch | undefined;
-}> = [
-	{
-		label: 'an instruction override',
-		find: firstMatch(
-			/\b(?:ignore|disregard|forget|override)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|preceding|system|all|any|other)\b[^.\n]{0,20}\b(?:instructions?|prompts?|rules|guidelines|messages)\b/i,
-		),
-	},
-	{
-		label: 'an action hidden from the user',
-		find: firstMatch(
-			/\bwithout\s+(?:telling|informing|asking|notifying|alerting)\s+the\s+user\b|\b(?:do\s+not|don't|never)\s+(?:tell|inform|notify|alert)\s+the\s+user\s+(?:about|that|of)\b|\bkeep\s+(?:this|it)\s+(?:secret|hidden)\s+from\s+the\s+user\b/i,
-		),
-	},
-	{
-		label: 'a request for the system prompt',
-		find: firstMatch(
-			/\b(?:reveal|print|output|show|repeat|dump|leak)\b[^.\n]{0,30}\b(?:system\s+prompt|hidden\s+instructions|initial\s+instructions|developer\s+message)\b/i,
-		),
-	},
-	{
-		label: 'a chat role tag',
-		find: firstMatch(
-			/<\|\s*(?:im_start|im_end|system|endoftext)\s*\|>|\[\/?INST\]|<\/?\s*system\s*>/i,
-		),
-	},
-	{
-		label: 'a jailbreak mode',
-		find: firstMatch(
-			/\b(?:you\s+are\s+now|act\s+as|enter|switch\s+to)\b[^.\n]{0,20}\b(?:DAN|jailbreak|developer\s+mode|unrestricted|god\s+mode)\b/i,
-		),
-	},
-	{
-		label: 'a request to send secrets',
-		find: firstMatch(
-			/\b(?:send|post|upload|forward|exfiltrate|transmit|leak|e-?mail)\b[^.\n]{0,60}(?:credentials?|api[ _-]?keys?|(?:access|auth|bearer|session|refresh|github|api)[ _-]?tokens?|secrets?|passwords?|private[ _-]?keys?|ssh[ _-]?keys?|~\/\.ssh|cookies|session[ _-]?ids?|env(?:ironment)?[ _-]?var(?:iable)?s|\.env\b)/i,
-		),
-	},
-	{
-		label: 'a secret in a network command',
-		find: firstMatch(
-			/\b(?:curl|wget|Invoke-WebRequest|Invoke-RestMethod|nc|ncat)\b[^\n]{0,200}\$\{?[A-Za-z_]{0,40}(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/,
-		),
-	},
-	{ label: 'an image link that carries data', find: findDataImageLink },
-];
-
-function firstMatch(pattern: RegExp): (text: string) => PhraseMatch | undefined {
-	return (text) => {
-		const match = pattern.exec(text);
-		return match ? { text: match[0], index: match.index } : undefined;
-	};
-}
-
-/** A placeholder in a URL: `{{name}}`, `${name}`, `{name}` or `%7B`, which is an encoded "{". */
-const URL_PLACEHOLDER = /\{\{|\$\{|\{[a-z_]+\}|%7B/i;
-
-/**
- * An image link with a placeholder in its URL, such as
- * `![status](https://example.com/p.png?d={{conversation}})`. The model fills in the data, and
- * the chat sends it away when it shows the image. The alt text goes to the first "]", and the
- * URL goes to the first ")" or space. The scan reads each character at most a few times, so the
- * time is linear in the length of the text, with no limit on the alt text or the URL.
- */
-function findDataImageLink(text: string): PhraseMatch | undefined {
-	const tokens = /!\[|\]/g;
-	const linkStart = /\(\s*https?:\/\//iy;
-	const urlChars = /[^)\s]*/y;
-	let opener: number | undefined;
-	// The URLs read so far end before this offset and have no placeholder.
-	let readUntil = 0;
-	for (let token = tokens.exec(text); token; token = tokens.exec(text)) {
-		if (token[0] === '![') {
-			opener ??= token.index;
-			continue;
-		}
-		const start = opener;
-		opener = undefined;
-		if (start === undefined) continue;
-		linkStart.lastIndex = token.index + 1;
-		if (!linkStart.test(text)) continue;
-		const afterScheme = linkStart.lastIndex;
-		// A URL that starts inside a URL already read ends at the same place, so it has no
-		// placeholder either.
-		if (afterScheme < readUntil) continue;
-		urlChars.lastIndex = afterScheme;
-		urlChars.test(text);
-		readUntil = urlChars.lastIndex;
-		const placeholder = URL_PLACEHOLDER.exec(text.slice(afterScheme, readUntil));
-		if (placeholder) {
-			const end = afterScheme + placeholder.index + placeholder[0].length;
-			return { text: text.slice(start, end), index: start };
-		}
-	}
-	return undefined;
-}
-
-/**
- * A match of each phrase kind needs review, once for each file. Markdown shows a line break
- * inside a paragraph as a space, so the patterns read such lines as one line.
- */
-export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
-	return textsByFile(content).flatMap(({ file, texts }) => {
-		// Joining keeps the length, so an offset in the joined text is an offset in the text.
-		const joined = texts.map((entry) => ({ entry, text: joinSoftBreaks(entry.text) }));
-		return SUSPICIOUS_PHRASES.flatMap(({ label, find }): SkillScanFinding[] => {
-			for (const { entry, text } of joined) {
-				const match = find(text);
-				if (match === undefined) continue;
-				return [
-					{
-						rule: 'suspicious_phrase',
-						severity: 'needs_review',
-						file,
-						detail: `The text has ${label}: "${excerpt(match.text)}".`,
-						location: entry.locate(match.index, match.index + match.text.length),
-					},
-				];
-			}
-			return [];
-		});
-	});
-}
-
-/**
- * Joins a line to the next one when the next one goes on with text. A list item, a heading,
- * a quote and a blank line do not start with a letter, so they stay on their own line.
- */
-function joinSoftBreaks(text: string): string {
-	return text.replace(/\n(?=[ \t]*\p{L})/gu, ' ');
-}
-
-function excerpt(text: string): string {
-	const flat = text.replace(/\s+/g, ' ');
-	return flat.length > 80 ? `${flat.slice(0, 77)}...` : flat;
 }
 
 /** The source could not convert every part of the skill, so the reviewer reads what is left. */

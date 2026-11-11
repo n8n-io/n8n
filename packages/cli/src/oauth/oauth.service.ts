@@ -96,6 +96,13 @@ export type OauthFlowState = {
 	stateData?: CreateCsrfStateData;
 	/** OAuth2 PKCE verifier, needed to exchange the code in the callback. */
 	codeVerifier?: string;
+	/**
+	 * `issuer` from the validated authorization server metadata. Set only when n8n discovered
+	 * the metadata. The callback compares the `iss` of the response to it (RFC 9207).
+	 */
+	issuer?: string;
+	/** The server sends `iss` in every authorization response, so a response without it is invalid. */
+	isIssuerParameterRequired?: boolean;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
 	/**
@@ -104,6 +111,21 @@ export type OauthFlowState = {
 	 */
 	managedVersion?: number;
 };
+
+/**
+ * Validates the `iss` of an authorization response against the recorded issuer
+ * (RFC 9207, MCP authorization spec). The comparison is exact, without normalization.
+ * When no issuer is recorded, n8n cannot verify a present `iss`, so the result is `false`.
+ * Without a flow state, n8n cannot apply the issuer policy, so the result is `false`.
+ */
+export function isAuthorizationResponseIssuerValid(
+	flowState: OauthFlowState | undefined,
+	iss: unknown,
+): boolean {
+	if (!flowState) return false;
+	if (iss === undefined) return !flowState.isIssuerParameterRequired;
+	return iss === flowState.issuer;
+}
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
@@ -515,6 +537,16 @@ export class OauthService {
 	 */
 	protected async peekOauthFlowState(stateToken: string): Promise<OauthFlowState | undefined> {
 		return await this.cacheService.get<OauthFlowState>(this.oauthFlowCacheKey(stateToken));
+	}
+
+	/** Reads the flow state of an encoded callback `state` without consuming it. */
+	async peekCallbackFlowState(encodedState: unknown): Promise<OauthFlowState | undefined> {
+		if (typeof encodedState !== 'string') return undefined;
+		const decoded = jsonParse<unknown>(Buffer.from(encodedState, 'base64').toString(), {
+			fallbackValue: null,
+		});
+		if (!isRecord(decoded) || typeof decoded.token !== 'string') return undefined;
+		return await this.peekOauthFlowState(decoded.token);
 	}
 
 	/**
@@ -1184,13 +1216,16 @@ export class OauthService {
 			csrfData.resource = resolvedResource;
 		}
 
+		// Automatic registration returns the server metadata. The callback checks `iss` against its issuer.
+		let authorizationServerMetadata: OAuthAuthorizationServerMetadata | undefined;
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			await this.registerClient(
+			authorizationServerMetadata = await this.registerClient(
 				oauthCredentials,
 				authorizationServerUrl!,
 				toUpdate,
 				toDelete,
 				discoveredScopes,
+				this.getDeclaredScope(credential.type),
 			);
 		}
 
@@ -1211,7 +1246,14 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData, managedVersion };
+		const flowState: OauthFlowState = {
+			csrfSecret,
+			stateData: csrfData,
+			managedVersion,
+			issuer: authorizationServerMetadata?.issuer,
+			isIssuerParameterRequired:
+				authorizationServerMetadata?.authorization_response_iss_parameter_supported,
+		};
 		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -1241,6 +1283,14 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
+	private getDeclaredScope(type: string): string | undefined {
+		if (!this.credentialsHelper.supportsDynamicClientRegistration(type)) return undefined;
+		const scope = this.credentialsHelper
+			.getCredentialsProperties(type)
+			.find((property) => property.name === 'scope')?.default;
+		return typeof scope === 'string' && scope ? scope : undefined;
+	}
+
 	/**
 	 * Registers n8n as a client of the authorization server. Uses a client ID metadata
 	 * document (CIMD) when possible, else dynamic client registration (DCR).
@@ -1251,7 +1301,8 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[],
 		discoveredResourceScopes?: string[],
-	): Promise<void> {
+		declaredScope?: string,
+	): Promise<OAuthAuthorizationServerMetadata> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
 		const issuerUrl = new URL(dcrAuthorizationServerUrl);
@@ -1261,34 +1312,48 @@ export class OauthService {
 		// If the path already contains /.well-known/, skip path-insertion variants to avoid
 		// double well-known paths (e.g. /.well-known/openid-configuration/.well-known/openid-configuration)
 		const pathIsWellKnown = pathComponent.startsWith('/.well-known');
-		const discoveryUrls =
+		// Each URL is paired with the issuer identifier that it was built from.
+		const pathIssuer = `${issuerUrl.origin}${pathComponent}`;
+		const discoveryCandidates =
 			pathComponent && !pathIsWellKnown
 				? [
 						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+						[
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+							pathIssuer,
+						],
 						// 2. OpenID Connect Discovery 1.0 (path insertion)
-						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+						[`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`, pathIssuer],
 						// 3. OpenID Connect Discovery 1.0 (path appending)
-						`${dcrAuthorizationServerUrl}/.well-known/openid-configuration`,
+						[`${dcrAuthorizationServerUrl}/.well-known/openid-configuration`, pathIssuer],
 						// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+						[`${issuerUrl.origin}/.well-known/oauth-authorization-server`, issuerUrl.origin],
 					]
 				: [
 						// For root-level issuers or already-well-known paths
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
-						`${issuerUrl.origin}/.well-known/openid-configuration`,
+						[`${issuerUrl.origin}/.well-known/oauth-authorization-server`, issuerUrl.origin],
+						[`${issuerUrl.origin}/.well-known/openid-configuration`, issuerUrl.origin],
 					];
 
 		let data: unknown;
 		let lastError: Error | undefined;
 
 		// Try each discovery URL until one succeeds
-		for (const url of discoveryUrls) {
+		for (const [url, expectedIssuer] of discoveryCandidates) {
 			try {
 				// Validate each URL before making request (defense-in-depth)
 				this.validateOAuthUrlOrThrow(url);
 
-				data = await this.fetchDiscoveryDocument(url);
+				const document = await this.fetchDiscoveryDocument(url);
+				// RFC 8414 3.3: do not use metadata for another issuer. A terminating "/" is ignored,
+				// because RFC 8414 3.1 removes it before it builds the well-known URL.
+				const issuer = isRecord(document) ? document.issuer : undefined;
+				if (typeof issuer !== 'string' || issuer.replace(/\/$/, '') !== expectedIssuer) {
+					throw new OperationalError(
+						`Issuer ${String(issuer)} in ${url} does not match expected issuer ${expectedIssuer}`,
+					);
+				}
+				data = document;
 				break; // Success - exit loop
 			} catch (error) {
 				lastError = error as Error;
@@ -1298,7 +1363,7 @@ export class OauthService {
 
 		if (!data) {
 			throw new BadRequestError(
-				`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryUrls.join(', ')}. Last error: ${lastError?.message}`,
+				`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryCandidates.map(([url]) => url).join(', ')}. Last error: ${lastError?.message}`,
 			);
 		}
 
@@ -1319,7 +1384,9 @@ export class OauthService {
 		const effectiveScopes = discoveredResourceScopes?.length
 			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
-		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
+		// A credential type's own scope is what its nodes need. `scopes_supported` can be far broader.
+		const scope =
+			declaredScope ?? (effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
 		if (scope) {
 			oauthCredentials.scope = scope;
 			toUpdate.scope = scope;
@@ -1337,12 +1404,12 @@ export class OauthService {
 				clientId: clientMetadataUrl,
 				clientSecret: undefined,
 			});
-			return;
+			return metadata;
 		}
 
 		if (!registration_endpoint) {
 			throw new BadRequestError(
-				'The OAuth2 server does not support automatic client registration. Turn off "Register Client Automatically" and enter a client ID.',
+				'The OAuth2 server does not support automatic client registration. Enter the client ID of your own OAuth app instead.',
 			);
 		}
 
@@ -1355,14 +1422,19 @@ export class OauthService {
 			grantType,
 			authentication,
 		);
+		const redirectUri = `${this.getBaseUrl(OauthVersion.V2)}/callback`;
+		const { hostname } = new URL(redirectUri);
 		const registerPayload = {
-			redirect_uris: [`${this.getBaseUrl(OauthVersion.V2)}/callback`],
+			// The MCP spec requires `application_type`: `native` for local instances, else `web`.
+			application_type: ['localhost', '127.0.0.1', '[::1]'].includes(hostname) ? 'native' : 'web',
+			redirect_uris: [redirectUri],
 			token_endpoint_auth_method,
 			grant_types,
 			response_types: ['code'],
 			client_name: 'n8n',
 			client_uri: 'https://n8n.io/',
-			scope,
+			// RFC 7591 separates scopes with spaces; credential types may use commas.
+			scope: scope?.split(/[\s,]+/).join(' '),
 			...(oauthCredentials.jweEnabled === true
 				? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
 				: {}),
@@ -1395,6 +1467,7 @@ export class OauthService {
 			clientId: client_id,
 			clientSecret: authentication ? client_secret : undefined,
 		});
+		return metadata;
 	}
 
 	/**
@@ -1779,33 +1852,20 @@ export class OauthService {
 		const supportsPkce = codeChallengeMethods.includes('S256');
 
 		if (grantTypes.includes('authorization_code')) {
-			// Public-client PKCE only when the server allows the 'none' auth method, or
-			// advertises no auth methods at all (servers that expose only PKCE metadata).
-			if (
-				supportsPkce &&
-				(tokenEndpointAuthMethods.length === 0 || tokenEndpointAuthMethods.includes('none'))
-			) {
-				return { grantType: 'pkce', usePkce: true };
+			// The MCP spec requires the client to stop when the server does not advertise PKCE.
+			if (!supportsPkce) {
+				throw new BadRequestError(
+					'The OAuth2 server does not support PKCE with the S256 method, which automatic client registration requires',
+				);
 			}
 
+			// Use a client secret only when the server needs one. Else use public-client PKCE.
 			const authentication = this.selectClientSecretAuthenticationMethod(tokenEndpointAuthMethods);
-			if (authentication) {
-				return {
-					grantType: 'authorizationCode',
-					authentication,
-					usePkce: supportsPkce,
-				};
+			if (authentication && !tokenEndpointAuthMethods.includes('none')) {
+				return { grantType: 'authorizationCode', authentication, usePkce: true };
 			}
 
-			// S256 advertised alongside only unrecognized methods: fall back to public-client PKCE.
-			if (supportsPkce) {
-				return { grantType: 'pkce', usePkce: true };
-			}
-
-			// Server omitted token_endpoint_auth_methods_supported: default to client_secret_basic (RFC 8414).
-			if (tokenEndpointAuthMethods.length === 0) {
-				return { grantType: 'authorizationCode', authentication: 'header', usePkce: false };
-			}
+			return { grantType: 'pkce', usePkce: true };
 		}
 
 		if (grantTypes.includes('client_credentials')) {

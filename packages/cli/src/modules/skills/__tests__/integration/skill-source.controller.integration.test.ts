@@ -40,7 +40,7 @@ const FILES = {
 	'README.md': '# Skills\n',
 	'skills/pdf/SKILL.md': skillMd('pdf'),
 	'skills/pdf/references/pages.md': '# Pages\n',
-	'skills/pdf/scripts/split.py': 'print(1)\n',
+	'skills/pdf/assets/form.pdf': '%PDF-1.4\n',
 	'skills/docx/SKILL.md': skillMd('docx'),
 	'skills/broken/SKILL.md': 'no frontmatter here\n',
 };
@@ -152,7 +152,7 @@ describe('SkillSourceController', () => {
 					location: 'skills/pdf',
 					name: 'pdf',
 					description: 'pdf description',
-					skippedFiles: ['scripts/split.py'],
+					skippedFiles: ['assets/form.pdf'],
 					nameTaken: false,
 					error: null,
 					webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
@@ -665,7 +665,7 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
-		it('imports one of two picked skills with the same name, and reports the other', async () => {
+		it('imports two picked skills with the same name, and numbers the second', async () => {
 			github.push('acme/twins', {
 				'one/SKILL.md': skillMd('twin', 'The first'),
 				'two/SKILL.md': skillMd('twin', 'The second'),
@@ -679,10 +679,10 @@ describe('SkillSourceController', () => {
 				skillKeys: discovery.skills.map((skill) => skill.key),
 			});
 
-			expect(data.imported).toEqual([expect.objectContaining({ name: 'twin' })]);
-			expect(data.failed).toEqual([
-				{ key: expect.any(String), name: 'twin', reason: 'name_taken' },
-			]);
+			expect(data.imported.map((skill) => skill.name)).toEqual(['twin', 'twin 2']);
+			expect(data.failed).toEqual([]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[1].skillId}`).expect(200);
+			expect(detail.data.skill.name).toBe('twin 2');
 		});
 	});
 

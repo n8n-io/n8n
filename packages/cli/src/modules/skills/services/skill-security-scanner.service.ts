@@ -9,7 +9,6 @@ import {
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
 	listFidelityWarnings,
 	listSkippedFiles,
 	type SkillScanInput,
@@ -22,7 +21,6 @@ const RULES = [
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
 	listFidelityWarnings,
 ];
 

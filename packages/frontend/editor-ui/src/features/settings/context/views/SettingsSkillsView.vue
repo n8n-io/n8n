@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -44,6 +44,10 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	AgentSkillImportError,
+	useAgentSkillImport,
+} from '@/features/agents/composables/useAgentSkillImport';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
@@ -315,14 +319,22 @@ async function loadFilterOptions() {
 }
 
 function openModal(data: AgentSkillModalData) {
+	// The skill modal is shared, so a late upload must not replace what opens now.
+	dropPendingUpload();
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
 }
 
-/** Starts at the SKILL.md upload step, which also offers "Add manually". */
-function openCreateModal() {
+/**
+ * Opens the create modal. Without `preset` it starts at the SKILL.md upload step, which also
+ * offers "Add manually". The create menu presets the form step, or a skill the user uploaded.
+ */
+function openCreateModal(
+	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
 	openModal({
+		...preset,
 		scopeOptions: options,
 		initialScope: options[0].value,
 		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
@@ -337,14 +349,45 @@ function openCreateModal() {
 	});
 }
 
-type CreateAction = 'github' | 'manual';
+type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
+// One upload at a time. An upload is dropped when another skill action starts or the
+// user leaves the page, so its late result opens no modal and shows no toast.
+const uploadBusy = ref(false);
+let pendingUpload: object | null = null;
+
+function dropPendingUpload() {
+	pendingUpload = null;
+	uploadBusy.value = false;
+}
+
+onBeforeUnmount(dropPendingUpload);
+
+// Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
+	...(skillSyncEnabled.value
+		? [
+				{
+					id: 'github' as const,
+					label: i18n.baseText('settings.context.skills.actions.connectGithub'),
+					icon: 'git-branch' as const,
+					testId: 'skills-create-github',
+				},
+			]
+		: []),
 	{
-		id: 'github',
-		label: i18n.baseText('settings.context.skills.actions.connectGithub'),
-		icon: 'git-branch',
-		testId: 'skills-create-github',
+		id: 'uploadFolder',
+		label: i18n.baseText('settings.context.skills.actions.uploadFolder'),
+		icon: 'folder-open',
+		testId: 'skills-create-upload-folder',
+		disabled: uploadBusy.value,
+	},
+	{
+		id: 'uploadFile',
+		label: i18n.baseText('settings.context.skills.actions.uploadSkillFile'),
+		icon: 'file-text',
+		testId: 'skills-create-upload-file',
+		disabled: uploadBusy.value,
 	},
 	{
 		id: 'manual',
@@ -354,9 +397,46 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 	},
 ]);
 
+const skillFolderInput = useTemplateRef<HTMLInputElement>('skillFolderInput');
+const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
+const { importSkillFiles } = useAgentSkillImport();
+
 function onCreateMenuSelect(action: CreateAction) {
-	if (action === 'github') connectOpen.value = true;
-	else openCreateModal();
+	if (action === 'uploadFolder') skillFolderInput.value?.click();
+	else if (action === 'uploadFile') skillFileInput.value?.click();
+	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
+	else {
+		dropPendingUpload();
+		connectOpen.value = true;
+	}
+}
+
+/** Reads the picked folder or SKILL.md, then opens the form with the skill for review. */
+async function onSkillFilesPicked(event: Event) {
+	const input = event.target;
+	if (!(input instanceof HTMLInputElement)) return;
+	const files = Array.from(input.files ?? []);
+	// Cleared so that the same pick fires a change event again.
+	input.value = '';
+	if (files.length === 0 || uploadBusy.value) return;
+	const request = {};
+	pendingUpload = request;
+	uploadBusy.value = true;
+	try {
+		const skill = await importSkillFiles(files);
+		if (pendingUpload !== request) return;
+		openCreateModal({ skill, initialMethod: 'upload' });
+	} catch (error) {
+		if (pendingUpload !== request) return;
+		// The same texts as the upload step in the modal, so both paths read alike.
+		const message =
+			error instanceof AgentSkillImportError
+				? i18n.baseText(error.i18nKey, { interpolate: error.interpolate })
+				: i18n.baseText('agents.builder.skills.import.invalidFolder');
+		showError(new Error(message), i18n.baseText('settings.context.skills.upload.error'));
+	} finally {
+		if (pendingUpload === request) dropPendingUpload();
+	}
 }
 
 type FailedSkill = SkillSourceConnected['response']['failed'][number];
@@ -853,7 +933,7 @@ onMounted(async () => {
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0 && skillSyncEnabled"
+				v-if="scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -866,12 +946,6 @@ onMounted(async () => {
 					</N8nButton>
 				</template>
 			</N8nActionDropdown>
-			<N8nButton
-				v-else-if="scopeOptions.length > 0"
-				:label="i18n.baseText('settings.context.skills.actions.create')"
-				data-test-id="skills-create-button"
-				@click="openCreateModal"
-			/>
 		</div>
 
 		<SkillsTable
@@ -907,12 +981,20 @@ onMounted(async () => {
 					<N8nText color="text-light">
 						{{ i18n.baseText('settings.context.skills.empty.description') }}
 					</N8nText>
-					<N8nButton
+					<N8nActionDropdown
 						v-if="scopeOptions.length > 0"
-						:label="i18n.baseText('settings.context.skills.actions.create')"
-						data-test-id="skills-empty-create-button"
-						@click="openCreateModal"
-					/>
+						:items="createMenuItems"
+						placement="bottom"
+						data-test-id="skills-empty-create-menu"
+						@select="onCreateMenuSelect"
+					>
+						<template #activator>
+							<N8nButton data-test-id="skills-empty-create-button">
+								{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nActionDropdown>
 				</div>
 			</template>
 		</SkillsTable>
@@ -922,6 +1004,25 @@ onMounted(async () => {
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
+		/>
+		<input
+			ref="skillFolderInput"
+			type="file"
+			webkitdirectory
+			multiple
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-folder-input"
+			@change="onSkillFilesPicked"
+		/>
+		<input
+			ref="skillFileInput"
+			type="file"
+			accept=".md,text/markdown"
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-file-input"
+			@change="onSkillFilesPicked"
 		/>
 	</N8nSettingsLayout>
 </template>
