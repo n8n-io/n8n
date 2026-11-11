@@ -12,6 +12,8 @@ import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execut
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -263,6 +265,86 @@ describe('webhook channel HTTP route', () => {
 			} finally {
 				resume.mockRestore();
 				stubs.forEach((stub) => stub.mockRestore());
+			}
+		});
+
+		it('cancels the waiting action when new input arrives, so the action never runs', async () => {
+			const agent = await createOpenAgent();
+			const conversationId = randomUUID();
+			const threadId = `${agent.id}:webhook:${conversationId}`;
+			const storage = Container.get(N8NCheckpointStorage);
+			const threads = Container.get(AgentExecutionThreadRepository);
+			await threads.save(
+				threads.create({
+					id: threadId,
+					agentId: agent.id,
+					agentName: agent.name,
+					projectId: agent.projectId as string,
+					sessionNumber: 1,
+				}),
+			);
+			const executions = Container.get(AgentExecutionRepository);
+			await executions.save(
+				executions.create({
+					id: randomUUID(),
+					threadId,
+					status: 'success',
+					hitlStatus: 'suspended',
+				}),
+			);
+			await storage.save(
+				'run-1',
+				{
+					status: 'suspended',
+					persistence: { threadId, resourceId: `integration:webhook:${conversationId}` },
+					messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+					pendingToolCalls: {
+						'call-1': {
+							toolCallId: 'call-1',
+							toolName: 'send_email',
+							input: {},
+							suspended: true,
+							runId: 'run-1',
+							suspendPayload,
+							resumeSchema: approvalResumeSchema,
+						},
+					},
+				} as unknown as SerializableAgentState,
+				agent.id,
+			);
+			// Admission rejects new input while this checkpoint exists.
+			expect(await storage.findSuspendedForThread(agent.id, threadId)).not.toBeNull();
+
+			let suspendedAtTurnStart: SerializableAgentState | null | undefined;
+			const run = vi
+				.spyOn(Container.get(AgentExecutionOrchestratorService), 'executeForChatPublished')
+				.mockImplementation(async function* () {
+					suspendedAtTurnStart = await storage.findSuspendedForThread(agent.id, threadId);
+					yield { type: 'text-delta' as const, id: 't1', delta: 'Okay.' };
+				});
+			const resume = vi.spyOn(Container.get(AgentExecutionOrchestratorService), 'resumeForChat');
+			try {
+				const response = await post(agent.id, {
+					input: 'Never mind',
+					conversation: conversationId,
+				}).expect(200);
+
+				expect(response.body).toMatchObject({
+					conversation: { id: conversationId },
+					output: [{ content: [{ text: 'Okay.' }] }],
+				});
+				expect(suspendedAtTurnStart).toBeNull();
+				expect(resume).not.toHaveBeenCalled();
+
+				const decision = await server.restlessAgent
+					.post(`/agent-webhook/${agent.id}/approvals/${conversationId}/run-1/call-1`)
+					.send({ approved: true })
+					.expect(404);
+				expect(decision.body.error).toMatchObject({ code: 'approval_not_found' });
+				expect(resume).not.toHaveBeenCalled();
+			} finally {
+				run.mockRestore();
+				resume.mockRestore();
 			}
 		});
 

@@ -10427,7 +10427,7 @@
 	"agents.channels.webhook.instructions.conversation.description": "Send the conversation ID from the last response with the next message. Without it, each message starts a new conversation.",
 	"agents.channels.webhook.instructions.approval.title": "Approve or deny an action",
 	"agents.channels.webhook.instructions.approval.description": "When an action needs approval, the response output contains an item of type approval_request. It names the action, shows its arguments, and gives a URL for your decision.",
-	"agents.channels.webhook.instructions.approval.pending": "Until you send a decision, new messages in this conversation get a 409 error with the code approval_pending. A new conversation still works.",
+	"agents.channels.webhook.instructions.approval.pending": "If you send a new message instead of a decision, the action does not run. The agent answers the new message.",
 	"agents.channels.webhook.instructions.approval.decision": "Send a POST request with your decision to that URL. To deny, set approved to false. The response contains the agent’s next reply or the next approval request. Send a decision for each approval request until the output has none.",
 	"agents.channels.webhook.instructions.approval.session": "To approve the action for the rest of the conversation, add \"scope\": \"session\" to the decision. You can do this only when supports_session_approval is true.",
 	"agents.channels.webhook.instructions.docs": "Webhook docs",
