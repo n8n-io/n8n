@@ -16,13 +16,14 @@ export function findTriggerIdentityReasons(nodes: INode[]): EngineV2Reason[] {
 		.filter(
 			(node) =>
 				node.disabled !== true &&
-				// v2 starts a sub-workflow through `EngineSubWorkflowService`, which skips the dispatcher.
+				// A call from a parent workflow goes through `EngineSubWorkflowService`, which skips
+				// the dispatcher. A manual run of the sub-workflow does not, so the dispatcher can still refuse it.
 				node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
 				isTriggerNodeType(node.type) &&
 				classifyTriggerIdentity(node.type, node.parameters).providesExternalIdentity,
 		)
 		.map((node) => ({
-			code: 'trigger-external-identity',
+			code: 'TRIGGER_EXTERNAL_IDENTITY',
 			severity: 'blocking',
 			nodeId: node.id,
 			nodeName: node.name,

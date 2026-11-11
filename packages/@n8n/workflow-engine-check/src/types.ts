@@ -4,10 +4,10 @@ export type EngineV2EligibilityWorkflow = Pick<IWorkflowBase, 'nodes' | 'connect
 
 /** Stable identifiers. Consumers key messages and metrics on them, so never rename one. */
 export type EngineV2ReasonCode =
-	| 'error-workflow'
-	| 'redaction-policy'
-	| 'end-user-credentials'
-	| 'trigger-external-identity';
+	| 'ERROR_WORKFLOW'
+	| 'REDACTION_POLICY'
+	| 'END_USER_CREDENTIALS'
+	| 'TRIGGER_EXTERNAL_IDENTITY';
 
 export interface EngineV2Reason {
 	code: EngineV2ReasonCode;

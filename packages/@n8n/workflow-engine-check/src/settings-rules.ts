@@ -16,20 +16,20 @@ function namesErrorWorkflow(errorWorkflow: IWorkflowSettings['errorWorkflow']): 
 }
 
 /** Settings that engine v2 ignores. Running anyway would silently drop what the user asked for. */
-export function findSettingsReasons(settings: IWorkflowSettings = {}): EngineV2Reason[] {
+export function findSettingsReasons(settings: IWorkflowSettings): EngineV2Reason[] {
 	const reasons: EngineV2Reason[] = [];
 
 	if (namesErrorWorkflow(settings.errorWorkflow)) {
 		reasons.push({
-			code: 'error-workflow',
+			code: 'ERROR_WORKFLOW',
 			severity: 'blocking',
 			message: 'Engine v2 does not run an error workflow yet. Remove the error workflow setting.',
 		});
 	}
 
-	if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
+	if ((settings.redactionPolicy ?? 'none') !== 'none') {
 		reasons.push({
-			code: 'redaction-policy',
+			code: 'REDACTION_POLICY',
 			severity: 'blocking',
 			message: 'Engine v2 does not redact execution data yet. Set the redaction policy to none.',
 		});
@@ -37,7 +37,7 @@ export function findSettingsReasons(settings: IWorkflowSettings = {}): EngineV2R
 
 	if (settings.credentialResolverId) {
 		reasons.push({
-			code: 'end-user-credentials',
+			code: 'END_USER_CREDENTIALS',
 			severity: 'blocking',
 			message:
 				'Engine v2 does not support end-user credentials yet. Remove the credential resolver.',
