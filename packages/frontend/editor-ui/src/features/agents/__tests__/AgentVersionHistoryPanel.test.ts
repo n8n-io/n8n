@@ -295,6 +295,14 @@ describe('AgentVersionHistoryPanel — history loading', () => {
 		expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
 	});
 
+	it('refreshes history when a skill changes without a new agent version', async () => {
+		const wrapper = mountPanel({ currentVersionId: 'v1', hasUnpublishedChanges: false });
+		await flushPromises();
+		versionHistoryMock.refresh.mockClear();
+		await wrapper.setProps({ hasUnpublishedChanges: true });
+		expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
+	});
+
 	it('retries the failed history request', async () => {
 		const wrapper = mountPanel();
 		await flushPromises();

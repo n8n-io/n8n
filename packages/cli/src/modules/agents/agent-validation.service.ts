@@ -5,6 +5,7 @@ import {
 	AgentModelSchema,
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
+	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
@@ -372,6 +373,9 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
+		// Runs in both scopes: a dangling guardrail ref blocks publish and run,
+		// but never the draft save (which does not reach this service).
+		this.collectToolGuardrailRefIssues(config, issues);
 		await this.collectMainCredentialIssues(
 			config,
 			findCredential,
@@ -626,6 +630,22 @@ export class AgentValidationService {
 					kind: 'vectorStore',
 					id: store.name,
 					index,
+				}),
+			);
+		}
+	}
+
+	/** A dangling guardrail tool ref blocks publish and run, never the draft save. */
+	private collectToolGuardrailRefIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
+			issues.push(
+				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
+					kind: 'guardrail',
+					id: guardrails[guardrailIndex].id,
 				}),
 			);
 		}

@@ -396,5 +396,17 @@ describe('AgentCard', () => {
 			expect(indicator.text()).toBe('agents.list.published');
 			expect(indicator.attributes('data-variant')).toBe('success');
 		});
+
+		it('shows skill-only changes without a new agent version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({
+					versionId: 'v1',
+					activeVersionId: 'v1',
+					activeVersion,
+					skillVersions: { tone: { draft: 2, published: 1, latest: 2, pinned: false } },
+				}),
+			);
+			expect(findIndicator(wrapper).attributes('data-state')).toBe('changes-to-publish');
+		});
 	});
 });

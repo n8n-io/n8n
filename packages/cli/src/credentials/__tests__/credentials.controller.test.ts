@@ -75,6 +75,7 @@ describe('CredentialsController', () => {
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -152,7 +153,7 @@ describe('CredentialsController', () => {
 					.mockResolvedValue([fixed]);
 				const request = mock<CredentialRequest.ForWorkflow>({
 					user: req.user,
-					query: { projectId: 'project-1', forAgent },
+					query: { projectId: 'project-1', forAgent, forAssistant: undefined },
 				});
 
 				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([

@@ -69,9 +69,22 @@ export function useAgentPublish() {
 		publishing.value = true;
 
 		try {
-			const selectedId =
-				versionId ?? (await getAgent(rootStore.restApiContext, projectId, agentId)).versionId;
+			const currentDraft = versionId
+				? undefined
+				: await getAgent(rootStore.restApiContext, projectId, agentId);
+			const selectedId = versionId ?? currentDraft?.versionId;
 			if (!selectedId) return null;
+			const draft = currentDraft
+				? {
+						versionId: selectedId,
+						skillVersions: Object.fromEntries(
+							Object.entries(currentDraft.skillVersions ?? {}).map(([id, info]) => [
+								id,
+								info.draft,
+							]),
+						),
+					}
+				: undefined;
 
 			const version = await getAgentVersion(
 				rootStore.restApiContext,
@@ -94,8 +107,9 @@ export function useAgentPublish() {
 							rootStore.restApiContext,
 							projectId,
 							agentId,
-							selectedId,
+							versionId,
 							metadata,
+							draft,
 						);
 						upsertProjectAgentsListCache(projectId, updated);
 						showMessage({

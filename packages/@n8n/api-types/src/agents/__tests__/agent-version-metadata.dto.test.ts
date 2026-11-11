@@ -16,3 +16,18 @@ describe.each([PublishAgentDto, UpdateAgentVersionDto])('Agent version metadata'
 		},
 	);
 });
+
+describe('Agent draft publication', () => {
+	it('keeps the draft version and resolved skill versions', () => {
+		const draft = { versionId: 'agent-v1', skillVersions: { tone: 2 } };
+		expect(PublishAgentDto.parse({ draft })).toEqual({ draft });
+	});
+
+	it.each([0, -1, 1.5, '2'])('rejects an invalid skill version: %s', (version) => {
+		expect(
+			PublishAgentDto.safeParse({
+				draft: { versionId: 'agent-v1', skillVersions: { tone: version } },
+			}).success,
+		).toBe(false);
+	});
+});
