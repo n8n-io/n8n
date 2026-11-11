@@ -1,8 +1,11 @@
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { agentBuilderTargetMetadata, readAgentTargetsMetadata } from '@n8n/instance-ai';
 import { randomUUID } from 'node:crypto';
 
+import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 import { AssistantTurnOverrides } from '@/modules/instance-ai/turn-setup/assistant-turn-overrides';
@@ -33,7 +36,7 @@ beforeAll(async () => {
 
 describe('Assistant agent eval routes', () => {
 	mockInstance(InstanceAiSettingsService).isInstanceAiEnabled.mockReturnValue(true);
-	mockInstance(EvalThreadRestoreService);
+	const evalThreadRestore = mockInstance(EvalThreadRestoreService);
 	mockInstance(FailedExecutionPortabilityService);
 	const server = setupTestServer({ endpointGroups: ['module-settings'] });
 
@@ -96,6 +99,101 @@ describe('Assistant agent eval routes', () => {
 		await ownerAgent.put(`/assistant/eval/threads/${threadId}/overrides`).send({}).expect(404);
 	});
 
+	it('restores a seeded conversation that the next turn loads as history', async () => {
+		const threadId = randomUUID();
+		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
+		const messages = [
+			{
+				id: `${threadId}-1`,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				role: 'user',
+				content: [{ type: 'text', text: 'Build a workflow that posts to Slack' }],
+			},
+			{
+				id: `${threadId}-2`,
+				createdAt: '2026-01-01T00:00:01.000Z',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'I built the workflow.' }],
+			},
+			{
+				id: `${threadId}-3`,
+				createdAt: '2026-01-01T00:00:02.000Z',
+				role: 'user',
+				content: [{ type: 'text', text: 'Thanks' }],
+			},
+		];
+		const workflow = { id: 'wf-seed-1', name: 'Post to Slack', nodes: [], connections: {} };
+		// The artifact restore has its own tests. Here it returns what a real restore returns.
+		const rollback = vi.fn(async () => {});
+		evalThreadRestore.restoreSeedArtifacts.mockResolvedValueOnce({
+			folderIds: [],
+			dataTableIds: [],
+			workflowIds: [workflow.id],
+			createdWorkflowIds: [workflow.id],
+			publishedWorkflowIds: [],
+			agentIds: ['agent-seed-1'],
+			agentBuilderBinding: agentBuilderTargetMetadata([
+				{ agentId: 'agent-seed-1', projectId, name: 'Slack bot', ref: 'Slack bot' },
+			]),
+			rollback,
+		});
+
+		const restored = await ownerAgent
+			.post('/assistant/eval/restore-thread')
+			.send({ threadId, messages, workflows: [workflow] })
+			.expect(200);
+
+		expect(restored.body.data).toEqual({
+			ok: true,
+			threadId,
+			restored: 3,
+			workflowIds: [workflow.id],
+			dataTableIds: [],
+			agentIds: ['agent-seed-1'],
+			folderIds: [],
+		});
+		expect(rollback).not.toHaveBeenCalled();
+		// The runtime loads the history of a turn with this read.
+		const memory = Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
+		const resourceId = Container.get(SystemAgentExecutionService).resourceIdFor(owner);
+		const history = await memory.getMessages(threadId, { resourceId });
+		expect(history.map(({ id }) => id)).toEqual(messages.map(({ id }) => id));
+		expect(history[0]).toMatchObject({ role: 'user', content: messages[0].content });
+		// The builder tools of the next turn read the binding from the memory row.
+		const thread = await memory.getThread(threadId);
+		expect(thread?.resourceId).toBe(resourceId);
+		expect(readAgentTargetsMetadata(thread?.metadata).bound).toMatchObject({
+			agentId: 'agent-seed-1',
+			projectId,
+		});
+
+		await ownerAgent.delete(`/assistant/eval/threads/${threadId}`).expect(200);
+		await expect(memory.getMessages(threadId, { resourceId })).resolves.toEqual([]);
+	});
+
+	it('rolls back the artifacts when a seed message is not valid', async () => {
+		const threadId = randomUUID();
+		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
+		const rollback = vi.fn(async () => {});
+		evalThreadRestore.restoreSeedArtifacts.mockResolvedValueOnce({
+			folderIds: [],
+			dataTableIds: [],
+			workflowIds: [],
+			createdWorkflowIds: [],
+			publishedWorkflowIds: [],
+			agentIds: [],
+			agentBuilderBinding: undefined,
+			rollback,
+		});
+
+		await ownerAgent
+			.post('/assistant/eval/restore-thread')
+			.send({ threadId, messages: [{ id: 'msg-1', role: 'user' }] })
+			.expect(400);
+
+		expect(rollback).toHaveBeenCalledTimes(1);
+	});
+
 	it('rejects a thread of another user', async () => {
 		const threadId = randomUUID();
 		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
@@ -107,6 +205,10 @@ describe('Assistant agent eval routes', () => {
 		await otherAgent
 			.post('/assistant/eval/thread-credential-allowlist')
 			.send({ threadId, credentialIds: [] })
+			.expect(404);
+		await otherAgent
+			.post('/assistant/eval/restore-thread')
+			.send({ threadId, messages: [] })
 			.expect(404);
 		await otherAgent.delete(`/assistant/eval/threads/${threadId}`).expect(404);
 

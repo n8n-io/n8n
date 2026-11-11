@@ -3,6 +3,7 @@ import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import { SystemAgentEvalService } from '../system-agent-eval.service';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
 
@@ -18,8 +19,12 @@ describe('SystemAgentEvalService', () => {
 		const thread = mock<AgentExecutionThread>({ id: THREAD_ID, projectId: PROJECT_ID });
 		systemAgents.createThread.mockResolvedValue(thread);
 		systemAgents.getUsableThread.mockResolvedValue(thread);
-		const service = new SystemAgentEvalService(systemAgents);
-		return { service, systemAgents };
+		systemAgents.resourceIdFor.mockReturnValue('system-chat:user-1');
+		const impl = mock<N8nMemoryImpl>();
+		const n8nMemory = mock<N8nMemory>();
+		n8nMemory.getImplementation.mockReturnValue(impl);
+		const service = new SystemAgentEvalService(systemAgents, n8nMemory);
+		return { service, systemAgents, n8nMemory, impl };
 	}
 
 	describe('threads', () => {
@@ -67,6 +72,42 @@ describe('SystemAgentEvalService', () => {
 			await expect(service.getUsableThread(AGENT_ID, user, THREAD_ID)).rejects.toThrow(
 				NotFoundError,
 			);
+		});
+	});
+
+	describe('memory writes', () => {
+		it('creates the memory row of the thread in the system chat resource of the user', async () => {
+			const { service, systemAgents, n8nMemory, impl } = setup();
+
+			await service.ensureMemoryThread(AGENT_ID, user, THREAD_ID);
+
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
+			expect(systemAgents.resourceIdFor).toHaveBeenCalledWith(user);
+			expect(impl.saveThread).toHaveBeenCalledWith({
+				id: THREAD_ID,
+				resourceId: 'system-chat:user-1',
+			});
+		});
+
+		it('writes the messages in the system chat resource of the user', async () => {
+			const { service, n8nMemory, impl } = setup();
+			const messages = [
+				{
+					id: 'msg-1',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					role: 'user' as const,
+					content: [{ type: 'text' as const, text: 'Hi' }],
+				},
+			];
+
+			await service.saveMessages(AGENT_ID, user, THREAD_ID, messages);
+
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
+			expect(impl.saveMessages).toHaveBeenCalledWith({
+				threadId: THREAD_ID,
+				resourceId: 'system-chat:user-1',
+				messages,
+			});
 		});
 	});
 });
