@@ -5,7 +5,6 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
 
 import { UserService } from '@/services/user.service';
 
@@ -30,21 +29,16 @@ export class ServiceAccountService {
 	}
 
 	/**
-	 * Removes the account through the same path as any account deletion, so
-	 * every module cleanup runs for it too. `actor` is the person who caused the
-	 * removal, for the audit event. Refuses when the personal project owns a
-	 * workflow or a credential. Does nothing when no service account has this id.
+	 * Removes the account through the same path as a person, so every module
+	 * cleanup runs for it too. `actor` is the person who caused the removal, for
+	 * the audit event. With `transferId`, the work of the personal project moves
+	 * to that project. Without it, the work is deleted with the account.
+	 * Does nothing when no service account has this id.
 	 */
-	async remove(serviceAccountId: string, actor: User) {
+	async remove(serviceAccountId: string, actor: User, transferId?: string) {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
 		if (!serviceAccount) return;
 
-		if (await this.serviceAccountRepository.personalProjectOwnsResources(serviceAccountId)) {
-			throw new UserError(
-				'Move the workflows and credentials of this service account to another project before you remove it',
-			);
-		}
-
-		await this.userService.deleteUser(actor, serviceAccountId);
+		await this.userService.deleteUser(actor, serviceAccountId, transferId);
 	}
 }

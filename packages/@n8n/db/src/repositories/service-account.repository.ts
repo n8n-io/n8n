@@ -10,8 +10,6 @@ import {
 	type Role,
 	ServiceAccount,
 	ServiceAccountDetails,
-	SharedCredentials,
-	SharedWorkflow,
 } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
@@ -91,23 +89,5 @@ export class ServiceAccountRepository {
 			);
 			return { serviceAccount, project };
 		});
-	}
-
-	/** True when the personal project of the account owns a workflow or a credential. */
-	async personalProjectOwnsResources(serviceAccountId: string, ctx: OperationContext = {}) {
-		const manager = this.table.managerFor(ctx);
-		const project = await manager.findOne(Project, {
-			where: { type: 'personal', creatorId: serviceAccountId },
-			select: ['id'],
-		});
-		if (!project) return false;
-		// One after the other: a transaction holds a single connection.
-		return (
-			(await manager.existsBy(SharedWorkflow, { projectId: project.id, role: 'workflow:owner' })) ||
-			(await manager.existsBy(SharedCredentials, {
-				projectId: project.id,
-				role: 'credential:owner',
-			}))
-		);
 	}
 }

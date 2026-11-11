@@ -1,4 +1,9 @@
-import { createWorkflow, shareWorkflowWithProjects, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	getPersonalProject,
+	shareWorkflowWithProjects,
+	testDb,
+} from '@n8n/backend-test-utils';
 import {
 	AuthIdentity,
 	Project,
@@ -9,7 +14,6 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from '@n8n/errors';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 
 import { ServiceAccountService } from '@/services/service-account.service';
@@ -123,17 +127,31 @@ describe('ServiceAccountService', () => {
 			expect(await manager.existsBy(AuthIdentity, { userId: serviceAccount.id })).toBe(false);
 		});
 
-		it('refuses when the personal project owns a workflow, and removes nothing', async () => {
+		it('moves the work of the personal project to the transfer project, as for a person', async () => {
 			const person = await createMember();
 			const { serviceAccount, project } = await service.create('Support agent');
-			await createWorkflow({}, project);
+			const workflow = await createWorkflow({}, project);
+			const target = await getPersonalProject(person);
 
-			await expect(service.remove(serviceAccount.id, person)).rejects.toThrow(UserError);
+			await service.remove(serviceAccount.id, person, target.id);
 
-			const rows = await rowsOf(serviceAccount.id);
-			expect(rows.user).not.toBeNull();
-			expect(rows.details).not.toBeNull();
-			expect(rows.project).not.toBeNull();
+			expect(await rowsOf(serviceAccount.id)).toMatchObject({ user: null, project: null });
+			const owner = await manager.findOneByOrFail(SharedWorkflow, {
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+			expect(owner.projectId).toBe(target.id);
+		});
+
+		it('deletes the work of the personal project without a transfer project, as for a person', async () => {
+			const person = await createMember();
+			const { serviceAccount, project } = await service.create('Support agent');
+			const workflow = await createWorkflow({}, project);
+
+			await service.remove(serviceAccount.id, person);
+
+			expect(await rowsOf(serviceAccount.id)).toMatchObject({ user: null, project: null });
+			expect(await manager.existsBy(WorkflowEntity, { id: workflow.id })).toBe(false);
 		});
 
 		it('does nothing for the id of a person', async () => {
