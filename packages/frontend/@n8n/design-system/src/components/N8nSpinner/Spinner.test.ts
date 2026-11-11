@@ -75,7 +75,7 @@ describe('Spinner', () => {
 	] as const)('renders accessible brand at %s height', (size, height) => {
 		const { container, getByRole } = render(Spinner, { props: { type: 'brand', size } });
 		expect(getByRole('status')).toHaveAttribute('aria-label');
-		const svg = container.querySelector('[data-spinner="brand"]');
+		const svg = container.querySelector<SVGSVGElement>('[data-spinner="brand"]');
 		expect(svg).toHaveAttribute('width', String((height * 336) / 160));
 		expect(svg).toHaveAttribute('height', String(height));
 		expect(svg?.style.width).toBe(`${(height * 336) / 160}px`);
@@ -124,8 +124,8 @@ describe('Spinner', () => {
 				'matchMedia',
 				vi.fn(() => media),
 			);
-			vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-				frames.set(++frameId, callback);
+			vi.spyOn(window, 'requestAnimationFrame').mockImplementation((onFrame) => {
+				frames.set(++frameId, onFrame);
 				return frameId;
 			});
 			vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
@@ -141,14 +141,14 @@ describe('Spinner', () => {
 		async function advanceFrames(count: number) {
 			for (let index = 0; index < count; index++) {
 				time += 16;
-				const callbacks = [...frames.values()];
+				const frameHandlers = [...frames.values()];
 				frames.clear();
-				callbacks.forEach((callback) => callback(time));
+				frameHandlers.forEach((onFrame) => onFrame(time));
 				await nextTick();
 			}
 		}
 
-		function transforms(container: HTMLElement) {
+		function transforms(container: Element) {
 			return Array.from(container.querySelectorAll('[data-spinner="brand"] g'), (group) =>
 				group.getAttribute('transform'),
 			);
@@ -189,12 +189,12 @@ describe('Spinner', () => {
 			const initial = transforms(container);
 			await advanceFrames(40);
 			reduced = true;
-			media.dispatchEvent(new Event('change'));
+			media.dispatchEvent(Object.assign(new Event('change'), { matches: reduced }));
 			await nextTick();
 			expect(frames.size).toBe(0);
 			expect(transforms(container)).toEqual(initial);
 			reduced = false;
-			media.dispatchEvent(new Event('change'));
+			media.dispatchEvent(Object.assign(new Event('change'), { matches: reduced }));
 			await nextTick();
 			expect(frames.size).toBe(1);
 			await advanceFrames(40);
