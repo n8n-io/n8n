@@ -2307,39 +2307,42 @@ describe('credential-missing-mode: create-stub', () => {
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 
-	it('requires the credential:create scope when create-stub creates a credential, and writes nothing without it', async () => {
-		const owner = await createOwner();
-		const packageBuffer = await buildImportPackageBuffer(
-			[
-				serializedWorkflowWithCredential({
-					id: 'wf-missing-cred',
-					name: 'Missing cred workflow',
-					credentialId: 'missing-cred',
-					credentialName: 'Missing GitHub',
+	it.each(['create-stub', 'create-with-values'] as const)(
+		'requires the credential:create scope when %s creates a credential, and writes nothing without it',
+		async (credentialMissingMode) => {
+			const owner = await createOwner();
+			const packageBuffer = await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-missing-cred',
+						name: 'Missing cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{ sourceId },
+			);
+
+			await expect(
+				importPackage({
+					user: owner,
+					credentialMissingMode,
+					apiKeyScopes: ['workflow:import'],
+					packageBuffer,
 				}),
-			],
-			{ sourceId },
-		);
+			).rejects.toThrow(ForbiddenError);
+			expect(await Container.get(CredentialsRepository).count()).toBe(0);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
 
-		await expect(
-			importPackage({
+			const result = await importPackage({
 				user: owner,
-				credentialMissingMode: 'create-stub',
-				apiKeyScopes: ['workflow:import'],
+				credentialMissingMode,
+				apiKeyScopes: ['workflow:import', 'credential:create'],
 				packageBuffer,
-			}),
-		).rejects.toThrow(ForbiddenError);
-		expect(await Container.get(CredentialsRepository).count()).toBe(0);
-		expect(await Container.get(WorkflowRepository).count()).toBe(0);
-
-		const result = await importPackage({
-			user: owner,
-			credentialMissingMode: 'create-stub',
-			apiKeyScopes: ['workflow:import', 'credential:create'],
-			packageBuffer,
-		});
-		expect(result.credentials.stubbed).toEqual(['missing-cred']);
-	});
+			});
+			expect(result.credentials.stubbed).toEqual(['missing-cred']);
+		},
+	);
 });
 
 describe('credential-missing-mode: create-with-values', () => {
@@ -2723,40 +2726,6 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(result.credentials.seeded).toEqual([]);
 		expect(result.credentials.incomplete).toEqual([]);
 		expect(await Container.get(CredentialsRepository).count()).toBe(1);
-	});
-
-	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
-		const owner = await createOwner();
-		const packageBuffer = await buildImportPackageBuffer(
-			[
-				serializedWorkflowWithCredential({
-					id: 'wf-missing-cred',
-					name: 'Missing cred workflow',
-					credentialId: 'missing-cred',
-					credentialName: 'Missing GitHub',
-				}),
-			],
-			{ sourceId },
-		);
-
-		await expect(
-			importPackage({
-				user: owner,
-				credentialMissingMode: 'create-with-values',
-				apiKeyScopes: ['workflow:import'],
-				packageBuffer,
-			}),
-		).rejects.toThrow(ForbiddenError);
-		expect(await Container.get(CredentialsRepository).count()).toBe(0);
-		expect(await Container.get(WorkflowRepository).count()).toBe(0);
-
-		const result = await importPackage({
-			user: owner,
-			credentialMissingMode: 'create-with-values',
-			apiKeyScopes: ['workflow:import', 'credential:create'],
-			packageBuffer,
-		});
-		expect(result.credentials.stubbed).toEqual(['missing-cred']);
 	});
 
 	it('does not require the credential:create scope when every credential resolves', async () => {
