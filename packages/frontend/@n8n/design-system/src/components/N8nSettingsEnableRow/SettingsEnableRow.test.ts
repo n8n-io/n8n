@@ -18,7 +18,11 @@ describe('N8nSettingsEnableRow', () => {
 
 	it('emits the next switch value', async () => {
 		const { getByRole, emitted } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Agents', modelValue: false },
+			props: {
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
+				modelValue: false,
+			},
 		});
 
 		await userEvent.click(getByRole('switch', { name: 'Enable Agents' }));
@@ -30,6 +34,7 @@ describe('N8nSettingsEnableRow', () => {
 		const { getByTestId } = render(N8nSettingsEnableRow, {
 			props: {
 				title: 'Enable workflow reviews',
+				description: 'Allow users to submit workflow versions for approval.',
 				modelValue: true,
 				showPreviewBadge: true,
 				showEnterpriseReadinessBadge: true,
@@ -44,7 +49,11 @@ describe('N8nSettingsEnableRow', () => {
 
 	it('hides the status badges by default', () => {
 		const { queryByTestId } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable workflow reviews', modelValue: true },
+			props: {
+				title: 'Enable workflow reviews',
+				description: 'Allow users to submit workflow versions for approval.',
+				modelValue: true,
+			},
 		});
 
 		expect(queryByTestId('settings-enable-row-preview-badge')).not.toBeInTheDocument();
@@ -53,7 +62,11 @@ describe('N8nSettingsEnableRow', () => {
 
 	it('uses the large settings switch', () => {
 		const { getByRole } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Agents', modelValue: false },
+			props: {
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
+				modelValue: false,
+			},
 		});
 
 		expect(getByRole('switch', { name: 'Enable Agents' }).parentElement?.className).toContain(
@@ -92,7 +105,12 @@ describe('N8nSettingsEnableRow', () => {
 
 	it('does not toggle from the title when the switch is disabled', async () => {
 		const { getByText, emitted } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Agents', modelValue: false, disabled: true },
+			props: {
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
+				modelValue: false,
+				disabled: true,
+			},
 		});
 
 		await fireEvent.click(getByText('Enable Agents'));
@@ -104,6 +122,7 @@ describe('N8nSettingsEnableRow', () => {
 		const { getByTestId, emitted } = render(N8nSettingsEnableRow, {
 			props: {
 				title: 'Enable workflow reviews',
+				description: 'Allow users to submit workflow versions for approval.',
 				modelValue: false,
 				showPreviewBadge: true,
 			},
@@ -116,7 +135,10 @@ describe('N8nSettingsEnableRow', () => {
 
 	it('renders the row as its own card with no divider', () => {
 		const { getByTestId, queryByTestId } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Agents' },
+			props: {
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
+			},
 		});
 
 		expect(getByTestId('settings-row-group')).toBeInTheDocument();

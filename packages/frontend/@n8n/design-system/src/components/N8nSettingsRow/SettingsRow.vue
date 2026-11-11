@@ -60,11 +60,6 @@ export interface SettingsRowProps {
 	 * `clickable` row.
 	 */
 	revealActionsOnHover?: boolean;
-	/**
-	 * Id of the control this row labels. A click on the title or the description activates
-	 * that control. Trailing badges stay outside the label.
-	 */
-	labelFor?: string;
 }
 
 defineOptions({ name: 'N8nSettingsRow' });
@@ -86,7 +81,6 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	hoverable: false,
 	clickable: false,
 	revealActionsOnHover: false,
-	labelFor: undefined,
 });
 
 const emit = defineEmits<{
@@ -102,8 +96,6 @@ const slots = defineSlots<{
 	info?: () => unknown;
 	action?: () => unknown;
 	expanded?: () => unknown;
-	/** Status badges beside the row title, such as Preview or Limited enterprise support. */
-	titleTrailing?: () => unknown;
 }>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
@@ -233,44 +225,10 @@ function onKeydown(event: KeyboardEvent) {
 				<div v-if="showVisualSlot" :class="$style.visual" data-test-id="settings-row-visual">
 					<slot name="visual" />
 				</div>
-				<div :class="[$style.text, slots.titleTrailing && $style.textWithTitleTrailing]">
+				<div :class="$style.text">
 					<slot name="info">
-						<span v-if="slots.titleTrailing" :class="$style.titleLine">
-							<label v-if="labelFor && title" :for="labelFor" :class="$style.controlLabel">
-								<N8nText
-									:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-									bold
-									size="medium"
-									color="text-dark"
-								>
-									{{ title }}
-								</N8nText>
-							</label>
-							<N8nText
-								v-else-if="title"
-								:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-								bold
-								size="medium"
-								color="text-dark"
-							>
-								{{ title }}
-							</N8nText>
-							<span :class="$style.titleTrailing">
-								<slot name="titleTrailing" />
-							</span>
-						</span>
-						<label v-else-if="labelFor && title" :for="labelFor" :class="$style.controlLabel">
-							<N8nText
-								:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-								bold
-								size="medium"
-								color="text-dark"
-							>
-								{{ title }}
-							</N8nText>
-						</label>
 						<N8nText
-							v-else-if="title"
+							v-if="title"
 							:class="[$style.title, { [$style.truncate]: truncateTitle }]"
 							bold
 							size="medium"
@@ -278,25 +236,8 @@ function onKeydown(event: KeyboardEvent) {
 						>
 							{{ title }}
 						</N8nText>
-						<label v-if="labelFor && description" :for="labelFor" :class="$style.controlLabel">
-							<N8nTooltip
-								:content="description"
-								:disabled="!isDescriptionTruncated"
-								placement="top"
-							>
-								<N8nText
-									ref="descriptionRef"
-									:class="$style.description"
-									:style="{ '--settings-row--description-lines': descriptionLines }"
-									size="small"
-									color="text-light"
-								>
-									{{ description }}
-								</N8nText>
-							</N8nTooltip>
-						</label>
 						<N8nTooltip
-							v-else-if="description"
+							v-if="description"
 							:content="description"
 							:disabled="!isDescriptionTruncated"
 							placement="top"
@@ -477,47 +418,11 @@ $expand-easing: motion.$blur-motion-easing;
 	min-width: 0;
 }
 
-// Trailing badges are taller than the title text.
-// Keep a wider gap than a row with no badge, so the description stays clear of the badge.
-.textWithTitleTrailing {
-	gap: var(--spacing--2xs);
-}
-
 .title {
 	&.truncate {
 		display: block;
 		@include utils.utils-ellipsis;
 	}
-}
-
-.titleLine {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	min-width: 0;
-}
-
-.titleLine .title {
-	min-width: 0;
-}
-
-// The label has no box, so the title and the description keep the row layout.
-// A click on either text still activates the labeled control.
-.controlLabel {
-	display: contents;
-}
-
-// `display: contents` drops the label box, so the pointer cursor lives on the text.
-.text:has(.controlLabel) .title,
-.text:has(.controlLabel) .description {
-	cursor: pointer;
-}
-
-.titleTrailing {
-	display: inline-flex;
-	flex: none;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 
 .description {

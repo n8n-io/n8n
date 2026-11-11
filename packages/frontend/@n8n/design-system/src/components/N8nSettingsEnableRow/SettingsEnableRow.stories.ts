@@ -40,6 +40,7 @@ export const WithBadges: Story = {
 	name: 'With Badges',
 	args: {
 		title: 'With Preview',
+		description: 'Allow users to build and run agents on this instance.',
 	},
 	render: () => ({
 		components: { N8nSettingsEnableRow },
