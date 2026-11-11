@@ -246,8 +246,14 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles } = readSkillFolder(folderName, files);
-		return { content, revision: sha, fidelity: [], skippedFiles: [...skippedFiles, ...oversized] };
+		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+		return {
+			content,
+			revision: sha,
+			fidelity: [],
+			skippedFiles: [...skippedFiles, ...oversized],
+			unstorableFiles,
+		};
 	}
 
 	/**

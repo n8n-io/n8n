@@ -116,6 +116,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 					action: params.action,
 					input: params.input,
 					currentMessageContext: params.currentMessageContext,
+					files,
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {

@@ -1,8 +1,7 @@
 import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError, UnexpectedError } from '@n8n/errors';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	credentialUpdateScope,
@@ -12,7 +11,6 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
-import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
 import type { ProjectImportPlan } from '../entities/project/project-import.types';
@@ -35,7 +33,7 @@ import type {
 	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes } from './import-gates';
+import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import {
 	needsBundledCredentialFiles,
@@ -84,7 +82,6 @@ export class ProjectPackageImporter {
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly importPreflight: PackageImportPreflight,
-		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
@@ -128,6 +125,7 @@ export class ProjectPackageImporter {
 			projects,
 			request.projectConflictPolicy,
 		);
+		assertProjectWritesAllowed(request.apiKeyScopes, projectPlan.items);
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
@@ -449,28 +447,8 @@ export class ProjectPackageImporter {
 		request: ResolvedImportRequest,
 		manifest: PackageManifest,
 	): void {
-		// A project package can create new projects or update matched ones (by source id), so require both —
-		// mirroring the folder create+update assertion below.
-		assertPackageImportApiKeyScopes(request.apiKeyScopes, ['project:create', 'project:update']);
-
-		if ((manifest.folders?.length ?? 0) > 0) {
-			if (!this.licenseState.isLicensed('feat:folders')) {
-				throw new ForbiddenError(
-					'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
-				);
-			}
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['folder:create', 'folder:update']);
-		}
-
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
-		}
-
-		// `overwrite` archives workflows the package omits, so require the scope up front rather than
-		// discovering mid-import that the caller may not remove what reconciliation demands.
-		if (removesUnpackagedWorkflows(request.folderConflictPolicy)) {
-			// Folders it empties go too, so it needs both removal scopes up front.
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 
 		// Selection imports preserve folders, so explicit deletions need only workflow:delete.

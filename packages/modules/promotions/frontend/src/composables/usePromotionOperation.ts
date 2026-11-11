@@ -166,7 +166,7 @@ export function usePromotionOperation(
 			const kind = errorKind(cause);
 			const explained =
 				direction.value === 'promote'
-					? getPromoteErrorMessage(cause, preview.value?.changes ?? [], i18n)
+					? getPromoteErrorMessage(cause, preview.value?.resources ?? [], i18n)
 					: undefined;
 			error.value = explained
 				? { message: explained, kind: 'explained' }

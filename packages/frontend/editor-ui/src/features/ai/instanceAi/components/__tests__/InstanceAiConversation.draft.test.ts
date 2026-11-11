@@ -100,7 +100,7 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 
 	async function renderWithDraft() {
 		const view = renderConversation();
-		const textbox = view.getByRole('textbox');
+		const textbox = view.getByRole<HTMLTextAreaElement>('textbox');
 		await userEvent.click(view.getByTestId('mention-picker-select'));
 		// Set the draft text explicitly. Mention selection can leave the text unchanged.
 		await userEvent.clear(textbox);
@@ -108,8 +108,8 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		await fireEvent.paste(textbox, {
 			clipboardData: { files: [new File(['a,b'], 'orders.csv', { type: 'text/csv' })] },
 		});
-		expectDraft(view);
-		return view;
+		expectDraft(view, 'Testing123 "Orders"');
+		return { view, draftText: textbox.value };
 	}
 
 	async function setPendingConfirmations(confirmations: PendingConfirmation[]) {
@@ -117,14 +117,14 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		await nextTick();
 	}
 
-	function expectDraft(view: ReturnType<typeof renderConversation>) {
-		expect(view.getByRole('textbox')).toHaveValue('Testing123 "Orders"');
+	function expectDraft(view: ReturnType<typeof renderConversation>, draftText: string) {
+		expect(view.getByRole('textbox')).toHaveValue(draftText);
 		expect(view.getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
 		expect(view.getByText('orders.csv')).toBeInTheDocument();
 	}
 
 	it('keeps the same composer and its draft through a floating approval', async () => {
-		const view = await renderWithDraft();
+		const { view, draftText } = await renderWithDraft();
 		const composer = view.getByTestId('instance-ai-composer');
 
 		await setPendingConfirmations([makeConfirmation('req-1')]);
@@ -133,11 +133,11 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		await setPendingConfirmations([]);
 		expect(view.getByTestId('instance-ai-composer')).toBe(composer);
 		expect(composer).toBeVisible();
-		expectDraft(view);
+		expectDraft(view, draftText);
 	});
 
 	it('keeps the composer hidden until the last floating approval or question ends', async () => {
-		const view = await renderWithDraft();
+		const { view, draftText } = await renderWithDraft();
 		const approval = makeConfirmation('req-1');
 		const question = makeConfirmation('req-q', 'questions');
 
@@ -146,7 +146,7 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		expect(view.getByTestId('instance-ai-composer')).not.toBeVisible();
 
 		await setPendingConfirmations([]);
-		expectDraft(view);
+		expectDraft(view, draftText);
 	});
 
 	it('returns focus to the composer while the confirmation fades out', async () => {
@@ -161,7 +161,7 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 	});
 
 	it('starts another thread with an empty composer', async () => {
-		const firstView = await renderWithDraft();
+		const { view: firstView } = await renderWithDraft();
 		await setPendingConfirmations([makeConfirmation('req-1')]);
 		firstView.unmount();
 

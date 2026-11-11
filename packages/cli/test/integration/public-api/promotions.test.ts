@@ -27,6 +27,7 @@ import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.ser
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import {
 	createAdminWithApiKey,
+	createMember,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 } from '@test-integration/db/users';
@@ -2296,11 +2297,16 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('change preview', () => {
-		it('checks the scope of the requested direction and forwards the query', async () => {
-			const source = { environmentId: 'env1', branchName: 'main' };
-			const getChanges = vi
-				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
+		it('checks the scope of the requested direction, for the preview and its details', async () => {
+			const preview = {
+				commitSha: 'a'.repeat(40),
+				source: { environmentId: 'env1', branchName: 'main' },
+				resources: [],
+				dependencies: [],
+			};
+			const getPreview = vi
+				.spyOn(Container.get(PromotionChangeService), 'getPreview')
+				.mockResolvedValue(preview);
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
@@ -2311,32 +2317,34 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
-				expect(getChanges).toHaveBeenLastCalledWith(
+				expect(promote.body).toEqual(preview);
+				expect(getPreview).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
 					'promote',
-					expect.anything(),
 				);
 
 				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+				// A key for one direction cannot read the content of the other direction either.
+				const details = await pushOnly
+					.post('/promotions/projects/proj1/changes/apply/details')
+					.send({ commitSha: null, keys: ['workflow:wf1'] });
+				expect(details.status).toBe(403);
+				// The UI session of a member has no promotion scope, so it sees no preview.
+				const member = testServer.publicApiAgentWithCookie(await createMember());
+				expect((await member.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
-				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
-				expect(getChanges).toHaveBeenLastCalledWith(
-					expect.anything(),
-					'proj1',
-					'apply',
-					expect.objectContaining({ search: 'order' }),
-				);
+				expect(getPreview).toHaveBeenLastCalledWith(expect.anything(), 'proj1', 'apply');
 
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
 					404,
 				);
-				expect(getChanges).toHaveBeenCalledTimes(2);
+				expect(getPreview).toHaveBeenCalledTimes(2);
 			} finally {
-				getChanges.mockRestore();
+				getPreview.mockRestore();
 			}
 		});
 

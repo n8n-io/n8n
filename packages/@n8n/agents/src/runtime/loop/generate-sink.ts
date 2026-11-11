@@ -7,7 +7,7 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
-import { classifyModelTurnError } from './runtime-helpers';
+import { classifyModelTurnError, resolveAiFinishReason } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
@@ -48,7 +48,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			throw error;
 		});
 
-		const aiFinishReason = result.finishReason;
+		const aiFinishReason = resolveAiFinishReason(result.finishReason, result.toolCalls);
 		const newMessages = fromAiMessages(result.responseMessages);
 		const errorReason = classifyModelTurnError({ aiFinishReason, newMessages });
 		return {
