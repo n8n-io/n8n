@@ -11,6 +11,7 @@ import { packSnapshotWorkspacePackages } from '../src/workspace/pack-workspace-s
 import { buildSnapshotPackageJson } from '../src/workspace/sandbox-setup';
 
 const execFileAsync = promisify(execFile);
+const MAX_PACKED_BYTES = 10 * 1024 * 1024;
 
 const logger: Logger = {
 	info: (message, metadata) => console.log(message, metadata ?? ''),
@@ -81,6 +82,11 @@ async function main() {
 		}
 
 		const packedBytes = packages.reduce((total, pkg) => total + pkg.tarball.byteLength, 0);
+		if (packedBytes > MAX_PACKED_BYTES) {
+			throw new Error(
+				`Packed workspace packages use ${(packedBytes / 1024 / 1024).toFixed(2)} MiB, above the 10 MiB limit`,
+			);
+		}
 		console.log(
 			`Verified ${packages.length} local workspace packages (${(packedBytes / 1024 / 1024).toFixed(2)} MiB)`,
 		);

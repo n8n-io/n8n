@@ -2,7 +2,19 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { findLinkedWorkspacePackages, SANDBOX_LINK_ROOT_PACKAGE } from '../pack-workspace-sdk';
+import type { Logger } from '../../logger';
+import {
+	findLinkedWorkspacePackages,
+	packWorkspacePackageList,
+	SANDBOX_LINK_ROOT_PACKAGE,
+} from '../pack-workspace-sdk';
+
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
 
 async function writePackage(dir: string, name: string, dependencies: Record<string, string> = {}) {
 	await mkdir(dir, { recursive: true });
@@ -88,5 +100,43 @@ describe('findLinkedWorkspacePackages', () => {
 		await expect(
 			findLinkedWorkspacePackages('sdk', rootPath, new Set(['sdk', 'errors'])),
 		).rejects.toThrow('errors (a dependency of sdk) could not be resolved');
+	});
+});
+
+describe('packWorkspacePackageList', () => {
+	it('packs every discovered package in order', async () => {
+		const packPackage = vi.fn(
+			async (_logger: Logger, packageName: string, packagePath: string) => ({
+				filename: `${packageName}.tgz`,
+				packageName,
+				packagePath,
+				tarball: Buffer.from(packageName),
+				version: '1.0.0',
+			}),
+		);
+
+		const result = await packWorkspacePackageList(
+			NOOP_LOGGER,
+			[
+				{ name: 'dependency', path: '/repo/dependency' },
+				{ name: 'root', path: '/repo/root' },
+			],
+			packPackage,
+		);
+
+		expect(result.map(({ packageName }) => packageName)).toEqual(['dependency', 'root']);
+		expect(packPackage).toHaveBeenCalledTimes(2);
+	});
+
+	it('fails when a discovered package cannot be packed', async () => {
+		const packPackage = vi.fn(async () => await Promise.resolve(null));
+
+		await expect(
+			packWorkspacePackageList(
+				NOOP_LOGGER,
+				[{ name: 'missing', path: '/repo/missing' }],
+				packPackage,
+			),
+		).rejects.toThrow('missing could not be packed');
 	});
 });
