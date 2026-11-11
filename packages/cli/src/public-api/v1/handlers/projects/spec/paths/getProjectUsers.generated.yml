@@ -3,7 +3,7 @@ tags:
   - Projects
 summary: List project members
 description: |-
-  Returns a list of all members of a project including their role. Requires user:list scope.
+  Returns a list of all members of a project including their role.
 
   Requires the `user:list` API key scope.
 x-required-scope: user:list
