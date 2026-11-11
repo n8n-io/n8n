@@ -36,6 +36,8 @@ describe('ToolHttpRequest', () => {
 	});
 
 	describe('Binary response', () => {
+		const genericAuthTypes = ['httpHeaderAuth', 'httpBearerAuth'];
+
 		it('should return the error when receiving a binary response', async () => {
 			helpers.httpRequest.mockResolvedValue({
 				body: Buffer.from(''),
@@ -376,7 +378,7 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
-		it('should not send generic credentials to a domain the credential restricts', async () => {
+		it.each(genericAuthTypes)('blocks %s on restricted domains', async (genericAuthType) => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'method':
@@ -386,7 +388,7 @@ describe('ToolHttpRequest', () => {
 					case 'authentication':
 						return 'genericCredentialType';
 					case 'genericAuthType':
-						return 'httpHeaderAuth';
+						return genericAuthType;
 					case 'options':
 						return {};
 					case 'placeholderDefinitions.values':
@@ -399,6 +401,7 @@ describe('ToolHttpRequest', () => {
 			executeFunctions.getCredentials.mockResolvedValue({
 				name: 'X-Secret-Token',
 				value: 'SECRET-TOOLHTTP-CANARY',
+				token: 'test-bearer-token',
 				allowedHttpRequestDomains: 'domains',
 				allowedDomains: 'api.example.com',
 			});
@@ -410,7 +413,7 @@ describe('ToolHttpRequest', () => {
 			expect(res).toContain('Domain not allowed');
 		});
 
-		it('should send generic credentials to a domain the credential allows', async () => {
+		it.each(genericAuthTypes)('sends %s to an allowed domain', async (genericAuthType) => {
 			helpers.httpRequest.mockResolvedValue({
 				body: 'Hello World',
 				headers: { 'content-type': 'text/plain' },
@@ -425,7 +428,7 @@ describe('ToolHttpRequest', () => {
 					case 'authentication':
 						return 'genericCredentialType';
 					case 'genericAuthType':
-						return 'httpHeaderAuth';
+						return genericAuthType;
 					case 'options':
 						return {};
 					case 'placeholderDefinitions.values':
@@ -438,6 +441,7 @@ describe('ToolHttpRequest', () => {
 			executeFunctions.getCredentials.mockResolvedValue({
 				name: 'X-Secret-Token',
 				value: 'SECRET-TOOLHTTP-CANARY',
+				token: 'test-bearer-token',
 				allowedHttpRequestDomains: 'domains',
 				allowedDomains: 'api.example.com',
 			});
