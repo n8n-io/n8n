@@ -12,6 +12,11 @@ export function markAgentDraftDirty(agent: Agent): void {
 	agent.versionId = uuid();
 }
 
+/** An archived agent is read-only until a user restores it. */
+export function assertAgentNotArchived(agent: Pick<Agent, 'isArchived'>): void {
+	if (agent.isArchived) throw new BadRequestError('Cannot update an archived agent');
+}
+
 /**
  * Persist a draft edit through the revision fence, surfacing a fence loss as a
  * user-retryable conflict. All draft writes must go through this (never a
@@ -25,9 +30,7 @@ export async function saveAgentDraftFenced(
 	metadata?: AgentDefinitionMetadata,
 	{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
 ): Promise<Agent> {
-	if (agent.isArchived && !allowArchivedUpdate) {
-		throw new BadRequestError('Cannot update an archived agent');
-	}
+	if (!allowArchivedUpdate) assertAgentNotArchived(agent);
 	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata, {
 		allowArchivedUpdate,
 	});
