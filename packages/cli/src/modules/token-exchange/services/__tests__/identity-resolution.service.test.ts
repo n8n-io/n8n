@@ -164,7 +164,7 @@ describe('IdentityResolutionService', () => {
 			await expect(
 				service.resolve(makeClaims({ role: 'global:agent' }), undefined, ctx()),
 			).rejects.toThrow(TokenExchangeAuthError);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
 		});
 
 		it('throws when the role is not in the key allowedRoles', async () => {

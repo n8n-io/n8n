@@ -651,7 +651,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 

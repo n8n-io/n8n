@@ -1434,12 +1434,12 @@ describe('ProvisioningService', () => {
 
 			const context = { $claims: {}, $provider: 'oidc' as const };
 
-			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await provisioningService.provisionExpressionMappedRolesForUser(person, context);
 
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${user.id}`,
-				expect.objectContaining({ userId: user.id }),
+				`Skipping instance role provisioning. Cannot assign reserved role: global:agent to user: ${person.id}`,
+				expect.objectContaining({ userId: person.id }),
 			);
 		});
 
