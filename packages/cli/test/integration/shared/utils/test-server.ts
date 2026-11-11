@@ -286,6 +286,10 @@ export const setupTestServer = ({
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
 						break;
 
+					case 'oauth-server':
+						await import('@/modules/oauth-server/oauth-server.module.js');
+						break;
+
 					case 'jwks':
 						await import('@/jwks/jwks.controller.js');
 						break;
