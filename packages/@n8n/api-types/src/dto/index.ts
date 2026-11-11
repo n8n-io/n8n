@@ -46,6 +46,7 @@ export {
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
+export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -732,22 +733,12 @@ export {
 } from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
-	PromotionChangesDto,
-	PromotionChangesQueryDto,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	promotionsWorkflowsMovedCrossProjectMetaSchema,
-	promotableResourceSchema,
-	promotableResourceStatusSchema,
-	promotableResourceTypeSchema,
 	promoteRequestSchema,
 	PromoteSelectionRequestDto,
-	promotionChangesSchema,
-	type PromotableResource,
-	type PromotableResourceStatus,
-	type PromotableResourceType,
 	type PromoteRequest,
-	type PromotionChanges,
 	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 

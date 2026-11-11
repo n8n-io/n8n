@@ -84,7 +84,7 @@ import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/wo
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -1545,7 +1545,10 @@ export class WorkflowService {
 	 * crash-loop auto-deactivation). Skips permission and checksum checks and
 	 * does not emit `workflow-deactivated`; publish history records a null user.
 	 */
-	async deactivateWorkflowAsSystem(workflowId: string): Promise<void> {
+	async deactivateWorkflowAsSystem(
+		workflowId: string,
+		reason: SystemDeactivationReason,
+	): Promise<void> {
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true },
@@ -1580,6 +1583,13 @@ export class WorkflowService {
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
 
 		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
+
+		this.eventService.emit('workflow-deactivated-by-system', {
+			workflowId,
+			workflowName: workflow.name,
+			deactivatedVersionId,
+			reason,
+		});
 	}
 
 	/**

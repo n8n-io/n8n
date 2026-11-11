@@ -190,9 +190,10 @@ export class EnterpriseWorkflowService {
 	): WorkflowWithSharingsMetaDataAndCredentials {
 		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
 
+		const { shared: _shared, ...enrichedWorkflow } = { ...workflow, ...workflowWithMetaData };
+
 		return {
-			...workflow,
-			...workflowWithMetaData,
+			...enrichedWorkflow,
 			usedCredentials: workflow.usedCredentials ?? [],
 		};
 	}

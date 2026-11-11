@@ -1,8 +1,13 @@
 operationId: continueApplyProjectSelection
 tags:
   - Promotions
-summary: Continue applying a selection after binding setup
-description: "Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions."
+summary: 'Beta: Continue applying a selection after binding setup'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection: workflowIds and folderIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The importer checks user write permissions.
+
+  Requires the `promotions:apply` API key scope.
 x-required-scope: promotions:apply
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -25,7 +30,13 @@ requestBody:
               type: string
               minLength: 1
               maxLength: 36
-            minItems: 1
+          folderIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
+            description: Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.
           expectedSource:
             type: object
             properties:
@@ -52,7 +63,6 @@ requestBody:
             type: boolean
             description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed or retyped columns. The values in those columns are removed. Rows and other columns are kept. On a full apply, also deletes the team projects that a `project-deletion` conflict reports, with everything in them. The confirmation covers every such change and deletion when Continue runs, including those that are not in the reviewed result.'
         required:
-          - workflowIds
           - expectedSource
         additionalProperties: false
 responses:

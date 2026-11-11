@@ -123,6 +123,7 @@ export const RESOURCES = {
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
+	workflowSettings: ['manage'] as const,
 	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
@@ -171,6 +172,12 @@ export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
 export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
 export const GLOBAL_MEMBER_ROLE_SLUG = 'global:member';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
+export const GLOBAL_AGENT_ROLE_SLUG = 'global:agent';
+/**
+ * Global roles that only n8n sets. No invite, role change, SSO claim or
+ * role-mapping rule can assign them.
+ */
+export const RESERVED_GLOBAL_ROLE_SLUGS = [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_AGENT_ROLE_SLUG] as const;
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';

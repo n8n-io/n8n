@@ -28,6 +28,12 @@ permissions:
 
 jobs:
   validate:
+    if: >-
+      !(
+        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

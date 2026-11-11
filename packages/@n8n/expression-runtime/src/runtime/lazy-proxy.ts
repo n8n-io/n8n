@@ -1,5 +1,6 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
 import { decodeHostValue } from './transfer-codec';
+import { arrayFrom, defineProperty, isInteger } from './intrinsics';
 import { isArrayIndexKey, isKeyOf } from './utils';
 
 // ============================================================================
@@ -160,7 +161,7 @@ export function createDeepLazyProxy(
 
 	function isInArrayBounds(prop: string): number | undefined {
 		const idx = Number(prop);
-		if (!Number.isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
+		if (!isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
 		if (String(idx) !== prop) return undefined; // reject '00', '1.0', etc.
 		return idx;
 	}
@@ -217,7 +218,7 @@ export function createDeepLazyProxy(
 		// defineProperty, not assignment: a key like '__proto__' must land as an
 		// own data property on the cache instead of walking the setter chain and
 		// silently replacing the target's prototype.
-		Object.defineProperty(t, prop, {
+		defineProperty(t, prop, {
 			value: materializeChild(basePath, prop, value),
 			writable: true,
 			enumerable: true,
@@ -249,7 +250,7 @@ export function createDeepLazyProxy(
 		ownKeys(targetObj: any): Array<string | symbol> {
 			if (materialized) return Reflect.ownKeys(targetObj);
 			if (isArray) {
-				const keys: Array<string | symbol> = Array.from({ length: arrayLength }, (_, i) =>
+				const keys: Array<string | symbol> = arrayFrom({ length: arrayLength }, (_, i) =>
 					String(i),
 				);
 				// Required by proxy invariant: target [] has non-configurable 'length'
