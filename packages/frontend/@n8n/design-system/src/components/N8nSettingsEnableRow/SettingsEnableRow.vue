@@ -21,8 +21,6 @@ export interface SettingsEnableRowProps {
 	switchTestId?: string;
 	/**
 	 * Shows the Preview badge beside the title.
-	 * A later change replaces this flag and `showEnterpriseReadinessBadge` with a feature id.
-	 * FeatureBadge then reads the feature status from a central list.
 	 * @default false
 	 */
 	showPreviewBadge?: boolean;
@@ -53,7 +51,7 @@ const settingsSwitchProps = {
 </script>
 
 <template>
-	<!-- The enable control is always its own card at the top of a settings page. -->
+	<!-- The enable control should always be used as its own card at the top of a settings page. -->
 	<N8nSettingsRowGroup v-bind="$attrs">
 		<N8nSettingsRow
 			:show-divider="false"
