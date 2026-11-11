@@ -9,14 +9,14 @@ import { nanoid } from 'nanoid';
 
 import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
-import { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
 	assertKnowledgePathSegment,
 	getKnowledgePaths,
 	type KnowledgePaths,
 	storageFileNameForOriginalFileName,
-} from '@/modules/knowledge/files/storage-naming';
-import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+} from '../files/storage-naming';
+import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -30,7 +30,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
-} from '@/modules/knowledge/retrieval/commands';
+} from './commands';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -45,15 +45,15 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
-} from '@/modules/knowledge/retrieval/retrieval-schemas';
+} from './retrieval-schemas';
 
 import {
 	type AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
-} from './agent-sandbox-runtime.service';
-import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
-import { AgentRepository } from './repositories/agent.repository';
+} from '@/modules/agents/agent-sandbox-runtime.service';
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 const GLOB_MATCH_TIMEOUT_MS = 250;
 

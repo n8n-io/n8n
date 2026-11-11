@@ -10,7 +10,7 @@ import { cleanupUploadedTempFiles } from '@/modules/knowledge/files/knowledge-up
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 
-import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';

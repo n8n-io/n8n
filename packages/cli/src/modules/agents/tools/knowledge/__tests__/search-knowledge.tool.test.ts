@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import type {
 	FinishKnowledgeToolCall,
 	KnowledgeToolCall,

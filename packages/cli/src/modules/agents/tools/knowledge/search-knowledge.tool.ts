@@ -11,7 +11,7 @@ import {
 	type SearchKnowledgeResult,
 } from '@/modules/knowledge/retrieval/retrieval-schemas';
 
-import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import type {
 	FinishKnowledgeToolCall,
 	KnowledgeToolCall,

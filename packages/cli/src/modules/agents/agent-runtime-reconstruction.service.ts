@@ -66,7 +66,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { AgentCredentialProvider } from './agent-credential-provider.contracts';
-import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {

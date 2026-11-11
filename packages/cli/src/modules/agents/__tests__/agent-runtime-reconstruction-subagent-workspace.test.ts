@@ -16,7 +16,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {

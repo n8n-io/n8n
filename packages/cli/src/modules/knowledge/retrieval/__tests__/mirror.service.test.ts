@@ -8,18 +8,18 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
-import { getKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
+import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
+import { getKnowledgePaths } from '../../files/storage-naming';
 
-import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
-import { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import { AgentKnowledgeMirrorService } from '../mirror.service';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
-} from '../agent-sandbox-runtime.service';
-import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
+} from '@/modules/agents/agent-sandbox-runtime.service';
+import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
+import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';

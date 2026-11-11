@@ -34,7 +34,7 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentPlanService } from '../agent-plan.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';

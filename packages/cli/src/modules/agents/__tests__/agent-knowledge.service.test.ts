@@ -15,7 +15,7 @@ import type {
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';

@@ -35,7 +35,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';

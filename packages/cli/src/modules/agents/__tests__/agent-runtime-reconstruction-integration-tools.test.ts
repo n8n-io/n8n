@@ -49,7 +49,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
