@@ -8,7 +8,7 @@ import N8nIcon from '../N8nIcon';
 
 const { t } = useI18n();
 
-const TYPE = ['dots', 'ring', 'grid', 'brand'] as const;
+const TYPE = ['dots', 'grid', 'brand'] as const;
 
 const gridPositions = ['0 0', '4 0', '0 4', '4 4'];
 
@@ -25,7 +25,10 @@ const gridSizes: Record<IconSize, number> = {
 interface SpinnerProps {
 	/** Set the icon size. Brand uses this height with a 336:160 aspect ratio. */
 	size?: IconSize;
-	/** Select the loading indicator shape. */
+	/**
+	 * Use brand while a page or component loads, before its content is ready.
+	 * Use grid or dots for activity status, such as an assistant thinking or an execution running.
+	 */
 	type?: (typeof TYPE)[number];
 }
 
@@ -70,14 +73,8 @@ function updateBrandMotion() {
 		:role="type === 'grid' || type === 'brand' ? 'status' : undefined"
 		:aria-label="type === 'grid' || type === 'brand' ? t('spinner.loading') : undefined"
 	>
-		<div v-if="type === 'ring'" class="lds-ring">
-			<div></div>
-			<div></div>
-			<div></div>
-			<div></div>
-		</div>
 		<svg
-			v-else-if="type === 'grid'"
+			v-if="type === 'grid'"
 			aria-hidden="true"
 			focusable="false"
 			fill="currentColor"
@@ -161,42 +158,5 @@ function updateBrandMotion() {
 	flex-shrink: 0;
 	overflow: hidden;
 	fill: var(--background--brand);
-}
-
-.lds-ring {
-	display: inline-block;
-	position: relative;
-	width: 48px;
-	height: 48px;
-}
-.lds-ring div {
-	box-sizing: border-box;
-	display: block;
-	position: absolute;
-	width: 48px;
-	height: 48px;
-	border: 4px solid var(--color--foreground--tint-2);
-	border-radius: 50%;
-	animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-	border-color: var(--color--primary) transparent transparent transparent;
-
-	@include motion.reduced-motion;
-}
-.lds-ring div:nth-child(1) {
-	animation-delay: -0.45s;
-}
-.lds-ring div:nth-child(2) {
-	animation-delay: -0.3s;
-}
-.lds-ring div:nth-child(3) {
-	animation-delay: -0.15s;
-}
-@keyframes lds-ring {
-	0% {
-		transform: rotate(0deg);
-	}
-	100% {
-		transform: rotate(360deg);
-	}
 }
 </style>

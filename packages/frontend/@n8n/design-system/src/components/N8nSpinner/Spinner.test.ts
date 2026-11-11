@@ -57,9 +57,7 @@ describe('Spinner', () => {
 		expect(svg?.style.height).toBe(`${pixels}px`);
 	});
 
-	it('still renders the ring and dots variants', () => {
-		const ring = render(Spinner, { props: { type: 'ring' } });
-		expect(ring.container.querySelectorAll('.lds-ring > div')).toHaveLength(4);
+	it('still renders the dots variant', () => {
 		const dots = render(Spinner, { props: { type: 'dots' } });
 		expect(dots.container.querySelector('[data-spinner="grid"]')).toBeNull();
 		expect(dots.container.querySelector('.n8n-icon')).not.toBeNull();
@@ -84,7 +82,7 @@ describe('Spinner', () => {
 		expect(svg).toHaveAttribute('aria-hidden', 'true');
 	});
 
-	it.each(['grid', 'dots', 'ring'] as const)('does not start a frame loop for %s', (type) => {
+	it.each(['grid', 'dots'] as const)('does not start a frame loop for %s', (type) => {
 		const requestFrame = vi.spyOn(window, 'requestAnimationFrame');
 		try {
 			const { unmount } = render(Spinner, { props: { type } });
