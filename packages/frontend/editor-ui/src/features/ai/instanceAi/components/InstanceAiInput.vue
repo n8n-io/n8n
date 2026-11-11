@@ -202,6 +202,7 @@ function getFileId(file: File): number {
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const isPreparingSubmission = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+const attachmentGroupRef = ref<InstanceType<typeof N8nAttachmentGroup> | null>(null);
 const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
 const composerRef = ref<HTMLElement | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -753,7 +754,31 @@ function handleStop() {
 }
 
 function handleComposerKeydown(event: KeyboardEvent): void {
-	if (!mentionMenuOpen.value) return;
+	if (!mentionMenuOpen.value) {
+		/** Keep text navigation, modified shortcuts, and composition unchanged. */
+		if (
+			event.key === 'ArrowUp' &&
+			event.target instanceof HTMLTextAreaElement &&
+			event.target === chatInputRef.value?.getInputElement() &&
+			!event.target.value &&
+			!event.defaultPrevented &&
+			!event.altKey &&
+			!event.ctrlKey &&
+			!event.metaKey &&
+			!event.shiftKey &&
+			!event.isComposing &&
+			event.keyCode !== IME_COMPOSITION_KEYCODE &&
+			!event.repeat &&
+			attachedFiles.value.length > 0 &&
+			removingFiles.value.size === 0
+		) {
+			event.preventDefault();
+			event.stopPropagation();
+			attachmentGroupRef.value?.focus();
+			return;
+		}
+		return;
+	}
 	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
 	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
 	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
@@ -958,7 +983,11 @@ const resizable = computed(() => {
 						@update:attachment="mentionAttachments.updateResource(index, $event)"
 					/>
 				</div>
-				<N8nAttachmentGroup v-if="attachedFiles.length > 0">
+				<N8nAttachmentGroup
+					v-if="attachedFiles.length > 0"
+					ref="attachmentGroupRef"
+					:class="$style.attachmentGroup"
+				>
 					<N8nAttachment
 						v-for="file in attachedFiles"
 						:key="getFileId(file)"
@@ -1075,5 +1104,9 @@ const resizable = computed(() => {
 :global(.suggestions-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
+}
+
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

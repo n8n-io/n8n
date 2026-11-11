@@ -222,6 +222,54 @@ describe('InstanceAiInput — file attachments', () => {
 		}));
 	}
 
+	it('focuses attachments with Up from an empty input and returns with Escape', async () => {
+		const { container, getByRole } = renderComponent();
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, new File(['notes'], 'notes.txt', { type: 'text/plain' }));
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(document.activeElement).toBe(container.querySelector('.n8n-attachment'));
+		await userEvent.keyboard('{Escape}');
+		expect(textbox).toHaveFocus();
+	});
+
+	it.each([
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+		{ shiftKey: true },
+		{ isComposing: true },
+		{ keyCode: 229 },
+		{ repeat: true },
+	])('keeps input focus for modified or composing Up: %j', async (options) => {
+		const { container, getByRole } = renderComponent();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await fireEvent.keyDown(textbox, { key: 'ArrowUp', ...options });
+		expect(textbox).toHaveFocus();
+	});
+
+	it('keeps Up in the input when it has text or no attachments', async () => {
+		const { container, getByRole } = renderComponent();
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		await userEvent.click(textbox);
+		await userEvent.type(textbox, 'Draft');
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+	});
+
 	it('creates a preview URL for image files and revokes it when a file is removed', async () => {
 		stubNoReducedMotion();
 		const { createObjectURL, revokeObjectURL } = stubObjectUrls();

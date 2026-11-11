@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
-import { h, nextTick } from 'vue';
+import { h, nextTick, ref } from 'vue';
 
 import N8nAttachment from '../Attachment/Attachment.vue';
 
@@ -43,6 +44,70 @@ describe('N8nAttachmentGroup', function describeComponent() {
 			wrapper.vm.focus();
 			expect(document.activeElement).toBe(wrapper.get('figure').element);
 			expect(wrapper.get('figure').attributes('tabindex')).toBe('0');
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('enters non-removable attachments with Tab and navigates with arrow keys', async () => {
+		const user = userEvent.setup();
+		const origin = document.createElement('button');
+		document.body.append(origin);
+		origin.focus();
+		const wrapper = mount(N8nAttachmentGroup, {
+			attachTo: document.body,
+			slots: {
+				default: () => [
+					h(N8nAttachment, {
+						fileName: 'first.pdf',
+						mimeType: 'application/pdf',
+						isRemovable: false,
+					}),
+					h(N8nAttachment, {
+						fileName: 'second.pdf',
+						mimeType: 'application/pdf',
+						isRemovable: false,
+					}),
+				],
+			},
+		});
+
+		try {
+			const [first, second] = wrapper.findAll('.n8n-attachment');
+			await user.tab();
+			expect(document.activeElement).toBe(first.element);
+			await user.keyboard('{ArrowRight}');
+			expect(document.activeElement).toBe(second.element);
+		} finally {
+			wrapper.unmount();
+			origin.remove();
+		}
+	});
+
+	it('sets the tab stop when attachments arrive after mount', async () => {
+		const files = ref<string[]>([]);
+		const wrapper = mount(N8nAttachmentGroup, {
+			slots: {
+				default: () =>
+					files.value.map((fileName) =>
+						h(N8nAttachment, {
+							key: fileName,
+							fileName,
+							mimeType: 'application/pdf',
+							isRemovable: false,
+						}),
+					),
+			},
+		});
+		try {
+			files.value = ['first.pdf', 'second.pdf'];
+			await nextTick();
+			const [first, second] = wrapper.findAll('.n8n-attachment');
+			expect(first.attributes('tabindex')).toBe('0');
+			expect(second.attributes('tabindex')).toBe('-1');
+			files.value = ['second.pdf'];
+			await nextTick();
+			expect(wrapper.get('.n8n-attachment').attributes('tabindex')).toBe('0');
 		} finally {
 			wrapper.unmount();
 		}
@@ -94,10 +159,6 @@ describe('N8nAttachmentGroup', function describeComponent() {
 
 		try {
 			const [first, second] = wrapper.findAll('.n8n-attachment');
-			/** Native event handlers can observe the removal update before the event bubbles. */
-			first.element.addEventListener('keydown', () => {
-				first.element.setAttribute('aria-hidden', 'true');
-			});
 			wrapper.vm.focus();
 			await first.trigger('keydown', { key: 'Backspace' });
 			await nextTick();

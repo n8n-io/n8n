@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, useTemplateRef } from 'vue';
+import { nextTick, onMounted, onUpdated, useTemplateRef } from 'vue';
 
 defineSlots<{
 	/** Attachment items supplied by the feature component. */
@@ -38,6 +38,10 @@ function updateTabStops(items = getItems()) {
 		item.tabIndex = item === activeItem ? 0 : -1;
 	}
 }
+
+/** Keep a tab stop when slot items first render or change. */
+onMounted(() => updateTabStops());
+onUpdated(() => updateTabStops());
 
 /** Focus the first attachment and keep the previous focus target for Escape. */
 function focus() {

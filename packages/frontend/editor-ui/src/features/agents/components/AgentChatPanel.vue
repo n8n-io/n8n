@@ -105,6 +105,8 @@ import {
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
+const IME_COMPOSITION_KEYCODE = 229;
+
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
@@ -421,6 +423,29 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 
 /** Allows Option/Alt + Up to edit the last sent queued message */
 function onChatInputKeydown(event: KeyboardEvent) {
+	/** Keep text navigation, modified shortcuts, and composition unchanged. */
+	if (
+		event.key === 'ArrowUp' &&
+		event.target instanceof HTMLTextAreaElement &&
+		event.target === chatInput.value?.getInputElement() &&
+		!event.target.value &&
+		!event.defaultPrevented &&
+		!event.altKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.shiftKey &&
+		!event.isComposing &&
+		event.keyCode !== IME_COMPOSITION_KEYCODE &&
+		!event.repeat &&
+		attachedFiles.value.length > 0 &&
+		removingFiles.value.size === 0
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		attachmentGroupRef.value?.focus();
+		return;
+	}
+
 	if (
 		!(event.target instanceof HTMLTextAreaElement) ||
 		event.key !== 'ArrowUp' ||
@@ -737,6 +762,8 @@ function draftFileKey(file: File): number {
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const attachmentGroupRef =
+	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
@@ -2012,7 +2039,11 @@ onBeforeUnmount(() => {
 								/>
 							</slot>
 						</div>
-						<N8nAttachmentGroup v-if="attachedFiles.length > 0">
+						<N8nAttachmentGroup
+							v-if="attachedFiles.length > 0"
+							ref="attachmentGroupRef"
+							:class="$style.attachmentGroup"
+						>
 							<N8nAttachment
 								v-for="file in attachedFiles"
 								:key="draftFileKey(file)"
@@ -2282,5 +2313,8 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	word-break: break-word;
+}
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>
