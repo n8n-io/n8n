@@ -1,3 +1,14 @@
+## [2.48.1](https://github.com/n8n-io/n8n/compare/n8n@2.48.0...n8n@2.48.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **core:** Keep expression transfers working after built-in replacements ([#43359](https://github.com/n8n-io/n8n/issues/43359)) ([8b3d3db](https://github.com/n8n-io/n8n/commit/8b3d3dbac3dc67056de548deeab3e34aed1fc953))
+* **core:** Match bare node references across expression engines ([#43357](https://github.com/n8n-io/n8n/issues/43357)) ([7afa69d](https://github.com/n8n-io/n8n/commit/7afa69d1a95aae701b5fa90f0947101cf74c080b))
+* **Edit Image Node:** Register font once instead of on every text operation ([#43347](https://github.com/n8n-io/n8n/issues/43347)) ([b7d330a](https://github.com/n8n-io/n8n/commit/b7d330a7fb8962b579225a0541724a6d303e2686))
+* **editor:** Widen the migration report notify owner column ([#43431](https://github.com/n8n-io/n8n/issues/43431)) ([87c9b47](https://github.com/n8n-io/n8n/commit/87c9b472b65516b258108236ff48db502761c153))
+
+
 # [2.48.0](https://github.com/n8n-io/n8n/compare/n8n@2.47.0...n8n@2.48.0) (2026-11-10)
 
 
