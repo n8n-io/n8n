@@ -38,27 +38,29 @@ const iconProps = {
 		data-test-id="version-history-group"
 		@select="onSelect"
 	>
-		<VersionHistoryRail mark="icon" :connect-above="connectAbove" :connect-below="connectBelow">
-			<span :class="$style.chevron">
-				<N8nIcon v-bind="iconProps" :icon="expanded ? 'chevron-down' : 'chevron-right'" />
-			</span>
-		</VersionHistoryRail>
-		<N8nText size="small" color="text-base" :class="$style.label">{{ label }}</N8nText>
+		<!-- The item stacks slot children. One row keeps the mark and the label on one line. -->
+		<span :class="$style.row">
+			<VersionHistoryRail mark="icon" :connect-above="connectAbove" :connect-below="connectBelow">
+				<span :class="$style.chevron">
+					<N8nIcon v-bind="iconProps" :icon="expanded ? 'chevron-down' : 'chevron-right'" />
+				</span>
+			</VersionHistoryRail>
+			<N8nText size="small" color="text-base" :class="$style.label">{{ label }}</N8nText>
+		</span>
 	</N8nListboxItem>
 </template>
 
 <style lang="scss" module>
-.group {
+.row {
 	display: flex;
 	align-items: center;
 	width: 100%;
+	box-sizing: border-box;
 	margin: 0;
 	// Taller than the label so the track can stop short of the chevron.
 	min-height: var(--height--xs);
 	// Match the version row inset so the rail lines up.
-	padding: 0;
 	padding-inline: var(--version-history--body-pad, var(--spacing--3xs));
-	border-radius: var(--radius);
 	text-align: start;
 }
 

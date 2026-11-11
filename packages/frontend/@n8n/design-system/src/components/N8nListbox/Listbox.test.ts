@@ -212,6 +212,18 @@ const AttrHarness = defineComponent({
 	`,
 });
 
+const ExpandingItem = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	props: {
+		expanded: { type: Boolean, required: true },
+	},
+	template: `
+		<N8nListbox label="Versions">
+			<N8nListboxItem value="group" :aria-expanded="expanded">Group</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
 describe('N8nListbox', () => {
 	it('places an icon before the content and a trailing control after it', () => {
 		const { getByRole, getByTestId } = render(LayoutHarness);
@@ -241,6 +253,19 @@ describe('N8nListbox', () => {
 
 		expect(root).toHaveClass('caller');
 		expect(list.parentElement).toBe(root);
+	});
+
+	it('updates caller attributes while the highlight stays', async () => {
+		const { getByRole, rerender } = render(ExpandingItem, { props: { expanded: false } });
+		const option = getByRole('option', { name: 'Group' });
+
+		expect(option).toHaveAttribute('aria-expanded', 'false');
+		expect(option).toHaveAttribute('data-value', 'group');
+
+		await rerender({ expanded: true });
+
+		expect(option).toHaveAttribute('aria-expanded', 'true');
+		expect(option).toHaveAttribute('data-value', 'group');
 	});
 
 	it('selects an item and paints the whole option', async () => {

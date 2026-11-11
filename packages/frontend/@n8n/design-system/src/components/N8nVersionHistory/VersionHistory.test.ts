@@ -168,6 +168,7 @@ describe('N8nVersionHistory', () => {
 
 		menu?.focus();
 		await userEvent.keyboard('{ArrowDown}');
+		expect(document.activeElement).toHaveAttribute('role', 'menuitem');
 		expect(current).toHaveAttribute('data-highlighted');
 		expect(next).not.toHaveAttribute('data-highlighted');
 	});
@@ -189,11 +190,13 @@ describe('N8nVersionHistory', () => {
 		await userEvent.keyboard('{ArrowRight}');
 
 		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		expect(toggle.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'chevron-down');
 		expect(getByRole('option', { name: /v2/ })).toBeTruthy();
 
 		await userEvent.keyboard('{ArrowLeft}');
 
 		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(toggle.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'chevron-right');
 		expect(queryByRole('option', { name: /v2/ })).toBeNull();
 	});
 
@@ -263,7 +266,7 @@ describe('N8nVersionHistory', () => {
 		);
 		const { getByRole } = renderHistory({ items: withTooltip, selectedId: 'v2' });
 		const option = getByRole('option', { name: /v1/ });
-		const trigger = option.firstElementChild ?? option;
+		const trigger = option.querySelector('[data-grace-area-trigger]') ?? option;
 
 		trigger.dispatchEvent(
 			new PointerEvent('pointermove', {

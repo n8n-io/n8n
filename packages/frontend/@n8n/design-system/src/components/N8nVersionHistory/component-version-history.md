@@ -44,7 +44,7 @@ A click on the row emits `select`. A click or key press with Command or Control 
 
 **Keyboard**
 
-Arrow keys move the highlight across the whole row. Enter or Space on a version emits `select`. Enter or Space on a group emits `toggle`. ArrowRight opens a closed group. ArrowLeft closes an open group. Tab moves from the row to Compare, then to the menu, then to the next row. Shift+Tab moves back.
+Arrow keys move the highlight across the whole row. Enter or Space on a version emits `select`. Enter or Space on a group emits `toggle`. ArrowRight opens a closed group. ArrowLeft closes an open group. Tab moves from the row to Compare, then to the menu, then to the next row. Shift+Tab moves back. ArrowDown on the menu opens the menu. The highlighted row stays highlighted.
 
 The open version uses a stronger background than the highlight. The highlight can sit on another row. The open version keeps its background.
 

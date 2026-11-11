@@ -77,13 +77,10 @@ const SKELETON_ROWS = [
 // The estimate covers the gap between marks and two lines of text.
 const ESTIMATED_ROW_HEIGHT = 48;
 
-// Fixed list behavior for the version rows.
+// The list keeps one version and moves the highlight with the pointer.
+// Up and down move between rows. Left and right stay free for a group.
 const listboxProps = {
-	// One version stays open. A second activation keeps that version.
 	selectionBehavior: 'replace' as const,
-	// Pointer movement moves the highlight. Arrow keys take it from the row under the pointer.
-	highlightOnHover: true,
-	// Up and down move between rows.
 	orientation: 'vertical' as const,
 };
 
@@ -237,6 +234,14 @@ function onListKeydown(event: KeyboardEvent) {
 	onModifiedActivation(event);
 	if (event.defaultPrevented) return;
 	onGroupKeydown(event);
+}
+
+// A menu opened from a row sits outside the list.
+// Keep the row highlighted while that menu has focus.
+function onListFocusOut(event: FocusEvent) {
+	const next = event.relatedTarget;
+	if (!(next instanceof Element) || !next.closest('[role="menu"]')) return;
+	event.stopPropagation();
 }
 
 // The listbox handles Left and Right after the row.
@@ -540,6 +545,7 @@ defineExpose({ scrollTo });
 			:label="listLabel"
 			@update:model-value="onSelect"
 			@keydown.capture="onListKeydown"
+			@focusout.capture="onListFocusOut"
 		>
 			<N8nRecycleScroller
 				ref="scrollerRef"
@@ -678,8 +684,25 @@ defineExpose({ scrollTo });
 	position: relative;
 	// Stay under the pinned heading. A focused row can still paint above the track.
 	z-index: 0;
+	display: flex;
+	flex-direction: column;
 	flex: 1;
 	min-height: 0;
+	min-width: 0;
+	// The rows draw their own gap, padding, and height.
+	// The listbox defaults would separate the timeline from the marks.
+	--n8n-listbox--gap: 0;
+	--n8n-listbox-item--padding: 0;
+	--n8n-listbox-item--min-height: 0;
+
+	// The scroller fills the panel. Pass that height through the listbox content.
+	> :deep(*) {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+		min-width: 0;
+	}
 }
 
 .row {
