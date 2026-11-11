@@ -405,14 +405,15 @@ describe('VectorStoreSupabase.node', () => {
 			mockCreateClient.mockReturnValue({});
 			mockFromDocuments.mockRejectedValue(new Error('Error inserting: undefined 404 Not Found'));
 
-			await expect(
-				getNode().populateVectorStore(
-					createContext({ tableName: 'my_table' }),
-					embeddings,
-					[{ pageContent: 'x', metadata: {} }],
-					0,
-				),
-			).rejects.toThrow(NodeOperationError);
+			const result = getNode().populateVectorStore(
+				createContext({ tableName: 'my_table' }),
+				embeddings,
+				[{ pageContent: 'x', metadata: {} }],
+				0,
+			);
+
+			await expect(result).rejects.toThrow(NodeOperationError);
+			await expect(result).rejects.toThrow('Table my_table not found');
 		});
 
 		it('wraps other errors in NodeOperationError', async () => {

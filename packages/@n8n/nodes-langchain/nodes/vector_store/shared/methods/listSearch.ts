@@ -35,12 +35,7 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 	}
 
 	const headers: IDataObject = { Prefer: 'return=representation' };
-	let useCustomSchema = false;
-	try {
-		useCustomSchema = this.getNodeParameter('useCustomSchema', false) as boolean;
-	} catch {
-		// Parameter absent on deprecated node versions — stay on default
-	}
+	const useCustomSchema = this.getNodeParameter('useCustomSchema', false) as boolean;
 	if (useCustomSchema) {
 		const rawSchema = this.getNodeParameter('schema', 'public') as string;
 		const schema = resolveSchema(true, rawSchema); // UserError propagates to the UI

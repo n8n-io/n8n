@@ -31,14 +31,14 @@ function createContext(
 		hostIsString?: boolean;
 		useCustomSchema?: boolean;
 		schema?: string;
-		getNodeParameterThrows?: boolean;
+		omitUseCustomSchema?: boolean;
 	} = {},
 ) {
 	const {
 		hostIsString = true,
 		useCustomSchema = false,
 		schema = 'public',
-		getNodeParameterThrows = false,
+		omitUseCustomSchema = false,
 	} = opts;
 
 	const requestWithAuthentication = vi.fn().mockResolvedValue(API_RESPONSE);
@@ -48,11 +48,9 @@ function createContext(
 			host: hostIsString ? HOST : 42,
 			serviceRole: 'key',
 		}),
+		// An absent parameter comes back as the fallback, never as a throw.
 		getNodeParameter: vi.fn((name: string, fallback?: unknown) => {
-			if (getNodeParameterThrows && name === 'useCustomSchema') {
-				throw new Error('Parameter not found');
-			}
-			if (name === 'useCustomSchema') return useCustomSchema;
+			if (name === 'useCustomSchema') return omitUseCustomSchema ? fallback : useCustomSchema;
 			if (name === 'schema') return schema;
 			return fallback;
 		}),
@@ -80,8 +78,8 @@ describe('supabaseTableNameSearch', () => {
 		expect(callHeaders['Prefer']).toBe('return=representation');
 	});
 
-	it('sends no Accept-Profile header when getNodeParameter throws (deprecated node)', async () => {
-		const ctx = createContext({ getNodeParameterThrows: true });
+	it('defaults to public when the useCustomSchema parameter is absent (older node)', async () => {
+		const ctx = createContext({ omitUseCustomSchema: true });
 
 		await supabaseTableNameSearch.call(ctx);
 
