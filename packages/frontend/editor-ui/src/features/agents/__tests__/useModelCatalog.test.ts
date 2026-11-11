@@ -109,6 +109,7 @@ describe('useModelCatalog', () => {
 				{ ...model('gpt-5', 'GPT-5'), releaseDate: '2025-08-07' },
 				{ ...model('gpt-4.1', 'GPT-4.1'), releaseDate: '2025-04-14' },
 				{ ...model('gpt-5.2', 'GPT-5.2'), releaseDate: '2025-12-11' },
+				model('gpt-5.2-pro', 'GPT-5.2 Pro'),
 			];
 			mocks.getModelCatalog.mockResolvedValue(
 				source === 'catalog'
@@ -129,20 +130,83 @@ describe('useModelCatalog', () => {
 			}
 
 			const { useModelCatalog } = await import('../composables/useModelCatalog');
-			const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+			const { ensureLoaded, getModelsForPicker, getModelsForProvider } = useModelCatalog();
 			await ensureLoaded('project-1');
 			const credentials = { openai: 'openai-credential-id' };
 
 			getModelsForPicker(credentials);
 			await flushAsync();
 
-			expect(modelIds(getModelsForPicker(credentials).openai?.models ?? [])).toEqual([
-				'gpt-5.2',
-				'gpt-5',
-				'gpt-4.1',
-			]);
+			const expected = ['gpt-5.2-pro', 'gpt-5.2', 'gpt-5', 'gpt-4.1'];
+			expect(modelIds(getModelsForPicker(credentials).openai?.models ?? [])).toEqual(expected);
+			if (source === 'catalog') {
+				expect(getModelsForProvider('openai').map((entry) => entry.id)).toEqual(expected);
+			}
 		},
 	);
+
+	it.each(['catalog', 'provider-verified'])(
+		'keeps Anthropic families together in descending name order from the %s list',
+		async (source) => {
+			const models = [
+				{ ...model('claude-opus-4-6', 'Claude Opus 4.6'), releaseDate: '2026-02-05' },
+				{ ...model('claude-sonnet-4-5', 'Claude Sonnet 4.5'), releaseDate: '2025-09-29' },
+				{ ...model('claude-haiku-4-5', 'Claude Haiku 4.5'), releaseDate: '2025-10-15' },
+				{ ...model('claude-sonnet-4-6', 'Claude Sonnet 4.6'), releaseDate: '2026-02-17' },
+				{ ...model('claude-opus-4-5', 'Claude Opus 4.5'), releaseDate: '2025-11-24' },
+			];
+			mocks.getModelCatalog.mockResolvedValue({
+				anthropic: provider(
+					'anthropic',
+					Object.fromEntries(models.map((entry) => [entry.id, entry])),
+				),
+			});
+			if (source === 'provider-verified') {
+				mocks.getProviderModels.mockResolvedValue({
+					provider: 'anthropic',
+					verified: true,
+					models,
+				});
+			}
+
+			const { useModelCatalog } = await import('../composables/useModelCatalog');
+			const { ensureLoaded, getModelsForPicker, getModelsForProvider } = useModelCatalog();
+			await ensureLoaded('project-1');
+			const credentials = { anthropic: 'anthropic-credential-id' };
+
+			getModelsForPicker(credentials);
+			await flushAsync();
+
+			const expected = [
+				'claude-sonnet-4-6',
+				'claude-sonnet-4-5',
+				'claude-opus-4-6',
+				'claude-opus-4-5',
+				'claude-haiku-4-5',
+			];
+			expect(modelIds(getModelsForPicker(credentials).anthropic?.models ?? [])).toEqual(expected);
+			expect(getModelsForProvider('anthropic').map((entry) => entry.id)).toEqual(expected);
+		},
+	);
+
+	it('sorts model version numbers in descending numeric order', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			openai: provider('openai', {
+				'model-9': model('model-9', 'Model 9'),
+				'model-10': model('model-10', 'Model 10'),
+				'model-2': model('model-2', 'Model 2'),
+			}),
+		});
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForProvider, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+
+		const expected = ['model-10', 'model-9', 'model-2'];
+		expect(getModelsForProvider('openai').map((entry) => entry.id)).toEqual(expected);
+		expect(
+			modelIds(getModelsForPicker({ openai: 'openai-credential-id' }).openai?.models ?? []),
+		).toEqual(expected);
+	});
 
 	it('prefers the provider-verified model list over the static catalog', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
@@ -205,7 +269,7 @@ describe('useModelCatalog', () => {
 		});
 	});
 
-	it('lists models with a priority first and the rest by name', async () => {
+	it('lists models with a priority first and the rest by descending name', async () => {
 		mocks.getModelCatalog.mockResolvedValue({});
 		mocks.getProviderModels.mockResolvedValue({
 			provider: 'google',
@@ -227,8 +291,8 @@ describe('useModelCatalog', () => {
 
 		expect(modelIds(getModelsForPicker(credentials).google?.models ?? [])).toEqual([
 			'gemini-featured',
-			'gemini-2.5-flash',
 			'gemini-2.5-pro',
+			'gemini-2.5-flash',
 		]);
 	});
 

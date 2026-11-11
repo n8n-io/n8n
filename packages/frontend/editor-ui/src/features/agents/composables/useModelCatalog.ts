@@ -99,7 +99,9 @@ export function useModelCatalog() {
 	function getModelsForProvider(provider: string): ModelInfo[] {
 		const p = catalog.value[provider];
 		if (!p) return [];
-		return Object.values(p.models).sort((a, b) => a.name.localeCompare(b.name));
+		return Object.values(p.models).sort((a, b) =>
+			b.name.localeCompare(a.name, undefined, { numeric: true }),
+		);
 	}
 
 	/**
@@ -187,7 +189,7 @@ export function useModelCatalog() {
 
 			response[provider] = {
 				models: pinPrioritizedModels(
-					[...models].sort((a, b) => a.name.localeCompare(b.name)),
+					[...models].sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true })),
 					(model) => model.priority,
 				).map((model) => toAgentModel(provider, model)),
 				...(unavailable ? { unavailable: true } : {}),

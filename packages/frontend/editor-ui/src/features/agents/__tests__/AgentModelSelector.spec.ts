@@ -1,12 +1,13 @@
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type * as typeAvailabilityPolicies from '@n8n/frontend-module-type-availability-policies';
 import type * as permissions from '@n8n/permissions';
 
+import type * as modelCatalog from '../composables/useModelCatalog';
 import type {
 	AgentCredentialsByProvider,
 	AgentModelOption,
@@ -340,6 +341,63 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.fetchWallet.mockReset();
 		aiGatewayState.fetchConfig.mockReset();
 	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each(['catalog', 'provider-verified'])(
+		'shows newer OpenAI models first and selects the first model from the %s list',
+		async (source) => {
+			const api = await import('../composables/useAgentApi');
+			const models = [
+				{ id: 'gpt-5', name: 'GPT-5', reasoning: true, toolCall: true },
+				{ id: 'gpt-4.1', name: 'GPT-4.1', reasoning: false, toolCall: true },
+				{ id: 'gpt-5.2', name: 'GPT-5.2', reasoning: true, toolCall: true },
+			];
+			vi.spyOn(api, 'getModelCatalog').mockResolvedValue(
+				source === 'catalog'
+					? {
+							openai: {
+								id: 'openai',
+								name: 'OpenAI',
+								models: Object.fromEntries(models.map((model) => [model.id, model])),
+							},
+						}
+					: {},
+			);
+			vi.spyOn(api, 'getProviderModels').mockResolvedValue({
+				provider: 'openai',
+				verified: source === 'provider-verified',
+				models,
+			});
+			const { useModelCatalog } = await vi.importActual<typeof modelCatalog>(
+				'../composables/useModelCatalog',
+			);
+			const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+			await ensureLoaded(`model-ordering-${source}`);
+			const credentials = { openai: 'openai-cred' };
+			credentialsByType.value.openAiApi = [
+				{ id: 'openai-cred', name: 'OpenAI credential', type: 'openAiApi' },
+			];
+			getModelsForPicker(credentials);
+			await flushPromises();
+
+			const wrapper = await mountSelector(credentials, {
+				selectedModel: null,
+				modelsByProvider: getModelsForPicker(credentials),
+			});
+			const modelItems = (getProviderItem(wrapper, 'openai')?.children ?? []).filter((item) =>
+				item.id.includes('::model::'),
+			);
+			expect(modelItems.map((item) => item.label)).toEqual(['GPT-5.2', 'GPT-5', 'GPT-4.1']);
+
+			getDropdown(wrapper).vm.$emit('select', modelItems[0].id);
+
+			expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5.2' }]]);
+			wrapper.unmount();
+		},
+	);
 
 	it('fetches the gateway config on mount so the managed option can be gated', async () => {
 		await mountSelector({ anthropic: null });
