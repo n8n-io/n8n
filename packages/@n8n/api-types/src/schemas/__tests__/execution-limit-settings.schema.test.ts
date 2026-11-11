@@ -4,13 +4,17 @@ import {
 } from '../execution-limit-settings.schema';
 
 describe('executionLimitSettingsSchema', () => {
-	const valid = { periodUnit: 'month', maxExecutions: 100_000, defaultProjectMaxExecutions: 5_000 };
+	const valid = {
+		periodUnit: 'month',
+		instanceMaxExecutions: 100_000,
+		defaultProjectMaxExecutions: 5_000,
+	};
 
 	test.each([
 		['both caps', valid],
 		[
 			'a cap at the int column limit',
-			{ ...valid, maxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING },
+			{ ...valid, instanceMaxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING },
 		],
 	])('accepts a period with %s', (_, value) => {
 		expect(executionLimitSettingsSchema.safeParse(value).success).toBe(true);
@@ -19,7 +23,7 @@ describe('executionLimitSettingsSchema', () => {
 	test('accepts a period with no caps', () => {
 		const result = executionLimitSettingsSchema.safeParse({
 			periodUnit: 'day',
-			maxExecutions: null,
+			instanceMaxExecutions: null,
 			defaultProjectMaxExecutions: null,
 		});
 
@@ -34,15 +38,15 @@ describe('executionLimitSettingsSchema', () => {
 
 	test.each([
 		['an unknown period', { ...valid, periodUnit: 'year' }],
-		['a missing period', { maxExecutions: 1, defaultProjectMaxExecutions: 1 }],
-		['a zero cap', { ...valid, maxExecutions: 0 }],
+		['a missing period', { instanceMaxExecutions: 1, defaultProjectMaxExecutions: 1 }],
+		['a zero cap', { ...valid, instanceMaxExecutions: 0 }],
 		['a negative cap', { ...valid, defaultProjectMaxExecutions: -1 }],
 		[
 			'a cap above the int column limit',
-			{ ...valid, maxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING + 1 },
+			{ ...valid, instanceMaxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING + 1 },
 		],
-		['a missing cap', { periodUnit: 'day', maxExecutions: null }],
-		['a string cap', { ...valid, maxExecutions: '100' }],
+		['a missing cap', { periodUnit: 'day', instanceMaxExecutions: null }],
+		['a string cap', { ...valid, instanceMaxExecutions: '100' }],
 		['a fractional cap', { ...valid, defaultProjectMaxExecutions: 1.5 }],
 	])('rejects %s', (_, value) => {
 		expect(executionLimitSettingsSchema.safeParse(value).success).toBe(false);

@@ -15,7 +15,7 @@ const maxExecutionsSchema = z
 
 export const executionLimitSettingsSchema = z.object({
 	periodUnit: executionLimitPeriodUnitSchema,
-	maxExecutions: maxExecutionsSchema,
+	instanceMaxExecutions: maxExecutionsSchema,
 	defaultProjectMaxExecutions: maxExecutionsSchema,
 });
 
