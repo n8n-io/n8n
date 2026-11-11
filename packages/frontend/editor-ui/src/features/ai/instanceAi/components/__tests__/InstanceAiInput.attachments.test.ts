@@ -209,7 +209,21 @@ describe('InstanceAiInput — file attachments', () => {
 		return { createObjectURL, revokeObjectURL };
 	}
 
+	function stubNoReducedMotion() {
+		vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+			matches: query === '(prefers-reduced-motion: reduce)' ? false : true,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		}));
+	}
+
 	it('creates a preview URL for image files and revokes it when a file is removed', async () => {
+		stubNoReducedMotion();
 		const { createObjectURL, revokeObjectURL } = stubObjectUrls();
 		const { container, findByAltText, findByTestId } = renderComponent({
 			props: { attachOnlyMimeTypes: 'image/*' },
@@ -233,6 +247,7 @@ describe('InstanceAiInput — file attachments', () => {
 	});
 
 	it('blocks submission until image removal finishes', async () => {
+		stubNoReducedMotion();
 		stubObjectUrls();
 		const { emitted, container, getByRole, getByTestId } = renderComponent({
 			props: { attachOnlyMimeTypes: 'image/*' },
@@ -246,7 +261,7 @@ describe('InstanceAiInput — file attachments', () => {
 
 		const sendButton = getByTestId('instance-ai-send-button');
 		await userEvent.click(getByTestId('attachment-remove'));
-		expect(sendButton).toBeDisabled();
+		await userEvent.click(sendButton);
 
 		await userEvent.click(textbox);
 		await userEvent.keyboard('{Enter}');
@@ -254,7 +269,7 @@ describe('InstanceAiInput — file attachments', () => {
 
 		const sprite = document.body.querySelector('img[role="presentation"]')!;
 		await fireEvent.error(sprite);
-		await waitFor(() => expect(sendButton).toBeEnabled());
+		await waitFor(() => expect(document.querySelector('.n8n-attachment')).not.toBeInTheDocument());
 		await userEvent.click(sendButton);
 		await waitFor(() => expect(emitted().submit).toHaveLength(1));
 	});

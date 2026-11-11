@@ -91,8 +91,7 @@ test.describe(
 			'stages a non-image attachment that fits',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n }) => {
-				// Non-image files render through ChatFile rather than a thumbnail, so this
-				// also covers the second marker `getComposerAttachments` has to match.
+				// Non-image files use the shared attachment component and the same remove marker.
 				const csv = path.join(tmpDir, 'rows.csv');
 				await fs.writeFile(csv, 'id,name\n1,ok\n');
 

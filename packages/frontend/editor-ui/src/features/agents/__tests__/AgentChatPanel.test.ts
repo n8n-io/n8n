@@ -201,6 +201,9 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nAttachment: (await importOriginal<typeof import('@n8n/design-system')>()).N8nAttachment,
+	N8nAttachmentGroup: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nAttachmentGroup,
 	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
