@@ -79,7 +79,7 @@ describe('N8nClient on the Agents runtime', () => {
 		expect(client.assistantAgents()).toBeUndefined();
 	});
 
-	it('creates and deletes threads through the eval thread routes', async () => {
+	it('creates and deletes threads through the eval thread routes, with the thread provenance', async () => {
 		const calls = mockN8n([
 			[
 				'POST',
@@ -97,9 +97,29 @@ describe('N8nClient on the Agents runtime', () => {
 			{
 				path: '/rest/assistant/eval/threads',
 				method: 'POST',
-				body: { threadId: 't-1', projectId: 'p-1' },
+				body: {
+					threadId: 't-1',
+					projectId: 'p-1',
+					source: 'evals',
+					sourceContext: { evalCase: 'slack-digest', evalIteration: 1 },
+				},
 			},
 			{ path: '/rest/assistant/eval/threads/t-1', method: 'DELETE', body: undefined },
+		]);
+	});
+
+	it('sends the thread source without a source context when the case has none', async () => {
+		const calls = mockN8n([]);
+		const client = await agentsClient();
+
+		await client.ensureThread('t-1', 'p-1');
+
+		expect(afterLogin(calls)).toEqual([
+			{
+				path: '/rest/assistant/eval/threads',
+				method: 'POST',
+				body: { threadId: 't-1', projectId: 'p-1', source: 'evals' },
+			},
 		]);
 	});
 

@@ -45,7 +45,10 @@ export class AssistantAgentEvalController {
 		private readonly threadMetadata: SystemAgentThreadMetadataService,
 	) {}
 
-	/** Create the thread before its first message, so the harness can set it up first. */
+	/**
+	 * Create the thread before its first message, so the harness can set it up
+	 * first. Store the given provenance in the thread metadata.
+	 */
 	@Post('/eval/threads')
 	@GlobalScope('instanceAi:manage')
 	async createThread(
@@ -60,6 +63,17 @@ export class AssistantAgentEvalController {
 			projectId: payload.projectId,
 			threadId: payload.threadId,
 		});
+		const { source, sourceContext } = payload;
+		if (source !== undefined || sourceContext !== undefined) {
+			// The trace of each turn reads the provenance from the thread metadata.
+			// The metadata needs the memory row, which comes with the first turn.
+			await this.systemAgentEval.ensureMemoryThread(ASSISTANT_AGENT_ID, req.user, thread.id);
+			await this.threadMetadata.patch(ASSISTANT_AGENT_ID, req.user, thread.id, (metadata) => ({
+				...metadata,
+				...(source !== undefined ? { source } : {}),
+				...(sourceContext !== undefined ? { sourceContext } : {}),
+			}));
+		}
 		return { threadId: thread.id, projectId: thread.projectId };
 	}
 

@@ -208,6 +208,54 @@ describe('AssistantAgentEvalController', () => {
 			projectId: PROJECT_ID,
 			threadId: THREAD_ID,
 		});
+		// Without provenance the route does not touch the thread metadata.
+		expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
+		expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
+	});
+
+	it('stores the thread provenance in the thread metadata', async () => {
+		const ctx = setup();
+
+		const result = await ctx.controller.createThread(ctx.req, ctx.res, {
+			threadId: THREAD_ID,
+			projectId: PROJECT_ID,
+			source: 'evals',
+			sourceContext: { evalCase: 'slack-digest', evalIteration: 2 },
+		});
+
+		expect(result).toEqual({ threadId: THREAD_ID, projectId: PROJECT_ID });
+		expect(ctx.systemAgents.ensureMemoryThread).toHaveBeenCalledWith(
+			'assistant',
+			ctx.user,
+			THREAD_ID,
+		);
+		expect(ctx.systemAgents.ensureMemoryThread.mock.invocationCallOrder[0]).toBeLessThan(
+			ctx.threadMetadata.patch.mock.invocationCallOrder[0],
+		);
+		expect(ctx.threadMetadata.patch).toHaveBeenCalledWith(
+			'assistant',
+			ctx.user,
+			THREAD_ID,
+			expect.any(Function),
+		);
+		expect(ctx.stored.metadata).toEqual({
+			other: 'kept',
+			source: 'evals',
+			sourceContext: { evalCase: 'slack-digest', evalIteration: 2 },
+		});
+	});
+
+	it('stores only the provenance keys that the request gives', async () => {
+		const ctx = setup();
+		ctx.stored.metadata = { source: 'evals', sourceContext: { evalCase: 'old' } };
+
+		await ctx.controller.createThread(ctx.req, ctx.res, {
+			threadId: THREAD_ID,
+			projectId: PROJECT_ID,
+			sourceContext: { evalCase: 'new' },
+		});
+
+		expect(ctx.stored.metadata).toEqual({ source: 'evals', sourceContext: { evalCase: 'new' } });
 	});
 
 	it('deletes the thread and clears its overrides and credential settings', async () => {
@@ -514,6 +562,27 @@ describe('AssistantAgentEvalController', () => {
 			expect(
 				InstanceAiAssistantEvalCreateThreadRequest.safeParse({ threadId: THREAD_ID, projectId: '' })
 					.success,
+			).toBe(false);
+		});
+
+		it('accepts the thread provenance of the current runtime and rejects bad values', () => {
+			const base = { threadId: THREAD_ID, projectId: PROJECT_ID };
+			expect(
+				InstanceAiAssistantEvalCreateThreadRequest.safeParse({
+					...base,
+					source: 'evals',
+					sourceContext: { evalCase: 'slack-digest', evalIteration: 1 },
+				}).success,
+			).toBe(true);
+			expect(
+				InstanceAiAssistantEvalCreateThreadRequest.safeParse({ ...base, source: 'not-a-source' })
+					.success,
+			).toBe(false);
+			expect(
+				InstanceAiAssistantEvalCreateThreadRequest.safeParse({
+					...base,
+					sourceContext: { blob: 'x'.repeat(2048) },
+				}).success,
 			).toBe(false);
 		});
 

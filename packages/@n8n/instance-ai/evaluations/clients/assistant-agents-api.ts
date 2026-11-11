@@ -172,11 +172,22 @@ export class AssistantAgentsApi {
 		);
 	}
 
-	/** POST /rest/assistant/eval/threads */
-	async createThread(threadId: string, projectId: string): Promise<void> {
+	/**
+	 * POST /rest/assistant/eval/threads. The route stores `source` and
+	 * `sourceContext` in the thread metadata, and each turn trace shows them.
+	 */
+	async createThread(
+		threadId: string,
+		projectId: string,
+		provenance: Pick<InstanceAiAssistantEvalCreateThreadRequest, 'source' | 'sourceContext'> = {},
+	): Promise<void> {
 		await this.transport.request(`${this.evalBase}/threads`, {
 			method: 'POST',
-			body: { threadId, projectId } satisfies InstanceAiAssistantEvalCreateThreadRequest,
+			body: {
+				threadId,
+				projectId,
+				...provenance,
+			} satisfies InstanceAiAssistantEvalCreateThreadRequest,
 		});
 		this.projectByThread.set(threadId, projectId);
 	}

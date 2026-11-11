@@ -353,8 +353,12 @@ export class N8nClient {
 		sourceContext?: Record<string, string | number | boolean>,
 	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
-		// The Agents eval route takes no source context yet.
-		if (this.agents) return await this.agents.createThread(threadId, resolvedProjectId);
+		if (this.agents) {
+			return await this.agents.createThread(threadId, resolvedProjectId, {
+				source: 'evals',
+				...(sourceContext ? { sourceContext } : {}),
+			});
+		}
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
 			body: {

@@ -274,6 +274,52 @@ describe('Assistant agent eval routes', () => {
 		}
 	});
 
+	it('stores the thread provenance in the thread metadata', async () => {
+		const threadId = randomUUID();
+		const provenance = {
+			source: 'evals',
+			sourceContext: { evalCase: 'slack-digest', evalIteration: 2 },
+		};
+
+		await ownerAgent
+			.post('/assistant/eval/threads')
+			.send({ threadId, projectId, ...provenance })
+			.expect(200);
+		// Creating the same thread again keeps one row with the same metadata.
+		await ownerAgent
+			.post('/assistant/eval/threads')
+			.send({ threadId, projectId, ...provenance })
+			.expect(200);
+
+		// The trace of each turn reads the provenance with this read.
+		const memory = Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
+		const thread = await memory.getThread(threadId);
+		expect(thread?.resourceId).toBe(
+			Container.get(SystemAgentExecutionService).resourceIdFor(owner),
+		);
+		expect(thread?.metadata).toMatchObject(provenance);
+
+		await ownerAgent.delete(`/assistant/eval/threads/${threadId}`).expect(200);
+	});
+
+	it('does not create the memory row when the request has no provenance', async () => {
+		const threadId = randomUUID();
+
+		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
+
+		const memory = Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
+		await expect(memory.getThread(threadId)).resolves.toBeNull();
+
+		await ownerAgent.delete(`/assistant/eval/threads/${threadId}`).expect(200);
+	});
+
+	it('rejects a thread source that is not known', async () => {
+		await ownerAgent
+			.post('/assistant/eval/threads')
+			.send({ threadId: randomUUID(), projectId, source: 'not-a-source' })
+			.expect(400);
+	});
+
 	it('rejects a seed message that is not valid before it creates any artifact', async () => {
 		const threadId = randomUUID();
 		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);

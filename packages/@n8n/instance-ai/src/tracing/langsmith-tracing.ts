@@ -814,7 +814,11 @@ function resolveDefaultProjectName(): string {
 	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 }
 
-function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+/**
+ * Whether a trace context is created. Pass `true` when the caller has a
+ * tracing proxy config. Callers use it to skip work that only a trace needs.
+ */
+export function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
