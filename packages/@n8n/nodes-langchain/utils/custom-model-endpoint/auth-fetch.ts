@@ -1,4 +1,4 @@
-import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import {
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
@@ -12,26 +12,6 @@ import {
 import { buildRequestHeaders } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
-
-/**
- * Every hop has to go out through this, the token request included. `validateUrl`
- * only resolves the name; the dispatcher is what pins that answer for the
- * connection that follows, so a name that answers twice cannot land elsewhere.
- */
-export function createEndpointBaseFetch(
-	egressFilter: NodeEgressFilter,
-	timeout?: number,
-): typeof fetch {
-	return async (input, init) =>
-		await proxyFetch({
-			input,
-			init,
-			egressFilter,
-			...(timeout !== undefined && {
-				timeoutOptions: { headersTimeout: timeout, bodyTimeout: timeout },
-			}),
-		});
-}
 
 export interface CustomModelEndpointTransport {
 	fetch: typeof fetch;
