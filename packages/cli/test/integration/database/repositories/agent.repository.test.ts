@@ -215,6 +215,7 @@ describe('AgentRepository', () => {
 				mock<GlobalConfig>({ tags: { disabled: false } }),
 				mock<TagService>(),
 				mock<FolderService>(),
+				mock(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();

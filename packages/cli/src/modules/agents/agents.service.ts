@@ -21,7 +21,7 @@ import {
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -47,6 +47,7 @@ import { TagService } from '@/services/tag.service';
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	NotFoundError,
 	UnexpectedError,
 	UserError,
@@ -168,6 +169,7 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	/**
@@ -211,6 +213,8 @@ export class AgentsService {
 		const agentTags = await this.resolveCreateTags(options.tagIds);
 
 		if (options.parentFolderId) {
+			this.assertFoldersLicensed();
+
 			await this.folderService.validateDestination(options.parentFolderId, projectId, 'agent');
 		}
 
@@ -567,12 +571,27 @@ export class AgentsService {
 
 	async move(agentId: string, projectId: string, parentFolderId: string | null): Promise<boolean> {
 		await this.settingsService.assertEnabled();
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+
+		if (!agent) {
+			return false;
+		}
+
+		if (parentFolderId || agent.parentFolderId) {
+			this.assertFoldersLicensed();
+		}
 
 		if (parentFolderId) {
 			await this.folderService.validateDestination(parentFolderId, projectId, 'agent');
 		}
 
 		return await this.agentRepository.moveToFolder(agentId, projectId, parentFolderId);
+	}
+
+	private assertFoldersLicensed() {
+		if (!this.licenseState.isFoldersLicensed()) {
+			throw new ForbiddenError('Plan lacks license for this feature');
+		}
 	}
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {

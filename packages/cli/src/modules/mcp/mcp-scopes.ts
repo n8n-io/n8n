@@ -162,6 +162,7 @@ export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
 	'create_folder',
 	'update_folder',
 	'move_workflows_to_folder',
+	'move_agent',
 ]);
 
 /**
@@ -184,7 +185,9 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_projects',
 	'search_folders',
 	'install_community_node',
-	...FOLDER_FEATURE_TOOLS,
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
 ]);
 
 /**

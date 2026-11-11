@@ -412,6 +412,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
+			mock(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
