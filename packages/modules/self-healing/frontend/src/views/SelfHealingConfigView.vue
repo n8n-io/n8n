@@ -171,7 +171,8 @@ const reviewerPickerItems = computed<ComboboxItem[]>(() => [
 			value: reviewer.id,
 			label: reviewerName(reviewer.id),
 			keywords: [reviewer.email],
-		})),
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
 ]);
 
 function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {

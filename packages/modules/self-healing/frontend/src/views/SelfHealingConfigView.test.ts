@@ -648,6 +648,26 @@ describe('personal project', () => {
 	});
 });
 
+it('lists reviewer options alphabetically after the project member group', async () => {
+	const store = useSelfHealingStore();
+	store.options.project!.reviewers.push(
+		{ id: 'zoe', email: 'zoe@example.com', firstName: 'Zoe', lastName: 'Young' },
+		{ id: 'email-only', email: 'bob@example.com', firstName: null, lastName: null },
+		{ id: 'anna', email: 'anna@example.com', firstName: 'anna', lastName: 'Smith' },
+	);
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+
+	await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+	await view.findByRole('option', { name: 'People from Acme project' });
+	expect(view.getAllByRole('option').map((option) => option.textContent?.trim())).toEqual([
+		'People from Acme project',
+		expect.stringContaining('anna Smith'),
+		expect.stringContaining('bob@example.com'),
+		expect.stringContaining('Zoe Young'),
+	]);
+});
+
 it('shows an email-only reviewer once and allows removal', async () => {
 	const store = useSelfHealingStore();
 	store.options.project.reviewers = [
