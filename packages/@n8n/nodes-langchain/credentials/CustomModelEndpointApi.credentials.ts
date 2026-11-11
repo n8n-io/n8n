@@ -220,7 +220,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 		const { login } = readCustomModelEndpointCredential(credentials);
 		if (login.type !== 'oauth2') return {};
 
-		const { method, headers, body, redirect } = clientCredentialsTokenRequest(login);
+		const { method, headers, body, redirect, timeout } = clientCredentialsTokenRequest(login);
 
 		let response: unknown;
 		try {
@@ -229,6 +229,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 				url: login.tokenUrl,
 				headers,
 				body,
+				timeout,
 				// Following one would re-POST the secret to wherever it pointed
 				disableFollowRedirect: redirect === 'manual',
 			});

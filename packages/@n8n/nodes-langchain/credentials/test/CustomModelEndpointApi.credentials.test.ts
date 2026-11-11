@@ -201,6 +201,7 @@ describe('CustomModelEndpointApi Credential', () => {
 					'content-type': 'application/x-www-form-urlencoded',
 				},
 				body: 'grant_type=client_credentials',
+				timeout: 30_000,
 				// A redirect would re-POST the secret somewhere else
 				disableFollowRedirect: true,
 			});
