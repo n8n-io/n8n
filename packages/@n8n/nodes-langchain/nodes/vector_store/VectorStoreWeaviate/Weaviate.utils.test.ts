@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { UserError } from '@n8n/errors';
 import http2 from 'node:http2';
 import type { AddressInfo } from 'node:net';
 
@@ -7,7 +8,9 @@ import weaviate, { Filters, type WeaviateClient } from 'weaviate-client';
 
 import {
 	createWeaviateClient,
+	insertWithServerSideBatching,
 	parseCompositeFilter,
+	supportsServerSideBatching,
 	type WeaviateCredential,
 } from './Weaviate.utils';
 
@@ -310,5 +313,80 @@ describe('createWeaviateClient connection options', () => {
 		await createWeaviateClient(baseCredentials);
 
 		expect(connect).toHaveBeenCalledWith(expect.objectContaining({ authCredentials: undefined }));
+	});
+});
+
+describe('supportsServerSideBatching', () => {
+	const clientWithVersion = (isAtLeast: (...version: number[]) => boolean) =>
+		mock<WeaviateClient>({
+			getWeaviateVersion: vi.fn().mockResolvedValue({ isAtLeast }),
+		});
+
+	it('should ask for Weaviate v1.36.0 or later', async () => {
+		const isAtLeast = vi.fn().mockReturnValue(true);
+
+		await expect(supportsServerSideBatching(clientWithVersion(isAtLeast))).resolves.toBe(true);
+		expect(isAtLeast).toHaveBeenCalledWith(1, 36, 0);
+	});
+
+	it('should be false for an older Weaviate', async () => {
+		await expect(supportsServerSideBatching(clientWithVersion(() => false))).resolves.toBe(false);
+	});
+
+	it('should be false when the version is not available', async () => {
+		const client = mock<WeaviateClient>({
+			getWeaviateVersion: vi.fn().mockRejectedValue(new Error('no meta endpoint')),
+		});
+
+		await expect(supportsServerSideBatching(client)).resolves.toBe(false);
+	});
+});
+
+describe('insertWithServerSideBatching', () => {
+	const objects = [
+		{ id: 'id-1', vectors: [0.1], properties: { text: 'a' } },
+		{ id: 'id-2', vectors: [0.2], properties: { text: 'b' } },
+	];
+	const ingest = vi.fn();
+	const withTenant = vi.fn();
+	const client = mock<WeaviateClient>({
+		collections: mock<WeaviateClient['collections']>({
+			get: vi.fn().mockReturnValue({ data: { ingest }, withTenant }),
+		}),
+	});
+
+	beforeEach(() => {
+		ingest.mockReset().mockResolvedValue({ errors: {} });
+		withTenant.mockReset().mockReturnValue({ data: { ingest } });
+	});
+
+	it('should stream the objects and return their IDs in order', async () => {
+		await expect(
+			insertWithServerSideBatching(client, 'Books', undefined, objects),
+		).resolves.toEqual(['id-1', 'id-2']);
+
+		expect(client.collections.get).toHaveBeenCalledWith('Books');
+		expect(ingest).toHaveBeenCalledWith(objects);
+		expect(withTenant).not.toHaveBeenCalled();
+	});
+
+	it('should stream the objects into the tenant', async () => {
+		await insertWithServerSideBatching(client, 'Books', 'tenantA', objects);
+
+		expect(withTenant).toHaveBeenCalledWith('tenantA');
+		expect(ingest).toHaveBeenCalledWith(objects);
+	});
+
+	it('should throw a user error with the first object error', async () => {
+		ingest.mockResolvedValue({
+			errors: { 1: { message: 'invalid property "year"', object: objects[1] } },
+		});
+		const insert = async () =>
+			await insertWithServerSideBatching(client, 'Books', undefined, objects);
+
+		await expect(insert()).rejects.toThrow(UserError);
+		await expect(insert()).rejects.toThrow(
+			'Weaviate did not insert 1 of 2 objects: invalid property "year"',
+		);
 	});
 });
