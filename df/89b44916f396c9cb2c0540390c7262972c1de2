@@ -1,0 +1,24 @@
+packages/@n8n/db/src/migrations/sqlite/1794419301361-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_99c9c2a87c0abe 1-9
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_08690fb8a4caf5::t_beaa92263b0de1 1757,1767-1771,1775,1792,1794-1798,1812,1816-1820,1828,1839,1844,1851
+  s_08690fb8a4caf5::t_5c1d80a844fe65 1860,1865,1868
+packages/@n8n/db/src/migrations/common/1794419301361-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_99c9c2a87c0abe 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df89b44916f396c9cb2c0540390c7262972c1de2",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
