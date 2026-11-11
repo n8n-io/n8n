@@ -39,6 +39,19 @@ describe('N8nAlertDialog', () => {
 			expect(queryByLabelText('Close dialog')).not.toBeInTheDocument();
 		});
 
+		it('puts fallthrough attributes on the dialog content', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = renderAlertDialog({
+				title: 'Alert Title',
+				'data-test-id': 'workflow-history-version-unpublish-modal',
+			});
+
+			await user.click(getByTestId('alert-trigger'));
+
+			const dialog = getByTestId('workflow-history-version-unpublish-modal');
+			expect(dialog).toContainElement(getByRole('button', { name: 'Confirm' }));
+		});
+
 		it('should have both Cancel and action buttons in footer', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, getByRole } = renderAlertDialog({

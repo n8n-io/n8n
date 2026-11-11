@@ -1,6 +1,9 @@
 import { waitFor } from '@testing-library/dom';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -119,7 +122,11 @@ const renderModal = createComponentRenderer(WorkflowDiffModal, {
 	global: {
 		stubs: {
 			Dialog: {
-				template: '<div role="dialog"><slot /></div>',
+				emits: ['update:open'],
+				template: `<div role="dialog">
+					<slot />
+					<button type="button" data-test-id="diff-dialog-dismiss" @click="$emit('update:open', false)" />
+				</div>`,
 			},
 		},
 	},
@@ -733,6 +740,66 @@ describe('WorkflowDiffModal', () => {
 			expect(mockRouterReplace).toHaveBeenCalledWith({
 				query: { other: 'param' },
 			});
+		});
+	});
+
+	describe('closeDialog', () => {
+		const diffProps = {
+			workflowId: 'test-workflow-id',
+			workflowStatus: 'modified' as const,
+			direction: 'push' as const,
+		};
+
+		it('navigates back when the dialog reports a close', async () => {
+			const uiStore = useUIStore();
+			uiStore.modalStateById[WORKFLOW_DIFF_MODAL_KEY] = { open: true };
+			const bus = createEventBus();
+
+			const { getByTestId } = renderModal({
+				props: { data: { eventBus: bus, ...diffProps } },
+			});
+			await flushPromises();
+
+			await userEvent.click(getByTestId('diff-dialog-dismiss'));
+
+			expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(WORKFLOW_DIFF_MODAL_KEY);
+		});
+
+		it('navigates back when the event bus asks the dialog to close', async () => {
+			const uiStore = useUIStore();
+			uiStore.modalStateById[WORKFLOW_DIFF_MODAL_KEY] = { open: true };
+			const bus = createEventBus();
+
+			renderModal({
+				props: { data: { eventBus: bus, ...diffProps } },
+			});
+			await flushPromises();
+
+			bus.emit('close');
+			await flushPromises();
+
+			expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(WORKFLOW_DIFF_MODAL_KEY);
+		});
+
+		it('does nothing when the dialog is already closed', async () => {
+			const uiStore = useUIStore();
+			const bus = createEventBus();
+
+			const { getByTestId } = renderModal({
+				props: { data: { eventBus: bus, ...diffProps } },
+			});
+			await flushPromises();
+			mockRouterBack.mockClear();
+			uiStore.closeModal.mockClear();
+
+			await userEvent.click(getByTestId('diff-dialog-dismiss'));
+			bus.emit('close');
+			await flushPromises();
+
+			expect(mockRouterBack).not.toHaveBeenCalled();
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 	});
 

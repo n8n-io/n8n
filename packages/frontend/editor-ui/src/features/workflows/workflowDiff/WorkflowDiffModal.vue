@@ -48,7 +48,7 @@ const manualAsyncConfiguration = {
 
 const isClosed = ref(false);
 
-const handleBeforeClose = (): boolean | void => {
+const handleBeforeClose = (): void => {
 	if (isClosed.value) return;
 	isClosed.value = true;
 
@@ -166,6 +166,7 @@ onUnmounted(() => {
 		:open="modalOpen"
 		size="cover"
 		:show-close-button="false"
+		:aria-label="i18n.baseText('workflowDiff.compare')"
 		:container-class="$style.workflowDiffModal"
 		@update:open="onDialogOpenUpdate"
 		@escape-key-down="preventEscapeDismiss"
@@ -238,6 +239,9 @@ onUnmounted(() => {
 	--n8n-dialog-content--padding: 0;
 	border-radius: 0;
 	overflow: hidden;
+	// `cover` insets the dialog by one spacing step. This comparison fills the page.
+	max-width: 100%;
+	max-height: 100%;
 }
 
 .diffBody {

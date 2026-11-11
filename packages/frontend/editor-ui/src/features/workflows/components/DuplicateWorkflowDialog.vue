@@ -172,7 +172,7 @@ onMounted(async () => {
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div :class="$style.content" :data-test-id="`${modalName}-modal`">
+			<div :class="$style.content" :data-test-id="`${modalName}-modal`" @keydown.enter="save">
 				<N8nInput
 					v-model="name"
 					:placeholder="i18n.baseText('duplicateWorkflowDialog.enterWorkflowName')"

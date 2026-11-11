@@ -5,7 +5,7 @@ import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 
 import {
@@ -46,6 +46,15 @@ function onDialogOpenUpdate(open: boolean) {
 const workflowExtraction = useWorkflowExtraction();
 const workflowName = ref(DEFAULT_WORKFLOW_NAME);
 const initiatedExtraction = ref(false);
+const nameInput = useTemplateRef<InstanceType<typeof N8nFormInput>>('nameInput');
+
+function onOpenAutoFocus(event: Event) {
+	// The dialog's own focus lands on the field without selecting its text.
+	event.preventDefault();
+	const input = nameInput.value?.inputRef;
+	input?.focus();
+	input?.select();
+}
 
 const workflowNameOrDefault = computed(() => {
 	if (workflowName.value) return workflowName.value;
@@ -83,10 +92,12 @@ const onSubmit = async () => {
 		"
 		:close-on-overlay-click="false"
 		@update:open="onDialogOpenUpdate"
+		@open-auto-focus="onOpenAutoFocus"
 	>
 		<N8nDialogBody>
 			<div data-test-id="workflowExtractionName-modal">
 				<N8nFormInput
+					ref="nameInput"
 					v-model="workflowName"
 					name="key"
 					label=""

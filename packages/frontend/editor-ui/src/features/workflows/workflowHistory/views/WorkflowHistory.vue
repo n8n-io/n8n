@@ -563,7 +563,7 @@ const historyDiffModalOpen = computed(
 	() => uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open === true,
 );
 
-const closeCompareView = async (): Promise<boolean | void> => {
+const closeCompareView = async (): Promise<void> => {
 	if (uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open) {
 		uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
 	}
@@ -715,6 +715,7 @@ watchEffect(async () => {
 			:open="historyDiffModalOpen"
 			size="cover"
 			:show-close-button="false"
+			:aria-label="i18n.baseText('workflowDiff.compare')"
 			:container-class="$style.workflowHistoryDiffModal"
 			@update:open="onHistoryDiffOpenUpdate"
 			@escape-key-down="preventHistoryDiffEscape"
@@ -814,6 +815,9 @@ watchEffect(async () => {
 	--n8n-dialog-content--padding: 0;
 	border-radius: 0;
 	overflow: hidden;
+	// `cover` insets the dialog by one spacing step. This comparison fills the page.
+	max-width: 100%;
+	max-height: 100%;
 }
 
 .workflowHistoryDiffBody {

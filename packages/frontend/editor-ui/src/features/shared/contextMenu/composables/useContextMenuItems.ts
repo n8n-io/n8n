@@ -73,12 +73,23 @@ const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
 	// Staging hands focus to the Instance AI composer; a focus restore here would
 	// steal it straight back to the canvas.
 	'add_nodes_to_chat',
-	// The name dialog focuses its field. A restore would put focus back on the canvas.
-	'extract_sub_workflow',
 ]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
 	return FOCUS_HANDOFF_ACTIONS.has(action);
+}
+
+/**
+ * `extract_sub_workflow` is also offered for selections that extraction rejects.
+ * Suppress the restore only after the name dialog has opened. A rejected
+ * selection shows an error and leaves focus for the menu to restore.
+ */
+export function shouldSuppressContextMenuFocusRestore(
+	action: ContextMenuAction,
+	extractionNameDialogOpen: boolean,
+): boolean {
+	if (action === 'extract_sub_workflow') return extractionNameDialogOpen;
+	return isFocusHandoffAction(action);
 }
 
 type Item = ActionDropdownItem<ContextMenuAction>;

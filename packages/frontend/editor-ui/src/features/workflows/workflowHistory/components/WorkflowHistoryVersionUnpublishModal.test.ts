@@ -1,8 +1,11 @@
+import { flushPromises } from '@vue/test-utils';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_UNPUBLISH } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
 import WorkflowHistoryVersionUnpublishModal from './WorkflowHistoryVersionUnpublishModal.vue';
@@ -21,11 +24,14 @@ vi.mock('vue-router', () => ({
 
 const AlertDialogStub = {
 	props: ['title', 'description', 'actionLabel', 'cancelLabel'],
+	emits: ['update:open', 'action'],
 	template: `
 		<div role="alertdialog">
 			<h2>{{ title }}</h2>
 			<p>{{ description }}</p>
 			<slot />
+			<button data-test-id="unpublish-dialog-dismiss" @click="$emit('update:open', false)" />
+			<button data-test-id="unpublish-dialog-action" @click="$emit('action')" />
 		</div>
 	`,
 };
@@ -116,5 +122,42 @@ describe('WorkflowHistoryVersionUnpublishModal', () => {
 
 		expect(getByText(/prevent all production executions/)).toBeInTheDocument();
 		expect(queryByTestId('workflow-unpublish-affected-resources')).not.toBeInTheDocument();
+	});
+
+	it('emits cancel when the dialog closes and unpublish when the action runs', async () => {
+		vi.mocked(workflowDependenciesApi.getResourceDependencies).mockResolvedValue({});
+		vi.mocked(workflowDependenciesApi.getResourceDependencyCounts).mockResolvedValue({});
+
+		const eventBus = createEventBus();
+		const cancel = vi.fn();
+		const unpublish = vi.fn();
+		eventBus.on('cancel', cancel);
+		eventBus.on('unpublish', unpublish);
+
+		const pinia = createTestingPinia({ stubActions: false });
+		const uiStore = useUIStore();
+		uiStore.modalStateById[WORKFLOW_HISTORY_VERSION_UNPUBLISH] = { open: true };
+
+		const { getByTestId } = createComponentRenderer(WorkflowHistoryVersionUnpublishModal)({
+			props: {
+				modalName: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				data: { workflowId: 'wf-1', versionName: 'v3', eventBus },
+			},
+			pinia,
+			global: { stubs: { AlertDialog: AlertDialogStub } },
+		});
+		await flushPromises();
+
+		await userEvent.click(getByTestId('unpublish-dialog-dismiss'));
+		expect(cancel).toHaveBeenCalledTimes(1);
+		expect(uiStore.modalsById[WORKFLOW_HISTORY_VERSION_UNPUBLISH]?.open).toBe(false);
+
+		uiStore.modalStateById[WORKFLOW_HISTORY_VERSION_UNPUBLISH] = { open: true };
+		await userEvent.click(getByTestId('unpublish-dialog-action'));
+		expect(unpublish).toHaveBeenCalledTimes(1);
+
+		await userEvent.click(getByTestId('unpublish-dialog-dismiss'));
+		expect(cancel).toHaveBeenCalledTimes(1);
+		expect(uiStore.modalsById[WORKFLOW_HISTORY_VERSION_UNPUBLISH]?.open).toBe(true);
 	});
 });

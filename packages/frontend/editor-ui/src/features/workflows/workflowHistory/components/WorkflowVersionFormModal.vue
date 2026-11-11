@@ -69,7 +69,7 @@ watch(
 	{ immediate: true },
 );
 
-const onCancel = (): boolean | void => {
+const onCancel = (): void => {
 	props.data.eventBus.emit('cancel');
 };
 

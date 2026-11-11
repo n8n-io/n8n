@@ -82,12 +82,13 @@ const hasAffected = computed(
 	() => affectedGroups.value.length > 0 || hiddenAffectedCount.value > 0,
 );
 
-const onCancel = (): boolean | void => {
+const onCancel = (): void => {
 	props.data.eventBus.emit('cancel');
 };
 
 async function closeDialog() {
-	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	// The in-flight unpublish still finishes and shows its result. Closing here would hide that.
+	if (uiStore.modalsById[props.modalName]?.open !== true || unpublishing.value) return;
 	const shouldClose = await onCancel();
 	if (shouldClose === false) return;
 	uiStore.closeModal(props.modalName);

@@ -13,7 +13,8 @@ import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { VIEWS } from '@/app/constants';
+import { VIEWS, WORKFLOW_HISTORY_DIFF_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
@@ -53,7 +54,11 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
 			Dialog: defineComponent({
-				template: '<div role="dialog"><slot /></div>',
+				emits: ['update:open'],
+				template: `<div role="dialog">
+					<slot />
+					<button type="button" data-test-id="history-diff-dismiss" @click="$emit('update:open', false)" />
+				</div>`,
 			}),
 			WorkflowHistoryDiff: defineComponent({
 				emits: ['versionsChange', 'close'],
@@ -485,6 +490,39 @@ describe('WorkflowHistory', () => {
 					preserve: 'yes',
 				},
 			});
+		});
+
+		it('should drop diffWith when the comparison dialog closes', async () => {
+			setupDiffRouteSyncState();
+			route.query.preserve = 'yes';
+			const uiStore = useUIStore();
+			uiStore.modalStateById[WORKFLOW_HISTORY_DIFF_MODAL_KEY] = { open: true };
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			vi.mocked(router.replace).mockClear();
+
+			await userEvent.click(getByTestId('history-diff-dismiss'));
+
+			expect(router.replace).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId,
+					versionId: 'v-target',
+				},
+				query: { preserve: 'yes' },
+			});
+		});
+
+		it('should ignore a dialog close when the comparison is already closed', async () => {
+			setupDiffRouteSyncState();
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			vi.mocked(router.replace).mockClear();
+
+			await userEvent.click(getByTestId('history-diff-dismiss'));
+
+			expect(router.replace).not.toHaveBeenCalled();
 		});
 	});
 

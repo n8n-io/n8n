@@ -236,7 +236,7 @@ function onDialogOpenUpdate(open: boolean) {
 	if (!open) void closeDialog();
 }
 
-const onCloseModal = async (): Promise<boolean | void> => {
+const onCloseModal = async (): Promise<boolean> => {
 	if (isDirty.value) {
 		const shouldSave = await message.confirm(
 			i18n.baseText('workflows.shareModal.saveBeforeClose.message'),
@@ -303,74 +303,75 @@ watch(
 					}}
 				</N8nText>
 			</div>
-
-			<N8nInfoTip
-				v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
-				:bold="false"
-				class="mb-s"
-			>
-				{{
-					i18n.baseText('workflows.shareModal.info.sharee', {
-						interpolate: { workflowOwnerName },
-					})
-				}}
-			</N8nInfoTip>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
-				<div>
-					<ProjectSharing
-						v-if="workflowHomeProject"
-						v-model="sharedWithProjects"
-						:home-project="workflowHomeProject"
-						:search-fn="searchFn"
-						:filter-fn="filterFn"
-						:roles="workflowRoles"
-						:readonly="!workflowPermissions.share"
-						:static="isHomeTeamProject || !workflowPermissions.share"
-						:disabled-tooltip="
-							isPersonalSpaceRestricted
-								? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
-								: undefined
-						"
-						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-						:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
-						@project-added="onProjectAdded"
-						@project-removed="onProjectRemoved"
-					/>
-					<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-						<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
-							<template #projectName>
-								{{ workflowHomeProject?.name }}
-							</template>
-							<template #members>
-								<strong>
-									{{
-										i18n.baseText('workflows.shareModal.info.members.number', {
-											interpolate: {
-												number: String(numberOfMembersInHomeTeamProject),
-											},
-											adjustToNumber: numberOfMembersInHomeTeamProject,
-										})
-									}}
-								</strong>
-							</template>
-						</I18nT>
-					</N8nInfoTip>
-				</div>
-				<template #fallback>
-					<N8nText>
-						<I18nT
-							:keypath="
-								uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-									.tooltip
+			<template v-else>
+				<N8nInfoTip
+					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
+					:bold="false"
+					class="mb-s"
+				>
+					{{
+						i18n.baseText('workflows.shareModal.info.sharee', {
+							interpolate: { workflowOwnerName },
+						})
+					}}
+				</N8nInfoTip>
+				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
+					<div>
+						<ProjectSharing
+							v-if="workflowHomeProject"
+							v-model="sharedWithProjects"
+							:home-project="workflowHomeProject"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
+							:roles="workflowRoles"
+							:readonly="!workflowPermissions.share"
+							:static="isHomeTeamProject || !workflowPermissions.share"
+							:disabled-tooltip="
+								isPersonalSpaceRestricted
+									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+									: undefined
 							"
-							tag="span"
-							scope="global"
-						>
-							<template #action />
-						</I18nT>
-					</N8nText>
-				</template>
-			</EnterpriseEdition>
+							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
+							@project-added="onProjectAdded"
+							@project-removed="onProjectRemoved"
+						/>
+						<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
+								<template #projectName>
+									{{ workflowHomeProject?.name }}
+								</template>
+								<template #members>
+									<strong>
+										{{
+											i18n.baseText('workflows.shareModal.info.members.number', {
+												interpolate: {
+													number: String(numberOfMembersInHomeTeamProject),
+												},
+												adjustToNumber: numberOfMembersInHomeTeamProject,
+											})
+										}}
+									</strong>
+								</template>
+							</I18nT>
+						</N8nInfoTip>
+					</div>
+					<template #fallback>
+						<N8nText>
+							<I18nT
+								:keypath="
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+										.tooltip
+								"
+								tag="span"
+								scope="global"
+							>
+								<template #action />
+							</I18nT>
+						</N8nText>
+					</template>
+				</EnterpriseEdition>
+			</template>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>

@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import { useContextMenu } from '../composables/useContextMenu';
-import { isFocusHandoffAction, type ContextMenuAction } from '../composables/useContextMenuItems';
+import {
+	shouldSuppressContextMenuFocusRestore,
+	type ContextMenuAction,
+} from '../composables/useContextMenuItems';
+import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useStyles } from '@n8n/composables/useStyles';
 import { nextTick, ref, watch } from 'vue';
 import {
@@ -15,6 +20,7 @@ import {
 import { N8nIcon, N8nKeyboardShortcut } from '@n8n/design-system';
 
 const contextMenu = useContextMenu();
+const uiStore = useUIStore();
 const { position, isOpen, actions } = contextMenu;
 const trigger = ref<HTMLElement>();
 const emit = defineEmits<{
@@ -43,13 +49,13 @@ watch(
 	{ flush: 'post' },
 );
 
-// When a selected action hands off to another floating layer (e.g. the sticky
-// color popover), we must stop Reka from restoring focus as the menu closes —
-// otherwise the restore lands outside the freshly-opened layer and dismisses it.
-let suppressRestoreFocus = false;
+// The selected action is read when the menu closes, after the handler has run.
+// Extraction either opens the name dialog or rejects the selection. Only the
+// first of those should keep the menu from restoring focus.
+let pendingAction: ContextMenuAction | undefined;
 
 function onActionSelect(item: ContextMenuAction) {
-	suppressRestoreFocus = isFocusHandoffAction(item);
+	pendingAction = item;
 	// Read the target while the menu is guaranteed open, and hand it down as
 	// data — group actions must target the group that was right-clicked, not
 	// whatever the snapshotted member ids resolve to at dispatch time.
@@ -57,10 +63,15 @@ function onActionSelect(item: ContextMenuAction) {
 }
 
 function onCloseAutoFocus(event: Event) {
-	if (suppressRestoreFocus) {
+	const action = pendingAction;
+	pendingAction = undefined;
+	if (!action) return;
+
+	const extractionNameDialogOpen =
+		uiStore.modalsById[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]?.open === true;
+	if (shouldSuppressContextMenuFocusRestore(action, extractionNameDialogOpen)) {
 		event.preventDefault();
 	}
-	suppressRestoreFocus = false;
 }
 
 function onOpenChange(open: boolean) {

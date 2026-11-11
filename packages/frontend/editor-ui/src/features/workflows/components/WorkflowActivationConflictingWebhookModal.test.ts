@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowActivationConflictingWebhookModal from '@/features/workflows/components/WorkflowActivationConflictingWebhookModal.vue';
 import {
@@ -9,10 +10,14 @@ import {
 import { waitFor } from '@testing-library/vue';
 import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
+const { closeModal } = vi.hoisted(() => ({
+	closeModal: vi.fn(),
+}));
+
 vi.mock('@/app/stores/ui.store', () => {
 	return {
 		useUIStore: vi.fn(() => ({
-			closeModal: vi.fn(),
+			closeModal,
 			modalsById: new Proxy({}, { get: () => ({ open: true }) }),
 		})),
 	};
@@ -30,15 +35,31 @@ const renderComponent = createComponentRenderer(WorkflowActivationConflictingWeb
 	global: {
 		stubs: {
 			Dialog: {
-				template: '<div role="dialog"><slot /></div>',
+				emits: ['update:open'],
+				template:
+					'<div role="dialog"><slot /><button data-test-id="dialog-dismiss" @click="$emit(\'update:open\', false)" /></div>',
 			},
 		},
 	},
 });
 
+const webhookProps = {
+	modalName: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+	data: {
+		triggerName: 'Trigger in this workflow',
+		workflowName: 'Test Workflow',
+		triggerType: WEBHOOK_NODE_TYPE,
+		workflowId: '123',
+		webhookPath: 'webhook-path',
+		method: 'GET',
+		node: 'Node in workflow',
+	},
+};
+
 describe('WorkflowActivationConflictingWebhookModal', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		closeModal.mockClear();
 	});
 
 	it('should render webhook conflict modal', async () => {
@@ -159,5 +180,16 @@ describe('WorkflowActivationConflictingWebhookModal', () => {
 		expect(wrapper.getByTestId('conflicting-webhook-path')).toHaveTextContent(
 			'http://webhook-base/123/webhook',
 		);
+	});
+
+	it('closes the modal from Done and from the dialog close event', async () => {
+		const { getByTestId } = renderComponent({ props: webhookProps });
+
+		await userEvent.click(getByTestId('close-button'));
+		expect(closeModal).toHaveBeenCalledWith(WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY);
+
+		closeModal.mockClear();
+		await userEvent.click(getByTestId('dialog-dismiss'));
+		expect(closeModal).toHaveBeenCalledWith(WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY);
 	});
 });

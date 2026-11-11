@@ -10,7 +10,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-defineOptions({ inheritAttrs: false });
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -76,6 +75,7 @@ onUnmounted(() => {
 	<N8nDialog
 		:open="modalOpen"
 		size="2xlarge"
+		:container-class="$style.dialog"
 		:header="modalTitle"
 		@update:open="onDialogOpenUpdate"
 	>
@@ -116,6 +116,11 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+// No width token matches the previous 700px modal. 2xlarge is 780px.
+.dialog.dialog {
+	max-width: min(700px, calc(100dvw - var(--spacing--lg)));
+}
+
 .notice {
 	margin-bottom: var(--spacing--2xl);
 }

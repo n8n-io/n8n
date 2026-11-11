@@ -9,7 +9,12 @@ import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
@@ -2048,6 +2053,66 @@ describe('WorkflowSettingsVue', () => {
 				// No floor-lock indicator under floor "off" (the lock comes from missing permission).
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('dialog close', () => {
+		const renderClosable = createComponentRenderer(WorkflowSettingsVue, {
+			global: {
+				stubs: {
+					...workflowSettingsStubs,
+					Dialog: {
+						emits: ['update:open'],
+						template: `<div role="dialog">
+							<slot />
+							<button type="button" data-test-id="settings-dialog-close" @click="$emit('update:open', false)" />
+						</div>`,
+					},
+				},
+			},
+		});
+
+		afterEach(() => {
+			delete window.n8nExternalHooks;
+		});
+
+		it('closes an open dialog and reports the visibility change', async () => {
+			const dialogVisibleChanged = vi.fn();
+			window.n8nExternalHooks = {
+				workflowSettings: { dialogVisibleChanged: [dialogVisibleChanged] },
+			};
+			const uiStore = useUIStore();
+			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+
+			const { getByTestId } = renderClosable({ pinia });
+			await flushPromises();
+			dialogVisibleChanged.mockClear();
+
+			await userEvent.click(getByTestId('settings-dialog-close'));
+
+			expect(uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY]?.open).toBe(false);
+			expect(dialogVisibleChanged).toHaveBeenCalledWith(expect.anything(), {
+				dialogVisible: false,
+			});
+		});
+
+		it('ignores a close when the dialog is already closed', async () => {
+			const dialogVisibleChanged = vi.fn();
+			window.n8nExternalHooks = {
+				workflowSettings: { dialogVisibleChanged: [dialogVisibleChanged] },
+			};
+			const uiStore = useUIStore();
+			const closeModal = vi.spyOn(uiStore, 'closeModal');
+
+			const { getByTestId } = renderClosable({ pinia });
+			await flushPromises();
+			dialogVisibleChanged.mockClear();
+			closeModal.mockClear();
+
+			await userEvent.click(getByTestId('settings-dialog-close'));
+
+			expect(closeModal).not.toHaveBeenCalled();
+			expect(dialogVisibleChanged).not.toHaveBeenCalled();
 		});
 	});
 });

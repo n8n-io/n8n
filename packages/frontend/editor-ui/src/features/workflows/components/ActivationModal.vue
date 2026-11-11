@@ -155,5 +155,6 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 .footer {
 	align-items: center;
+	justify-content: space-between;
 }
 </style>
