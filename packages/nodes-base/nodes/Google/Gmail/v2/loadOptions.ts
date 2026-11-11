@@ -1,6 +1,6 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { googleApiRequest, getLabels } from '../GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems, getLabels } from '../GenericFunctions';
 
 export async function getThreadMessages(
 	this: ILoadOptionsFunctions,
@@ -41,6 +41,46 @@ export async function getGmailAliases(
 	}
 
 	return returnData;
+}
+
+/**
+ * User labels only, value = label name (for composing nested names).
+ * Display name is indented by nesting depth.
+ */
+export async function getUserLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const labels = await googleApiRequestAllItems.call(
+		this,
+		'labels',
+		'GET',
+		'/gmail/v1/users/me/labels',
+	);
+
+	for (const label of labels) {
+		if (label.type === 'system') {
+			continue;
+		}
+		const depth = label.name.split('/').length - 1;
+		const indent = depth > 0 ? `${'  '.repeat(depth)}` : '';
+		returnData.push({
+			name: `${indent}${label.name}`,
+			value: label.name,
+		});
+	}
+
+	const sorted = returnData.sort((a, b) => {
+		if (a.value < b.value) {
+			return -1;
+		}
+		if (a.value > b.value) {
+			return 1;
+		}
+		return 0;
+	});
+
+	// Parent Label is optional; without an empty choice the editor flags '' as unsupported.
+	return [{ name: 'None (Top Level)', value: '' }, ...sorted];
 }
 
 export { getLabels };

@@ -81,10 +81,13 @@ export async function getGoogleAccessToken(
 		| IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
+	additionalScopes: string[] = [],
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
-	const scopes = googleServiceAccountScopes[service];
+	// Extra scopes are requested per call so operations that need them don't make
+	// token requests fail for delegations that never authorized those scopes.
+	const scopes = [...new Set([...googleServiceAccountScopes[service], ...additionalScopes])];
 
 	const privateKey = formatPemBlock(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();

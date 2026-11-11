@@ -21,6 +21,10 @@ import type { IEmail } from '../../../utils/sendAndWait/interfaces';
 import { createUtmCampaignLink, escapeHtml } from '../../../utils/utilities';
 import { getGoogleAccessToken } from '../GenericFunctions';
 
+/** Filter endpoints need a scope the other Gmail operations don't. */
+const FILTER_SETTINGS_PATH = '/settings/filters';
+const GMAIL_SETTINGS_BASIC_SCOPE = 'https://www.googleapis.com/auth/gmail.settings.basic';
+
 export interface IAttachments {
 	type: string;
 	name: string;
@@ -65,7 +69,12 @@ export async function googleApiRequest(
 			const credentials = await this.getCredentials('googleApi');
 			credentialType = 'googleApi';
 
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'gmail');
+			const { access_token } = await getGoogleAccessToken.call(
+				this,
+				credentials,
+				'gmail',
+				endpoint.includes(FILTER_SETTINGS_PATH) ? [GMAIL_SETTINGS_BASIC_SCOPE] : [],
+			);
 
 			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}
@@ -99,9 +108,24 @@ export async function googleApiRequest(
 			if (resource === 'label') {
 				resource = 'label ID';
 			}
+			if (resource === 'filter') {
+				resource = 'filter ID';
+			}
 			const errorOptions = {
 				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
 				description: '',
+			};
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
+		}
+
+		if (error.httpCode === '403' && endpoint.includes(FILTER_SETTINGS_PATH)) {
+			const authentication = this.getNodeParameter('authentication', 0) as string;
+			const errorOptions = {
+				message: 'Insufficient permissions to manage Gmail filters',
+				description:
+					authentication === 'serviceAccount'
+						? `Authorize the ${GMAIL_SETTINGS_BASIC_SCOPE} scope for this service account in your Google Workspace domain-wide delegation settings, then try again.`
+						: `Reconnect the Gmail OAuth2 credential to grant the ${GMAIL_SETTINGS_BASIC_SCOPE} scope, then try again. If the credential uses custom scopes, add it to Enabled Scopes first.`,
 			};
 			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
