@@ -25,6 +25,7 @@ packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_0da4b348b3b902::t_61140233ff1fd9 30,79-82,165,188-193,206-209,218,251-256,264,309-310,457,542-544,649-650,652-655,658-669,671,675-695,938,940-945,947-951,963,1023,1048-1060,1069,1099
   s_715718deca7b22::t_3246b76a677687 676-678
   s_715718deca7b22::t_37f5fc8ce82258 30,79-82,165,188-193,206-209,218,251-256,264,309-310,457,542-544,649-650,652-655,658-669,671,675,679-695,938,940-945,947-951,963,1023,1048-1060,1069,1099
+  s_014ccf3a0999bf::t_e1f8a3921f817d 656-657,946
 packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
   s_bfb3680951bbc8::t_c6dfd76f806b63 1-140
   s_715718deca7b22::t_5eb3ca2a36f1b1 1-90,94-140
@@ -46,6 +47,14 @@ packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
   "base_commit_sha": "fe8a686ad9cff8beb8dd5a48214017cc354ccc55",
   "prompts": {},
   "sessions": {
+    "s_014ccf3a0999bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f2e4951-5fc7-4790-8528-67c107b58a71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_0da4b348b3b902": {
       "agent_id": {
         "tool": "claude",
