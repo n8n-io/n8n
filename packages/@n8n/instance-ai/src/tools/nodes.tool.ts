@@ -675,7 +675,11 @@ const getNodeTypesInputSchema = z.object({
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(10).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
-export function createGetNodeTypesTool(context: InstanceAiContext) {
+export function createGetNodeTypesTool(
+	context: InstanceAiContext,
+	// Agents without load_skill must not get the model-selection hint.
+	{ skillHints = true }: { skillHints?: boolean } = {},
+) {
 	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_TYPES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_TYPES))
 		.description(
@@ -687,7 +691,7 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 		.input(getNodeTypesInputSchema)
 		.handler(async (input) => {
 			const result = await resolveNodeTypeDefinitions(context, input.nodeTypes);
-			if (await needsModelSelection(context.nodeService, result.definitions)) {
+			if (skillHints && (await needsModelSelection(context.nodeService, result.definitions))) {
 				return {
 					...result,
 					hint: 'Call load_skill with skillId "model-selection" before you choose a model.',

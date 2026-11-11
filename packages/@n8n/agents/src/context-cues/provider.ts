@@ -122,10 +122,28 @@ function loadedSkillIds(message: AgentMessage): string[] {
 		) {
 			return [];
 		}
-		// load_skill accepts the skill id as `skillId` or `name`.
-		const id = part.input.skillId ?? part.input.name;
+		// The result names the canonical id. Older results do not, so fall back to the input.
+		const id = skillIdFromResult(part.output.value) ?? part.input.skillId;
 		return typeof id === 'string' ? [id] : [];
 	});
+}
+
+const SKILL_ID_LINE = /^\[Skill id: ("(?:[^"\\]|\\.)*")\]$/m;
+
+function skillIdFromResult(value: unknown): string | undefined {
+	if (!Array.isArray(value)) return undefined;
+	for (const block of value) {
+		if (!isPlainObject(block) || typeof block.text !== 'string') continue;
+		const match = SKILL_ID_LINE.exec(block.text);
+		if (!match) continue;
+		try {
+			const id: unknown = JSON.parse(match[1]);
+			if (typeof id === 'string') return id;
+		} catch {
+			// A malformed line is not a skill id.
+		}
+	}
+	return undefined;
 }
 
 /** Skills that the agent loaded in its latest assistant message. */

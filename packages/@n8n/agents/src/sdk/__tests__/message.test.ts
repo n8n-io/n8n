@@ -26,8 +26,13 @@ describe('filterLlmMessages', () => {
 			type: 'custom',
 			data: { type: 'app:skill-update', skillUpdate },
 		};
+		// Older threads can still store the removed runtime discriminator.
+		const legacyRuntimeUpdate = {
+			type: 'custom',
+			data: { type: 'n8n:runtime-skill-update', skillUpdate },
+		} as unknown as AgentMessage;
 
-		expect(filterLlmMessages([appUpdate, namespacedAppUpdate])).toEqual([]);
+		expect(filterLlmMessages([appUpdate, namespacedAppUpdate, legacyRuntimeUpdate])).toEqual([]);
 	});
 });
 

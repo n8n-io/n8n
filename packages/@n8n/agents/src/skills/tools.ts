@@ -334,6 +334,7 @@ export function findRuntimeSkillEntry(
 function skillEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
 		`[Skill: ${envelopeValue(skill.name)}]`,
+		`[Skill id: ${envelopeValue(skill.id)}]`,
 		...(skill.parents?.length
 			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),

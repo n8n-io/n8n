@@ -5,7 +5,6 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
@@ -26,8 +25,6 @@ const props = withDefaults(
 	}>(),
 	{ awaitingInput: false },
 );
-
-const i18n = useI18n();
 
 const { getToolLabel } = useToolLabel();
 const { getInstanceContextLabel } = useInstanceContextLabel();

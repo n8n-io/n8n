@@ -15,7 +15,11 @@ import type { ContextCueRetrievalTrace, ContextCueSet } from '../types';
 
 const user = (text: string): AgentMessage => ({ role: 'user', content: [{ type: 'text', text }] });
 
-const toolCall = (toolName: string, input: Record<string, string>): AgentMessage => ({
+const toolCall = (
+	toolName: string,
+	input: Record<string, string>,
+	resultText = 'Skill body',
+): AgentMessage => ({
 	role: 'assistant',
 	content: [
 		{
@@ -24,7 +28,7 @@ const toolCall = (toolName: string, input: Record<string, string>): AgentMessage
 			toolName,
 			input,
 			state: 'resolved',
-			output: { type: 'content', value: [{ type: 'text', text: 'Skill body' }] },
+			output: { type: 'content', value: [{ type: 'text', text: resultText }] },
 		},
 	],
 });
@@ -151,6 +155,34 @@ describe('createContextCueProvider', () => {
 	it('returns nothing when the skill is not loaded', async () => {
 		const provider = createContextCueProvider({ sets, embeddingModel: model });
 		expect(await provider(request({}, []))).toEqual([]);
+	});
+
+	it('uses the canonical id from the result when the skill is loaded by name', async () => {
+		const provider = createContextCueProvider({ sets, embeddingModel: model, threshold: 0.8 });
+		const loadByName: AgentMessage = {
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'l1',
+					toolName: 'load_skill',
+					input: { name: 'Workflow builder' },
+					state: 'resolved',
+					output: {
+						type: 'content',
+						value: [
+							{
+								type: 'text',
+								text: '[Skill: "Workflow builder"]\n[Skill id: "builder"]\n\nSkill body',
+							},
+						],
+					},
+				},
+			],
+		};
+		expect(await provider(request({ messages: [loadByName, user('about alpha')] }, []))).toEqual([
+			{ id: contextCueId('builder', 'a'), content: 'Rule A' },
+		]);
 	});
 
 	it.each<[string, AgentMessage]>([
@@ -405,7 +437,12 @@ describe('createContextCueProvider', () => {
 				await provider(onLoadRequest([user('about alpha'), loadCall({ skillId: 'router' })])),
 			).toEqual(expected);
 			expect(
-				await provider(onLoadRequest([user('about alpha'), loadCall({ name: 'router' })])),
+				await provider(
+					onLoadRequest([
+						user('about alpha'),
+						toolCall('load_skill', { name: 'Router' }, '[Skill: "Router"]\n[Skill id: "router"]'),
+					]),
+				),
 			).toEqual(expected);
 		});
 

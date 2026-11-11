@@ -127,7 +127,8 @@ override without changing their stored cases.
 ## Loaded skills and compaction
 
 `load_skill` returns the skill body once, as a plain tool result. The SDK does not
-track loaded skills, persist them, or inject them again. When memory compaction
+track or persist active-skill state, and it does not inject the body again. The
+body stays in conversation history as the `load_skill` result. When memory compaction
 removes the tool result, the model must call `load_skill` again to get the body.
 
 Tools that need skill guidance tell the model to call `load_skill`. They do not
