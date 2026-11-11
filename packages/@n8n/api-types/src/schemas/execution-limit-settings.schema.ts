@@ -13,12 +13,10 @@ const maxExecutionsSchema = z
 	.max(EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING)
 	.nullable();
 
-export const executionLimitSettingsSchema = z
-	.object({
-		periodUnit: executionLimitPeriodUnitSchema,
-		maxExecutions: maxExecutionsSchema,
-		defaultProjectMaxExecutions: maxExecutionsSchema,
-	})
-	.strict();
+export const executionLimitSettingsSchema = z.object({
+	periodUnit: executionLimitPeriodUnitSchema,
+	maxExecutions: maxExecutionsSchema,
+	defaultProjectMaxExecutions: maxExecutionsSchema,
+});
 
 export type ExecutionLimitSettings = z.infer<typeof executionLimitSettingsSchema>;
