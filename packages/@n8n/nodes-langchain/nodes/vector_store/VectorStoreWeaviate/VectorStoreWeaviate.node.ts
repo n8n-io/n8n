@@ -61,7 +61,13 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		}
 
 		const ids = options?.ids ?? documents.map(() => randomUUID());
-		if (batchMode === 'auto' && !(await supportsServerSideBatching(client))) {
+		if (!(await supportsServerSideBatching(client))) {
+			// On older servers the stream can end without an error and insert nothing
+			if (batchMode === 'serverSide') {
+				throw new UserError('Server-side batching needs Weaviate 1.36 or later', {
+					description: 'Set "Batch Mode" to "Auto" or "Default", or update Weaviate.',
+				});
+			}
 			return await super.addVectors(vectors, documents, { ...options, ids });
 		}
 

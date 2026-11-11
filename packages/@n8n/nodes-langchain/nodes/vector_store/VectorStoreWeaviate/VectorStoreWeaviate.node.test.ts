@@ -627,6 +627,16 @@ describe('VectorStoreWeaviate.node', () => {
 			expect(store.addVectors).not.toHaveBeenCalled();
 		});
 
+		it('should throw and not insert when Weaviate is older than v1.36 in the server-side mode', async () => {
+			isAtLeast.mockReturnValue(false);
+
+			await expect(insert({ batchMode: 'serverSide' })).rejects.toThrow(
+				'Server-side batching needs Weaviate 1.36 or later',
+			);
+			expect(ingest).not.toHaveBeenCalled();
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
 		it('should throw and not retry when the stream fails in the server-side mode', async () => {
 			ingest.mockRejectedValue(new Error('stream closed'));
 
