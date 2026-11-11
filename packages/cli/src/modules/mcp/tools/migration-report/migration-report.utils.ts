@@ -60,7 +60,7 @@ export const impactSchema = breakingChangeRuleImpactSchema.describe(
 );
 
 export const assistantActionSchema = breakingChangeAssistantActionSchema.describe(
-	'What to do with a finding of this rule when the rule is not migratable: fix (change the workflow so the finding no longer applies), review (the right change depends on what the user wants: explain what changes for the workflow, and change the workflow only after the user agrees), none (n8n offers no assisted fix for this rule: tell the user what the recommendations say, and change the workflow only when the user asks for it)',
+	'What to do with a finding of this rule: fix (change the workflow so the finding no longer applies, with migrate_workflow when the rule is migratable), review (the right change depends on what the user wants: explain what changes for the workflow, and change the workflow only after the user agrees), none (n8n offers no assisted fix for this rule: tell the user what the recommendations say, and change the workflow only when the user asks for it)',
 );
 
 export const assertWorkflowRule = (
@@ -75,8 +75,11 @@ export const assertWorkflowRule = (
 	}
 };
 
-export const workflowRuleAssistantAction = (ruleRegistry: RuleRegistry, ruleId: string) =>
-	ruleRegistry.getRule(ruleId)?.getMetadata().assistant ?? 'none';
+export const workflowRuleAssistantAction = (
+	ruleRegistry: RuleRegistry,
+	rule: { ruleId: string; migratable: boolean },
+) =>
+	rule.migratable ? 'fix' : (ruleRegistry.getRule(rule.ruleId)?.getMetadata().assistant ?? 'none');
 
 /** The rule fields every migration report tool returns. */
 export const ruleOutputShape = {
@@ -120,7 +123,7 @@ export const workflowRuleOutputShape = {
 
 export const toWorkflowRuleOutput = (ruleRegistry: RuleRegistry, rule: RuleSource) => ({
 	...toRuleOutput(rule),
-	assistantAction: workflowRuleAssistantAction(ruleRegistry, rule.ruleId),
+	assistantAction: workflowRuleAssistantAction(ruleRegistry, rule),
 });
 
 /** What a save tool reports about the migration findings of the workflow it saved. */
@@ -199,7 +202,7 @@ export async function readWorkflowMigrationFindings(
 					ruleId: finding.ruleId,
 					title: finding.ruleTitle,
 					impact: finding.ruleImpact,
-					assistantAction: workflowRuleAssistantAction(deps.ruleRegistry, finding.ruleId),
+					assistantAction: workflowRuleAssistantAction(deps.ruleRegistry, finding),
 					issues: finding.issues,
 				}))
 				.sort(byImpact),

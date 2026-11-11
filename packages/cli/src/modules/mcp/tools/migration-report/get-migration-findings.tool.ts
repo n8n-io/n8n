@@ -215,7 +215,7 @@ export const createGetMigrationFindingsTool = (
 				`Pass a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME} to list the workflows that rule flags, or a workflowId to list every rule that flags that workflow. ` +
 				`When the rule is migratable, fix the workflow with ${MCP_MIGRATE_WORKFLOW_TOOL_NAME}. Otherwise, the rule's assistantAction says what to do. ` +
 				"For fix, follow the rule's recommendations with the workflow tools (get_workflow_details, then update_workflow). " +
-				'When you replace a node by hand, keep its code and expressions as they are. Change only what the replacement node does not support. ' +
+				'When you replace a node by hand, keep its code, its expressions and its node settings (such as executeOnce, alwaysOutputData and onError) as they are. Change only what the replacement node does not support. ' +
 				'For review, explain what changes for the workflow and change the workflow only after the user agrees. ' +
 				'For none, tell the user what the recommendations say and change the workflow only when the user asks for it. ' +
 				'If the workflow tools are not available, this connection cannot edit workflows: tell the user, and list what to fix instead. ' +

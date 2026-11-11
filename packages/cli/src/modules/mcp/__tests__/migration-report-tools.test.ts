@@ -666,6 +666,19 @@ describe('readWorkflowMigrationFindings', () => {
 			wontFixFindings: 1,
 		});
 	});
+
+	it('reports fix as the action of a rule with a built-in fix', async () => {
+		const deps = makeDeps();
+		deps.queryService.getWorkflowFindings.mockResolvedValue([
+			{ ...workflowFinding('ai-transform', 'executionsFail', 'open'), migratable: true },
+		]);
+
+		const result = await readWorkflowMigrationFindings(deps, 'wf-1');
+
+		expect(result?.openFindings).toEqual([
+			expect.objectContaining({ ruleId: 'ai-transform', assistantAction: 'fix' }),
+		]);
+	});
 });
 
 describe('migrate_workflow', () => {
