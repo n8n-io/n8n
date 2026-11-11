@@ -13,7 +13,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
-| [agent_chat_attachments](agent_chat_attachments.md) | 13 |  | table |
+| [agent_chat_attachments](agent_chat_attachments.md) | 14 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 7 |  | table |
 | [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
@@ -209,8 +209,8 @@ erDiagram
 "agent_eval_result" }o--|| "agent_eval_run" : "FOREIGN KEY (runId) REFERENCES agent_eval_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -540,6 +540,7 @@ erDiagram
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
+  VARCHAR_64_ contentHash
   datetime_3_ createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName
@@ -631,7 +632,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution" {
-  BOOLEAN acceptsSteering
+  boolean acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens
@@ -642,8 +643,8 @@ erDiagram
   INTEGER duration
   TEXT error
   TEXT failureSummary
-  VARCHAR_32_ finishReason
-  VARCHAR_64_ guardrailCode
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

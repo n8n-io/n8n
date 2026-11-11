@@ -11,7 +11,6 @@ import { EXECUTE_WORKFLOW_TYPE } from './constants';
 import {
 	InlineSubWorkflowError,
 	RepeatedSubWorkflowCallError,
-	SubWorkflowsNotSupportedError,
 	UnsupportedSubWorkflowCallerError,
 } from './errors';
 import type { CallOptions, SubWorkflowResolveResult, SubWorkflowResolver } from './types';
@@ -37,7 +36,7 @@ export class SubWorkflowCalls {
 	constructor(
 		private readonly node: INode,
 		private readonly stepContext: StepExecutionContext,
-		private readonly resolve?: SubWorkflowResolver,
+		private readonly resolve: SubWorkflowResolver,
 	) {}
 
 	/**
@@ -63,7 +62,6 @@ export class SubWorkflowCalls {
 			throw new UnsupportedSubWorkflowCallerError(this.node.name, this.node.type);
 		}
 		if (workflowInfo.id === undefined) throw new InlineSubWorkflowError(this.node.name);
-		if (!this.resolve) throw new SubWorkflowsNotSupportedError(this.node.name);
 
 		// Minted here, before the sub-execution is resolved, so its trigger runs under it
 		// and a fire-and-forget node reports the id as v1 does.

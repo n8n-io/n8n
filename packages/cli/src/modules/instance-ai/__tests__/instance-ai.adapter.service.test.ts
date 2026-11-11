@@ -1,9 +1,10 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, NodeTypesProxy } from '@n8n/backend-services';
 // EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -11,6 +12,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		formatRedactedError,
 	} = await import('@n8n/instance-ai/errors');
 	return {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -87,15 +89,11 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
-import type { NodeTypes } from '@/node-types';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import {
@@ -244,8 +242,8 @@ function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_
 }
 
 /** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
-function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockReturnValue({
 		description: { properties: [], ...description },
 	} as never);
@@ -253,7 +251,7 @@ function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
 }
 
 /** Node types that resolve every node to a Filter: one declared output, two output names. */
-function filterNodeTypes(): NodeTypes {
+function filterNodeTypes(): NodeTypesProxy {
 	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
 }
 
@@ -593,7 +591,7 @@ describe('redacted executions', () => {
 		const result = await extractExecutionDebugInfo(
 			makeRedactedExecution(),
 			true,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 		);
 
 		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
@@ -1218,7 +1216,7 @@ describe('extractExecutionDebugInfo', () => {
 	// ── resolvedParameters on failedNode ──────────────────────────────────────
 
 	describe('failedNode.resolvedParameters', () => {
-		const debugNodeTypes = mock<NodeTypes>();
+		const debugNodeTypes = mock<NodeTypesProxy>();
 
 		/** Build an execution that has a full workflow snapshot + a failed node entry. */
 		function makeFailedExecution(opts: {
@@ -1898,7 +1896,7 @@ describe('extractNodeOutput', () => {
 			name: 'Filter',
 			type: 'n8n-nodes-community.missing',
 		});
-		const nodeTypes = mock<NodeTypes>();
+		const nodeTypes = mock<NodeTypesProxy>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
 		});
@@ -1967,6 +1965,7 @@ import { type DataTableRepository, type DataTableService } from '@n8n/backend-mo
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
+	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
 	WorkflowNotFoundError,
 	WorkflowSaveConflictError,
@@ -2501,11 +2500,12 @@ describe('createNodeAdapter', () => {
 
 		it('acquires and releases the isolate around dynamic input resolution', async () => {
 			const { service, nodeService } = createNodeAdapterServiceForTests([]);
-			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
-				getByNameAndVersion: vi
-					.fn()
-					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
-			} as unknown as NodeTypes;
+			(service as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes =
+				{
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+				} as unknown as NodeTypesProxy;
 
 			const workflowJson = {
 				nodes: [
@@ -5597,8 +5597,8 @@ describe('resolveDataTableByIdOrName', () => {
  * registry added is named for its server (`@n8n/mcp-registry.<slug>`) and says
  * "tool" nowhere, yet it describes an `ai_tool` output all the same.
  */
-function runNodeTypesStub(): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function runNodeTypesStub(): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockImplementation(
 		(type: string) =>
 			({
@@ -5624,7 +5624,7 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
-		nodeTypes?: NodeTypes;
+		nodeTypes?: NodeTypesProxy;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -7831,7 +7831,6 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -7848,7 +7847,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
-			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7944,7 +7942,6 @@ describe('resolveExperimentGates', () => {
 			[CANVAS_NODE_CONTEXT_FLAG]: false,
 			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
-			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -7958,7 +7955,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7995,16 +7991,6 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	// The preferences flag is multivariate too, so a boolean `true` must not
-	// open the gate.
-	it('does not open the AI preferences gate on a boolean true', async () => {
-		stubContainer({ ...allEnabled, [CONTEXT_PREFERENCES_FLAG]: true });
-
-		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-			aiPreferencesEnabled: false,
-		});
-	});
-
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8018,7 +8004,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8038,7 +8023,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8589,15 +8573,9 @@ describe('createContext: aiPreferenceService', () => {
 		return { service, aiPreferenceService, logger, telemetry };
 	}
 
-	it('is absent when the preferences gate is closed', () => {
+	it('is always present', () => {
 		const { service } = buildService();
 		const context = service.createContext(user, { threadId: 't1' });
-		expect(context.aiPreferenceService).toBeUndefined();
-	});
-
-	it('is present when the gate is open', () => {
-		const { service } = buildService();
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 		expect(context.aiPreferenceService).toBeDefined();
 	});
 
@@ -8609,7 +8587,7 @@ describe('createContext: aiPreferenceService', () => {
 			userId: 'user-1',
 			projectId: null,
 		} as never);
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		const result = await context.aiPreferenceService!.create({
 			content: 'Keep replies short.',
@@ -8653,7 +8631,7 @@ describe('createContext: aiPreferenceService', () => {
 		async (error, expected) => {
 			const { service, aiPreferenceService, logger } = buildService();
 			aiPreferenceService.create.mockRejectedValue(error);
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
 
@@ -8667,7 +8645,7 @@ describe('createContext: aiPreferenceService', () => {
 		async (error) => {
 			const { service, aiPreferenceService, logger } = buildService();
 			aiPreferenceService.create.mockRejectedValue(error);
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
 
@@ -8695,7 +8673,7 @@ describe('createContext: aiPreferenceService', () => {
 		telemetry.track.mockImplementation(() => {
 			throw new Error('telemetry down');
 		});
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		const result = await context.aiPreferenceService!.create({
 			content: 'Keep replies short.',
@@ -8715,7 +8693,7 @@ describe('createContext: aiPreferenceService', () => {
 			id: 'pref-1',
 			content: 'Keep replies short.',
 		} as never);
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
 
@@ -8758,7 +8736,7 @@ describe('createContext: aiPreferenceService', () => {
 	it('fires write_rejected with the mapped reason, and nothing else, on a refused write', async () => {
 		const { service, aiPreferenceService, telemetry } = buildService();
 		aiPreferenceService.create.mockRejectedValue(new ConflictError('dup'));
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
 
@@ -8779,7 +8757,7 @@ describe('createContext: aiPreferenceService', () => {
 		'recordRejection(%s) fires write_rejected directly, without calling create',
 		(reason) => {
 			const { service, aiPreferenceService, telemetry } = buildService();
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			context.aiPreferenceService!.recordRejection(reason, 19, 'user');
 
@@ -9359,6 +9337,30 @@ describe('createContext: appService', () => {
 			'project-1',
 			{ name: 'Todos', namespace: 'todos', visibility: 'instance' },
 			{ id: APP_ID, actor: { userId: 'user-1', threadId: 'thread-1' } },
+		);
+	});
+
+	it('reports a namespace conflict as a taken namespace', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(
+			new ConflictError('An app already uses this namespace. Choose another namespace.'),
+		);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
+
+		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
+		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+	});
+
+	it('passes other create failures through unchanged', async () => {
+		const { apps } = mockAppsModule(true);
+		const failure = new BadRequestError('App IDs must be UUIDs.');
+		apps.createApp.mockRejectedValue(failure);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(context.appService?.createApp({ name: 'Todos', namespace: 'todos' })).rejects.toBe(
+			failure,
 		);
 	});
 
