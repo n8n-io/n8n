@@ -1751,6 +1751,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
+			// The property keeps its first name. It now also covers archived agents.
 			include_archived_workflows: includeArchived,
 		});
 	}

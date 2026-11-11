@@ -507,6 +507,7 @@ export class N8nPackagesService {
 						projectWorkflowIds: request.projectWorkflowIds,
 						versionPolicy,
 						dependencyPolicy,
+						includeArchived,
 						projectTargetsById: projectExportResult?.projectTargetsById,
 					});
 
