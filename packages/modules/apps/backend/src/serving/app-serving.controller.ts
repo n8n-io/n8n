@@ -15,7 +15,6 @@ import { AppsConfig } from '../apps.config';
 import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
 import { AppPreviewService } from '../preview/app-preview.service';
 
-const APP_CSP = "base-uri 'self'; object-src 'none'";
 const parseCookies = cookieParser();
 const ipRateLimit = createIpRateLimit(Container.get(AppsConfig).rateLimitServe, 60_000);
 
@@ -76,7 +75,7 @@ export class AppServingController {
 			}
 			const inspected = context.preview && file.contentType.startsWith('text/html');
 			const body = inspected
-				? Buffer.from(injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin))
+				? Buffer.from(injectInspectorScript(file.body.toString('utf8'), this.hosts.editorOrigin))
 				: file.body;
 			res.set({
 				'Cache-Control': 'private, no-cache',
@@ -84,9 +83,6 @@ export class AppServingController {
 				'Content-Type': file.contentType,
 				'X-Content-Type-Options': 'nosniff',
 				'Referrer-Policy': 'same-origin',
-				'Content-Security-Policy': context.preview
-					? `${APP_CSP}; frame-ancestors ${this.preview.editorOrigin}`
-					: APP_CSP,
 			});
 			res.send(body);
 		} catch (error) {
