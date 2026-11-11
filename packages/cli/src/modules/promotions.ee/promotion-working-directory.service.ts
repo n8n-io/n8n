@@ -116,13 +116,13 @@ export class PromotionWorkingDirectoryService {
 	/**
 	 * Drops the descriptor, then moves the checkout to trash. Keeps the pinned SSH host
 	 * keys. The descriptor goes first, so a partial removal never looks connected.
-	 * Returns the trash folders for `deleteTrash`.
+	 * Records each moved folder in `trashed` for `deleteTrash` as soon as it moves, so
+	 * a move that fails keeps the earlier trash paths with the caller. Returns `trashed`.
 	 */
-	async resetCheckout(environmentId: string): Promise<string[]> {
+	async resetCheckout(environmentId: string, trashed: string[] = []): Promise<string[]> {
 		const { repositoryFolder, nextRepositoryFolder, descriptorFile, trashFolder } =
 			this.paths(environmentId);
 		await rm(descriptorFile, { force: true });
-		const trashed: string[] = [];
 		for (const folder of [repositoryFolder, nextRepositoryFolder]) {
 			const moved = await moveToTrash(folder, trashFolder);
 			if (moved) trashed.push(moved);

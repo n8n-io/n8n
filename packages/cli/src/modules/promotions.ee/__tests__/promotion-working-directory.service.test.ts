@@ -9,6 +9,16 @@ import {
 	PromotionWorkingDirectoryService,
 } from '../promotion-working-directory.service';
 
+/** Lets a test choose the next trash names, so it can make one specific move fail. */
+const { uuidQueue } = vi.hoisted(() => ({ uuidQueue: [] as string[] }));
+vi.mock('node:crypto', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:crypto')>();
+	return {
+		...actual,
+		randomUUID: () => uuidQueue.shift() ?? actual.randomUUID(),
+	};
+});
+
 describe('PromotionWorkingDirectoryService', () => {
 	const ENVIRONMENT_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
 
@@ -48,6 +58,7 @@ describe('PromotionWorkingDirectoryService', () => {
 	};
 
 	beforeEach(async () => {
+		uuidQueue.length = 0;
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-working-directory-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 	});
@@ -90,6 +101,22 @@ describe('PromotionWorkingDirectoryService', () => {
 
 		it('returns no trash folder when there is no checkout', async () => {
 			await expect(workingDirectory.resetCheckout(ENVIRONMENT_ID)).resolves.toEqual([]);
+		});
+
+		it('records a moved folder in the given list before a later move fails', async () => {
+			await createCheckout();
+			// The second move gets a trash name that a non-empty folder occupies, so its rename fails.
+			const firstName = '00000000-0000-4000-8000-000000000000';
+			const blockedName = '11111111-1111-4111-8111-111111111111';
+			await mkdir(path.join(trashFolder(), blockedName, 'blocker'), { recursive: true });
+			uuidQueue.push(firstName, blockedName);
+
+			const trashed: string[] = [];
+			await expect(workingDirectory.resetCheckout(ENVIRONMENT_ID, trashed)).rejects.toThrow();
+
+			// The repository already moved, so its trash path stays with the caller.
+			expect(trashed).toEqual([path.join(trashFolder(), firstName)]);
+			expect(await readFile(path.join(trashed[0], 'marker'), 'utf8')).toBe('repository');
 		});
 	});
 

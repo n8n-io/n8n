@@ -66,13 +66,14 @@ export class PromotionCheckoutCleanupService {
 	 */
 	async disconnect<T>(environmentId: string, resolveAgain: () => Promise<T>): Promise<T> {
 		let removalStarted = false;
-		let trashed: string[] = [];
+		// The removal fills it in place, so a removal that fails halfway loses no trash path.
+		const trashed: string[] = [];
 		try {
 			return await this.holdLocks([environmentId], async ([signal]) => {
 				const resolved = await resolveAgain();
 				throwIfLockLost(signal);
 				removalStarted = true;
-				trashed = await this.workingDirectory.resetCheckout(environmentId);
+				await this.workingDirectory.resetCheckout(environmentId, trashed);
 				return resolved;
 			});
 		} finally {
@@ -276,11 +277,12 @@ export class PromotionCheckoutCleanupService {
 		for (const [index, environmentId] of environmentIds.entries()) {
 			if (!canRemove(index)) continue;
 			try {
-				trashed.push(
-					...(removal === 'purge'
-						? await this.workingDirectory.purge(environmentId)
-						: await this.workingDirectory.resetCheckout(environmentId)),
-				);
+				if (removal === 'purge') {
+					trashed.push(...(await this.workingDirectory.purge(environmentId)));
+				} else {
+					// Fills `trashed` in place, so a reset that fails halfway loses no trash path.
+					await this.workingDirectory.resetCheckout(environmentId, trashed);
+				}
 			} catch (error) {
 				this.warn(
 					removal === 'purge'

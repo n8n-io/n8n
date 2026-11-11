@@ -503,6 +503,35 @@ describe('PromotionCheckoutCleanupService', () => {
 				);
 			},
 		);
+
+		/** A reset that moved one folder and then failed. */
+		const failResetHalfway = async () => {
+			const stranded = path.join(trashFolder(), 'stranded');
+			await mkdir(stranded, { recursive: true });
+			vi.spyOn(workingDirectory, 'resetCheckout').mockImplementation(
+				async (_environmentId, trashed = []) => {
+					trashed.push(stranded);
+					throw new Error('EBUSY');
+				},
+			);
+			return stranded;
+		};
+
+		it('disconnect deletes the folder that moved before the removal failed', async () => {
+			const stranded = await failResetHalfway();
+
+			await expect(entryPoint('disconnect').run()).rejects.toThrow('EBUSY');
+
+			expect(await exists(stranded)).toBe(false);
+		});
+
+		it('changeCheckoutSettings deletes the folder that moved before the removal failed', async () => {
+			const stranded = await failResetHalfway();
+
+			await expect(entryPoint('changeCheckoutSettings').run()).resolves.toBe('changed');
+
+			expect(await exists(stranded)).toBe(false);
+		});
 	});
 
 	describe('removeOrphanedCheckouts', () => {
