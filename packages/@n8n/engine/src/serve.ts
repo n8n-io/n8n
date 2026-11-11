@@ -5,7 +5,9 @@ import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
+import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
+import { assertSecureTransport, createEngineHttpServer, loadEngineTls } from './tls';
 
 const logger = createConsoleLogger();
 
@@ -22,6 +24,10 @@ async function main(): Promise<void> {
 		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
 	}
 
+	// Before the database, so a bad certificate fails the boot in a second.
+	const tls = loadEngineTls(config);
+	assertSecureTransport(config, tls, {}, logger);
+
 	const dataSource = createDataSource(config.databaseUrl);
 	await dataSource.initialize();
 	await dataSource.runMigrations();
@@ -31,11 +37,14 @@ async function main(): Promise<void> {
 		admittance: new AllowAllAdmittance(),
 		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
 		logger,
+		// Nothing in this process waits for a response: the caller reads the run
+		// over the API instead.
+		responseSender: noopExecutionResponseSender,
 	});
 	runtime.start();
 
-	const server = runtime.app.listen(config.port, config.host, () => {
-		logger.info(`listening on http://${config.host}:${config.port}`);
+	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
+		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
 	});
 
 	let shuttingDown = false;

@@ -90,7 +90,7 @@ onMounted(() => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-button"

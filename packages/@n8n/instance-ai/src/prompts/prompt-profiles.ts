@@ -2,9 +2,9 @@ import type { RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiBuildMode, InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import type { SkillVariant } from './skill-variants';
-import { getSystemPrompt } from '../agent/system-prompt';
-import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import { CONCISE_COMMUNICATION_STYLE_SECTION } from '../agent/communication-style.prompt';
+import { createSystemPromptRenderer, getSystemPrompt } from '../agent/system-prompt';
+import type { SkillVariant } from '../skills/skill-variants';
 
 export interface PromptProfile {
 	version: string;
@@ -15,7 +15,10 @@ export interface PromptProfile {
 
 export const DEFAULT_PROMPT_VERSION = 'default@1';
 export const PROGRESSIVE_PROMPT_VERSION = 'progressive@1';
+export const CONCISE_PROMPT_VERSION = 'concise@1';
+
 const SYSTEM_PROMPT_VERSION = 'instance-agent@1';
+const CONCISE_SYSTEM_PROMPT_VERSION = 'instance-agent-concise@1';
 
 const progressiveBuilding: SkillVariant = {
 	id: 'progressive-building@1',
@@ -23,8 +26,6 @@ const progressiveBuilding: SkillVariant = {
 		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
 		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
 	],
-	disabledSkills: ['planning'],
-	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */
@@ -40,6 +41,12 @@ export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 		mode: 'progressive',
 		systemPromptVersion: SYSTEM_PROMPT_VERSION,
 		variants: [progressiveBuilding],
+	},
+	{
+		version: CONCISE_PROMPT_VERSION,
+		mode: 'default',
+		systemPromptVersion: CONCISE_SYSTEM_PROMPT_VERSION,
+		variants: [],
 	},
 ];
 
@@ -90,6 +97,7 @@ export function describePromptProfile(
 
 const systemPrompts = new Map<string, typeof getSystemPrompt>([
 	[SYSTEM_PROMPT_VERSION, getSystemPrompt],
+	[CONCISE_SYSTEM_PROMPT_VERSION, createSystemPromptRenderer(CONCISE_COMMUNICATION_STYLE_SECTION)],
 ]);
 
 export function getVersionedSystemPrompt(

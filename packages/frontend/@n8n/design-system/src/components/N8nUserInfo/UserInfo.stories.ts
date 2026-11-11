@@ -44,3 +44,11 @@ Invited.args = {
 	email: 'test@n8n.io',
 	isPendingUser: true,
 };
+
+export const WithoutAvatar = Template.bind({});
+WithoutAvatar.args = {
+	firstName: 'Oscar',
+	lastName: 'Wilde',
+	email: 'test@n8n.io',
+	hideAvatar: true,
+};

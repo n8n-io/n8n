@@ -1,4 +1,4 @@
-import { retry } from '../utils';
+import { getTooltip, retry } from '../utils';
 
 describe('retry', () => {
 	it('retries an async assertion that rejects before it passes', async () => {
@@ -36,5 +36,23 @@ describe('retry', () => {
 		);
 
 		expect(attempts).toBe(2);
+	});
+});
+
+describe('getTooltip', () => {
+	it('returns the tooltip element when one is in the document', () => {
+		const tooltip = document.createElement('div');
+		tooltip.classList.add('n8n-tooltip');
+		document.body.append(tooltip);
+
+		try {
+			expect(getTooltip()).toBe(tooltip);
+		} finally {
+			tooltip.remove();
+		}
+	});
+
+	it('throws when no tooltip is in the document', () => {
+		expect(() => getTooltip()).toThrow('Unable to find tooltip with class .n8n-tooltip');
 	});
 });

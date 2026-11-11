@@ -1,6 +1,7 @@
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -8,9 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import type { MessageEventBusDestination } from '../destinations/message-event-bus-destination.ee';
@@ -122,6 +122,18 @@ describe('EventBusController', () => {
 			await expect(controller.postDestination(req)).rejects.toThrow(BadRequestError);
 		});
 
+		it('names every invalid field in the error message', async () => {
+			const req = {
+				body: {
+					__type: MessageEventBusDestinationTypeNames.syslog,
+					host: '',
+					port: 0,
+				},
+			} as unknown as AuthenticatedRequest;
+
+			await expect(controller.postDestination(req)).rejects.toThrow(/host: .+; port: .+/);
+		});
+
 		it('rejects a destination referencing a credential the user cannot access', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
@@ -151,7 +163,7 @@ describe('EventBusController', () => {
 			destinationService.addDestination.mockResolvedValue(created);
 
 			const req = {
-				user: mock<User>(),
+				user: mock<User>({ role: GLOBAL_OWNER_ROLE }),
 				body: {
 					__type: MessageEventBusDestinationTypeNames.webhook,
 					label: 'Test',

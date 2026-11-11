@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -16,12 +17,11 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
-import { JwtService } from '@/services/jwt.service';
+import { CacheService, UrlService, JwtService } from '@n8n/backend-services';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import type { OAuthSessionPayload } from '../oauth-session.service';
+import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
 /**
  * Authorization for OAuth-protected MCP Server Triggers. A workflow whose MCP
@@ -39,7 +39,7 @@ let adminWithGlobalAccess: User;
 
 let tokenService: OAuthTokenService;
 let jwtService: JwtService;
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 let mcpEndpoint: string;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
@@ -116,7 +116,7 @@ const sessionTokenFor = async (resourceUrl: string) => {
 		state: 'test-state',
 		resource: resourceUrl,
 	};
-	return jwtService.sign(payload, { expiresIn: '10m' });
+	return jwtService.sign('oauthSession', payload, { expiresIn: '10m' });
 };
 
 beforeAll(async () => {
@@ -127,7 +127,7 @@ beforeAll(async () => {
 
 	tokenService = Container.get(OAuthTokenService);
 	jwtService = Container.get(JwtService);
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	mcpEndpoint = Container.get(GlobalConfig).endpoints.mcp;
 });
 
@@ -196,8 +196,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(JSON.stringify(response.body)).not.toContain(workflowName);
 	});
@@ -209,8 +209,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(owner)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(response.body.data.resourceName).toBe(workflowName);
 	});
@@ -222,8 +222,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
 			.post('/consent/approve')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true })
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.send({ approved: true, flow: TEST_FLOW_ID })
 			.expect(403);
 
 		expect(String(response.body.data?.redirectUrl ?? '')).not.toContain('code=');
@@ -282,7 +282,7 @@ describe('token endpoint: refresh grants stay on their approved resource', () =>
 		const response = await refresh(clientId, refreshToken);
 
 		expect(response.statusCode).toBe(200);
-		expect(jwtService.decode(response.body.access_token).aud).toBe(resourceUrl);
+		expect(jwtService.decodeUnverified(response.body.access_token).aud).toBe(resourceUrl);
 	});
 
 	test('keeps the resource on the rotated refresh token', async () => {
@@ -299,6 +299,6 @@ describe('token endpoint: refresh grants stay on their approved resource', () =>
 
 		const reused = await refresh(clientId, rotated.body.refresh_token);
 		expect(reused.statusCode).toBe(200);
-		expect(jwtService.decode(reused.body.access_token).aud).toBe(resourceA);
+		expect(jwtService.decodeUnverified(reused.body.access_token).aud).toBe(resourceA);
 	});
 });

@@ -4,6 +4,8 @@ import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
+export { addProjectMembers, getProject } from '@n8n/rest-api-client';
+
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');
 };
@@ -50,10 +52,6 @@ export const getPersonalProject = async (context: IRestApiContext): Promise<Proj
 	return await makeRestApiRequest(context, 'GET', '/projects/personal');
 };
 
-export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
-	return await makeRestApiRequest(context, 'GET', `/projects/${id}`);
-};
-
 export const createProject = async (
 	context: IRestApiContext,
 	payload: CreateProjectDto,
@@ -84,14 +82,6 @@ export const deleteProject = async (
 
 export const getProjectsCount = async (context: IRestApiContext): Promise<ProjectsCount> => {
 	return await makeRestApiRequest(context, 'GET', '/projects/count');
-};
-
-export const addProjectMembers = async (
-	context: IRestApiContext,
-	projectId: string,
-	relations: Array<{ userId: string; role: AssignableProjectRole }>,
-): Promise<void> => {
-	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/users`, { relations });
 };
 
 export const updateProjectMemberRole = async (

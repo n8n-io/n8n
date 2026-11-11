@@ -1,6 +1,4 @@
-import { Container } from '@n8n/di';
 import get from 'lodash/get';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -251,6 +249,9 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 				JSON.stringify(response.body?.error ?? response.statusMessage ?? 'Unknown error');
 
 			if (response.statusCode === 200) {
+				if (response.body?.ok === false) {
+					throwOnSlackApiError.call(context, response.body);
+				}
 				retryCount = 0;
 				responseData = response.body;
 				requestSuccessful = true;
@@ -533,11 +534,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const captureResponder =
 		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
 
-	// HMAC secret for the callback reference the CLI layer verifies to prove which execution and
-	// decision to resume (same helper/secret as Telegram). Only needed in capture-responder mode.
-	const executionId = context.getExecutionId();
-	const hmacSecret = captureResponder ? Container.get(InstanceSettings).hmacSignatureSecret : '';
-
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -577,10 +573,8 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 					...(captureResponder
 						? {
 								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
-								value: buildHitlCallbackReference(
-									executionId,
-									option.approved ? 'a' : 'd',
-									hmacSecret,
+								value: context.getApprovalCallbackReference(
+									option.approved ? 'approve' : 'decline',
 								),
 							}
 						: { url: option.url }),

@@ -1,3 +1,16 @@
+diff --git a/dist/index.full.mjs b/dist/index.full.mjs
+index 18aa99b6f0473e765efdb8de3a65c7f1cf42b619..47041a2a81f1130f9679082a734d59840fa5f96b 100644
+--- a/dist/index.full.mjs
++++ b/dist/index.full.mjs
+@@ -9274,6 +9274,8 @@ const useLockscreen = (trigger, options = {}) => {
+   let bodyWidth = "0";
+   const cleanup = () => {
+     setTimeout(() => {
++      // Cherry-pick from https://github.com/element-plus/element-plus/pull/18445
++      if (typeof document === "undefined") return;
+       removeClass(document == null ? void 0 : document.body, hiddenCls.value);
+       if (withoutHiddenClass && document) {
+         document.body.style.width = bodyWidth;
 diff --git a/es/hooks/use-lockscreen/index.mjs b/es/hooks/use-lockscreen/index.mjs
 --- a/es/hooks/use-lockscreen/index.mjs
 +++ b/es/hooks/use-lockscreen/index.mjs

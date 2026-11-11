@@ -65,12 +65,13 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
 
 		expect(resolved).toMatchObject({
-			observerThresholdTokens: 8_000,
-			reflectorThresholdTokens: 12_000,
-			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
+			renderTokenBudget: 67_500,
 			observationLogTailLimit: 20,
 			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
 		});
+		expect(resolved.midRunObservation).toBeUndefined();
 		expect(typeof resolved.observe).toBe('function');
 		expect(typeof resolved.reflect).toBe('function');
 	});
@@ -85,6 +86,7 @@ describe('Memory builder — observation log memory', () => {
 				renderTokenBudget: 789,
 				observationLogTailLimit: 3,
 				lockTtlMs: 1_000,
+				midRunObservation: false,
 				observe,
 				reflect,
 			},
@@ -97,6 +99,7 @@ describe('Memory builder — observation log memory', () => {
 			renderTokenBudget: 789,
 			observationLogTailLimit: 3,
 			lockTtlMs: 1_000,
+			midRunObservation: false,
 		});
 		expect(resolved.observe).toBe(observe);
 		expect(resolved.reflect).toBe(reflect);
@@ -145,14 +148,31 @@ describe('Memory builder — observation log memory', () => {
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		});
 		expect(runtimeConfig.observationalMemory).toMatchObject({
-			observerThresholdTokens: 8_000,
-			reflectorThresholdTokens: 12_000,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
 		});
+		expect(runtimeConfig.observationalMemory?.midRunObservation).toBeUndefined();
 		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
 		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');
 	});
 
-	it('rejects backends that do not implement the observation-log store', () => {
+	it('passes midRunObservation through agent build', async () => {
+		const memory = new Memory()
+			.storage(new InMemoryMemory())
+			.observationalMemory({ midRunObservation: false });
+		const agent = new Agent('a')
+			.model('openai/gpt-4o-mini')
+			.instructions('You are a test assistant.')
+			.memory(memory);
+
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+
+		expect(runtimeConfig.observationalMemory?.midRunObservation).toBe(false);
+	});
+
+	it.each(['minimal', 'non-atomic'])('rejects %s observation-log backends', (kind) => {
 		const minimalBackend = {
 			getThread: vi.fn().mockResolvedValue(null),
 			saveThread: vi.fn().mockResolvedValue({}),
@@ -167,7 +187,11 @@ describe('Memory builder — observation log memory', () => {
 			}),
 		} as unknown as BuiltMemory;
 
-		expect(() => new Memory().storage(minimalBackend).observationalMemory().build()).toThrow(
+		let backend: BuiltMemory = minimalBackend;
+		if (kind === 'non-atomic') {
+			backend = Object.assign(new InMemoryMemory(), { commitObservationLogBatch: undefined });
+		}
+		expect(() => new Memory().storage(backend).observationalMemory().build()).toThrow(
 			/BuiltObservationLogStore/,
 		);
 	});

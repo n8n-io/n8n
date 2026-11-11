@@ -1,28 +1,38 @@
 import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
-import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import type { GitHostClients } from '../git-hosts/git-host-clients';
+import type { GitHostClient } from '../git-hosts/git-host.types';
+import type { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
 describe('PromotionProvidersService', () => {
 	const providerRepository = mock<PromotionProviderRepository>();
-	const connectionRepository = mock<PromotionConnectionRepository>();
+	const environmentRepository = mock<PromotionEnvironmentRepository>();
 	const gitService = mock<PromotionsGitService>();
 	const cipher = mock<Cipher>();
+	const eventService = mock<EventService>();
+	const gitHosts = mock<GitHostClients>();
+	const checkoutCleanup = mock<PromotionCheckoutCleanupService>();
+	const actor = mock<User>({ id: 'user-1' });
 
 	const service = new PromotionProvidersService(
 		providerRepository,
-		connectionRepository,
+		environmentRepository,
 		gitService,
 		cipher,
+		gitHosts,
+		eventService,
+		checkoutCleanup,
 	);
 
 	const sshProvider = (): PromotionProvider =>
@@ -62,16 +72,20 @@ describe('PromotionProvidersService', () => {
 		cipher.encryptV2.mockImplementation(async (value) => `enc:${value as string}`);
 		cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
-		connectionRepository.countByProviderId.mockResolvedValue(0);
+		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
+		gitHosts.clientFor.mockReturnValue(mock<GitHostClient>());
 	});
 
 	describe('create', () => {
 		it('generates a key pair and stores the private key encrypted', async () => {
-			const result = await service.create({
-				name: 'Deploy key',
-				type: 'git',
-				auth: { authType: 'ssh-key', keyType: 'ed25519' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Deploy key',
+					type: 'git',
+					auth: { authType: 'ssh-key', keyType: 'ed25519' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).toHaveBeenCalledWith('ed25519');
 			const saved = providerRepository.insertProvider.mock.calls[0][0];
@@ -82,11 +96,14 @@ describe('PromotionProvidersService', () => {
 		});
 
 		it('stores the username and password encrypted', async () => {
-			const result = await service.create({
-				name: 'Bot user',
-				type: 'git',
-				auth: { authType: 'token', username: 'u', password: 'p' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
 			const saved = providerRepository.insertProvider.mock.calls[0][0];
@@ -97,21 +114,81 @@ describe('PromotionProvidersService', () => {
 
 		it('rejects a password with a newline, which would split the credential helper', async () => {
 			await expect(
-				service.create({
-					name: 'Bot user',
-					type: 'git',
-					auth: { authType: 'token', username: 'u', password: 'p\nmore' },
-				} as CreatePromotionProviderDto),
+				service.create(
+					{
+						name: 'Bot user',
+						type: 'git',
+						auth: { authType: 'token', username: 'u', password: 'p\nmore' },
+					} as CreatePromotionProviderDto,
+					actor,
+				),
 			).rejects.toThrow(BadRequestError);
 			expect(providerRepository.insertProvider).not.toHaveBeenCalled();
 		});
 
+		it('emits an event with the provider type and no secrets', async () => {
+			providerRepository.insertProvider.mockImplementationOnce(
+				async (provider) =>
+					({
+						...provider,
+						id: 'prov1',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}) as PromotionProvider,
+			);
+
+			await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
+				user: actor,
+				providerId: 'prov1',
+				providerName: 'Bot user',
+				providerType: 'git',
+				authType: 'token',
+				outcome: 'success',
+				durationMs: expect.any(Number),
+			});
+		});
+
+		it('emits a failed attempt when the create is rejected', async () => {
+			await expect(
+				service.create(
+					{
+						name: 'Bot user',
+						type: 'git',
+						auth: { authType: 'token', username: 'u', password: 'p\nmore' },
+					} as CreatePromotionProviderDto,
+					actor,
+				),
+			).rejects.toThrow(BadRequestError);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
+				user: actor,
+				providerType: 'git',
+				authType: 'token',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: expect.any(Number),
+			});
+			expect(providerRepository.insertProvider).not.toHaveBeenCalled();
+		});
+
 		it('leaves the stored ciphertext out of the response', async () => {
-			const result = await service.create({
-				name: 'Bot user',
-				type: 'git',
-				auth: { authType: 'token', username: 'u', password: 'p' },
-			} as CreatePromotionProviderDto);
+			const result = await service.create(
+				{
+					name: 'Bot user',
+					type: 'git',
+					auth: { authType: 'token', username: 'u', password: 'p' },
+				} as CreatePromotionProviderDto,
+				actor,
+			);
 
 			expect(JSON.stringify(result)).not.toContain('enc:');
 			expect(result.provider).not.toHaveProperty('auth');
@@ -120,50 +197,217 @@ describe('PromotionProvidersService', () => {
 
 	describe('update', () => {
 		it('rejects an empty update before writing to the repository', async () => {
-			await expect(service.update('prov1', {})).rejects.toThrow('At least one field is required');
+			await expect(service.update('prov1', {}, actor)).rejects.toThrow(
+				'At least one field is required',
+			);
 			expect(providerRepository.updateProvider).not.toHaveBeenCalled();
 		});
 
 		it('keeps the stored credentials when the request has no auth', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
-			await service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto);
+			await service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto, actor);
 
 			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
 			expect(providerRepository.updateProvider).toHaveBeenCalledWith('prov1', {
 				name: 'renamed',
 			});
+			expect(providerRepository.updateProviderIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('rotates a key without changing its algorithm', async () => {
 			providerRepository.findById.mockResolvedValue(sshProvider());
 
-			await service.update('prov1', {
-				auth: { authType: 'ssh-key' },
-			} as UpdatePromotionProviderDto);
+			await service.update(
+				'prov1',
+				{ auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+				actor,
+			);
 
 			expect(gitService.generateSshKeyPair).toHaveBeenCalledWith('rsa');
-			const changes = providerRepository.updateProvider.mock.calls[0][1];
+			const [, expected, changes] = providerRepository.updateProviderIfUnchanged.mock.calls[0];
+			expect(expected).toEqual({ config: sshProvider().config, auth: sshProvider().auth });
 			expect(changes.config).toEqual({ schemaVersion: 1, publicKey: 'PUB', keyType: 'rsa' });
 			expect(changes.auth).toBe('enc:{"schemaVersion":1,"privateKey":"PRIV"}');
 		});
 
-		it('reports an unknown provider as not found', async () => {
+		it('emits the changed field names and the updated provider name', async () => {
+			providerRepository.findById
+				.mockResolvedValueOnce(sshProvider())
+				.mockResolvedValueOnce({ ...sshProvider(), name: 'renamed' });
+
+			await service.update(
+				'prov1',
+				{ name: 'renamed', auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+				actor,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-updated', {
+				user: actor,
+				providerId: 'prov1',
+				providerName: 'renamed',
+				providerType: 'git',
+				authType: 'ssh-key',
+				changedFields: ['name', 'auth'],
+				outcome: 'success',
+				durationMs: expect.any(Number),
+			});
+		});
+
+		it('emits a failed attempt when the provider is gone after a name-only update', async () => {
+			providerRepository.findById.mockResolvedValueOnce(sshProvider()).mockResolvedValueOnce(null);
+
+			await expect(
+				service.update('prov1', { name: 'renamed' } as UpdatePromotionProviderDto, actor),
+			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-provider-updated',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'user' }),
+			);
+		});
+
+		it('emits a failed attempt when the update loses a race', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
+
+			await expect(
+				service.update(
+					'prov1',
+					{ auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
+					actor,
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-provider-updated',
+				expect.objectContaining({
+					changedFields: ['auth'],
+					outcome: 'failed',
+					failureKind: 'user',
+				}),
+			);
+		});
+
+		it('emits no event for an unknown provider', async () => {
 			providerRepository.findById.mockResolvedValue(null);
 
 			await expect(
-				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto),
+				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto, actor),
 			).rejects.toThrow(NotFoundError);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('checkout reset on update', () => {
+		const gitlabProvider = (): PromotionProvider =>
+			({
+				id: 'prov3',
+				name: 'GitLab',
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+				auth: 'enc:{"schemaVersion":1,"username":"oauth2","password":"old"}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}) as PromotionProvider;
+
+		const tokenAuth = { authType: 'token', password: 'new' } as const;
+
+		beforeEach(() => {
+			providerRepository.findById.mockResolvedValue(gitlabProvider());
+		});
+
+		it('resets the checkouts of the provider after the host URL changes', async () => {
+			await service.update(
+				'prov3',
+				{
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.other.example.com' },
+					auth: tokenAuth,
+				},
+				actor,
+			);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).toHaveBeenCalledWith('prov3');
+			expect(
+				checkoutCleanup.resetCheckoutsForHostChange.mock.invocationCallOrder[0],
+			).toBeGreaterThan(providerRepository.updateProviderIfUnchanged.mock.invocationCallOrder[0]);
+		});
+
+		it.each<{ change: string; input: UpdatePromotionProviderDto }>([
+			{ change: 'only the name changes', input: { name: 'Renamed' } },
+			{ change: 'only the credentials change', input: { auth: tokenAuth } },
+			{
+				change: 'the request sends the current host URL again',
+				input: {
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/' },
+					auth: tokenAuth,
+				},
+			},
+		])('resets no checkout when $change', async ({ input }) => {
+			await service.update('prov3', input, actor);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
+		});
+
+		it('resets no checkout when the update loses a race', async () => {
+			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
+
+			await expect(
+				service.update(
+					'prov3',
+					{
+						config: { schemaVersion: 1, baseUrl: 'https://gitlab.other.example.com' },
+						auth: tokenAuth,
+					},
+					actor,
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('delete', () => {
-		it('refuses to delete a provider a connection still uses', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
-			connectionRepository.countByProviderId.mockResolvedValue(1);
+		it('emits an event after it deletes an unused provider', async () => {
+			providerRepository.findById.mockResolvedValue({
+				...tokenProvider(),
+				type: 'gitlab',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			});
+			environmentRepository.countByProviderId.mockResolvedValue(0);
+			providerRepository.deleteProvider.mockResolvedValue(true);
 
-			await expect(service.delete('prov1')).rejects.toThrow(ConflictError);
+			await service.delete('prov2', actor);
+
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-deleted', {
+				user: actor,
+				providerId: 'prov2',
+				providerName: 'Bot user',
+				providerType: 'gitlab',
+				authType: 'token',
+				hostBaseUrl: 'https://gitlab.example.com',
+			});
+		});
+
+		it('emits no event when a concurrent request already deleted the provider', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			environmentRepository.countByProviderId.mockResolvedValue(0);
+			providerRepository.deleteProvider.mockResolvedValue(false);
+
+			await service.delete('prov1', actor);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits no event for a provider that an environment uses', async () => {
+			providerRepository.findById.mockResolvedValue(sshProvider());
+			environmentRepository.countByProviderId.mockResolvedValue(1);
+
+			await expect(service.delete('prov1', actor)).rejects.toThrow(ConflictError);
+
 			expect(providerRepository.deleteProvider).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

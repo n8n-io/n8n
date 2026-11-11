@@ -4,14 +4,20 @@ import { describe, it } from 'node:test';
 import {
 	BOT_MARKER,
 	DISPATCH_OPERATIONS,
+	PROGRESS_MARKER,
 	WORKFLOW_URL,
+	cancelledComment,
 	downComment,
 	expiredComment,
 	failureComment,
+	formatElapsed,
 	hasPreviewBox,
 	operationFor,
 	parsePreviewJson,
+	parseProgressLine,
 	portFromUrl,
+	previewUrlFromBody,
+	progressComment,
 	readyComment,
 	resolveOperation,
 } from './codespace-preview.mjs';
@@ -22,6 +28,18 @@ const PREVIEW = {
 	codespace: 'psychic-umbrella-q7w6gwx',
 	url: 'https://psychic-umbrella-q7w6gwx-5678.app.github.dev',
 	orgVisible: true,
+};
+
+const START = Date.parse('2026-09-17T09:35:00Z');
+const PROGRESS = {
+	pr: 1234,
+	operation: 'up',
+	runUrl: 'https://github.com/n8n-io/n8n/actions/runs/1',
+	sha: PREVIEW.sha,
+	phase: 'build',
+	startedAt: START,
+	phaseStartedAt: START + 111_000,
+	now: START + 363_000,
 };
 
 describe('operationFor', () => {
@@ -104,6 +122,19 @@ describe('parsePreviewJson', () => {
 		assert.equal(parsePreviewJson(stdout).sha, PREVIEW.sha);
 	});
 
+	// The phase lines share the channel with the report. This is the contract that
+	// makes that safe.
+	it('ignores the phase lines that precede the report', () => {
+		const stdout = [
+			'{"phase":"resolve"}',
+			'{"sha":"abcdef1","phase":"build"}',
+			JSON.stringify(PREVIEW),
+		].join('\n');
+
+		assert.deepEqual(parsePreviewJson(stdout), PREVIEW);
+		assert.equal(parsePreviewJson('{"phase":"build"}'), undefined);
+	});
+
 	it('ignores JSON that is not a preview report', () => {
 		// A build tool can print its own JSON on the same stream.
 		assert.equal(parsePreviewJson('{"level":"info","msg":"built"}'), undefined);
@@ -159,6 +190,12 @@ describe('comment bodies', () => {
 			runUrl: 'https://github.com/n8n-io/n8n/actions/runs/1',
 			message: '`preview up` exited 1',
 		}),
+		progress: progressComment(PROGRESS),
+		cancelled: cancelledComment({
+			pr: PREVIEW.pr,
+			operation: 'up',
+			runUrl: 'https://github.com/n8n-io/n8n/actions/runs/1',
+		}),
 	};
 
 	it('every body starts with the marker, so postOrUpdateComment edits in place', () => {
@@ -196,5 +233,126 @@ describe('comment bodies', () => {
 		for (const name of ['ready', 'expired', 'failure']) {
 			assert.ok(bodies[name].includes(WORKFLOW_URL), `${name} must link the workflow`);
 		}
+	});
+
+	// The cancelled-run step writes only over a checklist, so no settled body may
+	// carry the progress marker.
+	it('carries the progress marker on the checklist and nowhere else', () => {
+		assert.ok(bodies.progress.includes(PROGRESS_MARKER));
+		for (const name of ['ready', 'down', 'expired', 'failure', 'cancelled']) {
+			assert.ok(!bodies[name].includes(PROGRESS_MARKER), `${name} must not look in progress`);
+		}
+	});
+
+	it('the cancelled body says the box can still exist, and links both runs', () => {
+		assert.match(bodies.cancelled, /can still exist/);
+		assert.ok(bodies.cancelled.includes(WORKFLOW_URL));
+		assert.ok(bodies.cancelled.includes('actions/runs/1'));
+	});
+});
+
+describe('formatElapsed', () => {
+	it('reads as a duration a reviewer can scan', () => {
+		assert.equal(formatElapsed(0), '0s');
+		assert.equal(formatElapsed(59_000), '59s');
+		assert.equal(formatElapsed(60_000), '1m 00s');
+		assert.equal(formatElapsed(252_000), '4m 12s');
+		assert.equal(formatElapsed(3_780_000), '1h 3m');
+	});
+
+	// A wrong duration in a status line is worse than a boring one.
+	it('falls back to 0s for a value it cannot use', () => {
+		assert.equal(formatElapsed(-1), '0s');
+		assert.equal(formatElapsed(NaN), '0s');
+		assert.equal(formatElapsed(undefined), '0s');
+	});
+});
+
+describe('progressComment', () => {
+	it('ticks off the phases before the current one and leaves the rest open', () => {
+		const body = progressComment(PROGRESS);
+
+		assert.match(body, /- \[x\] Resolve the PR head/);
+		assert.match(body, /- \[x\] Install dependencies/);
+		assert.match(body, /- \[ \] \*\*Build the monorepo\*\* · 4m 12s/);
+		assert.match(body, /- \[ \] Share the port with the org/);
+	});
+
+	it('names the commit and the elapsed time, and links the run', () => {
+		const body = progressComment(PROGRESS);
+
+		assert.match(body, /starting for `abcdef1`/);
+		assert.match(body, /Elapsed 6m 03s/);
+		assert.ok(body.includes(PROGRESS.runUrl));
+	});
+
+	it('says what the phase is doing when the phase says so', () => {
+		const body = progressComment({ ...PROGRESS, phase: 'box', detail: 'reusing psychic-umbrella' });
+
+		assert.match(body, /\*\*Prepare the box\*\* — reusing psychic-umbrella/);
+	});
+
+	// A workflow_dispatch run reports the sha only once preview.mjs resolves it.
+	it('falls back to the PR number before the sha is known', () => {
+		const body = progressComment({ ...PROGRESS, sha: undefined });
+
+		assert.match(body, /starting for PR #1234/);
+	});
+
+	it('leaves every phase open before the first one reports', () => {
+		const body = progressComment({ ...PROGRESS, phase: undefined });
+
+		assert.ok(!body.includes('- [x]'));
+		assert.match(body, /- \[ \] Resolve the PR head/);
+	});
+
+	it('says a refresh is updating, not starting', () => {
+		assert.match(progressComment({ ...PROGRESS, operation: 'refresh' }), /updating to `abcdef1`/);
+	});
+
+	it('warns only once a phase passes the time it usually takes', () => {
+		const slow = { ...PROGRESS, phaseStartedAt: START - 600_001 };
+
+		assert.match(progressComment(slow), /Build the monorepo is taking longer than usual/);
+		assert.ok(!progressComment(PROGRESS).includes('longer than usual'));
+	});
+
+	// Replacing a ready comment with a checklist would otherwise take a working URL
+	// off the PR for several minutes.
+	it('keeps a URL a previous run reported', () => {
+		const body = progressComment({ ...PROGRESS, previousUrl: PREVIEW.url });
+
+		assert.ok(body.includes(PREVIEW.url));
+		assert.match(body, /stops answering/);
+		assert.ok(!progressComment(PROGRESS).includes('stops answering'));
+	});
+});
+
+describe('previewUrlFromBody', () => {
+	it('reads the URL back out of a ready body', () => {
+		assert.equal(previewUrlFromBody(readyComment(PREVIEW)), PREVIEW.url);
+	});
+
+	it('finds nothing in a body that reports no instance', () => {
+		assert.equal(previewUrlFromBody(downComment({ pr: 1234 })), undefined);
+		assert.equal(previewUrlFromBody(expiredComment({ pr: 1234 })), undefined);
+		assert.equal(previewUrlFromBody(progressComment(PROGRESS)), undefined);
+		assert.equal(previewUrlFromBody(''), undefined);
+	});
+});
+
+describe('parseProgressLine', () => {
+	it('reads a phase line', () => {
+		assert.deepEqual(parseProgressLine('{"phase":"build","sha":"abc"}'), {
+			phase: 'build',
+			sha: 'abc',
+		});
+	});
+
+	it('ignores the report and anything that is not a phase line', () => {
+		assert.equal(parseProgressLine(JSON.stringify(PREVIEW)), undefined);
+		assert.equal(parseProgressLine('Serving abcdef1 on psychic-umbrella-q7w6gwx…'), undefined);
+		assert.equal(parseProgressLine('{"level":"info","msg":"built"}'), undefined);
+		assert.equal(parseProgressLine('{not json'), undefined);
 	});
 });

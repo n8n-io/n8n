@@ -12,7 +12,9 @@ import {
 import { WithCreatedAt } from './abstract-entity';
 import type { CredentialsEntity } from './credentials-entity';
 
-export type CredentialDependencyType = 'externalSecretProvider';
+export const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
+
+export type CredentialDependencyType = typeof EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE;
 
 @Entity({ name: 'credential_dependency' })
 @Index(['dependencyType', 'dependencyId'])

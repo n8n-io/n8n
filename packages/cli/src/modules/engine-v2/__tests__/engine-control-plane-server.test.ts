@@ -1,29 +1,31 @@
 import type { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
-import { mintActionToken, mintIdentityToken, type LifecycleEvent } from '@n8n/engine';
+import { Container } from '@n8n/di';
+import { mintActionToken, mintIdentityToken } from '@n8n/engine';
+import type { Request, Response } from 'express';
+import { generateTlsCerts, type TlsCertFiles } from 'n8n-containers/helpers/tls-certs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
-import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
-import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
+import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineCredentialsController } from '../engine-credentials.controller';
+import type { EngineDataTablesController } from '../engine-data-tables.controller';
+import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
-
-const events: LifecycleEvent[] = [
-	{
-		type: 'execution:completed',
-		executionId: 'exec-1',
-		workflowId: 'wf-1',
-		at: '2026-08-25T10:00:00.000Z',
-	},
-];
 
 /** Binds for real, so these exercise the wiring rather than a mock app. */
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
 	let serverLogger: Logger;
-	let pushRelay: EngineLifecycleEventPushRelay;
+	let credentialsController: EngineCredentialsController;
+	let dataTablesController: EngineDataTablesController;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -35,16 +37,23 @@ describe('EngineControlPlaneServer', () => {
 			...overrides,
 		});
 
-	beforeEach(async () => {
-		serverLogger = mock<Logger>();
-		pushRelay = mock<EngineLifecycleEventPushRelay>();
-		const controller = new EngineLifecycleEventController(pushRelay);
+	const startServer = async (tls?: EngineTlsMaterial['tls']) => {
 		server = new EngineControlPlaneServer(
 			engineConfig(),
-			controller,
+			{ tls } as EngineTlsMaterial,
+			credentialsController,
+			dataTablesController,
+			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();
+	};
+
+	beforeEach(async () => {
+		serverLogger = mock<Logger>();
+		credentialsController = mock<EngineCredentialsController>();
+		dataTablesController = mock<EngineDataTablesController>();
+		await startServer();
 
 		baseUrl = `http://127.0.0.1:${server.port}`;
 	});
@@ -53,8 +62,14 @@ describe('EngineControlPlaneServer', () => {
 		await server.stop();
 	});
 
-	const post = (body: unknown, token?: string) => {
-		const req = request(baseUrl).post('/internal/status-callback');
+	const postResolve = (body: unknown, token?: string) => {
+		const req = request(baseUrl).post('/internal/credentials/resolve');
+		if (token) req.set('Authorization', `Bearer ${token}`);
+		return req.send(body as object);
+	};
+
+	const postDataTableCall = (body: unknown, token?: string) => {
+		const req = request(baseUrl).post('/internal/data-tables/call');
 		if (token) req.set('Authorization', `Bearer ${token}`);
 		return req.send(body as object);
 	};
@@ -75,7 +90,7 @@ describe('EngineControlPlaneServer', () => {
 		// @ts-expect-error reaching for the server's own error handler
 		server.server.emit('error', error);
 
-		expect(serverLogger.error).toHaveBeenCalledWith('Engine 2.0 control plane server error', {
+		expect(serverLogger.error).toHaveBeenCalledWith('Engine v2 control plane server error', {
 			error,
 		});
 	});
@@ -87,52 +102,199 @@ describe('EngineControlPlaneServer', () => {
 		expect(response.body).toEqual({ status: 'ok' });
 	});
 
-	it('accepts a batch from an authenticated data plane', async () => {
-		const response = await post({ events }, mintActionToken(authSecret, 'lifecycle-events:write'));
+	it('no longer accepts lifecycle events over HTTP', async () => {
+		const response = await request(baseUrl)
+			.post('/internal/status-callback')
+			.set('Authorization', `Bearer ${mintActionToken(authSecret, 'credentials:read')}`)
+			.send({ events: [] });
 
-		expect(response.status).toBe(204);
-		// Confirms the request reached the relay.
-		expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
+		expect(response.status).toBe(404);
 	});
 
-	it.each([
-		['no token', undefined],
-		[
-			'an identity token minted for the other direction',
-			mintIdentityToken(authSecret, {
-				cpId: 'cp-1',
-				tenantId: 'tenant-1',
-			}),
-		],
-		[
-			'a token signed with a different secret',
-			mintActionToken('b'.repeat(32), 'lifecycle-events:write'),
-		],
-		[
-			'an action token minted for credential reads',
-			mintActionToken(authSecret, 'credentials:read'),
-		],
-	])('rejects %s', async (_label, token) => {
-		const response = await post({ events }, token);
+	describe('credential resolve route', () => {
+		const body = { credential: { id: 'cred-1' } };
 
-		expect(response.status).toBe(401);
-		expect(response.body).toEqual({ code: 401, message: 'Unauthenticated' });
+		beforeEach(() => {
+			vi.mocked(credentialsController.resolveCredential).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ data: {} });
+				},
+			);
+		});
+
+		it('does not read the request body before it authenticates the caller', async () => {
+			// Malformed JSON: a parser that ran first would fail on it, not return a 401.
+			const response = await request(baseUrl)
+				.post('/internal/credentials/resolve')
+				.set('Content-Type', 'application/json')
+				.send('not json');
+
+			expect(response.status).toBe(401);
+			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+		});
+
+		it('hands an authenticated request with its parsed body to the controller', async () => {
+			const response = await postResolve(body, mintActionToken(authSecret, 'credentials:read'));
+
+			expect(response.status).toBe(200);
+			expect(credentialsController.resolveCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ body }),
+				expect.anything(),
+			);
+		});
+
+		it.each([
+			['no token', undefined],
+			[
+				'an identity token minted for the other direction',
+				mintIdentityToken(authSecret, { cpId: 'cp-1', tenantId: 'tenant-1' }),
+			],
+			[
+				'a token signed with a different secret',
+				mintActionToken('b'.repeat(32), 'credentials:read'),
+			],
+		])('rejects %s before the controller sees it', async (_label, token) => {
+			const response = await postResolve(body, token);
+
+			expect(response.status).toBe(401);
+			expect(response.body).toEqual({ code: 401, message: 'Unauthenticated' });
+			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+		});
 	});
 
-	it('rejects a batch the engine schema does not accept', async () => {
-		const response = await post(
-			{ events: [{ type: 'nope' }] },
-			mintActionToken(authSecret, 'lifecycle-events:write'),
-		);
+	describe('data table call route', () => {
+		const body = { call: { kind: 'getColumns', dataTableId: 'dt-1' } };
 
-		expect(response.status).toBe(400);
+		beforeEach(() => {
+			vi.mocked(dataTablesController.call).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ data: [] });
+				},
+			);
+		});
+
+		it('hands an authenticated request with its parsed body to the controller', async () => {
+			const response = await postDataTableCall(
+				body,
+				mintActionToken(authSecret, 'data-tables:use'),
+			);
+
+			expect(response.status).toBe(200);
+			expect(dataTablesController.call).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ body }),
+				expect.anything(),
+			);
+		});
+
+		it.each([
+			['no token', undefined],
+			[
+				'an identity token minted for the other direction',
+				mintIdentityToken(authSecret, { cpId: 'cp-1', tenantId: 'tenant-1' }),
+			],
+			['a credentials token', mintActionToken(authSecret, 'credentials:read')],
+			[
+				'a token signed with a different secret',
+				mintActionToken('b'.repeat(32), 'data-tables:use'),
+			],
+		])('rejects %s before the controller sees it', async (_label, token) => {
+			const response = await postDataTableCall(body, token);
+
+			expect(response.status).toBe(401);
+			expect(dataTablesController.call).not.toHaveBeenCalled();
+		});
 	});
 
-	it('does not authenticate the request body before the caller', async () => {
-		// An unauthenticated caller must not learn whether its body would validate.
-		const response = await post({ events: [{ type: 'nope' }] });
+	describe('over mutual TLS', () => {
+		const loopback = ['DNS:localhost', 'IP:127.0.0.1'];
+		const body = { credential: { id: 'cred-1' } };
+		let dir: string;
+		let certs: TlsCertFiles;
 
-		expect(response.status).toBe(401);
+		beforeAll(() => {
+			dir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-'));
+			certs = generateTlsCerts(dir, { cp: loopback, dp: loopback });
+		});
+
+		afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+		const leaf = (name: string) => ({
+			cert: readFileSync(certs.leaves[name].certFile),
+			key: readFileSync(certs.leaves[name].keyFile),
+		});
+
+		const dataPlaneTransport = (controlPlaneBaseUrl: string) =>
+			new EngineControlPlaneTransport(
+				engineConfig({ controlPlaneBaseUrl }),
+				Container.get(OutboundHttp),
+				{ tls: { ...leaf('dp'), ca: readFileSync(certs.caFile) } } as EngineTlsMaterial,
+			);
+
+		const resolveVia = async (transport: EngineControlPlaneTransport) =>
+			await transport.forScope('credentials:read').request({
+				url: '/internal/credentials/resolve',
+				method: 'POST',
+				body,
+				json: true,
+				returnFullResponse: true,
+			});
+
+		beforeEach(async () => {
+			vi.mocked(credentialsController.resolveCredential).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ data: {} });
+				},
+			);
+			await server.stop();
+			await startServer({ ...leaf('cp'), ca: readFileSync(certs.caFile) });
+			baseUrl = `https://127.0.0.1:${server.port}`;
+		});
+
+		it('accepts the control plane transport of a data plane with a certificate from the trusted CA', async () => {
+			const response = await resolveVia(dataPlaneTransport(baseUrl));
+
+			expect(response.statusCode).toBe(200);
+			expect(credentialsController.resolveCredential).toHaveBeenCalledOnce();
+		});
+
+		it('refuses a control plane certificate from another CA even with NODE_TLS_REJECT_UNAUTHORIZED=0', async () => {
+			const otherDir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-other-'));
+			try {
+				const other = generateTlsCerts(otherDir, { cp: loopback });
+				await server.stop();
+				await startServer({
+					cert: readFileSync(other.leaves.cp.certFile),
+					key: readFileSync(other.leaves.cp.keyFile),
+					ca: readFileSync(certs.caFile),
+				});
+				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
+
+				await expect(
+					resolveVia(dataPlaneTransport(`https://127.0.0.1:${server.port}`)),
+				).rejects.toThrow(/certificate/);
+				expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+			} finally {
+				vi.unstubAllEnvs();
+				rmSync(otherDir, { recursive: true, force: true });
+			}
+		});
+
+		it('rejects a valid token without a client certificate', async () => {
+			const response = await request(baseUrl)
+				.post('/internal/credentials/resolve')
+				.ca(readFileSync(certs.caFile))
+				.set('Authorization', `Bearer ${mintActionToken(authSecret, 'credentials:read')}`)
+				.send(body);
+
+			expect(response.status).toBe(401);
+			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+		});
+
+		it('serves the healthcheck without a client certificate', async () => {
+			const response = await request(baseUrl).get('/healthz').ca(readFileSync(certs.caFile));
+
+			expect(response.status).toBe(200);
+		});
 	});
 
 	it('stops listening when stopped', async () => {

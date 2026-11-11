@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { LogMetadata } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
@@ -76,7 +77,17 @@ export class ExternalSecretsRetryManager {
 			this.logger.debug(`Retrying operation for ${key} (attempt ${attempt + 1})`);
 			this.retries.delete(key);
 
-			const result = await operation();
+			// Detached from any caller, so a throw here would be an unhandled rejection. A throw is
+			// terminal: connectProvider() throws when the key has left the registry, and a retry that
+			// slipped past cancelRetry() would otherwise re-arm itself forever.
+			let result: { success: boolean; error?: Error };
+			try {
+				result = await operation();
+			} catch (error) {
+				this.logger.warn(`Stopped retrying ${key}`, { error: ensureError(error) });
+				return;
+			}
+
 			if (result.success) {
 				this.logger.debug(`Operation for ${key} succeeded on retry attempt ${attempt + 1}`);
 				return;

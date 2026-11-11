@@ -8,7 +8,11 @@ import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from './credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { getAutoSelectedCredential } from './credentials.utils';
+import {
+	getAutoSelectedCredential,
+	hasAutomaticOAuthApp,
+	hasManagedOAuthApp,
+} from './credentials.utils';
 
 const openAiApiCredentialType = {
 	name: 'openAiApi',
@@ -168,5 +172,55 @@ describe('getAutoSelectedCredential', () => {
 			credentialType: 'slackApi',
 			credential: { id: 'slack', name: 'Slack' },
 		});
+	});
+});
+
+describe('hasManagedOAuthApp', () => {
+	const slackOAuth2Api: ICredentialType = {
+		name: 'slackOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Slack OAuth2 API',
+		properties: [],
+	};
+
+	it.each<[boolean, string, string[] | undefined, boolean | undefined]>([
+		[false, 'no property is overwritten', undefined, undefined],
+		[false, 'only the client ID is overwritten', ['clientId'], undefined],
+		[false, 'only the client secret is overwritten', ['clientSecret'], undefined],
+		[true, 'both client fields are overwritten', ['clientId', 'clientSecret'], undefined],
+		[false, 'managed creation is skipped', ['clientId', 'clientSecret'], true],
+	])('is %s when %s', (expected, _case, overwrittenProperties, skipManagedCreation) => {
+		expect(
+			hasManagedOAuthApp({
+				...slackOAuth2Api,
+				__overwrittenProperties: overwrittenProperties,
+				__skipManagedCreation: skipManagedCreation,
+			}),
+		).toBe(expected);
+	});
+
+	it('returns false for a credential type the store does not know', () => {
+		expect(hasManagedOAuthApp(undefined)).toBe(false);
+	});
+});
+
+describe('hasAutomaticOAuthApp', () => {
+	const todoistOAuth2Api: ICredentialType = {
+		name: 'todoistOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Todoist OAuth2 API',
+		properties: [],
+	};
+
+	it.each<[boolean, string, Partial<ICredentialType>]>([
+		[false, 'the type does not support registration', {}],
+		[true, 'the type supports registration', { dynamicClientRegistration: true }],
+		[
+			false,
+			'the instance also has a managed app',
+			{ dynamicClientRegistration: true, __overwrittenProperties: ['clientId', 'clientSecret'] },
+		],
+	])('is %s when %s', (expected, _case, overrides) => {
+		expect(hasAutomaticOAuthApp({ ...todoistOAuth2Api, ...overrides })).toBe(expected);
 	});
 });

@@ -57,7 +57,7 @@ describe('chatPanel.store', () => {
 		const settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
-				aiAssistant: { enabled: true, setup: true },
+				aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 			}),
 		);
 

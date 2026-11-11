@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-	computeIdleRanges,
 	builtinToolLabelKey,
+	timelineItemKey,
 	itemFilterKey,
 	sessionBounds,
-	kindColorToken,
 	formatDuration,
-	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
 	itemStatusFilterKey,
 	hitlRequestLabelKey,
@@ -14,6 +12,8 @@ import {
 	isErroredToolCallTimelineItem,
 	matchesTimelineFilters,
 	timelineItemErrorMessage,
+	executionErrorLabel,
+	executionErrorMessage,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -25,47 +25,6 @@ function item(partial: Partial<TimelineItem>): TimelineItem {
 		...partial,
 	};
 }
-
-describe('computeIdleRanges', () => {
-	it('returns [] when no gaps exceed threshold', () => {
-		const items = [item({ timestamp: 0 }), item({ timestamp: 1000 })];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('detects a gap greater than 10 minutes between events', () => {
-		const items = [item({ timestamp: 0 }), item({ timestamp: IDLE_THRESHOLD_MS + 1 })];
-		expect(computeIdleRanges(items)).toEqual([{ start: 0, end: IDLE_THRESHOLD_MS + 1 }]);
-	});
-
-	it('excludes gaps adjacent to a suspension (before the gap)', () => {
-		const items = [
-			item({ kind: 'suspension', timestamp: 0 }),
-			item({ timestamp: IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('excludes gaps adjacent to a suspension (after the gap)', () => {
-		const items = [
-			item({ timestamp: 0 }),
-			item({ kind: 'suspension', timestamp: IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('never produces a trailing idle gap after the last event', () => {
-		const items = [item({ timestamp: 0 })];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('uses endTimestamp when set for the previous item', () => {
-		const items = [
-			item({ timestamp: 0, endTimestamp: 100 }),
-			item({ timestamp: 100 + IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([{ start: 100, end: 100 + IDLE_THRESHOLD_MS + 1 }]);
-	});
-});
 
 describe('itemFilterKey', () => {
 	it('returns the literal kind for every event', () => {
@@ -135,16 +94,6 @@ describe('sessionBounds', () => {
 
 	it('enforces a minimum span of 1ms for single-item sessions', () => {
 		expect(sessionBounds([item({ timestamp: 500 })])).toEqual({ start: 500, end: 501 });
-	});
-});
-
-describe('kindColorToken', () => {
-	it('maps each kind to a CSS token', () => {
-		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
-		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
-		expect(kindColorToken('tool')).toBe('var(--color--success)');
-		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
-		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
 	});
 });
 
@@ -241,6 +190,8 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		failureSummary: null,
 		hitlStatus: null,
 		source: null,
+		finishReason: null,
+		guardrailCode: null,
 		...overrides,
 	};
 }
@@ -265,6 +216,102 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 	};
 }
 
+describe('timeline identity', () => {
+	it('distinguishes events with the same kind and timestamp across refreshes', () => {
+		const execution = withTimeline([
+			{ type: 'text', timestamp: 100, content: 'First' },
+			{ type: 'text', timestamp: 100, content: 'Second' },
+		]);
+		const keys = flattenExecutionsToTimelineItems([execution]).map(timelineItemKey);
+		expect(new Set(keys).size).toBe(2);
+		expect(flattenExecutionsToTimelineItems([execution]).map(timelineItemKey)).toEqual(keys);
+	});
+});
+
+describe('session timeline reasoning', () => {
+	it('keeps reasoning with the next response across tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+				{ type: 'reasoning', content: 'Use the result.', timestamp: 200, endTime: 220 },
+				{ type: 'text', content: 'The answer.', timestamp: 230, endTime: 250 },
+			]),
+		]);
+		expect(items.map(({ kind }) => kind)).toEqual(['tool', 'agent']);
+		expect(items[1]).toMatchObject({
+			content: 'The answer.',
+			timestamp: 230,
+			endTimestamp: 250,
+			thinkingSegments: [
+				{ content: 'Check the source.', startTime: 10, endTime: 20 },
+				{ content: 'Use the result.', startTime: 200, endTime: 220 },
+			],
+		});
+	});
+
+	it('keeps separate reasoning for each response and skips empty traces', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'First thought.', timestamp: 10 },
+				{ type: 'text', content: 'First response.', timestamp: 20 },
+				{ type: 'reasoning', content: '  ', timestamp: 25 },
+				{ type: 'reasoning', content: 'Second thought.', timestamp: 30 },
+				{ type: 'text', content: 'Second response.', timestamp: 40 },
+				{ type: 'text', content: 'No reasoning.', timestamp: 50 },
+			]),
+		]);
+		expect(items[0].thinkingSegments?.map(({ content }) => content)).toEqual(['First thought.']);
+		expect(items[1].thinkingSegments?.map(({ content }) => content)).toEqual(['Second thought.']);
+		expect(items[2].thinkingSegments).toBeUndefined();
+	});
+
+	it('keeps partial reasoning when a run fails before producing text', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'reasoning', content: 'Partial thought.', timestamp: 10 }], {
+				status: 'error',
+				error: 'Run failed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({
+			kind: 'agent',
+			content: '',
+			timestamp: 10,
+			thinkingSegments: [{ content: 'Partial thought.', startTime: 10 }],
+		});
+		expect(items[1].kind).toBe('execution-error');
+	});
+
+	it('keeps reasoning-only messages in order before tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+			]),
+		]);
+		expect(items.map(({ kind, timestamp }) => ({ kind, timestamp }))).toEqual([
+			{ kind: 'agent', timestamp: 10 },
+			{ kind: 'tool', timestamp: 100 },
+		]);
+	});
+
+	it('keeps reasoning within its execution and steering segment', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Before steering.', timestamp: 10 },
+				{ type: 'input', messageId: 'steer', timestamp: 20 },
+				{ type: 'reasoning', content: 'After steering.', timestamp: 30 },
+			]),
+			withTimeline([{ type: 'text', content: 'Next execution.', timestamp: 40 }], { id: 'e-2' }),
+		]);
+		expect(items.map(({ thinkingSegments }) => thinkingSegments?.[0].content)).toEqual([
+			'Before steering.',
+			'After steering.',
+			undefined,
+		]);
+	});
+});
+
 function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
 	return {
 		type: 'suspension',
@@ -279,8 +326,134 @@ function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecut
 	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
 }
 
+describe('timeline activity status', () => {
+	it.each(['tool', 'skill', 'node', 'workflow'] as const)(
+		'updates a running %s call when its result arrives',
+		(kind) => {
+			const call = toolCallEvent({ kind });
+			const running = flattenExecutionsToTimelineItems([
+				withTimeline([call], { status: 'running' }),
+			]);
+			const completed = flattenExecutionsToTimelineItems([
+				withTimeline([{ ...call, endTime: 200, success: true }], { status: 'running' }),
+			]);
+			expect(running[0]).toMatchObject({ activityStatus: 'running', endTimestamp: undefined });
+			expect(completed[0]).toMatchObject({
+				activityStatus: 'completed',
+				endTimestamp: 200,
+				toolOutput: undefined,
+			});
+		},
+	);
+
+	it('marks a finished call with an error as failed', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent({ endTime: 200, success: false })]),
+		]);
+		expect(items[0].activityStatus).toBe('failed');
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'marks an unfinished call as interrupted when the execution is %s',
+		(status) => {
+			const items = flattenExecutionsToTimelineItems([withTimeline([toolCallEvent()], { status })]);
+			expect(items[0].activityStatus).toBe('interrupted');
+		},
+	);
+
+	it('marks a suspended call as waiting', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+		]);
+		expect(items[0].activityStatus).toBe('waiting');
+	});
+
+	it('updates a waiting call after resume', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+			withTimeline([toolCallEvent({ endTime: 300, success: true })], {
+				id: 'e-2',
+				hitlStatus: 'resumed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({ activityStatus: 'completed', endTimestamp: 300 });
+	});
+
+	it('keeps completed calls complete when a later call is interrupted', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ endTime: 200, success: true }),
+					toolCallEvent({ toolCallId: 'tc-2', startTime: 210 }),
+				],
+				{ status: 'interrupted' },
+			),
+		]);
+		expect(items[0].activityStatus).toBe('completed');
+		expect(items[1].activityStatus).toBe('interrupted');
+	});
+});
+
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
+
+	it.each([
+		['structured output', { name: 'Structured skill' }, {}, 'Structured skill'],
+		['text output', { value: [{ text: '[Skill: "Text skill"]\nInstructions' }] }, {}, 'Text skill'],
+		['input name', undefined, { name: 'Input skill' }, 'Input skill'],
+		['input skill ID', undefined, { skillId: 'skill-123' }, 'skill-123'],
+		[
+			'malformed text output',
+			{ value: [{ text: '[Skill: "Malformed skill]\nInstructions' }] },
+			{},
+			'Malformed skill',
+		],
+	] as const)('maps a skill call using its %s', (_source, output, input, expectedName) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					name: 'load_skill',
+					input,
+					output,
+					endTime: 200,
+					success: true,
+				}),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({
+			kind: 'skill',
+			skillName: expectedName,
+			toolName: 'load_skill',
+			toolOutcome: 'success',
+		});
+	});
+
+	it('maps an explicitly typed skill call', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({ kind: 'skill', name: 'custom_skill', input: { name: 'Triage' } }),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
+	});
+
+	it.each([
+		['recall_memory', true, 200, { kind: 'memory', memoryAction: 'recall' }],
+		['flag_memory', true, 200, { kind: 'memory', memoryAction: 'flag' }],
+		['flag_memory', false, 200, { kind: 'tool', memoryAction: undefined }],
+		['recall_memory', true, 0, { kind: 'tool', memoryAction: undefined }],
+	] as const)(
+		'maps a %s call with success %s and endTime %s',
+		(name, success, endTime, expected) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline([toolCallEvent({ name, success, endTime })]),
+			]);
+
+			expect(items[0]).toMatchObject(expected);
+		},
+	);
 
 	it('carries attachments on the user item', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -322,10 +495,30 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toEqual([
 			{
 				kind: 'execution-error',
+				id: 'e-1:execution-error:1777024805000:0',
 				executionId: 'e-1',
 				executionStatus: status,
 				content: error,
 				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it('adds a stop item at the guardrail event', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'guardrail', code: 'budget.session', timestamp: 500 }], {
+				finishReason: 'guardrail',
+				guardrailCode: 'budget.session',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				id: 'e-1:execution-error:500:0',
+				executionId: 'e-1',
+				guardrailCode: 'budget.session',
+				timestamp: 500,
 			},
 		]);
 	});
@@ -617,6 +810,60 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
 	});
 
+	it.each([
+		{
+			label: 'text and attachments',
+			text: [{ type: 'text', text: 'Use this image' }],
+			content: 'Use this image',
+		},
+		{ label: 'attachments only', text: [], content: '' },
+	])('maps steered $label between agent output', ({ text, content }) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'Before steering', timestamp: 100 },
+					{
+						type: 'input',
+						timestamp: 200,
+						messageId: 'steered-user-message',
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{
+					userMessage: `Original request\n${content}`,
+					inputMessages: [
+						{
+							id: 'original-input',
+							role: 'user',
+							content: [{ type: 'text', text: 'Original request' }],
+						},
+						{
+							id: 'steered-user-message',
+							role: 'user',
+							content: [
+								...text,
+								{
+									type: 'file',
+									fileId: attachment.id,
+									fileName: attachment.fileName,
+									mimeType: attachment.mimeType,
+									sizeBytes: attachment.sizeBytes,
+								},
+							],
+						},
+					],
+				},
+			),
+		]);
+
+		expect(items).toMatchObject([
+			{ kind: 'user', content: 'Original request', executionId: 'e-1' },
+			{ kind: 'agent', content: 'Before steering', timestamp: 100 },
+			{ kind: 'user', content, executionId: 'e-1', timestamp: 200, attachments: [attachment] },
+			{ kind: 'agent', content: 'After steering', timestamp: 300 },
+		]);
+	});
+
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
@@ -652,25 +899,29 @@ describe('flattenExecutionsToTimelineItems', () => {
 
 	it('maps a running tool-call without marking it failed', () => {
 		const items = flattenExecutionsToTimelineItems([
-			withTimeline([
-				{
-					type: 'tool-call',
-					kind: 'tool',
-					name: 'http',
-					toolCallId: 'tc-1',
-					input: { method: 'GET' },
-					output: undefined,
-					startTime: 1000,
-					endTime: 0,
-					success: false,
-				},
-			]),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'http',
+						toolCallId: 'tc-1',
+						input: { method: 'GET' },
+						output: undefined,
+						startTime: 1000,
+						endTime: 0,
+						success: false,
+					},
+				],
+				{ status: 'running' },
+			),
 		]);
 		const tool = items.find((i) => i.kind === 'tool');
 		expect(tool).toMatchObject({
 			toolName: 'http',
+			activityStatus: 'running',
 			timestamp: 1000,
-			endTimestamp: 1000,
+			endTimestamp: undefined,
 			toolInput: { method: 'GET' },
 			toolOutput: undefined,
 			toolOutcome: undefined,
@@ -976,5 +1227,70 @@ describe('hitlRequestLabelKey', () => {
 
 	it('falls back to the interaction label for records with no request type', () => {
 		expect(hitlRequestLabelKey(undefined)).toBe('agentSessions.timeline.hitlRequested');
+	});
+});
+
+describe('background task signals', () => {
+	const signal = {
+		tasks: [
+			{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
+			{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
+		],
+	} as const;
+
+	it('keeps the signal before the reply with its execution and timestamp', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				timeline: [
+					{ type: 'background-task-signal', timestamp: 1000, signal: { tasks: [...signal.tasks] } },
+					{ type: 'text', timestamp: 2000, content: 'Done' },
+				],
+			}),
+		]);
+		expect(items).toEqual([
+			{
+				kind: 'background-task-signal',
+				id: 'e-1:background-task-signal:1000:0',
+				executionId: 'e-1',
+				timestamp: 1000,
+				backgroundJobSignal: signal,
+			},
+			expect.objectContaining({ kind: 'agent', content: 'Done' }),
+		]);
+	});
+
+	it('filters signals and searches task titles and translated statuses', () => {
+		const event = item({
+			kind: 'background-task-signal',
+			backgroundJobSignal: { tasks: [...signal.tasks] },
+		});
+		const labels: Record<string, string> = {
+			'background-task-signal': 'Background task results received',
+			'background-task-completed': 'Completed',
+			'background-task-cancelled': 'Canceled',
+		};
+		const labelForKey = (key: string) => labels[key] ?? key;
+		expect(matchesTimelineFilters(event, new Set(['background-task-signal']))).toBe(true);
+		expect(matchesTimelineFilters(event, new Set(['agent']))).toBe(false);
+		for (const query of ['results received', 'invoices', 'canceled', 'completed']) {
+			expect(matchesSearch(event, query, labelForKey)).toBe(true);
+		}
+	});
+});
+
+describe('guardrail stop copy', () => {
+	const i18n = { baseText: (key: string) => key } as Parameters<typeof executionErrorLabel>[1];
+
+	it.each([
+		['budget.session', 'agentSessions.timeline.guardrailStop.session'],
+		['budget.monthly', 'agentSessions.timeline.guardrailStop.monthly'],
+		['budget.credits', 'agentSessions.timeline.guardrailStop.credits'],
+		['budget.freeCredits', 'agentSessions.timeline.guardrailStop.freeCredits'],
+		['budget.misconfigured', 'agentSessions.timeline.guardrailStop.fallback'],
+	])('labels a %s stop', (guardrailCode, messageKey) => {
+		const stop = item({ kind: 'execution-error', guardrailCode });
+
+		expect(executionErrorLabel(stop, i18n)).toBe('agentSessions.timeline.guardrailStop.label');
+		expect(executionErrorMessage(stop, i18n)).toBe(messageKey);
 	});
 });

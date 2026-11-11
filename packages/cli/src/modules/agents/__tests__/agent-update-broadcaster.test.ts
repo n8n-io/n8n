@@ -4,12 +4,12 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService, Publisher } from '@n8n/backend-services';
 
+import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
-const update = { projectId: 'project-1', agentId: 'agent-1' };
+const update = { projectId: 'project-1', agentId: 'agent-1', source: 'mcp' as const };
 
 describe('AgentUpdateBroadcaster', () => {
 	const logger = mock<Logger>();
@@ -29,8 +29,7 @@ describe('AgentUpdateBroadcaster', () => {
 		});
 		broadcaster = new AgentUpdateBroadcaster(
 			logger,
-			userRepository,
-			roleService,
+			new AgentPushRecipientsService(userRepository, roleService),
 			push,
 			publisher,
 			instanceSettings,

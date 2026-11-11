@@ -1,6 +1,13 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import type { INode, INodeParameters, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import type {
+	INode,
+	INodeParameters,
+	INodeTypeDescription,
+	IWorkflowBase,
+	INodeTypes,
+} from 'n8n-workflow';
 import {
 	NodeHelpers,
 	getCredentialActivationParameters,
@@ -8,7 +15,6 @@ import {
 } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { NodeTypes } from '@/node-types';
 import {
 	checkAiGatewayEligibility,
 	HTTP_NODE_TYPES,
@@ -136,7 +142,7 @@ export type McpCredentialsAutoassignEventPayload = {
  */
 export function reconcileAiGatewayMarkers(
 	nodes: INode[],
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 ): void {
 	for (const node of nodes) {
@@ -174,11 +180,13 @@ export function reconcileAiGatewayMarkers(
 /** Resolves a node's type description, or `undefined` if its type can't be resolved. */
 function resolveNodeTypeDescription(
 	node: INode,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): INodeTypeDescription | undefined {
 	try {
 		return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-	} catch {
+	} catch (error) {
+		// Unknown or tool-incapable node types are bad config; any other failure is a bug.
+		if (!(error instanceof UserError)) throw error;
 		return undefined;
 	}
 }
@@ -215,7 +223,7 @@ function resolveNodeParameters(node: INode, description: INodeTypeDescription): 
 export async function autoPopulateNodeCredentials(
 	workflow: IWorkflowBase,
 	user: User,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectId: string,
 	aiGatewayService?: AiGatewayService,
@@ -256,7 +264,8 @@ export async function autoPopulateNodeCredentials(
 		try {
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			nodeTypeDescription = nodeType.description;
-		} catch {
+		} catch (error) {
+			if (!(error instanceof UserError)) throw error;
 			continue;
 		}
 

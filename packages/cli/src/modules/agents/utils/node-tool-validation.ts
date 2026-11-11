@@ -54,7 +54,7 @@ export function findHttpRequestToolUrlFromAiViolations(
  */
 export function validateNodeToolExpressions(tools: AgentJsonToolConfig[] | undefined): void {
 	for (const tool of tools ?? []) {
-		if (tool.type !== 'node') continue;
+		if (tool.enabled === false || tool.type !== 'node') continue;
 
 		extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
 	}
@@ -67,7 +67,9 @@ export function validateNodeToolExpressions(tools: AgentJsonToolConfig[] | undef
 export async function validateNodeToolConfigs(
 	tools: AgentJsonToolConfig[] | undefined,
 ): Promise<string | null> {
-	const nodeTools = (tools ?? []).filter((t): t is NodeToolConfig => t.type === 'node');
+	const nodeTools = (tools ?? []).filter(
+		(t): t is NodeToolConfig => t.enabled !== false && t.type === 'node',
+	);
 
 	if (nodeTools.length === 0) return null;
 

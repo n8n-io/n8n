@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getAgentConfig, updateAgentConfig } from './useAgentApi';
 import type { AgentJsonConfig } from '../types';
+import type { AgentCreationState } from '@n8n/api-types';
 
 export function useAgentConfig() {
 	const rootStore = useRootStore();
@@ -43,6 +44,20 @@ export function useAgentConfig() {
 		loading.value = false;
 	}
 
+	function acceptCreation(
+		projectId: string,
+		agentId: string,
+		created: AgentCreationState,
+	): boolean {
+		const stale = latestKey !== keyFor(projectId, agentId);
+		if (!stale) {
+			configHash.value = created.configHash;
+			ownBases.clear();
+			ownLatest = created.configHash;
+		}
+		return stale;
+	}
+
 	async function fetchConfig(projectId: string, agentId: string) {
 		const key = keyFor(projectId, agentId);
 		latestKey = key;
@@ -72,7 +87,7 @@ export function useAgentConfig() {
 		agentId: string,
 		data: AgentJsonConfig,
 		baseConfigHash: string | null = configHash.value ?? null,
-	): Promise<{ versionId: string | null; stale: boolean }> {
+	): Promise<{ config: AgentJsonConfig; versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
 		if (configHash.value !== ownLatest) ownBases.clear();
 		else if (ownBases.has(baseConfigHash)) baseConfigHash = ownLatest;
@@ -85,13 +100,12 @@ export function useAgentConfig() {
 		);
 		const stale = latestKey !== key;
 		if (!stale) {
-			config.value = result.config;
 			configHash.value = result.configHash;
 			ownBases.add(baseConfigHash);
 			ownLatest = result.configHash;
 		}
-		return { versionId: result.versionId, stale };
+		return { config: result.config, versionId: result.versionId, stale };
 	}
 
-	return { config, configHash, loading, repoint, fetchConfig, updateConfig };
+	return { config, configHash, loading, repoint, fetchConfig, updateConfig, acceptCreation };
 }

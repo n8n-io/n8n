@@ -1,0 +1,185 @@
+operationId: getPromotionChanges
+tags:
+  - Promotions
+summary: 'Beta: Preview the changes of a project in one direction'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply, and `revision` identifies this preview: send it as expectedPreviewRevision. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.
+x-required-scope: promotions:promote,promotions:apply
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - apply
+        - promote
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
+    name: direction
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            commitSha:
+              type: string
+              nullable: true
+            source:
+              type: object
+              properties:
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                branchName:
+                  type: string
+              required:
+                - environmentId
+                - branchName
+            resources:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/promotionResource.generated.yml
+            dependencies:
+              type: array
+              items:
+                type: object
+                properties:
+                  workflowKey:
+                    type: string
+                  resourceKey:
+                    type: string
+                  included:
+                    type: boolean
+                    description: Whether selecting the workflow also sends the resource. `false` for sub-workflows, which need their own selection.
+                required:
+                  - workflowKey
+                  - resourceKey
+                  - included
+            blocker:
+              type: object
+              properties:
+                code:
+                  type: string
+                  enum:
+                    - reviewOpen
+                reviewId:
+                  type: string
+              required:
+                - code
+                - reviewId
+              description: Set when an open review already holds the changes of this project. The preview then lists no resources. Only a Promote that opens a review on a new branch sets it.
+            check:
+              allOf:
+                - $ref: ../../../../shared/spec/schemas/promotionApplyCheck.generated.yml
+                - type: object
+                  properties:
+                    movedWorkflows:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          projectExists:
+                            type: boolean
+                          instanceProject:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                        required:
+                          - id
+                          - name
+                          - project
+                          - projectExists
+                          - instanceProject
+                    movedFolders:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          projectExists:
+                            type: boolean
+                          instanceProject:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                        required:
+                          - id
+                          - name
+                          - project
+                          - projectExists
+                          - instanceProject
+                  required:
+                    - movedWorkflows
+                    - movedFolders
+            revision:
+              type: string
+              description: Apply only. Send it as `expectedPreviewRevision` to apply only when this instance still matches the preview.
+          required:
+            - commitSha
+            - source
+            - resources
+            - dependencies
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

@@ -46,7 +46,7 @@ export function deriveWorkflowVerificationClaim(
 	// Only successful scoped passes contribute coverage. Keep the latest run's limitations.
 	const claims = [...coverage.passes.map((pass) => pass.claim), verification.claim];
 
-	return deriveVerificationClaim({
+	const aggregated = deriveVerificationClaim({
 		analysis: {
 			success: verification.success,
 			nodesNotReached: coverage.nodesNotReached,
@@ -68,4 +68,15 @@ export function deriveWorkflowVerificationClaim(
 			.filter((name) => !liveNodes.has(name)),
 		pendingTriggers: coverage.pendingTriggers,
 	});
+
+	// Publish state belongs to the workflow, not to a trigger, so the latest run
+	// carries it. Re-deriving coverage would otherwise drop it and report a
+	// stale live version as unknown.
+	return {
+		...aggregated,
+		...(verification.claim.liveState ? { liveState: verification.claim.liveState } : {}),
+		...(verification.claim.verifiedVersionId
+			? { verifiedVersionId: verification.claim.verifiedVersionId }
+			: {}),
+	};
 }

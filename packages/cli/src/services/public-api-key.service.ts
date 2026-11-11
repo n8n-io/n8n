@@ -8,7 +8,14 @@ import type {
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE, withTransaction } from '@n8n/db';
+import {
+	accountSummary,
+	ApiKey,
+	ApiKeyRepository,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	withTransaction,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
@@ -21,11 +28,10 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from './jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';
@@ -93,6 +99,8 @@ export class PublicApiKeyService {
 		const qb = this.apiKeyRepository
 			.createQueryBuilder('apiKey')
 			.leftJoinAndSelect('apiKey.user', 'user')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('user.details', 'details')
 			.setFindOptions({ where: pageWhere });
 		this.applyApiKeyListSort(qb, options.sortBy);
 		qb.take(options.take);
@@ -142,29 +150,35 @@ export class PublicApiKeyService {
 		const rows = await this.apiKeyRepository
 			.createQueryBuilder('apiKey')
 			.innerJoin('apiKey.user', 'user')
+			// A service account's name is in `details`.
+			.leftJoin('user.details', 'details')
 			.where('apiKey.audience = :audience', { audience: API_KEY_AUDIENCE })
 			.select('user.id', 'id')
 			.addSelect('user.firstName', 'first_name')
 			.addSelect('user.lastName', 'last_name')
 			.addSelect('user.email', 'email')
+			.addSelect('details.name', 'service_account_name')
 			.addSelect('COUNT(apiKey.id)', 'key_count')
 			.groupBy('user.id')
 			.addGroupBy('user.firstName')
 			.addGroupBy('user.lastName')
 			.addGroupBy('user.email')
+			.addGroupBy('details.name')
 			.getRawMany<{
 				id: string;
 				first_name: string | null;
 				last_name: string | null;
 				email: string;
+				service_account_name: string | null;
 				key_count: string | number;
 			}>();
 
 		return rows.map((row) => ({
 			id: row.id,
-			firstName: row.first_name ?? null,
-			lastName: row.last_name ?? null,
-			email: row.email,
+			...(row.service_account_name === null
+				? { firstName: row.first_name ?? null, lastName: row.last_name ?? null, email: row.email }
+				: // Raw rows, so this mirrors `accountSummary` for a service account.
+					{ firstName: row.service_account_name, lastName: null, email: '' }),
 			keyCount: Number(row.key_count),
 		}));
 	}
@@ -258,6 +272,7 @@ export class PublicApiKeyService {
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
 			const userApiKeys = await em.find(ApiKey, {
 				where: { userId: user.id, audience: API_KEY_AUDIENCE },
@@ -304,16 +319,12 @@ export class PublicApiKeyService {
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
 		const { user, ...rest } = apiKeyRecord;
+		const { id, email, firstName, lastName } = accountSummary(user);
 		return {
 			...rest,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
 			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-			owner: {
-				id: user.id,
-				firstName: user.firstName ?? null,
-				lastName: user.lastName ?? null,
-				email: user.email,
-			},
+			owner: { id, firstName, lastName, email: email ?? '' },
 		};
 	}
 
@@ -339,13 +350,14 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
+			'publicApiKey',
+			{ sub: user.id, iss: API_KEY_ISSUER, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
 
 	getApiKeyExpiration = (apiKey: string) => {
-		const decoded = this.jwtService.decode(apiKey);
+		const decoded = this.jwtService.decodeUnverified(apiKey);
 		return decoded?.exp ?? null;
 	};
 

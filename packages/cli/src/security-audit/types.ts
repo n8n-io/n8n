@@ -1,7 +1,9 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
+import type { RISK_CATEGORIES } from '@/security-audit/constants';
+
 export namespace Risk {
-	export type Category = 'database' | 'credentials' | 'nodes' | 'instance' | 'filesystem';
+	export type Category = (typeof RISK_CATEGORIES)[number];
 
 	type CredLocation = {
 		kind: 'credential';
@@ -79,9 +81,9 @@ export namespace n8n {
 		description: string;
 		documentationUrl: string;
 		hasBreakingChange: boolean;
-		hasSecurityFix: boolean;
-		hasSecurityIssue: boolean;
-		securityIssueFixVersion: string;
+		hasSecurityFix: boolean | null;
+		hasSecurityIssue: boolean | null;
+		securityIssueFixVersion: string | null;
 	};
 }
 

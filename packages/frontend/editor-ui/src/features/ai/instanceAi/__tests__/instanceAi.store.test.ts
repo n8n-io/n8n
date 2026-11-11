@@ -1,13 +1,22 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { effectScope, nextTick } from 'vue';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
-import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
+import {
+	deleteThread as deleteThreadApi,
+	fetchThreadHistory,
+	fetchThread,
+	renameThread as renameThreadApi,
+} from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import type { InstanceAiThreadHistoryResponse, InstanceAiThreadSummary } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
 		restApiContext: { baseUrl: 'http://localhost:5678/api' },
+		instanceId: 'instance-1',
 	}),
 }));
 
@@ -38,7 +47,6 @@ vi.mock('../instanceAi.api', () => ({
 		},
 		created: true,
 	}),
-	getInstanceAiCredits: vi.fn(),
 	postCancel: vi.fn(),
 	postCancelTask: vi.fn(),
 	postConfirmation: vi.fn(),
@@ -48,6 +56,8 @@ vi.mock('../instanceAi.api', () => ({
 
 vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
+	fetchThread: vi.fn(),
+	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
@@ -91,6 +101,73 @@ describe('useInstanceAiStore - runtime registry', () => {
 		vi.clearAllMocks();
 	});
 
+	function historyThread(id: string) {
+		return { id, title: id, resourceId: 'user', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+	}
+
+	it('pages the chat history once per row and drops a response that predates a reset', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory)
+			.mockResolvedValueOnce({
+				threads: [historyThread('a'), historyThread('b')],
+				nextCursor: 'cursor-1',
+				hasMore: true,
+			})
+			.mockResolvedValueOnce({
+				threads: [historyThread('b'), historyThread('c')],
+				nextCursor: null,
+				hasMore: false,
+			});
+		await store.loadThreadHistoryPage();
+		await store.loadThreadHistoryPage();
+		expect(fetchThreadHistory).toHaveBeenLastCalledWith(expect.anything(), {
+			limit: 30,
+			search: undefined,
+			cursor: 'cursor-1',
+		});
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a', 'b', 'c']);
+		expect(store.threadHistory.hasMore).toBe(false);
+
+		const late = Promise.withResolvers<InstanceAiThreadHistoryResponse>();
+		vi.mocked(fetchThreadHistory).mockReturnValueOnce(late.promise);
+		store.resetThreadHistory('old');
+		const pending = store.loadThreadHistoryPage();
+		store.resetThreadHistory('new');
+		late.resolve({ threads: [historyThread('late')], nextCursor: null, hasMore: false });
+		await pending;
+		expect(store.threadHistory).toMatchObject({ search: 'new', threads: [], loading: false });
+	});
+
+	it('renames and deletes threads on the history page and rolls back a failed rename', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [historyThread('a'), historyThread('b')],
+			nextCursor: null,
+			hasMore: false,
+		});
+		await store.loadThreadHistoryPage();
+
+		await store.renameThread('a', 'Renamed');
+		expect(renameThreadApi).toHaveBeenCalledWith(expect.anything(), 'a', 'Renamed');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		vi.mocked(renameThreadApi).mockRejectedValueOnce(new Error('offline'));
+		await expect(store.renameThread('a', 'Rejected')).rejects.toThrow('offline');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		await store.deleteThread('b');
+		expect(mockDeleteThread).toHaveBeenCalledWith(expect.anything(), 'b');
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('loadThread adds a thread the sidebar list does not hold, once', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValue({ thread: historyThread('old') });
+		await store.loadThread('old');
+		await store.loadThread('old');
+		expect(store.threads.map((thread) => thread.id)).toEqual(['old']);
+	});
+
 	it('returns the same runtime for the same thread id', () => {
 		const store = useInstanceAiStore();
 
@@ -111,6 +188,28 @@ describe('useInstanceAiStore - runtime registry', () => {
 
 		expect(disposeSpy).toHaveBeenCalledOnce();
 		expect(store.getRuntime('thread-1')).toBeUndefined();
+	});
+
+	it('keeps the runtime watchers alive after the creating scope stops', async () => {
+		const store = useInstanceAiStore();
+		// The thread view creates the runtime in setup. A Suspense duplicate of the
+		// view is discarded before it mounts, which stops that component scope.
+		const creatorScope = effectScope();
+		const runtime = creatorScope.run(() => store.getOrCreateRuntime('thread-1'));
+		creatorScope.stop();
+
+		runtime?.messages.push({
+			id: 'm1',
+			role: 'user',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			attachments: [{ type: 'workflow', id: 'wf-1', name: 'My workflow' }],
+		});
+		await nextTick();
+
+		expect(runtime?.producedArtifacts.get('wf-1')?.name).toBe('My workflow');
 	});
 
 	it('syncs a thread into the sidebar list', async () => {
@@ -190,172 +289,52 @@ describe('useInstanceAiStore - credits', () => {
 		});
 	});
 
-	describe('credits push handling', () => {
-		it('writes creditsUsed onto the matching thread from the push payload', () => {
+	describe('setThreadCreditsUsed', () => {
+		it('writes creditsUsed onto the matching thread', () => {
 			const store = useInstanceAiStore();
-			store.threads.push(makeThread('t1', {}));
+			store.threads.push(makeThread('t1', { other: true }));
 
-			store.handleCreditsPush({
-				creditsQuota: 100,
-				creditsClaimed: 5,
-				creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
-			});
+			store.setThreadCreditsUsed('t1', 2.5);
+			store.setThreadCreditsUsed('missing', 1);
 
-			expect(store.creditsClaimed).toBe(5);
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
-		});
-
-		it('picks up the quota lock from the push payload', () => {
-			const store = useInstanceAiStore();
-
-			// What the activation-capped cohort receives: no usable figures, just the lock.
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-
-			expect(store.quotaLocked).toBe(true);
-			expect(store.showCreditWarning).toBe(true);
-		});
-
-		// A claim push carries no lock state, and claims can land after the lock — a background
-		// memory task, or a fire-and-forget HITL segment claim from an earlier run. Treating the
-		// absent field as `false` would clear the warning the lock had just raised.
-		it('keeps the quota lock when a later push omits it', () => {
-			const store = useInstanceAiStore();
-
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-			expect(store.showCreditWarning).toBe(true);
-
-			// What a claim pushes: figures only, no lock state.
-			store.handleCreditsPush({ creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 });
-
-			expect(store.quotaLocked).toBe(true);
-			expect(store.showCreditWarning).toBe(true);
-		});
-
-		// Absence means "no opinion", but an explicit false is still an answer — an upgraded
-		// account must be able to get its balance back.
-		it('clears the quota lock when a push says so explicitly', () => {
-			const store = useInstanceAiStore();
-
-			store.handleCreditsPush({
-				creditsQuota: UNLIMITED_CREDITS,
-				creditsClaimed: 0,
-				quotaLocked: true,
-			});
-			store.handleCreditsPush({ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false });
-
-			expect(store.quotaLocked).toBe(false);
-			expect(store.showCreditWarning).toBe(false);
+			expect(store.getThreadMetadata('t1')).toEqual({ other: true, creditsUsed: 2.5 });
+			expect(store.threadCreditsUsed('missing')).toBeUndefined();
 		});
 	});
+});
 
-	// For the activation-capped cohort the balance is masked, so `isLowCredits` can never fire.
-	describe('showCreditWarning', () => {
-		it('is false with no credit information', () => {
-			const store = useInstanceAiStore();
-			expect(store.showCreditWarning).toBe(false);
-		});
-
-		it('is true when credits are running low', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 95;
-
-			expect(store.showCreditWarning).toBe(true);
-		});
-
-		it('is true when the pool is locked despite a masked balance', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = UNLIMITED_CREDITS;
-			store.creditsClaimed = 0;
-			store.quotaLocked = true;
-
-			expect(store.isLowCredits).toBe(false);
-			expect(store.showCreditWarning).toBe(true);
-		});
+describe('useInstanceAiStore - onboarding exit', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
 	});
 
-	describe('isLowCredits', () => {
-		it('returns false when credits are undefined', () => {
-			const store = useInstanceAiStore();
-			expect(store.isLowCredits).toBe(false);
-		});
+	it('leaveOnboarding keeps the exit in the thread metadata and tracks the end once', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external' },
+			},
+		];
 
-		it('returns false when credits are above 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 89;
-			expect(store.isLowCredits).toBe(false);
-		});
+		store.leaveOnboarding('thread-1', 'left', 'stop');
+		// A second exit (the failed run after the leave call) is a no-op.
+		store.leaveOnboarding('thread-1', 'run_failed');
 
-		it('returns true when credits are exactly 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 90;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns true when credits are below 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 95;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns false when quota is unlimited', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = -1;
-			store.creditsClaimed = 50;
-			expect(store.isLowCredits).toBe(false);
-		});
-
-		it('returns true when quota is 0', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 0;
-			store.creditsClaimed = 0;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns true when all credits are consumed', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 100;
-			expect(store.isLowCredits).toBe(true);
-		});
-	});
-
-	describe('creditsPercentageRemaining', () => {
-		it('returns undefined when credits are not initialized', () => {
-			const store = useInstanceAiStore();
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns undefined when quota is unlimited', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = -1;
-			store.creditsClaimed = 50;
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns 0 when quota is 0', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 0;
-			store.creditsClaimed = 0;
-			expect(store.creditsPercentageRemaining).toBe(0);
-		});
-
-		it('calculates percentage correctly', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 75;
-			expect(store.creditsPercentageRemaining).toBe(25);
+		expect(store.threads[0].metadata).toMatchObject({ onboardingLeft: true });
+		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: 'thread-1',
+			instance_id: 'instance-1',
+			outcome: 'left',
+			leave_reason: 'stop',
 		});
 	});
 });

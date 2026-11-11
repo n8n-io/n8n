@@ -3,7 +3,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	createEpisodicMemoryReflectFn,
+	createEpisodicMemoryConsolidateFn,
 } from '../runtime/memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../runtime/memory/memory-store';
 import {
@@ -49,6 +49,9 @@ export function resolveObservationalMemoryConfig(
 		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		...(config.midRunObservation !== undefined
+			? { midRunObservation: config.midRunObservation }
+			: {}),
 		observe: config.observe ?? createObservationLogObserveFn(observerModel),
 		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
 	};
@@ -59,7 +62,6 @@ export function resolveEpisodicMemoryConfig(
 	options: ResolveMemoryConfigDefaultsOptions,
 ): EpisodicMemoryConfig {
 	const embeddingModel = config.embeddingModel ?? DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const reflectorModel = options.defaultModel;
 
 	return {
 		enabled: config.enabled,
@@ -68,12 +70,13 @@ export function resolveEpisodicMemoryConfig(
 		embedder:
 			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
 		embeddingModel,
-		reflect:
-			config.reflect ??
-			createEpisodicMemoryReflectFn(reflectorModel, {
-				reflectionPrompt: config.prompts?.reflection,
+		consolidate:
+			config.consolidate ??
+			createEpisodicMemoryConsolidateFn(options.defaultModel, {
+				consolidationPrompt: config.prompts?.consolidation,
 			}),
 		prompts: config.prompts,
+		guidance: config.guidance,
 	};
 }
 

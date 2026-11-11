@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
@@ -27,6 +28,7 @@ const {
 		homeProject: { id: 'home-project' },
 		parentFolder: null as { id: string } | null,
 		getNodeById: vi.fn(),
+		getNodesByIds: vi.fn().mockReturnValue([]),
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
@@ -37,6 +39,8 @@ const {
 		deleteGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
+		isNodeTypeUnavailable: vi.fn(),
+		isNodeDeprecated: vi.fn(),
 		getNodeType: vi.fn().mockReturnValue({
 			displayName: 'Set',
 			name: 'n8n-nodes-base.set',
@@ -126,7 +130,6 @@ vi.mock('vue-router', () => ({
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -148,6 +151,9 @@ function setWorkflowNodes(nodes: INodeUi[]) {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 
 	mockWorkflowDocumentStore.getNodeById.mockImplementation((id: string) => nodesById.get(id));
+	mockWorkflowDocumentStore.getNodesByIds.mockImplementation((ids: string[]) =>
+		ids.flatMap((id) => nodesById.get(id) ?? []),
+	);
 	mockWorkflowDocumentStore.getNodeByName.mockImplementation(
 		(name: string) => nodesByName.get(name) ?? null,
 	);
@@ -187,6 +193,8 @@ describe('useWorkflowExtraction', () => {
 		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
 		mockWorkflowDocumentStore.deleteGroup.mockReset();
 		mockNodeTypesStore.getNodeType.mockClear();
+		mockNodeTypesStore.isNodeTypeUnavailable.mockReset().mockReturnValue(false);
+		mockNodeTypesStore.isNodeDeprecated.mockReset().mockReturnValue(false);
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
 		mockHistoryStore.pushCommandToUndo.mockClear();
@@ -204,14 +212,27 @@ describe('useWorkflowExtraction', () => {
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});
 
-		it('does not start extraction when executeWorkflow is excluded', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+		it.each([EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE])(
+			'does not start extraction when %s is not loaded',
+			(missingType) => {
+				mockNodeTypesStore.isNodeTypeUnavailable.mockImplementation((type) => type === missingType);
+
+				const { extractWorkflow } = useWorkflowExtraction();
+				extractWorkflow(['id-A']);
+
+				expect(mockTelemetry.track).not.toHaveBeenCalled();
+				expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
+			},
+		);
+
+		it('does not start extraction when the selection has a deprecated node', () => {
+			const nodeA = makeNode('A');
+			setWorkflowNodes([nodeA]);
+			mockNodeTypesStore.isNodeDeprecated.mockReturnValue(true);
 
 			const { extractWorkflow } = useWorkflowExtraction();
-			extractWorkflow(['id-A']);
+			extractWorkflow([nodeA.id]);
 
-			expect(mockTelemetry.track).not.toHaveBeenCalled();
 			expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
 		});
 

@@ -34,6 +34,19 @@ export async function postgresConnectionTest(
 			message = 'Connection timed out';
 		}
 
+		if (
+			!credentials.caCertificate &&
+			[
+				'DEPTH_ZERO_SELF_SIGNED_CERT',
+				'SELF_SIGNED_CERT_IN_CHAIN',
+				'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+				'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+			].includes(error.code)
+		) {
+			message =
+				'The SSL certificate is not trusted. Add the CA certificate from your database provider to the CA Certificate field.';
+		}
+
 		return {
 			status: 'Error',
 			message,

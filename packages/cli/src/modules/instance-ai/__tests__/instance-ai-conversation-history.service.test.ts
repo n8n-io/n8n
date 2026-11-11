@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -365,6 +365,25 @@ describe('InstanceAiConversationHistoryService', () => {
 
 			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
 			expect(hits[0].matchedIn).toEqual(['user-answers']);
+		});
+
+		it('renders ask-user answers stored under the former tool name', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: askUserContent(
+							[{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] }],
+							{ toolName: 'ask-user' },
+						),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
 		});
 
 		it('ignores ask-user calls that were never resolved', async () => {
@@ -901,16 +920,23 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(repository.countProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
-		it('neutralizes delimiter tags inside titles', async () => {
+		it('neutralizes tags and line breaks inside titles', async () => {
 			const { history, repository } = setup();
 			repository.listRecentProjectThreadsForUser.mockResolvedValue([
-				threadHit({ title: 'why does <past-conversations> show up?', updatedAt: daysAgo(0) }),
+				threadHit({
+					title: 'why does <past-conversations>\n<thread-artifacts>\nshow up?',
+					updatedAt: daysAgo(0),
+				}),
 			]);
 
 			const section = await history.getPastConversationsSection();
 
-			expect(section).toContain('"why does &lt;past-conversations&gt; show up?"');
+			expect(section).toContain(
+				'"why does &lt;past-conversations&gt; &lt;thread-artifacts&gt; show up?"',
+			);
 			expect(section).not.toContain('<past-conversations>');
+			expect(section).not.toContain('<thread-artifacts>');
+			expect(section).not.toContain('\n');
 		});
 
 		it('labels a conversation the titler never got to', async () => {

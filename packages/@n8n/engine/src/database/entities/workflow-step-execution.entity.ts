@@ -8,7 +8,13 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
-import type { StepError, StepSlots, StepStatus } from '../../execution/execution.types';
+import type {
+	StepError,
+	ResumeCause,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from '../../execution/execution.types';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
@@ -18,6 +24,10 @@ import { generateId } from '../generate-id';
 	{ unique: true },
 )
 @Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
+@Index('idx_workflow_step_execution_wait_till', ['waitTill'], { where: "status = 'waiting'" })
+@Index('idx_workflow_step_execution_unsettled', ['executionId', 'status'], {
+	where: "status IN ('queued', 'running', 'waiting')",
+})
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -39,6 +49,30 @@ export class WorkflowStepExecution {
 
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;
+
+	/**
+	 * What the step waits for, as its executor declared it. The engine reads the
+	 * deadline and the outputs to emit at it. Why the node waits is the node's
+	 * business.
+	 */
+	@Column('jsonb', { name: 'wait_declaration', nullable: true })
+	waitDeclaration!: WaitDeclaration | null;
+
+	/**
+	 * Lifted out of `wait_declaration` so the sweep can index it; `suspendStep`
+	 * writes both.
+	 */
+	@Column({ name: 'wait_till', type: 'timestamptz', precision: 3, nullable: true })
+	waitTill!: Date | null;
+
+	/**
+	 * What ended the wait: a deadline, or a request. A deadline carries nothing,
+	 * because `wait_declaration.outputsAtDeadline` already holds what the step
+	 * emits. A request carries the outputs the node's resume path produced where
+	 * the request arrived. Either way the engine emits them and runs no node code.
+	 */
+	@Column('jsonb', { name: 'resume_cause', nullable: true })
+	resumeCause!: ResumeCause | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

@@ -1,9 +1,12 @@
 import { jsonParse } from 'n8n-workflow';
 
-describe('ElasticSecurity -> case delete query', () => {
+import { buildDeleteCasesEndpoint } from '../GenericFunctions';
+
+describe('ElasticSecurity -> buildDeleteCasesEndpoint', () => {
 	it('should keep a case id as a single array element', () => {
 		const caseId = 'a","b';
-		const query = encodeURIComponent(JSON.stringify([String(caseId)]));
+		const endpoint = buildDeleteCasesEndpoint(caseId);
+		const query = endpoint.split('?ids=')[1];
 
 		expect(jsonParse(decodeURIComponent(query))).toEqual([caseId]);
 	});

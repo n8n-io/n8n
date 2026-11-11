@@ -34,7 +34,7 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews', 'workflows'],
 	enabledFeatures: ['feat:workflowReviews'],
-	modules: ['workflow-reviews'],
+	modules: ['workflow-reviews', 'inbox'],
 });
 
 let owner: User;
@@ -485,8 +485,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const workflow = await createWorkflow({}, teamProject);
 		await seedRequest(workflow.id, null, owner);
 
-		await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
-		await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+		await ownerAgent.get('/inbox').expect(200);
+		await ownerAgent.get('/inbox/summary').expect(200);
 		// 400 (missing workflowId), not 404 — proves it still reaches its own handler
 		await ownerAgent.get('/workflow-review-requests/eligible-reviewers').expect(400);
 	});

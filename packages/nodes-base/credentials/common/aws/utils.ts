@@ -419,9 +419,14 @@ function resolveServiceAndRegion(
  * round-trips unchanged. An encoded slash collapses to `/` (S3 keys are flat, so
  * `%2F` and `/` address the same key — aws4 did the same). A literal `+` becomes
  * `%2B` (AWS SDK behavior); the legacy aws4 signer read a path `+` as a space.
+ *
+ * @param options.preserveEncodedSlashes - Keep encoded slashes in the wire URL.
  */
-export function uriEncodeS3Pathname(pathname: string): string {
-	return pathname
+export function uriEncodeS3Pathname(
+	pathname: string,
+	options: { preserveEncodedSlashes?: boolean } = {},
+): string {
+	const encodedPathname = pathname
 		.split('/')
 		.map((segment) => {
 			// Decode runs of percent-escapes rather than the whole segment: a stray `%`
@@ -440,8 +445,24 @@ export function uriEncodeS3Pathname(pathname: string): string {
 				(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
 			);
 		})
-		.join('/')
-		.replace(/%2F/g, '/');
+		.join('/');
+
+	return options.preserveEncodedSlashes ? encodedPathname : encodedPathname.replace(/%2F/g, '/');
+}
+
+const COPY_SOURCE_VERSION_SELECTOR = '?versionId=';
+
+/**
+ * Encodes the value of the S3 `x-amz-copy-source` header. CopyObject reads an
+ * optional `?versionId=<id>` selector after the key, so the key is encoded as a
+ * pathname and the selector is kept as written. Encoding the selector too would
+ * make S3 read it as the last characters of the key.
+ */
+export function uriEncodeS3CopySource(copySource: string): string {
+	const selectorIndex = copySource.lastIndexOf(COPY_SOURCE_VERSION_SELECTOR);
+	if (selectorIndex === -1) return uriEncodeS3Pathname(copySource);
+
+	return uriEncodeS3Pathname(copySource.slice(0, selectorIndex)) + copySource.slice(selectorIndex);
 }
 
 /**

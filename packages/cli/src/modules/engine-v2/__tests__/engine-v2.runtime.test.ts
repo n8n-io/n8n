@@ -1,11 +1,29 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
+import {
+	mintApprovalCallback,
+	mintResumeToken,
+	mintStepBoundResumeToken,
+	type ExecutionResponseSender,
+} from '@n8n/engine';
+import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
+import type { BinaryDataService } from 'n8n-core';
+import type { DataTableProxyProvider } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsHelper } from '@/credentials-helper';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
-import type { EngineControlPlaneClient } from '../engine-control-plane-client';
+import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
+import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineCredentialsClient } from '../engine-credentials-client';
+import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 import { EngineV2Runtime } from '../engine-v2.runtime';
+import { RemoteCredentialsHelper } from '../remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.
@@ -33,8 +51,10 @@ const mocks = vi.hoisted(() => {
 		}),
 	};
 
+	const httpServer = { listen: vi.fn((_port: number, _host: string) => server) };
+
 	const engine = {
-		app: { listen: vi.fn((_port: number, _host: string) => server) },
+		app: {},
 		start: vi.fn(),
 		stop: vi.fn(async () => {}),
 	};
@@ -42,23 +62,33 @@ const mocks = vi.hoisted(() => {
 	const v1StepExecutor = { execute: vi.fn() };
 	const stepDataLoader = vi.fn();
 
+	type AdditionalData = {
+		executionId?: string;
+		credentialsHelper?: unknown;
+		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+	};
+
 	type V1StepExecutorDeps = {
 		additionalDataFactory: (context: {
 			executionId: string;
 			workflowId: string;
 			mode: string;
-		}) => Promise<{ executionId?: string }>;
+			userId?: string;
+			projectId?: string;
+		}) => Promise<AdditionalData>;
+		resolveSubWorkflow: (request: unknown) => Promise<unknown>;
 	};
 
 	return {
-		getBase: vi.fn(async () => ({}) as { executionId?: string }),
 		dataSource,
 		listen,
 		server,
+		httpServer,
 		engine,
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
+		createEngineHttpServer: vi.fn((_app: unknown, _tls: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
 			return stepDataLoader;
@@ -69,11 +99,17 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/engine', () => ({
+// Partial: the sub-workflow client's contract reads the engine's schemas at import.
+vi.mock('@n8n/engine', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/engine')>()),
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
+	createEngineHttpServer: mocks.createEngineHttpServer,
 	createEngineRuntime: mocks.createEngineRuntime,
+	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
+	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
+	mintApprovalCallback: vi.fn(() => 'approval-callback'),
 }));
 
 vi.mock('@n8n/node-engine-compatibility', () => ({
@@ -81,18 +117,65 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 	V1StepExecutor: mocks.V1StepExecutor,
 }));
 
-vi.mock('@/workflow-execute-additional-data', () => ({ getBase: mocks.getBase }));
-
 describe('EngineV2Runtime', () => {
-	const engineConfig = (databaseUrl: string) =>
-		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
+	const engineConfig = (databaseUrl: string, overrides: Partial<EngineConfig> = {}) =>
+		mock<EngineConfig>({
+			databaseUrl,
+			host: '0.0.0.0',
+			port: 3000,
+			resumeSecret: '',
+			...overrides,
+		});
 
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 
-	let controlPlaneClient: EngineControlPlaneClient;
+	let credentialsClient: EngineCredentialsClient;
+	let transport: EngineControlPlaneTransport;
+	let dataTablesHttp: HttpRequestClient;
+	let subWorkflowClient: EngineSubWorkflowClient;
+	const credentialsHelper = mock<CredentialsHelper>();
+	const credentialTypes = mock<CredentialTypes>();
+	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
+	const binaryDataService = mock<BinaryDataService>();
 
-	const newRuntime = (databaseUrl = 'postgres://engine') =>
-		new EngineV2Runtime(engineConfig(databaseUrl), nodeTypes, mockLogger(), controlPlaneClient);
+	// `@n8n/engine` is mocked below, so the senders are stand-ins too.
+	const senders = () => ({
+		responseSender: mock<ExecutionResponseSender>(),
+		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
+	});
+
+	const newRuntime = (
+		databaseUrl = 'postgres://engine',
+		config: Partial<EngineConfig> = {},
+		tls?: EngineTlsMaterial['tls'],
+	) =>
+		new EngineV2Runtime(
+			engineConfig(databaseUrl, config),
+			{ tls } as EngineTlsMaterial,
+			nodeTypes,
+			mockLogger(),
+			credentialsClient,
+			transport,
+			subWorkflowClient,
+			credentialsHelper,
+			credentialTypes,
+			additionalDataBuilder,
+			binaryDataService,
+		);
+
+	const stepContext = {
+		executionId: 'exec-1',
+		workflowId: 'wf-1',
+		mode: 'manual',
+		userId: 'user-1',
+		projectId: 'project-1',
+	};
+
+	/** The `additionalDataFactory` the runtime handed to the v1 step executor. */
+	const additionalDataFactory = () => {
+		externalDependencies({ executionStore: {}, stepStore: {} });
+		return mocks.V1StepExecutor.mock.calls[0][0].additionalDataFactory;
+	};
 
 	/** The `externalDependencies` callback the runtime handed to the engine. */
 	const externalDependencies = (stores: { executionStore: unknown; stepStore: unknown }) => {
@@ -106,18 +189,28 @@ describe('EngineV2Runtime', () => {
 		vi.clearAllMocks();
 		mocks.dataSource.isInitialized = false;
 		mocks.listen.error = undefined;
-		controlPlaneClient = mock<EngineControlPlaneClient>();
+		credentialsClient = mock<EngineCredentialsClient>();
+		dataTablesHttp = mock<HttpRequestClient>();
+		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
+		subWorkflowClient = mock<EngineSubWorkflowClient>();
+		additionalDataBuilder.build.mockImplementation(
+			(_context, helper, dataTableProxyProvider) =>
+				({
+					credentialsHelper: helper,
+					'data-table': { dataTableProxyProvider },
+				}) as unknown as ReturnType<EngineAdditionalDataBuilder['build']>,
+		);
 	});
 
 	describe('init', () => {
 		it('refuses to start without a data plane database', async () => {
-			await expect(newRuntime('').init()).rejects.toThrow('N8N_ENGINE_DATABASE_URL');
+			await expect(newRuntime('').init(senders())).rejects.toThrow('N8N_ENGINE_DATABASE_URL');
 
 			expect(mocks.createDataSource).not.toHaveBeenCalled();
 		});
 
 		it('opens the data plane connection and migrates it before building the engine', async () => {
-			await newRuntime().init();
+			await newRuntime().init(senders());
 
 			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine');
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
@@ -128,13 +221,14 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('starts the engine', async () => {
-			await newRuntime().init();
+			await newRuntime().init(senders());
 
 			expect(mocks.engine.start).toHaveBeenCalled();
 		});
 
-		it('injects a lifecycle event callback that reports to the control plane', async () => {
-			await newRuntime().init();
+		it('injects a lifecycle event callback that publishes to the execution channel', async () => {
+			const channel = senders();
+			await newRuntime().init(channel);
 
 			const events = [
 				{
@@ -150,15 +244,36 @@ describe('EngineV2Runtime', () => {
 
 			await lifecycleEventCallback(events, signal);
 
-			// The signal rides along, so an abandoned batch cancels its request.
-			expect(controlPlaneClient.sendLifecycleEvents).toHaveBeenCalledExactlyOnceWith(
-				events,
-				signal,
-			);
+			expect(channel.lifecycleEventSender.send).toHaveBeenCalledExactlyOnceWith(events, signal);
+		});
+
+		it('injects no lifecycle event callback without a lifecycle event sender', async () => {
+			await newRuntime().init({ responseSender: mock<ExecutionResponseSender>() });
+
+			expect(
+				externalDependencies({ executionStore: {}, stepStore: {} }).lifecycleEventCallback,
+			).toBeUndefined();
+		});
+
+		it('injects a deleter that removes the binary files of one execution', async () => {
+			await newRuntime().init(senders());
+
+			const deleteExecutionFiles = externalDependencies({ executionStore: {}, stepStore: {} })
+				.deleteExecutionFiles as (execution: {
+				workflowId: string;
+				executionId: string;
+			}) => Promise<void>;
+
+			await deleteExecutionFiles({ workflowId: 'wf-1', executionId: 'exec-1' });
+
+			// One location per run, so the store removes the whole directory of the execution.
+			expect(binaryDataService.deleteMany).toHaveBeenCalledExactlyOnceWith([
+				{ type: 'execution', workflowId: 'wf-1', executionId: 'exec-1' },
+			]);
 		});
 
 		it('injects the v1 step executor so v1-node steps can run', async () => {
-			await newRuntime().init();
+			await newRuntime().init(senders());
 
 			const stores = { executionStore: {}, stepStore: {} };
 
@@ -174,27 +289,158 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
-		it('tags the v1 additional data with the engine execution id', async () => {
-			await newRuntime().init();
+		it('gives the engine the resume secret and the executor its minters when a secret is set', async () => {
+			const resumeSecret = 's'.repeat(32);
+			await newRuntime('postgres://engine', { resumeSecret }).init(senders());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ resumeSecret }),
+			);
 			externalDependencies({ executionStore: {}, stepStore: {} });
+			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as V1StepExecutorDeps;
+			expect(deps.resumeToken?.({ executionId: 'exec-1' })).toBe('token-for-exec-1');
+			expect(mintResumeToken).toHaveBeenCalledWith(resumeSecret, 'exec-1');
+			expect(deps.stepBoundResumeToken?.({ stepId: 'step-1', binding: '/b?x=1' })).toBe(
+				'step-bound-token',
+			);
+			expect(mintStepBoundResumeToken).toHaveBeenCalledWith(resumeSecret, 'step-1', '/b?x=1');
+			expect(deps.approvalCallback?.({ stepId: 'step-1', decision: 'd' })).toBe(
+				'approval-callback',
+			);
+			expect(mintApprovalCallback).toHaveBeenCalledWith(resumeSecret, 'step-1', 'd');
+		});
 
-			const { additionalDataFactory } = mocks.V1StepExecutor.mock.calls[0][0];
+		it('passes an unset secret through and gives the executor no minters', async () => {
+			await newRuntime().init(senders());
 
-			await expect(
-				additionalDataFactory({ executionId: 'exec-1', workflowId: 'wf-1', mode: 'manual' }),
-			).resolves.toEqual({ executionId: 'exec-1' });
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ resumeSecret: '' }),
+			);
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as V1StepExecutorDeps;
+			expect(deps.resumeToken).toBeUndefined();
+			expect(deps.stepBoundResumeToken).toBeUndefined();
+			expect(deps.approvalCallback).toBeUndefined();
+		});
+
+		it('builds the v1 additional data from the step context, not from the control plane', async () => {
+			await newRuntime().init(senders());
+
+			await additionalDataFactory()(stepContext);
+
+			expect(additionalDataBuilder.build).toHaveBeenCalledExactlyOnceWith(
+				stepContext,
+				expect.any(RemoteCredentialsHelper),
+				expect.any(RemoteDataTableProxyProvider),
+			);
+		});
+
+		it('gives the step a sub-workflow resolver that asks the control plane', async () => {
+			await newRuntime().init(senders());
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			const request = { workflowId: 'sub-execution' };
+			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
+				workflowId: 'sub-execution',
+			} as never);
+
+			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
+
+			expect(resolved).toEqual({ workflowId: 'sub-execution' });
+			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				request,
+				expect.any(AbortSignal),
+			);
+		});
+
+		it('gives the step a credentials helper that asks the control plane', async () => {
+			await newRuntime().init(senders());
+
+			const additionalData = await additionalDataFactory()(stepContext);
+
+			expect(additionalData.credentialsHelper).toBeInstanceOf(RemoteCredentialsHelper);
+		});
+
+		it('gives the step a data table provider that asks the control plane', async () => {
+			await newRuntime().init(senders());
+
+			const additionalData = await additionalDataFactory()(stepContext);
+
+			expect(additionalData['data-table']?.dataTableProxyProvider).toBeInstanceOf(
+				RemoteDataTableProxyProvider,
+			);
+		});
+
+		it('binds the data table provider to the execution of the step', async () => {
+			await newRuntime().init(senders());
+			vi.mocked(dataTablesHttp.request).mockResolvedValue({
+				statusCode: 200,
+				body: { data: [] },
+				headers: {},
+			});
+
+			const additionalData = await additionalDataFactory()(stepContext);
+			const table = await additionalData['data-table']!.dataTableProxyProvider.getDataTableProxy(
+				mock(),
+				mock({ type: 'n8n-nodes-base.dataTable' }),
+				'dt-1',
+			);
+			await table.getColumns();
+
+			expect(transport.forScope).toHaveBeenCalledWith('data-tables:use');
+			expect(dataTablesHttp.request).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						execution: { executionId: 'exec-1', workflowId: 'wf-1' },
+						consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+					}),
+					abortSignal: expect.any(AbortSignal),
+				}),
+			);
+		});
+
+		it('binds the credentials helper to the execution of the step', async () => {
+			await newRuntime().init(senders());
+			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
+
+			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
+				credentialsHelper: RemoteCredentialsHelper;
+			};
+			await helper.getDecrypted(
+				mock(),
+				{ id: 'cred-1', name: 'Acme API' },
+				'httpHeaderAuth',
+				'manual',
+				{ node: mock({ type: 'n8n-nodes-base.httpRequest' }), data: {}, source: null },
+			);
+
+			expect(credentialsClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					execution: { executionId: 'exec-1', workflowId: 'wf-1', mode: 'manual' },
+					context: { userId: 'user-1', projectId: 'project-1' },
+				}),
+				expect.any(AbortSignal),
+			);
 		});
 
 		it('serves the engine API on the configured address', async () => {
-			await newRuntime().init();
+			await newRuntime().init(senders());
 
-			expect(mocks.engine.app.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, undefined);
+			expect(mocks.httpServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+		});
+
+		it('serves the engine API over mutual TLS when TLS is on', async () => {
+			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+
+			await newRuntime(undefined, {}, tls).init(senders());
+
+			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, tls);
 		});
 
 		it('closes the connection when migrations fail', async () => {
 			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
 
-			await expect(newRuntime().init()).rejects.toThrow('migration failed');
+			await expect(newRuntime().init(senders())).rejects.toThrow('migration failed');
 
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
@@ -203,7 +449,7 @@ describe('EngineV2Runtime', () => {
 		it('stops the engine and closes the connection when the server fails to listen', async () => {
 			mocks.listen.error = new Error('listen failed');
 
-			await expect(newRuntime().init()).rejects.toThrow('listen failed');
+			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
 
 			expect(mocks.server.close).not.toHaveBeenCalled();
 			expect(mocks.engine.stop).toHaveBeenCalled();
@@ -214,14 +460,14 @@ describe('EngineV2Runtime', () => {
 			mocks.listen.error = new Error('listen failed');
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
-			await expect(newRuntime().init()).rejects.toThrow('listen failed');
+			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
 		});
 	});
 
 	describe('shutdown', () => {
 		it('closes the server, stops the engine and closes the connection', async () => {
 			const runtime = newRuntime();
-			await runtime.init();
+			await runtime.init(senders());
 
 			await runtime.shutdown();
 
@@ -232,7 +478,7 @@ describe('EngineV2Runtime', () => {
 
 		it('stops the engine and closes the connection when the server fails to close', async () => {
 			const runtime = newRuntime();
-			await runtime.init();
+			await runtime.init(senders());
 			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
 
 			const error = await runtime
@@ -247,12 +493,33 @@ describe('EngineV2Runtime', () => {
 
 		it('closes the connection when the engine fails to stop', async () => {
 			const runtime = newRuntime();
-			await runtime.init();
+			await runtime.init(senders());
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
 
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('aborts the credential requests of running steps', async () => {
+			const runtime = newRuntime();
+			await runtime.init(senders());
+			vi.mocked(credentialsClient.resolve).mockResolvedValue({});
+			const { credentialsHelper: helper } = (await additionalDataFactory()(stepContext)) as {
+				credentialsHelper: RemoteCredentialsHelper;
+			};
+			await helper.getDecrypted(
+				mock(),
+				{ id: 'cred-1', name: 'Acme API' },
+				'httpHeaderAuth',
+				'manual',
+				{ node: mock({ type: 'n8n-nodes-base.httpRequest' }), data: {}, source: null },
+			);
+			const [, signal] = vi.mocked(credentialsClient.resolve).mock.calls[0];
+
+			await runtime.shutdown();
+
+			expect(signal.aborted).toBe(true);
 		});
 
 		it('is a no-op when init never ran', async () => {
@@ -263,7 +530,7 @@ describe('EngineV2Runtime', () => {
 
 		it('releases a resource again when its first release failed', async () => {
 			const runtime = newRuntime();
-			await runtime.init();
+			await runtime.init(senders());
 			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
@@ -278,7 +545,7 @@ describe('EngineV2Runtime', () => {
 
 		it('is safe to call twice', async () => {
 			const runtime = newRuntime();
-			await runtime.init();
+			await runtime.init(senders());
 
 			await runtime.shutdown();
 			await expect(runtime.shutdown()).resolves.toBeUndefined();

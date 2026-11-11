@@ -601,7 +601,10 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			parameterPath = resolveRelativePath(props.path, parameterPath);
+			// '&recordType' means the recordType next to this parameter. resolveRelativePath
+			// replaces the last path segment, so give it this parameter's path, not the list path:
+			// 'parameters.entries.entry[1].attributes' -> 'entries.entry[1].recordType'
+			parameterPath = resolveRelativePath(getPath(parameter.name), parameterPath);
 
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
@@ -996,6 +999,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1116,7 +1120,7 @@ watch(
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 		}
 	}
 

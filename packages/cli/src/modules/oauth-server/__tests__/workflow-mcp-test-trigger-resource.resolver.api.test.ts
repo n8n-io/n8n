@@ -11,11 +11,14 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let mcpEndpoint: string;
@@ -51,7 +54,7 @@ const mcpTriggerNode = ({
 });
 
 /**
- * Mirrors what `TestWebhooks.needsWebhook` registers when the user tests an
+ * Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests an
  * MCP trigger in the editor. The workflow does not need to exist in the DB:
  * the registration is self-contained.
  */

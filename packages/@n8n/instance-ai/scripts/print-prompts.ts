@@ -20,7 +20,7 @@ import {
 	getVersionedSystemPrompt,
 	resolvePromptProfile,
 } from '../src/prompts/prompt-profiles';
-import { loadInstanceAiPromptSkills } from '../src/skills/runtime-skills';
+import { loadInstanceAiPromptSkills } from '../src/skills/skills';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -75,22 +75,20 @@ function collectAgents(): AgentEntry[] {
 				{
 					file: 'all-features',
 					label:
-						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
+						'all features enabled (research, filesystem, tool-search, browser connected, sample license hint)',
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
+						browserUseState: { status: 'connected' },
 						toolSearchEnabled: true,
 						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
 						timeZone: 'UTC',
-						browserAvailable: true,
 						branchReadOnly: false,
 					}),
 				},
 				{
 					file: 'default',
 					label:
-						'no options set — what a fresh OSS install sees (no webhook URL, no filesystem, no gateway, no browser, no tool search)',
+						'no options set — what a fresh OSS install sees (no filesystem, no browser, no tool search)',
 					body: getSystemPrompt({}),
 				},
 				{
@@ -100,24 +98,11 @@ function collectAgents(): AgentEntry[] {
 					body: getSystemPrompt({ branchReadOnly: true }),
 				},
 				{
-					file: 'computer-use-prompting',
+					file: 'browser-use-prompting',
 					label:
-						"localGateway disconnected with filesystem + browser capabilities — renders the 'install Computer Use' pitch and 'Browser Automation (Unavailable)' note",
+						"Browser Use available but not connected — renders the 'connect Browser Use' pitch for the + menu entry",
 					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
-						localGateway: { status: 'disconnected' },
-						browserAvailable: false,
-					}),
-				},
-				{
-					file: 'gateway-no-browser',
-					label:
-						"localGateway connected, filesystemAccess: true, browserAvailable: false — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
-					body: getSystemPrompt({
-						webhookBaseUrl: 'https://your-instance.example.com',
-						filesystemAccess: true,
-						localGateway: { status: 'connected', capabilities: ['filesystem'] },
-						browserAvailable: false,
+						browserUseState: { status: 'disconnected' },
 					}),
 				},
 			],

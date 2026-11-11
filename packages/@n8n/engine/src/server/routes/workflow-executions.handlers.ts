@@ -3,12 +3,14 @@ import { z } from 'zod';
 
 import {
 	ExecutionNotFoundError,
+	type CancelExecutionResult,
+	type CancelExecutionService,
 	type ExecutionQueryService,
 	type ExecutionView,
 	type ExecutionWithStepsView,
 	type StepView,
 } from '../../execution';
-import type { ExecutionSnapshot, StepDetail } from '../api.types';
+import type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
@@ -20,6 +22,91 @@ const ExecutionIdParams = z.object({ id: z.string().uuid() });
  */
 const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() }).strict();
 
+const datetimeStringWithOffset = () => z.string().datetime({ offset: true });
+
+const ExecutionStatusSchema = z.enum([
+	'queued',
+	'running',
+	'waiting',
+	'completed',
+	'failed',
+	'cancelled',
+]);
+
+/** Which executions a search matches. The search body adds the paging. */
+const ExecutionFilterShape = {
+	workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
+	status: z.array(ExecutionStatusSchema).min(1).optional(),
+	hostMode: z.string().min(1).max(32).optional(),
+	/** Only the executions this one started. */
+	parentExecutionId: z.string().uuid().optional(),
+	createdAfter: datetimeStringWithOffset().optional(),
+	createdBefore: datetimeStringWithOffset().optional(),
+};
+
+const SearchExecutionsBody = z
+	.object({
+		...ExecutionFilterShape,
+		before: z
+			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
+			.strict()
+			.optional(),
+		limit: z.number().int().min(1).max(100).default(20),
+		includeTotal: z.boolean().optional(),
+		/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+		order: z
+			.object({ top: ExecutionStatusSchema.optional(), startedAt: z.literal('DESC').optional() })
+			.strict()
+			.optional(),
+	})
+	.strict()
+	// The cursor only walks its own `(createdAt, id)` order, so a status-first
+	// sort would drop the rows that sort after the cursor row. Ask for one or the
+	// other.
+	.refine((body) => !(body.before && body.order?.top), {
+		message: 'before cannot be combined with order.top',
+		path: ['before'],
+	});
+
+export function createSearchExecutionsHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = SearchExecutionsBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const result = await executionQuery.searchExecutions(parsed.data);
+		res.status(200).json(result);
+	};
+}
+
+/**
+ * `strict`, so a paging key is refused rather than stripped: the body names
+ * one execution, and a `limit` or `before` would otherwise read as honored.
+ */
+const FindLatestExecutionBody = z.object(ExecutionFilterShape).strict();
+
+/** The newest match, with its steps, as `GET /:id?includeSteps=true` reports it. */
+export function createFindLatestExecutionHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = FindLatestExecutionBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const execution = await executionQuery.findLatestExecutionWithSteps(parsed.data);
+		if (!execution) {
+			fail(res, 404, { error: 'not_found' });
+			return;
+		}
+		res.status(200).json(toExecutionSnapshot(execution));
+	};
+}
+
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
 	const parsed = ExecutionIdParams.safeParse(req.params);
@@ -28,14 +115,18 @@ function parseExecutionId(req: Request, res: Response): string | null {
 	return null;
 }
 
-function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): ExecutionSnapshot {
+export function toExecutionSnapshot(
+	record: ExecutionView | ExecutionWithStepsView,
+): ExecutionSnapshot {
 	return {
 		id: record.id,
 		workflowId: record.workflowId,
 		status: record.status,
 		mode: record.mode,
+		hostMode: record.hostMode,
 		graph: record.graph,
 		workflow: record.workflow,
+		parent: record.parent,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
@@ -86,5 +177,42 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 		}
 
 		res.status(200).json(toExecutionSnapshot(execution));
+	};
+}
+
+export function createCancelExecutionHandler(
+	cancelExecution: CancelExecutionService,
+): RequestHandler {
+	return async (req, res) => {
+		const id = parseExecutionId(req, res);
+		if (id === null) return;
+
+		let result: CancelExecutionResult;
+		try {
+			result = await cancelExecution.cancel(id);
+		} catch (error) {
+			if (error instanceof ExecutionNotFoundError) {
+				fail(res, 404, { error: 'not_found' });
+				return;
+			}
+			throw error;
+		}
+
+		// A repeated cancel answers like the first, so a retried request is safe.
+		if (result.status !== 'cancelled' || result.finishedAt === null) {
+			fail(res, 409, {
+				error: 'not_cancellable',
+				reason: `The execution has already ${result.status}`,
+				details: { status: result.status },
+			});
+			return;
+		}
+
+		const body: CancelExecutionResponse = {
+			executionId: id,
+			status: result.status,
+			finishedAt: result.finishedAt.toISOString(),
+		};
+		res.status(200).json(body);
 	};
 }

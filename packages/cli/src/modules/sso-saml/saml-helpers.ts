@@ -1,15 +1,16 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import type { Person } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, PersonRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 import { PasswordUtility } from '@/services/password.utility';
 import {
 	assertAuthenticationMethodCanBeEnabled,
+	emitSsoLoginDisabled,
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
@@ -29,6 +30,8 @@ export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 
 	Container.get(GlobalConfig).sso.saml.loginEnabled = enabled;
 	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
+
+	if (!enabled && currentAuthenticationMethod === 'saml') await emitSsoLoginDisabled('saml');
 }
 
 export function setSamlLoginLabel(label: string): void {
@@ -46,11 +49,13 @@ export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferen
 	);
 };
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+): Promise<Person> {
 	const randomPassword = randomString(18);
 	const userRepository = Container.get(UserRepository);
 	return await userRepository.manager.transaction(async (trx) => {
-		const { user } = await userRepository.createUserWithProject(
+		const { user } = await Container.get(PersonRepository).createPersonWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
@@ -75,33 +80,30 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	person: Person,
 	attributes: SamlUserAttributes,
-): Promise<User> {
+): Promise<Person> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
-	if (!user) throw new AuthError('User not found');
-	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
+	if (!person) throw new AuthError('User not found');
+	let samlAuthIdentity = person?.authIdentities.find((e) => e.providerType === 'saml');
 	if (!samlAuthIdentity) {
 		samlAuthIdentity = new AuthIdentity();
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 		samlAuthIdentity.providerType = 'saml';
-		samlAuthIdentity.user = user;
-		user.authIdentities.push(samlAuthIdentity);
+		samlAuthIdentity.user = person;
+		person.authIdentities.push(samlAuthIdentity);
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
 	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
-	user.firstName = attributes.firstName;
-	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not update User');
-	const userWithRole = await Container.get(UserRepository).findOne({
-		where: { id: resultUser.id },
-		relations: ['role'],
-		transaction: false,
-	});
-	if (!userWithRole) throw new AuthError('Failed to fetch user!');
-	return userWithRole;
+	person.firstName = attributes.firstName;
+	person.lastName = attributes.lastName;
+	const personRepository = Container.get(PersonRepository);
+	const savedPerson = await personRepository.save(person);
+	if (!savedPerson) throw new AuthError('Could not update User');
+	const personWithRole = await personRepository.findByIdWithRole(savedPerson.id);
+	if (!personWithRole) throw new AuthError('Failed to fetch user!');
+	return personWithRole;
 }
 
 type GetMappedSamlReturn = {
@@ -139,6 +141,12 @@ export function getMappedSamlAttributesFromFlowResult(
 			lastName,
 			userPrincipalName,
 		};
+		if (attributeMapping.emailVerified) {
+			const emailVerified = attributes[attributeMapping.emailVerified];
+			result.attributes.emailVerified = Array.isArray(emailVerified)
+				? emailVerified[0]
+				: emailVerified;
+		}
 		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
 			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
 		}

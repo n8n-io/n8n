@@ -15,6 +15,10 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-hi
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 
+const OVERLAPPING_RUNS = 4;
+const OLD_VERSIONS = 20;
+const RECENT_VERSIONS = 5;
+
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
 	let repo: WorkflowHistoryRepository;
@@ -41,25 +45,6 @@ describe('Workflow History Manager', () => {
 		await testDb.terminate();
 	});
 
-	test('should prune on interval', () => {
-		const pruneSpy = vi.spyOn(manager, 'prune');
-		const currentCount = pruneSpy.mock.calls.length;
-
-		vi.useFakeTimers();
-		manager.init();
-
-		vi.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 1);
-
-		vi.runOnlyPendingTimers();
-		expect(pruneSpy).toBeCalledTimes(currentCount + 2);
-
-		manager.shutdown();
-		vi.clearAllTimers();
-		vi.useRealTimers();
-		pruneSpy.mockRestore();
-	});
-
 	test('should not prune when both prune times are -1 (infinite)', async () => {
 		await createWorkflowHistory();
 		await pruneAndAssertCount();
@@ -76,6 +61,15 @@ describe('Workflow History Manager', () => {
 
 		await createWorkflowHistory();
 		await pruneAndAssertCount(0);
+	});
+
+	test('should not prune when the signal is already aborted', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		await createWorkflowHistory();
+
+		await manager.prune(AbortSignal.abort());
+
+		expect(await repo.count()).toBe(10);
 	});
 
 	test('should only prune versions older than prune time', async () => {
@@ -121,7 +115,7 @@ describe('Workflow History Manager', () => {
 		const workflowRepo = Container.get(WorkflowRepository);
 		await workflowRepo.save([activeWorkflow, inactiveWorkflow]);
 
-		await manager.prune();
+		await manager.prune(new AbortController().signal);
 
 		// Both workflows' current versions should still exist even though they are old
 		expect(await repo.count({ where: { versionId: activeWorkflow.versionId } })).toBe(1);
@@ -154,7 +148,7 @@ describe('Workflow History Manager', () => {
 		const workflowRepo = Container.get(WorkflowRepository);
 		await workflowRepo.save(workflow);
 
-		await manager.prune();
+		await manager.prune(new AbortController().signal);
 
 		// Both current and active versions should still exist even though they are old
 		expect(await repo.count({ where: { versionId: workflow.versionId } })).toBe(1);
@@ -185,7 +179,7 @@ describe('Workflow History Manager', () => {
 		);
 		// versions[3] and versions[4] remain unnamed
 
-		await manager.prune();
+		await manager.prune(new AbortController().signal);
 
 		expect(license.isLicensed).toHaveBeenCalledWith('feat:namedVersions');
 
@@ -216,13 +210,48 @@ describe('Workflow History Manager', () => {
 			{ name: 'Named Version 3', description: 'Version with description' },
 		);
 
-		await manager.prune();
+		await manager.prune(new AbortController().signal);
 
 		// All versions should be deleted
 		expect(await repo.count({ where: { versionId: In(versions.map((v) => v.versionId)) } })).toBe(
 			0,
 		);
 	});
+
+	test('should keep the same rows as one run when prune runs overlap', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockImplementation((feature: string) => feature === 'feat:namedVersions');
+
+		const workflow = await createActiveWorkflow();
+		const factoryVersionIds = await remainingVersionIds();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+		const oldVersions = await createManyWorkflowHistoryItems(workflow.id, OLD_VERSIONS, oldDate);
+		const recentVersions = await createManyWorkflowHistoryItems(workflow.id, RECENT_VERSIONS);
+
+		const [currentVersion, activeVersion, namedVersion] = oldVersions;
+		workflow.versionId = currentVersion.versionId;
+		workflow.activeVersionId = activeVersion.versionId;
+		await Container.get(WorkflowRepository).save(workflow);
+		await repo.update({ versionId: namedVersion.versionId }, { name: 'Named Version' });
+
+		await Promise.all(
+			Array.from(
+				{ length: OVERLAPPING_RUNS },
+				async () => await manager.prune(new AbortController().signal),
+			),
+		);
+
+		const kept = [
+			...factoryVersionIds,
+			...[currentVersion, activeVersion, namedVersion, ...recentVersions].map((v) => v.versionId),
+		].sort();
+		expect(await remainingVersionIds()).toEqual(kept);
+	});
+
+	const remainingVersionIds = async () => {
+		const rows = await repo.find({ select: { versionId: true } });
+		return rows.map((v) => v.versionId).sort();
+	};
 
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
@@ -234,7 +263,7 @@ describe('Workflow History Manager', () => {
 		expect(await repo.count()).toBe(initialCount);
 
 		const deleteSpy = vi.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
-		await manager.prune();
+		await manager.prune(new AbortController().signal);
 
 		if (initialCount === finalCount) {
 			expect(deleteSpy).not.toBeCalled();

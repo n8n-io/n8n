@@ -170,6 +170,7 @@ describe('Expression — compatibility corpus', () => {
 				selectedCardId: 'c1',
 				dimensions: ['2026-08-24 10:30:00', 'DE'],
 				metrics: [10, 20],
+				pathId: 'a/b c',
 				jsonString: '{"k":[1,2,3]}',
 				key: 'dimensions',
 				zero: 0,
@@ -471,6 +472,11 @@ describe('Expression — compatibility corpus', () => {
 		['typeof', '={{ typeof $json.id }}', 'number'],
 		['instanceof', '={{ $json.metadata instanceof Object }}', true],
 		['nested template literal', '={{ `outer ${`inner ${$json.id}`}` }}', 'outer inner 42'],
+		[
+			'template literal with new lines keeps text next to interpolations',
+			'={{ `\nid_${$json.id}\n${$json.name}_${$json.id}\n` }}',
+			'\nid_42\nAda_42\n',
+		],
 		['optional call on missing member', '={{ $json.nope?.call?.() ?? "none" }}', 'none'],
 		['block comment inside interpolation', '={{ /* comment */ $json.id }}', 42],
 		['line comment inside interpolation', '={{ $json.id // trailing comment\n }}', 42],
@@ -820,6 +826,7 @@ describe('Expression — compatibility corpus', () => {
 		['$prevNode.outputIndex', '={{ $prevNode.outputIndex }}', 0],
 		['$execution.id', '={{ $execution.id }}', 'exec-1'],
 		['$workflow.active', '={{ $workflow.active }}', false],
+		['toPathSegment($json.pathId)', '={{ toPathSegment($json.pathId) }}', 'a%2Fb%20c'],
 		['`${$runIndex}:${$itemIndex}`', '={{ `${$runIndex}:${$itemIndex}` }}', '0:0'],
 		['$("Rates").first()?.json?.cardId', '={{ $("Rates").first()?.json?.cardId }}', 'c1'],
 		[
@@ -873,6 +880,7 @@ describe('Expression — compatibility corpus', () => {
 		['"}}"', '={{ "}}" }}'],
 		['"{{" + "}}"', '={{ "{{" + "}}" }}'],
 		['literal {{ }} braces? {{ 1 + 1', '=literal {{ }} braces? {{ 1 + 1 }}'],
+		['dot URL path segment', '={{ toPathSegment("..") }}'],
 	];
 
 	it.each(REJECTED)('rejects: %s', (_name, expr) => {

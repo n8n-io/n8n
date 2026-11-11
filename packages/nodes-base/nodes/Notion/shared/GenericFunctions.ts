@@ -18,7 +18,13 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, safeRegex, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	toPathSegment,
+	NodeApiError,
+	NodeOperationError,
+	safeRegex,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -133,7 +139,7 @@ export async function notionApiRequestGetBlockChildrens(
 				this,
 				'results',
 				'GET',
-				`/blocks/${block.id}/children`,
+				`/blocks/${toPathSegment(block.id)}/children`,
 			);
 
 			childrens = (childrens || []).map((entry: IDataObject) => ({

@@ -1,19 +1,14 @@
-import { EXPERIMENTS_TO_TRACK, MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants/experiments';
 import { MCP_JSON_NUDGE_CALLOUT } from '@/experiments/mcpJsonNudge/constants';
 
 const mockMcpStore = vi.hoisted(() => ({ mcpAccessEnabled: false }));
-const mockIsFeatureEnabled = vi.hoisted(() => vi.fn());
 const mockIsCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockSetCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockCurrentUser = vi.hoisted<{ settings: Record<string, unknown> }>(() => ({ settings: {} }));
 const mockUpdateUserSettings = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMCPStore: () => mockMcpStore,
-}));
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: mockIsFeatureEnabled }),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -30,15 +25,10 @@ import { useMcpJsonNudgeEligibility } from './useMcpJsonNudgeEligibility';
 describe('useMcpJsonNudgeEligibility', () => {
 	beforeEach(() => {
 		mockMcpStore.mcpAccessEnabled = false;
-		mockIsFeatureEnabled.mockReset().mockReturnValue(true);
 		mockIsCalloutDismissed.mockReset().mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
 		mockCurrentUser.settings = {};
 		mockUpdateUserSettings.mockClear();
-	});
-
-	it('is registered in EXPERIMENTS_TO_TRACK', () => {
-		expect(EXPERIMENTS_TO_TRACK).toContain(MCP_JSON_NUDGE_EXPERIMENT.name);
 	});
 
 	describe('canShow', () => {
@@ -50,13 +40,6 @@ describe('useMcpJsonNudgeEligibility', () => {
 
 		it('returns false when MCP is already enabled for the instance', () => {
 			mockMcpStore.mcpAccessEnabled = true;
-			const { canShow } = useMcpJsonNudgeEligibility();
-
-			expect(canShow()).toBe(false);
-		});
-
-		it('returns false when the feature flag is off', () => {
-			mockIsFeatureEnabled.mockReturnValue(false);
 			const { canShow } = useMcpJsonNudgeEligibility();
 
 			expect(canShow()).toBe(false);

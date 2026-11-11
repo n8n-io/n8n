@@ -4,7 +4,14 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Adapter, SentMessage } from 'chat';
 import { z } from 'zod';
 
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat-integration';
+import {
+	AgentOutboundFiles,
+	type OutboundPostable,
+	captionLimits,
+	postWithFileGroups,
+} from './agent-outbound-files.service';
 import type { CallbackMetadata } from './callback-store';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
@@ -13,6 +20,7 @@ import {
 	type ShortenCallback,
 } from './component-mapper';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import { fileIdsSchema } from './integration-tool-definitions';
 import {
 	connectionUnavailable,
 	integrationError,
@@ -21,8 +29,8 @@ import {
 	rateLimitExceeded,
 } from './integration-helpers';
 import type {
-	IntegrationAction,
 	IntegrationActionExecutor,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
@@ -34,15 +42,19 @@ import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-
 // boundary validates against and the editor-ui renderer parses with.
 const messageSchema = richMessageSchema;
 
-export const respondInputSchema = z.object({ message: messageSchema });
+export const respondInputSchema = z.object({ message: messageSchema, fileIds: fileIdsSchema });
 const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
+	fileIds: fileIdsSchema,
 });
+const doNotRespondInputSchema = z.object({ reason: z.string().optional() });
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
+	fileIds: fileIdsSchema,
 });
+const fileIdsInputSchema = z.object({ fileIds: fileIdsSchema });
 const editMessageInputSchema = z
 	.object({
 		messageId: z.string().min(1),
@@ -71,17 +83,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
+		private readonly outboundFiles: AgentOutboundFiles,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
@@ -97,6 +102,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
+		const files = await this.checkFiles(params);
+		if (!Array.isArray(files)) return files;
+
 		if (integrationDef && !integrationDef.requiresChatInstance) {
 			if (!integrationDef.executeAction) {
 				return unsupportedAction();
@@ -108,6 +116,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 					action: params.action,
 					input: params.input,
 					currentMessageContext: params.currentMessageContext,
+					files,
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {
@@ -123,11 +132,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);
@@ -135,10 +140,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		try {
 			if (params.action === 'respond') {
-				return await this.respondInCurrentThread(chat, params);
+				return await this.respondInCurrentThread(chat, params, files);
 			}
 			if (params.action === 'send_dm') {
-				return await this.sendDirectMessage(chat, params);
+				return await this.sendDirectMessage(chat, params, files);
 			}
 			if (params.action === 'edit_message') {
 				return await this.editMessageInCurrentThread(chat, params);
@@ -160,11 +165,13 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			}
 
 			if (params.action === 'send_channel_message') {
-				return await this.sendChannelMessage(chat, params);
+				return await this.sendChannelMessage(chat, params, files);
 			}
 
 			return unsupportedAction();
 		} catch (error) {
+			const described = integrationDef?.describeActionError?.(params.action, error);
+			if (described) return integrationError(described.code, described.message);
 			return caughtIntegrationError(error, {
 				connectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
@@ -178,7 +185,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	 * End the turn without posting anything. Allowed only when the latest
 	 * inbound message marked the reply as optional.
 	 */
-	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+	private doNotRespond(params: IntegrationActionParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
@@ -186,16 +193,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
+		const { reason } = doNotRespondInputSchema.parse(params.input);
 		return {
 			ok: true,
 			silent: true,
+			...(reason ? { reason } : {}),
 			note: 'No reply will be sent. End your turn now without writing any text.',
 		};
 	}
 
 	private async addReactionToMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
 		if (!supportsAddReaction(adapter)) {
@@ -246,7 +255,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
+		files: AgentChatAttachment[],
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -261,6 +271,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const isAutomaticReplyTarget =
 			params.currentMessageContext?.replyExpectation !== undefined &&
 			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
+		if (!input.message.card && isAutomaticReplyTarget && files.length > 0) {
+			// The bridge posts the files with the final reply, so the user gets one message.
+			return await this.queueReplyFiles(params, files);
+		}
 		if (!input.message.card && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
@@ -270,7 +284,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		const thread = chat.thread(threadId);
 		await this.prepareSentThread(params.descriptor, thread);
-		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
+		const sent = await this.postWithFiles(thread, params, input.message, files);
 
 		return {
 			ok: true,
@@ -284,11 +298,21 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendDirectMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
+		files: AgentChatAttachment[],
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
-		const thread = await chat.openDM(input.userId);
-		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
+		// The Chat SDK guesses the adapter from the user ID's shape and knows one
+		// shape per platform, so a Teams Entra object ID would not reach Teams.
+		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		// It has no shape for a WhatsApp phone number at all, so there is nothing to fall back to.
+		if (!supportsOpenDM(adapter) && params.descriptor.integration.type === 'whatsapp') {
+			return unsupportedAction(params.descriptor.integration.type, 'send_dm');
+		}
+		const thread = supportsOpenDM(adapter)
+			? chat.thread(await adapter.openDM(input.userId))
+			: await chat.openDM(input.userId);
+		const sent = await this.postWithFiles(thread, params, input.message, files);
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
 		const anchoredId = this.sentThreadId(params.descriptor, sent);
@@ -308,7 +332,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async editMessageInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = editMessageInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
@@ -346,14 +370,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendChannelMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
+		files: AgentChatAttachment[],
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
-		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
+		const platform = params.descriptor.integration.type;
+		const channelId =
+			this.integrationRegistry
+				.get(platform)
+				?.normalizeChannelId(input.channelId, chat.getAdapter(platform)) ??
+			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
-		const sent = await channel.post(
-			await this.toPostable(params.descriptor, input.message, params),
-		);
+		const sent = await this.postWithFiles(channel, params, input.message, files);
 		const threadId = this.sentThreadId(params.descriptor, sent);
 		if (threadId) {
 			await this.prepareSentThread(params.descriptor, chat.thread(threadId));
@@ -400,6 +428,96 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		);
 
 		return { card };
+	}
+
+	/**
+	 * Queue files for the final reply. The platform limits apply to all files
+	 * that the run queued, because the final reply sends them together.
+	 */
+	private async queueReplyFiles(
+		params: IntegrationActionParams,
+		files: AgentChatAttachment[],
+	): Promise<IntegrationActionResult> {
+		const context = params.currentMessageContext;
+		const queuedFileIds = files.map((file) => file.id);
+		const earlier =
+			params.runId && context?.queuedFiles?.runId === params.runId
+				? context.queuedFiles.fileIds
+				: [];
+		const fileIds = [...new Set([...earlier, ...queuedFileIds])];
+		if (earlier.length > 0 && params.fileScope) {
+			const checked = await this.outboundFiles.check(
+				params.descriptor.integration.type,
+				fileIds,
+				params.fileScope,
+			);
+			if (!Array.isArray(checked)) {
+				return integrationError(
+					checked.error.code,
+					`${checked.error.message} The limit counts the ${earlier.length} files that you queued before for your final reply.`,
+				);
+			}
+		}
+		return {
+			ok: true,
+			queuedFileIds,
+			note: 'The files go with your final reply. Write your reply as the message for the files, and do not mention fileIds.',
+			...(params.runId && context
+				? { messageContext: { ...context, queuedFiles: { runId: params.runId, fileIds } } }
+				: {}),
+		};
+	}
+
+	/**
+	 * Post the message with its files. A platform that cannot send all files
+	 * in one message gets one message for each file group, and the text or
+	 * card goes with the first. Return the first sent message.
+	 */
+	private async postWithFiles(
+		target: { post(message: OutboundPostable): Promise<SentMessage> },
+		params: IntegrationActionParams,
+		message: MessagePayload,
+		files: AgentChatAttachment[],
+	): Promise<SentMessage> {
+		return await postWithFileGroups(
+			async (postable) => await target.post(postable),
+			await this.toPostable(params.descriptor, message, params),
+			files.length > 0 ? this.outboundFiles.groups(params.descriptor.integration.type, files) : [],
+			captionLimits(this.integrationRegistry.get(params.descriptor.integration.type)),
+		);
+	}
+
+	/**
+	 * Check the files of `input.fileIds` for the read access of the thread and
+	 * the limits of the platform. Return an error result that the model can act on.
+	 */
+	private async checkFiles(
+		params: IntegrationActionParams,
+	): Promise<AgentChatAttachment[] | IntegrationActionResult> {
+		if (
+			params.action !== 'respond' &&
+			params.action !== 'send_dm' &&
+			params.action !== 'send_channel_message'
+		) {
+			return [];
+		}
+		const parsed = fileIdsInputSchema.safeParse(params.input);
+		if (!parsed.success) {
+			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
+		}
+		const fileIds = parsed.data.fileIds;
+		if (!fileIds) return [];
+		if (!params.fileScope) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
+				'Files can only be sent from a conversation.',
+			);
+		}
+		return await this.outboundFiles.check(
+			params.descriptor.integration.type,
+			fileIds,
+			params.fileScope,
+		);
 	}
 
 	private getShortenCallback(
@@ -449,18 +567,12 @@ function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'edi
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
 }
 
-function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
-	return isRecord(adapter) && typeof adapter.addReaction === 'function';
+function supportsOpenDM(adapter: unknown): adapter is Required<Pick<Adapter, 'openDM'>> {
+	return isRecord(adapter) && typeof adapter.openDM === 'function';
 }
 
-interface ExecuteParams {
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	awaitResponse: boolean;
-	runId?: string;
-	toolCallId?: string;
-	currentMessageContext?: IntegrationMessageContext;
+function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
+	return isRecord(adapter) && typeof adapter.addReaction === 'function';
 }
 
 function buildMessageContextFromSentMessage(params: {

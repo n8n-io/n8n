@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
+import { PassThrough } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
@@ -10,6 +11,7 @@ import {
 	buildAgentOptions,
 	buildTargetUrl,
 	createFormDataObject,
+	destroyRequestBody,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
@@ -19,6 +21,7 @@ import {
 	isIgnoreStatusErrorConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	isSameHostHttpsUpgrade,
 	resolveLegacyRequestTarget,
 	resolveLegacyRequestUrl,
 	searchForHeader,
@@ -400,6 +403,27 @@ describe('createFormDataObject', () => {
 	});
 });
 
+describe('destroyRequestBody', () => {
+	it('should destroy the streams in form fields', () => {
+		const file = new PassThrough();
+		const listed = new PassThrough();
+
+		destroyRequestBody({ file: { value: file, options: {} }, files: [listed], name: 'n8n' });
+
+		expect(file.destroyed).toBe(true);
+		expect(listed.destroyed).toBe(true);
+	});
+
+	it('should not read a Buffer body as form fields', () => {
+		const stream = new PassThrough();
+		const body = Object.assign(Buffer.alloc(4), { file: stream });
+
+		destroyRequestBody(body);
+
+		expect(stream.destroyed).toBe(false);
+	});
+});
+
 describe('generateContentLengthHeader', () => {
 	test('should set content-length header for FormData', async () => {
 		const formData = new FormData();
@@ -716,6 +740,21 @@ describe('isRedirectStatus', () => {
 
 	it.each([200, 204, 299, 400, 500])('treats %i as not a redirect', (status) => {
 		expect(isRedirectStatus(status)).toBe(false);
+	});
+});
+
+describe('isSameHostHttpsUpgrade', () => {
+	test.each([
+		['http://example.com/a', 'https://example.com/b', true],
+		['http://example.com:80/a', 'https://example.com:443/b', true],
+		['https://example.com/a', 'https://example.com/b', false],
+		['https://example.com/a', 'http://example.com/b', false],
+		['http://example.com/a', 'https://sub.example.com/b', false],
+		['http://example.com/a', 'https://example.com:8443/b', false],
+		['http://example.com:8080/a', 'https://example.com/b', false],
+		['not a url', 'https://example.com/b', false],
+	])('returns the expected result for %s to %s', (fromUrl, toUrl, expected) => {
+		expect(isSameHostHttpsUpgrade(fromUrl, toUrl)).toBe(expected);
 	});
 });
 
