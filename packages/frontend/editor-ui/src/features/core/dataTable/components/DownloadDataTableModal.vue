@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
-import { N8nCheckbox, N8nButton } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
+import { computed, ref } from 'vue';
+import { N8nAlertDialog, N8nCheckbox } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+
+defineOptions({ inheritAttrs: false });
 
 type Props = {
 	modalName: string;
@@ -17,59 +19,55 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const includeSystemColumns = ref(false);
 
 const onConfirm = () => {
 	emit('confirm', includeSystemColumns.value);
 };
+
+function onDialogEnter(event: KeyboardEvent) {
+	const target = event.target;
+	if (!(target instanceof Element)) return;
+
+	// A button runs its own action on Enter. The checkbox is a button that
+	// ignores Enter, so Enter there still confirms the download.
+	const button = target.closest('button, [role="button"]');
+	if (button && button.getAttribute('role') !== 'checkbox') return;
+
+	onConfirm();
+}
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onCancel() {
+	emit('close');
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
+	<N8nAlertDialog
+		:open="modalOpen"
+		size="medium"
 		:title="i18n.baseText('dataTable.download.modal.title')"
-		:center="true"
-		width="460px"
-		:event-bus="undefined"
-		@enter="onConfirm"
+		:action-label="i18n.baseText('dataTable.download.modal.confirm')"
+		:cancel-label="i18n.baseText('dataTable.download.modal.cancel')"
+		@action="onConfirm"
+		@cancel="onCancel"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="$style.content">
-				<N8nCheckbox
-					v-model="includeSystemColumns"
-					:label="i18n.baseText('dataTable.download.modal.includeSystemColumns')"
-					data-test-id="download-include-system-columns"
-				/>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					size="large"
-					:label="i18n.baseText('dataTable.download.modal.cancel')"
-					data-test-id="download-modal-cancel"
-					@click="() => $emit('close')"
-				/>
-				<N8nButton
-					size="large"
-					:label="i18n.baseText('dataTable.download.modal.confirm')"
-					data-test-id="download-modal-confirm"
-					@click="onConfirm"
-				/>
-			</div>
-		</template>
-	</Modal>
+		<N8nCheckbox
+			v-model="includeSystemColumns"
+			:label="i18n.baseText('dataTable.download.modal.includeSystemColumns')"
+			data-test-id="download-include-system-columns"
+		/>
+	</N8nAlertDialog>
 </template>
-
-<style module lang="scss">
-.content {
-	padding: var(--spacing--xs) 0;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-</style>

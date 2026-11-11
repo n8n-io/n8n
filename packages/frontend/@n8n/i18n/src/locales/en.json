@@ -6182,6 +6182,7 @@
 	"workflows.templateRecoV2.loadingTemplates": "Loading templates...",
 	"workflows.templateRecoV2.useTemplate": "Use template",
 	"workflows.templateRecoV2.exploreTemplates": "Or explore templates to get inspired and learn fast:",
+	"workflows.templateRecoV2.ariaLabel": "Explore templates",
 	"templates.featured.loading": "Loading templates...",
 	"workflows.search.placeholder": "Search",
 	"workflows.filters": "Filters",

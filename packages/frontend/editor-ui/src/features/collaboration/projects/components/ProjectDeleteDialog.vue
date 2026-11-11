@@ -6,11 +6,11 @@ import { useAvailableProjectSearch } from '../projects.utils';
 import type { ProjectSearchFn } from '../projects.utils';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '../projects.store';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
-import { ElDialog } from 'element-plus';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
@@ -18,6 +18,8 @@ import {
 	N8nRadioGroupItem,
 	N8nText,
 } from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 type Props = {
 	currentProject: Project | null;
 	searchFn?: ProjectSearchFn;
@@ -76,81 +78,82 @@ function onOperation(value: string | undefined) {
 }
 </script>
 <template>
-	<ElDialog
-		v-model="visible"
-		:title="
+	<N8nDialog
+		v-model:open="visible"
+		size="xlarge"
+		:header="
 			locale.baseText('projects.settings.delete.title', {
 				interpolate: { projectName: props.currentProject?.name ?? '' },
 			})
 		"
-		width="650"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 	>
-		<N8nText v-if="!hasMovableResources" color="text-base">{{
-			locale.baseText('projects.settings.delete.message.empty')
-		}}</N8nText>
-		<div v-else-if="hasMovableResources">
-			<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
-			<div class="pt-l">
-				<N8nRadioGroup :model-value="operation ?? undefined" @update:model-value="onOperation">
-					<N8nRadioGroupItem value="transfer">
-						<template #label>
-							<N8nText color="text-dark">{{
-								locale.baseText('projects.settings.delete.question.transfer.label')
-							}}</N8nText>
-						</template>
-						<template #content>
-							<div v-if="operation === 'transfer'" class="pt-2xs">
+		<N8nDialogBody>
+			<N8nText v-if="!hasMovableResources" color="text-base">{{
+				locale.baseText('projects.settings.delete.message.empty')
+			}}</N8nText>
+			<div v-else-if="hasMovableResources">
+				<N8nText color="text-base">{{
+					locale.baseText('projects.settings.delete.message')
+				}}</N8nText>
+				<div class="pt-l">
+					<N8nRadioGroup :model-value="operation ?? undefined" @update:model-value="onOperation">
+						<N8nRadioGroupItem value="transfer">
+							<template #label>
 								<N8nText color="text-dark">{{
-									locale.baseText('projects.settings.delete.question.transfer.title')
+									locale.baseText('projects.settings.delete.question.transfer.label')
 								}}</N8nText>
-								<ProjectSharing
-									v-model="selectedProject"
-									class="pt-2xs"
-									:search-fn="resolvedSearchFn"
-									:filter-fn="filterFn"
-									:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
-								/>
-							</div>
-						</template>
-					</N8nRadioGroupItem>
-
-					<N8nRadioGroupItem value="wipe">
-						<template #label>
-							<N8nText color="text-dark">{{
-								locale.baseText('projects.settings.delete.question.wipe.label')
-							}}</N8nText>
-						</template>
-						<template #content>
-							<div v-if="operation === 'wipe'" class="pt-2xs">
-								<N8nInputLabel
-									:label="locale.baseText('projects.settings.delete.question.wipe.title')"
-								>
-									<N8nInput
-										v-model="wipeConfirmText"
-										data-test-id="project-delete-confirm-input"
-										:placeholder="
-											locale.baseText('projects.settings.delete.question.wipe.placeholder')
-										"
+							</template>
+							<template #content>
+								<div v-if="operation === 'transfer'" class="pt-2xs">
+									<N8nText color="text-dark">{{
+										locale.baseText('projects.settings.delete.question.transfer.title')
+									}}</N8nText>
+									<ProjectSharing
+										v-model="selectedProject"
+										class="pt-2xs"
+										:search-fn="resolvedSearchFn"
+										:filter-fn="filterFn"
+										:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
 									/>
-								</N8nInputLabel>
-							</div>
-						</template>
-					</N8nRadioGroupItem>
-				</N8nRadioGroup>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+
+						<N8nRadioGroupItem value="wipe">
+							<template #label>
+								<N8nText color="text-dark">{{
+									locale.baseText('projects.settings.delete.question.wipe.label')
+								}}</N8nText>
+							</template>
+							<template #content>
+								<div v-if="operation === 'wipe'" class="pt-2xs">
+									<N8nInputLabel
+										:label="locale.baseText('projects.settings.delete.question.wipe.title')"
+									>
+										<N8nInput
+											v-model="wipeConfirmText"
+											data-test-id="project-delete-confirm-input"
+											:placeholder="
+												locale.baseText('projects.settings.delete.question.wipe.placeholder')
+											"
+										/>
+									</N8nInputLabel>
+								</div>
+							</template>
+						</N8nRadioGroupItem>
+					</N8nRadioGroup>
+				</div>
 			</div>
-		</div>
-		<template #footer>
-			<N8nDialogFooter>
-				<N8nButton
-					variant="destructive"
-					type="button"
-					:disabled="!isValid"
-					data-test-id="project-settings-delete-confirm-button"
-					@click.stop.prevent="onDelete"
-					>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
-				>
-			</N8nDialogFooter>
-		</template>
-	</ElDialog>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="destructive"
+				type="button"
+				:disabled="!isValid"
+				data-test-id="project-settings-delete-confirm-button"
+				@click.stop.prevent="onDelete"
+				>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
+			>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
