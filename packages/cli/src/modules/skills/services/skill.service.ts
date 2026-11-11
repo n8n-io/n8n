@@ -22,7 +22,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	accountSummary,
+	TransactionRunner,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -55,7 +61,7 @@ import {
 	type SkillTarget,
 	type SkillUpdate,
 } from '../utils/skill-content';
-import { skillContentHash } from '../utils/skill-content-hash';
+import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
@@ -489,7 +495,13 @@ export class SkillService {
 				);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
-			if (!skill.references?.length) delete skill.references;
+			// Reads return files sorted by path. Sort here too, so the returned skill hashes the same
+			// as the stored version and a caller can send that hash back on its next save.
+			if (skill.references?.length) {
+				skill.references = [...skill.references].sort((a, b) =>
+					compareSkillFilePaths(a.path, b.path),
+				);
+			} else delete skill.references;
 			assertHasInstructions(skill);
 			const content = toSkillContent(
 				skill,
@@ -514,7 +526,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx, userId);
+			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
@@ -870,17 +882,7 @@ export class SkillService {
 		const ids = [...new Set(userIds)];
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
-		return new Map(
-			users.map((creator) => [
-				creator.id,
-				{
-					id: creator.id,
-					email: creator.email ?? null,
-					firstName: creator.firstName ?? null,
-					lastName: creator.lastName ?? null,
-				},
-			]),
-		);
+		return new Map(users.map((creator) => [creator.id, accountSummary(creator)]));
 	}
 }
 

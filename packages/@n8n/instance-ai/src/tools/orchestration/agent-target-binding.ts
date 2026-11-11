@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import {
 	AGENT_PREVIEW_SESSION_METADATA_KEY,
+	parseAgentPreviewSession,
 	type AgentPreviewSession,
 } from './agent-test-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
@@ -71,6 +72,28 @@ export async function readPendingAgentTarget(
 	} catch {
 		return undefined;
 	}
+}
+
+/** The agent binding keys of a thread, parsed. A malformed key reads as not set. */
+export interface AgentTargetsMetadata {
+	bound: AgentBuilderTarget | undefined;
+	pending: PendingAgentTarget | undefined;
+	/** The session registry: each agent the thread addressed. */
+	targets: AgentBuilderTarget[];
+	previewSession: AgentPreviewSession | undefined;
+}
+
+/** Read the agent binding keys from thread metadata, for a client that shows them. */
+export function readAgentTargetsMetadata(
+	metadata: Record<string, unknown> | undefined,
+): AgentTargetsMetadata {
+	const pending = pendingAgentTargetSchema.safeParse(metadata?.[PENDING_AGENT_METADATA_KEY]);
+	return {
+		bound: parseTarget(metadata?.[METADATA_KEY]),
+		pending: pending.success ? pending.data : undefined,
+		targets: Object.values(parseRegistry(metadata?.[REGISTRY_METADATA_KEY])),
+		previewSession: parseAgentPreviewSession(metadata?.[AGENT_PREVIEW_SESSION_METADATA_KEY]),
+	};
 }
 
 /** Normalize an addressing key so "Support Triage", "support_triage" and

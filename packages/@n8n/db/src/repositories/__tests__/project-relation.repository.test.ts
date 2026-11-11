@@ -171,4 +171,33 @@ describe('ProjectRelationRepository', () => {
 			expect(result).toEqual(new Map());
 		});
 	});
+
+	describe('hasAnyRoleInProject', () => {
+		beforeEach(() => {
+			entityManager.existsBy.mockReset();
+		});
+
+		it('checks for a relation of the user in the project with one of the roles', async () => {
+			entityManager.existsBy.mockResolvedValueOnce(true);
+
+			const result = await projectRelationRepository.hasAnyRoleInProject('user1', 'project1', [
+				'project:admin',
+				'project:editor',
+			]);
+
+			expect(entityManager.existsBy).toHaveBeenCalledWith(ProjectRelation, {
+				userId: 'user1',
+				projectId: 'project1',
+				role: { slug: In(['project:admin', 'project:editor']) },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('should not query when there are no roles', async () => {
+			const result = await projectRelationRepository.hasAnyRoleInProject('user1', 'project1', []);
+
+			expect(entityManager.existsBy).not.toHaveBeenCalled();
+			expect(result).toBe(false);
+		});
+	});
 });

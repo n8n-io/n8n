@@ -12,6 +12,7 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import type { CredentialConnectionsRequiredResponse, INode } from 'n8n-workflow';
@@ -23,7 +24,7 @@ import { SYSTEM_RESOLVER_ID } from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { AccessTokenRepository } from '@/modules/oauth-server/database/repositories/oauth-access-token.repository';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/constants';
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
@@ -107,7 +108,8 @@ const mintAccessToken = async (userId: string, resourceUrl: string) => {
 	const tokenService = Container.get(OAuthTokenService);
 	// A registered client is needed only to satisfy the token rows' FK.
 	const clientId = `client-${randomUUID()}`;
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: clientId,
 		name: 'Form submit gate tests',
 		redirectUris: ['https://example.com/callback'],

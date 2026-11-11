@@ -868,25 +868,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return won;
 	}
 
-	/** Give every changed follower a new draft ID, including already modified drafts. */
-	async markFollowerDraftsChanged(
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<string[]> {
-		const changed: string[] = [];
-		for (const id of agentIds) {
-			const result = await this.managerFor(ctx)
-				.createQueryBuilder()
-				.update(Agent)
-				.set({ versionId: randomUUID(), revision: () => 'revision + 1' })
-				.where('id = :id', { id })
-				.andWhere(projectScopeUpdateSql)
-				.execute();
-			if ((result.affected ?? 0) > 0) changed.push(id);
-		}
-		return changed;
-	}
-
 	/** The project of each agent, to send an update push to the right project. */
 	async findProjectIdsByIds(
 		ids: string[],

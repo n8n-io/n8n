@@ -1443,27 +1443,40 @@ describe('AgentsService', () => {
 	});
 
 	describe('findListableByUserPaginated', () => {
-		it('loads project metadata for projects where the user holds agent:list', async () => {
-			const { service, agentRepository, projectRelationRepository, projectScopeService } =
-				makeService();
-			const options: ListAgentsQueryDto = { skip: 0, take: 10 };
-			const response = {
-				count: 1,
-				data: [makeAgent({ project: mock<Project>({ id: projectId, name: 'Support Team' }) })],
-			};
-			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
+		it.each([{}, { 'skill-1': 'skill-version-1' }])(
+			'loads project metadata with skill versions %j for projects where the user holds agent:list',
+			async (skillVersions) => {
+				const {
+					service,
+					agentRepository,
+					projectRelationRepository,
+					projectScopeService,
+					skillRefs,
+				} = makeService();
+				const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+				const project = mock<Project>({ id: projectId, name: 'Support Team' });
+				const response = {
+					count: 1,
+					data: [makeAgent({ project })],
+				};
+				projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
+				agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
+				skillRefs.findSkillVersionsForAgents.mockResolvedValue(new Map([[agentId, skillVersions]]));
 
-			await expect(service.findListableByUserPaginated(user, options)).resolves.toBe(response);
+				await expect(service.findListableByUserPaginated(user, options)).resolves.toEqual({
+					count: 1,
+					data: [expect.objectContaining({ id: agentId, project, skillVersions })],
+				});
 
-			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
-			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
-			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
-				['project-1', 'project-2'],
-				options,
-				{ withProject: true },
-			);
-		});
+				expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
+				expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
+				expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+					['project-1', 'project-2'],
+					options,
+					{ withProject: true },
+				);
+			},
+		);
 
 		it('passes an empty project list when the user has no listable projects', async () => {
 			const { service, agentRepository, projectScopeService } = makeService();

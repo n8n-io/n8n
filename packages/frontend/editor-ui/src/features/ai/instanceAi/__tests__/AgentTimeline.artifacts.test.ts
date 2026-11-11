@@ -89,6 +89,63 @@ describe('AgentTimeline artifact cards', () => {
 		expect(names[0]).toContain('Current Agent');
 	});
 
+	it('keeps an artifact and adjacent answer text in one group in timeline order', () => {
+		const { container, getByTestId } = renderComponent({
+			props: { agentNode: rootNode },
+			global: {
+				stubs: {
+					TimelineTextSegment: {
+						props: ['entry'],
+						template: '<div data-test-id="answer-text">{{ entry.content }}</div>',
+					},
+				},
+			},
+		});
+
+		const card = container.querySelector('[data-test-id="instance-ai-artifact-card"]');
+		const text = getByTestId('answer-text');
+		expect(text.textContent).toBe('Done.');
+		expect(card).not.toBeNull();
+		expect(card?.parentElement).toBe(text.parentElement);
+		expect([...text.parentElement!.children]).toEqual([card, text]);
+	});
+
+	it('starts a separate answer group after an activity block', () => {
+		const agentNode: InstanceAiAgentNode = {
+			...rootNode,
+			timeline: [
+				...rootNode.timeline,
+				{ type: 'reasoning', responseId: 'r3', content: 'Checking the result.' },
+				{ type: 'text', responseId: 'r3', content: 'Checked.' },
+			],
+		};
+		const { container, getAllByTestId } = renderComponent({
+			props: { agentNode },
+			global: {
+				stubs: {
+					ThinkingBlock: { template: '<div data-test-id="activity" />' },
+					TimelineTextSegment: {
+						props: ['entry'],
+						template: '<div data-test-id="answer-text">{{ entry.content }}</div>',
+					},
+				},
+			},
+		});
+
+		const texts = getAllByTestId('answer-text');
+		expect(texts.map((text) => text.textContent)).toEqual(['Done.', 'Checked.']);
+		const firstGroup = texts[0].parentElement;
+		const secondGroup = texts[1].parentElement;
+		const activity = getAllByTestId('activity').at(-1);
+		expect(firstGroup).not.toBe(secondGroup);
+		expect(firstGroup?.nextElementSibling).toBe(activity);
+		expect(activity?.nextElementSibling).toBe(secondGroup);
+		expect(
+			container.querySelector('[data-test-id="instance-ai-artifact-card"]')?.parentElement,
+		).toBe(firstGroup);
+		expect(secondGroup?.children).toHaveLength(1);
+	});
+
 	describe('Agents the orchestrator builds itself', () => {
 		const inThreadNode = {
 			agentId: 'root',

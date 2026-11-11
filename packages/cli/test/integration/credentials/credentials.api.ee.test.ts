@@ -8,7 +8,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, ListQueryDb } from '@n8n/db';
+import type { Person, Project, User, ListQueryDb } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
@@ -20,7 +20,7 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@n8n/backend-services';
+import { EventService, RoleCacheService } from '@n8n/backend-services';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -49,7 +49,7 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-let owner: User;
+let owner: Person;
 let admin: User;
 let ownerPersonalProject: Project;
 let member: User;
@@ -662,6 +662,47 @@ describe('GET /credentials/for-workflow', () => {
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
 describe('GET /credentials/:id', () => {
+	test('should emit `credentials-data-read` when the owner reads the data of a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeDefined();
+			expect(emitSpy).toHaveBeenCalledWith('credentials-data-read', {
+				user: expect.objectContaining({ id: owner.id }),
+				credentialType: savedCredential.type,
+				credentialId: savedCredential.id,
+				publicApi: false,
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	test('should not emit `credentials-data-read` for a member who may only read a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeUndefined();
+			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('project viewers can view credentials', async () => {
 		const teamProject = await createTeamProject();
 		await linkUserToProject(member, teamProject, 'project:viewer');
