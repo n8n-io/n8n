@@ -79,7 +79,10 @@ watch([() => props.agent, () => props.agent.availableInMCP], () => {
 	mcpToggleStatus.value = null;
 });
 
-const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
+// MCP tools refuse an archived agent, so the indicator would mislead.
+const showMcpIndicator = computed(
+	() => isMcpEnabled.value && isAvailableInMCP.value && !props.agent.isArchived,
+);
 
 const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));

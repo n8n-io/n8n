@@ -366,6 +366,15 @@ describe('AgentCard', () => {
 		);
 	});
 
+	it('shows the MCP indicator only when the agent is not archived', async () => {
+		enableMcp();
+		const available = await renderComponent(createAgent({ availableInMCP: true }));
+		expect(available.find('[data-test-id="agent-card-mcp"]').exists()).toBe(true);
+
+		const archived = await renderComponent(createAgent({ availableInMCP: true, isArchived: true }));
+		expect(archived.find('[data-test-id="agent-card-mcp"]').exists()).toBe(false);
+	});
+
 	it('hides the MCP action without agent update permission', async () => {
 		enableMcp();
 		agentPermissionsMock.canUpdate.value = false;
