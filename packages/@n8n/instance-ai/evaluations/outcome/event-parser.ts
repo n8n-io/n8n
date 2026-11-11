@@ -600,10 +600,7 @@ function extractResourceIds(
 
 	const action = getString(args, 'action');
 
-	if (
-		toolName === EXECUTION_TOOL_LEGACY ||
-		getExecutionCallAction(toolName, action) === 'run'
-	) {
+	if (toolName === EXECUTION_TOOL_LEGACY || getExecutionCallAction(toolName, action) === 'run') {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}

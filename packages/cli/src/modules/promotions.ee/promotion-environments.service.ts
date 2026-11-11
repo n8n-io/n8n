@@ -16,6 +16,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isDeepStrictEqual } from 'node:util';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -36,6 +37,7 @@ import {
 	storePromotionRemote,
 	type PromotionStoredEnvironmentRemote,
 } from './git-hosts/git-host-remote';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -65,6 +67,17 @@ function invalidatesOpenReviews(current: ReviewTarget, next: ReviewTarget): bool
 }
 
 /**
+ * Names the repository in audit events. The remote URL check rejects a username
+ * and password, but not a query string. A query string can carry a token, so
+ * this removes it.
+ */
+function repositoryForEvents(remote: PromotionStoredEnvironmentRemote): string {
+	if ('repositoryPath' in remote) return remote.repositoryPath;
+	// Cut the string instead of parsing it: SCP-style remotes are not URLs.
+	return remote.remoteUrl.split(/[?#]/, 1)[0];
+}
+
+/**
  * Owns environments and their project links. Provider credentials belong to
  * {@link PromotionProvidersService}, so nothing here accepts or returns them.
  */
@@ -77,6 +90,7 @@ export class PromotionEnvironmentsService {
 		private readonly providersService: PromotionProvidersService,
 		private readonly gitService: PromotionsGitService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 		private readonly reviewRepository: PromotionReviewRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
@@ -109,7 +123,11 @@ export class PromotionEnvironmentsService {
 		this.eventService.emit('promotion-environment-created', {
 			user: actor,
 			environmentId: environment.id,
+			environmentName: input.name,
+			providerId: provider.id,
+			providerName: provider.name,
 			providerType: provider.type,
+			repository: repositoryForEvents(remote),
 			direction: input.direction,
 			environmentScope: input.scope,
 			...('createBranchOnPromotion' in settings && {
@@ -193,6 +211,12 @@ export class PromotionEnvironmentsService {
 			return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
 		});
 		this.logClosedReviews(id, closed, 'environment_target_changed');
+		// Compare values: a request can send the current remote again.
+		const changesCheckout =
+			(changesRemote && !isDeepStrictEqual(remote, current.remote)) ||
+			provider.id !== current.providerId ||
+			(settings !== undefined && this.changesCheckoutBranch(current, settings));
+		if (changesCheckout) await this.checkoutCleanup.resetCheckoutAfterSettingsChange(id);
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -205,7 +229,12 @@ export class PromotionEnvironmentsService {
 			this.eventService.emit('promotion-environment-updated', {
 				user: actor,
 				environmentId: id,
+				environmentName: input.name ?? current.name,
+				providerId: provider.id,
+				providerName: provider.name,
+				repository: repositoryForEvents(remote),
 				direction: current.direction,
+				environmentScope: current.scope,
 				changedFields,
 			});
 		}
@@ -217,7 +246,14 @@ export class PromotionEnvironmentsService {
 	 * provider stays, because other environments may use it.
 	 */
 	async delete(id: string, actor: User): Promise<void> {
-		const { id: environmentId, direction, scope } = await this.getEntity(id);
+		const {
+			id: environmentId,
+			name,
+			provider,
+			remote,
+			direction,
+			scope,
+		} = await this.getEntity(id);
 		// Close first: the delete clears the environment of its reviews.
 		const { closed, deleted } = await this.txRunner.run({}, async (ctx) => {
 			const closed = await this.reviewRepository.closeOpenByEnvironmentId(
@@ -233,11 +269,15 @@ export class PromotionEnvironmentsService {
 			this.eventService.emit('promotion-environment-deleted', {
 				user: actor,
 				environmentId,
+				environmentName: name,
+				providerId: provider.id,
+				providerName: provider.name,
+				repository: repositoryForEvents(remote),
 				direction,
 				environmentScope: scope,
 			});
 		}
-		await this.purgeCache(environmentId);
+		await this.checkoutCleanup.removeDeletedEnvironment(environmentId);
 	}
 
 	async listProjects(id: string): Promise<PromotionEnvironmentProjectListPublicDto> {
@@ -340,9 +380,24 @@ export class PromotionEnvironmentsService {
 		}
 
 		const matchesEnvironment = await this.workingDirectory.matchesDescriptor(
-			buildCacheDescriptor({ environmentId: environment.id, remote, config: resolved }),
+			buildCacheDescriptor({
+				environmentId: environment.id,
+				providerId: environment.providerId,
+				remote,
+				config: resolved,
+			}),
 		);
 		return { hasCheckout, matchesEnvironment };
+	}
+
+	/** Settings this version cannot read count as a change, because no checkout can match them. */
+	private changesCheckoutBranch(
+		current: PromotionEnvironment,
+		settings: PromotionEnvironmentSettings,
+	): boolean {
+		const before = resolveStoredConfig(current);
+		const after = resolveStoredConfig({ direction: current.direction, settings });
+		return !before || !after || checkoutBranchName(before) !== checkoutBranchName(after);
 	}
 
 	private async checkSettings(
@@ -394,20 +449,5 @@ export class PromotionEnvironmentsService {
 			count,
 			reason,
 		});
-	}
-
-	/**
-	 * The environment is already gone, and no operation can use a cache without
-	 * resolving a live environment, so a failed cleanup only leaves disk in use.
-	 */
-	private async purgeCache(environmentId: string) {
-		try {
-			await this.workingDirectory.purge(environmentId);
-		} catch (error) {
-			this.logger.warn('Failed to remove the local promotion checkout', {
-				environmentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 }

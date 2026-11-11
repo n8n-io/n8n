@@ -17,7 +17,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 

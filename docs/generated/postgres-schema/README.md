@@ -9,11 +9,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 25 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 26 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
-| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 13 |  | BASE TABLE |
+| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 14 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
@@ -54,7 +54,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
-| [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 12 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -528,6 +528,7 @@ erDiagram
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agent_budget_applied_call" {
@@ -556,6 +557,7 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName
@@ -1000,11 +1002,13 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
+  json bindings
   integer buildAttempts
   varchar_16_ buildStatus
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK
@@ -1266,7 +1270,7 @@ erDiagram
   varchar_8_ origin
   varchar_16_ outcome
   varchar_36_ projectId
-  integer runtimeMs
+  bigint runtimeMs
   varchar_32_ source
   integer timeSavedMin
 }

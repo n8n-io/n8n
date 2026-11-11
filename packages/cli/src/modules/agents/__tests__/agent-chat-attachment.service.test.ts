@@ -1,14 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 import type { AgentFileGrantRepository } from '../repositories/agent-file-grant.repository';
+
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
 
 describe('AgentChatAttachmentService', () => {
 	let binaryDataService = mock<BinaryDataService>();
@@ -16,6 +24,13 @@ describe('AgentChatAttachmentService', () => {
 	let service: AgentChatAttachmentService;
 	let threadRepository = mock<AgentExecutionThreadRepository>();
 	let grantRepository = mock<AgentFileGrantRepository>();
+	const agentsConfig = mock<AgentsConfig>({
+		maxGeneratedFileSizeMb: 1,
+		maxGeneratedFileCount: 2,
+		maxGeneratedTotalMb: 3,
+		maxTotalMb: 4,
+	});
+	const MB = 1024 * 1024;
 
 	/** Delegation tree: root (agent-1) → child (agent-2) → grandchild (agent-3). */
 	const chains: Record<string, Array<{ id: string; agentId: string | null }>> = {
@@ -46,7 +61,107 @@ describe('AgentChatAttachmentService', () => {
 			repository,
 			threadRepository,
 			grantRepository,
+			projectDeletion,
+			agentsConfig,
 		);
+		repository.sumUsageInThread.mockResolvedValue({
+			totalBytes: 0,
+			sourceCount: 0,
+			sourceBytes: 0,
+		});
+	});
+
+	describe('deleteByProject', () => {
+		it('deletes bounded batches of bytes before their rows', async () => {
+			const batch = Array.from({ length: 500 }, (_, id) =>
+				mock<AgentChatAttachment>({ id: `att-${id}`, binaryDataId: `binary-${id}` }),
+			);
+			repository.findProjectDeletionBatch.mockResolvedValueOnce(batch).mockResolvedValueOnce([]);
+			await service.deleteByProject('project-1');
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledTimes(2);
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledWith('project-1', 500, {});
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(
+				batch.map((item) => item.binaryDataId),
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(
+				batch.map((item) => item.id),
+				{},
+			);
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.deleteByIds.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the batch rows when storage deletion fails', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([
+				mock<AgentChatAttachment>({ id: 'att-1', binaryDataId: 'binary-1' }),
+			]);
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(
+				new Error('storage unavailable'),
+			);
+			await expect(service.deleteByProject('project-1')).rejects.toThrow('storage unavailable');
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledOnce();
+		});
+
+		it('does not access storage for an empty project', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([]);
+			await service.deleteByProject('project-1');
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+	});
+
+	it('removes new upload bytes when project deletion rejects the metadata write', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:x',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		projectDeletion.withWritableProject.mockRejectedValueOnce(
+			new Error('project is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				source: 'chat',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('test'),
+			}),
+		).rejects.toThrow('project is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+	});
+
+	it('removes upload bytes when account deletion rejects a private chat file', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:late-file',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		threadRepository.assertOwnerActive.mockRejectedValue(
+			new UserError('This user is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'root',
+				resourceId: 'system-chat:user-1',
+				source: 'system',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('content'),
+			}),
+		).rejects.toThrow('user is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+			'filesystem-v2:late-file',
+		]);
 	});
 
 	it('checks attachment access through the session and falls back to its persisted resource', async () => {
@@ -147,6 +262,9 @@ describe('AgentChatAttachmentService', () => {
 			expect(stored.source).toBe('chat');
 			expect(stored.threadId).toBe('thread-1');
 			expect(stored.createdByThreadId).toBe('thread-1');
+			expect(stored.contentHash).toBe(
+				'039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81',
+			);
 		});
 
 		it('stores a file that a sub-agent makes under the root thread', async () => {
@@ -199,6 +317,87 @@ describe('AgentChatAttachmentService', () => {
 			).rejects.toThrow('persisted binary data storage mode');
 		});
 
+		describe('caps', () => {
+			const store = async (source: string, size: number) =>
+				await service.storeInbound({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					threadId: 'child',
+					source,
+					fileName: 'out.csv',
+					mimeType: 'text/csv',
+					data: Buffer.alloc(size),
+				});
+
+			beforeEach(() => {
+				binaryDataService.store.mockResolvedValue({
+					id: 'filesystem-v2:x',
+					data: 'filesystem-v2',
+					mimeType: 'text/csv',
+				});
+				repository.saveInboundAttachment.mockImplementation(
+					async (input) => input as AgentChatAttachment,
+				);
+			});
+
+			it('counts the usage of the whole tree', async () => {
+				await store('sandbox', 10);
+
+				expect(repository.sumUsageInThread).toHaveBeenCalledWith(
+					{ projectId: 'project-1', threadId: 'root' },
+					['tool', 'sandbox'],
+					{},
+				);
+			});
+
+			it('rejects a generated file over the file size cap before the usage query', async () => {
+				await expect(store('tool', MB + 1)).rejects.toThrow(AgentFileLimitError);
+				expect(repository.sumUsageInThread).not.toHaveBeenCalled();
+				expect(binaryDataService.store).not.toHaveBeenCalled();
+			});
+
+			it('does not apply the generated file caps to uploads', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 2,
+					sourceBytes: 3 * MB,
+				});
+
+				await expect(store('chat', 2 * MB)).resolves.toBeDefined();
+			});
+
+			it('rejects a file over the total cap for every source', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 4 * MB,
+					sourceCount: 0,
+					sourceBytes: 0,
+				});
+
+				await expect(store('chat', 1)).rejects.toThrow('up to 4 MB of files');
+			});
+
+			it('rejects a generated file over the count cap', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 2,
+					sourceBytes: 0,
+				});
+
+				await expect(store('sandbox', 1)).rejects.toThrow('up to 2 files');
+			});
+
+			it('rejects a generated file over the generated bytes cap', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 0,
+					sourceBytes: 3 * MB,
+				});
+
+				await expect(store('tool', 1)).rejects.toThrow('up to 3 MB of files');
+				expect(binaryDataService.store).not.toHaveBeenCalled();
+			});
+		});
+
 		it('cleans up stored bytes when the row insert fails', async () => {
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
 			binaryDataService.store.mockResolvedValue({
@@ -220,6 +419,96 @@ describe('AgentChatAttachmentService', () => {
 				}),
 			).rejects.toThrow('db down');
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+		});
+	});
+
+	describe('listForSession', () => {
+		it('keeps the newest file for each name and hash and every file without a hash', async () => {
+			const row = (id: string, contentHash: string | null, minute: number, fileName = 'a.txt') =>
+				({
+					id,
+					contentHash,
+					fileName,
+					mimeType: 'text/plain',
+					fileSizeBytes: 1,
+					source: 'sandbox',
+					createdAt: new Date(Date.UTC(2026, 9, 29, 10, minute)),
+				}) as AgentChatAttachment;
+			repository.findInThreadNewestFirst.mockResolvedValue([
+				row('new', 'h1', 4),
+				row('other-name', 'h1', 3, 'a.csv'),
+				row('legacy-1', null, 2),
+				row('old', 'h1', 1),
+				row('legacy-2', null, 0),
+			]);
+
+			const files = await service.listForSession(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+			);
+
+			expect(files.map((file) => file.fileId)).toEqual([
+				'new',
+				'other-name',
+				'legacy-1',
+				'legacy-2',
+			]);
+			expect(files[0]).toEqual({
+				fileId: 'new',
+				fileName: 'a.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 1,
+				source: 'sandbox',
+				createdAt: '2026-10-29T10:04:00.000Z',
+			});
+			expect(repository.findInThreadNewestFirst).toHaveBeenCalledWith(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+				{},
+			);
+		});
+	});
+
+	describe('findReadableByHashes', () => {
+		const file = (id: string, contentHash: string, createdByThreadId: string) =>
+			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;
+
+		it('maps each hash to its files, newest first, for the root thread', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('new', 'h1', 'child'),
+				file('old', 'h1', 'root'),
+			]);
+
+			const result = await service.findReadableByHashes(['h1', 'h2'], {
+				projectId: 'project-1',
+				threadId: 'root',
+			});
+
+			expect([...result]).toEqual([
+				['h1', [expect.objectContaining({ id: 'new' }), expect.objectContaining({ id: 'old' })]],
+			]);
+			expect(repository.findByHashesInThread).toHaveBeenCalledWith(
+				['h1', 'h2'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
+		});
+
+		it('returns only files that a sub-agent made or got granted', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('parent-file', 'h1', 'root'),
+				file('granted', 'h2', 'root'),
+				file('own', 'h3', 'child'),
+			]);
+			grantRepository.findGrantedIds.mockResolvedValue(new Set(['granted']));
+
+			const result = await service.findReadableByHashes(['h1', 'h2', 'h3'], {
+				projectId: 'project-1',
+				threadId: 'child',
+			});
+
+			expect([...result.keys()]).toEqual(['h2', 'h3']);
 		});
 	});
 

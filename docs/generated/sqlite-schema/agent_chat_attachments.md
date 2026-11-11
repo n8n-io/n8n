@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36), "projectId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "resourceId" varchar(255), "binaryDataId" text NOT NULL, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "source" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdByThreadId" varchar(128) NOT NULL, CONSTRAINT "FK_41c246c30af3d2108d93e15dd5e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5c048535b2132b40dfed2e640e5" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36), "projectId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "resourceId" varchar(255), "binaryDataId" text NOT NULL, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "source" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdByThreadId" varchar(128) NOT NULL, "contentHash" VARCHAR(64), CONSTRAINT "FK_41c246c30af3d2108d93e15dd5e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5c048535b2132b40dfed2e640e5" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "a
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | binaryDataId | TEXT |  | false |  |  |  |
+| contentHash | VARCHAR(64) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdByThreadId | varchar(128) |  | false |  |  |  |
 | fileName | varchar(255) |  | false |  |  |  |
@@ -58,6 +59,7 @@ erDiagram
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
+  VARCHAR_64_ contentHash
   datetime_3_ createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName

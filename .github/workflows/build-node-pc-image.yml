@@ -10,11 +10,14 @@ on:
     branches:
       - master
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/node-pc/Dockerfile'
       - '.github/workflows/build-node-pc-image.yml'
   pull_request:
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/node-pc/Dockerfile'
+      - '.github/scripts/docker/bake-inputs-changed.mjs'
       - '.github/workflows/build-node-pc-image.yml'
   workflow_dispatch:
     inputs:
@@ -24,11 +27,50 @@ on:
         default: false
         type: boolean
 
-env:
-  NODE_VERSION: '26.12.1'
-
 jobs:
+  # A rebuild compiles Node and moves the tags to new digests. So master builds
+  # only when the inputs (the node-pc bake target) changed.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.gate.outputs.changed }}
+      node_version: ${{ steps.resolve.outputs.node_version }}
+      build_args: ${{ steps.resolve.outputs.build_args }}
+    steps:
+      # A pin must point at an image that master built. See docker/AGENTS.md.
+      - name: Publish from master only
+        if: github.event_name == 'workflow_dispatch' && inputs.push && github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::Publish from master only. Merge the input change, and master publishes the image. See docker/AGENTS.md."
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check whether the inputs changed
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          node .github/scripts/docker/bake-inputs-changed.mjs --event "$EVENT" --base "$BASE_COMMIT" \
+            --targets node-pc --pr-paths .github/workflows/build-node-pc-image.yml
+
+      - name: Read the build args from docker-bake.hcl
+        id: resolve
+        if: steps.gate.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          plan=$(docker buildx bake -f docker/docker-bake.hcl --print node-pc)
+          {
+            echo "node_version=$(jq -r '.target["node-pc"].args.NODE_VERSION' <<<"$plan")"
+            echo "build_args<<BUILD_ARGS_EOF"
+            jq -r '.target["node-pc"].args | to_entries[] | "\(.key)=\(.value)"' <<<"$plan"
+            echo "BUILD_ARGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 150
     strategy:
@@ -63,16 +105,15 @@ jobs:
           file: ./docker/images/node-pc/Dockerfile
           target: runtime
           platforms: ${{ matrix.platform }}
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
+          build-args: ${{ needs.prepare.outputs.build_args }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-${{ matrix.arch }}
           no-cache: true
 
       # No no-cache here: reuses the compile layers from the runtime build
@@ -84,19 +125,18 @@ jobs:
           file: ./docker/images/node-pc/Dockerfile
           target: dev
           platforms: ${{ matrix.platform }}
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
+          build-args: ${{ needs.prepare.outputs.build_args }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-dev-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-dev-${{ matrix.arch }}
 
   create-multi-arch-manifest:
-    needs: build
+    needs: [prepare, build]
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
     runs-on: ubuntu-latest
     steps:
@@ -111,17 +151,19 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Create multi-arch manifests
+        env:
+          NODE_VERSION: ${{ needs.prepare.outputs.node_version }}
         run: |
           for REPO in \
             "${{ secrets.DOCKER_USERNAME }}/node-pc" \
             "ghcr.io/${{ github.repository_owner }}/node-pc" \
           ; do
             for DEV in "" "-dev"; do
-              AMD64="$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV-amd64"
-              ARM64="$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV-arm64"
+              AMD64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-amd64"
+              ARM64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-arm64"
               for TAG in \
-                "$REPO:${{ env.NODE_VERSION }}$DEV" \
-                "$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV" \
+                "$REPO:$NODE_VERSION$DEV" \
+                "$REPO:$NODE_VERSION-${{ github.sha }}$DEV" \
               ; do
                 echo "Creating manifest $TAG"
                 docker buildx imagetools create --tag "$TAG" "$AMD64" "$ARM64"

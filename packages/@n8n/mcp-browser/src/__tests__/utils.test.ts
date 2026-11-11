@@ -8,6 +8,7 @@ import {
 	formatErrorResponse,
 	formatImageResponse,
 	generateId,
+	redactUrlForLogging,
 	toError,
 } from '../utils';
 
@@ -103,6 +104,36 @@ describe('toError', () => {
 		const result = toError(null);
 		expect(result).toBeInstanceOf(Error);
 		expect(result.message).toBe('null');
+	});
+});
+
+describe('redactUrlForLogging', () => {
+	it('should keep the query parameter names and mask their values', () => {
+		expect(redactUrlForLogging('wss://connect.example.com/?signingKey=abc&enableProxy=true')).toBe(
+			'wss://connect.example.com/?signingKey=REDACTED&enableProxy=REDACTED',
+		);
+	});
+
+	it('should mask every value of a repeated parameter', () => {
+		expect(redactUrlForLogging('wss://connect.example.com/?token=a&token=b')).toBe(
+			'wss://connect.example.com/?token=REDACTED',
+		);
+	});
+
+	it('should remove the hash and userinfo', () => {
+		expect(redactUrlForLogging('wss://user:pass@connect.example.com/path#frag')).toBe(
+			'wss://connect.example.com/path',
+		);
+	});
+
+	it('should keep the host and path', () => {
+		expect(redactUrlForLogging('ws://127.0.0.1:9999/cdp/relay-default')).toBe(
+			'ws://127.0.0.1:9999/cdp/relay-default',
+		);
+	});
+
+	it('should not return an endpoint it cannot parse', () => {
+		expect(redactUrlForLogging('not a url?token=abc')).toBe('(unparseable endpoint)');
 	});
 });
 

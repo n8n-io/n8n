@@ -68,6 +68,12 @@ export interface ResolvedSystemTask {
 export function resolveSystemTask(task: SystemTask): ResolvedSystemTask {
 	const runOptions = resolveSystemTaskRunOptions(task);
 	validateTimerOptions(task);
+	if (task.initialDelaySeconds !== undefined) {
+		if (task.schedule.kind !== 'interval') {
+			throw new UnexpectedError('Only interval system tasks can declare an initial delay');
+		}
+		assertInRange(task.name, 'initialDelaySeconds', task.initialDelaySeconds, 0);
+	}
 	return { schedule: resolveSystemTaskSchedule(task), runOptions };
 }
 

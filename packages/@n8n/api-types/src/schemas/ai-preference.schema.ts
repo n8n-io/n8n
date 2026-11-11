@@ -1,11 +1,6 @@
 import type { Scope } from '@n8n/permissions';
 import { z } from 'zod';
 
-/** Multivariate flag: only `variant` enables the feature. */
-export const CONTEXT_PREFERENCES_FLAG = '111_context_preferences';
-export const CONTEXT_PREFERENCES_CONTROL_VARIANT = 'control';
-export const CONTEXT_PREFERENCES_ENABLED_VARIANT = 'variant';
-
 /** Caps the prompt text, not the column. */
 export const AI_PREFERENCE_CONTENT_MAX_LENGTH = 2000;
 

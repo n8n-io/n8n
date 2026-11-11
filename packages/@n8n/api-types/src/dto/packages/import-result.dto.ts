@@ -184,8 +184,8 @@ const importedProjectSummarySchema = z.object({
 	status: z.enum(['created', 'updated', 'skipped']).openapi({
 		description:
 			'Import outcome for this package project. `skipped` means the project already existed ' +
-			'and `projectConflictPolicy=merge` left its details untouched — its contents were still ' +
-			'imported.',
+			'and its details stay as they are: `projectConflictPolicy=merge` left them untouched, or ' +
+			'the package changes none of them. Its contents were still imported.',
 	}),
 });
 
