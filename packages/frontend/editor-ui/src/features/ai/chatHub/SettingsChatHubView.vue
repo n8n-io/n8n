@@ -19,7 +19,6 @@ import {
 	N8nPreviewBadge,
 	N8nSettingsEnableRow,
 	N8nSettingsRowGroup,
-	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
@@ -164,9 +163,6 @@ onMounted(async () => {
 			/>
 			<ChatSemanticSearchSettings v-if="isSemanticSearchEnabled" />
 		</template>
-		<N8nText v-else color="text-light" data-test-id="chat-hub-disabled-notice">
-			{{ i18n.baseText('settings.chatHub.disabled.notice') }}
-		</N8nText>
 	</div>
 </template>
 

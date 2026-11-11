@@ -94,21 +94,19 @@ describe('SettingsChatHubView', () => {
 	});
 
 	it('renders the enable toggle and providers when Chat is enabled', () => {
-		const { getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('chat-hub-enabled-switch')).toBeInTheDocument();
 		expect(getByTestId('chat-providers-table')).toBeInTheDocument();
-		expect(queryByTestId('chat-hub-disabled-notice')).not.toBeInTheDocument();
 	});
 
-	it('renders the toggle and a disabled notice but no providers when Chat is disabled', () => {
+	it('renders the toggle but no providers when Chat is disabled', () => {
 		settingsState.enabled = false;
 		settingsState.isChatFeatureEnabled = false;
 
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('chat-hub-enabled-switch')).toBeInTheDocument();
-		expect(getByTestId('chat-hub-disabled-notice')).toBeInTheDocument();
 		expect(queryByTestId('chat-providers-table')).not.toBeInTheDocument();
 	});
 
