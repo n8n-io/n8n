@@ -103,6 +103,13 @@ describe('converter rules', () => {
 			connections: toolConnection,
 			code: 'NON_MAIN_CONNECTION',
 		},
+		{
+			// The converter checks connection types before it removes disabled nodes.
+			shape: 'a reachable disabled node with a non-main connection',
+			target: node({ disabled: true }),
+			connections: toolConnection,
+			code: 'NON_MAIN_CONNECTION',
+		},
 	])('blocks $shape with code $code, naming the node', ({ target, connections, code }) => {
 		expect(check(target, connections)).toEqual({
 			eligible: false,
@@ -143,11 +150,6 @@ describe('converter rules', () => {
 			shape: 'a disabled Merge node in chooseBranch mode',
 			target: { ...merge(3, 'chooseBranch'), disabled: true },
 		},
-		{
-			shape: 'a disabled node with a non-main connection',
-			target: node({ disabled: true }),
-			connections: toolConnection,
-		},
 	])('allows $shape', ({ target, connections }) => {
 		expect(check(target, connections)).toEqual({ eligible: true, reasons: [] });
 	});
@@ -169,6 +171,15 @@ describe('converter rules', () => {
 				nodeTypes,
 			),
 		).toEqual({ eligible: true, reasons: [] });
+	});
+
+	it('checks every node when no trigger is enabled, as the converter does not root the graph then', () => {
+		const target = node({ onError: 'continueErrorOutput' });
+
+		expect(
+			checkEngineV2Eligibility({ nodes: [target], connections: {}, settings: {} }, nodeTypes)
+				.reasons,
+		).toEqual([expect.objectContaining({ code: 'CONTINUE_ERROR_OUTPUT', nodeName: 'Node' })]);
 	});
 
 	it('reports only the version for a Split In Batches node of another version', () => {

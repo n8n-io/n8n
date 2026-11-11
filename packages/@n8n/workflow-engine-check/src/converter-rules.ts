@@ -15,20 +15,21 @@ const DEFAULT_BATCH_SIZE = 1;
 
 /**
  * Mirrors the node-level refusals of `V1WorkflowConverter` in
- * `@n8n/node-engine-compatibility`. Like the converter, the rules skip disabled nodes
- * and nodes that no live trigger reaches over `main`. Unlike the converter, they report
- * every refusal, not only the first.
+ * `@n8n/node-engine-compatibility`. Like the converter, the rules skip nodes that no
+ * live trigger reaches over `main`, and the node rules skip disabled nodes. Unlike the
+ * converter, they report every refusal, not only the first.
  */
 export function findConverterReasons(nodes: INode[], connections: IConnections): EngineV2Reason[] {
-	const liveNodes = nodes.filter((node) => node.disabled !== true);
-	const triggers = liveNodes.filter((node) => isTriggerNodeType(node.type));
+	const triggers = nodes.filter((node) => node.disabled !== true && isTriggerNodeType(node.type));
 	const reachable = reachableNodeNames(nodes, connections, triggers);
 
-	const reasons = liveNodes
+	const reasons = nodes
 		.filter((node) => reachable.has(node.name))
 		.flatMap((node) => {
 			// The converter turns the fired trigger into a trigger step and skips its node rules.
-			const nodeReasons = isTriggerNodeType(node.type) ? [] : findNodeReasons(node);
+			const nodeReasons =
+				node.disabled === true || isTriggerNodeType(node.type) ? [] : findNodeReasons(node);
+			// The converter checks connection types before it removes disabled nodes.
 			if (hasNonMainConnection(connections, node.name)) {
 				nodeReasons.push(
 					reason(
