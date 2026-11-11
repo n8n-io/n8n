@@ -25,7 +25,7 @@ import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-gr
 import type { Logger } from '../../logger';
 import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { ModelConfig, UtilityModelResolver } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
@@ -42,6 +42,8 @@ export interface ClassifyNodesForSimulationInput {
 	nodeNames?: ReadonlySet<string>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Builds a pinned helper model on the host, so the helper keeps that model on proxy-managed deployments. */
+	resolveFallbackModel?: UtilityModelResolver;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -365,6 +367,7 @@ async function classifyAmbiguousNodes(
 	fallbackModelConfig?: ModelConfig,
 	logger?: Logger,
 	modelFetch?: FetchFn,
+	resolveFallbackModel?: UtilityModelResolver,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -381,6 +384,7 @@ async function classifyAmbiguousNodes(
 		userText,
 		schema: LlmVerdictSchema,
 		fallbackModelConfig,
+		resolveFallbackModel,
 		modelFetch,
 	});
 	if (!result.ok) {
@@ -451,6 +455,7 @@ export async function classifyNodesForSimulation(
 				input.fallbackModelConfig,
 				input.logger,
 				input.modelFetch,
+				input.resolveFallbackModel,
 			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}

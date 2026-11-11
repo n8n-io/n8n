@@ -20,6 +20,8 @@ export async function reconcileStaleCredentialPlan(args: {
 	logger: OrchestrationContext['logger'];
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: OrchestrationContext['modelId'];
+	/** Builds the classifier's pinned model on the host. */
+	resolveFallbackModel?: OrchestrationContext['resolveUtilityModel'];
 	/** Transport for the classification model call. */
 	modelFetch?: OrchestrationContext['modelFetch'];
 }): Promise<WorkflowBuildOutcome> {
@@ -30,6 +32,7 @@ export async function reconcileStaleCredentialPlan(args: {
 		workflowTaskService,
 		logger,
 		fallbackModelConfig,
+		resolveFallbackModel,
 		modelFetch,
 	} = args;
 	// Reconciliation can change something only when the outcome holds mocked
@@ -49,6 +52,7 @@ export async function reconcileStaleCredentialPlan(args: {
 			workflow,
 			availableCredentials,
 			fallbackModelConfig,
+			resolveFallbackModel,
 			modelFetch,
 		});
 		if (!patch) return buildOutcome;

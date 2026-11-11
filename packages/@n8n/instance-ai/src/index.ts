@@ -746,6 +746,7 @@ export type {
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
+	UtilityModelResolver,
 	EndpointModelConfig,
 	VertexAnthropicModelConfig,
 	InstanceAiMemoryConfig,

@@ -183,6 +183,28 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
+	it('uses the host build of its pinned model as the fallback', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
+		const hostSonnet = {
+			kind: 'endpoint' as const,
+			id: 'anthropic/claude-sonnet-5-5' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		const resolveFallbackModel = vi.fn(async () => hostSonnet);
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			fallbackModelConfig: 'anthropic/claude-opus-5-5',
+			resolveFallbackModel,
+		});
+		expect(resolveFallbackModel).toHaveBeenCalledWith(SIMULATION_FIXTURES_MODEL);
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-simulation-fixtures',
+			expect.objectContaining({ fallbackModelConfig: hostSonnet }),
+		);
+	});
+
 	it('strips markdown fences around the JSON output', async () => {
 		setupAgentMock('```json\n{"A":[{"json":{"ok":true}}]}\n```');
 		const result = await generateSimulationFixtures({

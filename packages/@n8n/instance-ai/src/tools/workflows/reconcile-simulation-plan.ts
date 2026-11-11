@@ -24,7 +24,7 @@ import {
 import type { CredentialMap } from './resolve-credentials';
 import type { FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { ModelConfig, UtilityModelResolver } from '../../types';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
@@ -82,10 +82,19 @@ export async function reconcileSimulationPlan(args: {
 	availableCredentials: CredentialMap;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Builds a pinned helper model on the host, so the helper keeps that model on proxy-managed deployments. */
+	resolveFallbackModel?: UtilityModelResolver;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig, modelFetch } = args;
+	const {
+		buildOutcome,
+		workflow,
+		availableCredentials,
+		fallbackModelConfig,
+		resolveFallbackModel,
+		modelFetch,
+	} = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -136,6 +145,7 @@ export async function reconcileSimulationPlan(args: {
 			nodeNames: satisfiedNames,
 			mockedNodeNames: remainingMockedNames,
 			fallbackModelConfig,
+			resolveFallbackModel,
 			modelFetch,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));

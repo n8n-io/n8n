@@ -8552,6 +8552,17 @@ describe('createContext — run model wiring', () => {
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
+
+	// The verification helpers pin Haiku and Sonnet. Without this wiring they run
+	// on the main model on deployments without env model keys (cloud).
+	it('copies the host utility model resolver onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const resolveUtilityModel = vi.fn(async () => undefined);
+
+		const context = service.createContext(mockUser, { resolveUtilityModel });
+
+		expect(context.resolveUtilityModel).toBe(resolveUtilityModel);
+	});
 });
 
 // ---------------------------------------------------------------------------

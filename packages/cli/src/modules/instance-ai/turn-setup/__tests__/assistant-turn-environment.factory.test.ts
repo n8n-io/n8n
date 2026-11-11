@@ -12,6 +12,8 @@ import {
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
+import type { ProxyTokenManager } from '@/services/proxy-token-manager';
+
 import { QuotaExhaustedStreamError } from '../assistant-credits';
 import { AssistantTurnEnvironmentFactory } from '../assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from '../assistant-turn-runtime';
@@ -145,6 +147,42 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(environment.orchestrationContext.promptConfiguration).toMatchObject({
 				version: 'progressive@1',
 			});
+		});
+
+		it('gives both contexts a resolver for pinned utility models on the run proxy', async () => {
+			const { factory, fields } = createSetupFactory();
+			const tokenManager = mock<ProxyTokenManager>();
+			const haiku = { provider: 'anthropic.messages', modelId: 'claude-haiku-5-5' };
+			const resolveUtilityModelConfig = vi.fn(async () => haiku);
+			Object.assign(fields.modelService, {
+				resolveProxyModel: vi.fn(async () => 'anthropic/claude-opus-5-5'),
+				resolveUtilityModelConfig,
+			});
+
+			const { orchestrationContext } = await factory.create(
+				{
+					...params,
+					proxyRunConfig: { proxyBaseUrl: 'https://proxy.base', tokenManager },
+				},
+				createRuntime(),
+			);
+
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ resolveUtilityModel: orchestrationContext.resolveUtilityModel }),
+			);
+			await expect(
+				orchestrationContext.resolveUtilityModel?.('anthropic/claude-haiku-5-5'),
+			).resolves.toBe(haiku);
+			expect(resolveUtilityModelConfig).toHaveBeenCalledWith(
+				user,
+				{
+					proxyBaseUrl: 'https://proxy.base',
+					tokenManager,
+					proxyContext: { runId: 'run-1', threadId: 'thread-1' },
+				},
+				'anthropic/claude-haiku-5-5',
+			);
 		});
 
 		it('wires the runtime hooks into the contexts', async () => {

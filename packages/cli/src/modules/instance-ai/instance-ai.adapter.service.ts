@@ -112,6 +112,7 @@ import type {
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
+	UtilityModelResolver,
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
@@ -589,6 +590,8 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Builds the models that those utility LLM calls pin. */
+			resolveUtilityModel?: UtilityModelResolver;
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -615,6 +618,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			resolveUtilityModel,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -653,6 +657,7 @@ export class InstanceAiAdapterService {
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			resolveUtilityModel,
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,

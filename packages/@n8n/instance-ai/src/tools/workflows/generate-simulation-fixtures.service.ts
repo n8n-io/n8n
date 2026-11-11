@@ -40,7 +40,7 @@ import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { ModelConfig, UtilityModelResolver } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
@@ -67,6 +67,8 @@ export interface GenerateSimulationFixturesInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Builds a pinned helper model on the host, so the helper keeps that model on proxy-managed deployments. */
+	resolveFallbackModel?: UtilityModelResolver;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -458,6 +460,7 @@ export async function generateSimulationFixtures(
 		userText,
 		schema: FixturesResponseSchema,
 		fallbackModelConfig: input.fallbackModelConfig,
+		resolveFallbackModel: input.resolveFallbackModel,
 		modelFetch: input.modelFetch,
 	});
 	if (!result.ok) {

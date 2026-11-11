@@ -134,6 +134,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					workflow: json,
 					availableCredentials,
 					fallbackModelConfig: context.modelId,
+					resolveFallbackModel: context.resolveUtilityModel,
 					modelFetch: context.modelFetch,
 				});
 				if (patch) {

@@ -154,6 +154,38 @@ export class InstanceAiModelService {
 	}
 
 	/**
+	 * Model for a utility call that pins `modelName`, such as the verification
+	 * helpers on Haiku or Sonnet. The AI service proxy has no eval API key, so
+	 * without this those calls run on the main model. Returns `undefined` outside
+	 * the proxy, for a model of another provider, or on an error. Then the caller
+	 * uses the main model.
+	 */
+	async resolveUtilityModelConfig(
+		user: User,
+		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+		modelName: string,
+	): Promise<ModelConfig | undefined> {
+		if (!run.proxyBaseUrl || !run.tokenManager) return undefined;
+		const mainProvider = splitModelId(this.settingsService.getConfiguredModelId()).provider;
+		if (splitModelId(modelName).provider !== mainProvider) return undefined;
+		try {
+			return await this.resolveProxyModel(
+				user,
+				run.proxyBaseUrl,
+				run.tokenManager,
+				run.proxyContext,
+				modelName,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to resolve an Instance AI utility model, using the main model', {
+				modelName,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a
 	 * LanguageModel pointed at the proxy.
 	 *

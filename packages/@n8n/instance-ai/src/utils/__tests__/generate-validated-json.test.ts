@@ -10,6 +10,7 @@ vi.mock('../eval-agents', async () => {
 
 import { getCurrentHelperTelemetry } from '../../tracing/langsmith-tracing';
 import { createEvalAgent, extractText } from '../eval-agents';
+import type { UtilityModelResolver } from '../../types';
 import { generateValidatedJson } from '../generate-validated-json';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
@@ -130,6 +131,74 @@ describe('generateValidatedJson', () => {
 			'test-agent',
 			expect.objectContaining({ fallbackModelConfig, modelFetch }),
 		);
+	});
+
+	describe('pinned model on the host', () => {
+		const runModel = 'anthropic/claude-opus-5-5';
+		const pinnedModel = 'anthropic/claude-haiku-5-5';
+		const hostPinnedModel = {
+			id: 'anthropic/claude-haiku-5-5' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		async function generatePinned(resolveFallbackModel: UtilityModelResolver) {
+			return await generateValidatedJson('test-agent', {
+				model: pinnedModel,
+				instructions: 'instructions',
+				userText: 'do it',
+				schema,
+				fallbackModelConfig: runModel,
+				resolveFallbackModel,
+			});
+		}
+
+		it('uses the host model for the pinned name as the fallback', async () => {
+			setupAgentMock('{"ok": true}');
+			const resolveFallbackModel = vi.fn().mockResolvedValue(hostPinnedModel);
+			await generatePinned(resolveFallbackModel);
+			expect(resolveFallbackModel).toHaveBeenCalledWith(pinnedModel);
+			expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+				'test-agent',
+				expect.objectContaining({ model: pinnedModel, fallbackModelConfig: hostPinnedModel }),
+			);
+		});
+
+		it('uses the run model when the host cannot build the pinned model', async () => {
+			setupAgentMock('{"ok": true}');
+			await generatePinned(vi.fn().mockResolvedValue(undefined));
+			expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+				'test-agent',
+				expect.objectContaining({ fallbackModelConfig: runModel }),
+			);
+		});
+
+		it('uses the run model when the host resolver throws', async () => {
+			setupAgentMock('{"ok": true}');
+			const result = await generatePinned(vi.fn().mockRejectedValue(new Error('proxy down')));
+			expect(result).toEqual({ ok: true, data: { ok: true } });
+			expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+				'test-agent',
+				expect.objectContaining({ fallbackModelConfig: runModel }),
+			);
+		});
+
+		it('does not resolve a host model when the call pins no model', async () => {
+			setupAgentMock('{"ok": true}');
+			const resolveFallbackModel = vi.fn();
+			await generateValidatedJson('test-agent', {
+				instructions: 'instructions',
+				userText: 'do it',
+				schema,
+				fallbackModelConfig: runModel,
+				resolveFallbackModel,
+			});
+			expect(resolveFallbackModel).not.toHaveBeenCalled();
+			expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+				'test-agent',
+				expect.objectContaining({ fallbackModelConfig: runModel }),
+			);
+		});
 	});
 });
 

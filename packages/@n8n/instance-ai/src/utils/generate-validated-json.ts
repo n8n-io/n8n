@@ -13,6 +13,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
+import type { UtilityModelResolver } from '../types';
 
 export type ValidatedJsonResult<T> =
 	| { ok: true; data: T }
@@ -33,6 +34,11 @@ export interface GenerateValidatedJsonOptions<T> {
 	schema: z.ZodType<T>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/**
+	 * Builds the pinned `model` on the host. Its result replaces `fallbackModelConfig`,
+	 * so the call keeps its pinned model when no eval model API key is configured.
+	 */
+	resolveFallbackModel?: UtilityModelResolver;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 }
@@ -47,11 +53,24 @@ async function helperTelemetry(agentName: string) {
 	}
 }
 
+/** The host's build of the pinned model, else the run's model. A resolver error never fails the call. */
+async function resolveFallback<T>(
+	options: GenerateValidatedJsonOptions<T>,
+): Promise<ModelConfig | undefined> {
+	if (!options.model || !options.resolveFallbackModel) return options.fallbackModelConfig;
+	try {
+		return (await options.resolveFallbackModel(options.model)) ?? options.fallbackModelConfig;
+	} catch {
+		return options.fallbackModelConfig;
+	}
+}
+
 export async function generateValidatedJson<T>(
 	agentName: string,
 	options: GenerateValidatedJsonOptions<T>,
 ): Promise<ValidatedJsonResult<T>> {
 	const telemetry = await helperTelemetry(agentName);
+	const fallbackModelConfig = await resolveFallback(options);
 	let text: string;
 	try {
 		const llm = createEvalAgent(agentName, {
@@ -59,7 +78,7 @@ export async function generateValidatedJson<T>(
 			model: options.model,
 			effort: options.effort,
 			instructions: options.instructions,
-			fallbackModelConfig: options.fallbackModelConfig,
+			fallbackModelConfig,
 			modelFetch: options.modelFetch,
 		});
 		const result = await llm.generate([

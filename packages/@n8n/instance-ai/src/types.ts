@@ -1734,6 +1734,11 @@ export interface InstanceAiContext {
 	 * from environment API keys that proxy-managed deployments don't have.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Builds the model that a utility LLM call pins (Haiku or Sonnet for verification).
+	 * Without it, those calls use `modelId` when no eval model API key is configured.
+	 */
+	resolveUtilityModel?: UtilityModelResolver;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
 	workflowService: InstanceAiWorkflowService;
@@ -2050,6 +2055,12 @@ export type ModelConfig =
 	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 
+/**
+ * Host lookup for a model that a utility LLM call pins by name. It builds the model on the
+ * run's provider and credentials. Returns `undefined` when the host cannot build it.
+ */
+export type UtilityModelResolver = (modelName: string) => Promise<ModelConfig | undefined>;
+
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
 	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
@@ -2226,6 +2237,8 @@ export interface OrchestrationContext {
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/** Builds a pinned utility model (see `InstanceAiContext.resolveUtilityModel`). */
+	resolveUtilityModel?: UtilityModelResolver;
 	/** Transport for utility LLM calls (see `InstanceAiContext.modelFetch`). */
 	modelFetch?: FetchFn;
 	/**

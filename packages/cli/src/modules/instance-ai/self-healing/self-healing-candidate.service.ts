@@ -151,6 +151,7 @@ export class SelfHealingCandidateService {
 			declaredOutputFixtures: candidate.declaredOutputFixtures,
 			outputSchemaLookup: context.outputSchemaLookup,
 			fallbackModelConfig: context.modelId,
+			resolveFallbackModel: context.resolveUtilityModel,
 			modelFetch: context.modelFetch,
 			logger: this.logger,
 		});

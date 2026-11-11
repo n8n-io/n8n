@@ -35,7 +35,7 @@ import {
 import type { Logger } from '../../logger';
 import type { FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { ModelConfig, UtilityModelResolver } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
 	NodeSimulationVerdict,
@@ -57,6 +57,8 @@ export interface PlanVerificationSimulationInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Builds a pinned helper model on the host, so the helper keeps that model on proxy-managed deployments. */
+	resolveFallbackModel?: UtilityModelResolver;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -349,6 +351,7 @@ export async function planVerificationSimulation({
 	workflowId,
 	outputSchemaLookup,
 	fallbackModelConfig,
+	resolveFallbackModel,
 	modelFetch,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
@@ -361,6 +364,7 @@ export async function planVerificationSimulation({
 			workflow,
 			mockedNodeNames,
 			fallbackModelConfig,
+			resolveFallbackModel,
 			modelFetch,
 			logger,
 		});
@@ -388,6 +392,7 @@ export async function planVerificationSimulation({
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
 							fallbackModelConfig,
+							resolveFallbackModel,
 							modelFetch,
 							logger,
 						})

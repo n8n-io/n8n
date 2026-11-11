@@ -12,7 +12,10 @@ import {
 	mcpToolWorkflow,
 } from '../../../__tests__/agent-tool-workflow';
 import { createEvalAgent, extractText } from '../../../utils/eval-agents';
-import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
+import {
+	DESTRUCTIVENESS_CLASSIFIER_MODEL,
+	classifyNodesForSimulation,
+} from '../classify-node-destructiveness.service';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as MockedFunction<typeof extractText>;
@@ -234,6 +237,38 @@ describe('classifyNodesForSimulation', () => {
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-destructiveness-classifier',
 			expect.objectContaining({ fallbackModelConfig, modelFetch }),
+		);
+	});
+
+	it('uses the host build of its pinned model as the fallback', async () => {
+		setupAgentMock(
+			JSON.stringify({
+				Search: { verdict: 'execute', reason: 'POST to a search endpoint', confidence: 'high' },
+			}),
+		);
+		const hostHaiku = {
+			kind: 'endpoint' as const,
+			id: 'anthropic/claude-haiku-5-5' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		const resolveFallbackModel = vi.fn(async () => hostHaiku);
+		await classifyNodesForSimulation({
+			workflow: chainWorkflow([
+				trigger,
+				{
+					name: 'Search',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { method: 'POST', url: 'https://api.example.com/search' },
+				},
+			]),
+			fallbackModelConfig: 'anthropic/claude-opus-5-5',
+			resolveFallbackModel,
+		});
+		expect(resolveFallbackModel).toHaveBeenCalledWith(DESTRUCTIVENESS_CLASSIFIER_MODEL);
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-destructiveness-classifier',
+			expect.objectContaining({ fallbackModelConfig: hostHaiku }),
 		);
 	});
 

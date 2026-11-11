@@ -390,6 +390,12 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			resolveUtilityModel: async (modelName) =>
+				await this.models.resolveUtilityModelConfig(
+					user,
+					{ proxyBaseUrl: proxy.proxyBaseUrl, tokenManager: proxy.tokenManager, proxyContext },
+					modelName,
+				),
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

@@ -443,4 +443,63 @@ describe('InstanceAiModelService', () => {
 			).resolves.toBeUndefined();
 		});
 	});
+
+	describe('resolveUtilityModelConfig', () => {
+		const tokenManager = { getAuthHeaders: vi.fn() } as never;
+		const proxyRun = {
+			proxyBaseUrl: 'https://proxy.base',
+			tokenManager,
+			proxyContext: { runId: 'run-1', threadId: 'thread-1' },
+		};
+
+		it('routes a pinned model of the main provider through the run proxy', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+			const haiku = { provider: 'anthropic.messages', modelId: 'claude-haiku-5-5' };
+			createProxyLanguageModel.mockResolvedValue(haiku);
+
+			await expect(
+				service.resolveUtilityModelConfig(fakeUser, proxyRun, 'anthropic/claude-haiku-5-5'),
+			).resolves.toBe(haiku);
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					proxyBaseUrl: 'https://proxy.base',
+					modelId: 'claude-haiku-5-5',
+					tokenManager,
+					runId: 'run-1',
+					threadId: 'thread-1',
+				}),
+			);
+		});
+
+		it('returns undefined outside the AI service proxy', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+
+			await expect(
+				service.resolveUtilityModelConfig(fakeUser, {}, 'anthropic/claude-haiku-5-5'),
+			).resolves.toBeUndefined();
+			expect(createProxyLanguageModel).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the pinned model belongs to another provider', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+
+			await expect(
+				service.resolveUtilityModelConfig(fakeUser, proxyRun, 'anthropic/claude-haiku-5-5'),
+			).resolves.toBeUndefined();
+			expect(createProxyLanguageModel).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined and warns when the proxy cannot build the model', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+			createProxyLanguageModel.mockRejectedValue(new Error('proxy unavailable'));
+
+			await expect(
+				service.resolveUtilityModelConfig(fakeUser, proxyRun, 'anthropic/claude-haiku-5-5'),
+			).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to resolve an Instance AI utility model'),
+				{ modelName: 'anthropic/claude-haiku-5-5', error: 'proxy unavailable' },
+			);
+		});
+	});
 });

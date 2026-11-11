@@ -26,6 +26,7 @@ import {
 	type ModelConfig,
 	type OrchestrationContext,
 	type ServiceProxyConfig,
+	type UtilityModelResolver,
 	type WorkflowTaskService,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
@@ -275,6 +276,12 @@ export class AssistantTurnEnvironmentFactory {
 			tokenManager,
 			proxyContext,
 		});
+		const resolveUtilityModel: UtilityModelResolver = async (modelName) =>
+			await this.modelService.resolveUtilityModelConfig(
+				user,
+				{ proxyBaseUrl, tokenManager, proxyContext },
+				modelName,
+			);
 
 		const gates = experimentGates ?? (await this.adapterService.resolveExperimentGates(user));
 		const {
@@ -338,6 +345,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			resolveUtilityModel,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
@@ -522,6 +530,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			resolveUtilityModel,
 			...(tracing ? { tracing } : {}),
 			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
