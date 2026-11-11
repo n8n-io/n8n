@@ -1,4 +1,5 @@
 import type { ObservationalMemoryConfig, ObservationWindowShares } from '../../types';
+import { DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS } from './observation-log-defaults';
 
 /**
  * Every observational-memory default in one place. `resolveObservationalMemoryConfig`
@@ -140,7 +141,8 @@ function fixedThresholds(
 		observerBatch: window
 			? Math.max(1, Math.floor(window * DEFAULT_MEMORY_POLICY.windowShares.batchAt))
 			: undefined,
-		reflect: config.reflectorThresholdTokens,
+		// Shares can leave the threshold unset, so an unknown window needs a fixed fallback.
+		reflect: config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 	};
 }
 

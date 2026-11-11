@@ -1,4 +1,5 @@
 import type { ObservationalMemoryConfig } from '../../types';
+import { DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS } from '../memory/observation-log-defaults';
 import { decideResume, MemoryBudget, shouldStopObserving } from '../memory/observation-policy';
 
 const noopReflect = async () => await Promise.resolve({ drop: [], merge: [] });
@@ -59,6 +60,14 @@ describe('resolveObservationThresholds', () => {
 		);
 		expect(thresholds?.observeFirst).toBe(30_000);
 		expect(thresholds?.observerBatch).toBeUndefined();
+	});
+
+	it('uses the default reflector threshold when the window is unknown and none is set', () => {
+		const thresholds = resolveObservationThresholds(
+			{ observerThresholdTokens: 30_000, windowShares: {} },
+			undefined,
+		);
+		expect(thresholds?.reflect).toBe(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS);
 	});
 
 	it('uses an explicit window over the looked-up one', () => {
