@@ -17,6 +17,15 @@ The fixture uses WCAG 2.1 A and AA tags by default. Pass `{ tags, disableRules }
 
 For a second user's page, use `a11y.for(otherN8n).check('modal')`. Both checkers attach scans to the same test.
 
+## Check the contrast of one element
+
+Axe reports some elements as incomplete for `color-contrast`, for example text in a tooltip. Use `a11y.contrastRatio(text, background)` to score them. It reads the rendered colors and uses the axe-core contrast formula.
+
+```typescript
+const ratio = await a11y.contrastRatio(modal.getFieldHelpLink('Airtop'), modal.getFieldHelpTooltip());
+expect(ratio).toBeGreaterThanOrEqual(4.5);
+```
+
 ## Check landmark structure
 
 Use [`assertMainLandmarkStructure`](../utils/a11y-landmark-check.ts) when the journey must check the composed page layout. It checks that the page has one `<main>` element outside other landmarks and one `id="content"`.

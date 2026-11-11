@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
-import type { Fixtures, Page, TestInfo } from '@playwright/test';
+import type { Fixtures, Locator, Page, TestInfo } from '@playwright/test';
+import axe from 'axe-core';
 import type { Result, TagValue } from 'axe-core';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -115,6 +116,35 @@ export class A11yChecker {
 			console.warn(`[a11y] Scan of bucket "${bucket}" did not run: ${reason}`);
 			return [];
 		}
+	}
+
+	/**
+	 * WCAG contrast ratio between the rendered text color of `text` and the rendered
+	 * background color of `background`, scored with the color math of axe-core.
+	 * Use it where the `color-contrast` rule reports the element as incomplete, for
+	 * example in tooltips, which axe treats as overlapped.
+	 */
+	async contrastRatio(text: Locator, background: Locator): Promise<number> {
+		const backgroundColor = await background.evaluate(
+			(element) => getComputedStyle(element).backgroundColor,
+		);
+		await this.page.addScriptTag({ content: axe.source });
+
+		return await text.evaluate((element, backgroundValue) => {
+			// axe-core does not type `commons.color`.
+			type AxeColor = { parseString(value: string): void };
+			type AxeColorApi = {
+				Color: new () => AxeColor;
+				getContrast(background: AxeColor, foreground: AxeColor): number;
+			};
+			const { color } = (window as unknown as { axe: { commons: { color: AxeColorApi } } }).axe
+				.commons;
+			const foreground = new color.Color();
+			foreground.parseString(getComputedStyle(element).color);
+			const backgroundColor = new color.Color();
+			backgroundColor.parseString(backgroundValue);
+			return color.getContrast(backgroundColor, foreground);
+		}, backgroundColor);
 	}
 }
 

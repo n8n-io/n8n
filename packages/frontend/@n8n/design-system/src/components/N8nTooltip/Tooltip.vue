@@ -182,6 +182,13 @@ const handleOpenChange = (open: boolean) => {
 		fill: currentColor;
 		opacity: 0.7;
 	}
+
+	// Plain links from description HTML get the global link color, which is near-black in the
+	// light theme. The tooltip background is black in every theme, so use the tooltip text color.
+	a:not([class]) {
+		color: inherit;
+		text-decoration: underline;
+	}
 }
 
 :global(.n8n-tooltip[data-state='closed']) {
