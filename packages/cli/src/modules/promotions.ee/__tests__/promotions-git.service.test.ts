@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -172,6 +172,7 @@ describe('PromotionsGitService (git operations)', () => {
 		repositoryFolder: string;
 		nextRepositoryFolder: string;
 		sshDir: string;
+		trashFolder: string;
 	};
 
 	beforeEach(async () => {
@@ -184,6 +185,7 @@ describe('PromotionsGitService (git operations)', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, '.ssh'),
+			trashFolder: path.join(rootFolder, 'trash'),
 		};
 	});
 
@@ -244,6 +246,28 @@ describe('PromotionsGitService (git operations)', () => {
 				'--progress',
 			]);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
+		});
+
+		it('moves the old checkout to trash, puts the new one in place, and empties the trash', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			await mkdir(paths.repositoryFolder, { recursive: true });
+			await writeFile(path.join(paths.repositoryFolder, 'old-checkout'), 'old');
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				await mkdir(String(dir), { recursive: true });
+				await writeFile(path.join(String(dir), 'new-checkout'), 'new');
+				return '';
+			});
+
+			await call();
+
+			await expect(
+				readFile(path.join(paths.repositoryFolder, 'new-checkout'), 'utf8'),
+			).resolves.toBe('new');
+			await expect(stat(path.join(paths.repositoryFolder, 'old-checkout'))).rejects.toMatchObject({
+				code: 'ENOENT',
+			});
+			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+			await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
 		});
 
 		it('passes token credentials through the operation environment', async () => {
@@ -379,6 +403,55 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
 			expect(onCheckoutRestored).toHaveBeenCalled();
 			expect(result).toEqual({ commitSha: 'commit' });
+		});
+
+		it('runs the push check after the commit and just before the push', async () => {
+			const beforePush = vi.fn();
+
+			await call({ beforePush });
+
+			expect(beforePush).toHaveBeenCalledOnce();
+			expect(mockGit.commit.mock.invocationCallOrder[0]).toBeLessThan(
+				beforePush.mock.invocationCallOrder[0],
+			);
+			expect(beforePush.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.push.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not push and rolls back the commit when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('previous\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					rollbackOnFailure: true,
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--mixed', 'previous']);
+		});
+
+		it('does not push a new branch and restores the base branch when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					targetBranchName: 'n8n-promotion/x',
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(onCheckoutRestored).toHaveBeenCalled();
 		});
 
 		it('restores the local base branch when a new branch push fails', async () => {
@@ -734,11 +807,153 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 		});
 
+		it('removes untracked files from the package folder only, after the reset', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+			mockGit.revparse.mockResolvedValue('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[['reset', '--hard', 'origin/main']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
 		it('rejects a promotion when the remote base branch does not exist', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
 			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
 			expect(mockGit.fetch).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('prepareCheckoutForFirstPush', () => {
+		const call = async () =>
+			await gitService.prepareCheckoutForFirstPush({ paths, branchName: 'main', environmentId });
+
+		const trackingRefCall = ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/main'];
+		const localBranchCall = ['for-each-ref', '--format=%(objectname)', 'refs/heads/main'];
+
+		it('removes the local branch, empties the index, and cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('c'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['update-ref', '-d', 'refs/heads/main']],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps a branch with no commits as it is, and still cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps the local branch when the checkout saw the branch on the remote before', async () => {
+			mockGit.raw.mockResolvedValueOnce('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([[trackingRefCall]]);
+		});
+
+		it('contacts no remote', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.listRemote).not.toHaveBeenCalled();
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removeLeftoverLockFiles', () => {
+		const call = async () =>
+			await gitService.removeLeftoverLockFiles({ paths, branchName: 'main', environmentId });
+
+		const gitPath = (...segments: string[]) =>
+			path.join(paths.repositoryFolder, '.git', ...segments);
+
+		const writeGitFile = async (...segments: string[]) => {
+			await mkdir(path.dirname(gitPath(...segments)), { recursive: true });
+			await writeFile(gitPath(...segments), 'content');
+		};
+
+		const exists = async (...segments: string[]) =>
+			await stat(gitPath(...segments)).then(
+				() => true,
+				() => false,
+			);
+
+		it('removes the index, HEAD, and local branch lock files, also in nested branch folders', async () => {
+			await writeGitFile('index.lock');
+			await writeGitFile('HEAD.lock');
+			await writeGitFile('refs', 'heads', 'main.lock');
+			await writeGitFile('refs', 'heads', 'team', 'feature.lock');
+
+			await call();
+
+			expect(await exists('index.lock')).toBe(false);
+			expect(await exists('HEAD.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'main.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'team', 'feature.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'team')).toBe(true);
+			for (const lockFile of [
+				'index.lock',
+				'HEAD.lock',
+				path.join('refs', 'heads', 'main.lock'),
+				path.join('refs', 'heads', 'team', 'feature.lock'),
+			]) {
+				expect(logger.debug).toHaveBeenCalledWith(
+					'Removed a leftover Git lock file from the promotion checkout',
+					{ environmentId, lockFile },
+				);
+			}
+		});
+
+		it('keeps branch refs, remote-tracking lock files, and FETCH_HEAD', async () => {
+			await writeGitFile('refs', 'heads', 'main');
+			await writeGitFile('refs', 'remotes', 'origin', 'main.lock');
+			await writeGitFile('FETCH_HEAD');
+			await writeGitFile('index');
+
+			await call();
+
+			expect(await exists('refs', 'heads', 'main')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main.lock')).toBe(true);
+			expect(await exists('FETCH_HEAD')).toBe(true);
+			expect(await exists('index')).toBe(true);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when no lock file exists', async () => {
+			await mkdir(gitPath(), { recursive: true });
+
+			await expect(call()).resolves.toBeUndefined();
+
+			expect(await readdir(gitPath())).toEqual([]);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('runs no Git command', async () => {
+			await writeGitFile('index.lock');
+
+			await call();
+
+			expect(simpleGitMock).not.toHaveBeenCalled();
 		});
 	});
 

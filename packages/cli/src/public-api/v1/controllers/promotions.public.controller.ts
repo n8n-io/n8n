@@ -164,12 +164,13 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Update a promotion provider')
 	@ApiDescription(
 		BETA_NOTE +
-			'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. If another request changes the credentials or configuration before this update saves, the update returns 409. Reload the provider and try again. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every environment that uses this provider. The authentication method cannot change.',
+			'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. If another request changes the credentials or configuration before this update saves, the update returns 409. Reload the provider and try again. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every environment that uses this provider. The authentication method cannot change. A change of the base URL returns 423 while another operation runs on an environment that uses this provider.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
 		req: AuthenticatedRequest,
@@ -350,12 +351,13 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Update a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
-			'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. A new provider type or repository closes the open promotion reviews of the environment in n8n. Their merge requests stay open on the Git host. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
+			'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. A new provider type or repository closes the open promotion reviews of the environment in n8n. Their merge requests stay open on the Git host. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change. A change of the remote, provider, or branch returns 423 while another operation runs on the environment.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionEnvironmentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async updatePromotionEnvironment(
 		req: AuthenticatedRequest,
@@ -374,11 +376,12 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Delete a promotion environment')
 	@ApiDescription(
 		BETA_NOTE +
-			'Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in the Git repository changes. The open promotion reviews of the environment close in n8n. Their merge requests stay open on the Git host.',
+			'Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in the Git repository changes. The open promotion reviews of the environment close in n8n. Their merge requests stay open on the Git host. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async deletePromotionEnvironment(
 		req: AuthenticatedRequest,
@@ -398,12 +401,13 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Connect an environment')
 	@ApiDescription(
 		BETA_NOTE +
-			'Prepares the environment on the instance that handles the request. For a Git provider, this clones the configured branch into local storage. Safe to call repeatedly. Connecting one environment does not make another ready.',
+			'Prepares the environment on the instance that handles the request. For a Git provider, this clones the configured branch into local storage. Safe to call repeatedly. Connecting one environment does not make another ready. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async connectPromotionCheckout(
 		req: AuthenticatedRequest,
@@ -421,11 +425,12 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Remove an environment's local checkout")
 	@ApiDescription(
 		BETA_NOTE +
-			'Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys.',
+			'Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async disconnectPromotionCheckout(
 		_req: AuthenticatedRequest,
@@ -546,12 +551,13 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Promote all team projects')
 	@ApiDescription(
 		BETA_NOTE +
-			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.",
+			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async promotePackage(
 		req: AuthenticatedRequest,
@@ -573,7 +579,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Apply a package to the instance')
 	@ApiDescription(
 		BETA_NOTE +
-			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires a connected Apply environment with instance scope. The API key needs the promotions:apply scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires a connected Apply environment with instance scope. The API key needs the promotions:apply scope. The importer checks user write permissions; granular API-key write scopes are not passed to it. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -581,6 +587,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(422)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async applyPackage(
 		req: AuthenticatedRequest,
@@ -603,13 +610,14 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Continue Apply after binding setup')
 	@ApiDescription(
 		BETA_NOTE +
-			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
+			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(422)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async continueApplyPackage(
 		req: AuthenticatedRequest,
@@ -694,12 +702,14 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async promoteProjectSelection(
 		req: AuthenticatedRequest,
@@ -723,7 +733,7 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Apply a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Applies selected changes from the project's Apply branch. The project's name, icon, description and telemetry tags always come from the branch, so a request without workflowIds and folderIds applies only the project. The server imports the selected workflow IDs present on the branch for this project. It removes a selected workflow owned by this project when the branch does not hold it. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. A selected workflow or folder is created, or moved within the project to match the branch, together with the folders above it, and those folders take the name on the branch; other folders stay as they are. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Status `preview-changed` means this instance changed since that review and nothing was imported. Status `blocked` returns the blockers before import writes: bindings that need setup and conflicts with this instance. Apply cannot move a selected workflow or a folder of this project between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a connected Apply environment for the project: its own Apply environment, otherwise the instance Apply environment. The API key needs the promotions:apply scope. The importer checks user write permissions.",
+			"Applies selected changes from the project's Apply branch. The project's name, icon, description and telemetry tags always come from the branch, so a request without workflowIds and folderIds applies only the project. The server imports the selected workflow IDs present on the branch for this project. It removes a selected workflow owned by this project when the branch does not hold it. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. A selected workflow or folder is created, or moved within the project to match the branch, together with the folders above it, and those folders take the name on the branch; other folders stay as they are. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Status `preview-changed` means this instance changed since that review and nothing was imported. Status `blocked` returns the blockers before import writes: bindings that need setup and conflicts with this instance. Apply cannot move a selected workflow or a folder of this project between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a connected Apply environment for the project: its own Apply environment, otherwise the instance Apply environment. The API key needs the promotions:apply scope. The importer checks user write permissions. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -731,6 +741,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(422)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async applyProjectSelection(
 		req: AuthenticatedRequest,
@@ -748,7 +759,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Continue applying a selection after binding setup')
 	@ApiDescription(
 		BETA_NOTE +
-			"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection: workflowIds and folderIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions.",
+			"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection: workflowIds and folderIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -756,6 +767,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(422)
+	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async continueApplyProjectSelection(
 		req: AuthenticatedRequest,

@@ -10714,6 +10714,7 @@
 	"promotions.bindings.error.setup": "Couldn't open the editor",
 	"promotions.bindings.error.creationMismatch": "The saved item does not match the required binding. Check its identity and destination scope before you continue.",
 	"promotions.bindings.error.continue": "Apply could not be completed. Check the destination before you try again. Some changes may already have been applied.",
+	"promotions.bindings.error.locked": "Nothing was applied. Another operation is running on this environment. Try again when it finishes.",
 	"promotions.bindings.access.title": "Access required",
 	"promotions.bindings.access.description": "The credential exists but is not available to these workflows. Ask an administrator to give their projects access.",
 	"promotions.bindings.conflicts.title": "Conflicts",
