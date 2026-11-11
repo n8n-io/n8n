@@ -1,6 +1,6 @@
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import { findTriggerIdentityReasons } from '../trigger-identity-rule';
+import { checkEngineV2Eligibility } from '../index';
 
 const oauth2Webhook: INode = {
 	id: 'webhook-id',
@@ -20,17 +20,26 @@ const subWorkflowTrigger: INode = {
 	parameters: {},
 };
 
-describe('findTriggerIdentityReasons', () => {
+const nodeTypes: INodeTypeDescription[] = [];
+
+function check(nodes: INode[]) {
+	return checkEngineV2Eligibility({ nodes, connections: {}, settings: {} }, nodeTypes);
+}
+
+describe('trigger identity rule', () => {
 	it('blocks a live trigger that takes its identity from the request, naming the node', () => {
-		expect(findTriggerIdentityReasons([oauth2Webhook])).toEqual([
-			{
-				code: 'TRIGGER_EXTERNAL_IDENTITY',
-				severity: 'blocking',
-				nodeId: 'webhook-id',
-				nodeName: 'Webhook',
-				message: expect.stringContaining('"Webhook"'),
-			},
-		]);
+		expect(check([oauth2Webhook])).toEqual({
+			eligible: false,
+			reasons: [
+				{
+					code: 'TRIGGER_EXTERNAL_IDENTITY',
+					severity: 'blocking',
+					nodeId: 'webhook-id',
+					nodeName: 'Webhook',
+					message: expect.stringContaining('"Webhook"'),
+				},
+			],
+		});
 	});
 
 	it.each<[string, INode]>([
@@ -39,6 +48,6 @@ describe('findTriggerIdentityReasons', () => {
 		// A call from a parent workflow skips the dispatcher's identity check.
 		['a sub-workflow trigger', subWorkflowTrigger],
 	])('does not block %s', (_, node) => {
-		expect(findTriggerIdentityReasons([node])).toEqual([]);
+		expect(check([node])).toEqual({ eligible: true, reasons: [] });
 	});
 });

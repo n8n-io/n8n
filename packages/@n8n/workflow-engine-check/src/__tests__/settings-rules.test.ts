@@ -1,9 +1,23 @@
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
 
-import { findSettingsReasons } from '../settings-rules';
-import type { EngineV2ReasonCode } from '../types';
+import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
 
-describe('findSettingsReasons', () => {
+const manualTrigger: INode = {
+	id: 'manual-id',
+	name: 'When clicking Execute',
+	type: 'n8n-nodes-base.manualTrigger',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
+const nodeTypes: INodeTypeDescription[] = [];
+
+function check(settings: IWorkflowSettings) {
+	return checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings }, nodeTypes);
+}
+
+describe('settings rules', () => {
 	it.each<{ setting: string; settings: IWorkflowSettings; code: EngineV2ReasonCode }>([
 		{
 			setting: 'an error workflow id',
@@ -31,9 +45,10 @@ describe('findSettingsReasons', () => {
 			code: 'END_USER_CREDENTIALS',
 		},
 	])('blocks $setting with code $code', ({ settings, code }) => {
-		expect(findSettingsReasons(settings)).toEqual([
-			{ code, severity: 'blocking', message: expect.any(String) },
-		]);
+		expect(check(settings)).toEqual({
+			eligible: false,
+			reasons: [{ code, severity: 'blocking', message: expect.any(String) }],
+		});
 	});
 
 	it.each<{ setting: string; settings: IWorkflowSettings }>([
@@ -50,11 +65,11 @@ describe('findSettingsReasons', () => {
 		},
 		{ setting: 'an empty credential resolver', settings: { credentialResolverId: '' } },
 	])('allows $setting', ({ settings }) => {
-		expect(findSettingsReasons(settings)).toEqual([]);
+		expect(check(settings)).toEqual({ eligible: true, reasons: [] });
 	});
 
 	it('reports every blocking setting, not only the first', () => {
-		const reasons = findSettingsReasons({
+		const { reasons } = check({
 			errorWorkflow: 'wf-123',
 			redactionPolicy: 'all',
 			credentialResolverId: 'resolver-1',
