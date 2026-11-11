@@ -101,11 +101,14 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 	async function renderWithDraft() {
 		const view = renderConversation();
 		const textbox = view.getByRole('textbox');
-		await userEvent.type(textbox, 'Testing123 ');
 		await userEvent.click(view.getByTestId('mention-picker-select'));
+		// Set the draft text explicitly. Mention selection can leave the text unchanged.
+		await userEvent.clear(textbox);
+		await userEvent.type(textbox, 'Testing123 "Orders"');
 		await fireEvent.paste(textbox, {
 			clipboardData: { files: [new File(['a,b'], 'orders.csv', { type: 'text/csv' })] },
 		});
+		expectDraft(view);
 		return view;
 	}
 
