@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { expect, within } from 'storybook/test';
 
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
+import N8nMarkdown from '../N8nMarkdown';
 
 const meta = {
 	title: 'Core/Callout',
@@ -64,6 +66,32 @@ export const Variants: Story = {
 	}),
 	args: {
 		theme: 'info',
+	},
+};
+
+export const MarkdownContent: Story = {
+	render: (args) => ({
+		components: { N8nCallout, N8nMarkdown },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nCallout v-bind="args">
+				<N8nMarkdown content="This is a **Markdown** callout. [Learn more](https://n8n.io)." />
+			</N8nCallout>
+		`,
+	}),
+	args: {
+		theme: 'info',
+	},
+	async play({ canvasElement }) {
+		const canvas = within(canvasElement);
+		const text = canvas.getByRole('alert').querySelector('.n8n-text');
+		await expect(text).not.toBeNull();
+		if (!text) return;
+		const fontSize = getComputedStyle(text).fontSize;
+		await expect(getComputedStyle(canvas.getByRole('paragraph')).fontSize).toBe(fontSize);
+		await expect(getComputedStyle(canvas.getByRole('link')).fontSize).toBe(fontSize);
 	},
 };
 

@@ -66,7 +66,7 @@ const getIconSize = computed<IconSize>(() => {
 				</N8nTooltip>
 				<N8nIcon v-else :icon="getIcon" :size="getIconSize" />
 			</div>
-			<N8nText size="small">
+			<N8nText size="small" :class="$style.text">
 				<slot />
 			</N8nText>
 			&nbsp;
@@ -120,6 +120,10 @@ const getIconSize = computed<IconSize>(() => {
 .messageSection {
 	display: flex;
 	align-items: center;
+}
+
+.text {
+	--n8n-markdown--font-size--base: var(--font-size--2xs);
 }
 
 .info,
