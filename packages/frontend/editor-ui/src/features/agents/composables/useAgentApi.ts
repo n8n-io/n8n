@@ -25,6 +25,7 @@ import type {
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
 	AgentN8nChatAgentDetails,
@@ -535,6 +536,18 @@ export const getIntegrationStatus = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
+	);
+};
+
+export const getAgentWebhookUrl = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentWebhookUrlResponse> => {
+	return await makeRestApiRequest<AgentWebhookUrlResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/webhook/url`,
 	);
 };
 
