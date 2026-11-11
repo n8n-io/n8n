@@ -25,21 +25,6 @@ describe('settings rules', () => {
 			code: 'ERROR_WORKFLOW',
 		},
 		{
-			setting: 'redaction policy all',
-			settings: { redactionPolicy: 'all' },
-			code: 'REDACTION_POLICY',
-		},
-		{
-			setting: 'redaction policy non-manual',
-			settings: { redactionPolicy: 'non-manual' },
-			code: 'REDACTION_POLICY',
-		},
-		{
-			setting: 'redaction policy manual-only',
-			settings: { redactionPolicy: 'manual-only' },
-			code: 'REDACTION_POLICY',
-		},
-		{
 			setting: 'a credential resolver',
 			settings: { credentialResolverId: 'resolver-1' },
 			code: 'END_USER_CREDENTIALS',
@@ -50,6 +35,16 @@ describe('settings rules', () => {
 			reasons: [{ code, severity: 'blocking', message: expect.any(String) }],
 		});
 	});
+
+	it.each<IWorkflowSettings['redactionPolicy']>(['all', 'non-manual', 'manual-only'])(
+		'warns about redaction policy %s but keeps the workflow eligible',
+		(redactionPolicy) => {
+			expect(check({ redactionPolicy })).toEqual({
+				eligible: true,
+				reasons: [{ code: 'REDACTION_POLICY', severity: 'warning', message: expect.any(String) }],
+			});
+		},
+	);
 
 	it.each<{ setting: string; settings: IWorkflowSettings }>([
 		{ setting: 'empty settings', settings: {} },
@@ -68,17 +63,18 @@ describe('settings rules', () => {
 		expect(check(settings)).toEqual({ eligible: true, reasons: [] });
 	});
 
-	it('reports every blocking setting, not only the first', () => {
-		const { reasons } = check({
+	it('reports every setting reason with its severity, not only the first', () => {
+		const result = check({
 			errorWorkflow: 'wf-123',
 			redactionPolicy: 'all',
 			credentialResolverId: 'resolver-1',
 		});
 
-		expect(reasons.map((reason) => reason.code)).toEqual([
-			'ERROR_WORKFLOW',
-			'REDACTION_POLICY',
-			'END_USER_CREDENTIALS',
+		expect(result.eligible).toBe(false);
+		expect(result.reasons.map(({ code, severity }) => ({ code, severity }))).toEqual([
+			{ code: 'ERROR_WORKFLOW', severity: 'blocking' },
+			{ code: 'REDACTION_POLICY', severity: 'warning' },
+			{ code: 'END_USER_CREDENTIALS', severity: 'blocking' },
 		]);
 	});
 });

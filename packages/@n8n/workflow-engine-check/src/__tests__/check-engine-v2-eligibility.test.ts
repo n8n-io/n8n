@@ -49,9 +49,21 @@ describe('checkEngineV2Eligibility', () => {
 		);
 
 		expect(result.eligible).toBe(false);
-		expect(result.reasons.map((reason) => reason.code)).toEqual([
-			'REDACTION_POLICY',
-			'TRIGGER_EXTERNAL_IDENTITY',
+		expect(result.reasons.map(({ code, severity }) => ({ code, severity }))).toEqual([
+			{ code: 'REDACTION_POLICY', severity: 'warning' },
+			{ code: 'TRIGGER_EXTERNAL_IDENTITY', severity: 'blocking' },
 		]);
+	});
+
+	it('keeps a workflow with only warnings eligible and still reports the warnings', () => {
+		const result = checkEngineV2Eligibility(
+			{ nodes: [manualTrigger], connections: {}, settings: { redactionPolicy: 'all' } },
+			nodeTypes,
+		);
+
+		expect(result).toEqual({
+			eligible: true,
+			reasons: [{ code: 'REDACTION_POLICY', severity: 'warning', message: expect.any(String) }],
+		});
 	});
 });

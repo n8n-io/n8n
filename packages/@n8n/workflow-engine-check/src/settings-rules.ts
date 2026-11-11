@@ -15,7 +15,7 @@ function namesErrorWorkflow(errorWorkflow: IWorkflowSettings['errorWorkflow']): 
 	);
 }
 
-/** Settings that engine v2 ignores. Running anyway would silently drop what the user asked for. */
+/** Settings that engine v2 ignores or does not fully support yet. */
 export function findSettingsReasons(settings: IWorkflowSettings): EngineV2Reason[] {
 	const reasons: EngineV2Reason[] = [];
 
@@ -30,8 +30,9 @@ export function findSettingsReasons(settings: IWorkflowSettings): EngineV2Reason
 	if ((settings.redactionPolicy ?? 'none') !== 'none') {
 		reasons.push({
 			code: 'REDACTION_POLICY',
-			severity: 'blocking',
-			message: 'Engine v2 does not redact execution data yet. Set the redaction policy to none.',
+			severity: 'warning',
+			message:
+				'Engine v2 is not fully tested with data redaction yet. Some execution data may not be redacted as expected.',
 		});
 	}
 
