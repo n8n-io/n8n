@@ -1,6 +1,6 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { convertDbMessages } from '../messageMappers';
+import { applyOpenSuspensions, convertDbMessages } from '../messageMappers';
 
 describe('convertDbMessages — file parts', () => {
 	it('maps file parts to message attachments', () => {
@@ -167,5 +167,74 @@ describe('convertDbMessages — reply files', () => {
 		const [message] = convertDbMessages(dbMessages);
 
 		expect(message.attachments).toBeUndefined();
+	});
+
+	describe('with a card', () => {
+		const card = (components: unknown[]) => ({
+			action: 'respond',
+			input: { message: { card: { components } }, fileIds: ['att-1'] },
+		});
+		const interactiveCard = card([{ type: 'button', label: 'Approve', value: 'approve' }]);
+		const suspendPayload = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			files: [file],
+		};
+		const cardMessage = (
+			part: Partial<AgentPersistedMessageDto['content'][number]>,
+		): AgentPersistedMessageDto[] => [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'chat_action',
+						input: interactiveCard,
+						...part,
+					},
+				],
+			},
+		];
+
+		it('shows the files of a static card', () => {
+			const [message] = convertDbMessages(
+				cardMessage({
+					input: card([{ type: 'section', text: 'The report' }]),
+					state: 'resolved',
+					output: { ok: true, files: [file], messageContext: {} },
+				}),
+			);
+
+			expect(message.attachments).toEqual([file]);
+		});
+
+		it('shows the files of an interactive card that waits for the answer', () => {
+			const chat = applyOpenSuspensions(convertDbMessages(cardMessage({ suspendPayload })), [
+				{ toolCallId: 'tc-1', runId: 'run-1', suspendPayload },
+			]);
+
+			expect(chat[0].toolCalls?.[0].state).toBe('suspended');
+			expect(chat[0].attachments).toEqual([file]);
+		});
+
+		it('shows the files of an interactive card from the open suspension', () => {
+			const chat = applyOpenSuspensions(convertDbMessages(cardMessage({})), [
+				{ toolCallId: 'tc-1', runId: 'run-1', suspendPayload },
+			]);
+
+			expect(chat[0].attachments).toEqual([file]);
+		});
+
+		it('shows the files of an interactive card after the answer', () => {
+			const [message] = convertDbMessages(
+				cardMessage({ suspendPayload, state: 'resolved', output: { value: 'approve' } }),
+			);
+
+			expect(message.toolCalls?.[0].state).toBe('done');
+			expect(message.attachments).toEqual([file]);
+		});
 	});
 });
