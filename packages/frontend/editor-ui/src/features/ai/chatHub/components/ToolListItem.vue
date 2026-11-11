@@ -2,7 +2,10 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import {
+	describeTypeRestriction,
+	RestrictedNodePopover,
+} from '@n8n/frontend-module-type-availability-policies';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -57,6 +60,15 @@ const actionDisabled = computed(
 
 const rowRef = ref<HTMLElement | null>(null);
 const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
+
+const toggleTooltip = computed(() => {
+	if (restriction.value) {
+		return describeTypeRestriction('chatTool', props.nodeType.displayName, restriction.value);
+	}
+	return props.enabled
+		? i18n.baseText('chatHub.toolsManager.disableTool')
+		: i18n.baseText('chatHub.toolsManager.enableTool');
+});
 </script>
 
 <template>
@@ -142,19 +154,17 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 					/>
 				</N8nTooltip>
 
-				<N8nTooltip
-					v-if="!roleBlocked"
-					:content="
-						enabled
-							? i18n.baseText('chatHub.toolsManager.disableTool')
-							: i18n.baseText('chatHub.toolsManager.enableTool')
-					"
-				>
-					<ElSwitch
-						:model-value="enabled"
-						:class="$style.toggle"
-						@update:model-value="emit('toggle', Boolean($event))"
-					/>
+				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
+					<!-- A disabled switch gets no pointer events, so the span keeps the tooltip working. -->
+					<span :class="$style.toggleWrapper">
+						<ElSwitch
+							:model-value="enabled"
+							:disabled="!!restriction"
+							:class="$style.toggle"
+							data-test-id="chat-tool-toggle"
+							@update:model-value="emit('toggle', Boolean($event))"
+						/>
+					</span>
 				</N8nTooltip>
 			</template>
 
@@ -286,6 +296,10 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
+}
+
+.toggleWrapper {
+	display: inline-flex;
 }
 
 .toggle {

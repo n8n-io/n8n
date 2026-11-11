@@ -37,7 +37,11 @@ import {
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import {
+	RestrictedTypeCallout,
+	useNodeTypeRestriction,
+	useTypeAvailability,
+} from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
@@ -108,6 +112,14 @@ const settingsOnConfirm = ref<((node: INode) => void) | null>(null);
 const settingsContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const settingsNodeName = ref('');
 const settingsIsValid = ref(false);
+
+const { isRestricted: settingsIsRestricted, restriction: settingsRestriction } =
+	useNodeTypeRestriction(() => settingsNode.value?.type);
+const settingsTypeName = computed(() =>
+	settingsNode.value
+		? (nodeTypesStore.getNodeType(settingsNode.value.type)?.displayName ?? settingsNode.value.type)
+		: '',
+);
 
 const tools = computed<ChatHubToolDto[]>(() => chatStore.configuredTools);
 
@@ -237,6 +249,8 @@ function handleConfigureTool(tool: ChatHubToolDto) {
 		.map((t) => t.definition.name);
 
 	openSettings({ ...tool.definition }, otherToolNames, async (configuredNode: INode) => {
+		if (warnIfRestricted(configuredNode.type)) return;
+
 		try {
 			await chatStore.updateConfiguredTool(tool.definition.id, configuredNode);
 		} catch (error) {
@@ -264,6 +278,9 @@ async function handleRemoveTool(toolId: string) {
 }
 
 async function handleToggleTool(tool: ChatHubToolDto, enabled: boolean) {
+	// The policy can finish loading after the list renders.
+	if (isNodeItemRestricted(tool.definition.type)) return;
+
 	try {
 		if (agentId.value) {
 			await chatStore.toggleCustomAgentTool(agentId.value, tool.definition.id);
@@ -389,12 +406,19 @@ function handleSettingsChangeName(name: string) {
 					/>
 					<N8nInlineTextEdit
 						:model-value="settingsNodeName"
+						:read-only="settingsIsRestricted"
 						:max-width="350"
 						:class="$style.title"
 						@update:model-value="handleSettingsChangeName"
 					/>
 				</div>
-				<N8nButton variant="solid" size="small" :disabled="!settingsIsValid" @click="handleSave">
+				<N8nButton
+					variant="solid"
+					size="small"
+					:disabled="!settingsIsValid || settingsIsRestricted"
+					data-test-id="chat-tool-settings-save"
+					@click="handleSave"
+				>
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
@@ -473,10 +497,18 @@ function handleSettingsChangeName(name: string) {
 
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
 			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+				<RestrictedTypeCallout
+					v-if="settingsIsRestricted"
+					surface="chatTool"
+					:type-name="settingsTypeName"
+					:restriction="settingsRestriction"
+					:class="$style.settingsCallout"
+				/>
 				<NodeToolSettingsContent
 					ref="settingsContentRef"
 					:initial-node="settingsNode"
 					:existing-tool-names="settingsExistingToolNames"
+					:read-only="settingsIsRestricted"
 					@update:valid="settingsIsValid = $event"
 					@update:node-name="settingsNodeName = $event"
 				/>
@@ -539,6 +571,12 @@ function handleSettingsChangeName(name: string) {
 	overflow: hidden;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding-top: var(--spacing--sm);
+}
+
+.settingsCallout {
+	flex-shrink: 0;
+	margin-right: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .searchInput {

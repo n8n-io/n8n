@@ -4,7 +4,7 @@ import { defineComponent, onMounted, ref } from 'vue';
 /** Stands in for NodeToolSettingsContent: exposes the node and reports validity on mount. */
 export function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialNode', 'existingToolNames'],
+		props: ['initialNode', 'existingToolNames', 'readOnly'],
 		emits: ['update:valid', 'update:node-name'],
 		setup(props, { emit, expose }) {
 			expose({
@@ -18,6 +18,6 @@ export function createToolSettingsStub(emitValid: boolean) {
 			});
 			return {};
 		},
-		template: '<div data-test-id="tool-settings-content" />',
+		template: '<div data-test-id="tool-settings-content" :data-read-only="String(!!readOnly)" />',
 	});
 }
