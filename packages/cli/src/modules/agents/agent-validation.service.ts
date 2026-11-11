@@ -627,7 +627,7 @@ export class AgentValidationService {
 		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
 			issues.push(
 				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
-					kind: 'tool',
+					kind: 'guardrail',
 					id: guardrails[guardrailIndex].id,
 				}),
 			);

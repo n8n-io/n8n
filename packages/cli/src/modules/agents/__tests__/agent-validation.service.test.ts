@@ -1261,7 +1261,7 @@ describe('AgentValidationService — structured issues', () => {
 					{
 						code: 'invalid_value',
 						path: 'config.guardrails.tools.0.tools.0',
-						capability: { kind: 'tool', id: 'guard_1' },
+						capability: { kind: 'guardrail', id: 'guard_1' },
 					},
 				]),
 			);
