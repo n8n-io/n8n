@@ -84,7 +84,7 @@ export default class PackageImport extends BaseCommand {
 		})(),
 		credentialMissingMode: Flags.option({
 			description:
-				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
+				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub). create-stub and create-with-values need credential:create when the import creates a credential',
 			options: ['must-preexist', 'create-stub', 'create-with-values'] as const,
 			aliases: ['credential-missing-mode'],
 		})(),
