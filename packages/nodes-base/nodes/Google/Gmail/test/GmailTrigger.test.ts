@@ -758,6 +758,110 @@ describe('GmailTrigger', () => {
 		);
 	});
 
+	describe.each(['inclusive', 'strict'])('clock rollback with %s query boundaries', (boundary) => {
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		it.each([
+			{ typeVersion: 1.3, state: 'normal' },
+			{ typeVersion: 1.4, state: 'normal' },
+			{ typeVersion: 1.4, state: 'pending' },
+			{ typeVersion: 1.4, state: 'incomplete scan' },
+		])(
+			'should preserve the cursor and deliver each message once on v$typeVersion ($state)',
+			async ({ typeVersion, state }) => {
+				const firstPollTime = Date.parse('2026-10-26T12:00:00.000Z');
+				const pollOffsets = [0, 60, 120, -30, -20, -10, 180];
+				const pending = state === 'pending';
+				const workflowStaticData: GmailWorkflowStaticDataDictionary = {
+					'Gmail Trigger': { lastTimeChecked: firstPollTime / 1000 - 60 },
+				};
+				const mailbox = [
+					{ id: 'first', dateOffset: -15, visibleOnPoll: 0 },
+					{ id: 'second', dateOffset: 45, visibleOnPoll: 1 },
+					{ id: 'third', dateOffset: 105, visibleOnPoll: 2 },
+					...(pending ? [{ id: 'pending', dateOffset: 90, visibleOnPoll: 2 }] : []),
+					{ id: 'later', dateOffset: 165, visibleOnPoll: 6 },
+				];
+				let pollIndex = 0;
+				nock(baseUrl)
+					.persist()
+					.get('/gmail/v1/users/me/labels')
+					.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+				const listScope = nock(baseUrl)
+					.get('/gmail/v1/users/me/messages')
+					.query((query) => typeof query.q === 'string' && /\bafter:\d+\b/.test(query.q))
+					.times(pollOffsets.length)
+					.reply(200, (uri) => {
+						const query = new URL(uri, baseUrl).searchParams.get('q');
+						const after = Number(query?.match(/\bafter:(\d+)\b/)?.[1]);
+						// Mailbox visibility does not move backward with the host clock.
+						const messages = mailbox
+							.filter(({ dateOffset, visibleOnPoll }) => {
+								const date = firstPollTime / 1000 + dateOffset;
+								return (
+									visibleOnPoll <= pollIndex &&
+									(boundary === 'inclusive' ? date >= after : date > after)
+								);
+							})
+							.map(({ id }) => createListMessage({ id }));
+						return {
+							messages,
+							resultSizeEstimate: messages.length,
+							nextPageToken:
+								state === 'incomplete scan' && pollIndex >= 3 && pollIndex <= 5
+									? 'more-mail'
+									: undefined,
+						} satisfies MessageListResponse;
+					});
+				for (const { id, dateOffset } of mailbox) {
+					nock(baseUrl)
+						.persist()
+						.get(`/gmail/v1/users/me/messages/${id}`)
+						.query(true)
+						.reply(
+							200,
+							createMessage({ id, internalDate: String(firstPollTime + dateOffset * 1000) }),
+						);
+				}
+
+				const emittedIdsByPoll = [];
+				const cursors = [];
+				for (const [index, offset] of pollOffsets.entries()) {
+					pollIndex = index;
+					vi.setSystemTime(firstPollTime + offset * 1000);
+					if (index === 3) {
+						expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).not.toContain('first');
+					}
+					const { response } = await testPollingTriggerNode(GmailTrigger, {
+						node: { typeVersion, parameters: { simple: true, maxResults: 1 } },
+						workflowStaticData,
+						pollBudgetMs: state === 'incomplete scan' && index >= 3 && index <= 5 ? 0 : undefined,
+					});
+					emittedIdsByPoll.push(response?.[0].map(({ json }) => json.id) ?? []);
+					cursors.push(workflowStaticData['Gmail Trigger'].lastTimeChecked);
+				}
+
+				expect(listScope.isDone()).toBe(true);
+				expect
+					.soft(emittedIdsByPoll)
+					.toEqual([
+						['first'],
+						['second'],
+						['third'],
+						pending ? ['pending'] : [],
+						[],
+						[],
+						['later'],
+					]);
+				expect(cursors).toEqual(
+					[-15, 45, 105, 105, 105, 105, 165].map((offset) => firstPollTime / 1000 + offset),
+				);
+			},
+		);
+	});
+
 	describe('persisted future cursor', () => {
 		afterEach(() => {
 			nock.cleanAll();
