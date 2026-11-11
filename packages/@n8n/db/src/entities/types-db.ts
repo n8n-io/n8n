@@ -154,6 +154,8 @@ export interface PublicUser {
 	isManagedByEnv?: boolean;
 }
 
+export type UserSettings = Pick<User, 'id' | 'settings'>;
+
 export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
 
 export interface CredentialUsedByWorkflow {

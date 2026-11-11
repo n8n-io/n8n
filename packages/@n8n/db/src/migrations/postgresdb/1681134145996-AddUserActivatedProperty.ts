@@ -1,7 +1,5 @@
+import type { UserSettings } from '../../entities/types-db';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
-
-/** The rows this migration reads from the `user` table. */
-type UserSettingsRow = { id: string; settings: Record<string, unknown> | null };
 
 export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
@@ -18,7 +16,7 @@ export class AddUserActivatedProperty1681134145996 implements ReversibleMigratio
 			WHERE ws.name = 'production_success'
 						AND r.name = 'owner'
 						AND r.scope = 'workflow'`,
-		)) as UserSettingsRow[];
+		)) as UserSettings[];
 
 		const updatedUserPromises = activatedUsers.map(async (user) => {
 			await queryRunner.query(
