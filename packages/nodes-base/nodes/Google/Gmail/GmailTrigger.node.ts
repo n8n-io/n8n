@@ -17,7 +17,7 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
-import { simplifyMemoryNotice } from './utils/descriptions';
+import { simplifyMemoryNotice, simplifyOutputShapeHint } from './utils/descriptions';
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
@@ -63,7 +63,7 @@ export class GmailTrigger implements INodeType {
 		},
 		builderHint: {
 			searchHint:
-				'When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once: filter to unread AND mark each email read/labelled after its record is created, or track handled message ids in a Data Table. Otherwise the same email can be reprocessed into duplicates.',
+				"When downstream nodes create records (tasks, rows, tickets) per email, make sure each email creates its record once. Poll cursors are best-effort, so the same email can arrive again. Either filter to unread AND mark each email read, or apply a label only if the trigger's search query excludes that label (a label does not mark an email read); or track handled message ids in a Data Table: look the id up before creating the record, skip ids already seen, and insert the id after the record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record. This is at-least-once processing: a failure between creating the record and marking the email can still create a duplicate, so key the record by the message id when the target supports it.",
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.gmail',
@@ -155,8 +155,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint: {
-					propertyHint:
-						'Keep true by default. When true, returns lightweight metadata (id, threadId, labels, subject, from, to, snippet). When false, fetches and parses the full raw email (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required.',
+					propertyHint: simplifyOutputShapeHint,
 				},
 			},
 			simplifyMemoryNotice({ displayOptions: { show: { simple: [false] } } }),
@@ -343,6 +342,12 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 		if (this.getMode() !== 'manual') {
 			nodeStaticData.lastTimeChecked ??= +now;
+			// A legacy cursor can come from future mail or a clock rollback. Repair it once.
+			// Preserve bounded cursors on later clock rollbacks to avoid repeat delivery.
+			if (!nodeStaticData.lastTimeCheckedIsBounded) {
+				nodeStaticData.lastTimeChecked = Math.min(nodeStaticData.lastTimeChecked, +now);
+				nodeStaticData.lastTimeCheckedIsBounded = true;
+			}
 		}
 		const startDate = nodeStaticData.lastTimeChecked ?? +now;
 
@@ -362,6 +367,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 		let responseData: INodeExecutionData[] = [];
 		const allFetchedMessages: MessageBookkeeping[] = [];
+		const scannedPossibleDuplicates: string[] = [];
 
 		const getEmailDateAsSeconds = (email: Message): number => {
 			let date;
@@ -670,11 +676,12 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
 			// held cursor re-scans its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
+				const previousDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 				// Set-aside ids are dropped along with the handled ones: that list
 				// already owns them and retries them every poll, so queueing them here
 				// as well would have both paths fetch the same message.
 				const alreadyTracked = new Set([
-					...(nodeStaticData.possibleDuplicates ?? []),
+					...previousDuplicates,
 					...(nodeStaticData.failedFetches ?? []).map(([id]) => id),
 					// Fetched earlier in this same poll. Kept in memory rather than read
 					// from the boundary set, which is only written once the poll is sure
@@ -682,7 +689,11 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					...allFetchedMessages.map((m) => m.id),
 				]);
 				if (alreadyTracked.size > 0) {
-					messages = messages.filter((m) => !alreadyTracked.has(m.id));
+					messages = messages.filter((m) => {
+						// Future-dated messages can stay in the query after the cursor advances.
+						if (previousDuplicates.has(m.id)) scannedPossibleDuplicates.push(m.id);
+						return !alreadyTracked.has(m.id);
+					});
 				}
 
 				// Reaching an id no poll has handled proves the window is not wedged, so
@@ -704,15 +715,15 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							nodeStaticData.noProgressTicks = noProgressTicks;
 							return null;
 						}
-						this.logger.warn(
-							"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
-							{ node: node.name },
-						);
-						nodeStaticData.lastTimeChecked = +now;
-						// The cursor jumped to now, so ids from the old window are no longer
-						// at the boundary. Keeping them would grow the stored-id count for
-						// nothing — every other path merges the set instead.
-						nodeStaticData.possibleDuplicates = [];
+						// Preserve the cursor on clock rollbacks. Keep handled IDs because
+						// an incomplete scan cannot rule out future-dated mail.
+						if (+now > +startDate) {
+							this.logger.warn(
+								"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
+								{ node: node.name },
+							);
+							nodeStaticData.lastTimeChecked = +now;
+						}
 						nodeStaticData.noProgressTicks = 0;
 					} else if (nodeStaticData.noProgressTicks) {
 						// The scan exhausted the token, so nothing is out of reach and the
@@ -816,7 +827,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			0,
 		);
 
-		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
+		const nextPollPossibleDuplicates = [
+			...scannedPossibleDuplicates,
+			...allFetchedMessages.map((m) => m.id),
+		];
 
 		// For older versions, filter at the response level since the pre-fetch filter
 		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
@@ -831,6 +845,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		}
 
 		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		effectiveLastTimeChecked = Math.max(+startDate, Math.min(effectiveLastTimeChecked, +now));
 		if (shouldLimitMessages && !windowFullyScanned) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +

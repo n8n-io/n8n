@@ -23,7 +23,6 @@ skip:
       - pkg:githubactions/act10ns/slack
       - pkg:githubactions/anthropics/claude-code-action
       - pkg:githubactions/astral-sh/setup-uv
-      - pkg:githubactions/chromaui/action
       - pkg:githubactions/dorny/paths-filter
       - pkg:githubactions/extractions/setup-just
       - pkg:githubactions/fjogeleit/http-request-action

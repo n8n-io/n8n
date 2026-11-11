@@ -15,12 +15,14 @@ import {
 
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
+import { hasAutomaticOAuthApp } from '../credentials.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	getTrustedOAuthOrigins,
 	hasOAuthTokenData,
+	openOAuthPopup,
 	waitForOAuthCallback,
 	type OAuthFlowOutcome,
 } from './oauthCallback';
@@ -121,7 +123,9 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
+		const overwrittenProperties = hasAutomaticOAuthApp(credentialType)
+			? ['clientId', 'clientSecret']
+			: (credentialType.__overwrittenProperties ?? []);
 		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
 			credentialType,
 		).filter((prop) => !overwrittenProperties.includes(prop.name));
@@ -228,18 +232,6 @@ export function useCredentialOAuth() {
 		);
 	}
 
-	function openOAuthPopup(url: string, signal?: AbortSignal): Window | null {
-		const params =
-			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-		const popup = window.open(url, 'OAuth Authorization', params);
-
-		signal?.addEventListener('abort', () => {
-			popup?.close();
-		});
-
-		return popup;
-	}
-
 	async function isConnected(credentialId: string): Promise<boolean> {
 		try {
 			return hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credentialId }));
@@ -260,12 +252,7 @@ export function useCredentialOAuth() {
 		signal?: AbortSignal,
 		options: OAuthAuthorizationOptions = {},
 	): Promise<boolean> {
-		// window.open must run within the click's transient user activation:
-		// opening after the network round trips below gets the popup blocked on
-		// slow connections (Chrome expires activation after ~5s) and in stricter
-		// browsers (Safari) regardless of timing. Open a blank window now and
-		// navigate it once the authorization URL is known.
-		const popupWindow = options.popup?.window ?? openOAuthPopup('about:blank', signal);
+		const popupWindow = options.popup?.window ?? openOAuthPopup(signal);
 		if (!popupWindow) {
 			showPopupBlockedError();
 			return false;
@@ -406,7 +393,7 @@ export function useCredentialOAuth() {
 
 		// Opened before the credential-creation round trips so it stays within
 		// the click's transient user activation (see authorize).
-		const initialPopup = openOAuthPopup('about:blank', controller.signal);
+		const initialPopup = openOAuthPopup(controller.signal);
 		if (!initialPopup) {
 			showPopupBlockedError();
 			oauthAbortController.value = null;
@@ -426,7 +413,7 @@ export function useCredentialOAuth() {
 				// A provider can isolate the popup from its opener.
 			}
 
-			const reopenedPopup = openOAuthPopup('about:blank', controller.signal);
+			const reopenedPopup = openOAuthPopup(controller.signal);
 			if (!reopenedPopup) {
 				showPopupBlockedError();
 				return;
@@ -437,6 +424,9 @@ export function useCredentialOAuth() {
 		});
 
 		const data: ICredentialDataDecryptedObject = { ...options.data };
+		if (hasAutomaticOAuthApp(credentialType) && !data.clientId) {
+			data.useDynamicClientRegistration ??= true;
+		}
 		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
 			(prop) => prop.name === 'allowedHttpRequestDomains',
 		);

@@ -1,5 +1,6 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SecurityConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -8,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
 
@@ -58,6 +60,7 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
+import '@/controllers/public-api-rate-limit-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
@@ -77,10 +80,10 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { responsesApiFallback } from './modules/agents/integrations/platforms/webhook/responses-api';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
@@ -191,7 +194,7 @@ export class Server extends AbstractServer {
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
-		// sequentially — the first strategy that returns a non-null result wins.
+		// sequentially — the first strategy that does not abstain wins.
 		// API key auth is registered first so existing behavior is preserved.
 		// Session cookie auth is registered last: an explicit but wrong API
 		// key/bearer token fails fast rather than silently falling back to an
@@ -269,6 +272,9 @@ export class Server extends AbstractServer {
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
 
+		// The agent webhook keeps the OpenAI error shape for unknown routes and unparsable bodies.
+		app.use(`/${this.globalConfig.endpoints.agentWebhook}`, ...responsesApiFallback);
+
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------
@@ -284,9 +290,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(LogStreamingEventRelay).init();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup
@@ -453,6 +460,8 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
+				// This path may contain `.`, which the route pattern must match literally.
+				escapeRegExp(this.globalConfig.endpoints.agentWebhook),
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another

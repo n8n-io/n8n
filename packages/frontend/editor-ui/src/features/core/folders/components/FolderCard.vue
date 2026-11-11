@@ -155,7 +155,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -174,7 +174,7 @@ const getFolderUrl = (folderId: string) => {
 			folderId,
 		},
 		query: route.query,
-	}).href;
+	}).fullPath;
 };
 
 const onAction = async (action: string) => {
@@ -329,8 +329,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 									<N8nIconButton
 										:class="['action-toggle', $style['actions-menu']]"
 										variant="ghost"
-										icon="ellipsis-vertical"
-										size="medium"
+										icon="ellipsis-12"
+										size="small"
+										icon-size="medium"
 										role="button"
 										:aria-controls="dropdownId"
 									/>

@@ -1,6 +1,6 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, JwtService } from '@n8n/backend-services';
 import { randomValidPassword, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
@@ -9,14 +9,13 @@ import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
+let owner: Person;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
@@ -430,6 +429,10 @@ describe('GET /resolve-signup-token', () => {
 });
 
 describe('POST /logout', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	test('should log user out', async () => {
 		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 		const ownerAgent = testServer.authAgentFor(owner);
@@ -446,5 +449,34 @@ describe('POST /logout', () => {
 
 		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
 		await ownerAgent.get('/login').expect(401);
+	});
+
+	test('should emit `user-logged-out` once and not again for the revoked cookie', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const logoutEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'user-logged-out');
+
+		await ownerAgent.post('/logout').expect(200);
+
+		expect(logoutEvents()).toEqual([
+			['user-logged-out', { user: expect.objectContaining({ id: owner.id }) }],
+		]);
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.post('/logout').expect(401);
+
+		expect(logoutEvents()).toHaveLength(1);
+	});
+
+	test('should return 401 and emit nothing without a session', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		await testServer.authlessAgent.post('/logout').expect(401);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('user-logged-out', expect.anything());
 	});
 });

@@ -1,6 +1,5 @@
 /**
- * Files and directory prefixes whose changes force RUN_FULL across the whole
- * workspace.
+ * Files whose changes force RUN_FULL across the whole workspace.
  *
  * These MUST be consulted at BOTH layers of the scoping pipeline:
  *   - `affectedPackages()` — returns every package so all test jobs are listed
@@ -15,10 +14,9 @@
 export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
 
 /**
- * Directory prefixes consumed at runtime by packages that don't import them in
- * a way the test runner's import-graph walk can see. A change here is invisible
- * to `vitest related` on the test file, so we bail
- * the workspace to full rather than silently skip:
+ * Directory prefixes of packages whose changes force RUN_FULL in every package
+ * that depends on them, even when that package also has its own changes.
+ * `vitest related` on a dependent's changed files cannot see a change here:
  *   - `packages/@n8n/db/` — schema + entities resolved through the DI container
  *     by every consuming package's integration tests.
  *   - `packages/workflow/`, `packages/core/` — universal sinks imported by
@@ -32,10 +30,12 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
  *     it must trigger the same full run, or a change to 350 lines of global DOM
  *     patching would scope to zero test files and report a false green.
  *
- * Over-broad on the rare PRs that touch these (keeps the failure mode "ran too
- * much" rather than "ran nothing"), which is the intended trade-off.
+ * Only dependents run full. A package that does not depend on the changed
+ * package cannot load its code: pnpm does not hoist workspace packages, so an
+ * undeclared import fails. `affectedPackages()` follows the same dependency
+ * graph, so a dependent with no changes of its own already runs full.
  */
-export const GLOBAL_TRIGGER_PREFIXES = [
+export const SINK_PACKAGE_PREFIXES = [
 	'packages/@n8n/db/',
 	'packages/workflow/',
 	'packages/core/',
@@ -44,5 +44,10 @@ export const GLOBAL_TRIGGER_PREFIXES = [
 
 /** True when a repo-root-relative path forces a full workspace run. */
 export function matchesGlobalTrigger(file: string): boolean {
-	return GLOBAL_TRIGGER_FILES.has(file) || GLOBAL_TRIGGER_PREFIXES.some((p) => file.startsWith(p));
+	return GLOBAL_TRIGGER_FILES.has(file);
+}
+
+/** True when a repo-root-relative path is in a package whose dependents run full. */
+export function matchesSinkPackage(file: string): boolean {
+	return SINK_PACKAGE_PREFIXES.some((p) => file.startsWith(p));
 }

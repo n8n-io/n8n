@@ -6,13 +6,20 @@ import {
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -68,6 +75,7 @@ function makeService() {
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+	vi.mocked(userHasScopes).mockResolvedValue(true);
 
 	return {
 		service: new AgentTestRunService(
@@ -477,6 +485,29 @@ describe('AgentTestRunService', () => {
 		).resolves.toEqual({ status: 'session_not_found' });
 		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+	});
+
+	it('rejects a draft run and resume from a user without agent:read', async () => {
+		const { service, agentValidationService, agentExecutionOrchestratorService } = makeService();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(
+			service.prepareDraftRun({ agentId, projectId, user, previewChat: true, credentialProvider }),
+		).rejects.toThrow(ForbiddenError);
+		await expect(
+			service.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				resumeData: { approved: true },
+				user,
+				chatSurface: 'preview',
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, { projectId });
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 

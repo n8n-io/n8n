@@ -9,6 +9,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -18,14 +19,12 @@ import {
 	type RemediationMetadata,
 	verificationVerdictSchema,
 } from '../../workflow-loop/workflow-loop-state';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const reportVerificationVerdictInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
 	workflowId: z.string().describe('The workflow ID that was verified'),
-	executionId: z
-		.string()
-		.optional()
-		.describe('The execution ID from `executions(action="run")`, if available'),
+	executionId: z.string().optional().describe('The execution ID from `run_workflow`, if available'),
 	verdict: verificationVerdictSchema.describe(
 		'Your assessment: "verified" if the workflow ran correctly, ' +
 			'"needs_patch" if a specific node needs fixing, ' +
@@ -67,7 +66,9 @@ export const reportVerificationVerdictInputSchema = z.object({
 			attemptCount: z.number().int().min(0).optional(),
 		})
 		.optional()
-		.describe('Remediation metadata returned by verify-built-workflow, if available'),
+		.describe(
+			'Remediation metadata returned by workflow_builder_verify_built_workflow, if available',
+		),
 	summary: z.string().describe('One-sentence summary of the verification result'),
 });
 
@@ -105,9 +106,10 @@ function defaultRemediationForVerdict(
 }
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
-	return new Tool('report-verification-verdict')
+	return new Tool(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT))
 		.description(
-			'Report the result of verifying a workflow after building it. Only call in checkpoint follow-up turns. ' +
+			'Report the result of verifying a workflow after building it. ' +
 				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
 				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		)

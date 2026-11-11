@@ -6,7 +6,6 @@ import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
-import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
@@ -115,6 +114,34 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-restricted-panel');
 	}
 
+	/** The lock beside a credential type select whose saved value a policy blocks. */
+	getRestrictedCredentialTypeMarker(parameterName: string): Locator {
+		return this.getParameterInput(parameterName).getByTestId('credential-select-restricted');
+	}
+
+	/** The parameter input also holds the credential picker, so click the select itself. */
+	async openCredentialTypeList(parameterName: string): Promise<void> {
+		await this.getParameterInput(parameterName).getByTestId('credential-select').click();
+	}
+
+	/** The options of the open credential type list. A search hides the options it does not match. */
+	getCredentialTypeOptions(): Locator {
+		return this.getVisiblePopper()
+			.getByTestId('credential-select-option')
+			.filter({ visible: true });
+	}
+
+	getCredentialTypeOption(credentialType: string): Locator {
+		return this.getVisiblePopper().locator(
+			`[data-test-id="credential-select-option"][data-credential-name="${credentialType}"]`,
+		);
+	}
+
+	/** The popover that explains a restricted type. It is teleported out of the NDV. */
+	getRestrictedTypePopover(): Locator {
+		return this.getVisiblePoppers().getByTestId('node-restricted-popover');
+	}
+
 	getInputPanel() {
 		return this.container.getByTestId('ndv-input-panel');
 	}
@@ -212,6 +239,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-parameters');
 	}
 
+	getDeprecatedNotice() {
+		return this.container.getByTestId('node-deprecated-notice');
+	}
+
 	getParameterInputHint() {
 		return this.container.getByTestId('parameter-input-hint');
 	}
@@ -256,8 +287,21 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
 	}
 
+	getParameterExpressionPrefixBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend');
+	}
+
+	getParameterCodeEditorBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.cm-editor');
+	}
+
 	getFromAiOverrideButton(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const inlineButton =
+			this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const standaloneButton = this.container
+			.getByTestId(`${parameterName}-parameter-input-persistent-options-container`)
+			.getByTestId('from-ai-override-button');
+		return inlineButton.or(standaloneButton);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {
@@ -606,12 +650,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
+	/**
+	 * Fullscreen code editor dialog.
+	 * The node details view is also a dialog, so this locator stays on the editor.
+	 */
 	getCodeEditorDialog() {
-		return dialogRootIn(this.page);
+		return this.page.getByRole('dialog').filter({
+			has: this.page.getByTestId('code-editor-fullscreen'),
+		});
 	}
 
 	async closeCodeEditorDialog() {
-		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
+		await this.getCodeEditorDialog().getByTestId('dialog-close-button').click();
 	}
 
 	getNodeRunSuccessIndicator() {

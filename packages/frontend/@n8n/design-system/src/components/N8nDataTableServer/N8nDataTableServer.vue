@@ -27,7 +27,9 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	Column,
 	ColumnDef,
+	ColumnPinningState,
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
@@ -39,15 +41,17 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElSkeletonItem } from 'element-plus';
+
 // `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
 // `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
 // subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
 import get from 'lodash/get.js';
-import { computed, h, shallowRef, useSlots, watch } from 'vue';
+import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
+import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nPagination from '../N8nPagination';
+import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
 
@@ -56,6 +60,8 @@ const props = withDefaults(
 		items: T[];
 		headers: Array<TableHeader<T>>;
 		itemsLength: number;
+		/** Server page count when groups make pages differ in size. */
+		pageCount?: number;
 		loading?: boolean;
 		multiSort?: boolean;
 
@@ -69,13 +75,60 @@ const props = withDefaults(
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		pageSizes?: number[];
+		/**
+		 * Render the pager. Set this to false when the screen loads more rows itself.
+		 * @default true
+		 */
+		pagination?: boolean;
+		/**
+		 * Show an All option in the page size selector.
+		 * Selecting it sets items per page to `PAGINATION_ALL_ITEMS_PER_PAGE`.
+		 * @default false
+		 */
+		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
+		/**
+		 * How many leading columns stay in place while the table scrolls horizontally.
+		 * The selection column is pinned in front of these when it is shown.
+		 * @default 0
+		 */
+		pinColumns?: number;
+		/**
+		 * How many trailing columns stay visible while the table scrolls horizontally.
+		 * Leading pinned columns take precedence if the counts overlap.
+		 * @default 0
+		 */
+		pinEndColumns?: number;
+		/**
+		 * The group of a row. The table shows a group row before the first row of each group,
+		 * with one cell for each column, filled by the `group.<column>` slots. A row without a
+		 * group gets no group row. The rows must arrive sorted by group.
+		 */
+		groupBy?: (row: T) => string | undefined;
+		/**
+		 * Group rows with no rows of their own on this page, such as an empty group or a group
+		 * that the server folded. Each shows before the row at `index`, or after the last row
+		 * when `index` is past it.
+		 */
+		extraGroups?: Array<{ group: string; index: number }>;
+		/** Groups that the user folded. Their group rows stay, and their rows are not rendered. */
+		collapsedGroups?: string[];
+		/** Props of the group row of a group, such as a class. */
+		groupRowProps?: (group: string) => { class?: VueClass };
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
+		pagination: true,
+		showAll: false,
 		rowProps: undefined,
+		pinColumns: 0,
+		pinEndColumns: 0,
+		groupBy: undefined,
+		extraGroups: () => [],
+		collapsedGroups: () => [],
+		groupRowProps: undefined,
 	},
 );
 
@@ -84,6 +137,8 @@ defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
 	cover?: () => void;
+	/** One cell of a group row. `item` is the first row of the group, or undefined for an extra group. */
+	[key: `group.${string}`]: (props: { item: T | undefined; group: string }) => void;
 }>();
 
 const emit = defineEmits<{
@@ -91,6 +146,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'click:row': [event: MouseEvent, payload: { item: T }];
+	'click:group': [event: MouseEvent, payload: { group: string }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
@@ -102,6 +158,55 @@ watch(
 	// the sync will NOT work without the deep watcher
 	{ deep: true },
 );
+
+/** The group whose group row shows before the row at `index`, if that row starts a group. */
+function groupStartingAt(rows: Array<Row<T>>, index: number): string | undefined {
+	if (!props.groupBy) return undefined;
+	const group = props.groupBy(rows[index].original);
+	if (group === undefined) return undefined;
+	return index > 0 && props.groupBy(rows[index - 1].original) === group ? undefined : group;
+}
+
+type BodyEntry =
+	| { kind: 'group'; key: string; group: string; item: T | undefined }
+	| { kind: 'row'; key: string; row: Row<T> };
+
+/** The rows of the body in order: the data rows, with each group row before its first row. */
+function bodyEntries(): BodyEntry[] {
+	const rows = table.getRowModel().rows;
+	const entries: BodyEntry[] = [];
+	const extrasAt = (index: number, last: boolean) =>
+		props.extraGroups
+			.filter((extra) => (last ? extra.index >= index : extra.index === index))
+			.map(
+				({ group }): BodyEntry => ({
+					kind: 'group',
+					key: `group-${group}`,
+					group,
+					item: undefined,
+				}),
+			);
+	rows.forEach((row, index) => {
+		entries.push(...extrasAt(index, false));
+		const group = groupStartingAt(rows, index);
+		if (group !== undefined) {
+			entries.push({ kind: 'group', key: `group-${group}-${row.id}`, group, item: row.original });
+		}
+		entries.push({ kind: 'row', key: row.id, row });
+	});
+	entries.push(...extrasAt(rows.length, true));
+	return entries;
+}
+
+function isRowCollapsed(row: T): boolean {
+	const group = props.groupBy?.(row);
+	return group !== undefined && props.collapsedGroups.includes(group);
+}
+
+function groupCellAlign(column: CoreColumn<T, unknown>) {
+	const align = getColumnMeta(column).cellProps.align;
+	return align ? `cell-align--${align}` : undefined;
+}
 
 function itemKeySlot(info: CellContext<T, unknown>) {
 	const slotName = `item.${info.column.id}` as const;
@@ -221,26 +326,75 @@ const columnsDefinition = computed(() => {
 	return [...(props.showSelect ? [selectColumn] : []), ...mapHeaders(props.headers)];
 });
 
+const columnPinning = computed<ColumnPinningState>(() => {
+	const ids = columnsDefinition.value
+		.map((column) => column.id)
+		.filter((id): id is string => id !== undefined);
+	const pinnedCount = props.pinColumns > 0 ? props.pinColumns + (props.showSelect ? 1 : 0) : 0;
+	const left = ids.slice(0, pinnedCount);
+	const right =
+		props.pinEndColumns > 0
+			? ids.slice(-props.pinEndColumns).filter((id) => !left.includes(id))
+			: [];
+	return { left, right };
+});
+
+function getPinnedCellBindings(column: Column<T, unknown>) {
+	const side = column.getIsPinned();
+	if (!side) return undefined;
+	if (side === 'right') {
+		return {
+			class: column.getIsFirstColumn('right') ? 'is-pinned is-pinned-end-edge' : 'is-pinned',
+			style: { right: `${column.getAfter('right')}px` },
+		};
+	}
+
+	return {
+		class: column.getIsLastColumn('left') ? 'is-pinned is-pinned-edge' : 'is-pinned',
+		style: { left: `${column.getStart('left')}px` },
+	};
+}
+
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
+const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
+const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
 
-const pagination = computed<PaginationState>({
-	get() {
-		return {
-			pageIndex: page.value,
-			pageSize: itemsPerPage.value,
-		};
-	},
-	set(newValue) {
-		page.value = newValue.pageIndex;
-		itemsPerPage.value = newValue.pageSize;
-	},
+const ALL_PAGE_SKELETON_ROWS = 10;
+
+const skeletonRowCount = computed(() =>
+	itemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE
+		? ALL_PAGE_SKELETON_ROWS
+		: itemsPerPage.value,
+);
+
+watch(itemsPerPage, (value) => {
+	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
+		void emitUpdateOptions({
+			page: page.value,
+			itemsPerPage: value,
+			sortBy: sortBy.value,
+		});
+		return;
+	}
+
+	table.setPageSize(value);
 });
 
-const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+const paginationState = computed<PaginationState>(() => ({
+	pageIndex: page.value,
+	pageSize: itemsPerPage.value,
+}));
+
+const showPagination = computed(
+	() =>
+		props.pagination &&
+		(props.itemsLength > Math.min(...props.pageSizes) || (props.pageCount ?? 0) > 1),
+);
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
@@ -262,7 +416,8 @@ const SELECT_COLUMN_ID = 'data-table-select';
 const selectColumn: ColumnDef<T> = {
 	id: SELECT_COLUMN_ID,
 	enableResizing: false,
-	size: 38,
+	// 16px leading inset, 16px checkbox, 8px trailing padding.
+	size: 40,
 	enablePinning: true,
 	header: ({ table }) => {
 		return h(N8nCheckbox, {
@@ -326,15 +481,6 @@ const emitUpdateOptions = useThrottleFn(
 	100,
 );
 
-function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-indexed)
-	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
-	const newPage = Math.min(page.value, maxPage);
-
-	page.value = newPage;
-	itemsPerPage.value = newPageSize;
-}
-
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
@@ -342,6 +488,9 @@ const table = useVueTable({
 	// after mount (e.g. contextual columns that depend on the active tab).
 	get columns() {
 		return columnsDefinition.value;
+	},
+	get pageCount() {
+		return props.pageCount;
 	},
 	get rowCount() {
 		return props.itemsLength;
@@ -351,17 +500,20 @@ const table = useVueTable({
 			return sortBy.value;
 		},
 		get pagination() {
-			return pagination.value;
+			return paginationState.value;
 		},
 		get rowSelection() {
 			return rowSelection.value;
+		},
+		get columnPinning() {
+			return columnPinning.value;
 		},
 	},
 	getCoreRowModel: getCoreRowModel(),
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
 		const newValue =
-			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
+			typeof updaterOrValue === 'function' ? updaterOrValue(paginationState.value) : updaterOrValue;
 
 		// prevent duplicate events from being fired
 		void emitUpdateOptions({
@@ -396,13 +548,21 @@ const table = useVueTable({
 
 <template>
 	<div>
-		<div class="n8n-data-table-server-wrapper">
-			<div class="table-scroll">
+		<div
+			class="n8n-data-table-server-wrapper"
+			:class="{
+				'is-scrolled-left': canScrollLeft,
+				'can-scroll-right': canScrollRight,
+				'has-pinned-end': pinEndColumns > 0,
+			}"
+		>
+			<div ref="scrollContainer" class="table-scroll">
 				<table
+					ref="tableElement"
 					class="n8n-data-table-server"
 					:class="{ 'table--loading': loading }"
 					:style="{
-						width: `${table.getCenterTotalSize()}px`,
+						width: `${table.getTotalSize()}px`,
 						borderSpacing: 0,
 						minWidth: '100%',
 						tableLayout: 'fixed',
@@ -412,24 +572,28 @@ const table = useVueTable({
 						<tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
 							<template v-for="header in headerGroup.headers" :key="header.id">
 								<th
+									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
+										maxWidth: `${header.getSize()}px`,
 									}"
 									:class="{
+										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
 									@mousedown="header.column.getToggleSortingHandler()?.($event)"
 								>
-									<FlexRender
-										v-if="!header.isPlaceholder"
-										:render="header.column.columnDef.header"
-										:props="header.getContext()"
-									/>
-
-									<template v-if="header.column.getCanSort()">
-										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-									</template>
+									<div class="cell-content">
+										<FlexRender
+											v-if="!header.isPlaceholder"
+											:render="header.column.columnDef.header"
+											:props="header.getContext()"
+										/>
+										<template v-if="header.column.getCanSort()">
+											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+										</template>
+									</div>
 
 									<div
 										v-if="header.column.getCanResize()"
@@ -458,39 +622,77 @@ const table = useVueTable({
 							</tr>
 						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
-							<tr v-for="item in itemsPerPage" :key="item">
+							<tr v-for="item in skeletonRowCount" :key="item">
 								<td
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
+									v-bind="getPinnedCellBindings(coll)"
 									class="el-skeleton is-animated"
 								>
 									<ElSkeletonItem />
 								</td>
 							</tr>
 						</template>
-						<template v-else-if="table.getRowModel().rows.length">
-							<template v-for="row in table.getRowModel().rows" :key="row.id">
-								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
-									<tr
-										v-bind="getRowProps(row.original, row.index)"
-										@click="emit('click:row', $event, { item: row.original })"
+						<!-- Extra groups show with no rows too, such as a group with no rows of its own. -->
+						<template v-else>
+							<template v-for="entry in bodyEntries()" :key="entry.key">
+								<tr
+									v-if="entry.kind === 'group'"
+									class="group-row"
+									v-bind="groupRowProps?.(entry.group)"
+									data-test-id="data-table-group-row"
+									@click="emit('click:group', $event, { group: entry.group })"
+								>
+									<td
+										v-for="column in table.getVisibleFlatColumns()"
+										:key="column.id"
+										v-bind="getPinnedCellBindings(column)"
+										:style="{
+											width: `${column.getSize()}px`,
+											maxWidth: `${column.getSize()}px`,
+										}"
+										:class="groupCellAlign(column)"
 									>
-										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
-											<td
-												:class="{
-													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
-														getColumnMeta(cell.column).cellProps.align,
-													),
-												}"
-											>
-												<FlexRender
-													:render="cell.column.columnDef.cell"
-													:props="cell.getContext()"
-												/>
-											</td>
-										</template>
-									</tr>
-								</slot>
+										<slot
+											:name="`group.${column.id}`"
+											v-bind="{ item: entry.item, group: entry.group }"
+										/>
+									</td>
+								</tr>
+								<template v-else-if="!isRowCollapsed(entry.row.original)">
+									<slot
+										name="item"
+										v-bind="{ item: entry.row.original, cells: entry.row.getVisibleCells() }"
+									>
+										<tr
+											v-bind="getRowProps(entry.row.original, entry.row.index)"
+											@click="emit('click:row', $event, { item: entry.row.original })"
+										>
+											<template v-for="cell in entry.row.getVisibleCells()" :key="cell.id">
+												<td
+													v-bind="getPinnedCellBindings(cell.column)"
+													:style="{
+														width: `${cell.column.getSize()}px`,
+														maxWidth: `${cell.column.getSize()}px`,
+													}"
+													:class="{
+														'cell-select': cell.column.id === SELECT_COLUMN_ID,
+														[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
+															getColumnMeta(cell.column).cellProps.align,
+														),
+													}"
+												>
+													<div class="cell-content">
+														<FlexRender
+															:render="cell.column.columnDef.cell"
+															:props="cell.getContext()"
+														/>
+													</div>
+												</td>
+											</template>
+										</tr>
+									</slot>
+								</template>
 							</template>
 						</template>
 					</tbody>
@@ -501,28 +703,22 @@ const table = useVueTable({
 			<N8nPagination
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
-				:total="itemsLength"
+				:total="
+					pageCount !== undefined && itemsPerPage > 0 ? pageCount * itemsPerPage : itemsLength
+				"
+				:page-sizes="pageSizes"
+				:show-all="showAll"
 				:show-total="false"
-				:show-sizes="false"
 				@update:page="page = $event - 1"
+				@update:items-per-page="itemsPerPage = $event"
 			/>
-			<div class="table-pagination__sizes">
-				<div class="table-pagination__sizes__label">Page size</div>
-				<ElSelect
-					v-model.number="itemsPerPage"
-					class="table-pagination__sizes__select"
-					size="small"
-					:teleported="false"
-					@update:model-value="handlePageSizeChange"
-				>
-					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
-				</ElSelect>
-			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" scoped>
+@use '../../css/mixins/motion';
+
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
@@ -542,6 +738,7 @@ const table = useVueTable({
 
 	th {
 		position: relative;
+		isolation: isolate;
 		color: var(--color--text);
 		font-weight: var(--font-weight--medium);
 		font-size: 12px;
@@ -563,6 +760,20 @@ const table = useVueTable({
 		border-bottom: 1px solid var(--color--foreground);
 	}
 
+	th.is-pinned,
+	td.is-pinned {
+		position: sticky;
+		z-index: 1;
+	}
+
+	th.is-pinned {
+		background-color: var(--color--background--light-1);
+	}
+
+	td.is-pinned {
+		background-color: inherit;
+	}
+
 	tbody > tr {
 		&:hover {
 			background-color: var(--color--background--light-2);
@@ -581,10 +792,17 @@ const table = useVueTable({
 		}
 	}
 
+	/* A group row heads the rows below it: a quiet colour and no hover. */
+	tbody > tr.group-row,
+	tbody > tr.group-row:hover {
+		background-color: var(--color--background--light-2);
+	}
+
 	td {
 		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
+		overflow: hidden;
 
 		&:first-child {
 			padding-left: 16px;
@@ -601,18 +819,70 @@ const table = useVueTable({
 			overflow: visible;
 		}
 	}
+
+	th.cell-select,
+	td.cell-select {
+		overflow: visible;
+
+		.cell-content {
+			overflow: visible;
+		}
+	}
 }
 
 .n8n-data-table-server-wrapper {
+	position: relative;
 	border-radius: 8px;
 	border: 1px solid var(--color--foreground);
 	overflow: hidden;
+
+	// border-right on a sticky cell scrolls away. This line stays with the cell, under the scrollbar.
+	&.is-scrolled-left .is-pinned-edge::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 1px;
+		background-color: var(--color--foreground);
+		pointer-events: none;
+	}
+
+	// A shadow fades in over the right edge while columns are still hidden past it.
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: var(--spacing--xl);
+		z-index: 3;
+		pointer-events: none;
+		opacity: 0;
+		background: linear-gradient(to left, var(--shadow-color), transparent);
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+		@include motion.reduced-motion;
+	}
+
+	&.can-scroll-right::after {
+		opacity: 1;
+	}
+
+	&.has-pinned-end::after {
+		display: none;
+	}
+
+	&.can-scroll-right .is-pinned-end-edge {
+		border-left: var(--border);
+	}
 }
 
 .table-scroll {
 	max-height: 100%;
+	// No reserved scrollbar gutter: the header and the row dividers run the full width, and a
+	// scrollbar shows only while the rows overflow.
 	overflow: auto;
-	scrollbar-gutter: stable;
 	position: relative;
 }
 
@@ -659,33 +929,10 @@ th.loading-row {
 }
 
 .table-pagination {
-	margin-top: 10px;
+	margin-top: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-
-	&__sizes {
-		display: flex;
-
-		&__label {
-			color: var(--color--text);
-			background-color: var(--color--background--light-2);
-			border: 1px solid var(--color--foreground);
-			border-right: 0;
-			font-size: 12px;
-			display: flex;
-			align-items: center;
-			padding: 0 8px;
-			border-top-left-radius: var(--radius);
-			border-bottom-left-radius: var(--radius);
-		}
-
-		&__select {
-			--input--radius--top-left: 0;
-			--input--radius--bottom-left: 0;
-			width: 70px;
-		}
-	}
 }
 
 .resizer {
@@ -697,7 +944,7 @@ th.loading-row {
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;
-	right: -2px;
+	right: 0;
 	display: none;
 	z-index: 1;
 	&:hover {
@@ -711,6 +958,13 @@ th.loading-row {
 
 th:hover:not(:last-child) > .resizer {
 	display: block;
+}
+
+.cell-content {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .cell-align {

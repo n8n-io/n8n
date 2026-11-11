@@ -3,13 +3,23 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RuntimeCredentialProxyService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
+import {
+	type ExecutionLifecycleHooks,
+	ExternalSecretsProxy,
+	StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -23,6 +33,7 @@ import type {
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
+	IWorkflowExecutionTelemetryMetadata,
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
@@ -39,9 +50,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	OperationalError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -49,12 +57,14 @@ import {
 	getSubWorkflowOutputPolicy,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
+	attachSubWorkflowRedaction,
+	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
-import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
+import type { PrepareWorkflowAgentForEval } from './modules/agents/evaluation/agent-evaluation.contracts';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -74,11 +84,10 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
-import { objectToError } from '@/utils/object-to-error';
+import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -162,6 +171,7 @@ async function fetchWorkflowData(
 				workflowData.nodes ?? [],
 				parentWorkflowId,
 			);
+			WorkflowHelpers.validateWorkflowStructure(workflowData);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
@@ -245,8 +255,8 @@ export async function getPublishedWorkflowData(
 		};
 	}
 
-	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id },
+	throw new OperationalError('Workflow is not active and cannot be executed.', {
+		extra: { workflowId: workflowInfo.id, parentWorkflowId },
 	});
 }
 
@@ -312,8 +322,12 @@ export async function executeWorkflow(
 	const activeExecutions = Container.get(ActiveExecutions);
 
 	// Use draft sub-workflows for manual/chat executions to enable
-	// iterating on sub-workflows without requiring them to be published
-	const useDraftVersion = isManualOrChatExecution(options.executionMode);
+	// iterating on sub-workflows without requiring them to be published.
+	// A nested sub-workflow's own parent runs as 'integrated', so read the mode
+	// of the root execution: every level below a manual run uses drafts.
+	const useDraftVersion = isManualOrChatExecution(
+		additionalData.rootExecutionMode ?? options.executionMode,
+	);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -382,6 +396,15 @@ export async function executeWorkflow(
 	);
 
 	if (options.doNotWaitToFinish) {
+		// Nothing awaits a detached sub-workflow. `startExecution` stores its failure, or logs
+		// an error when it cannot.
+		executionPromise.catch((error: Error) => {
+			Container.get(Logger).debug('Detached sub-workflow execution failed', {
+				executionId,
+				workflowId: workflowData.id,
+				error,
+			});
+		});
 		return { executionId, data: [null] };
 	}
 
@@ -596,21 +619,75 @@ async function startExecution(
 		settings: workflowData.settings,
 	});
 
-	/**
-	 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
-	 * same worker process as the parent execution. Hence ensure the subworkflow
-	 * execution is marked as started as well.
-	 */
-	await executionRepository.setRunning(executionId);
-
 	const startTime = Date.now();
+	// A "library" sub-workflow can opt out of passing its own redaction to its caller. What it
+	// received from its own sub-workflows always passes up.
+	const includeOwn = workflowData.settings?.redactCallerExecutions !== false;
+
+	// Reported to the caller so its redaction covers this run's output: the parent's own
+	// nodes do not reference these credentials.
+	const workflowCredentialIds = Container.get(
+		CredentialsPermissionChecker,
+	).getCredentialIdsForNodes(workflowData.nodes);
+
+	// A failed sub-workflow returns an error, not a result. Attach to the error the private
+	// credentials that the sub-workflow used and the channels that it redacts. The parent reads
+	// them in `BaseExecuteContext.executeWorkflow`, also when its node continues on fail.
+	const buildErrorForParent = (
+		error: unknown,
+		executionData: IRunExecutionData | undefined,
+	): Error =>
+		attachSubWorkflowRedaction(
+			attachDynamicCredentialsUsage(
+				buildSubWorkflowError(error, workflow, {
+					executionId,
+					workflowId: workflowData.id,
+				}),
+				summarizeDynamicCredentialsUsage(executionData, workflowCredentialIds),
+			),
+			summarizeSubWorkflowRedaction(executionData, { includeOwn }),
+		);
+
+	let hooks: ExecutionLifecycleHooks | undefined;
+	let callerAllowed = false;
+	let credentialChecksPassed = false;
 
 	let data;
 	try {
+		/**
+		 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
+		 * same worker process as the parent execution. Hence ensure the subworkflow
+		 * execution is marked as started as well.
+		 */
+		await executionRepository.setRunning(executionId);
+
+		// The hooks read this object when the run ends, so the credential check
+		// below can still fill it in.
+		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = {};
+		hooks = getLifecycleHooksForSubExecutions(
+			runData.executionMode,
+			executionId,
+			workflowData,
+			additionalData.userId,
+			options.parentExecution,
+			undefined,
+			undefined,
+			telemetryMetadata,
+		);
+
 		// The original mode of the whole run tree: a sub-workflow's own
 		// `WorkflowExecute` always runs as 'integrated'. Same pattern as
 		// `credentials-helper`.
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
+
+		// A refused caller must not start executions in this workflow's project.
+		await Container.get(SubworkflowPolicyChecker).check(
+			workflow,
+			options.parentWorkflowId,
+			options.node,
+			additionalData.userId,
+		);
+		callerAllowed = true;
 
 		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
@@ -631,18 +708,14 @@ async function startExecution(
 			// acting user rides along only for what that project does not carry: a
 			// credential reachable personally has to stay runnable by the person it
 			// belongs to, one level down as much as at the top.
-			await Container.get(CredentialsPermissionChecker).check(
+			const { personalCredentialsCount } = await Container.get(CredentialsPermissionChecker).check(
 				workflowData.id,
 				workflowData.nodes,
 				additionalData.userId,
 			);
+			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
-		await Container.get(SubworkflowPolicyChecker).check(
-			workflow,
-			options.parentWorkflowId,
-			options.node,
-			additionalData.userId,
-		);
+		credentialChecksPassed = true;
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -657,13 +730,7 @@ async function startExecution(
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
-		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
-			runData.executionMode,
-			executionId,
-			workflowData,
-			additionalData.userId,
-			options.parentExecution,
-		);
+		additionalDataIntegrated.hooks = hooks;
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 
@@ -737,35 +804,62 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await Container.get(ExecutionPersistence).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
-		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
-		// credential flags on already-executed tasks — ride them on the error like the
-		// regular failure path below.
-		throw attachDynamicCredentialsUsage(
-			objectToError(
-				{
-					...executionError,
+		// Nothing else records this failure, and a detached caller never sees the error.
+		const logUnrecordedFailure = (recordError: unknown) =>
+			Container.get(Logger).error('Failed to record a failed sub-workflow execution', {
+				executionId,
+				workflowId: workflowData.id,
+				error: recordError,
+			});
+
+		try {
+			if (hooks && callerAllowed && !credentialChecksPassed) {
+				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
+				// does for a top-level run. The save hook stores the failure and starts the error workflow.
+				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.
+				await hooks
+					.runHook('workflowExecuteBefore', [undefined, runData.executionData])
+					.catch((hookError: unknown) =>
+						Container.get(Logger).warn('A before hook failed for a failed sub-workflow execution', {
+							executionId,
+							workflowId: workflowData.id,
+							error: hookError,
+						}),
+					);
+				await hooks
+					.runHook('workflowExecuteAfter', [fullRunData])
+					.catch(async (hookError: unknown) => {
+						// A handler that throws stops the save hook, so store the failure here.
+						Container.get(Logger).warn('An after hook failed for a failed sub-workflow execution', {
+							executionId,
+							workflowId: workflowData.id,
+							error: hookError,
+						});
+						await Container.get(ExecutionPersistence).updateExistingExecution(
+							executionId,
+							fullExecutionData,
+						);
+					});
+			} else {
+				await Container.get(ExecutionPersistence).updateExistingExecution(
 					executionId,
-					workflowId: workflowData.id,
-					stack: executionError?.stack,
-					message: executionError?.message,
-				},
-				workflow,
-			),
-			summarizeDynamicCredentialsUsage(runData.executionData),
-		);
+					fullExecutionData,
+				);
+			}
+		} catch (recordError) {
+			logUnrecordedFailure(recordError);
+		}
+
+		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
+		// credential flags on already-executed tasks.
+		throw buildErrorForParent(executionError, runData.executionData);
 	}
+
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
-		// Workflow did finish successfully
-
-		activeExecutions.finalizeExecution(executionId, data);
-
 		return {
 			executionId,
 			data: data.data.subWorkflowOutput
@@ -773,29 +867,13 @@ async function startExecution(
 				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeDynamicCredentialsUsage(data.data),
+			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
+			// The caller keeps a copy of the output above, so it must redact what this run redacts.
+			subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn }),
 		};
+	} else {
+		throw buildErrorForParent(data.data.resultData.error, data.data);
 	}
-	activeExecutions.finalizeExecution(executionId, data);
-
-	// Workflow did fail
-	const { error } = data.data.resultData;
-
-	// A failed child may still have attempted or resolved private credentials before failing;
-	// ride the usage on the error so a continue-on-fail caller still flags its task
-	// (see `BaseExecuteContext.executeWorkflow`).
-	throw attachDynamicCredentialsUsage(
-		objectToError(
-			{
-				...error,
-				executionId,
-				workflowId: workflowData.id,
-				stack: error?.stack,
-			},
-			workflow,
-		),
-		summarizeDynamicCredentialsUsage(data.data),
-	);
 }
 
 export function setExecutionStatus(this: { executionId?: string }, status: ExecutionStatus) {

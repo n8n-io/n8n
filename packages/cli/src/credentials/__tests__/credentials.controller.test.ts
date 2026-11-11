@@ -6,6 +6,7 @@ vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
 }));
 
+import type { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	AuthenticatedRequest,
@@ -29,6 +30,7 @@ import type { CredentialDependencyService } from '../credential-dependency.servi
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
+import type { EnterpriseCredentialsService } from '../credentials.service.ee';
 import * as validation from '../validation';
 
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
@@ -73,6 +75,7 @@ describe('CredentialsController', () => {
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -89,10 +92,11 @@ describe('CredentialsController', () => {
 	let findCredentialOwningProjectSpy: MockInstance;
 	let emitSpy: MockInstance;
 
+	const enterpriseCredentialsService = mock<EnterpriseCredentialsService>();
 	const credentialsController = new CredentialsController(
 		mock(),
 		credentialsService,
-		mock(),
+		enterpriseCredentialsService,
 		mock(),
 		licenseState,
 		mock(),
@@ -135,6 +139,205 @@ describe('CredentialsController', () => {
 		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
+	});
+
+	describe('getProjectCredentials', () => {
+		it.each(['true', 'false', undefined] as const)(
+			'requests agent credential restrictions only when forAgent is true (forAgent=%s)',
+			async (forAgent) => {
+				const fixed = mock<
+					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
+				>({ id: 'fixed', isResolvable: false });
+				const getUsableCredentials = vi
+					.spyOn(credentialsService, 'getCredentialsAUserCanUseInAWorkflow')
+					.mockResolvedValue([fixed]);
+				const request = mock<CredentialRequest.ForWorkflow>({
+					user: req.user,
+					query: { projectId: 'project-1', forAgent, forAssistant: undefined },
+				});
+
+				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([
+					fixed,
+				]);
+				expect(getUsableCredentials).toHaveBeenCalledWith(request.user, {
+					projectId: 'project-1',
+					excludePersonalRoute: forAgent === 'true',
+					excludeResolvable: forAgent === 'true',
+				});
+			},
+		);
+	});
+
+	describe('getOne', () => {
+		type GetOneResult = Awaited<ReturnType<CredentialsService['getOne']>>;
+		const decrypted = {
+			id: 'cred-1',
+			name: 'GitHub',
+			type: 'githubApi',
+			data: { accessToken: '__n8n_BLANK_VALUE__' },
+		} as unknown as GetOneResult;
+		const metadataOnly = { id: 'cred-1', name: 'GitHub', type: 'githubApi' } as GetOneResult;
+		const requestFor = () =>
+			mock<CredentialRequest.Get>({ user: req.user, params: { credentialId: 'cred-1' } });
+		const query = (includeData: boolean) => ({ includeData }) as CredentialsGetOneRequestQuery;
+
+		beforeEach(() => {
+			licenseState.isSharingLicensed.mockReturnValue(false);
+			getCredentialScopesSpy.mockResolvedValue([]);
+		});
+
+		it('should emit `credentials-data-read` when the decrypted data is returned', async () => {
+			vi.spyOn(credentialsService, 'getOne').mockResolvedValue(decrypted);
+
+			const result = await credentialsController.getOne(requestFor(), res, 'cred-1', query(true));
+
+			expect(result).toMatchObject({ id: 'cred-1', data: { accessToken: '__n8n_BLANK_VALUE__' } });
+			expect(emitSpy).toHaveBeenCalledWith('credentials-data-read', {
+				user: req.user,
+				credentialType: 'githubApi',
+				credentialId: 'cred-1',
+				publicApi: false,
+			});
+		});
+
+		it('should not emit when the data was not requested', async () => {
+			vi.spyOn(credentialsService, 'getOne').mockResolvedValue(metadataOnly);
+
+			await credentialsController.getOne(requestFor(), res, 'cred-1', query(false));
+
+			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+		});
+
+		it('should not emit when the user may only read the credential and no data is returned', async () => {
+			vi.spyOn(credentialsService, 'getOne').mockResolvedValue(metadataOnly);
+
+			await credentialsController.getOne(requestFor(), res, 'cred-1', query(true));
+
+			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+		});
+
+		it('should not emit when the response fails after the data was decrypted', async () => {
+			vi.spyOn(credentialsService, 'getOne').mockResolvedValue(decrypted);
+			getCredentialScopesSpy.mockRejectedValue(new Error('scopes unavailable'));
+
+			await expect(
+				credentialsController.getOne(requestFor(), res, 'cred-1', query(true)),
+			).rejects.toThrow('scopes unavailable');
+
+			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		describe('with sharing licensed', () => {
+			type GetOneForUserResult = Awaited<ReturnType<EnterpriseCredentialsService['getOneForUser']>>;
+
+			beforeEach(() => {
+				licenseState.isSharingLicensed.mockReturnValue(true);
+			});
+
+			it('should emit `credentials-data-read` when the decrypted data is returned', async () => {
+				enterpriseCredentialsService.getOneForUser.mockResolvedValue(
+					decrypted as unknown as GetOneForUserResult,
+				);
+
+				await credentialsController.getOne(requestFor(), res, 'cred-1', query(true));
+
+				expect(enterpriseCredentialsService.getOneForUser).toHaveBeenCalledWith(
+					req.user,
+					'cred-1',
+					true,
+				);
+				expect(emitSpy).toHaveBeenCalledWith('credentials-data-read', {
+					user: req.user,
+					credentialType: 'githubApi',
+					credentialId: 'cred-1',
+					publicApi: false,
+				});
+			});
+
+			it('should not emit when no data is returned', async () => {
+				enterpriseCredentialsService.getOneForUser.mockResolvedValue(
+					metadataOnly as unknown as GetOneForUserResult,
+				);
+
+				await credentialsController.getOne(requestFor(), res, 'cred-1', query(true));
+
+				expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+			});
+		});
+	});
+
+	describe('getMany', () => {
+		type GetManyResult = Awaited<ReturnType<CredentialsService['getMany']>>;
+		const withData = (id: string) =>
+			({ id, type: 'githubApi', data: { accessToken: '__n8n_BLANK_VALUE__' } }) as unknown;
+		const requestFor = () =>
+			mock<CredentialRequest.GetMany>({ user: req.user, listQueryOptions: {} });
+		const query = (includeData: boolean) => ({ includeData }) as CredentialsGetManyRequestQuery;
+
+		it('should emit one `credentials-list-data-read` for the credentials that carry data', async () => {
+			vi.spyOn(credentialsService, 'getMany').mockResolvedValue([
+				withData('cred-1'),
+				{ id: 'cred-2', type: 'githubApi' },
+				withData('cred-3'),
+			] as GetManyResult);
+
+			await credentialsController.getMany(requestFor(), res, query(true));
+
+			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledWith('credentials-list-data-read', {
+				user: req.user,
+				credentialIds: ['cred-1', 'cred-3'],
+				credentialCount: 2,
+				chunk: 1,
+				chunkCount: 1,
+				publicApi: false,
+			});
+		});
+
+		it('should split the ids into chunks of 100 and record every id', async () => {
+			const many = Array.from({ length: 120 }, (_, i) => withData(`cred-${i}`));
+			vi.spyOn(credentialsService, 'getMany').mockResolvedValue(many as GetManyResult);
+
+			await credentialsController.getMany(requestFor(), res, query(true));
+
+			expect(emitSpy).toHaveBeenCalledTimes(2);
+			const payloads = emitSpy.mock.calls.map(
+				([, payload]) =>
+					payload as {
+						credentialIds: string[];
+						credentialCount: number;
+						chunk: number;
+						chunkCount: number;
+					},
+			);
+			expect(payloads[0]).toMatchObject({ credentialCount: 120, chunk: 1, chunkCount: 2 });
+			expect(payloads[0].credentialIds).toHaveLength(100);
+			expect(payloads[1]).toMatchObject({ credentialCount: 120, chunk: 2, chunkCount: 2 });
+			expect(payloads[1].credentialIds).toHaveLength(20);
+			expect([...payloads[0].credentialIds, ...payloads[1].credentialIds]).toEqual(
+				many.map((c) => (c as { id: string }).id),
+			);
+		});
+
+		it('should not emit when the data was not requested', async () => {
+			vi.spyOn(credentialsService, 'getMany').mockResolvedValue([
+				{ id: 'cred-1', type: 'githubApi' },
+			] as GetManyResult);
+
+			await credentialsController.getMany(requestFor(), res, query(false));
+
+			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not emit when no credential carries data', async () => {
+			vi.spyOn(credentialsService, 'getMany').mockResolvedValue([
+				{ id: 'cred-1', type: 'githubApi' },
+			] as GetManyResult);
+
+			await credentialsController.getMany(requestFor(), res, query(true));
+
+			expect(emitSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('createCredentials', () => {

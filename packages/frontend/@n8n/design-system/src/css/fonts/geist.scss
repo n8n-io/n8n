@@ -4,7 +4,8 @@
 	font-style: normal;
 	font-weight: 100 900;
 	font-display: swap;
-	font-feature-settings: 'ss02' 1;
+	/** The bundled font maps ss01 to the double-storey a without a tail. */
+	font-feature-settings: 'ss01' 1;
 }
 
 @font-face {
@@ -13,5 +14,6 @@
 	font-style: italic;
 	font-weight: 100 900;
 	font-display: swap;
-	font-feature-settings: 'ss02' 1;
+	/** The bundled font maps ss01 to the double-storey a without a tail. */
+	font-feature-settings: 'ss01' 1;
 }

@@ -53,7 +53,15 @@ describe('Agent package export scope', () => {
 		expect(CHAT_USER_API_KEY_SCOPES).not.toContain('agent:export');
 		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
-		expect(API_KEY_RESOURCES.agent).toEqual(['export']);
+		expect(API_KEY_RESOURCES.agent).toEqual([
+			'export',
+			'import',
+			'read',
+			'create',
+			'update',
+			'publish',
+			'unpublish',
+		]);
 	});
 	it.each(
 		Object.entries({
@@ -65,6 +73,41 @@ describe('Agent package export scope', () => {
 	)('allows Agent export on a %s API key', (_role, scopes) => {
 		expect(scopes).toContain('agent:export');
 	});
+});
+
+it('grants Agent import to editors and owners, with selectable action grants', () => {
+	for (const scopes of [
+		GLOBAL_OWNER_SCOPES,
+		GLOBAL_ADMIN_SCOPES,
+		PERSONAL_PROJECT_OWNER_SCOPES,
+		REGULAR_PROJECT_ADMIN_SCOPES,
+		PROJECT_EDITOR_SCOPES,
+	])
+		expect(scopes).toContain('agent:import');
+	for (const scopes of [
+		PROJECT_VIEWER_SCOPES,
+		PROJECT_CHAT_USER_SCOPES,
+		CHAT_USER_API_KEY_SCOPES,
+	]) {
+		expect(scopes).not.toContain('agent:import');
+	}
+	expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:import')).toBe(true);
+	const importScopes = [
+		'agent:import',
+		'agent:read',
+		'agent:create',
+		'agent:update',
+		'agent:publish',
+		'agent:unpublish',
+	];
+	for (const scopes of [
+		OWNER_API_KEY_SCOPES,
+		ADMIN_API_KEY_SCOPES,
+		MEMBER_API_KEY_SCOPES,
+		API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+	]) {
+		expect(scopes).toEqual(expect.arrayContaining(importScopes));
+	}
 });
 
 describe('custom role scope whitelists', () => {
@@ -100,6 +143,29 @@ describe('custom role scope whitelists', () => {
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('workflow:list')).toBe(true);
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('credential:list')).toBe(true);
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('dataTable:listProject')).toBe(true);
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('app:list')).toBe(true);
+	});
+
+	it('grants app list access through project roles or explicit global grants', () => {
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('app:list');
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('app:read');
+		expect(BASELINE_INSTANCE_SCOPES).not.toContain('app:list');
+		expect(PROJECT_VIEWER_SCOPES).toContain('app:read');
+		expect(PROJECT_VIEWER_SCOPES).toContain('app:list');
+		expect(PROJECT_VIEWER_SCOPES).not.toContain('app:update');
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('app:read');
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('app:list');
+		for (const scopes of [
+			GLOBAL_OWNER_SCOPES,
+			GLOBAL_ADMIN_SCOPES,
+			PERSONAL_PROJECT_OWNER_SCOPES,
+			REGULAR_PROJECT_ADMIN_SCOPES,
+			PROJECT_EDITOR_SCOPES,
+		]) {
+			expect(scopes).toEqual(
+				expect.arrayContaining(['app:create', 'app:read', 'app:update', 'app:delete', 'app:list']),
+			);
+		}
 	});
 
 	it('exposes whitelists keyed by role type', () => {
@@ -130,7 +196,7 @@ describe('custom role scope whitelists', () => {
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
 		// Member's baseline n8n Assistant access is `instanceAi:message` +
-		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
+		// `instanceAi:gateway` (Browser Use pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
 		const memberInstanceAiScopes = GLOBAL_MEMBER_SCOPES.filter((s) => s.startsWith('instanceAi:'));

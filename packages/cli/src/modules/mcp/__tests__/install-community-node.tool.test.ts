@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import { createInstallCommunityNodeTool } from '../tools/workflow-builder/install-community-node.tool';
@@ -46,7 +46,7 @@ describe('install_community_node MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let communityNodeTypesService: Mocked<CommunityNodeTypesService>;
 	let lifecycleService: Mocked<CommunityPackagesLifecycleService>;
-	let nodeTypes: Mocked<NodeTypes>;
+	let nodeTypes: Mocked<NodeTypesProxy>;
 	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
@@ -54,7 +54,7 @@ describe('install_community_node MCP tool', () => {
 		hasGlobalScope.mockReturnValue(true);
 		communityNodeTypesService = mock<CommunityNodeTypesService>();
 		lifecycleService = mock<CommunityPackagesLifecycleService>();
-		nodeTypes = mock<NodeTypes>();
+		nodeTypes = mock<NodeTypesProxy>();
 		// Default: nothing installed yet, so an install actually happens.
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
@@ -142,6 +142,34 @@ describe('install_community_node MCP tool', () => {
 
 			expect(structured.installed).toBe(true);
 			expect(structured).not.toHaveProperty('credentialTypes');
+		});
+	});
+
+	describe('policy restrictions', () => {
+		test('reports the node types a policy restricts', async () => {
+			const policyRestrictions = {
+				nodeTypes: [{ type: NODE_TYPE, blockedOn: 'instance' as const, optInAvailable: false }],
+			};
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(policyRestrictions);
+
+			const structured = await call();
+
+			expect(lifecycleService.describePolicyRestrictions).toHaveBeenCalledWith(
+				expect.objectContaining({ packageName: PACKAGE }),
+			);
+			expect(structured).toHaveProperty('policyRestrictions', policyRestrictions);
+		});
+
+		test('reports an empty list when no policy restricts the package', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue({ nodeTypes: [] });
+
+			expect(await call()).toHaveProperty('policyRestrictions', { nodeTypes: [] });
+		});
+
+		test('omits policy restrictions when no policy was evaluated', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(undefined);
+
+			expect(await call()).not.toHaveProperty('policyRestrictions');
 		});
 	});
 

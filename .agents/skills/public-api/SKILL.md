@@ -21,8 +21,7 @@ check the code, not license to drop a team default.
 ## Non-negotiable rules
 
 - New endpoints are `@PublicApiController` classes under `v1/controllers/`, one
-  `*.public.controller.ts` per feature. A controller is a class — never
-  `export =` (the legacy tuple style; `require-public-api-controller` flags it).
+  `*.public.controller.ts` per feature.
 - Public API and internal REST are separate HTTP surfaces. A public controller
   never calls an internal controller/endpoint; both reuse the same service.
 - Controllers and handlers delegate to a service — never import a repository or
@@ -31,7 +30,6 @@ check the code, not license to drop a team default.
   `@ApiResponse(Dto)`.
 - Register each controller via a side-effect import in `v1/controllers/index.ts`
   (`public-api-controllers.test.ts` fails otherwise).
-- Don't add business logic to legacy `express-openapi-validator` (EOV) handlers.
 - Migrating a legacy endpoint must not change its public contract.
 
 These are `n8n-local-rules` ESLint rules (see `packages/cli/eslint.config.mjs`)
@@ -173,15 +171,23 @@ defect to remove, not a contract to preserve. Detail:
 4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
    route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
    decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
-   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
-   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   `@ApiResponse`/`@ApiErrorResponse`). The generator automatically suffixes
+   the description with a sentence indicating which API Key scopes are required
+   for the operation, do not repeat these in the `@ApiDescription`. Run the full
+   `pnpm build` and commit the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
    and `openapi.decorator-routes.generated.yml` —
    `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
    build:data` alone is **not** enough after touching a controller: it runs
    the generator against the already-compiled `dist/`, so a new/changed
    controller silently doesn't show up unless `tsc` ran first.
-5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
-6. Tests.
+5. If the route uses a new tag in `@ApiTags`, declare that tag in the `tags:`
+   array of `v1/openapi.yml`. Give it an `x-displayName` and an `x-parent` that
+   names one of the parent tags. Keep the child tags in alphabetical order.
+   GitBook builds the page URL from the display name, so do not change an
+   existing `x-displayName` without checking the docs URLs.
+   `openapi-tags.test.ts` fails if the tag is not declared or is out of order.
+6. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+7. Tests.
 
 ## Testing
 
@@ -200,6 +206,5 @@ existing tests.
 - [Test-before-save endpoints](reference.md#test-before-save-endpoints)
 - [Errors](reference.md#errors)
 - [Testing matrix](reference.md#testing-matrix)
-- [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)
 - [Verifying a migration](reference.md#verifying-a-migration)
 - [CI and merging](reference.md#ci-and-merging)

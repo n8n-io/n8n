@@ -11,7 +11,7 @@ import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
-import { N8nDialog } from '../N8nDialog';
+import { N8nDialog, N8nDialogBody } from '../N8nDialog';
 import N8nTooltip from '../N8nTooltip';
 
 const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
@@ -443,11 +443,13 @@ defineExpose({
 			:container-class="$style.dialog"
 			@open-auto-focus="handleExpandedOpenAutoFocus"
 		>
-			<div
-				ref="dialogContainer"
-				data-test-id="n8n-markdown-editor-expanded"
-				@keydown.esc.capture="isExpandedViewOpen = false"
-			/>
+			<N8nDialogBody>
+				<div
+					ref="dialogContainer"
+					data-test-id="n8n-markdown-editor-expanded"
+					@keydown.esc.capture="isExpandedViewOpen = false"
+				/>
+			</N8nDialogBody>
 		</N8nDialog>
 	</div>
 </template>

@@ -2,7 +2,10 @@ operationId: getRoleMappingRules
 tags:
   - RoleMappingRule
 summary: Retrieve role-mapping rules
-description: Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.
+description: |-
+  Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.
+
+  Requires the `roleMappingRule:list` API key scope.
 x-required-scope: roleMappingRule:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -15,9 +18,6 @@ parameters:
     required: false
     name: type
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -75,3 +75,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

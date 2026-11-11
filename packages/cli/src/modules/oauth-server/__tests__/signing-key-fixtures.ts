@@ -5,7 +5,7 @@ import type { JsonWebKey, KeyObject } from 'node:crypto';
 import { createPrivateKey, sign as cryptoSign } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { OAUTH_SIGNING_KEY_TYPE } from '../oauth-signing-key.constants';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';
@@ -33,8 +33,11 @@ export const createDeploymentKeyStore = () => {
 					r.type === OAUTH_SIGNING_KEY_TYPE && r.algorithm === algorithm && r.status === 'active',
 			) ?? null,
 	);
-	repository.findOAuthSigningKeys.mockImplementation(async () =>
-		rows.filter((r) => r.type === OAUTH_SIGNING_KEY_TYPE),
+	repository.findPublishableOAuthSigningKeys.mockImplementation(async (retiredAfter) =>
+		rows.filter(
+			(r) =>
+				r.type === OAUTH_SIGNING_KEY_TYPE && (r.status === 'active' || r.updatedAt > retiredAfter),
+		),
 	);
 	repository.insertActiveOAuthSigningKey.mockImplementation(async (id, value, algorithm) => {
 		const now = new Date();

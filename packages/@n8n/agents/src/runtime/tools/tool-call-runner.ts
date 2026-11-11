@@ -1,7 +1,13 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { JSONSchema7 } from 'json-schema';
 
-import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	executeTool,
+	isSuspendedToolResult,
+	resolveToolCallTarget,
+	type SuspendedToolResult,
+} from './tool-adapter';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from './tool-catalog';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -93,19 +99,31 @@ export class ToolCallRunner {
 	 * error tool-result message to the list so the LLM can self-correct, and returns
 	 * `{ outcome: 'error' }` — never re-throws.
 	 */
-	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
-		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = toolMap.get(toolName);
+	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
+		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
+		// A tool from the tool catalog called by its own name runs as if it came through
+		// call_tool. Skills and tool results name tool catalog tools directly, and some
+		// models then call them by that name. Invalid input returns the schema.
+		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
-		if (!builtTool) {
-			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
+		if (!target) {
+			const hint = toolMap.has(CALL_TOOL_TOOL_NAME)
+				? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
+				: '';
+			return await this.toolError(callParams, new Error(`Tool ${toolName} not found.${hint}`));
 		}
+		// A dispatcher (the tool catalog's call_tool) hands the call to the tool it
+		// names. That tool's schema, approval, and suspension then apply.
+		const builtTool = target.tool;
+		const params: ProcessToolCallParams = target.dispatchedBy
+			? { ...callParams, input: target.input as JSONValue }
+			: callParams;
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
 		// lifecycle end and skip re-execution.
 		const settledBlock = this.findSettledToolCall(list, toolCallId);
 		if (settledBlock) {
-			return this.completeSettledToolCall(params, settledBlock);
+			return await this.completeSettledToolCall(params, settledBlock);
 		}
 
 		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
@@ -121,14 +139,15 @@ export class ToolCallRunner {
 			incrementToolCallCount(params.executionCounter);
 		}
 
-		const validation = await this.validateToolInput(params, builtTool);
+		const validation = await this.validateToolInput(params, builtTool, !!target.dispatchedBy);
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
 		const guardrails = GuardrailRunner.from(params.guardrails);
+		// Guardrails check the tool that runs, so a dispatched call reports that tool, not call_tool.
 		const guardCtx = guardrails?.toolCallContext({
 			toolCallId,
-			toolName,
+			toolName: builtTool.name,
 			input,
 			runId: params.runId,
 		});
@@ -183,7 +202,11 @@ export class ToolCallRunner {
 				suspension.abortObserved = true;
 				await this.cleanupAbortedTool(params, builtTool, input, suspension);
 				this.deps.onCancelled();
-				return this.buildCancelledOutcome(params, 'Run aborted');
+				return this.buildCancelledOutcome(
+					params,
+					'Run aborted',
+					'[Tool call canceled because the run stopped]',
+				);
 			}
 			return await this.toolError(params, error, builtTool);
 		}
@@ -303,11 +326,11 @@ export class ToolCallRunner {
 			);
 	}
 
-	/** Emit ToolExecutionEnd for a block the AI SDK already settled; the result was written earlier. */
-	private completeSettledToolCall(
+	/** Emit ToolExecutionEnd and guard local errors for a block the AI SDK already settled. */
+	private async completeSettledToolCall(
 		params: ProcessToolCallParams,
 		settledBlock: SettledToolCall,
-	): ToolCallOutcome {
+	): Promise<ToolCallOutcome> {
 		const settledResult =
 			settledBlock.state === 'resolved' ? settledBlock.output : settledBlock.error;
 		this.eventBus.emit({
@@ -317,6 +340,14 @@ export class ToolCallRunner {
 			result: settledResult,
 			isError: settledBlock.state === 'rejected',
 		});
+		if (settledBlock.state === 'rejected' && !settledBlock.providerExecuted) {
+			const guardedError = await guardToolErrorForModel(
+				settledBlock.error,
+				this.deps.tokenCounter,
+				this.getResultStorage(params),
+			);
+			params.list.setToolCallError(params.toolCallId, guardedError);
+		}
 		return { outcome: 'noop' };
 	}
 
@@ -324,9 +355,9 @@ export class ToolCallRunner {
 	private buildCancelledOutcome(
 		params: ProcessToolCallParams,
 		userMessage: string,
+		modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`,
 	): ToolCallOutcome {
 		const { toolCallId, toolName, input, list } = params;
-		const modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`;
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
@@ -348,13 +379,21 @@ export class ToolCallRunner {
 	private async validateToolInput(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
+		dispatched: boolean,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
-				: `Invalid tool input: ${result.error}`;
+				: !dispatched && params.toolName === builtTool.name
+					? `Invalid tool input: ${result.error}`
+					: // Dispatched calls carry no schema in the request, so return it to retry with.
+						`Invalid arguments for ${builtTool.name}: ${result.error}\nInput schema: ${JSON.stringify(
+							isZodSchema(builtTool.inputSchema)
+								? zodSchemaToJsonSchema(builtTool.inputSchema)
+								: builtTool.inputSchema,
+						)}`;
 			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
@@ -369,7 +408,6 @@ export class ToolCallRunner {
 	): Promise<unknown> {
 		const {
 			toolCallId,
-			toolName,
 			runId,
 			persistence,
 			resumeData,
@@ -381,9 +419,10 @@ export class ToolCallRunner {
 			continuation,
 			resumeSchema,
 		} = params;
+		// Name the span after the tool that runs, so a call_tool dispatch shows the real tool.
 		return await this.telemetry.withToolSpan(
 			toolCallId,
-			toolName,
+			builtTool.name,
 			input,
 			resolvedTelemetry,
 			async () =>
@@ -401,6 +440,7 @@ export class ToolCallRunner {
 							continuation,
 							resumeSchema,
 							onSuspend,
+							onGuardrailNotice: params.guardrails?.onNotice,
 						}),
 					abortSignal,
 				),
@@ -462,6 +502,13 @@ export class ToolCallRunner {
 		} catch (error) {
 			return await this.toolError(params, error, builtTool);
 		}
+		// Trace output is host-only, so a failing hook must not fail the tool call.
+		let traceOutput: unknown;
+		try {
+			traceOutput = builtTool.toTraceOutput?.(toolResult);
+		} catch {
+			traceOutput = undefined;
+		}
 		const storage = this.getResultStorage(params);
 		const guardedResult = await guardToolResultForModel(
 			modelResult,
@@ -504,6 +551,7 @@ export class ToolCallRunner {
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
 			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 		};
 	}
 

@@ -5,6 +5,10 @@ import type { BaseTextKey } from '@n8n/i18n';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nSettingsRow,
@@ -155,20 +159,27 @@ const serverUrlDescription = computed(() =>
 	<N8nDialog
 		:open="mcpStore.connectPopoverOpen"
 		size="large"
-		:header="i18n.baseText('settings.mcp.connectDialog.title')"
-		:description="i18n.baseText('settings.mcp.connectDialog.description')"
 		data-test-id="mcp-connect-dialog"
 		@update:open="onOpenChange"
 	>
-		<div :class="$style.body">
-			<N8nTabs
-				:model-value="activeMethod"
-				:options="methodTabs"
-				:class="$style.tabs"
-				data-test-id="mcp-connect-method-tabs"
-				@update:model-value="activeMethod = $event"
-			/>
-
+		<N8nDialogHeader :class="$style.header">
+			<div :class="$style['header-main']">
+				<N8nDialogTitle>
+					{{ i18n.baseText('settings.mcp.connectDialog.title') }}
+				</N8nDialogTitle>
+				<N8nDialogDescription :class="$style.description">
+					{{ i18n.baseText('settings.mcp.connectDialog.description') }}
+				</N8nDialogDescription>
+				<N8nTabs
+					:model-value="activeMethod"
+					:options="methodTabs"
+					:class="$style.tabs"
+					data-test-id="mcp-connect-method-tabs"
+					@update:model-value="activeMethod = $event"
+				/>
+			</div>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
 			<N8nSettingsRowGroup v-if="activeMethod === 'oauth'">
 				<N8nSettingsRow
 					:title="i18n.baseText('settings.mcp.connectDialog.yourClient.title')"
@@ -377,25 +388,40 @@ const serverUrlDescription = computed(() =>
 				</template>
 			</N8nSettingsRowGroup>
 
-			<div v-else :class="$style['token-setup']" data-test-id="mcp-connect-token-setup">
+			<div v-else data-test-id="mcp-connect-token-setup">
 				<McpAccessTokenTab :server-url="serverUrl" @copied="handleTokenTabCopy" />
 			</div>
-		</div>
+		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-/* Body-only scroll so the dialog header stays pinned and tall clients
-   (e.g. Claude Code's config block) never run off-screen. */
-.body {
-	max-height: calc(100dvh - 16rem);
-	/* Extra breathing room so the OAuth/API-key tabs don't crowd the description. */
-	margin-top: var(--spacing--md);
-	overflow-y: auto;
+.header {
+	border-bottom: var(--border);
+	padding-block-end: 0;
+}
+
+/* One column so the title, description, and tabs stack. The header row
+   otherwise lays its children out beside the close button. */
+.header-main {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	width: 100%;
+}
+
+.description {
+	margin: 0;
 }
 
 .tabs {
-	margin-bottom: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
+}
+
+.body {
+	padding-block-start: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .picker-trigger {
@@ -434,9 +460,5 @@ const serverUrlDescription = computed(() =>
    should span the full row width. */
 .copy-field {
 	width: 100%;
-}
-
-.token-setup {
-	margin-top: var(--spacing--2xs);
 }
 </style>

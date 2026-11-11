@@ -7,6 +7,8 @@ import BotIdle from './custom/bot-idle.svg';
 import BotPass from './custom/bot-pass.svg';
 import BotWaiting from './custom/bot-waiting.svg';
 import BotWarning from './custom/bot-warning.svg';
+import CheckCircleFilled from './custom/brand/check-circle--solid-16.svg';
+import CircleDashedFilled from './custom/brand/circle-dashed--solid-16.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
@@ -14,9 +16,13 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import GroupFilled from './custom/brand/group--solid-16.svg';
+import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import Meta from './custom/meta.svg';
+import Microsoft from './custom/microsoft.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
@@ -31,12 +37,16 @@ import NodeUngroup from './custom/brand/blocks--solid-16.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
 import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
+import QuestionCircleFilled from './custom/brand/question-circle--solid-16.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
+import SlashCircleFilled from './custom/brand/slash-circle--solid-16.svg';
+import SparklesFilled from './custom/brand/sparkle-rays--solid-16.svg';
 import Spinner from './custom/spinner.svg';
+import SpinnerFilled from './custom/brand/spinner--solid-16.svg';
 import StarFilled from './custom/brand/star--solid-16.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
@@ -51,23 +61,56 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
-import Webhook from './custom/webhook.svg';
 import WhatsApp from './custom/whatsapp.svg';
+import WorkflowFilled12 from './custom/brand/workflow--solid-12.svg';
+import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
 	Archive as BrandArchive,
+	ArchiveArrowDown as BrandArchiveArrowDown,
+	ArchiveArrowUp as BrandArchiveArrowUp,
+	ArrowBlockDown as BrandArrowBlockDown,
+	ArrowBlockLeft as BrandArrowBlockLeft,
+	ArrowBlockRight as BrandArrowBlockRight,
+	ArrowBlockUp as BrandArrowBlockUp,
+	ArrowCircleDown as BrandArrowCircleDown,
+	ArrowCircleLeft as BrandArrowCircleLeft,
+	ArrowCircleRight as BrandArrowCircleRight,
+	ArrowCircleUp as BrandArrowCircleUp,
+	ArrowCornerUpRight as BrandArrowCornerUpRight,
 	ArrowDown as BrandArrowDown,
+	ArrowDownChevron as BrandArrowDownChevron,
+	ArrowDownLeft as BrandArrowDownLeft,
+	ArrowDownRight as BrandArrowDownRight,
+	ArrowDownToLine as BrandArrowDownToLine,
 	ArrowLeft as BrandArrowLeft,
+	ArrowLeftChevron as BrandArrowLeftChevron,
 	ArrowRight as BrandArrowRight,
+	ArrowRightChevron as BrandArrowRightChevron,
 	ArrowRightFromLine as BrandArrowRightFromLine,
 	ArrowRightToLine as BrandArrowRightToLine,
+	ArrowsCcw as BrandArrowsCcw,
+	ArrowsDownUp as BrandArrowsDownUp,
+	ArrowSquareDown as BrandArrowSquareDown,
+	ArrowSquareDownLeft as BrandArrowSquareDownLeft,
+	ArrowSquareDownRight as BrandArrowSquareDownRight,
+	ArrowSquareLeft as BrandArrowSquareLeft,
+	ArrowSquareRight as BrandArrowSquareRight,
+	ArrowSquareUp as BrandArrowSquareUp,
+	ArrowSquareUpLeft as BrandArrowSquareUpLeft,
+	ArrowSquareUpRight as BrandArrowSquareUpRight,
+	ArrowsShuffle as BrandArrowsShuffle,
+	ArrowsUpRightLeftDown as BrandArrowsUpRightLeftDown,
 	ArrowUp as BrandArrowUp,
+	ArrowUpChevron as BrandArrowUpChevron,
+	ArrowUpLeft as BrandArrowUpLeft,
 	ArrowUpRight as BrandArrowUpRight,
 	AtSign as BrandAtSign,
 	BadgeCheck as BrandBadgeCheck,
 	Ban as BrandBan,
 	Bell as BrandBell,
 	Blocks as BrandBlocks,
+	Blueprint as BrandBlueprint,
 	Bold as BrandBold,
 	Book as BrandBook,
 	BookOpen as BrandBookOpen,
@@ -80,15 +123,20 @@ import {
 	Bug as BrandBug,
 	Calendar as BrandCalendar,
 	ChartColumnDecreasing as BrandChartColumnDecreasing,
+	ChatBubbleQuestion as BrandChatBubbleQuestion,
 	Check as BrandCheck,
 	CheckCheck as BrandCheckCheck,
+	CheckSquare as BrandCheckSquare,
 	ChevronDown as BrandChevronDown,
 	ChevronLeft as BrandChevronLeft,
 	ChevronRight as BrandChevronRight,
 	ChevronRight12 as BrandChevronRight12,
+	ChevronsDown as BrandChevronsDown,
 	ChevronsDownUp as BrandChevronsDownUp,
 	ChevronsLeft as BrandChevronsLeft,
 	ChevronsRight as BrandChevronsRight,
+	ChevronsRightLeft as BrandChevronsRightLeft,
+	ChevronsUp as BrandChevronsUp,
 	ChevronsUpDown as BrandChevronsUpDown,
 	ChevronUp as BrandChevronUp,
 	Circle as BrandCircle,
@@ -100,19 +148,26 @@ import {
 	CircleMinus as BrandCircleMinus,
 	CirclePlay as BrandCirclePlay,
 	CirclePlus as BrandCirclePlus,
+	Circles as BrandCircles,
+	CirclesOverlap as BrandCirclesOverlap,
 	CircleUserRound as BrandCircleUserRound,
 	CircleX as BrandCircleX,
 	Clipboard as BrandClipboard,
 	ClipboardList as BrandClipboardList,
 	Clock as BrandClock,
 	Cloud as BrandCloud,
+	CloudArrowDown as BrandCloudArrowDown,
+	CloudArrowUp as BrandCloudArrowUp,
 	Code as BrandCode,
 	Cog as BrandCog,
 	Copy as BrandCopy,
 	CornerDownRight as BrandCornerDownRight,
 	Corners as BrandCorners,
 	Crosshair as BrandCrosshair,
+	CurrencyDollar as BrandCurrencyDollar,
+	CursorText as BrandCursorText,
 	Database as BrandDatabase,
+	DotsVerticalCircle as BrandDotsVerticalCircle,
 	Ellipsis as BrandEllipsis,
 	Ellipsis12 as BrandEllipsis12,
 	EllipsisVertical as BrandEllipsisVertical,
@@ -128,9 +183,15 @@ import {
 	FileInput as BrandFileInput,
 	Files as BrandFiles,
 	FileText as BrandFileText,
+	Flag as BrandFlag,
+	FlagHole as BrandFlagHole,
 	FlaskConical as BrandFlaskConical,
 	Flow as BrandFlow,
+	FlowIf as BrandFlowIf,
+	FlowMerge as BrandFlowMerge,
+	FlowSwitch as BrandFlowSwitch,
 	Folder as BrandFolder,
+	FolderNetwork as BrandFolderNetwork,
 	FolderOpen as BrandFolderOpen,
 	FolderPlus as BrandFolderPlus,
 	Funnel as BrandFunnel,
@@ -139,30 +200,49 @@ import {
 	GitBranch as BrandGitBranch,
 	Globe as BrandGlobe,
 	GraduationCap as BrandGraduationCap,
+	Graph as BrandGraph,
+	Graph12 as BrandGraph12,
 	Grid2x2 as BrandGrid2x2,
 	GripVertical as BrandGripVertical,
 	Group as BrandGroup,
 	HardDrive as BrandHardDrive,
+	HardDriveArrowDown as BrandHardDriveArrowDown,
 	HardDriveDownload as BrandHardDriveDownload,
 	Hash as BrandHash,
+	Helmet as BrandHelmet,
+	Hexagon as BrandHexagon,
+	HexagonArrowRight as BrandHexagonArrowRight,
+	HexagonMagnifyingGlass as BrandHexagonMagnifyingGlass,
+	HexagonSpinner as BrandHexagonSpinner,
 	History as BrandHistory,
 	Hourglass as BrandHourglass,
 	House as BrandHouse,
+	Inbox as BrandInbox,
 	Info as BrandInfo,
 	Italic as BrandItalic,
 	KeyRound as BrandKeyRound,
 	Layers as BrandLayers,
 	LayoutTemplate as BrandLayoutTemplate,
+	Ldap as BrandLdap,
 	Lightbulb as BrandLightbulb,
+	LinesHorizontal2 as BrandLinesHorizontal2,
 	Link as BrandLink,
 	List as BrandList,
+	ListAggregate as BrandListAggregate,
 	ListChecks as BrandListChecks,
 	ListPlus as BrandListPlus,
+	ListSplitOut as BrandListSplitOut,
+	ListTodos as BrandListTodos,
 	ListTree as BrandListTree,
 	Lock as BrandLock,
+	LockUnlocked as BrandLockUnlocked,
 	LogIn as BrandLogIn,
 	LogOut as BrandLogOut,
+	Loop as BrandLoop,
+	MagnifyingGlassDotsHorizontal as BrandMagnifyingGlassDotsHorizontal,
 	Mail as BrandMail,
+	Markdown as BrandMarkdown,
+	MathOperations as BrandMathOperations,
 	Maximize as BrandMaximize,
 	Maximize2 as BrandMaximize2,
 	Menu as BrandMenu,
@@ -176,6 +256,9 @@ import {
 	Minus as BrandMinus,
 	MousePointer as BrandMousePointer,
 	N8nAssistant as BrandN8nAssistant,
+	N8nAssistantCircle as BrandN8nAssistantCircle,
+	NodeSummarizationChain as BrandNodeSummarizationChain,
+	NodeSummarize as BrandNodeSummarize,
 	PackageOpen as BrandPackageOpen,
 	Palette as BrandPalette,
 	PanelLeft as BrandPanelLeft,
@@ -184,10 +267,14 @@ import {
 	Pen as BrandPen,
 	Pencil as BrandPencil,
 	PencilOff as BrandPencilOff,
+	PersonPlus as BrandPersonPlus,
+	PersonShield as BrandPersonShield,
+	PersonSquare as BrandPersonSquare,
 	Pin as BrandPin,
 	Play as BrandPlay,
 	Plug as BrandPlug,
 	Plus as BrandPlus,
+	PopOutPanel as BrandPopOutPanel,
 	Power as BrandPower,
 	Quote as BrandQuote,
 	Redo2 as BrandRedo2,
@@ -196,18 +283,23 @@ import {
 	Robot12 as BrandRobot12,
 	Rss as BrandRss,
 	SatelliteDish as BrandSatelliteDish,
+	Scissors as BrandScissors,
+	Seal as BrandSeal,
 	Search as BrandSearch,
 	Send as BrandSend,
 	Settings as BrandSettings,
 	Share as BrandShare,
 	Shield as BrandShield,
+	ShieldCheck as BrandShieldCheck,
 	ShieldHalf as BrandShieldHalf,
+	Signal as BrandSignal,
 	Smile as BrandSmile,
 	Sparkle as BrandSparkle,
 	Sparkles as BrandSparkles,
 	Split as BrandSplit,
 	Square as BrandSquare,
 	SquareArrowOutUpRight as BrandSquareArrowOutUpRight,
+	SquareDashed as BrandSquareDashed,
 	SquarePen as BrandSquarePen,
 	Squares as BrandSquares,
 	Star as BrandStar,
@@ -215,11 +307,16 @@ import {
 	Strikethrough as BrandStrikethrough,
 	Sun as BrandSun,
 	Table as BrandTable,
+	Tag as BrandTag,
 	Tags as BrandTags,
 	Telescope as BrandTelescope,
 	Terminal as BrandTerminal,
+	TextA as BrandTextA,
+	TextAa as BrandTextAa,
 	ThumbsDown as BrandThumbsDown,
 	ThumbsUp as BrandThumbsUp,
+	Toggles as BrandToggles,
+	Totp as BrandTotp,
 	Trash2 as BrandTrash2,
 	TriangleAlert as BrandTriangleAlert,
 	Underline as BrandUnderline,
@@ -237,6 +334,7 @@ import {
 	Volume2 as BrandVolume2,
 	VolumeX as BrandVolumeX,
 	WandSparkles as BrandWandSparkles,
+	Webhook as BrandWebhook,
 	Workflow as BrandWorkflow,
 	Wrench as BrandWrench,
 	X as BrandX,
@@ -262,17 +360,19 @@ import IconLucideDot from '~icons/lucide/dot';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEqual from '~icons/lucide/equal';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
+import IconLucideFileMinus from '~icons/lucide/file-minus';
+import IconLucideFilePlus from '~icons/lucide/file-plus';
 import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlame from '~icons/lucide/flame';
 import IconLucideGem from '~icons/lucide/gem';
+import IconLucideGitlab from '~icons/lucide/gitlab';
 import IconLucideHandCoins from '~icons/lucide/hand-coins';
 import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHeading1 from '~icons/lucide/heading-1';
 import IconLucideHeading2 from '~icons/lucide/heading-2';
 import IconLucideHeading3 from '~icons/lucide/heading-3';
 import IconLucideImage from '~icons/lucide/image';
-import IconLucideInbox from '~icons/lucide/inbox';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
@@ -292,16 +392,17 @@ import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
 import IconLucideSave from '~icons/lucide/save';
 import IconLucideScale from '~icons/lucide/scale';
-import IconLucideScissors from '~icons/lucide/scissors';
 import IconLucideScrollText from '~icons/lucide/scroll-text';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
+import IconLucideSmartphone from '~icons/lucide/smartphone';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
+import IconLucideTablet from '~icons/lucide/tablet';
 import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
@@ -412,7 +513,7 @@ export const deprecatedIconSet = {
 	compress: BrandChevronsUpDown,
 	copy: BrandFiles,
 	cube: BrandBox,
-	cut: IconLucideScissors,
+	cut: BrandScissors,
 	database: BrandDatabase,
 	'dot-circle': IconLucideCircleDot,
 	'grip-lines-vertical': GripLinesVertical,
@@ -446,7 +547,7 @@ export const deprecatedIconSet = {
 	'globe-americas': IconLucideEarth,
 	'graduation-cap': BrandGraduationCap,
 	'hand-holding-usd': IconLucideHandCoins,
-	'hand-scissors': IconLucideScissors,
+	'hand-scissors': BrandScissors,
 	handshake: IconLucideHandshake,
 	'hand-point-left': BrandArrowLeft,
 	hashtag: BrandHash,
@@ -455,7 +556,7 @@ export const deprecatedIconSet = {
 	home: BrandHouse,
 	hourglass: BrandHourglass,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	'info-circle': BrandInfo,
 	key: BrandKeyRound,
@@ -556,6 +657,17 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'check-circle-filled': CheckCircleFilled,
+	'circle-dashed-filled': CircleDashedFilled,
+	'hourglass-filled': HourglassFilled,
+	'question-circle-filled': QuestionCircleFilled,
+	'slash-circle-filled': SlashCircleFilled,
+	'spinner-filled': SpinnerFilled,
+	'x-circle-filled': XCircleFilled,
+	'group-filled': GroupFilled,
+	'sparkles-filled': SparklesFilled,
+	'workflow-filled': NodeExtract,
+	'workflow-filled-12': WorkflowFilled12,
 	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
@@ -575,6 +687,8 @@ export const updatedIconSet = {
 	teams: Teams,
 	azure: Azure,
 	entra: Entra,
+	meta: Meta,
+	microsoft: Microsoft,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -593,7 +707,7 @@ export const updatedIconSet = {
 	lovable: Lovable,
 	resolver: Resolver,
 	form: Form,
-	webhook: Webhook,
+	webhook: BrandWebhook,
 
 	// brand-only
 	'arrow-to-bracket-right': BrandLogIn,
@@ -601,6 +715,7 @@ export const updatedIconSet = {
 	'chevron-right-12': BrandChevronRight12,
 	'ellipsis-12': BrandEllipsis12,
 	'ellipsis-vertical-12': BrandEllipsisVertical12,
+	'graph-12': BrandGraph12,
 	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
 	briefcase: BrandBriefcase,
@@ -610,10 +725,90 @@ export const updatedIconSet = {
 	sparkle: BrandSparkle,
 	squares: BrandSquares,
 
+	// brand icons from n8n-icons.vercel.app, registered under their site names
+	'archive-arrow-down': BrandArchiveArrowDown,
+	'archive-arrow-up': BrandArchiveArrowUp,
+	'arrow-block-left': BrandArrowBlockLeft,
+	'arrow-block-right': BrandArrowBlockRight,
+	'arrow-circle-left': BrandArrowCircleLeft,
+	'arrow-circle-right': BrandArrowCircleRight,
+	'arrow-circle-up': BrandArrowCircleUp,
+	'arrow-corner-up-right': BrandArrowCornerUpRight,
+	'arrow-down-chevron': BrandArrowDownChevron,
+	'arrow-down-left': BrandArrowDownLeft,
+	'arrow-down-right': BrandArrowDownRight,
+	'arrow-down-to-line': BrandArrowDownToLine,
+	'arrow-left-chevron': BrandArrowLeftChevron,
+	'arrow-right-chevron': BrandArrowRightChevron,
+	'arrow-square-down': BrandArrowSquareDown,
+	'arrow-square-down-left': BrandArrowSquareDownLeft,
+	'arrow-square-down-right': BrandArrowSquareDownRight,
+	'arrow-square-left': BrandArrowSquareLeft,
+	'arrow-square-right': BrandArrowSquareRight,
+	'arrow-square-up': BrandArrowSquareUp,
+	'arrow-square-up-left': BrandArrowSquareUpLeft,
+	'arrow-square-up-right': BrandArrowSquareUpRight,
+	'arrow-up-chevron': BrandArrowUpChevron,
+	'arrow-up-left': BrandArrowUpLeft,
+	'arrows-ccw': BrandArrowsCcw,
+	'arrows-down-up': BrandArrowsDownUp,
+	'arrows-shuffle': BrandArrowsShuffle,
+	'arrows-up-right-left-down': BrandArrowsUpRightLeftDown,
+	blueprint: BrandBlueprint,
+	'chat-bubble-question': BrandChatBubbleQuestion,
+	'check-square': BrandCheckSquare,
+	'chevrons-down': BrandChevronsDown,
+	'chevrons-right-left': BrandChevronsRightLeft,
+	'chevrons-up': BrandChevronsUp,
+	circles: BrandCircles,
+	'circles-overlap': BrandCirclesOverlap,
+	'cloud-arrow-down': BrandCloudArrowDown,
+	'currency-dollar': BrandCurrencyDollar,
+	'cursor-text': BrandCursorText,
+	'dots-vertical-circle': BrandDotsVerticalCircle,
+	flag: BrandFlag,
+	'flag-hole': BrandFlagHole,
+	'flow-if': BrandFlowIf,
+	'flow-merge': BrandFlowMerge,
+	'flow-switch': BrandFlowSwitch,
+	'folder-network': BrandFolderNetwork,
+	'hard-drive-arrow-down': BrandHardDriveArrowDown,
+	helmet: BrandHelmet,
+	hexagon: BrandHexagon,
+	'hexagon-arrow-right': BrandHexagonArrowRight,
+	'hexagon-magnifying-glass': BrandHexagonMagnifyingGlass,
+	'hexagon-spinner': BrandHexagonSpinner,
+	'lines-horizontal-2': BrandLinesHorizontal2,
+	'list-aggregate': BrandListAggregate,
+	'list-split-out': BrandListSplitOut,
+	'list-todos': BrandListTodos,
+	'lock-unlocked': BrandLockUnlocked,
+	loop: BrandLoop,
+	'magnifying-glass-dots-horizontal': BrandMagnifyingGlassDotsHorizontal,
+	markdown: BrandMarkdown,
+	'math-operations': BrandMathOperations,
+	'n8n-assistant-circle': BrandN8nAssistantCircle,
+	'node-summarization-chain': BrandNodeSummarizationChain,
+	'node-summarize': BrandNodeSummarize,
+	'person-plus': BrandPersonPlus,
+	'person-shield': BrandPersonShield,
+	'person-square': BrandPersonSquare,
+	'pop-out-panel': BrandPopOutPanel,
+	seal: BrandSeal,
+	'shield-check': BrandShieldCheck,
+	signal: BrandSignal,
+	'square-dashed': BrandSquareDashed,
+	tag: BrandTag,
+	'text-a': BrandTextA,
+	totp: BrandTotp,
+
 	// lucide
 	'align-right': IconLucideAlignRight,
 	archive: BrandArchive,
 	'archive-restore': IconLucideArchiveRestore,
+	'arrow-block-down': BrandArrowBlockDown,
+	'arrow-block-up': BrandArrowBlockUp,
+	'arrow-circle-down': BrandArrowCircleDown,
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
@@ -667,6 +862,7 @@ export const updatedIconSet = {
 	'clipboard-list': BrandClipboardList,
 	clock: BrandClock,
 	cloud: BrandCloud,
+	'cloud-arrow-up': BrandCloudArrowUp,
 	'cloud-download': IconLucideCloudDownload,
 	code: BrandCode,
 	cog: BrandCog,
@@ -692,7 +888,9 @@ export const updatedIconSet = {
 	'file-diff': BrandFileDiff,
 	'file-down': BrandFileDown,
 	'file-input': BrandFileInput,
+	'file-minus': IconLucideFileMinus,
 	'file-output': IconLucideFileOutput,
+	'file-plus': IconLucideFilePlus,
 	'file-text': BrandFileText,
 	files: BrandFiles,
 	fingerprint: IconLucideFingerprint,
@@ -705,8 +903,10 @@ export const updatedIconSet = {
 	gem: IconLucideGem,
 	gift: BrandGift,
 	'git-branch': BrandGitBranch,
+	gitlab: IconLucideGitlab,
 	globe: BrandGlobe,
 	'graduation-cap': BrandGraduationCap,
+	graph: BrandGraph,
 	'grid-2x2': BrandGrid2x2,
 	'grip-vertical': BrandGripVertical,
 	group: BrandGroup,
@@ -722,7 +922,7 @@ export const updatedIconSet = {
 	hourglass: BrandHourglass,
 	house: BrandHouse,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	italic: BrandItalic,
 	'key-round': BrandKeyRound,
@@ -730,6 +930,7 @@ export const updatedIconSet = {
 	laptop: IconLucideLaptop,
 	layers: BrandLayers,
 	'layout-template': BrandLayoutTemplate,
+	ldap: BrandLdap,
 	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: BrandLightbulb,
 	link: BrandLink,
@@ -785,7 +986,7 @@ export const updatedIconSet = {
 	'satellite-dish': BrandSatelliteDish,
 	save: IconLucideSave,
 	scale: IconLucideScale,
-	scissors: IconLucideScissors,
+	scissors: BrandScissors,
 	'scroll-text': IconLucideScrollText,
 	search: BrandSearch,
 	settings: BrandSettings,
@@ -798,6 +999,7 @@ export const updatedIconSet = {
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	smartphone: IconLucideSmartphone,
 	smile: BrandSmile,
 	sparkles: BrandSparkles,
 	split: BrandSplit,
@@ -812,9 +1014,11 @@ export const updatedIconSet = {
 	strikethrough: BrandStrikethrough,
 	sun: BrandSun,
 	table: BrandTable,
+	tablet: IconLucideTablet,
 	tags: BrandTags,
 	telescope: BrandTelescope,
 	terminal: BrandTerminal,
+	'text-aa': BrandTextAa,
 	'thumbs-down': BrandThumbsDown,
 	'thumbs-up': BrandThumbsUp,
 	timer: IconLucideTimer,
@@ -825,6 +1029,7 @@ export const updatedIconSet = {
 	'triangle-alert': BrandTriangleAlert,
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,
+	toggles: BrandToggles,
 	'undo-2': BrandUndo2,
 	ungroup: IconLucideUngroup,
 	unlink: BrandUnlink,

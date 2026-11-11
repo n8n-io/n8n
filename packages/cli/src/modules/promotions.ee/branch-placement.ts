@@ -21,6 +21,12 @@ export interface ContainerMove {
 
 export const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
+/** The project whose branch directory holds `target`. */
+export const projectHolding = <P extends { target: string }>(
+	projects: readonly P[] | undefined,
+	target: string,
+): P | undefined => projects?.find((project) => isUnder(target, project.target));
+
 /**
  * Containers whose branch path differs from the export path, deepest `from`
  * first. The exporter only writes ancestors of selected workflows, so no

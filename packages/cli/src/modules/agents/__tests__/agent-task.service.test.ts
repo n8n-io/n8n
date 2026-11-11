@@ -1,13 +1,13 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -170,7 +170,8 @@ describe('AgentTaskService', () => {
 			),
 			settingsService,
 			transactionRunner,
-			createAgentSkillRefsService(agentRepository),
+			createAgentSkillRefsService(),
+			mock<AgentDefinitionService>(),
 		);
 	}
 
@@ -245,7 +246,7 @@ describe('AgentTaskService', () => {
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
 			expect(taskRepository.saveDefinitions).toHaveBeenCalledTimes(1);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined);
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -378,7 +379,7 @@ describe('AgentTaskService', () => {
 				],
 				ctx,
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined);
 			expect(configHash).toBe(getAgentConfigHash(composeStoredJsonConfig(agent)));
 		});
 
@@ -638,7 +639,6 @@ describe('AgentTaskService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tasks'],
-				wasUnconfigured: false,
 			}),
 		);
 

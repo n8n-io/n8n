@@ -5,18 +5,20 @@ import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/app/composables/useWorkflowsCache';
-import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
+import { actionTypes, useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	VIEWS,
+	MODAL_CONFIRM,
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	TIME_SAVED_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
@@ -38,6 +40,7 @@ const evaluationState = useWorkflowEvaluationState();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
+const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
@@ -115,9 +118,14 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	}> = [];
+	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action
-	if (hasPublishedVersion && !isErrorWorkflow.value) {
+	if (
+		hasPublishedVersion &&
+		!isErrorWorkflow.value &&
+		!suggestedActionSettings.errorWorkflow?.ignored
+	) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
@@ -128,7 +136,12 @@ const availableActions = computed(() => {
 	}
 
 	// Evaluations action
-	if (hasPublishedVersion && hasAINode.value && evaluationStore.isEvaluationEnabled) {
+	if (
+		hasPublishedVersion &&
+		hasAINode.value &&
+		evaluationStore.isEvaluationEnabled &&
+		!suggestedActionSettings.evaluations?.ignored
+	) {
 		actions.push({
 			id: 'evaluations',
 			title: i18n.baseText('workflowProductionChecklist.evaluations.title'),
@@ -139,7 +152,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (hasPublishedVersion) {
+	if (hasPublishedVersion && !suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),
@@ -173,8 +186,11 @@ const availableActions = computed(() => {
 
 		// Instance-level MCP access is disabled - show action to enable it
 		if (!isMcpAccessEnabled.value) {
-			// Only admins can toggle instance-level access
-			if (!canToggleInstanceMCPAccess.value) {
+			// Only show to admins if not ignored
+			if (
+				!canToggleInstanceMCPAccess.value ||
+				suggestedActionSettings['instance-mcp-access']?.ignored
+			) {
 				return null;
 			}
 
@@ -184,6 +200,11 @@ const availableActions = computed(() => {
 				description: i18n.baseText('mcp.productionChecklist.instance.description'),
 				completed: false,
 			};
+		}
+
+		// Workflow-level MCP access (instance-level is enabled)
+		if (suggestedActionSettings['workflow-mcp-access']?.ignored) {
+			return null;
 		}
 
 		return {
@@ -197,7 +218,7 @@ const availableActions = computed(() => {
 
 async function loadWorkflowSettings() {
 	if (workflowDocumentStore?.value?.workflowId) {
-		cachedSettings.value = await workflowsCache.getWorkflowSettings(
+		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(
 			workflowDocumentStore?.value.workflowId,
 		);
 	}
@@ -226,6 +247,44 @@ async function handleActionClick(actionId: string) {
 			break;
 	}
 	isPopoverOpen.value = false;
+}
+
+function isValidAction(action: string): action is ActionType {
+	return actionTypes.some((type) => type === action);
+}
+
+async function handleIgnoreClick(actionId: string) {
+	if (!isValidAction(actionId)) {
+		return;
+	}
+
+	await workflowsCache.ignoreSuggestedAction(
+		workflowDocumentStore?.value?.workflowId ?? '',
+		actionId,
+	);
+	await loadWorkflowSettings();
+
+	telemetry.track('user clicked ignore suggested action', {
+		actionId,
+	});
+}
+
+async function handleIgnoreAll() {
+	const ignoreAllConfirmed = await message.confirm(
+		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.description'),
+		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.title'),
+		{
+			confirmButtonText: i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.confirm'),
+		},
+	);
+
+	if (ignoreAllConfirmed === MODAL_CONFIRM) {
+		// Ignore every action type, also the ones that this workflow does not show
+		await workflowsCache.ignoreAllSuggestedActionsForAllWorkflows([...actionTypes]);
+		await loadWorkflowSettings();
+
+		telemetry.track('user clicked ignore suggested actions for all workflows');
+	}
 }
 
 function openSuggestedActions() {
@@ -266,8 +325,11 @@ const isConfirmedActive = computed(() => {
 // Watch for workflow activation
 watch(isConfirmedActive, async (isActive, wasActive) => {
 	if (isActive && !wasActive) {
-		// Check if this is the first activation
-		if (!cachedSettings.value?.firstActivatedAt) {
+		const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
+		// Make sure the checklist opens only on the first activation, also when the
+		// workflow loads as active before onMounted has read the cache.
+		const { firstActivatedAt } = await workflowsCache.getWorkflowSettings(workflowId);
+		if (!firstActivatedAt) {
 			if (isAnyModalOpen.value) {
 				// Defer opening until any open modal closes so the popover
 				// doesn't paint over it.
@@ -285,7 +347,7 @@ watch(isConfirmedActive, async (isActive, wasActive) => {
 		}
 
 		// Update firstActivatedAt after opening popover
-		await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
+		await workflowsCache.updateFirstActivatedAt(workflowId);
 	}
 });
 
@@ -307,12 +369,15 @@ defineExpose({ open: openSuggestedActions, hasActions });
 		:hide-trigger="hideTrigger"
 		:title="i18n.baseText('workflowProductionChecklist.title')"
 		:actions="availableActions"
+		:ignore-all-label="i18n.baseText('workflowProductionChecklist.turnOffWorkflowSuggestions')"
 		:notice="
 			isProtectedEnvironment ? i18n.baseText('workflowProductionChecklist.readOnlyNotice') : ''
 		"
 		popover-alignment="start"
 		:popover-side-offset="0"
 		@action-click="handleActionClick"
+		@ignore-click="handleIgnoreClick"
+		@ignore-all="handleIgnoreAll"
 		@update:open="handlePopoverOpenChange"
 	/>
 </template>

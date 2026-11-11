@@ -2,7 +2,7 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, UrlService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
@@ -14,6 +14,13 @@ const user = mock<User>({ id: 'user-1' });
 const OBJECT_ID = 'object-1';
 const APP_ID = '11111111-2222-3333-4444-555555555555';
 const TENANT_ID = '99999999-8888-7777-6666-555555555555';
+// Files.Read.All, User.ReadBasic.All, Team.ReadBasic.All, Channel.ReadBasic.All
+const GRAPH_ROLES = [
+	{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' },
+	{ id: '97235f07-e226-4f63-ace3-39588e11d3a1', type: 'Role' },
+	{ id: '2280dda6-0bfd-44ee-a2f4-cb867cfc4c1e', type: 'Role' },
+	{ id: '59a6b24b-4225-4393-8165-ebaec5f55d7a', type: 'Role' },
+];
 
 const options = {
 	user,
@@ -35,6 +42,7 @@ describe('TeamsEntraProvisioningService', () => {
 	let tokens: ReturnType<typeof mock<TeamsManagerTokenService>>;
 	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
 	let credentialsFinderService: ReturnType<typeof mock<CredentialsFinderService>>;
+	let urlService: ReturnType<typeof mock<UrlService>>;
 	let service: TeamsEntraProvisioningService;
 
 	/** Routes each Graph call by method and path, so tests state only what differs. */
@@ -54,6 +62,8 @@ describe('TeamsEntraProvisioningService', () => {
 			}),
 			'POST /servicePrincipals': ok({ id: 'sp-1' }),
 			[`GET /applications/${OBJECT_ID}`]: ok({ appId: APP_ID, displayName: 'Support Bot (n8n)' }),
+			[`GET /applications/${OBJECT_ID}?$select=requiredResourceAccess,web`]: ok({}),
+			[`PATCH /applications/${OBJECT_ID}`]: ok({}),
 			...overrides,
 		};
 		graph.request.mockImplementation(
@@ -72,11 +82,14 @@ describe('TeamsEntraProvisioningService', () => {
 		tokens = mock<TeamsManagerTokenService>();
 		credentialsService = mock<CredentialsService>();
 		credentialsFinderService = mock<CredentialsFinderService>();
+		urlService = mock<UrlService>();
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		service = new TeamsEntraProvisioningService(
 			graph,
 			tokens,
 			credentialsService,
 			credentialsFinderService,
+			urlService,
 		);
 
 		tokens.acquire.mockResolvedValue('graph-token');
@@ -111,6 +124,108 @@ describe('TeamsEntraProvisioningService', () => {
 		});
 		expect(result.appId).toBe(APP_ID);
 		expect(result.organizationName).toBe('Acme Corp');
+	});
+
+	it('declares the Graph permissions and the address the consent screen returns to', async () => {
+		const result = await service.provision(options);
+
+		const redirectUri = 'https://n8n.example.com/projects/project-1/agents/agent-1';
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			`/applications/${OBJECT_ID}`,
+			{
+				requiredResourceAccess: [
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: GRAPH_ROLES,
+					},
+				],
+				web: { redirectUris: [redirectUri] },
+			},
+		);
+		const consent = new URL(result.fileAccessConsentUrl!);
+		expect(consent.pathname).toBe(`/${TENANT_ID}/adminconsent`);
+		expect(consent.searchParams.get('client_id')).toBe(APP_ID);
+		expect(consent.searchParams.get('redirect_uri')).toBe(redirectUri);
+		expect(consent.searchParams.get('state')).toBe('teams-file-access');
+	});
+
+	it("keeps the app's other permissions and return addresses", async () => {
+		const otherPermission = { id: 'other-role', type: 'Scope' };
+		routeGraph({
+			[`GET /applications/${OBJECT_ID}?$select=requiredResourceAccess,web`]: ok({
+				requiredResourceAccess: [
+					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: [otherPermission],
+					},
+				],
+				web: { redirectUris: ['https://admin.example.com/callback'] },
+			}),
+		});
+
+		await service.provision(options);
+
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			`/applications/${OBJECT_ID}`,
+			{
+				requiredResourceAccess: [
+					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: [otherPermission, ...GRAPH_ROLES],
+					},
+				],
+				web: {
+					redirectUris: [
+						'https://admin.example.com/callback',
+						'https://n8n.example.com/projects/project-1/agents/agent-1',
+					],
+				},
+			},
+		);
+	});
+
+	it('registers no return address on plain HTTP, which Entra refuses outside localhost', async () => {
+		urlService.getInstanceBaseUrl.mockReturnValue('http://n8n.internal:5678');
+
+		const result = await service.provision(options);
+
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			`/applications/${OBJECT_ID}`,
+			expect.not.objectContaining({ web: expect.anything() }),
+		);
+		expect(result.fileAccessConsentUrl).toBeNull();
+	});
+
+	it('still finishes the setup when Microsoft refuses the declaration', async () => {
+		routeGraph({ [`PATCH /applications/${OBJECT_ID}`]: failed(403) });
+
+		const result = await service.provision(options);
+
+		expect(result.credentialId).toBe('bot-cred-1');
+		expect(result.fileAccessConsentUrl).toBeNull();
+	});
+
+	it('still finishes the setup when Microsoft cannot be reached for the declaration', async () => {
+		const routes = routeGraph();
+		graph.request.mockImplementation(async (_token: string, method: string, path: string) => {
+			if (method === 'PATCH' && path === `/applications/${OBJECT_ID}`) {
+				throw new Error('socket hang up');
+			}
+			return routes[`${method} ${path}`] ?? failed(404);
+		});
+
+		const result = await service.provision(options);
+
+		expect(result.credentialId).toBe('bot-cred-1');
+		expect(result.fileAccessConsentUrl).toBeNull();
 	});
 
 	it('writes the channel credential itself, so the user never handles a secret', async () => {
@@ -195,7 +310,7 @@ describe('TeamsEntraProvisioningService', () => {
 			),
 		});
 
-		await expect(service.provision(options)).rejects.toThrow(/not allowed to register/);
+		await expect(service.provision(options)).rejects.toThrow(/doesn’t let you register apps/);
 	});
 
 	it('refuses a personal Microsoft account', async () => {
@@ -323,7 +438,7 @@ describe('TeamsEntraProvisioningService', () => {
 					failed(403, 'Authorization_RequestDenied'),
 			});
 
-			await expect(service.provision(options)).rejects.toThrow(/not allowed to register/);
+			await expect(service.provision(options)).rejects.toThrow(/doesn’t let you register apps/);
 		});
 	});
 
@@ -347,6 +462,15 @@ describe('TeamsEntraProvisioningService', () => {
 				credential.id === 'bot-cred-1'
 					? ({ entraAppObjectId: OBJECT_ID, provisionedForAgentId: 'agent-1' } as never)
 					: ({} as never),
+			);
+		});
+
+		it('looks for the earlier credential in the project only, never a personal one', async () => {
+			await service.provision(options);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				options.user,
+				expect.objectContaining({ excludePersonalRoute: true, excludeResolvable: true }),
 			);
 		});
 
@@ -437,16 +561,23 @@ describe('TeamsEntraProvisioningService', () => {
 								publishedTeamsAppId: 'teams-app-1',
 								publishedTeamsAppState: 'published',
 								publishedTeamsAppAt: '2026-10-01T00:00:00Z',
+								azureBotName: 'support-bot-1',
+								azureSubscriptionId: 'sub-1',
+								teamsAppFingerprint: 'fingerprint-1',
 							}
 						: {}) as never,
 			);
 
 			await service.provision(options);
 
-			const written = credentialsService.createEncryptedData.mock.calls[0][0].data as Record<
-				string,
-				unknown
-			>;
+			// The manager credential is written first; this is about the channel's.
+			const written = credentialsService.createEncryptedData.mock.calls.find(
+				([credential]) => credential.id === 'bot-cred-1',
+			)?.[0].data as Record<string, unknown>;
+			expect(written.clientId).toBe(APP_ID);
+			expect(written.azureBotName).toBeUndefined();
+			expect(written.azureSubscriptionId).toBeUndefined();
+			expect(written.teamsAppFingerprint).toBe('fingerprint-1');
 			expect(written.publishedTeamsAppId).toBeUndefined();
 			expect(written.publishedTeamsAppState).toBeUndefined();
 			expect(written.publishedTeamsAppAt).toBeUndefined();

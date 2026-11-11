@@ -15,7 +15,7 @@ import {
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
@@ -89,6 +89,69 @@ describe('getDecoratorGeneratedOperations', () => {
 		const [operation] = getDecoratorGeneratedOperations();
 
 		expect(operation.config['x-required-scope']).toBe('workflow:read');
+	});
+
+	it('appends the required API key scope to the description', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiDescription('Returns a list of widgets.')
+			@ApiKeyScope('workflow:read')
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.description).toBe(
+			'Returns a list of widgets.\n\nRequires the `workflow:read` API key scope.',
+		);
+	});
+
+	it('uses only the scope sentence as the description when @ApiDescription is absent', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiKeyScope('workflow:read')
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.description).toBe('Requires the `workflow:read` API key scope.');
+	});
+
+	it('states that one of the scopes is enough for an anyOf requirement', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiKeyScope({ anyOf: ['workflow:read', 'workflow:list'] })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.description).toBe(
+			'Requires one of these API key scopes: `workflow:read`, `workflow:list`.',
+		);
+	});
+
+	it('states that every scope is needed for an allOf requirement', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiKeyScope({ allOf: ['workflow:read', 'workflow:list'] })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.description).toBe(
+			'Requires all of these API key scopes: `workflow:read`, `workflow:list`.',
+		);
 	});
 
 	it('marks the operation deprecated when @Deprecated is present', () => {
@@ -172,7 +235,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
-	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
+	it('bare route: omits every optional field, but always adds success, auth, and rate-limit responses', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -194,11 +257,10 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
 		});
-		expect(operation.config['x-eov-operation-id']).toBe('unreachable');
-		expect(operation.config['x-eov-operation-handler']).toBe(
-			'v1/handlers/decorator-routed.handler',
-		);
-		expect(operation.config['x-decorator-routed']).toBe(true);
+		expect(operation.config.responses[429]).toEqual({
+			$ref: '../../../../shared/spec/responses/tooManyRequests.yml',
+		});
+		expect(Object.keys(operation.config).filter((key) => key.startsWith('x-'))).toEqual([]);
 	});
 
 	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
@@ -436,5 +498,46 @@ describe('getDecoratorGeneratedOperations', () => {
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 		expect(getSharedResponseSchemas().size).toBe(0);
+	});
+
+	it('documents Idempotency-Key on a non-idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(201)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+		const parameters = operation.config.parameters ?? [];
+
+		expect(parameters).toEqual(
+			expect.arrayContaining([
+				{
+					$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+				},
+			]),
+		);
+		expect(operation.config.responses[409]).toEqual({
+			$ref: '../../../../shared/spec/responses/conflict.yml',
+		});
+		expect(operation.config.responses[422]).toEqual({
+			$ref: '../../../../shared/spec/responses/unprocessableEntity.yml',
+		});
+	});
+
+	it('omits Idempotency-Key on an idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/:widgetId/activate')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.parameters).toBeUndefined();
+		expect(operation.config.responses[409]).toBeUndefined();
+		expect(operation.config.responses[422]).toBeUndefined();
 	});
 });

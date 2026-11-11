@@ -1,3 +1,12 @@
+import type {
+	SerializedCredential,
+	SerializedDataTable,
+	SerializedFolder,
+	SerializedProject,
+	SerializedVariable,
+	SerializedWorkflow,
+	SerializedWorkflowMetadata,
+} from '@n8n/api-types';
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
@@ -7,20 +16,13 @@ import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entr
 import type { PackageWriter } from '../../io/package-writer';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
-import type { PackageManifest } from '../../spec/manifest.schema';
+import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
 	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
-import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
-import type { SerializedFolder } from '../../spec/serialized/folder.schema';
-import type { SerializedProject } from '../../spec/serialized/project.schema';
-import type { SerializedVariable } from '../../spec/serialized/variable.schema';
-import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
-import type { SerializedCredential } from '../../spec/serialized/credential.schema';
-import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
 /** `versionId` every workflow fixture carries, so a test can name it as published. */
@@ -229,6 +231,20 @@ export function credentialRequirementsFromWorkflows(
 	return [...byId.values()];
 }
 
+export function serializedCredential(
+	overrides: Partial<SerializedCredential> & Pick<SerializedCredential, 'id'>,
+): SerializedCredential {
+	return { name: 'GitHub', type: PACKAGE_GITHUB_CREDENTIAL_TYPE, ...overrides };
+}
+
+function credentialManifestEntry(credential: SerializedCredential): ManifestEntry {
+	return {
+		id: credential.id,
+		name: credential.name,
+		target: `credentials/credential-${credential.id}`,
+	};
+}
+
 export async function buildImportPackageBuffer(
 	workflows: PackageWorkflow[],
 	options: {
@@ -236,6 +252,7 @@ export async function buildImportPackageBuffer(
 		sourceId?: string;
 		/** Replaces every metadata file, or leaves it out, so tests can drive the rejections. */
 		workflowMetadata?: 'omit' | Record<string, unknown>;
+		/** Credential files, written at the top-level `credentials/` folder (simulates export). */
 		credentials?: SerializedCredential[];
 	} = {},
 ): Promise<Buffer> {
@@ -244,21 +261,17 @@ export async function buildImportPackageBuffer(
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId,
 		workflows: workflows.map((w, idx) => ({
 			id: w.id,
 			name: w.name,
 			target: `workflows/wf-${idx}`,
+			isArchived: w.isArchived,
 		})),
 		...(options.credentials?.length
 			? {
-					credentials: options.credentials.map((credential, idx) => ({
-						id: credential.id,
-						name: credential.name,
-						target: `credentials/cred-${idx}`,
-					})),
+					credentials: options.credentials.map((credential) => credentialManifestEntry(credential)),
 				}
 			: {}),
 		...options.manifestExtras,
@@ -288,10 +301,11 @@ export async function buildImportPackageBuffer(
 			);
 		}
 	});
-	(options.credentials ?? []).forEach((credential, idx) => {
-		writer.writeDirectory(`credentials/cred-${idx}`);
-		writer.writeFile(`credentials/cred-${idx}/credential.json`, JSON.stringify(credential));
-	});
+	for (const credential of options.credentials ?? []) {
+		const { target } = credentialManifestEntry(credential);
+		writer.writeDirectory(target);
+		writer.writeFile(entityFilePath('credentials', target), JSON.stringify(credential));
+	}
 
 	return await streamToBuffer(writer.finalize());
 }
@@ -380,8 +394,14 @@ export interface PackageVariableEntry {
 	variable: SerializedVariable;
 }
 
+export interface PackageCredentialEntry {
+	target: string;
+	credential: SerializedCredential;
+}
+
 export interface EntityPackageOptions {
 	workflows?: PackageWorkflowEntry[];
+	credentials?: PackageCredentialEntry[];
 	folders?: PackageFolderEntry[];
 	projects?: PackageProjectEntry[];
 	dataTables?: PackageDataTableEntry[];
@@ -399,10 +419,10 @@ async function writeEntityPackage(
 	const projects = options.projects ?? [];
 	const dataTables = options.dataTables ?? [];
 	const variables = options.variables ?? [];
+	const credentials = options.credentials ?? [];
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId: options.sourceId ?? 'integration-test-source',
 		...(workflows.length > 0
@@ -411,6 +431,7 @@ async function writeEntityPackage(
 						id: workflow.id,
 						name: workflow.name,
 						target,
+						isArchived: workflow.isArchived,
 					})),
 				}
 			: {}),
@@ -450,6 +471,15 @@ async function writeEntityPackage(
 					})),
 				}
 			: {}),
+		...(credentials.length > 0
+			? {
+					credentials: credentials.map(({ target, credential }) => ({
+						id: credential.id,
+						name: credential.name,
+						target,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -476,6 +506,10 @@ async function writeEntityPackage(
 	for (const { target, variable } of variables) {
 		await writer.writeDirectory(target);
 		await writer.writeFile(entityFilePath('variables', target), JSON.stringify(variable));
+	}
+	for (const { target, credential } of credentials) {
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('credentials', target), JSON.stringify(credential));
 	}
 }
 

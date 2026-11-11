@@ -4,10 +4,19 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
-import { OperationalError, safeRegex } from 'n8n-workflow';
+import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
+
+import { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import {
+	assertKnowledgePathSegment,
+	getKnowledgePaths,
+	type KnowledgePaths,
+	storageFileNameForOriginalFileName,
+} from '@/modules/knowledge/files/storage-naming';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -21,8 +30,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
-} from './agent-knowledge-commands';
-import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
+} from '@/modules/knowledge/retrieval/commands';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -37,25 +45,20 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
-} from './agent-knowledge-retrieval';
-import {
-	assertKnowledgePathSegment,
-	getAgentKnowledgePaths,
-	type AgentKnowledgePaths,
-	storageFileNameForOriginalFileName,
-} from './agent-knowledge-storage';
+} from '@/modules/knowledge/retrieval/retrieval-schemas';
+
 import {
 	type AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
 } from './agent-sandbox-runtime.service';
-import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const GLOB_MATCH_TIMEOUT_MS = 250;
 
 interface AgentKnowledgeMirrorRuntime extends AgentSandboxRuntime {
-	paths: AgentKnowledgePaths;
+	paths: KnowledgePaths;
 }
 
 interface AgentKnowledgeReferenceLookup {
@@ -125,9 +128,10 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly agentKnowledgeFileStore: KnowledgeFileStore,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async searchKnowledge(
@@ -213,10 +217,12 @@ export class AgentKnowledgeMirrorService {
 		}
 
 		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+
 		return {
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
+			createdAt: file.createdAt,
 			ranges: parsed.ranges,
 			truncated: parsed.truncated,
 		};
@@ -229,9 +235,19 @@ export class AgentKnowledgeMirrorService {
 	 */
 	prewarmMirrorInBackground(projectId: string, agentId: string): void {
 		void (async () => {
-			const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-			const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
-			await this.ensureMirrorSynced(runtime, references.files);
+			await this.projectDeletion.assertWritable(projectId);
+			try {
+				const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+				const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+				await this.ensureMirrorSynced(runtime, references.files);
+			} finally {
+				// Remote sync must not hold a database lock. Remove a mirror that finishes after deletion.
+				try {
+					await this.projectDeletion.assertWritable(projectId);
+				} catch {
+					await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+				}
+			}
 		})().catch((error) => {
 			this.logger.warn('Agent knowledge mirror pre-warm failed', {
 				projectId,
@@ -372,7 +388,7 @@ export class AgentKnowledgeMirrorService {
 	private async loadKnowledgeFileReferences(
 		agentId: string,
 	): Promise<AgentKnowledgeFileReference[]> {
-		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
@@ -444,7 +460,7 @@ export class AgentKnowledgeMirrorService {
 			projectId,
 			agentId,
 		);
-		return { ...runtime, paths: getAgentKnowledgePaths(runtime.provider) };
+		return { ...runtime, paths: getKnowledgePaths(runtime.provider) };
 	}
 
 	private resolveSearchFiles(

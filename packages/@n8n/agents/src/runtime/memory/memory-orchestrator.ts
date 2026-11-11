@@ -19,8 +19,8 @@ import {
 	type ScopedMemoryTaskHandle,
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
-import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
-import { getCreatedAt } from '../../sdk/message';
+import { settleOrphanedToolMessagesWithChanges } from './strip-orphaned-tool-messages';
+import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -38,7 +38,7 @@ import type {
 	SideCallUsageReport,
 	TokenUsage,
 } from '../../types/sdk/agent';
-import type { AgentDbMessage } from '../../types/sdk/message';
+import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -71,9 +71,11 @@ function stringifyForBudget(value: unknown): string {
 }
 
 function serializeMessageForBudget(message: AgentDbMessage): string {
-	if (!('role' in message) || !Array.isArray(message.content)) return '';
+	const modelMessage = filterLlmMessages([message])[0];
+	if (!modelMessage || !Array.isArray(modelMessage.content)) return '';
 	const parts: string[] = [];
-	for (const content of message.content) {
+	// File bytes are not text tokens, so count only the text around them.
+	for (const content of stripHydratedFileData(modelMessage).content) {
 		if (content.type === 'text') {
 			parts.push(content.text);
 		} else if (content.type === 'tool-call') {
@@ -126,9 +128,34 @@ function hasObservationLogObserverMemory(
 	return (
 		hasObservationLogStore(memory) &&
 		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
-		hasFunctionProperty(memory, 'getCursor') &&
-		hasFunctionProperty(memory, 'setCursor')
+		hasFunctionProperty(memory, 'getCursor')
 	);
+}
+
+/**
+ * The persisted messages that the runtime replays to the model on the next turn.
+ * With observational memory, the messages before the observation cursor are
+ * replaced by the observation log, so only the messages after it are replayed.
+ * A host that checks what the model already sees must read the same window.
+ */
+export async function loadReplayedMessages(
+	memory: BuiltMemory,
+	persistence: Pick<AgentPersistenceOptions, 'threadId' | 'resourceId'>,
+	options: { observationalMemory: boolean },
+): Promise<AgentDbMessage[]> {
+	const { threadId, resourceId } = persistence;
+	if (options.observationalMemory && hasObservationLogObserverMemory(memory)) {
+		const { cursor } = await readObservationState(memory, threadId);
+		if (cursor) {
+			return await memory.getMessagesForObservationScope(threadId, {
+				since: {
+					sinceCreatedAt: cursor.lastObservedAt,
+					sinceMessageId: cursor.lastObservedMessageId,
+				},
+			});
+		}
+	}
+	return await memory.getMessages(threadId, { resourceId });
 }
 
 /**
@@ -194,20 +221,11 @@ export class MemoryOrchestrator {
 			telemetry,
 			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
-				if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
-					const { cursor } = await readObservationState(memory, threadId);
-					if (cursor) {
-						const messages = await memory.getMessagesForObservationScope(threadId, {
-							since: {
-								sinceCreatedAt: cursor.lastObservedAt,
-								sinceMessageId: cursor.lastObservedMessageId,
-							},
-						});
-						return { result: messages, attributes: this.queryResultAttributes(messages) };
-					}
-				}
-
-				const messages = await memory.getMessages(threadId, { resourceId });
+				const messages = await loadReplayedMessages(
+					memory,
+					{ threadId, resourceId },
+					{ observationalMemory: Boolean(this.config.observationalMemory) },
+				);
 				return { result: messages, attributes: this.queryResultAttributes(messages) };
 			},
 		);
@@ -244,7 +262,11 @@ export class MemoryOrchestrator {
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
 				// explicit "never completed" record instead of vanishing (INS-1223).
-				list.addHistory(settleOrphanedToolMessages(memMessages));
+				const { settled, changed } = settleOrphanedToolMessagesWithChanges(memMessages);
+				list.addHistory(settled);
+				if (options.persistence.persistSettledSuspensions && changed.length > 0) {
+					await this.persistSettledHistory(changed, options.persistence, telemetry);
+				}
 			}
 		}
 
@@ -316,6 +338,36 @@ export class MemoryOrchestrator {
 			logger.warn('Failed to remove rejected input', {
 				error,
 				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
+	/**
+	 * Write back history messages whose abandoned tool calls were settled at load. A
+	 * stored pending call stops the Observer, so compaction would stop for the thread.
+	 * Best-effort: the next fresh run settles and writes the same messages again.
+	 */
+	private async persistSettledHistory(
+		messages: AgentDbMessage[],
+		persistence: AgentPersistenceOptions,
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<void> {
+		const memory = this.config.memory;
+		if (!memory) return;
+		try {
+			// No host metadata: these messages belong to an earlier run, not to this one.
+			await this.saveMessagesWithSpan(
+				memory,
+				persistence.threadId,
+				persistence.resourceId,
+				messages,
+				telemetry,
+				undefined,
+			);
+		} catch (error) {
+			logger.warn('Failed to persist settled tool calls from history', {
+				error,
+				threadId: persistence.threadId,
 			});
 		}
 	}
@@ -699,6 +751,8 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the observer right after the model
 					// call (before persistence), so a billed observer turn is
 					// priced even when post-processing throws.
@@ -768,6 +822,8 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the reflector right after the model
 					// call (before persistence), so a billed reflector turn is
 					// priced even when post-processing throws.
@@ -818,11 +874,13 @@ export class MemoryOrchestrator {
 					...capture,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					agentName: this.config.name,
-					// Each embed/reflect usage is forwarded inside the processor
+					// Each embed/consolidate usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a
-					// billed turn is priced even when a later save or applyReflection
-					// throws. Returning usageReports here would double-count.
+					// billed turn is priced even when a later write throws.
+					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
 								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
@@ -839,7 +897,10 @@ export class MemoryOrchestrator {
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const keys = [
+			`resource:${scope.episodic?.writeScopeId ?? scope.resourceId}`,
+			`thread:${scope.threadId}`,
+		];
 		const previous: Array<Promise<unknown>> = [];
 		for (const key of keys) {
 			const running = this.episodicMemoryTasks.get(key);
@@ -940,8 +1001,9 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Price a side-call model turn and forward it to the host so it can add the
-	 * USD cost to the execution and thread totals. Best-effort: a catalog
-	 * lookup or host failure is logged and never fails the memory task.
+	 * USD cost to the execution and thread totals. An unpriced call is still
+	 * forwarded without `cost`, so the host can bill its tokens. Best-effort: a
+	 * host failure is logged and never fails the memory task.
 	 */
 	private async forwardSideCallUsage(
 		onSideCallUsage: OnSideCallUsage | undefined,
@@ -951,9 +1013,19 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
-			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
-			if (cost === undefined) return;
-			await onSideCallUsage({ task, model, usage, cost, reportId: crypto.randomUUID() });
+			const cost = await computeSideCallCost(
+				model,
+				usage,
+				this.config.promptCaching,
+				this.config.modelFetch,
+			);
+			await onSideCallUsage({
+				task,
+				model,
+				usage,
+				...(cost !== undefined ? { cost } : {}),
+				reportId: crypto.randomUUID(),
+			});
 		} catch (error) {
 			logger.warn('Failed to report side-call usage', { error, task });
 		}

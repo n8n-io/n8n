@@ -8,7 +8,8 @@ import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -144,7 +145,7 @@ export class ScalingService {
 		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
 			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		const { Publisher } = await import('@n8n/backend-services');
 
 		const publisher = Container.get(Publisher);
 
@@ -403,8 +404,8 @@ export class ScalingService {
 	// #region Jobs
 
 	/** Get and remove the result for a completed job. */
-	popJobResult(executionId: string): JobFinishedProps | undefined {
-		return this.jobOutcomeTracker.popResult(executionId);
+	popJobResult(job: Job): JobFinishedProps | undefined {
+		return this.jobOutcomeTracker.popResult(job);
 	}
 
 	/** Wait until the job ends. Rejects with the failure reason, like Bull's `job.finished()`. */
@@ -481,7 +482,7 @@ export class ScalingService {
 		const props = { jobId: job.id, executionId: job.data.executionId };
 
 		// A removed job emits no completion event, and the caller handles the cancellation
-		this.jobOutcomeTracker.drop(job.data.executionId);
+		this.jobOutcomeTracker.drop(job);
 
 		try {
 			if (await job.isActive()) {
@@ -620,6 +621,8 @@ export class ScalingService {
 					 * still ends the wait for the job.
 					 */
 					this.jobOutcomeTracker.recordFinished(
+						queue.name,
+						jobId,
 						msg.executionId,
 						msg.version === 2
 							? {
@@ -629,12 +632,14 @@ export class ScalingService {
 									lastNodeExecuted: msg.lastNodeExecuted,
 									usedDynamicCredentials: msg.usedDynamicCredentials,
 									metadata: msg.metadata,
+									...(msg.failedBeforeStart && { failedBeforeStart: true }),
 									startedAt: new Date(msg.startedAt),
 									stoppedAt: new Date(msg.stoppedAt),
 									// Dropping `waitTill` here makes main mistake a waiting execution
 									// for a finished one and delete it when the workflow does not
 									// save successful executions
 									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+									nodeTimeSavedMinutes: msg.nodeTimeSavedMinutes,
 								}
 							: undefined,
 					);
@@ -661,7 +666,12 @@ export class ScalingService {
 					);
 
 					// The worker already reported the underlying error, so this copy is only a handled signal
-					this.jobOutcomeTracker.recordFailed(msg.executionId, new OperationalError(msg.errorMsg));
+					this.jobOutcomeTracker.recordFailed(
+						queue.name,
+						jobId,
+						msg.executionId,
+						new OperationalError(msg.errorMsg),
+					);
 					break;
 				case 'abort-job':
 					break; // only for worker

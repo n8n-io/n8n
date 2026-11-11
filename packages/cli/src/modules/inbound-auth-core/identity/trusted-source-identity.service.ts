@@ -1,6 +1,11 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	RoleMappingProxyService,
+	type ResolvedRoles,
+	type RoleMappingProvider,
+} from '@n8n/backend-services/auth';
 import { Time } from '@n8n/constants';
 import {
 	isValidEmail,
@@ -18,14 +23,13 @@ import {
 	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
-import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
-
 import {
-	RoleMappingProxyService,
-	type ResolvedRoles,
-	type RoleMappingProvider,
-} from '@/services/role-mapping-proxy.service';
+	GLOBAL_OWNER_ROLE_SLUG,
+	isReservedGlobalRole,
+	type Principal,
+	type SecurityContext,
+} from '@n8n/permissions';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
 import {
@@ -290,7 +294,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 	): Promise<Resolved> {
 		const { provision } = source.config.identity;
 
-		if (provision.human === 'off') return { ok: false, reason: 'provision-refused' };
+		if (provision.person === 'off') return { ok: false, reason: 'provision-refused' };
 
 		const email = external.email;
 
@@ -345,7 +349,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 	}
 
 	private async isAssignableInstanceRole(slug: string, ctx: OperationContext): Promise<boolean> {
-		if (slug === GLOBAL_OWNER_ROLE_SLUG) return false;
+		if (isReservedGlobalRole(slug)) return false;
 		if (!(await this.identities.globalRoleExists(slug, ctx))) return false;
 		return this.roleService.isRoleLicensed(slug);
 	}

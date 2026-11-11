@@ -367,8 +367,9 @@ export function reshapeLangSmithRuns(
 				}
 			}
 
-			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
 			const buildKey = `${String(iter)}:${fileSlug}`;
+			// Thread-less (MCP) builds stash their transcript under the build key.
+			const transcript = transcriptByThreadId.get(threadId ?? buildKey);
 			const buildExpectationResults = buildExpectationsByKey.get(buildKey);
 			runResults.push({
 				testCase,

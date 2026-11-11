@@ -22,6 +22,51 @@ describe('ProjectScopeService', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('hasScopes', () => {
+		it('grants access through the global role without a query', async () => {
+			const result = await service.hasScopes(
+				makeUser(['agent:read', 'agent:update']),
+				'project-1',
+				['agent:read', 'agent:update'],
+			);
+
+			expect(result).toBe(true);
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(projectRelationRepository.hasAnyRoleInProject).not.toHaveBeenCalled();
+		});
+
+		it('needs all scopes from the global role to skip the project check', async () => {
+			roleService.rolesWithScope.mockResolvedValue([]);
+			projectRelationRepository.hasAnyRoleInProject.mockResolvedValue(false);
+
+			const result = await service.hasScopes(makeUser(['agent:read']), 'project-1', [
+				'agent:read',
+				'agent:update',
+			]);
+
+			expect(result).toBe(false);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', [
+				'agent:read',
+				'agent:update',
+			]);
+		});
+
+		it.each([true, false])('returns %s from the project role check', async (hasRole) => {
+			roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+			projectRelationRepository.hasAnyRoleInProject.mockResolvedValue(hasRole);
+
+			const result = await service.hasScopes(makeUser(), 'project-1', ['agent:update']);
+
+			expect(result).toBe(hasRole);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+			expect(projectRelationRepository.hasAnyRoleInProject).toHaveBeenCalledWith(
+				'user-1',
+				'project-1',
+				['project:admin', 'project:editor'],
+			);
+		});
+	});
+
 	describe('getProjectRoleSlugs', () => {
 		it('returns no project role restriction when the user has the global scope', async () => {
 			const result = await service.getProjectRoleSlugs(makeUser(['agent:update']), [
@@ -70,5 +115,22 @@ describe('ProjectScopeService', () => {
 			'project:editor',
 		]);
 		expect(result).toEqual(['project-1', 'project-2']);
+	});
+
+	describe('getMemberProjectIds', () => {
+		it('returns only member projects for a user with the global scope', async () => {
+			roleService.rolesWithScope.mockResolvedValue(['project:admin']);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['project-1']);
+
+			const result = await service.getMemberProjectIds(makeUser(['agent:update']), [
+				'agent:update',
+			]);
+
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				'user-1',
+				['project:admin'],
+			);
+			expect(result).toEqual(['project-1']);
+		});
 	});
 });

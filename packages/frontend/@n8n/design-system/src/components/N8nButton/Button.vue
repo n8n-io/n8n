@@ -27,14 +27,6 @@ const effectiveSize = computed(() => {
 	return props.size;
 });
 
-// Map legacy variant values to current ones
-const effectiveVariant = computed(() => {
-	if (props.variant === 'subtle') return 'brand';
-	if (props.variant === 'highlight') return 'ghost';
-	if (props.variant === 'highlight-fill') return 'ghost';
-	return props.variant;
-});
-
 const computedIconSize = computed((): IconSize | undefined => {
 	if (props.iconSize) return props.iconSize;
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
@@ -57,7 +49,7 @@ const classes = computed(() =>
 	cn(
 		'button',
 		$style.button,
-		$style[effectiveVariant.value],
+		$style[props.variant],
 		$style[effectiveSize.value],
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
@@ -112,7 +104,12 @@ const handleClick = (event: MouseEvent) => {
 
 		<div :class="$style['button-inner']">
 			<slot v-if="!loading" name="icon">
-				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+				<N8nIcon
+					v-if="icon && !loading"
+					:icon="icon"
+					:fallback-icon="fallbackIcon"
+					:size="computedIconSize"
+				/>
 			</slot>
 
 			<span v-if="label">{{ label }}</span>

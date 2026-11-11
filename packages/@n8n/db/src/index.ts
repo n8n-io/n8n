@@ -8,11 +8,17 @@ export {
 	dbType,
 	JsonColumn,
 	DateTimeColumn,
+	BinaryColumn,
 } from './entities/abstract-entity';
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
-export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
+export {
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	parseDbTime,
+} from './utils/dialect-time';
+export { toDialectQuery } from './utils/dialect-sql';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
 export { isEntityNotFoundError } from './utils/is-entity-not-found-error';
@@ -21,6 +27,13 @@ export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { principalFromUser } from './utils/principal-from-user';
+export { isPerson, isServiceAccount } from './utils/account-guards';
+export {
+	accountFirstName,
+	accountFullName,
+	accountSummary,
+	type AccountSummary,
+} from './utils/account-display-name';
 export { parseListQuerySortBy } from './utils/list-query-sort';
 export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
@@ -44,13 +57,16 @@ export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
-export { DbConnection } from './connection/db-connection';
+export { DbConnection, type ManagedPostgresMarkers } from './connection/db-connection';
 export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
 export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+export { DbLockUnavailableError } from './services/db-lock-unavailable.error';
+
+export * from './execution-ledger';
 
 export { TransactionRunner } from './services/transaction';
 export type {

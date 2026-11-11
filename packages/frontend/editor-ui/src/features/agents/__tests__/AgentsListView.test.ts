@@ -14,13 +14,16 @@ import {
 } from '../constants';
 
 const templatesEnabled = ref(false);
-const instanceAiReady = ref(false);
+const experimentVariant = ref<'control' | 'test' | undefined>('control');
+const trackTemplatesExposure = vi.fn();
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
 	routerPush: vi.fn(),
 	setTitle: vi.fn(),
+	executeWeeklySummary: vi.fn(),
+	isSummaryEnabled: false,
 	trackClickedNewAgent: vi.fn(),
 	trackDuplicatedAgent: vi.fn(),
 	duplicateAgent: vi.fn(),
@@ -76,8 +79,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 vi.mock('@n8n/frontend-module-insights', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/frontend-module-insights')>()),
 	useInsightsStore: () => ({
-		isSummaryEnabled: false,
-		weeklySummary: { isLoading: false, state: null },
+		isSummaryEnabled: mocks.isSummaryEnabled,
+		weeklySummary: { isLoading: false, state: null, execute: mocks.executeWeeklySummary },
 	}),
 }));
 
@@ -101,13 +104,11 @@ vi.mock(
 	() => ({
 		useAgentsListEmptyStateTemplatesExperiment: () => ({
 			isFeatureEnabled: computed(() => templatesEnabled.value),
+			variant: computed(() => experimentVariant.value),
+			trackExposure: trackTemplatesExposure,
 		}),
 	}),
 );
-
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiReady: () => computed(() => instanceAiReady.value),
-}));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -169,6 +170,10 @@ const agent = (id: string, name: string, projectId = 'project-1'): AgentResource
 		updatedAt: '2026-01-02T00:00:00Z',
 	}) as AgentResource;
 
+// Mounted views are unmounted after each test. Without this, watchers from
+// earlier tests stay alive and react to shared refs mutated by later tests.
+const activeWrappers: Array<ReturnType<typeof mount>> = [];
+
 const mountView = async () => {
 	const wrapper = mount(AgentsListView, {
 		global: {
@@ -195,19 +200,34 @@ const mountView = async () => {
 		},
 	});
 	await flushPromises();
+	activeWrappers.push(wrapper);
 	return wrapper;
 };
+
+afterEach(() => {
+	let wrapper: (typeof activeWrappers)[number] | undefined;
+	while ((wrapper = activeWrappers.shift())) wrapper.unmount();
+});
 
 describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
+		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('does not load the insights summary on a project page', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
+		mocks.isSummaryEnabled = true;
+
+		await mountView();
+
+		expect(mocks.executeWeeklySummary).not.toHaveBeenCalled();
 	});
 
 	it('calls listAgentsPage with the route project ID', async () => {
@@ -316,11 +336,7 @@ describe('AgentsListView — project page', () => {
 		expect(mocks.toastShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'agents.duplicate.modal.success', type: 'success' }),
 		);
-		// A duplicate is born configured, so the backend creation events never
-		// fire for it; the duplicate is tracked directly, mirroring
-		// "User duplicated workflow" — the source agent id distinguishes it.
-		// Routed through the safe wrapper so a telemetry failure can't
-		// misreport a successful duplicate.
+		// The frontend event keeps the source Agent context.
 		expect(mocks.trackDuplicatedAgent).toHaveBeenCalledWith({
 			sourceAgentId: 'agent-1',
 			agentId: 'agent-2',
@@ -408,12 +424,21 @@ describe('AgentsListView — overview page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = undefined;
+		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('loads the insights summary on mount when it is enabled', async () => {
+		mocks.listAgentsPageGlobal.mockResolvedValueOnce({ count: 0, data: [] });
+		mocks.isSummaryEnabled = true;
+
+		await mountView();
+
+		expect(mocks.executeWeeklySummary).toHaveBeenCalledTimes(1);
 	});
 
 	it('calls listAgentsPageGlobal when no project ID is in the route', async () => {
@@ -464,7 +489,6 @@ describe('AgentsListView — create agent', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	it('opens the builder for a new pending agent in the current project', async () => {
@@ -491,23 +515,71 @@ describe('AgentsListView — empty state templates', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
+		experimentVariant.value = 'control';
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 	});
 
-	it('keeps the current empty state unless the flag is on and Instance AI is ready', async () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('keeps the current empty state unless the experiment is enabled', async () => {
 		const flagOff = await mountView();
 		expect(flagOff.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
 		expect(flagOff.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(true);
 
 		templatesEnabled.value = true;
-		const notReady = await mountView();
-		expect(notReady.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+		const enabled = await mountView();
+		expect(enabled.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
+		expect(enabled.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	});
 
-		instanceAiReady.value = true;
-		const ready = await mountView();
-		expect(ready.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
-		expect(ready.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	it('records experiment exposure for the rendered empty state', async () => {
+		await mountView();
+
+		expect(trackTemplatesExposure).toHaveBeenCalledTimes(1);
+	});
+
+	it('records no exposure when the list has agents', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({
+			count: 1,
+			data: [agent('agent-1', 'Support Agent')],
+		});
+
+		await mountView();
+
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+	});
+
+	it('records no exposure while a search yields no matching agents', async () => {
+		vi.useFakeTimers();
+		mocks.listAgentsPage
+			.mockResolvedValueOnce({ count: 1, data: [agent('agent-1', 'Support Agent')] })
+			.mockResolvedValueOnce({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		layout.vm.$emit('update:search', 'No agent matches');
+		await flushPromises();
+		vi.advanceTimersByTime(300);
+		await flushPromises();
+
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(2);
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+	});
+
+	it('records exposure when the variant resolves after the list is empty', async () => {
+		experimentVariant.value = undefined;
+
+		await mountView();
+
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+
+		experimentVariant.value = 'test';
+		await flushPromises();
+
+		expect(trackTemplatesExposure).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([
@@ -531,7 +603,6 @@ describe('AgentsListView — empty state templates', () => {
 		},
 	])('records $name and opens the builder', async ({ testId, source, starter }) => {
 		templatesEnabled.value = true;
-		instanceAiReady.value = true;
 		const wrapper = await mountView();
 
 		await wrapper.get(`[data-test-id="${testId}"]`).trigger('click');

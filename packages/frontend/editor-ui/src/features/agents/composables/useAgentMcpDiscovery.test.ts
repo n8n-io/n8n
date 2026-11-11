@@ -38,11 +38,7 @@ vi.mock('@/features/credentials/credentials.store', async (importOriginal) => ({
 
 vi.mock('@/app/stores/ui.store', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/app/stores/ui.store')>()),
-	listenForModalChanges: ({
-		onModalClosed,
-	}: {
-		onModalClosed?: (modalName: string) => void;
-	}) => {
+	listenForModalChanges: ({ onModalClosed }: { onModalClosed?: (modalName: string) => void }) => {
 		credentialModalListeners.onModalClosed = onModalClosed;
 	},
 }));
@@ -105,7 +101,7 @@ describe('useAgentMcpDiscovery', () => {
 
 		await expect(discovery.fetchCatalog()).resolves.toEqual([server]);
 		await discovery.preloadCredentials();
-		await discovery.discoverRegistry('github', 'credential-1');
+		await discovery.discoverRegistry({ slug: 'github', credentialId: 'credential-1' });
 
 		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({

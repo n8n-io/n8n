@@ -24,7 +24,7 @@ import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.e
 import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -311,7 +311,9 @@ test('should send message to webhook ', async () => {
 	await onFirstWorkerMessage('confirmMessageSent', async () => {
 		await confirmIdInAll(testMessage.id);
 		await confirmIdSent(testMessage.id);
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
+		expect(outboundHttp.requests).toHaveBeenCalledWith(
+			expect.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
+		);
 		expect(webhookRequest).toHaveBeenCalledWith(
 			expect.objectContaining({
 				url: testWebhookDestination.url,

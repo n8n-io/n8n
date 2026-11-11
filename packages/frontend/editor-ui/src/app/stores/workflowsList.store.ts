@@ -1,3 +1,4 @@
+import type { WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { IWorkflowDb, IWorkflowsMap, WorkflowListResource } from '@/Interface';
@@ -18,8 +19,7 @@ export type WorkflowListFilters = {
 	parentFolderId?: string;
 	availableInMCP?: boolean;
 	triggerNodeTypes?: string[];
-	includeCallableSubworkflows?: boolean;
-	parentWorkflowId?: string;
+	executionBlockedBy?: WorkflowExecutionBlockCause[];
 };
 
 const ALL_PROJECTS_KEY = '__all_projects__';
@@ -184,6 +184,21 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		return data;
 	}
 
+	// Callable rows can belong to workflows the user cannot read, so they are not
+	// added to the workflows cache.
+	async function fetchCallableSubworkflowsPage(
+		parentWorkflowId: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		query?: string,
+	) {
+		return await workflowsApi.getCallableSubworkflows(rootStore.restApiContext, parentWorkflowId, {
+			query,
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+		});
+	}
+
 	async function searchWorkflows({
 		projectId,
 		ids,
@@ -329,6 +344,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		// Fetching
 		fetchWorkflowsPageWithCount,
 		fetchWorkflowsPage,
+		fetchCallableSubworkflowsPage,
 		searchWorkflows,
 		fetchAllWorkflows,
 		fetchWorkflow,

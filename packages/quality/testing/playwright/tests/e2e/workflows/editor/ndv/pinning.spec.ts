@@ -27,7 +27,7 @@ const pinnedWebhookRequirements: TestRequirements = {
 test.describe(
 	'Data pinning',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		const maxPinnedDataSize = 16384;
@@ -53,6 +53,23 @@ test.describe(
 				await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
 
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText(prevValue ?? '');
+			});
+
+			test('should show the pinned indicator after running the workflow @engine:v2', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
+
+				await n8n.ndv.execute();
+				await expect(n8n.ndv.outputPanel.get()).toBeVisible();
+
+				await n8n.ndv.togglePinData();
+				await n8n.ndv.close();
+
+				await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+
+				await expect(n8n.canvas.getNodePinnedStatusIndicator(NODES.SCHEDULE_TRIGGER)).toBeVisible();
+				await expect(n8n.canvas.getNodeSuccessStatusIndicator(NODES.SCHEDULE_TRIGGER)).toBeHidden();
 			});
 
 			test('should be able to set custom pinned data', async ({ n8n }) => {

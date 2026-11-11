@@ -1,32 +1,24 @@
 import { isDraftIntegration } from '@n8n/api-types';
+import { sha256 } from '@n8n/utils/sha256';
 
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
 
 export type AgentConfigFingerprint = {
-	instructions: string;
-	tools: string[];
 	skills: string[];
 	tasks: string[];
 	triggers: string[];
-	vector_stores: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
-	model: string | null;
 	config_version: string;
 };
 
 /**
- * Internal helper used to compute a stable 16-char hex `config_version` join
- * key. Not a privacy mechanism — agent payloads carry the raw config fields.
+ * Compute a stable join key. Keep the configuration text inside the hash input.
  */
 async function sha256Hex16(input: string): Promise<string> {
-	const bytes = new TextEncoder().encode(input);
-	const digest = await crypto.subtle.digest('SHA-256', bytes);
-	const hex = Array.from(new Uint8Array(digest))
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-	return hex.slice(0, 16);
+	return (await sha256(input)).slice(0, 16);
 }
 
 function toolIdentifier(ref: AgentJsonToolRef): string {
@@ -87,19 +79,15 @@ export async function buildAgentConfigFingerprint(
 	const configVersion = await sha256Hex16(versionPayload);
 
 	return {
-		instructions,
-		tools,
 		skills,
 		tasks,
 		triggers,
-		vector_stores: vectorStores,
 		memory,
-		model,
 		config_version: configVersion,
 	};
 }
 
 export function deriveAgentStatus(agent: AgentResource | null): AgentTelemetryStatus {
 	if (!agent?.activeVersionId) return 'draft';
-	return agent.versionId === agent.activeVersionId ? 'production' : 'draft';
+	return hasAgentUnpublishedChanges(agent) ? 'draft' : 'production';
 }

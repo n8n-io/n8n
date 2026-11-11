@@ -45,7 +45,7 @@ async function importSkill(loadSkill: () => Promise<AgentSkill>, source: 'skill_
 	} catch (error) {
 		fileError.value =
 			error instanceof AgentSkillImportError
-				? i18n.baseText(error.i18nKey)
+				? i18n.baseText(error.i18nKey, { interpolate: error.interpolate })
 				: i18n.baseText('agents.builder.skills.import.invalidFolder');
 		emit('import:skill', {
 			source,
@@ -156,9 +156,8 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	flex: 1;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing--md);
-	padding: var(--spacing--xl);
 	min-width: 0;
 }
 
@@ -224,10 +223,6 @@ function onDrop(files: File[] | null, event: DragEvent) {
 }
 
 @media (max-width: 480px) {
-	.upload {
-		padding: var(--spacing--md);
-	}
-
 	.dropZone {
 		padding: var(--spacing--xl) var(--spacing--sm);
 	}

@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { N8nDialog, N8nDialogHeader, N8nDialogTitle, N8nText } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -66,26 +72,28 @@ const promptParagraphs = computed(() =>
 			<N8nDialogHeader>
 				<N8nDialogTitle>{{ modalTitle }}</N8nDialogTitle>
 			</N8nDialogHeader>
-			<div :class="$style.modalBody" data-test-id="metric-criteria-modal">
-				<N8nText v-if="description" size="small" color="text-base" :class="$style.paragraph">
-					{{ description }}
-				</N8nText>
-				<div :class="$style.criteria">
-					<N8nText size="xsmall" bold color="text-light" :class="$style.criteriaLabel">
-						{{ i18n.baseText('evaluation.metric.criteria.label') }}
+			<N8nDialogBody>
+				<div :class="$style.modalBody" data-test-id="metric-criteria-modal">
+					<N8nText v-if="description" size="small" color="text-base" :class="$style.paragraph">
+						{{ description }}
 					</N8nText>
-					<N8nText
-						v-for="(paragraph, index) in promptParagraphs"
-						:key="index"
-						tag="p"
-						size="small"
-						color="text-base"
-						:class="$style.paragraph"
-					>
-						{{ paragraph }}
-					</N8nText>
+					<div :class="$style.criteria">
+						<N8nText size="xsmall" bold color="text-light" :class="$style.criteriaLabel">
+							{{ i18n.baseText('evaluation.metric.criteria.label') }}
+						</N8nText>
+						<N8nText
+							v-for="(paragraph, index) in promptParagraphs"
+							:key="index"
+							tag="p"
+							size="small"
+							color="text-base"
+							:class="$style.paragraph"
+						>
+							{{ paragraph }}
+						</N8nText>
+					</div>
 				</div>
-			</div>
+			</N8nDialogBody>
 		</N8nDialog>
 	</div>
 </template>

@@ -1,7 +1,7 @@
 import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
-import { MemoryOrchestrator } from '../memory/memory-orchestrator';
+import { loadReplayedMessages, MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { runObservationLogObserver } from '../memory/observation-log-observer';
 import { AgentMessageList } from '../model/message-list';
@@ -216,5 +216,138 @@ describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
 
 		expect(loaded.map((m) => m.id)).toEqual(['m1']);
 		expect(describeSpy).not.toHaveBeenCalled();
+	});
+});
+
+describe('loadReplayedMessages', () => {
+	const m1 = message('m1', 'first', new Date(2026, 4, 12, 14, 30));
+	const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
+	const m3 = message('m3', 'third', new Date(2026, 4, 12, 14, 32));
+
+	async function seedObservedThread(): Promise<InMemoryMemory> {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		await store.appendObservationLogEntries([
+			{
+				observationScopeId: THREAD_ID,
+				marker: 'critical',
+				text: 'The user said first.',
+				parentId: null,
+				createdAt: m1.createdAt,
+			},
+		]);
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m1.id,
+			lastObservedAt: m1.createdAt,
+			updatedAt: m1.createdAt,
+		});
+		return store;
+	}
+
+	it('returns the messages after the cursor with observational memory', async () => {
+		const store = await seedObservedThread();
+
+		const loaded = await loadReplayedMessages(
+			store,
+			{ threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			{ observationalMemory: true },
+		);
+
+		expect(loaded.map((m) => m.id)).toEqual(['m2', 'm3']);
+	});
+
+	it('returns the full history without observational memory', async () => {
+		const store = await seedObservedThread();
+
+		const loaded = await loadReplayedMessages(
+			store,
+			{ threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			{ observationalMemory: false },
+		);
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+});
+
+describe('MemoryOrchestrator.loadInto with abandoned suspensions', () => {
+	const pendingSetup: AgentDbMessage = {
+		id: 'm2',
+		createdAt: new Date(2026, 4, 12, 14, 31),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc1',
+				toolName: 'setup_workflow',
+				input: {},
+				state: 'pending',
+				suspension: { message: 'Configure credentials for your workflow' },
+			},
+		],
+	};
+
+	async function seedAbandonedSuspension(): Promise<InMemoryMemory> {
+		const store = new InMemoryMemory();
+		await seedThread(store, [
+			message('m1', 'Build a Telegram workflow.', new Date(2026, 4, 12, 14, 30)),
+			pendingSetup,
+		]);
+		return store;
+	}
+
+	async function storedToolCallState(store: InMemoryMemory): Promise<unknown> {
+		const [stored] = await store.getMessages(THREAD_ID, { limit: 1 });
+		return stored && 'content' in stored ? stored.content[0] : undefined;
+	}
+
+	it('writes back the settled tool call when the host ends suspensions before fresh runs', async () => {
+		const store = await seedAbandonedSuspension();
+		const saveMessages = vi.spyOn(store, 'saveMessages');
+		const list = new AgentMessageList();
+
+		await buildOrchestrator(store).loadInto(list, {
+			persistence: {
+				threadId: THREAD_ID,
+				resourceId: RESOURCE_ID,
+				hostMetadata: { executionId: 'exec-2' },
+				persistSettledSuspensions: true,
+			},
+		});
+
+		// The settled message belongs to an earlier run, so it must not link to this one.
+		expect(saveMessages).toHaveBeenCalledWith(
+			expect.objectContaining({ messages: [expect.objectContaining({ id: 'm2' })] }),
+		);
+		const saved = saveMessages.mock.calls[0]?.[0] as { hostMetadata?: unknown } | undefined;
+		expect(saved?.hostMetadata).toBeUndefined();
+		expect(await storedToolCallState(store)).toMatchObject({
+			toolCallId: 'tc1',
+			state: 'rejected',
+			error: expect.stringContaining('Configure credentials for your workflow'),
+		});
+		const observed = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: THREAD_ID,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 40),
+			observe: async () => '* IMPORTANT (14:40) Progress noted.',
+		});
+		expect(observed).toMatchObject({ status: 'ran', cursorAdvanced: true });
+	});
+
+	it('keeps the stored tool call pending without the host guarantee', async () => {
+		const store = await seedAbandonedSuspension();
+		const list = new AgentMessageList();
+
+		await buildOrchestrator(store).loadInto(list, {
+			persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID },
+		});
+
+		expect(await storedToolCallState(store)).toMatchObject({ state: 'pending' });
+		expect(list.messages().at(-1)).toMatchObject({
+			content: [expect.objectContaining({ state: 'rejected' })],
+		});
 	});
 });

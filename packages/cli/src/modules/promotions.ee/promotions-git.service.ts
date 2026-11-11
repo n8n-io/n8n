@@ -4,27 +4,29 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
+	GitError,
 	GitPluginError,
 	simpleGit,
 	type SimpleGit,
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError, UnexpectedError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
 	GIT_READ_CONCURRENCY,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
-/** Where one config keeps its checkout and its pinned host keys. */
+/** Where one environment keeps its checkout and its pinned host keys. */
 type PromotionGitPaths = {
 	rootFolder: string;
 	repositoryFolder: string;
@@ -37,9 +39,18 @@ type GitOperation = {
 	credentials: PromotionGitCredentials;
 	paths: PromotionGitPaths;
 	branchName: string;
-	/** Only for logging, so a failure points at the right config. */
-	configId: string;
+	/** Only for logging, so a failure points at the right environment. */
+	environmentId: string;
 };
+
+type TreeReadLimits = {
+	maxEntries: number;
+	maxEntryBytes: number;
+	maxUncompressedBytes: number;
+	maxPathLength: number;
+};
+
+type TreeEntry = { path: string; objectName: string; size: number };
 
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
@@ -149,7 +160,7 @@ export class PromotionsGitService {
 		return await generateSshKeyPair(keyType, PROMOTION_KEY_COMMENT);
 	}
 
-	async clone({ remoteUrl, credentials, paths, branchName, configId }: GitOperation) {
+	async clone({ remoteUrl, credentials, paths, branchName, environmentId }: GitOperation) {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
@@ -175,7 +186,11 @@ export class PromotionsGitService {
 								}
 								// branchName is check-ref-format validated and passed without a shell.
 								await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
-								await git.raw(['-C', nextRepositoryFolder, 'remote', 'add', 'origin', remoteUrl]);
+								// simple-git 4 blocks `-C`, so add the remote from inside the new repository.
+								await simpleGit({ ...BASE_GIT_OPTIONS, baseDir: nextRepositoryFolder }).addRemote(
+									'origin',
+									remoteUrl,
+								);
 							} else {
 								await git.clone(remoteUrl, nextRepositoryFolder, [
 									'--branch',
@@ -196,7 +211,7 @@ export class PromotionsGitService {
 				}
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -219,7 +234,7 @@ export class PromotionsGitService {
 		paths,
 		branchName,
 		targetBranchName,
-		configId,
+		environmentId,
 		author,
 		commitMessage,
 		force,
@@ -272,9 +287,7 @@ export class PromotionsGitService {
 									).trim()
 								: undefined;
 							try {
-								// Scope staging to the package while including removed entities.
-								await git.add(['--all', '--', stagePathspec]);
-								await git.commit(commitMessage);
+								await this.commitPackage(git, stagePathspec, commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
 								if (force) {
@@ -299,7 +312,7 @@ export class PromotionsGitService {
 										this.logger.warn(
 											'Failed to restore the Git revision after a failed promotion',
 											{
-												configId,
+												environmentId,
 												branchName,
 											},
 										);
@@ -311,16 +324,36 @@ export class PromotionsGitService {
 					),
 			);
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName: targetBranchName ?? branchName });
+			throw this.mapGitError(error, { environmentId, branchName: targetBranchName ?? branchName });
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
-		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+	/** Whether the remote holds the branch. Throws when the remote can't be reached. */
+	async hasRemoteBranch(operation: GitOperation): Promise<boolean> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				await this.withGit(
+			// The lock also covers SSH, which can write known_hosts in sshDir.
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
+				);
+				return refs.trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reset the checkout to the latest base branch before one promotion. Returns the commit it
+	 * reset to, so later reads of the base need no second fetch.
+	 */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
 						const branchRefs = await git.listRemote([
@@ -338,12 +371,24 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
+	}
+
+	/** Stages the package, including removed files, and commits it. */
+	private async commitPackage(git: SimpleGit, stagePathspec: string, commitMessage: string) {
+		await git.add(['--all', '--', stagePathspec]);
+		// `git commit` fails when nothing is staged. Report that as a user error, not a Git failure.
+		const staged = await git.diff(['--cached', '--name-only', '--', stagePathspec]);
+		if (!staged.trim()) {
+			throw new BadRequestError('Nothing to promote. The branch already matches the selection.');
+		}
+		await git.commit(commitMessage);
 	}
 
 	/** Push one commit to a new branch and restore the local base branch. */
@@ -371,8 +416,7 @@ export class PromotionsGitService {
 		}
 
 		try {
-			await git.add(['--all', '--', stagePathspec]);
-			await git.commit(commitMessage);
+			await this.commitPackage(git, stagePathspec, commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
@@ -439,7 +483,7 @@ export class PromotionsGitService {
 	}
 
 	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
-		const { paths, branchName, configId } = operation;
+		const { paths, branchName, environmentId } = operation;
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				await this.fetchBranch(operation);
@@ -448,7 +492,7 @@ export class PromotionsGitService {
 				return { commitSha: (await git.revparse(['HEAD'])).trim() };
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -459,7 +503,7 @@ export class PromotionsGitService {
 		commitSha: string | null;
 		lsTreeOutput: string;
 	}> {
-		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
@@ -481,7 +525,7 @@ export class PromotionsGitService {
 				return { commitSha, lsTreeOutput };
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -489,9 +533,9 @@ export class PromotionsGitService {
 	async hasCommittedPath({
 		paths,
 		branchName,
-		configId,
+		environmentId,
 		pathspec,
-	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
 		pathspec: string;
 	}): Promise<boolean> {
 		try {
@@ -504,17 +548,51 @@ export class PromotionsGitService {
 				return (await git.raw(['ls-tree', head, '--', pathspec])).trim() !== '';
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/** The paths among `filePaths` that exist at the commit. */
+	async findPathsAtCommit({
+		paths,
+		branchName,
+		environmentId,
+		commitSha,
+		filePaths,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
+		commitSha: string;
+		filePaths: readonly string[];
+	}): Promise<Set<string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (filePaths.length === 0) return new Set();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const output = await git.raw([
+					'ls-tree',
+					'-r',
+					'-z',
+					'--name-only',
+					commitSha,
+					'--',
+					...filePaths,
+				]);
+				return new Set(output.split('\0').filter(Boolean));
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
 	async readFilesAtCommit({
 		paths,
 		branchName,
-		configId,
+		environmentId,
 		commitSha,
 		filePaths,
-	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
 		commitSha: string;
 		filePaths: readonly string[];
 	}): Promise<Map<string, string>> {
@@ -537,7 +615,190 @@ export class PromotionsGitService {
 				return new Map(files);
 			});
 		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/** The blob SHA of each file under `directory` at the commit, by repository path. */
+	async listFilesAtCommit({
+		paths,
+		branchName,
+		environmentId,
+		commitSha,
+		directory,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
+		commitSha: string;
+		directory: string;
+	}): Promise<Map<string, string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const tree = await git.raw(['ls-tree', '-r', '-l', '-z', commitSha, '--', `${directory}/`]);
+				return new Map(
+					parseTreeEntries(tree, directory).map(({ path: entryPath, objectName }) => [
+						`${directory}/${entryPath}`,
+						objectName,
+					]),
+				);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Makes the commits of one review available in the checkout and returns its baseline.
+	 * An open review diffs against the merge base with the latest target branch, so it always
+	 * fetches: an old target branch gives an old merge base after a rebase. The commits of a
+	 * merged or closed review do not change, so it fetches only when the checkout lacks one.
+	 */
+	async fetchReviewCommits({
+		headRef,
+		headCommitSha,
+		baseline,
+		...operation
+	}: GitOperation & {
+		/** The host ref that holds the review head. */
+		headRef: string;
+		headCommitSha: string;
+		/** A pinned baseline can name the target branch, which can still hold the commits. */
+		baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+	}): Promise<{ baselineCommitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		const commitShas = [headCommitSha, ...('commitSha' in baseline ? [baseline.commitSha] : [])];
+		if (!commitShas.every((sha) => COMMIT_SHA.test(sha))) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
+		const missingCommits = new PromotionReviewCommitsMissingError();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const hasCommits = async () => {
+					for (const sha of commitShas) if (!(await hasCommit(git, sha))) return false;
+					return true;
+				};
+				const remoteGit = {
+					remoteUrl,
+					credentials,
+					repoDir: paths.repositoryFolder,
+					sshDir: paths.sshDir,
+				};
+				const fetch = async (refspecs: string[]) =>
+					await this.withGit(
+						remoteGit,
+						// --progress keeps the stall-timeout timer fed during a healthy transfer.
+						async (remote) => await remote.raw(['fetch', '--progress', 'origin', ...refspecs]),
+					);
+				// A fetch of a ref that the remote does not have fails, so check the refs first.
+				const listRemoteRefs = async (refs: string[]) => {
+					const output = await this.withGit(
+						remoteGit,
+						async (remote) => await remote.raw(['ls-remote', 'origin', ...refs]),
+					);
+					return new Set(
+						output
+							.split('\n')
+							.map((line) => line.split('\t')[1])
+							.filter(Boolean),
+					);
+				};
+
+				if ('commitSha' in baseline) {
+					if (!(await hasCommits())) {
+						// GitLab deletes the head ref 14 days after a review closes or merges. The commits
+						// of a merged review can still be on the target branch, so fetch what is left.
+						const sources = [{ ref: headRef, refspec: headRef }];
+						const target = baseline.targetBranchName;
+						if (target) {
+							const ref = `refs/heads/${target}`;
+							sources.push({ ref, refspec: `+${ref}:refs/remotes/origin/${target}` });
+						}
+						const existing = await listRemoteRefs(sources.map(({ ref }) => ref));
+						const available = sources.filter(({ ref }) => existing.has(ref));
+						if (available.length > 0) await fetch(available.map(({ refspec }) => refspec));
+					}
+					if (!(await hasCommits())) throw missingCommits;
+					return { baselineCommitSha: baseline.commitSha };
+				}
+
+				const targetRef = `refs/remotes/origin/${baseline.targetBranchName}`;
+				await fetch([headRef, `+refs/heads/${baseline.targetBranchName}:${targetRef}`]);
+				if (!(await hasCommits())) throw missingCommits;
+				let mergeBase = '';
+				try {
+					mergeBase = (await git.raw(['merge-base', headCommitSha, targetRef])).trim();
+				} catch {
+					// Git exits with an error when the commits share no history.
+				}
+				if (!COMMIT_SHA.test(mergeBase)) {
+					throw new BadRequestError(
+						`The review has no common commit with the target branch ${baseline.targetBranchName}.`,
+					);
+				}
+				return { baselineCommitSha: mergeBase };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
+	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
+	 * The limits are checked on the listed sizes, before any content is read.
+	 */
+	async readTreeAtCommit({
+		commitSha,
+		directory,
+		limits,
+		...operation
+	}: GitOperation & {
+		commitSha: string;
+		directory: string;
+		limits: TreeReadLimits;
+	}): Promise<Map<string, Buffer>> {
+		const { paths, branchName, environmentId } = operation;
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const options = { ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder };
+				// Another main may have served the preview, so this checkout can lack its commit.
+				if (!(await hasCommit(simpleGit(options), commitSha))) {
+					await this.fetchBranch(operation);
+					if (!(await hasCommit(simpleGit(options), commitSha))) {
+						throw new BadRequestError(
+							'The branch no longer has the commit of the preview. Load the preview again.',
+						);
+					}
+				}
+				const tree = await simpleGit(options).raw([
+					'ls-tree',
+					'-r',
+					'-l',
+					'-z',
+					commitSha,
+					'--',
+					`${directory}/`,
+				]);
+				const entries = parseTreeEntries(tree, directory);
+				assertWithinLimits(entries, limits);
+				if (entries.length === 0) return new Map();
+
+				const objectNames = entries.map(({ objectName }) => objectName).join('\n') + '\n';
+				const output: Buffer = await simpleGit({
+					...options,
+					input: () => objectNames,
+				}).binaryCatFile(['--batch']);
+				return splitBatchOutput(output, entries);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
 		}
 	}
 
@@ -575,8 +836,11 @@ export class PromotionsGitService {
 					...options,
 					config,
 					unsafe: { allowUnsafeCredentialHelper: true },
+					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_TERMINAL_PROMPT', '0')
+					// Git translates its messages. The failure explanations match the English text.
+					.env('LC_ALL', 'C')
 					.env('N8N_GIT_USERNAME', credentials.username)
 					.env('N8N_GIT_PASSWORD', credentials.password);
 			} else {
@@ -593,9 +857,11 @@ export class PromotionsGitService {
 				git = simpleGit({
 					...options,
 					unsafe: { allowUnsafeSshCommand: true },
+					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)
-					.env('GIT_TERMINAL_PROMPT', '0');
+					.env('GIT_TERMINAL_PROMPT', '0')
+					.env('LC_ALL', 'C');
 			}
 			return await operation(git);
 		} finally {
@@ -603,8 +869,8 @@ export class PromotionsGitService {
 		}
 	}
 
-	// Timeouts are retryable; all other Git errors are redacted because output may contain secrets.
-	private mapGitError(error: unknown, ctx: { configId: string; branchName: string }): Error {
+	// Timeouts are retryable. Other Git output can hold secrets, so the response only gets fixed text.
+	private mapGitError(error: unknown, ctx: { environmentId: string; branchName: string }): Error {
 		if (error instanceof BadRequestError || error instanceof ServiceUnavailableError) return error;
 
 		if (error instanceof GitPluginError && error.plugin === 'timeout') {
@@ -613,6 +879,139 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		return new BadRequestError('Could not complete the Git operation');
+		if (!isRemoteGitError(error)) return new PromotionLocalGitError(GIT_FAILURE_MESSAGE);
+		return new PromotionGitError(explainRemoteGitFailure(error.message) ?? GIT_FAILURE_MESSAGE);
 	}
+}
+
+const GIT_FAILURE_MESSAGE = 'Could not complete the Git operation';
+
+// Each pattern matches a whole line that Git or OpenSSH prints, so `remote:` lines and text
+// inside a URL cannot match. SSH server text has no prefix, so it is not filtered.
+// Checked with Git 2.55 and OpenSSH 10.3.
+const REMOTE_GIT_FAILURES: ReadonlyArray<{ message: string; lines: RegExp[] }> = [
+	{
+		message: 'Git authentication failed. Check the provider credentials.',
+		// Git: HTTP 401 after the credentials were sent
+		lines: [/^fatal: Authentication failed for '.*'$/],
+	},
+	{
+		message: "SSH authentication failed. Check that the Git host has the provider's public key.",
+		// OpenSSH: the server rejected every offered method
+		lines: [/^(?:\S+@\S+: )?Permission denied \([\w,-]+\)\.$/],
+	},
+	{
+		message:
+			"The Git repository is unavailable or access was denied. Check the repository URL and the provider's permissions.",
+		// Git: HTTP 404, then HTTP 403 through libcurl
+		lines: [
+			/^fatal: repository '.*' not found$/,
+			/^fatal: unable to access '.*': The requested URL returned error: 403$/,
+		],
+	},
+	{
+		message: 'Could not reach the Git host. Check the repository hostname and network connection.',
+		// libcurl, then OpenSSH: DNS lookup or connection failed
+		lines: [
+			/^fatal: unable to access '.*': Could not resolve host: \S+$/,
+			/^fatal: unable to access '.*': Failed to connect to \S+ port \d+(?: after \d+ ms)?: [^:]+$/,
+			/^ssh: Could not resolve hostname \S+: .+$/,
+			/^ssh: connect to host \S+ port \d+: .+$/,
+		],
+	},
+	{
+		message:
+			"Could not verify the Git host's SSH key. Ask your administrator to check the trusted host key.",
+		// OpenSSH: the host key is not the pinned one
+		lines: [/^Host key verification failed\.$/],
+	},
+];
+
+/** Returns fixed text only for one clear cause. Several causes mean the evidence is unclear. */
+function explainRemoteGitFailure(output: string): string | undefined {
+	const lines = output.split(/\r?\n|\r/);
+	const matches = REMOTE_GIT_FAILURES.filter((failure) =>
+		lines.some((line) => failure.lines.some((pattern) => pattern.test(line))),
+	);
+	return matches.length === 1 ? matches[0].message : undefined;
+}
+
+const REMOTE_GIT_COMMANDS = new Set(['clone', 'fetch', 'push', 'pull', 'ls-remote']);
+
+/** The subcommand decides remote or local. The message is read only to pick fixed text. */
+function isRemoteGitError(error: unknown): error is GitError {
+	if (!(error instanceof GitError)) return false;
+	const commands = error.task?.commands ?? [];
+	for (let index = 0; index < commands.length; index++) {
+		// `-c key=value` passes config before the subcommand.
+		if (commands[index] === '-c') {
+			index++;
+			continue;
+		}
+		if (commands[index].startsWith('-')) continue;
+		return REMOTE_GIT_COMMANDS.has(commands[index]);
+	}
+	return false;
+}
+
+async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {
+	try {
+		await git.raw(['cat-file', '-e', `${commitSha}^{commit}`]);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Parses `ls-tree -r -l -z`. Like a package folder on disk, the tree may hold only regular files. */
+function parseTreeEntries(output: string, directory: string): TreeEntry[] {
+	return output
+		.split('\0')
+		.filter(Boolean)
+		.map((line) => {
+			const tab = line.indexOf('\t');
+			const [mode, type, objectName, size] = line.slice(0, tab).split(/\s+/);
+			const entryPath = line.slice(tab + 1 + directory.length + 1);
+			if (type !== 'blob' || mode === '120000') {
+				throw new BadRequestError(`Package contains a disallowed entry type for "${entryPath}"`);
+			}
+			return { path: entryPath, objectName, size: Number(size) };
+		});
+}
+
+/** The package import limits, with the same messages as `DirectoryPackageReader`. */
+function assertWithinLimits(entries: TreeEntry[], limits: TreeReadLimits) {
+	if (entries.length > limits.maxEntries) {
+		throw new BadRequestError('Package contains too many entries');
+	}
+	let totalBytes = 0;
+	for (const { path: entryPath, size } of entries) {
+		if (entryPath.length > limits.maxPathLength) {
+			throw new BadRequestError('Package entry path exceeds the maximum allowed length');
+		}
+		if (size > limits.maxEntryBytes) {
+			throw new BadRequestError(
+				`Package entry "${entryPath}" exceeds the maximum allowed uncompressed size per entry`,
+			);
+		}
+		totalBytes += size;
+	}
+	if (totalBytes > limits.maxUncompressedBytes) {
+		throw new BadRequestError('Package exceeds the maximum allowed uncompressed size');
+	}
+}
+
+/** `cat-file --batch` prints `<name> <type> <size>\n<content>\n` for each object, in input order. */
+function splitBatchOutput(output: Buffer, entries: TreeEntry[]): Map<string, Buffer> {
+	const files = new Map<string, Buffer>();
+	let offset = 0;
+	for (const { path: entryPath, size } of entries) {
+		const contentStart = output.indexOf('\n', offset) + 1;
+		files.set(entryPath, output.subarray(contentStart, contentStart + size));
+		offset = contentStart + size + 1;
+	}
+	if (offset !== output.length) {
+		throw new UnexpectedError('Git returned a different amount of file content than it listed');
+	}
+	return files;
 }

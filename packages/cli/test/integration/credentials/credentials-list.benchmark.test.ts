@@ -6,6 +6,7 @@ import {
 	Project,
 	ProjectRelation,
 	SharedCredentials,
+	Person,
 	User as UserEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -287,13 +288,13 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 
 		// Filler members: one user row per membership keeps the seed simple; the join
 		// cost only depends on `project_relation` rows per project.
-		const users: Array<QueryDeepPartialEntity<UserEntity>> = [];
+		const people: Array<QueryDeepPartialEntity<Person>> = [];
 		const relations: Array<QueryDeepPartialEntity<ProjectRelation>> = [];
 		for (const projectId of projectIds) {
 			relations.push({ projectId, userId: member.id, role: { slug: 'project:editor' } });
 			for (let i = 0; i < membersPerProject - 1; i++) {
 				const userId = randomUUID();
-				users.push({
+				people.push({
 					id: userId,
 					email: `${userId}@bench.local`,
 					firstName: 'Bench',
@@ -303,7 +304,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 				relations.push({ projectId, userId, role: { slug: 'project:editor' } });
 			}
 		}
-		await bulkInsert(UserEntity, users);
+		await bulkInsert(Person, people);
 		await bulkInsert(ProjectRelation, relations);
 
 		const credentials: Array<QueryDeepPartialEntity<CredentialsEntity>> = [];

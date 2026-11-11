@@ -16,6 +16,8 @@ import {
 	promotionProviderTypeCapabilities,
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -23,10 +25,13 @@ import { jsonParse } from 'n8n-workflow';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from './database/entities/promotion-provider.entity';
-import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
+import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
+import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { mapPromotionConflicts } from './promotion-conflicts';
+import { observePromotion } from './promotion-telemetry';
 import { PromotionsGitService } from './promotions-git.service';
 import {
 	promotionSshKeyAuthPayloadSchema,
@@ -35,20 +40,47 @@ import {
 } from './promotions.types';
 
 /**
- * Owns provider credentials. One provider can serve several connections, so
+ * Owns provider credentials. One provider can serve several environments, so
  * editing it changes authentication for all of them.
  */
 @Service()
 export class PromotionProvidersService {
 	constructor(
 		private readonly providerRepository: PromotionProviderRepository,
-		private readonly connectionRepository: PromotionConnectionRepository,
+		private readonly environmentRepository: PromotionEnvironmentRepository,
 		private readonly gitService: PromotionsGitService,
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
+		private readonly eventService: EventService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 	) {}
 
-	async create(input: CreatePromotionProviderDto): Promise<PromotionProviderCreatedPublicDto> {
+	async create(
+		input: CreatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderCreatedPublicDto> {
+		return await observePromotion(
+			async () => await this.createProvider(input),
+			(observed) =>
+				this.eventService.emit('promotion-provider-created', {
+					user: actor,
+					...(observed.ok && {
+						providerId: observed.result.provider.id,
+						providerName: observed.result.provider.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result.provider),
+					}),
+					providerType: input.type,
+					authType: input.auth.authType,
+					outcome: observed.ok ? 'success' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async createProvider(
+		input: CreatePromotionProviderDto,
+	): Promise<PromotionProviderCreatedPublicDto> {
 		const hostConfig = this.resolveHostConfig(input.type, input.auth.authType, input.config);
 		const { config, credentials } = await this.buildAuthentication(
 			input.type,
@@ -76,17 +108,86 @@ export class PromotionProvidersService {
 		return { count, data: data.map((provider) => this.toSummary(provider)) };
 	}
 
+	async listRepositories(id: string, query: GitHostDiscoveryQuery) {
+		const { client, access } = await this.discoveryAccess(id);
+		return await client.listRepositories(access, query);
+	}
+
+	async listBranches(id: string, repositoryId: string, query: GitHostDiscoveryQuery) {
+		const { client, access } = await this.discoveryAccess(id);
+		return await client.listBranches(access, repositoryId, query);
+	}
+
+	private async discoveryAccess(id: string) {
+		const provider = await this.getEntity(id);
+		if (!isPromotionGitHostType(provider.type)) {
+			throw new BadRequestError(
+				'This provider has no Git host API. Use a GitLab provider to list repositories and branches.',
+			);
+		}
+		const config = promotionGitHostConfigSchema.safeParse(provider.config);
+		if (!config.success) {
+			throw new BadRequestError(
+				'The stored provider config cannot be read. Update the provider to replace it.',
+			);
+		}
+		const credentials = await this.decryptCredentials(provider);
+		if (credentials.authType !== 'token') throw unreadableCredentialsError();
+		return {
+			client: this.gitHosts.clientFor(provider.type),
+			access: {
+				baseUrl: config.data.baseUrl,
+				accessToken: credentials.password,
+			},
+		};
+	}
+
 	/**
 	 * Type and auth type are immutable. Leaving `auth` out keeps the stored
-	 * credentials; sending it replaces them for every connection on this provider.
+	 * credentials; sending it replaces them for every environment on this provider.
 	 */
-	async update(id: string, input: UpdatePromotionProviderDto): Promise<PromotionProviderPublicDto> {
+	async update(
+		id: string,
+		input: UpdatePromotionProviderDto,
+		actor: User,
+	): Promise<PromotionProviderPublicDto> {
 		if (Object.keys(input).length === 0) {
 			throw new BadRequestError('At least one field is required');
 		}
 		const current = await this.getEntity(id);
+		return await observePromotion(
+			async () => await this.updateProvider(current, input),
+			(observed) =>
+				this.eventService.emit('promotion-provider-updated', {
+					user: actor,
+					providerId: id,
+					...(observed.ok && {
+						providerName: observed.result.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result),
+					}),
+					providerType: current.type,
+					authType: current.authType,
+					changedFields: [
+						...(input.name !== undefined ? ['name' as const] : []),
+						...(input.auth !== undefined ? ['auth' as const] : []),
+						...(input.config !== undefined ? ['config' as const] : []),
+					],
+					outcome: observed.ok ? 'success' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async updateProvider(
+		current: PromotionProvider,
+		input: UpdatePromotionProviderDto,
+	): Promise<PromotionProviderPublicDto> {
+		const { id } = current;
 		const { changes, config, credentials } = await this.prepareUpdate(current, input);
 		const updatesAuthentication = input.auth !== undefined || input.config !== undefined;
+		const changesHostUrl =
+			input.config !== undefined && !this.isSameHostUrl(current.config, input.config);
 
 		if (updatesAuthentication) {
 			await this.validateHostAccess(
@@ -109,19 +210,32 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
+		if (changesHostUrl) await this.checkoutCleanup.resetCheckoutsForHostChange(id);
+		// Read the row back. A provider deleted in between fails the update.
 		return this.toPublic(await this.getEntity(id));
 	}
 
 	/**
 	 * A provider in use cannot be deleted. The pre-check answers 409 for the normal
-	 * case; the foreign key is the final guard when a connection appears in between.
+	 * case; the foreign key is the final guard when an environment appears in between.
 	 */
-	async delete(id: string): Promise<void> {
-		await this.getEntity(id);
-		if ((await this.connectionRepository.countByProviderId(id)) > 0) {
-			throw new ConflictError('This provider is used by a connection');
+	async delete(id: string, actor: User): Promise<void> {
+		const provider = await this.getEntity(id);
+		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
+			throw new ConflictError('This provider is used by a promotion environment');
 		}
-		await mapPromotionConflicts(async () => await this.providerRepository.deleteProvider(id));
+		const deleted = await mapPromotionConflicts(
+			async () => await this.providerRepository.deleteProvider(id),
+		);
+		if (!deleted) return;
+		this.eventService.emit('promotion-provider-deleted', {
+			user: actor,
+			providerId: id,
+			providerName: provider.name,
+			providerType: provider.type,
+			authType: provider.authType,
+			hostBaseUrl: gitHostBaseUrl(provider),
+		});
 	}
 
 	async getEntity(id: string): Promise<PromotionProvider> {
@@ -308,6 +422,16 @@ export class PromotionProvidersService {
 		const parsed = promotionGitSshKeyConfigSchema.safeParse(provider.config);
 		return parsed.success ? parsed.data.keyType : 'ed25519';
 	}
+}
+
+/** Does not throw, so a provider with an unreadable config can still be deleted. */
+function gitHostBaseUrl(provider: {
+	type: PromotionProviderType;
+	config: PromotionProviderConfig;
+}): string | undefined {
+	if (!isPromotionGitHostType(provider.type)) return undefined;
+	const parsed = promotionGitHostConfigSchema.safeParse(provider.config);
+	return parsed.success ? parsed.data.baseUrl : undefined;
 }
 
 /** A row we cannot decrypt or parse. The admin has to replace the credentials. */

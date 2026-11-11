@@ -2,7 +2,10 @@ operationId: getProjectUsers
 tags:
   - Projects
 summary: List project members
-description: Returns a list of all members of a project including their role. Requires user:list scope.
+description: |-
+  Returns a list of all members of a project including their role.
+
+  Requires the `user:list` API key scope.
 x-required-scope: user:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -13,9 +16,6 @@ parameters:
     description: The ID of the project.
     name: projectId
     in: path
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -95,3 +95,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

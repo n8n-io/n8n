@@ -1,11 +1,15 @@
-import { getParsedExpression } from '@n8n/tournament';
-import type { ParsedCode } from '@n8n/tournament';
-import { LruCache } from '@n8n/utils/lru-cache';
-
-import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
-import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
-import { parseSimple } from './parser';
+import { getCompiled, type CompiledExpression } from './compiler';
+import {
+	EngineFallbackError,
+	Env,
+	bounded,
+	evalChunk,
+	type NativeFallbackReason,
+} from './evaluator';
+import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj } from './grammar';
 import type { IWorkflowDataProxyData } from '../../interfaces';
+
+const { getPrototypeOf, keys } = Object;
 
 export {
 	CALLABLE_METHODS,
@@ -48,82 +52,9 @@ export {
 // hooks that cannot arrive. Non-JSON values in workflow data are engine bugs.
 //
 // Layout: grammar.ts holds the closed grammar and the allowlists, parser.ts
-// turns esprima output into it, evaluator.ts interprets it, and this file
-// splits, compiles, caches and runs whole expressions.
-
-type CompiledChunk = { type: 'text'; text: string } | { type: 'code'; node: SimpleNode };
-
-interface CompiledExpression {
-	chunks: CompiledChunk[];
-	// Exactly [empty text, code]: return the code chunk's raw value instead of
-	// string-concatenating (tmpl compatibility, see ExpressionBuilder).
-	isWholeValue: boolean;
-}
-
-// null = outside the subset. Declined expressions are cached too, so an
-// expression the engine owns costs one parse here, not one per evaluation.
-// Entries are keyed by expression text, so the key length is capped to keep
-// the cache's memory bounded; longer expressions are compiled per evaluation.
-const cache = new LruCache<string, CompiledExpression | null>(1024);
-const MAX_CACHED_EXPRESSION_LENGTH = 10_000;
-
-// One code chunk of the split expression, or null when it is outside the
-// subset. A throw during the re-parse must always mean "declined", never
-// escape.
-function compileChunk(chunk: ParsedCode): SimpleNode | null {
-	const body = chunk.parsed.program.body;
-	if (body.length !== 1) return null;
-
-	const statement = body[0];
-	if (statement.type !== 'ExpressionStatement') return null;
-
-	try {
-		return parseSimple(statement.expression);
-	} catch {
-		return null;
-	}
-}
-
-function compile(expression: string): CompiledExpression | null {
-	let parsed;
-	try {
-		parsed = getParsedExpression(expression);
-	} catch {
-		// Syntax errors fall through to the engine for its error reporting.
-		return null;
-	}
-
-	const chunks: CompiledChunk[] = [];
-	for (const chunk of parsed) {
-		if (chunk.type === 'text') {
-			chunks.push(chunk);
-			continue;
-		}
-
-		const node = compileChunk(chunk);
-		if (node === null) return null;
-
-		chunks.push({ type: 'code', node });
-	}
-
-	// Mirrors the branch condition in ExpressionBuilder.getExpressionCode.
-	const isWholeValue = chunks.length === 2 && chunks[0].type === 'text' && chunks[0].text === '';
-
-	return { chunks, isWholeValue };
-}
-
-function getCompiled(expression: string): CompiledExpression | null {
-	if (expression.length > MAX_CACHED_EXPRESSION_LENGTH) return compile(expression);
-
-	let compiled = cache.get(expression);
-
-	if (compiled === undefined) {
-		compiled = compile(expression);
-		cache.set(expression, compiled);
-	}
-
-	return compiled;
-}
+// turns esprima output into it, compiler.ts splits, compiles and caches whole
+// expressions, evaluator.ts interprets them, and this file runs them.
+// skeleton.ts and verify.ts serve verify mode only.
 
 /** Does the expression (leading `=` stripped) fit the native subset? */
 export function isNativelyEvaluable(expression: string): boolean {
@@ -132,14 +63,14 @@ export function isNativelyEvaluable(expression: string): boolean {
 
 /**
  * Evaluate an expression (with the leading `=` already stripped) in-process.
- * Returns `{ handled: false }` when the expression is outside the subset or a
- * runtime value fell outside what parsing proved; the caller must then run
- * the regular pipeline.
+ * Returns `{ handled: false }` when the expression is outside the subset, and
+ * `{ handled: false, fallbackReason }` when a runtime value fell outside what
+ * parsing proved; the caller must then run the regular pipeline.
  */
 export function evaluateNatively(
 	expression: string,
 	data: IWorkflowDataProxyData,
-): { handled: true; value: unknown } | { handled: false } {
+): { handled: true; value: unknown } | { handled: false; fallbackReason?: NativeFallbackReason } {
 	const compiled = getCompiled(expression);
 	if (compiled === null) return { handled: false };
 
@@ -147,7 +78,9 @@ export function evaluateNatively(
 		const value = copyResult(evalCompiled(compiled, data));
 		return { handled: true, value };
 	} catch (error) {
-		if (error instanceof EngineFallbackError) return { handled: false };
+		if (error instanceof EngineFallbackError) {
+			return { handled: false, fallbackReason: error.reason };
+		}
 
 		throw error;
 	}
@@ -155,16 +88,57 @@ export function evaluateNatively(
 
 // The engines hand back a copy of any object they return; a whole-value read
 // like `{{ $json.body }}` here would hand back the live execution data, which
-// callers then mutate in place (cleanupParameterData). Match the engines.
-// The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
+// callers then mutate in place (cleanupParameterData). Match the engines with
+// a plain-data copy. Everything else is the engine's: a data proxy (the
+// `$parameter` get trap resolves nested expressions), a non-plain object or
+// array (Date, DateTime), a function, symbol or bigint, data deeper than
+// MAX_DEPTH, and an own `__proto__` key,
+// which the vm and quickjs serialiser drops and legacy keeps.
 function copyResult(value: unknown): unknown {
-	if (!isObj(value)) return value;
+	// A shared object is copied once per reference, so shared or cyclic data
+	// and long sparse arrays are bounded by the slots visited, not by depth.
+	let visits = 0;
 
-	try {
-		return clone(value);
-	} catch {
-		throw new EngineFallbackError();
-	}
+	const copy = (value: unknown, depth: number): unknown => {
+		const nonJsonLeaf =
+			typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
+		if (nonJsonLeaf) throw new EngineFallbackError('unsupported_type');
+		if (!isObj(value)) return value;
+		if (depth > MAX_DEPTH) throw new EngineFallbackError('too_deep');
+		if (value.isProxy === true) throw new EngineFallbackError('unsupported_type');
+
+		if (isArray(value)) {
+			if (getPrototypeOf(value) !== Array.prototype)
+				throw new EngineFallbackError('unsupported_type');
+
+			visits += value.length;
+			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
+
+			// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
+			const result = new Array<unknown>(value.length);
+			for (let i = 0; i < value.length; i++) {
+				if (hasOwn(value, i)) result[i] = copy(value[i], depth + 1);
+			}
+			return result;
+		}
+
+		const proto: unknown = getPrototypeOf(value);
+		if (proto !== Object.prototype && proto !== null)
+			throw new EngineFallbackError('unsupported_type');
+
+		const ownKeys = keys(value);
+		visits += ownKeys.length;
+		if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
+
+		const result: Record<string, unknown> = {};
+		for (const key of ownKeys) {
+			if (key === '__proto__') throw new EngineFallbackError('unsupported_type');
+			result[key] = copy(value[key], depth + 1);
+		}
+		return result;
+	};
+
+	return copy(value, 0);
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
@@ -191,7 +165,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 
 		// An object here would coerce through its toString on the host.
 		if (isObj(value)) {
-			throw new EngineFallbackError();
+			throw new EngineFallbackError('unsupported_type');
 		}
 
 		const part = value || value === 0 || value === false ? value : '';
@@ -199,7 +173,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 		length += typeof part === 'string' ? part.length : 1;
 
 		// Bound before the join allocates the combined string.
-		if (length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+		if (length > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 	}
 
 	// Single-chunk expressions (plain text, or a lone blank `{{}}`) return the

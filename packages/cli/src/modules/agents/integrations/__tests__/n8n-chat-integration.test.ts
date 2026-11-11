@@ -1,4 +1,5 @@
-import type { UserRepository, User } from '@n8n/db';
+import type { InterruptibleToolContext } from '@n8n/agents';
+import type { Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
@@ -6,12 +7,17 @@ import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import type { ChatIntegrationService } from '../chat-integration.service';
+import { encodeIntegrationMessageContext } from '../integration-message-context';
 import { createIntegrationActionTool } from '../integration-tools';
 import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from '../integration-tools';
-import { N8nChatIntegration } from '../platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
+import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',
@@ -21,9 +27,22 @@ const makeContext = (): IntegrationMessageContext => ({
 	updatedAt: '2026-06-10T00:00:00.000Z',
 });
 
+const file = mock<AgentChatAttachment>({
+	id: 'file-1',
+	fileName: 'outputs/report.pdf',
+	mimeType: 'application/pdf',
+	fileSizeBytes: 2048,
+});
+const outputFile = {
+	fileId: 'file-1',
+	fileName: 'outputs/report.pdf',
+	mimeType: 'application/pdf',
+	sizeBytes: 2048,
+};
+
 describe('N8nChatIntegration', () => {
-	const userRepository = mock<UserRepository>();
-	const integration = new N8nChatIntegration(userRepository);
+	const personRepository = mock<PersonRepository>();
+	const integration = new N8nChatIntegration(personRepository);
 
 	it('is internal and runs without a chat instance', () => {
 		expect(integration.internal).toBe(true);
@@ -46,6 +65,33 @@ describe('N8nChatIntegration', () => {
 			expect(result.messageContext?.messageId).toBeUndefined();
 			expect(result.messageContext?.updatedAt).not.toBe('2026-06-10T00:00:00.000Z');
 		}
+	});
+
+	it('respond with text and files returns the files for the reply', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: { message: { text: 'Here is the report' }, fileIds: ['file-1'] },
+			currentMessageContext: undefined,
+			files: [file],
+		});
+		expect(result).toEqual({ ok: true, files: [outputFile], note: expect.any(String) });
+	});
+
+	it('respond with a card and files returns the files with the message context', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: {
+				message: { card: { components: [{ type: 'section', text: 'hi' }] } },
+				fileIds: ['file-1'],
+			},
+			currentMessageContext: makeContext(),
+			files: [file],
+		});
+		expect(result).toMatchObject({ ok: true, files: [outputFile], messageContext: {} });
 	});
 
 	it('respond without current context returns NO_MESSAGE_CONTEXT', async () => {
@@ -138,12 +184,12 @@ describe('N8nChatIntegration', () => {
 	});
 
 	it('get_user resolves the n8n user', async () => {
-		userRepository.findOneBy.mockResolvedValue({
+		personRepository.findById.mockResolvedValue({
 			id: 'user-1',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
-		} as User);
+		} as Person);
 		const result = await integration.executeContextQuery({
 			chat: undefined,
 			descriptor: mock(),
@@ -156,8 +202,27 @@ describe('N8nChatIntegration', () => {
 		});
 	});
 
-	it('get_user for an unknown user fails cleanly', async () => {
-		userRepository.findOneBy.mockResolvedValue(null);
+	it('get_user falls back to the email when the person has no name', async () => {
+		personRepository.findById.mockResolvedValue({
+			id: 'user-1',
+			firstName: null,
+			lastName: null,
+			email: 'ada@example.com',
+		} as unknown as Person);
+		const result = await integration.executeContextQuery({
+			chat: undefined,
+			descriptor: mock(),
+			query: 'get_user',
+			input: { userId: 'user-1' },
+		});
+		expect(result).toEqual({
+			ok: true,
+			user: { id: 'user-1', name: 'ada@example.com', email: 'ada@example.com' },
+		});
+	});
+
+	it('get_user fails cleanly for an unknown user or a service account', async () => {
+		personRepository.findById.mockResolvedValue(null);
 		const result = await integration.executeContextQuery({
 			chat: undefined,
 			descriptor: mock(),
@@ -175,7 +240,7 @@ describe('N8nChatIntegration', () => {
 describe('ChatIntegrationRegistry.listPublic', () => {
 	it('excludes internal integrations', () => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 		expect(registry.list().map((i) => i.type)).toContain('n8n_chat');
 		expect(registry.listPublic().map((i) => i.type)).not.toContain('n8n_chat');
 	});
@@ -184,8 +249,8 @@ describe('ChatIntegrationRegistry.listPublic', () => {
 describe('internal integration dispatch', () => {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const registry = new ChatIntegrationRegistry();
-	const userRepository = mock<UserRepository>();
-	const n8nChat = new N8nChatIntegration(userRepository);
+	const personRepository = mock<PersonRepository>();
+	const n8nChat = new N8nChatIntegration(personRepository);
 	registry.register(n8nChat);
 
 	const descriptor: IntegrationToolConnectionDescriptor = {
@@ -215,6 +280,7 @@ describe('internal integration dispatch', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const result = await executor.execute({
 			descriptor,
@@ -227,11 +293,136 @@ describe('internal integration dispatch', () => {
 		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 
+	describe('reply files', () => {
+		const attachmentService = mock<AgentChatAttachmentService>();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			new AgentOutboundFiles(attachmentService, registry, {
+				resolveFileRefs: async (refs: string[]) => refs,
+			} as unknown as AgentSandboxFilesService),
+		);
+		const fileScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const respondWithFile = {
+			descriptor,
+			action: 'respond' as const,
+			input: { message: { text: 'Here is the report' }, fileIds: ['file-1'] },
+			awaitResponse: false,
+			currentMessageContext: makeContext(),
+			fileScope,
+		};
+
+		it('checks read access in the thread of the run and returns the files', async () => {
+			attachmentService.getReadable.mockResolvedValueOnce(file);
+			const result = await executor.execute(respondWithFile);
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+			expect(result).toMatchObject({ ok: true, files: [outputFile] });
+		});
+
+		it('rejects a file that the thread cannot read', async () => {
+			attachmentService.getReadable.mockResolvedValueOnce(null);
+			const result = await executor.execute(respondWithFile);
+			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
+		});
+
+		describe('with a card', () => {
+			const tool = createIntegrationActionTool({
+				descriptor,
+				messageContextStore: mock(),
+				actionExecutor: executor,
+				projectId: 'project-1',
+			}).build();
+			const makeCtx = (overrides: Partial<InterruptibleToolContext> = {}) =>
+				({
+					resumeData: undefined,
+					suspend: vi.fn().mockResolvedValue(undefined as never),
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource-1',
+						hostMetadata: encodeIntegrationMessageContext(makeContext()),
+					},
+					...overrides,
+				}) satisfies InterruptibleToolContext;
+			const respondWithCard = (components: unknown[]) => ({
+				action: 'respond',
+				input: { message: { card: { components } }, fileIds: ['file-1'] },
+			});
+
+			it('returns the files of a static card after the read check', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(file);
+				const ctx = makeCtx();
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'section', text: 'The report' }]),
+					ctx,
+				);
+
+				expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+				expect(result).toMatchObject({ ok: true, files: [outputFile] });
+				expect(ctx.suspend).not.toHaveBeenCalled();
+			});
+
+			it('suspends an interactive card with its files after the read check', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(file);
+				const ctx = makeCtx();
+
+				await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+				expect(ctx.suspend).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'integration_action', files: [outputFile] }),
+					expect.anything(),
+				);
+			});
+
+			it('does not suspend an interactive card with a file that the thread cannot read', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(null);
+				const ctx = makeCtx();
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(result).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
+				expect(ctx.suspend).not.toHaveBeenCalled();
+			});
+
+			it('returns the answer of the user on resume and does not send the card again', async () => {
+				attachmentService.getReadable.mockClear();
+				const ctx = makeCtx({
+					resumeData: { value: 'approve' },
+					suspendPayload: {
+						type: 'integration_action',
+						action: 'respond',
+						integrationConnectionId: 'n8n_chat',
+						files: [outputFile],
+					},
+				});
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(result).toEqual({ value: 'approve' });
+				expect(attachmentService.getReadable).not.toHaveBeenCalled();
+			});
+		});
+	});
+
 	it('action executor returns UNSUPPORTED_ACTION for send_dm on n8n_chat', async () => {
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const result = await executor.execute({
 			descriptor,
@@ -244,12 +435,12 @@ describe('internal integration dispatch', () => {
 	});
 
 	it('context executor queries internal integrations without a chat instance', async () => {
-		userRepository.findOneBy.mockResolvedValue({
+		personRepository.findById.mockResolvedValue({
 			id: 'user-1',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
-		} as User);
+		} as Person);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			registry,

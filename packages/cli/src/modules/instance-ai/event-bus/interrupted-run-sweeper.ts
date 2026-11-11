@@ -9,10 +9,13 @@ import { InProcessEventBus } from './in-process-event-bus';
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 
+// Shown to users as-is, so name the cause (n8n restarted) instead of internal terms.
 export const TOOL_INTERRUPTED_MESSAGE =
-	'Interrupted by a process restart — effect unverified; verify before retrying.';
+	'n8n restarted while this step was running, for example after a crash or an update. ' +
+	'The step may not have finished. Check its result before you try again.';
 
-export const AGENT_INTERRUPTED_MESSAGE = 'Interrupted by a process restart.';
+export const AGENT_INTERRUPTED_MESSAGE =
+	'Stopped because n8n restarted, for example after a crash or an update.';
 
 /** A tool call that was in flight (no terminal fact) when the process died. */
 interface InFlightToolCall {
@@ -109,7 +112,7 @@ export class InterruptedRunSweeper {
 		}
 	}
 
-	private async sweepRun(threadId: string, runId: string): Promise<void> {
+	async sweepRun(threadId: string, runId: string): Promise<void> {
 		this.metrics.recordSweepRunExamined();
 
 		const inFlightToolCalls = await this.resolveZombieRun(threadId, runId, {

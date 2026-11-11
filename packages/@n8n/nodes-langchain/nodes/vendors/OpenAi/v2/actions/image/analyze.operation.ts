@@ -8,6 +8,7 @@ import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 import { getBinaryDataFile } from '../../../helpers/binary-data';
@@ -75,6 +76,10 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		description: 'Whether to simplify the response or not',
+		builderHint: {
+			propertyHint:
+				"True returns one item for each input item. The `$json` of that item is the Responses API `output` array, not an object. Find the entry with `type: 'message'`. In its `content`, find the entry with `type: 'output_text'` and read its `text`. If the model refuses, that entry has `type: 'refusal'` and a `refusal` string, with no `text`. A reasoning model puts a `reasoning` entry first, so do not read `[0]`. The text is a string, also when the prompt asks for JSON, and the model can wrap it in a ```json code fence. Remove the fence before `JSON.parse`. False returns the full response, with the same array in `$json.output`.",
+		},
 	},
 	{
 		displayName: 'Options',
@@ -115,6 +120,10 @@ const properties: INodeProperties[] = [
 				default: 300,
 				typeOptions: {
 					minValue: 1,
+				},
+				builderHint: {
+					propertyHint:
+						'The limit includes the reasoning tokens. With the default 300, a reasoning model (for example gpt-5 or an o-series model) can use all tokens to reason and return no `message` entry, so the text is empty. Set 2000 or more for a reasoning model.',
 				},
 			},
 		],
@@ -195,6 +204,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/responses', {
 		body,
 	})) as ChatResponse;
+
+	accumulateImageTokenUsage(this, response.usage);
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

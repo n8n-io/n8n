@@ -253,7 +253,7 @@ function example(state: Example): Story {
 									<template v-if="state.method === 'selfHosted'">
 										<label style="display: flex; flex-direction: column; gap: var(--spacing--3xs); color: var(--text-color--subtle)">
 											Redirect URL
-											<N8nCopyInput size="small" style="font-family: var(--font-family--monospace); --input--font-size: var(--font-size--2xs)" value="https://example.com/rest/oauth2-credential/callback" />
+											<N8nCopyInput label="Redirect URL" size="small" style="--input--font-size: var(--font-size--2xs)" value="https://example.com/rest/oauth2-credential/callback" />
 										</label>
 										<N8nInput v-model="clientId" size="small" aria-label="Client ID" placeholder="Client ID" />
 										<N8nInput v-model="clientSecret" size="small" aria-label="Client Secret" placeholder="Client Secret" type="password" autocomplete="new-password" />

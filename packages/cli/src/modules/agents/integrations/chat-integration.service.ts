@@ -1,22 +1,27 @@
 import {
 	AgentIntegrationConfig,
-	isCredentialAgentIntegration,
+	hasChannelRuntime,
+	isDraftIntegration,
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';
@@ -36,7 +41,7 @@ import {
 } from './leader-channel-relay.service';
 import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
 import { recordAdapterCalls } from './recording/recording-adapter';
-import type { Agent } from '../entities/agent.entity';
+import { isProjectAgent, type ProjectAgent } from '../entities/agent.entity';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import {
 	agentChannelKey,
@@ -46,6 +51,7 @@ import {
 } from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -143,6 +149,7 @@ async function getAgentExecutionOrchestratorService() {
  * Hence a little above the SDK's 500ms default rather than at it.
  */
 function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type === 'slack') return SLACK_STREAMING_OPTIONS;
 	if (type !== 'teams') return {};
 	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
 }
@@ -205,8 +212,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
-		// n8n Chat has no runtime connection for peers to reconcile.
-		if (!isCredentialAgentIntegration(integration)) return;
+		// A channel without a platform runtime has no connection for peers to reconcile.
+		if (!hasChannelRuntime(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },
@@ -232,7 +239,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		// Deliberately not `validateConfig`: publishing already validates the whole
 		// configuration, and running it again here would newly reject an agent whose
@@ -250,7 +257,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
@@ -286,7 +293,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const ingress = options.ingressEnabled ?? true;
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
@@ -484,7 +491,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const { deleteSubscriptions = true } = options;
 
 		try {
@@ -594,12 +601,12 @@ export class ChatIntegrationService {
 	 * single bad credential doesn't block the others.
 	 */
 	async syncToConfig(
-		agent: Agent,
+		agent: ProjectAgent,
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousExternal = previous.filter(isCredentialAgentIntegration);
-		const nextExternal = next.filter(isCredentialAgentIntegration);
+		const previousExternal = previous.filter(hasChannelRuntime);
+		const nextExternal = next.filter(hasChannelRuntime);
 		const previousKeys = new Set(previousExternal.map(buildIntegrationConnectionId));
 		const nextKeys = new Set(nextExternal.map(buildIntegrationConnectionId));
 
@@ -609,8 +616,11 @@ export class ChatIntegrationService {
 			}
 		}
 
+		// A draft has no credential yet, so there is nothing to connect.
 		const additions = nextExternal.filter(
-			(integration) => !previousKeys.has(buildIntegrationConnectionId(integration)),
+			(integration) =>
+				!isDraftIntegration(integration) &&
+				!previousKeys.has(buildIntegrationConnectionId(integration)),
 		);
 
 		if (additions.length > 0 && !agent.activeVersionId) {
@@ -746,6 +756,7 @@ export class ChatIntegrationService {
 		const ingressOwnedByLeader = this.shouldRouteToLeader(integration.type, true);
 		if (
 			!agent ||
+			!isProjectAgent(agent) ||
 			!persistedIntegration ||
 			(agent.activeVersionId !== null && !ingressOwnedByLeader)
 		) {
@@ -827,7 +838,7 @@ export class ChatIntegrationService {
 	 * Which channels to start, and when to retry one that failed, is
 	 * {@link AgentChannelReconciler}'s decision.
 	 */
-	async startChannel(agent: Agent, integration: AgentIntegrationConfig): Promise<void> {
+	async startChannel(agent: ProjectAgent, integration: AgentIntegrationConfig): Promise<void> {
 		const skipExternalHooks = !this.instanceSettings.isLeader;
 		await this.connect(
 			agent.id,
@@ -876,7 +887,7 @@ export class ChatIntegrationService {
 		if (this.connections.has(key)) return;
 
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) {
+		if (!agent || !isProjectAgent(agent)) {
 			this.logger.warn(
 				`[ChatIntegrationService] Cannot connect ${type} — agent ${agentId} not found`,
 			);
@@ -1126,7 +1137,11 @@ export class ChatIntegrationService {
 				`Credential ${credentialId} not found or not accessible to project ${projectId}`,
 			);
 		}
-		const decrypted = await this.credentialsService.decrypt(credential, true);
+		const decrypted = await this.credentialsService.decryptForUse(
+			credential,
+			{ kind: 'system', reason: 'integration' },
+			projectId,
+		);
 		return decrypted;
 	}
 
@@ -1324,7 +1339,7 @@ export class ChatIntegrationService {
 
 	private async initializeOutboundConnection(
 		key: string,
-		agent: Agent,
+		agent: ProjectAgent,
 		integration: AgentIntegrationConfig,
 	): Promise<ChatInstance | undefined> {
 		const agentId = agent.id;
@@ -1363,7 +1378,7 @@ export class ChatIntegrationService {
 		// has to rebuild — same as a local connect does. Duplicate requests are
 		// deduped by `runLeaderOperation`, not by inspecting the runtime.
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) {
+		if (!agent || !isProjectAgent(agent)) {
 			throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
 		}
 

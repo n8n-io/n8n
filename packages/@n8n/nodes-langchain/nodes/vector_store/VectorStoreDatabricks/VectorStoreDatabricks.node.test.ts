@@ -96,12 +96,12 @@ describe('VectorStoreDatabricks', () => {
 	});
 
 	describe('description', () => {
-		it('is a hidden vector store node with the four default modes', () => {
+		it('is a visible vector store node with the four default modes', () => {
 			expect(node.description).toMatchObject({
 				name: 'vectorStoreDatabricks',
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 			});
+			expect(node.description.hidden).toBeUndefined();
 			const mode = node.description.properties.find((p) => p.name === 'mode');
 			expect(mode?.options?.map((option) => 'value' in option && option.value)).toEqual([
 				'load',

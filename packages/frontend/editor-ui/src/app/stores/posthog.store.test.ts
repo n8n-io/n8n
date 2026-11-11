@@ -5,9 +5,21 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
+import {
+	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
+	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT as WIDTH,
+	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT as TOGGLE,
+} from '@/app/constants/experiments';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -20,7 +32,6 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -208,6 +219,55 @@ describe('Posthog store', () => {
 
 			posthog.reset();
 			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
+		it('enables autocapture when the server-evaluated flag is on', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					autocapture: {
+						element_attribute_ignorelist: expect.arrayContaining([
+							'data-node-name',
+							'title',
+							'alt',
+							'data-value',
+						]),
+					},
+				}),
+			);
+		});
+
+		it('masks the text of captured elements', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ mask_all_text: true }),
+			);
+		});
+
+		it('keeps autocapture off when the flag is off', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
+		});
+
+		it('keeps autocapture off when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
 		});
 
 		it('disables client-side flag refetch when flags are bootstrapped', () => {
@@ -479,6 +539,174 @@ describe('Posthog store', () => {
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		describe('MCP discovery eligibility', () => {
+			const key = MCP_DISCOVERY_EXPERIMENT.name;
+			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
+
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('makes the live flag available but does not track it before eligibility', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.trackExposure(key);
+				vi.advanceTimersByTime(2000);
+				expect(posthog.getVariant(key)).toBe('variant');
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					participationEvent,
+					expect.objectContaining({ name: key }),
+				);
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it.each(['control', 'variant'] as const)(
+				'tracks eligible %s immediately after init, once',
+				(variant) => {
+					const posthog = usePostHog();
+					posthog.init({ [key]: variant });
+					vi.advanceTimersByTime(100);
+					posthog.setMcpDiscoveryEligible(true);
+					posthog.setMcpDiscoveryEligible(true);
+					vi.advanceTimersByTime(2000);
+					expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+						name: key,
+						variant,
+					});
+				},
+			);
+
+			it('uses the live override for both participation and native exposure', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.overrides[key] = { value: 'control' };
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				posthog.trackExposure(key);
+				expect(posthog.getVariant(key)).toBe('control');
+				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+					name: key,
+					variant: 'control',
+				});
+				expect(window.posthog?.capture).toHaveBeenCalledExactlyOnceWith('$feature_flag_called', {
+					$feature_flag: key,
+					$feature_flag_response: 'control',
+				});
+			});
+
+			it('records a new live variant after eligibility without overwriting it', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'control' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.overrides[key] = { value: 'variant' };
+				posthog.setMcpDiscoveryEligible(true);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
+				expect(useTelemetry().track).toHaveBeenLastCalledWith(participationEvent, {
+					name: key,
+					variant: 'variant',
+				});
+			});
+
+			it('stops tracking when eligibility is cleared without changing the flag', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.setMcpDiscoveryEligible(false);
+				posthog.trackExposure(key);
+				expect(posthog.getVariant(key)).toBe('variant');
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it('clears eligibility and tracking deduplication on reset', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				posthog.reset();
+				posthog.init({ [key]: 'variant' });
+				posthog.trackExposure(key);
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.trackExposure(key);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+			});
+		});
+		// EOF Experiment cleanup
+
+		it.each([COHORT.chatWidth, COHORT.testToggle, COHORT.outside])(
+			'tracks only the agent experiment assigned by cohort %s',
+			async (cohort) => {
+				vi.useFakeTimers();
+				try {
+					usePostHog().init({
+						[COHORT.name]: cohort,
+						[WIDTH.name]: WIDTH.wide,
+						[TOGGLE.name]: TOGGLE.current,
+					});
+					await vi.advanceTimersByTimeAsync(2000);
+					for (const [key, expectedCohort] of [
+						[WIDTH.name, COHORT.chatWidth],
+						[TOGGLE.name, COHORT.testToggle],
+					]) {
+						const assertion = expect(useTelemetry().track);
+						if (cohort === expectedCohort) {
+							assertion.toHaveBeenCalledWith(
+								TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+								expect.objectContaining({ name: key }),
+							);
+						} else {
+							assertion.not.toHaveBeenCalledWith(
+								TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+								expect.objectContaining({ name: key }),
+							);
+						}
+					}
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
+
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		describe('taxonomy inspiration eligibility', () => {
+			const key = INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name;
+			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
+
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('does not record participation before the user is known to be sales and marketing', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				vi.advanceTimersByTime(2000);
+
+				expect(posthog.getVariant(key)).toBe('variant');
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					participationEvent,
+					expect.objectContaining({ name: key }),
+				);
+			});
+
+			it.each(['control', 'variant'] as const)(
+				'records participation once for an eligible %s user',
+				(variant) => {
+					const posthog = usePostHog();
+					posthog.init({ [key]: variant });
+					vi.advanceTimersByTime(100);
+					posthog.setTaxonomyInspirationEligible(true);
+					posthog.setTaxonomyInspirationEligible(true);
+					vi.advanceTimersByTime(2000);
+
+					expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+						name: key,
+						variant,
+					});
+				},
+			);
+		});
+		// EOF Experiment cleanup
 
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		describe('cloud-only experiment tracking', () => {

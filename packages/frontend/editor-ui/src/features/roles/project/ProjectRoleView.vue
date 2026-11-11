@@ -82,12 +82,18 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
-	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
-		return SCOPE_TYPES.filter(
-			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
-		);
+	let types = SCOPE_TYPES;
+	if (!settingsStore.isAppsEnabled) {
+		types = types.filter((type) => type !== 'app');
 	}
-	return SCOPE_TYPES;
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
+		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
+	}
+	// Project skills exist only while the agents module is on.
+	if (!settingsStore.isModuleActive('agents')) {
+		types = types.filter((type) => type !== 'projectSkill');
+	}
+	return types;
 });
 const scopes = SCOPES;
 

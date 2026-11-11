@@ -68,6 +68,17 @@ vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
 	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
 }));
 
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+	return {
+		...actual,
+		N8nDialogDescription: defineComponent({
+			name: 'N8nDialogDescription',
+			template: '<p data-slot="dialog-description"><slot /></p>',
+		}),
+	};
+});
+
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: {
 		name: 'CredentialIcon',

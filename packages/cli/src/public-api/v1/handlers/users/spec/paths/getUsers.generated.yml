@@ -2,7 +2,10 @@ operationId: getUsers
 tags:
   - User
 summary: Retrieve all users
-description: Retrieve all users from your instance. Only available for the instance owner.
+description: |-
+  Retrieve all users from your instance. Only available for the instance owner.
+
+  Requires the `user:list` API key scope.
 x-required-scope: user:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -21,9 +24,6 @@ parameters:
     required: false
     name: projectId
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -102,3 +102,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     description: The given `projectId` does not exist.
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

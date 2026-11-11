@@ -1,5 +1,5 @@
 import type { AgentTaskConfig } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
@@ -22,6 +22,14 @@ export class AgentTaskRepository extends BaseRepository<AgentTask> {
 
 	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentTask | null> {
 		return await this.findOne({ where: { id, agentId } });
+	}
+
+	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {
+		const tasks: Array<Pick<AgentTask, 'id' | 'agentId'>> = [];
+		for (const ids of chunkIds([...new Set(taskIds)])) {
+			tasks.push(...(await this.find({ select: ['id', 'agentId'], where: { id: In(ids) } })));
+		}
+		return tasks;
 	}
 
 	async saveDefinitions(tasks: AgentTask[], ctx: OperationContext): Promise<AgentTask[]> {

@@ -159,7 +159,10 @@ const connected = computed(
 		!needsAuthorization.value,
 );
 const usableCredentials = computed(() =>
-	credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
+	credentialsStore.hasUsableCredentialsForScope({
+		workflowId: props.workflowId,
+		forAssistant: true,
+	})
 		? credentialsStore.getUsableCredentialByType(props.item.credentialType)
 		: [],
 );
@@ -196,10 +199,13 @@ watch(
 			const data = credential?.data;
 			if (data && typeof data === 'object') {
 				// Stored client fields identify a custom app even when managed OAuth is available.
-				const customClient = Boolean(
-					(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
-				);
-				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
+				const isCustomClient =
+					!data.useDynamicClientRegistration &&
+					Boolean(
+						(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
+					);
+				oauthMode.value =
+					isCustomClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
 			}
 		} catch {
 			// Keep the permission-based fallback when credential data is unavailable.
@@ -507,7 +513,7 @@ async function saveKey() {
 	credentialsStore.upsertCredential(credential);
 	if (!active || props.workflowId !== workflowId) return;
 	// Creation succeeded. A picker refresh must not force another credential creation.
-	await credentialsStore.fetchUsableCredentials({ workflowId }).catch(() => {});
+	await credentialsStore.fetchUsableCredentials({ workflowId, forAssistant: true }).catch(() => {});
 	emitBinding(credential.id, details.data);
 }
 
@@ -686,7 +692,9 @@ onScopeDispose(() => {
 				:workflow-id="workflowId"
 				:credential-setup-hint="item.setupHint"
 				:credentials-field-label="i18n.baseText('instanceAi.setupPanel.credential')"
+				:credentials="usableCredentials"
 				standalone
+				for-assistant
 				hide-issues
 				skip-auto-select
 				@credential-selected="onCredentialSelected"
@@ -804,6 +812,7 @@ onScopeDispose(() => {
 					<N8nCopyInput
 						:class="$style.redirectInput"
 						:value="redirectUrl"
+						:label="i18n.baseText('instanceAi.setupPanel.redirectUrl')"
 						:copy-label="i18n.baseText('instanceAi.setupPanel.copyRedirectUrl')"
 						size="small"
 					/>

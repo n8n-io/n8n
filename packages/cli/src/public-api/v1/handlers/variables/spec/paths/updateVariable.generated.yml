@@ -2,11 +2,11 @@ operationId: updateVariable
 tags:
   - Variables
 summary: Update a variable
-description: Update a variable from your instance.
+description: |-
+  Update a variable from your instance.
+
+  Requires the `variable:update` API key scope.
 x-required-scope: variable:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -58,3 +58,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

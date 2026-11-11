@@ -28,7 +28,7 @@ import type {
 	RunInProvisionTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
@@ -173,6 +173,7 @@ export class DurableJobProvisioner {
 	 * liveness resolver (see {@link createJobProvisioner}).
 	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
 	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
+	 * @throws {InvalidJobNameError} when a desired job's name is too long to store.
 	 * @throws {UserError} when the concurrency limit is not a whole number of at least 1.
 	 * @throws {UserError} when the timeout is not a whole number from 1 to the timer limit.
 	 * @returns what the call inserted, redefined, left unchanged and removed.

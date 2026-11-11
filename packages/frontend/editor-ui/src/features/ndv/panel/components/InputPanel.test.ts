@@ -1,15 +1,21 @@
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
 	type IConnections,
 	type INodeExecutionData,
 	type IRunData,
+	type RedactionInfo,
 } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -41,7 +47,12 @@ const nodes = [
 	createTestNode({ name: 'Tool' }),
 ];
 
-const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runData?: IRunData) => {
+const render = (
+	props: Partial<Props> = {},
+	pinData?: INodeExecutionData[],
+	runData?: IRunData,
+	redactionInfo?: RedactionInfo,
+) => {
 	const connections: IConnections = {
 		[nodes[0].name]: {
 			[NodeConnectionTypes.Main]: [
@@ -80,32 +91,20 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		// The component reads run data via `injectWorkflowExecutionStateStore()`,
 		// which resolves through the execution-state store keyed by the injected
 		// workflow document's id.
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
-			id: '',
-			workflowData: {
-				id: '',
-				name: '',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				nodes,
-				connections,
-				versionId: '',
-			},
-			finished: false,
-			mode: 'trigger',
-			status: 'success',
-			startedAt: new Date(),
-			createdAt: new Date(),
-			data: createRunExecutionData({
-				resultData: { runData },
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				workflowData: workflow,
+				status: 'success',
+				data: createRunExecutionData({
+					resultData: { runData },
+					redactionInfo,
+				}),
 			}),
-		});
+		);
 	}
 
 	return createComponentRenderer(InputPanel, {
+		pinia,
 		props: {
 			pushRef: 'pushRef',
 			runIndex: 0,
@@ -128,11 +127,51 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 };
 
 describe('InputPanel', () => {
-	it('should render', async () => {
-		const { container, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+	const i18n = useI18n();
+	afterEach(async () => {
+		// Tab assertions can finish while the schema view still loads.
+		await vi.dynamicImportSettled();
+	});
 
-		await waitFor(() => expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument());
-		expect(container).toMatchSnapshot();
+	it('renders the schema view', async () => {
+		const { getByTestId, queryByTestId } = render({}, [{ json: { name: 'Test' } }]);
+
+		await vi.dynamicImportSettled();
+
+		expect(queryByTestId('ndv-data-size-warning')).not.toBeInTheDocument();
+		expect(getByTestId('ndv-input-panel')).toBeInTheDocument();
+		expect(getByTestId('run-data-schema-header')).toHaveTextContent('Variables and context');
+		expect(getByTestId('ndv-search')).toBeInTheDocument();
+	});
+
+	it('shows the credential cause without a share link when the viewer cannot share it', () => {
+		const { getByTestId, queryByTestId } = render(
+			{ readOnly: true },
+			undefined,
+			{
+				[nodes[0].name]: [
+					createTestTaskData({
+						data: { main: [[]] },
+					}),
+				],
+				[nodes[1].name]: [createTestTaskData({ data: { main: [[]] } })],
+			},
+			{
+				isRedacted: true,
+				reason: 'credential_inaccessible',
+				canReveal: false,
+				credentialIds: ['gmail-credential'],
+			},
+		);
+
+		expect(getByTestId('ndv-data-redacted')).toHaveTextContent(
+			i18n.baseText('ndv.redacted.shareCredential.description'),
+		);
+		expect(getByTestId('ndv-data-redacted')).not.toHaveTextContent(
+			i18n.baseText('ndv.redacted.noPermission.description'),
+		);
+		expect(queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
+		expect(queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
 	});
 
 	it("opens mapping tab by default if the node hasn't run yet", async () => {

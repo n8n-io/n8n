@@ -1,6 +1,7 @@
 import {
 	credentialDescriptionSchema,
 	findSeedFolderIssues,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
 	instanceAiEvalSeedDataTableSchema,
 } from '@n8n/api-types';
 import { z } from 'zod';
@@ -130,6 +131,21 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 					.object({
 						workflow: z.string().min(1),
 						hints: z.string().min(1).max(2000).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
+		/**
+		 * Failed runs recorded on another instance (`/eval/export-execution`) and RESTORED
+		 * before the graded turn, in declared order and before `priorRuns`. Nothing runs, so
+		 * every eval sees the same failure. `workflow` is the seed workflow's id, as above.
+		 */
+		recordedRuns: z
+			.array(
+				z
+					.object({
+						workflow: z.string().min(1),
+						envelope: instanceAiEvalFailedExecutionEnvelopeSchema,
 					})
 					.strict(),
 			)
@@ -359,15 +375,17 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		//
 		// A prior run needs a workflow to run. Catching the typo at authoring time beats a
 		// mid-build failure, which reads like an infrastructure fault rather than a typo.
-		if (c.seed?.mode === 'inline' && c.seed.priorRuns?.length) {
+		if (c.seed?.mode === 'inline') {
 			const declared = new Set(c.seed.workflows.map((workflow) => workflow.id));
-			for (const [index, priorRun] of c.seed.priorRuns.entries()) {
-				if (!declared.has(priorRun.workflow)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						path: ['seed', 'priorRuns', index, 'workflow'],
-						message: `priorRuns names workflow id "${priorRun.workflow}", which this seed does not declare. Seeded workflow ids: ${[...declared].join(', ') || '(none)'}`,
-					});
+			for (const field of ['priorRuns', 'recordedRuns'] as const) {
+				for (const [index, run] of (c.seed[field] ?? []).entries()) {
+					if (!declared.has(run.workflow)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path: ['seed', field, index, 'workflow'],
+							message: `${field} names workflow id "${run.workflow}", which this seed does not declare. Seeded workflow ids: ${[...declared].join(', ') || '(none)'}`,
+						});
+					}
 				}
 			}
 		}

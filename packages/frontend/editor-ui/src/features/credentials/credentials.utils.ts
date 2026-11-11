@@ -1,4 +1,8 @@
-import type { INodeCredentialsDetails, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeCredentialsDetails,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
 import { isEmpty } from '@/app/utils/typesUtils';
@@ -9,6 +13,24 @@ import type { ICredentialsResponse } from './credentials.types';
 export interface AutoSelectedCredential {
 	credentialType: string;
 	credential: INodeCredentialsDetails;
+}
+
+/**
+ * Picker rows for a host-supplied credential list, for the `credentials`
+ * override of NodeCredentials. A row the store holds keeps its badges, such as
+ * resolvable or managed. Other rows are built from the listed `{ id, name }`.
+ */
+export function toOverrideCredentials(
+	listed: Array<{ id: string; name: string }>,
+	type: string,
+	getStored: (id: string) => ICredentialsResponse | undefined,
+): ICredentialsResponse[] {
+	return listed.map(({ id, name }) => {
+		const stored = getStored(id);
+		return stored?.type === type
+			? stored
+			: { id, name, type, isManaged: false, createdAt: '', updatedAt: '' };
+	});
 }
 
 /**
@@ -42,4 +64,26 @@ export function getAutoSelectedCredential(
 		credentialType: mostRecent.type,
 		credential: { id: mostRecent.id, name: mostRecent.name },
 	};
+}
+
+/**
+ * Whether the instance supplies the OAuth app (client ID and secret) for this
+ * credential type. Required fields the overwrites do not cover stay the user's
+ * to fill, so this is a weaker condition than `canOAuthCredentialQuickConnect`.
+ *
+ * It takes the type, not a name, so it needs no store and lives here rather
+ * than in `useCredentialOAuth`.
+ */
+export function hasManagedOAuthApp(credentialType: ICredentialType | undefined): boolean {
+	if (!credentialType || credentialType.__skipManagedCreation) return false;
+
+	const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
+	return (
+		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
+	);
+}
+
+/** Whether n8n registers the OAuth app on connect. A managed app takes precedence. */
+export function hasAutomaticOAuthApp(credentialType: ICredentialType | undefined): boolean {
+	return !!credentialType?.dynamicClientRegistration && !hasManagedOAuthApp(credentialType);
 }

@@ -6,8 +6,7 @@ import { AgentCredentialLookupService } from '../../agent-credential-lookup.serv
 import { stringProperty } from '../../integration-helpers';
 
 const BOT_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
-const ENTRA_APPS_URL =
-	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
+const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage-apps';
 
 export interface TeamsCleanupContext {
 	user: User;
@@ -48,7 +47,7 @@ export class TeamsCleanupService {
 		return {
 			integrationType: 'teams',
 			code: 'resources_not_deleted',
-			action: { type: 'open_url', url: ENTRA_APPS_URL },
+			action: { type: 'open_url', url: TEAMS_MANAGE_APPS_URL },
 			details: {
 				appId: stringProperty(data, 'clientId') ?? '',
 			},

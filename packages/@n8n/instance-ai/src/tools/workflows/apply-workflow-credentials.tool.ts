@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
@@ -19,6 +20,7 @@ import {
 } from './saved-workflow-state';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
@@ -27,7 +29,8 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 });
 
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
-	return new Tool('apply-workflow-credentials')
+	return new Tool(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS))
 		.description(
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
 				'Only updates nodes that were mocked — never overwrites existing real credentials.',
@@ -54,6 +57,16 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				};
 			}
 
+			// The mocked-node map is only meaningful for the workflow this build saved.
+			if (buildOutcome.workflowId !== input.workflowId) {
+				return {
+					success: false,
+					error:
+						`Work item ${input.workItemId} belongs to workflow ${buildOutcome.workflowId ?? '(none)'}, ` +
+						`but credentials were requested for workflow ${input.workflowId}.`,
+				};
+			}
+
 			const { mockedCredentialsByNode } = buildOutcome;
 			const { workflowService } = context.domainContext;
 
@@ -77,6 +90,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
 					if (!credId) continue;
+					// The build leaves a mocked slot empty. A filled slot is a real
+					// binding, for example one the user set after the build.
+					if (node.credentials?.[credType]) continue;
 
 					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
 					if (!resolved.resolved) return { success: false, error: resolved.error };
@@ -108,7 +124,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 
 			// Refresh the simulation plan so the next verification executes the
 			// now-credentialed nodes instead of replaying the build-time mock.
-			// Best-effort: verify-built-workflow reconciles again on its own.
+			// Best-effort: workflow_builder_verify_built_workflow reconciles again on its own.
 			try {
 				const availableCredentials = await buildCredentialMap(
 					context.domainContext.credentialService,
@@ -118,6 +134,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					workflow: json,
 					availableCredentials,
 					fallbackModelConfig: context.modelId,
+					modelFetch: context.modelFetch,
 				});
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {

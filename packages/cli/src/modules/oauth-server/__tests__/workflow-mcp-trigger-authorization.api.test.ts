@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -16,12 +17,11 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@n8n/backend-services';
-import { UrlService } from '@n8n/backend-services';
-import { JwtService } from '@/services/jwt.service';
+import { CacheService, UrlService, JwtService } from '@n8n/backend-services';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import type { OAuthSessionPayload } from '../oauth-session.service';
+import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
 /**
  * Authorization for OAuth-protected MCP Server Triggers. A workflow whose MCP
@@ -39,7 +39,7 @@ let adminWithGlobalAccess: User;
 
 let tokenService: OAuthTokenService;
 let jwtService: JwtService;
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 let mcpEndpoint: string;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
@@ -127,7 +127,7 @@ beforeAll(async () => {
 
 	tokenService = Container.get(OAuthTokenService);
 	jwtService = Container.get(JwtService);
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	mcpEndpoint = Container.get(GlobalConfig).endpoints.mcp;
 });
 
@@ -196,8 +196,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(JSON.stringify(response.body)).not.toContain(workflowName);
 	});
@@ -209,8 +209,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 
 		const response = await testServer
 			.authAgentFor(owner)
-			.get('/consent/details')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
 
 		expect(response.body.data.resourceName).toBe(workflowName);
 	});
@@ -222,8 +222,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
 			.post('/consent/approve')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true })
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.send({ approved: true, flow: TEST_FLOW_ID })
 			.expect(403);
 
 		expect(String(response.body.data?.redirectUrl ?? '')).not.toContain('code=');

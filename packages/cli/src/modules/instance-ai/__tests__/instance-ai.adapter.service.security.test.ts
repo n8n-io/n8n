@@ -1,8 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowNotFoundError } = await import('@n8n/instance-ai/errors');
+	const { WorkflowNotFoundError, OutsideThreadProjectError } = await import(
+		'@n8n/instance-ai/errors'
+	);
 	return {
 		WorkflowNotFoundError,
+		OutsideThreadProjectError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -15,6 +18,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
 		builderTemplatesOptionsFromEnv: () => ({}),
+		RESOURCE_EXPLORATION_UNAVAILABLE: 'Resource exploration is not available.',
 		BuilderTemplatesService: class {
 			async getBundle() {
 				return { files: [], indexTxt: '', version: null };
@@ -32,25 +36,33 @@ import {
 	type RoleService,
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
+	type NodeTypesProxy,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
+	Person,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { OutsideThreadProjectError } from '@n8n/instance-ai/errors';
 import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	CredentialsEntity,
-	User,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -65,9 +77,9 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { NodeTypes } from '@/node-types';
+import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
+
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -76,6 +88,10 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
 vi.mock('@/permissions.ee/check-access');
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({}),
 }));
@@ -109,7 +125,7 @@ const credentialsFinderService = mock<CredentialsFinderService>();
 const activeExecutions = mock<ActiveExecutions>();
 const workflowRunner = mock<WorkflowRunner>();
 const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
-const nodeTypes = mock<NodeTypes>();
+const nodeTypes = mock<NodeTypesProxy>();
 const dataTableService = mock<DataTableService>();
 const dataTableRepository = mock<DataTableRepository>();
 const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -132,7 +148,7 @@ const nodeResourceExplorerService = new NodeResourceExplorerService(
 	dynamicNodeParametersService,
 	credentialsFinderService,
 	projectRepository,
-	nodeTypes,
+	nodeTypes as unknown as NodeTypes,
 );
 
 const policyEnforcementService = mock<PolicyEnforcementService>();
@@ -177,7 +193,7 @@ const service = new InstanceAiAdapterService(
 	policyEnforcementService,
 );
 
-const user = mock<User>({
+const person = Object.assign(new Person(), {
 	id: 'user-1',
 	email: 'user@test.com',
 	firstName: 'Test',
@@ -209,7 +225,7 @@ describe('exploreResources — credential ownership check', () => {
 	it('rejects when user does not own the credential', async () => {
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
 			'Credential cred-123 not found or not accessible',
 		);
@@ -225,9 +241,9 @@ describe('exploreResources — credential ownership check', () => {
 			type: 'someOtherType',
 		} as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
-			'Credential cred-123 not found or not accessible',
+			'Credential cred-123 has type "someOtherType", not "googleSheetsOAuth2Api"',
 		);
 
 		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
@@ -245,7 +261,7 @@ describe('exploreResources — credential ownership check', () => {
 			results: [],
 		} as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await ctx.nodeService.exploreResources!(baseParams);
 
 		expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledWith(
@@ -262,6 +278,179 @@ describe('exploreResources — credential ownership check', () => {
 });
 
 // ---------------------------------------------------------------------------
+// exploreResources — eval-seeded credentials
+// ---------------------------------------------------------------------------
+
+describe('exploreResources — eval-seeded credential', () => {
+	const baseParams = {
+		nodeType: 'n8n-nodes-base.googleSheets',
+		version: 1,
+		credentialId: 'cred-123',
+		credentialType: 'googleSheetsOAuth2Api',
+		methodName: 'getSheets',
+		methodType: 'listSearch' as const,
+	};
+
+	const expectNoProviderCall = () => {
+		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).not.toHaveBeenCalled();
+	};
+
+	beforeEach(() => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-123',
+			name: 'Seeded Sheets',
+			type: 'googleSheetsOAuth2Api',
+		} as never);
+	});
+
+	// An eval seeds a placeholder token, so a live lookup fails with a real provider
+	// auth error and the agent tells the user a "connected" credential is broken.
+	it('answers "not available" without a provider call for a credential the harness treats as connected', async () => {
+		const ctx = service.createContext(person, {
+			shouldBypassCredentialTest: (credentialId) => credentialId === 'cred-123',
+		});
+
+		const lookup = ctx.nodeService.exploreResources!(baseParams);
+		await expect(lookup).rejects.toThrow('Resource exploration is not available.');
+		await expect(lookup).rejects.toBeInstanceOf(OperationalError);
+		expectNoProviderCall();
+	});
+
+	it('still rejects a bypassed credential the user cannot access', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => true });
+
+		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
+			'Credential cred-123 not found or not accessible',
+		);
+		expectNoProviderCall();
+	});
+
+	it('still rejects a bypassed credential of another type', async () => {
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => true });
+
+		await expect(
+			ctx.nodeService.exploreResources!({ ...baseParams, credentialType: 'slackApi' }),
+		).rejects.toThrow('Credential cred-123 has type "googleSheetsOAuth2Api", not "slackApi"');
+		expectNoProviderCall();
+	});
+
+	it('answers "not available" for a load-options lookup too', async () => {
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => true });
+
+		await expect(
+			ctx.nodeService.exploreResources!({ ...baseParams, methodType: 'loadOptions' }),
+		).rejects.toThrow('Resource exploration is not available.');
+		expectNoProviderCall();
+	});
+
+	// A case that seeds a broken credential (`valid: false`) is not on the bypass list:
+	// its lookup must keep failing for real, which is what such a case tests.
+	it('runs the live lookup for a seeded credential the harness does not treat as connected', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-123',
+			name: 'Broken Sheets',
+			type: 'googleSheetsOAuth2Api',
+		} as never);
+		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'proj-1' } as never);
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+		} as never);
+
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => false });
+		await ctx.nodeService.exploreResources!(baseParams);
+
+		expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveParameterOptions — eval-seeded credentials
+// ---------------------------------------------------------------------------
+
+describe('resolveParameterOptions — eval-seeded credential', () => {
+	const baseParams = {
+		nodeType: 'n8n-nodes-base.googleSheets',
+		version: 1,
+		parameterPath: 'documentId',
+		credentialId: 'cred-123',
+		credentialType: 'googleSheetsOAuth2Api',
+	};
+	const unavailable = {
+		ok: false,
+		code: 'lookup_failed',
+		message: 'Resource exploration is not available.',
+	};
+
+	const expectNoLookup = () => {
+		expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).not.toHaveBeenCalled();
+	};
+
+	beforeEach(() => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-123',
+			name: 'Seeded Sheets',
+			type: 'googleSheetsOAuth2Api',
+		} as never);
+	});
+
+	it('answers "not available" without a lookup for a credential the harness treats as connected', async () => {
+		const ctx = service.createContext(person, {
+			shouldBypassCredentialTest: (credentialId) => credentialId === 'cred-123',
+		});
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toEqual(
+			unavailable,
+		);
+		expectNoLookup();
+	});
+
+	it('answers "not available" for a bypassed credential passed in the credentials map', async () => {
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => true });
+
+		await expect(
+			ctx.nodeService.resolveParameterOptions!({
+				nodeType: baseParams.nodeType,
+				version: baseParams.version,
+				parameterPath: baseParams.parameterPath,
+				credentials: { googleSheetsOAuth2Api: { id: 'cred-123', name: 'Seeded Sheets' } },
+			}),
+		).resolves.toEqual(unavailable);
+		expectNoLookup();
+	});
+
+	it('still rejects a bypassed credential the user cannot access', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => true });
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toEqual({
+			ok: false,
+			code: 'lookup_failed',
+			message: 'Credential cred-123 not found or not accessible',
+		});
+		expectNoLookup();
+	});
+
+	it('runs the live lookup for a credential the harness does not treat as connected', async () => {
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('Unknown node type');
+		});
+		const ctx = service.createContext(person, { shouldBypassCredentialTest: () => false });
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toMatchObject({
+			ok: false,
+			code: 'node_type_not_found',
+		});
+		expect(nodeTypes.getByNameAndVersion).toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Cross-project workflow reads: narrowing only, never widening
 // ---------------------------------------------------------------------------
 
@@ -269,7 +458,7 @@ describe('workflow list — caller-supplied projectId', () => {
 	it('passes the project as a filter on the user-scoped query rather than resolving access itself', async () => {
 		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
 
-		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
 		await ctx.workflowService.list({ projectId: 'project-other' });
 
 		// Unlike credentials (a write capability, hard-locked to the bound project),
@@ -277,7 +466,7 @@ describe('workflow list — caller-supplied projectId', () => {
 		// everything the user can read. So the project id is only ever a filter on a
 		// query that still resolves readability from this user's own roles: it can
 		// narrow that set, never extend it to a project they cannot read.
-		expect(workflowService.getMany).toHaveBeenCalledWith(user, {
+		expect(workflowService.getMany).toHaveBeenCalledWith(person, {
 			take: 50,
 			filter: { isArchived: false, projectId: 'project-other' },
 		});
@@ -285,14 +474,14 @@ describe('workflow list — caller-supplied projectId', () => {
 
 	it('does not let a cross-project read move where the thread writes', async () => {
 		workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.getCredentialsAUserCanUseThemselves.mockResolvedValue([]);
 
-		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
 		await ctx.workflowService.list({ projectId: 'project-other' });
 		await ctx.credentialService.list({});
 
 		// The bound project is what write-adjacent surfaces keep resolving to.
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).toHaveBeenCalledWith(person, {
 			projectId: 'bound-project',
 		});
 	});
@@ -306,7 +495,7 @@ describe('folder operations — project scope enforcement', () => {
 	it('rejects listFolders when user lacks folder:list scope', async () => {
 		userHasScopesMock.mockResolvedValue(false);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.workspaceService!.listFolders!('project-1')).rejects.toThrow('permissions');
 
 		expect(folderService.getManyAndCount).not.toHaveBeenCalled();
@@ -316,11 +505,11 @@ describe('folder operations — project scope enforcement', () => {
 		userHasScopesMock.mockResolvedValue(true);
 		folderService.getManyAndCount.mockResolvedValue([[], 0]);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.workspaceService!.listFolders!('project-1');
 
 		expect(result).toEqual([]);
-		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['folder:list'], false, {
+		expect(userHasScopesMock).toHaveBeenCalledWith(person, ['folder:list'], false, {
 			projectId: 'project-1',
 		});
 	});
@@ -328,7 +517,7 @@ describe('folder operations — project scope enforcement', () => {
 	it('rejects createFolder when user lacks folder:create scope', async () => {
 		userHasScopesMock.mockResolvedValue(false);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.workspaceService!.createFolder!('New Folder', 'project-1')).rejects.toThrow(
 			'permissions',
 		);
@@ -339,7 +528,7 @@ describe('folder operations — project scope enforcement', () => {
 	it('rejects deleteFolder when user lacks folder:delete scope', async () => {
 		userHasScopesMock.mockResolvedValue(false);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.workspaceService!.deleteFolder!('folder-1', 'project-1')).rejects.toThrow(
 			'permissions',
 		);
@@ -361,15 +550,15 @@ describe('stop execution — workflow:execute scope', () => {
 		// findWorkflowForUser returns null for workflow:execute scope (user has read-only)
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.executionService.stop('exec-1')).rejects.toThrow('Execution exec-1 not found');
 
-		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', person, [
 			'workflow:execute',
 		]);
 	});
 
-	it('read methods (getStatus) still use workflow:read scope', async () => {
+	it('read methods (getStatus) require workflow:read and execution:read', async () => {
 		executionRepository.findSingleExecution.mockResolvedValue({
 			id: 'exec-1',
 			workflowId: 'wf-1',
@@ -380,11 +569,12 @@ describe('stop execution — workflow:execute scope', () => {
 			.mockResolvedValueOnce({ id: 'exec-1', workflowId: 'wf-1' } as never)
 			.mockResolvedValueOnce(undefined);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await ctx.executionService.getStatus('exec-1');
 
-		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', person, [
 			'workflow:read',
+			'execution:read',
 		]);
 	});
 });
@@ -397,12 +587,12 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 	it('rejects when user lacks execution:delete scope', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await expect(ctx.workspaceService!.cleanupTestExecutions('wf-1')).rejects.toThrow(
 			'Workflow wf-1 not found or not accessible',
 		);
 
-		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', person, [
 			'execution:delete',
 		]);
 	});
@@ -417,7 +607,7 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		vi.setSystemTime(now);
 
 		try {
-			const ctx = service.createContext(user);
+			const ctx = service.createContext(person);
 			const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
 			expect(result.deletedCount).toBe(2);
@@ -448,7 +638,7 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		executionRepository.find.mockResolvedValue(ids.map((id) => ({ id })) as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
 		expect(result.deletedCount).toBe(1201);
@@ -464,16 +654,16 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }] as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
 		expect(eventService.emit).toHaveBeenCalledWith('execution-deleted', {
 			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
+				id: person.id,
+				email: person.email,
+				firstName: person.firstName,
+				lastName: person.lastName,
+				role: person.role,
 			},
 			executionIds: ['exec-1'],
 			deleteBefore: expect.any(Date),
@@ -484,7 +674,7 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
 		executionRepository.find.mockResolvedValue([] as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
 		expect(result.deletedCount).toBe(0);
@@ -513,10 +703,10 @@ describe('credentialService.list — scoping', () => {
 		{ label: 'bound project', boundProjectId: 'bound-project', options: { projectId: 'other' } },
 	])('returns full description metadata for a $label list', async ({ boundProjectId, options }) => {
 		credentialsService.getMany.mockResolvedValue([describedCredential]);
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+		credentialsService.getCredentialsAUserCanUseThemselves.mockResolvedValue([
 			describedCredential,
 		] as never);
-		const ctx = service.createContext(user, { projectId: boundProjectId });
+		const ctx = service.createContext(person, { projectId: boundProjectId });
 
 		const result = await ctx.credentialService.list(options);
 
@@ -530,16 +720,16 @@ describe('credentialService.list — scoping', () => {
 		]);
 	});
 
-	it('uses getCredentialsAUserCanUseInAWorkflow when workflowId is provided', async () => {
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+	it('uses getCredentialsAUserCanUseThemselves when workflowId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseThemselves.mockResolvedValue([
 			{ id: 'c1', name: 'Slack Shared', type: 'slackApi', description: null },
 			{ id: 'c2', name: 'Notion', type: 'notionApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.credentialService.list({ type: 'slackApi', workflowId: 'wf-1' });
 
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).toHaveBeenCalledWith(person, {
 			workflowId: 'wf-1',
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
@@ -549,15 +739,15 @@ describe('credentialService.list — scoping', () => {
 		]);
 	});
 
-	it('uses getCredentialsAUserCanUseInAWorkflow when projectId is provided', async () => {
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+	it('uses getCredentialsAUserCanUseThemselves when projectId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseThemselves.mockResolvedValue([
 			{ id: 'c1', name: 'Slack Shared', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await ctx.credentialService.list({ projectId: 'proj-1' });
 
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).toHaveBeenCalledWith(person, {
 			projectId: 'proj-1',
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
@@ -568,28 +758,28 @@ describe('credentialService.list — scoping', () => {
 			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		await ctx.credentialService.list({ type: 'slackApi' });
 
-		expect(credentialsService.getMany).toHaveBeenCalledWith(user, {
+		expect(credentialsService.getMany).toHaveBeenCalledWith(person, {
 			listQueryOptions: { filter: { type: 'slackApi' } },
 			includeGlobal: true,
 		});
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).not.toHaveBeenCalled();
 	});
 
 	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+		credentialsService.getCredentialsAUserCanUseThemselves.mockResolvedValue([
 			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
 		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
 
 		// A bound thread can only ever see its own project's usable credentials —
 		// the LLM cannot broaden the list by passing another workflow or project.
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).toHaveBeenCalledWith(person, {
 			projectId: 'bound-project',
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
@@ -608,7 +798,7 @@ describe('credentialService.list — eval allowlist', () => {
 			{ id: 'c3', name: 'Slack #2', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => ['c1', 'c3'] });
+		const ctx = service.createContext(person, { getCredentialIdAllowlist: () => ['c1', 'c3'] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([
@@ -624,7 +814,7 @@ describe('credentialService.list — eval allowlist', () => {
 		] as never);
 		const allowlist = ['c1'];
 
-		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => allowlist });
+		const ctx = service.createContext(person, { getCredentialIdAllowlist: () => allowlist });
 		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1']);
 
 		// The harness creates a credential on a setup card and re-sends the whole list.
@@ -633,12 +823,12 @@ describe('credentialService.list — eval allowlist', () => {
 	});
 
 	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
-		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => [] });
+		const ctx = service.createContext(person, { getCredentialIdAllowlist: () => [] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([]);
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+		expect(credentialsService.getCredentialsAUserCanUseThemselves).not.toHaveBeenCalled();
 	});
 
 	it('does not filter the list when no allowlist is set', async () => {
@@ -648,7 +838,7 @@ describe('credentialService.list — eval allowlist', () => {
 		];
 		credentialsService.getMany.mockResolvedValue(all as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual(all);
@@ -668,7 +858,7 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			description: 'x'.repeat(512),
 			data: { password: 'test-secret' },
 		} as never);
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 
 		const result = await ctx.credentialService.get('described');
 
@@ -688,10 +878,10 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			description: null,
 		} as never);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 		const result = await ctx.credentialService.get('cred-mine');
 
-		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(person, 'cred-mine', false);
 		expect(result).toEqual({
 			id: 'cred-mine',
 			name: 'My Slack',
@@ -705,11 +895,165 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			new Error('Credential with ID "cred-other" could not be found.'),
 		);
 
-		const ctx = service.createContext(user);
+		const ctx = service.createContext(person);
 
 		await expect(ctx.credentialService.get('cred-other')).rejects.toThrow(
 			'Credential with ID "cred-other" could not be found.',
 		);
-		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(person, 'cred-other', false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Bound project: changes stay inside the conversation's project
+// ---------------------------------------------------------------------------
+
+describe('bound project write guard', () => {
+	it('allows description edits on a protected instance', async () => {
+		instanceWriteAccess.isReadOnly.mockReturnValue(true);
+		sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+			id: 'bound-project',
+		} as never);
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
+		await ctx.credentialService.updateDescription('cred-1', 'Reporting');
+		expect(credentialsService.updateDescription).toHaveBeenCalledWith(
+			person,
+			'cred-1',
+			'Reporting',
+		);
+	});
+
+	type Context = ReturnType<typeof service.createContext>;
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
+
+	beforeEach(() => {
+		userHasScopesMock.mockResolvedValue(true);
+		vi.spyOn(Container, 'get').mockImplementation((cls) => {
+			if (cls === SharedCredentialsRepository) return sharedCredentialsRepository as never;
+			if (cls === CredentialsRepository) return credentialsRepository as never;
+			return executionPersistence as never;
+		});
+	});
+
+	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
+		await expect(write).rejects.toThrow(OutsideThreadProjectError);
+	};
+
+	it.each(['bound-project', 'other-project', undefined])(
+		'checks the credential owner project before updating a description: %s',
+		async (projectId) => {
+			credentialsRepository.findExistingIds.mockResolvedValue(['cred-1']);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				projectId ? ({ id: projectId } as never) : undefined,
+			);
+			const ctx = service.createContext(person, { projectId: 'bound-project' });
+			const write = ctx.credentialService.updateDescription('cred-1', 'Reporting');
+			if (projectId === 'bound-project') {
+				await write;
+				expect(credentialsService.updateDescription).toHaveBeenCalledWith(
+					person,
+					'cred-1',
+					'Reporting',
+				);
+			} else {
+				await expectRejectedOutsideProject(write);
+				expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('returns not found for an unknown credential description target', async () => {
+		sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+		credentialsRepository.findExistingIds.mockResolvedValue([]);
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
+
+		await expect(ctx.credentialService.updateDescription('missing', 'Reporting')).rejects.toThrow(
+			CredentialNotFoundError,
+		);
+		expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+	});
+
+	it('rejects tagWorkflow on a workflow owned by another project before loading it', async () => {
+		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);
+
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(ctx.workspaceService!.tagWorkflow('wf-1', ['new-tag']));
+		expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(tagService.save).not.toHaveBeenCalled();
+	});
+
+	it('rejects creating a folder in another project before checking access', async () => {
+		const ctx = service.createContext(person, { projectId: 'bound-project' });
+
+		await expectRejectedOutsideProject(
+			ctx.workspaceService!.createFolder!('Reports', 'other-project'),
+		);
+		expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(folderService.createFolder).not.toHaveBeenCalled();
+	});
+
+	describe('assertInThreadProject', () => {
+		type ThreadTarget = Parameters<NonNullable<Context['assertInThreadProject']>>[0];
+
+		const ownResourcesIn = (projectId: string) => {
+			sharedWorkflowRepository.findProjectIds.mockResolvedValue([projectId]);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+				id: projectId,
+			} as never);
+			dataTableRepository.findOneBy.mockResolvedValue({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId,
+			} as never);
+		};
+
+		const targetsIn = (projectId: string): ThreadTarget[] => [
+			{ kind: 'workflow', id: 'wf-1' },
+			{ kind: 'credential', id: 'cred-1' },
+			{ kind: 'data-table', id: 'dt-1' },
+			{ kind: 'project', id: projectId },
+		];
+
+		it.each(targetsIn('other-project').map((target) => ({ kind: target.kind, target })))(
+			'rejects a $kind target outside the bound project',
+			async ({ target }) => {
+				ownResourcesIn('other-project');
+				const ctx = service.createContext(person, { projectId: 'bound-project' });
+
+				await expectRejectedOutsideProject(ctx.assertInThreadProject!(target));
+			},
+		);
+
+		it('allows targets in the bound project', async () => {
+			ownResourcesIn('bound-project');
+			const ctx = service.createContext(person, { projectId: 'bound-project' });
+
+			for (const target of targetsIn('bound-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			expect(sharedWorkflowRepository.findProjectIds).toHaveBeenCalledWith('wf-1');
+			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
+				'cred-1',
+			);
+			expect(dataTableRepository.findOneBy).toHaveBeenCalledWith({ id: 'dt-1' });
+		});
+
+		it('does no lookup when the context has no bound project', async () => {
+			workflowService.archive.mockResolvedValue({ id: 'wf-1' } as never);
+			const ctx = service.createContext(person);
+
+			for (const target of targetsIn('other-project')) {
+				await expect(ctx.assertInThreadProject!(target)).resolves.toBeUndefined();
+			}
+			await ctx.workflowService.archive('wf-1');
+			await ctx.credentialService.delete('cred-1');
+			expect(sharedWorkflowRepository.findProjectIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(dataTableRepository.findOneBy).not.toHaveBeenCalled();
+			expect(dataTableRepository.findBy).not.toHaveBeenCalled();
+		});
 	});
 });

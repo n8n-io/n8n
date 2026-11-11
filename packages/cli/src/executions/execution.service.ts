@@ -1,7 +1,7 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -33,8 +33,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ManualExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
@@ -46,10 +44,18 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -61,8 +67,9 @@ import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
-import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
-import type { ExecutionRequest, StopResult } from './execution.types';
+
+import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
+import { toUserLike } from '@/utils/to-user-like';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -204,6 +211,31 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
+		// Reading a workflow is not reading its runs: a custom project role can
+		// hold `workflow:read` without `execution:read`, as in the executions API.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) return undefined;
+
+		// A workflow runs on one engine, and only that engine holds its executions.
+		const settings = await this.workflowRepository.findSettings(workflowId);
+		const execution =
+			settings?.engineType === 'v2'
+				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
+				: await this.lastSuccessfulV1Execution(workflowId);
+		if (!execution) return undefined;
+
+		await this.executionRedactionServiceProxy.processExecution(execution, {
+			user,
+			redactExecutionData,
+		});
+		return execution;
+	}
+
+	private async lastSuccessfulV1Execution(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
@@ -221,14 +253,7 @@ export class ExecutionService {
 			},
 		);
 
-		const execution = executions[0];
-		if (!execution) return undefined;
-
-		await this.executionRedactionServiceProxy.processExecution(execution, {
-			user,
-			redactExecutionData,
-		});
-		return execution;
+		return executions[0];
 	}
 
 	async retry({
@@ -241,7 +266,7 @@ export class ExecutionService {
 		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
 		sharedWorkflowIds: string[];
 		user: User;
-	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
+	}): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -364,13 +389,7 @@ export class ExecutionService {
 		);
 
 		this.eventService.emit('workflow-executed', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
@@ -379,7 +398,7 @@ export class ExecutionService {
 			source: 'user-retry',
 		});
 
-		const response: Omit<IExecutionResponse, 'createdAt'> = {
+		const summary: RetriedExecution = {
 			id: retriedExecutionId,
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
@@ -389,11 +408,22 @@ export class ExecutionService {
 			retryOf: executionId,
 			status: executionData.status,
 			waitTill: executionData.waitTill,
+			storedAt: execution.storedAt,
+		};
+
+		// A retry carries over the data of the nodes that ran before, so the data
+		// is only returned to a user who may read the workflow's executions.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId: execution.workflowId,
+		});
+		if (!canReadExecutions) return summary;
+
+		const response: Omit<IExecutionResponse, 'createdAt'> = {
+			...summary,
 			data: executionData.data,
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
-			storedAt: execution.storedAt,
 		};
 
 		await this.executionRedactionServiceProxy.processExecution(response, {
@@ -433,13 +463,7 @@ export class ExecutionService {
 		});
 
 		this.eventService.emit('execution-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			executionIds: ids ?? [],
 			deleteBefore,
 		});
@@ -503,16 +527,8 @@ export class ExecutionService {
 		return true;
 	}
 
-	/**
-	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
-	 * read - those can never run, so the caller has to take them out of `new` itself.
-	 */
-	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
-			select: ['id', 'mode'],
-			where: { status: 'new' },
-			order: { id: 'ASC' },
-		});
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
@@ -653,14 +669,18 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
-		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
-		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
-		// and has no Bull job to abort. For a top-level execution this is redundant with the
-		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
-		await this.executionStopService.requestStop(execution.id);
-
-		return await this.stopDuringRun(execution);
+		// Mark the execution as canceled before the broadcast. A worker that dequeues the job after
+		// the update reads the canceled status and skips the job. The broadcast also runs when the
+		// update fails, so a worker does not keep running the execution.
+		try {
+			return await this.stopDuringRun(execution);
+		} finally {
+			// Broadcast a stop to whichever worker runs this execution. Workers not running it ignore
+			// the command. The abort-job triggered above only works on the main that enqueued the
+			// job, so the broadcast is the only stop path for a subworkflow execution and for a
+			// top-level job enqueued by another process. Both paths are idempotent.
+			await this.executionStopService.requestStop(execution.id);
+		}
 	}
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {

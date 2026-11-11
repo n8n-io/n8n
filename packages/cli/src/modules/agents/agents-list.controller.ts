@@ -11,8 +11,8 @@ import { parseThreadListLimit } from './utils/parse-thread-list-limit';
  * Global (cross-project) agents list endpoint.
  *
  * It serves two audiences, and `availableInChat` picks between them:
- * - the overview page, which wants every agent in the user's projects and the
- *   full entity to render its cards;
+ * - the overview page, which wants every agent in the projects where the user
+ *   holds `agent:list` and the full entity to render its cards;
  * - the n8n chat page, which wants the agents whose published config carries
  *   the n8n Chat channel, scoped to `agent:execute` and answered with the
  *   narrow `AgentChatListItem` so a chat-only member gets no config.
@@ -30,7 +30,7 @@ export class AgentsListController {
 	async list(req: AuthenticatedRequest, res: Response, @Query query: ListAgentsQueryDto) {
 		res.json(
 			query.filter?.availableInChat === undefined
-				? await this.agentsService.findByUserMembershipPaginated(req.user, query)
+				? await this.agentsService.findListableByUserPaginated(req.user, query)
 				: await this.agentsService.findChatReachableByUserPaginated(req.user, query),
 		);
 	}

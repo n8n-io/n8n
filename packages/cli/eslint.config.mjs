@@ -70,6 +70,46 @@ const engineV2ModuleOnlyImport = {
 		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
 };
 
+// Code outside the skills module imports only its public API, `@/modules/skills`.
+// These patterns match import strings only. The code-health rule `skills-module-boundary`
+// resolves imports to files, so it also catches relative imports.
+const skillsModuleEntry = {
+	group: ['@/modules/skills/**'],
+	message: 'Import the skills module from @/modules/skills, its public API.',
+};
+
+// Tests outside the skills module may also use its fixtures.
+const skillsModuleEntryForTests = {
+	group: ['@/modules/skills/**', '!@/modules/skills/testing'],
+	message:
+		'Import the skills module from @/modules/skills, or its test fixtures from @/modules/skills/testing.',
+};
+
+// The skills module imports nothing else from cli, so it can move into its own package. The
+// allowlist only shrinks. It does not import the modules that use skills either: the agents
+// module registers what the skills module needs on `SkillUsageProxy`.
+const skillsModuleIsolation = {
+	group: [
+		'@/*',
+		'!@/posthog',
+		'!@/telemetry',
+		'@/*/**',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
+	],
+	message:
+		'The skills module imports nothing from the rest of cli except its allowlist. Ask the agents module through SkillUsageProxy.',
+};
+
+// `no-restricted-imports` does not check `import()` in ESLint (oxlint's rule does), so this
+// selector applies the same boundary to dynamic imports. No dynamic import needs the allowlist.
+const skillsModuleDynamicImportBoundary = {
+	selector: 'ImportExpression[source.value=/^(@\\/|\\.\\.\\/(.*\\/)?(agents|instance-ai|mcp)\\/)/]',
+	message: skillsModuleIsolation.message,
+};
+
 const METRICS_DATABASE_IMPORT_MESSAGE =
 	'Use DatabaseMetricQueryService for metrics database reads.';
 const METRICS_CLI_IMPORT_MESSAGE =
@@ -89,10 +129,6 @@ export default defineConfig(
 						{
 							rule: 'no-repository-in-public-api-handler',
 							message: 'Call a service instead of reaching the repository.',
-						},
-						{
-							rule: 'require-public-api-controller',
-							message: 'Migrate to `@PublicApiController`.',
 						},
 						{
 							rule: 'no-unsealed-workflow-entity-write',
@@ -154,16 +190,6 @@ export default defineConfig(
 		},
 	},
 	{
-		// Public API guardrail: new endpoints must be `@PublicApiController` classes, not `export =` tuples.
-		files: [
-			'./src/public-api/v1/handlers/**/*.handler.ts',
-			'./src/public-api/v1/handlers/**/*.handler.ee.ts',
-		],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'error',
-		},
-	},
-	{
 		files: ['./src/**/*.ts'],
 		ignores: ['./src/modules/engine-v2/**/*.ts'],
 		rules: {
@@ -177,7 +203,7 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
 		},
@@ -197,9 +223,29 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
+		},
+	},
+	{
+		files: ['./src/modules/skills/**/*.ts'],
+		ignores: ['./src/modules/skills/**/__tests__/**/*.ts'],
+		rules: {
+			// Repeats the package restrictions: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleIsolation],
+				},
+			],
+			'no-restricted-syntax': ['error', skillsModuleDynamicImportBoundary],
 		},
 	},
 	{
@@ -212,7 +258,7 @@ export default defineConfig(
 				'error',
 				{
 					paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
 		},
@@ -222,8 +268,6 @@ export default defineConfig(
 		// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
 		// verify. Do NOT add a file for any other reason.
 		files: [
-			// Owns the signing key and derives every audience from a purpose.
-			'./src/services/jwt.service.ts',
 			// Verifies subject tokens with a foreign key from the trusted-key store,
 			// against the audience that key is registered for.
 			'./src/modules/token-exchange/services/token-exchange.service.ts',
@@ -231,14 +275,22 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+					patterns: [skillsModuleEntry],
+				},
 			],
 		},
 	},
 	{
-		// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
-		// `decode` and `verify` are admitted; signing stays with JwtService.
-		files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+		// Verify tokens signed by a key that n8n does not hold. Only `decode` and
+		// `verify` are admitted; signing stays with JwtService.
+		files: [
+			// Bearer tokens, with the JWKS discovered for a trusted source.
+			'./src/modules/inbound-auth-core/oauth2-bearer.driver.ts',
+			// Webhook channel callers, with the secret or public key of the channel's JWT credential.
+			'./src/modules/agents/integrations/platforms/webhook/webhook-auth.ts',
+		],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
@@ -248,7 +300,7 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenVerifyOnlyRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
 		},
@@ -259,7 +311,10 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+					patterns: [skillsModuleEntryForTests],
+				},
 			],
 		},
 	},
@@ -270,7 +325,17 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+				{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
+			],
+		},
+	},
+	{
+		// Integration tests reach the skills module like the tests in src do.
+		files: ['./test/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
 			],
 		},
 	},
@@ -301,7 +366,7 @@ export default defineConfig(
 			'./src/modules/agents/agent-task.service.ts',
 			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
-			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/agents/integrations/platforms/discord/discord-integration.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],

@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import {
 	AuthenticationDriver,
+	LocalAuthorizationServer,
 	Reject,
 	TrustedSourceStore,
 	type AdvertisedResource,
@@ -36,6 +37,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 
 	constructor(
 		private readonly store: TrustedSourceStore,
+		private readonly localServer: LocalAuthorizationServer,
 		logger: Logger,
 	) {
 		super();
@@ -162,6 +164,14 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 			};
 		}
 
+		// The local server forgets a revoked token while its JWT still verifies until `exp`.
+		if (
+			authentication.keys.kind === 'local-keystore' &&
+			!(await this.localServer.isAccessTokenActive(extracted.credential.token))
+		) {
+			return { ok: false, reason: 'revoked' };
+		}
+
 		const {
 			credential,
 			request: { headers: _headers, ...request },
@@ -190,7 +200,8 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 			const path = url.pathname === '/' ? '' : url.pathname;
 			return {
 				authorizationServers: sources.filter((s) => s.type === 'oauth2').map((s) => s.issuer),
-				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}"`,
+				// The query selects among resources sharing a path (a webhook's `?method=`), so it stays.
+				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}${url.search}"`,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to advertise resource', { error });

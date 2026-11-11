@@ -1,7 +1,7 @@
 import type { MigrationNotifyResult, MigrationNotifySkipReason } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
-import { UserRepository, type User } from '@n8n/db';
+import { accountSummary, isPerson, UserRepository, type Person, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -15,9 +15,13 @@ import {
 import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
 import { isWorkflowLevelRule } from '../types';
 
-/** The user as the email names them. */
-function displayName(user: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
-	return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'An admin';
+/** The minimum wait before a notified finding can be emailed again. */
+export const REMINDER_COOLDOWN_MS = 60_000;
+
+/** The user as the email names them. A service account has its name and no email. */
+function displayName(user: User): string {
+	const { firstName, lastName, email } = accountSummary(user);
+	return [firstName, lastName].filter(Boolean).join(' ') || email || 'An admin';
 }
 
 /**
@@ -42,8 +46,9 @@ export class MigrationFindingNotificationService {
 	 * Notifies the owners of the given workflows about the rule's finding on them.
 	 * A finding is marked notified only when its owner's email went out, so the
 	 * report never claims a notification that nobody received. A notified finding
-	 * is emailed again as a reminder. A workflow whose finding is won't fix or
-	 * missing, or that has no owner with an email, is reported as skipped.
+	 * is emailed again as a reminder, once the cooldown has passed. A workflow whose
+	 * finding is won't fix or missing, whose owner was notified within the cooldown,
+	 * or that has no owner with an email, is reported as skipped.
 	 */
 	async notifyOwners(
 		ruleId: string,
@@ -76,15 +81,25 @@ export class MigrationFindingNotificationService {
 			'no_finding',
 		);
 
-		const findingsByOwner = await this.groupByOwner(findings);
+		// Keeps repeated clicks on Remind from flooding the owner's inbox.
+		const cooldownStart = Date.now() - REMINDER_COOLDOWN_MS;
+		const isRecentlyNotified = (finding: TriageableMigrationFinding) =>
+			finding.notifiedAt !== null && finding.notifiedAt.getTime() > cooldownStart;
 		skip(
-			findings
+			findings.filter(isRecentlyNotified).map((finding) => finding.workflowId),
+			'recently_notified',
+		);
+		const dueFindings = findings.filter((finding) => !isRecentlyNotified(finding));
+
+		const findingsByOwner = await this.groupByOwner(dueFindings);
+		skip(
+			dueFindings
 				.filter((finding) => !findingsByOwner.has(finding.workflowId))
 				.map((finding) => finding.workflowId),
 			'no_owner',
 		);
 
-		const reportUrl = `${this.urlService.getInstanceBaseUrl()}/settings/migration-report/${ruleId}`;
+		const reportUrl = `${this.urlService.getInstanceBaseUrl()}/settings/migration-report/${ruleId}?owner=me`;
 		const notifierName = displayName(notifier);
 		await Promise.all(
 			[...new Set(findingsByOwner.values())].map(async ({ owner, findings: ownerFindings }) => {
@@ -144,7 +159,7 @@ export class MigrationFindingNotificationService {
 	 * their findings. A workflow whose owner is gone or has no email is left out.
 	 */
 	private async groupByOwner(findings: TriageableMigrationFinding[]) {
-		type Owner = Pick<User, 'id' | 'firstName' | 'lastName'> & { email: string };
+		type Owner = Pick<Person, 'id' | 'firstName' | 'lastName' | 'email'>;
 		type Group = { owner: Owner; findings: TriageableMigrationFinding[] };
 
 		const ownerRows = await this.ownerRepository.findByWorkflowIds(
@@ -161,7 +176,8 @@ export class MigrationFindingNotificationService {
 		for (const finding of findings) {
 			const userId = ownerIdByWorkflow.get(finding.workflowId);
 			const user = userId ? usersById.get(userId) : undefined;
-			if (!user?.email) continue;
+			// Only a person has an email.
+			if (!user || !isPerson(user) || !user.email) continue;
 			const group = groupsByOwner.get(user.id) ?? {
 				owner: {
 					id: user.id,

@@ -22,10 +22,15 @@ import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
 import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
+import type { Logger } from '../../logger';
+import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
-import { HAIKU_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+
+export const DESTRUCTIVENESS_CLASSIFIER_MODEL = 'anthropic/claude-haiku-5-5';
+export const DESTRUCTIVENESS_CLASSIFIER_EFFORT: AnthropicThinkingEffort = 'low';
 
 type WorkflowNode = WorkflowJSON['nodes'][number];
 
@@ -37,6 +42,9 @@ export interface ClassifyNodesForSimulationInput {
 	nodeNames?: ReadonlySet<string>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	logger?: Logger;
 }
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
@@ -355,6 +363,8 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
 	fallbackModelConfig?: ModelConfig,
+	logger?: Logger,
+	modelFetch?: FetchFn,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -365,12 +375,19 @@ async function classifyAmbiguousNodes(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-destructiveness-classifier', {
-		model: HAIKU_MODEL,
+		model: DESTRUCTIVENESS_CLASSIFIER_MODEL,
+		effort: DESTRUCTIVENESS_CLASSIFIER_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: LlmVerdictSchema,
 		fallbackModelConfig,
+		modelFetch,
 	});
+	if (!result.ok) {
+		logger?.warn(
+			`Node destructiveness classification failed (${result.message ?? result.reason}); ${nodes.length} ambiguous node(s) are simulated`,
+		);
+	}
 	const parsed = result.ok ? result.data : undefined;
 
 	return nodes.map((node) => {
@@ -429,7 +446,12 @@ export async function classifyNodesForSimulation(
 		// retired, the plan is the only source of verification pin data, so a
 		// throw here would leave every node executing for real. Fail destructive.
 		try {
-			for (const verdict of await classifyAmbiguousNodes(ambiguous, input.fallbackModelConfig)) {
+			for (const verdict of await classifyAmbiguousNodes(
+				ambiguous,
+				input.fallbackModelConfig,
+				input.logger,
+				input.modelFetch,
+			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}
 		} catch {

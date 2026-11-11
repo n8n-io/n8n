@@ -31,7 +31,6 @@ import {
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
-	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
@@ -327,6 +326,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				dirtiness: dirtinessByNodeId.get(node.id)?.value,
 				icon,
 				placeholder: node.placeholder === true || isEmptyGroupAnchorNode,
+				deprecated: Boolean(nodeType?.deprecated),
+				deprecatedReplacementName: nodeType?.replacedByNodeType
+					? nodeTypesStore.getNodeType(nodeType.replacedByNodeType)?.displayName
+					: undefined,
 			},
 		};
 	}
@@ -508,7 +511,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			}
 		}
 
-		const result: Record<string, Partial<CanvasNode>> = {};
+		const result: Record<string, { style: { zIndex: number } }> = {};
 		for (const box of stickyBoxes) {
 			result[box.id] = { style: { zIndex: box.zIndex } };
 		}

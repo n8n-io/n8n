@@ -7,10 +7,23 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
 import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
+// Experiment cleanup (133_agent_builder_experiment_cohort)
+import {
+	getAgentBuilderExperimentEnrollment,
+	isAgentBuilderExperiment,
+} from '@/experiments/agentBuilder/enrollment';
+// EOF Experiment cleanup
 // Experiment cleanup (119_surface_assistant_on_workflow_error)
 import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
 // EOF Experiment cleanup
@@ -19,6 +32,25 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
+
+// These attributes can hold sensitive information, such as node names, node parameters or workflow
+// data. Autocapture must not send them.
+// https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
+const AUTOCAPTURE_IGNORED_ATTRIBUTES = [
+	'title',
+	'alt',
+	'aria-label',
+	'data-node-name',
+	'data-source-node-name',
+	'data-target-node-name',
+	'data-action-parameter-node',
+	'data-value',
+	'data-name',
+	'data-path',
+	'data-resourcename',
+	'data-table-name',
+	'data-placeholder',
+];
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
@@ -34,6 +66,13 @@ export const usePostHog = defineStore('posthog', () => {
 	const rootStore = useRootStore();
 	const { debounce } = useDebounce();
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const mcpDiscoveryEligible = ref(false);
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Sales and Marketing respondents only. Stays false until the survey answer is known.
+	const taxonomyInspirationEligible = ref(false);
+	// EOF Experiment cleanup
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -62,6 +101,12 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		mcpDiscoveryEligible.value = false;
+		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		taxonomyInspirationEligible.value = false;
+		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
 		trackedExposures.value = {};
@@ -166,6 +211,14 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		// Experiment cleanup (133_agent_builder_experiment_cohort)
+		if (
+			isAgentBuilderExperiment(name) &&
+			getAgentBuilderExperimentEnrollment((key) => overrides.value[key]?.value ?? featFlags[key])
+				?.name !== name
+		)
+			return;
+		// EOF Experiment cleanup
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		if (
 			CLOUD_ONLY &&
@@ -176,7 +229,19 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 		// EOF Experiment cleanup
 
-		const variant = featFlags[name];
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		if (
+			name === INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name &&
+			!taxonomyInspirationEligible.value
+		) {
+			return;
+		}
+		// EOF Experiment cleanup
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore const variant = featFlags[name].
+		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
 		}
@@ -188,6 +253,24 @@ export const usePostHog = defineStore('posthog', () => {
 
 		trackedDemoExp.value[name] = variant;
 	};
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const setMcpDiscoveryEligible = (eligible: boolean) => {
+		mcpDiscoveryEligible.value = eligible;
+		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
+	};
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	const setTaxonomyInspirationEligible = (eligible: boolean) => {
+		taxonomyInspirationEligible.value = eligible;
+		if (eligible) {
+			trackExperiment(
+				featureFlags.value ?? {},
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
+			);
+		}
+	};
+	// EOF Experiment cleanup
 
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
@@ -230,7 +313,15 @@ export const usePostHog = defineStore('posthog', () => {
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
 			api_host: settingsStore.settings.posthog.proxy,
-			autocapture: config.autocapture,
+			// Needs server-evaluated flags: autocapture is fixed at init, before client-side flags load.
+			autocapture:
+				hasServerFlags && evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true
+					? { element_attribute_ignorelist: AUTOCAPTURE_IGNORED_ATTRIBUTES }
+					: false,
+			// The text of a clicked element can hold sensitive information, such as node names or
+			// parameter values, so we mask it. Add a `data-attr` to any element that analytics needs
+			// to identify. See https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
+			mask_all_text: true,
 			disable_session_recording: config.disableSessionRecording,
 			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
@@ -322,6 +413,9 @@ export const usePostHog = defineStore('posthog', () => {
 	 * flag+variant; cleared on reset().
 	 */
 	const trackExposure = (experiment: string) => {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (experiment === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		// EOF Experiment cleanup
 		const variant = getVariant(experiment);
 		if (variant === undefined || variant === false) return;
 		if (trackedExposures.value[experiment] === variant) return;
@@ -334,6 +428,12 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		setMcpDiscoveryEligible,
+		// EOF Experiment cleanup
+		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		setTaxonomyInspirationEligible,
+		// EOF Experiment cleanup
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,

@@ -266,4 +266,21 @@ describe('lakebaseApiRequest', () => {
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(3);
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
 	});
+
+	it('explains the failure the caller actually sees', async () => {
+		httpRequestWithAuthentication.mockRejectedValue(pgrst205());
+
+		await expect(lakebaseApiRequest(context, request)).rejects.toMatchObject({
+			description: expect.stringContaining('schema and table names'),
+		});
+	});
+
+	it('does not explain an error the retry recovers from', async () => {
+		const retried = pgrst205();
+		httpRequestWithAuthentication.mockRejectedValueOnce(retried).mockResolvedValueOnce([{ id: 1 }]);
+
+		await expect(lakebaseApiRequest(context, request)).resolves.toEqual([{ id: 1 }]);
+
+		expect(retried.description ?? '').not.toContain('schema and table names');
+	});
 });

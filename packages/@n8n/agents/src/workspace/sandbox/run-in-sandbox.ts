@@ -16,6 +16,8 @@ export interface RunInSandboxOptions {
 export interface SandboxCommandTarget {
 	sandbox?: {
 		provider?: string;
+		/** True when the latest start created the remote sandbox, so it holds only its image. */
+		createdFreshSandbox?: boolean;
 		executeCommand?: (
 			command: string,
 			args?: string[],

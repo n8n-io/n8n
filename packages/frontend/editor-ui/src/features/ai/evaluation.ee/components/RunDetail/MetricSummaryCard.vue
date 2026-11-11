@@ -4,9 +4,10 @@ import type { MetricScale } from '@n8n/api-types';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	formatMetricLabel,
-	formatMetricPercent,
 	formatMetricRawScoreSum,
+	formatMetricValue,
 	getDeltaTone,
+	isUnscaledCustomMetric,
 	type DeltaTone,
 	type MetricCategory,
 } from '../../evaluation.utils';
@@ -16,6 +17,7 @@ const props = defineProps<{
 	name: string;
 	currentValue: number | undefined;
 	delta: number | undefined;
+	deltaScale?: MetricScale;
 	category?: MetricCategory;
 	scale?: MetricScale;
 	sourceNodeName?: string;
@@ -25,7 +27,7 @@ const props = defineProps<{
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
 const formattedValue = computed(() =>
-	formatMetricPercent(props.currentValue, {
+	formatMetricValue(props.currentValue, {
 		key: props.name,
 		category: props.category,
 		scale: props.scale,
@@ -33,7 +35,12 @@ const formattedValue = computed(() =>
 );
 const formattedLabel = computed(() => formatMetricLabel(props.name));
 const formattedSumScore = computed(() =>
-	formatMetricRawScoreSum(props.caseValues ?? [], { category: props.category, scale: props.scale }),
+	!isUnscaledCustomMetric({ key: props.name, category: props.category, scale: props.scale })
+		? formatMetricRawScoreSum(props.caseValues ?? [], {
+				category: props.category,
+				scale: props.scale,
+			})
+		: '',
 );
 const valueTooltip = computed(() =>
 	formattedSumScore.value ? `${formattedValue.value} • ${formattedSumScore.value}` : '',
@@ -52,7 +59,7 @@ const valueTooltip = computed(() =>
 				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			</N8nTooltip>
 			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" />
+			<TrendDeltaBadge :delta="delta" :name="name" :category="category" :scale="deltaScale" />
 		</div>
 	</div>
 </template>
@@ -64,8 +71,8 @@ const valueTooltip = computed(() =>
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md) var(--spacing--lg);
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
-	flex: 1 1 0;
-	min-width: 0;
+	flex: 1 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	min-width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 
 	&:last-child {
 		border-right: none;
@@ -76,7 +83,7 @@ const valueTooltip = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	min-width: 0;
 }
 
@@ -92,7 +99,7 @@ const valueTooltip = computed(() =>
 	display: flex;
 	align-items: flex-end;
 	gap: var(--spacing--sm);
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 }
 
 .value {
