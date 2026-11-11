@@ -1,0 +1,49 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_9ff7112ff8ad22::t_cb3e3e1e939c15 404
+  s_9ff7112ff8ad22::t_2007ebd8b60418 583
+  s_9ff7112ff8ad22::t_0b90e15d3411c8 671,677-678
+  s_9ff7112ff8ad22::t_6e34f0af64907a 614
+  s_9ff7112ff8ad22::t_7f7c0ffe374779 555
+  s_9ff7112ff8ad22::t_99db107b75c26b 741
+  s_9ff7112ff8ad22::t_78e5b44a09391f 767
+  s_9ff7112ff8ad22::t_58db078b417177 479
+  s_9ff7112ff8ad22::t_0d29c84c5ede31 710
+  s_9ff7112ff8ad22::t_a741fca13643b4 645,651-652
+  s_9ff7112ff8ad22::t_72a3946252eecc 473
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_9ff7112ff8ad22::t_768b0d9b45b157 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_9ff7112ff8ad22::t_0c34afc048d875 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_9ff7112ff8ad22::t_705f8e29f15ba2 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_9ff7112ff8ad22::t_4d9da1d6bb595e 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_9ff7112ff8ad22::t_6c571fac5684d8 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  s_9ff7112ff8ad22::t_d72943e689215b 8,84-85
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_9ff7112ff8ad22::t_439e105392524d 8,182-185
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_9ff7112ff8ad22::t_f4ebd36862ddad 8,93-94
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_9ff7112ff8ad22::t_74f06e1a93b64d 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_9ff7112ff8ad22::t_e28a90673a36f7 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95ea754a0c191d67f4614afeb8f893aca0f2d5f5",
+  "prompts": {},
+  "sessions": {
+    "s_9ff7112ff8ad22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17379c6b-07cb-4442-ac83-6f61188ac775",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
