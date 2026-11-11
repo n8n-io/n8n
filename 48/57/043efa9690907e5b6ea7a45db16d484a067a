@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_08690fb8a4caf5::t_6334be96b4b093 135
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_08690fb8a4caf5::t_20d11e309e2065 95-111,113,115,118-119,121-124
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_08690fb8a4caf5::t_60112d61447653 797-809
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_08690fb8a4caf5::t_20d11e309e2065 426-441
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_08690fb8a4caf5::t_6757d19092e41f 1722,1728-1731
+  s_08690fb8a4caf5::t_bc48b11d54ab10 1741-1761
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_08690fb8a4caf5::t_61a44e12e30f0c 96-101
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_08690fb8a4caf5::t_20d11e309e2065 634-638,641
+  s_08690fb8a4caf5::t_898ce016915185 818,822
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_08690fb8a4caf5::t_eef65dfd3fb145 377,383
+  s_08690fb8a4caf5::t_bc48b11d54ab10 313-322,324-326,330-336,338,340
+  s_08690fb8a4caf5::t_d02ca086b5bf44 302,309-312
+  s_08690fb8a4caf5::t_440a27158a3c15 323,327
+packages/cli/src/modules/agents/__tests__/agent-mcp-access.service.test.ts
+  s_08690fb8a4caf5::t_20d11e309e2065 32,119-125,144-161
+  s_08690fb8a4caf5::t_671ab087608b7e 162-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4857043efa9690907e5b6ea7a45db16d484a067a",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
