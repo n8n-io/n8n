@@ -34,6 +34,7 @@ import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import type { IntegrationRef } from './utils/agent-channel';
+import { assertAgentNotArchived } from './utils/agent-draft.utils';
 
 export interface CredentialIntegrationMutationContext {
 	user: User;
@@ -278,7 +279,7 @@ export class AgentIntegrationPersistenceService {
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
 	) {
-		if (agent.isArchived) throw new UserError('Cannot update an archived agent');
+		assertAgentNotArchived(agent);
 		// Keep each channel change distinct from the published version.
 		const versionId = uuid();
 

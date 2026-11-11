@@ -355,6 +355,38 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			['agent-archived', 'n8n.audit.agent.archived'],
+			['agent-unarchived', 'n8n.audit.agent.unarchived'],
+		] as const)('should log on `%s` event', (eventName, auditEventName) => {
+			const event: RelayEventMap[typeof eventName] = {
+				user: {
+					id: '456',
+					email: 'jane@n8n.io',
+					firstName: 'Jane',
+					lastName: 'Smith',
+					role: { slug: 'user' },
+				},
+				agentId: 'agent789',
+				projectId: 'proj123',
+			};
+
+			eventService.emit(eventName, event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: {
+					userId: '456',
+					_email: 'jane@n8n.io',
+					_firstName: 'Jane',
+					_lastName: 'Smith',
+					globalRole: 'user',
+					agentId: 'agent789',
+					projectId: 'proj123',
+				},
+			});
+		});
+
 		it('should log on `workflow-activated` event', () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
