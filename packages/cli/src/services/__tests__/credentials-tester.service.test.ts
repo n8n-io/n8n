@@ -3,6 +3,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
+import { ServiceNowBasicApi } from 'n8n-nodes-base/dist/credentials/ServiceNowBasicApi.credentials';
 import type {
 	ICredentialsHelper,
 	ICredentialTestFunctions,
@@ -264,6 +265,41 @@ describe('CredentialsTester', () => {
 
 			expect(result).toEqual({ status: 'OK', message: 'fine' });
 			expect(RoutingNode).not.toHaveBeenCalled();
+		});
+
+		it('tests ServiceNow Basic credentials when the ServiceNow node is excluded', async () => {
+			credentialTypes.getByName.mockReturnValue(new ServiceNowBasicApi());
+			credentialTypes.getSupportedNodes.mockReturnValue([]);
+			nodeTypes.getByName.mockImplementation(() => {
+				throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'serviceNow');
+			});
+			const requestLegacy = vi.fn().mockResolvedValue({ statusCode: 403 });
+			Container.set(
+				OutboundHttp,
+				mock<OutboundHttp>({
+					requests: vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy })),
+				}),
+			);
+			const data = { user: 'test-user', password: 'test-password', subdomain: 'test-instance' };
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(data);
+
+			const result = await credentialsTester.testCredentials('user-id', 'serviceNowBasicApi', {
+				id: 'credential-id',
+				name: 'ServiceNow integration',
+				type: 'serviceNowBasicApi',
+				data,
+			});
+
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			expect(requestLegacy).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					uri: 'https://test-instance.service-now.com/api/now/table/sys_user',
+					qs: { sysparm_limit: '1', sysparm_fields: 'sys_id' },
+					auth: { user: data.user, pass: data.password },
+				}),
+				expect.any(Object),
+			);
+			expect(nodeTypes.getByName).not.toHaveBeenCalled();
 		});
 
 		it('should not redact secrets with value shorter than 3 characters', async () => {

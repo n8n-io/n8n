@@ -11,6 +11,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { ServiceNowBasicApi } from '../../../credentials/ServiceNowBasicApi.credentials';
 import { ServiceNow } from '../ServiceNow.node';
 import * as genericFunctions from '../GenericFunctions';
 import type * as _importType from '../GenericFunctions';
@@ -68,7 +69,7 @@ describe('ServiceNow Node', () => {
 		});
 		const data = { user: 'jane.doe', password: 'test-password', subdomain: 'test-instance' };
 		const testCredentials = async (values: ICredentialsDecrypted['data']) =>
-			await new ServiceNow().methods.credentialTest.serviceNowBasicApiTest.call(context, {
+			await new ServiceNowBasicApi().test.call(context, {
 				id: 'service-now-credential',
 				name: 'ServiceNow integration',
 				type: 'serviceNowBasicApi',
