@@ -333,6 +333,63 @@ describe('Skill Sync with credentials', () => {
 			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
 		});
 
+		describe('a credential that allows only some domains', () => {
+			const expiringWith = async (allowedDomains: string) =>
+				await saveCredential(
+					{
+						name: `Restricted OAuth ${allowedDomains}`,
+						type: 'githubOAuth2Api',
+						data: {
+							clientId: 'client-id',
+							clientSecret: 'client-secret',
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains,
+							oauthTokenData: {
+								access_token: 'ghu_expired',
+								refresh_token: 'ghr_first',
+								token_type: 'bearer',
+								expires_in: 28800,
+								n8n_expires_at: String(Date.now() - 1000),
+							},
+						},
+					},
+					{ project: team, role: 'credential:owner' },
+				);
+			const tokenExchange = () =>
+				nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+					access_token: TOKEN,
+					refresh_token: 'ghr_second',
+					token_type: 'bearer',
+					expires_in: 28800,
+				});
+
+			it('refuses to refresh the token when the token URL is not allowed', async () => {
+				const restricted = await expiringWith('example.com');
+				const exchange = tokenExchange();
+
+				const response = await editor
+					.post('/skill-sources/discover')
+					.send({ url: PRIVATE, ...scope(), credentialId: restricted.id });
+
+				expect(response.status).toBeGreaterThanOrEqual(400);
+				expect(exchange.isDone()).toBe(false);
+			});
+
+			it('refreshes the token when the token URL is allowed', async () => {
+				const restricted = await expiringWith('github.com');
+				const exchange = tokenExchange();
+
+				const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+					url: PRIVATE,
+					...scope(),
+					credentialId: restricted.id,
+				});
+
+				expect(exchange.isDone()).toBe(true);
+				expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+			});
+		});
+
 		it('uses the token that another caller refreshed first, with no second exchange', async () => {
 			const expiring = {
 				clientId: 'client-id',

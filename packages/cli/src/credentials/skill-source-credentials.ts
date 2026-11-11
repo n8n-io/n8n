@@ -9,8 +9,13 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-import { shouldRefreshMcpOAuth2Token } from 'n8n-workflow';
+import {
+	getCredentialOwnRequestAllowedDomains,
+	isDomainAllowed,
+	shouldRefreshMcpOAuth2Token,
+} from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -96,6 +101,7 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		// The shared check refreshes a token within two minutes of its expiry, or within a
 		// tenth of its lifetime for a short-lived token, as the MCP and AI nodes do.
 		if (shouldRefreshMcpOAuth2Token(data.oauthTokenData)) {
+			assertTokenUrlAllowed(data);
 			// The shared refresh saves the new token, so the next decrypt reads it. With the token
 			// that this resolve read, a refresh that ran meanwhile is not repeated.
 			await this.oauthService.refreshOAuth2CredentialById(
@@ -176,6 +182,21 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		};
 		const fresh = await this.credentialsHelper.runPreAuthentication(helper, data, type);
 		return fresh ? { ...data, ...fresh } : data;
+	}
+}
+
+/**
+ * The refresh sends the refresh token and the client secret to the token URL. A credential
+ * that allows only some domains holds this request to them, as its other own requests.
+ */
+function assertTokenUrlAllowed(data: ICredentialDataDecryptedObject): void {
+	const allowedDomains = getCredentialOwnRequestAllowedDomains(data);
+	if (allowedDomains === undefined) return;
+	const url = typeof data.accessTokenUrl === 'string' ? data.accessTokenUrl : '';
+	if (!url || !isDomainAllowed({ url, allowedDomains })) {
+		throw new UserError(
+			'This credential restricts requests to specific domains, and its token URL is not one of them.',
+		);
 	}
 }
 
