@@ -127,7 +127,7 @@
 						},
 						{
 							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c07",
-							"name": "number",
+							"name": "fromSplitOut",
 							"value": "={{ $('Split Out').item.json.numbers }}",
 							"type": "number"
 						}

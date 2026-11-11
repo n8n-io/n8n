@@ -34,8 +34,8 @@ test.describe(
 			// The If sent one item down each branch, so both edges into C were live and
 			// C ran once per branch, each run on its own item.
 			expect(itemsOf('C')).toEqual([
-				[{ via: 'A', run: 0, number: 1 }],
-				[{ via: 'B', run: 1, number: 2 }],
+				[{ via: 'A', run: 0, fromSplitOut: 1 }],
+				[{ via: 'B', run: 1, fromSplitOut: 2 }],
 			]);
 
 			// D ran once per run of C, and each run's paired item leads back to the run

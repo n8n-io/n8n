@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph } from '../../graph';
+import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph, WorkflowLoop } from '../../graph';
 import { deriveLoops, getDescendantNodeIds } from '../../graph';
-import type { WorkflowLoop } from '../../graph';
 import { nodePassId, type StepKey, type StepStatus } from '../execution.types';
 import {
 	decideSuccessors as decideWithSources,
