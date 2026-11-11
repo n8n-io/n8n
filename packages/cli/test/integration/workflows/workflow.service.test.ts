@@ -1853,9 +1853,9 @@ describe('version-scoped settings on save', () => {
 
 	describe('with the engine-v2 module', () => {
 		beforeEach(() => {
-			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
-				(name) => name === 'engine-v2',
-			);
+			vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+				'engine-v2',
+			]);
 		});
 
 		test('saves an engine change as a new draft version and keeps the published version', async () => {

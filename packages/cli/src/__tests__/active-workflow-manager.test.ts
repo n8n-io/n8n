@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type EventService,
 	type WorkflowSharingService,
@@ -78,7 +78,9 @@ describe('ActiveWorkflowManager', () => {
 	const ownershipService = mock<OwnershipService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
-	const workflowVersionedSettings = new WorkflowVersionedSettingsService(mock());
+	const workflowVersionedSettings = new WorkflowVersionedSettingsService(
+		mock<ModuleRegistry>({ eligibleModules: [] }),
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();

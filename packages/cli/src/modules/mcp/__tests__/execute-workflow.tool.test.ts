@@ -614,17 +614,17 @@ describe('execute-workflow MCP tool', () => {
 			};
 
 			test('runs production on the engine of the published version with the engine-v2 module', async () => {
-				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
-					(name) => name === 'engine-v2',
-				);
+				vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+					'engine-v2',
+				]);
 
 				expect(await runEngine('production')).toBe('v1');
 			});
 
 			test('runs a manual execution on the draft engine', async () => {
-				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
-					(name) => name === 'engine-v2',
-				);
+				vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+					'engine-v2',
+				]);
 
 				expect(await runEngine('manual')).toBe('v2');
 			});

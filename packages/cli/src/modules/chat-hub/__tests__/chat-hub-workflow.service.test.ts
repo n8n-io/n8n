@@ -1,6 +1,6 @@
 import type { ChatHubConversationModel, ChatProviderSettingsDto } from '@n8n/api-types';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import { WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import type { Project, WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
@@ -43,7 +43,8 @@ describe('ChatHubWorkflowService', () => {
 	const mockCipher = mock<Cipher>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 	const workflowVersionedSettings = new WorkflowVersionedSettingsService(moduleRegistry);
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
@@ -1222,6 +1223,10 @@ describe('ChatHubWorkflowService', () => {
 			parameters: { availableInChat: true, options: { responseMode: 'lastNode' } },
 		} as INode;
 
+		afterEach(() => {
+			eligibleModules.length = 0;
+		});
+
 		const runEngine = async (manual: boolean) => {
 			// A plain object: a deep mock answers every unknown key, which fails the trigger parameter check.
 			workflowFinderService.findWorkflowForUser.mockResolvedValue({
@@ -1250,20 +1255,18 @@ describe('ChatHubWorkflowService', () => {
 		};
 
 		it('runs on the engine of the published version with the engine-v2 module', async () => {
-			moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+			eligibleModules.push('engine-v2');
 
 			expect(await runEngine(false)).toBe('v1');
 		});
 
 		it('runs a manual chat on the draft engine', async () => {
-			moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+			eligibleModules.push('engine-v2');
 
 			expect(await runEngine(true)).toBe('v2');
 		});
 
 		it('runs on the draft engine without the engine-v2 module, as before', async () => {
-			moduleRegistry.isActive.mockReturnValue(false);
-
 			expect(await runEngine(false)).toBe('v2');
 		});
 	});

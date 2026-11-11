@@ -1,4 +1,4 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { type ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import { WorkflowPublishedDataService } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
@@ -39,7 +39,7 @@ describe('version-scoped settings', () => {
 
 	let owner: User;
 	let ownerAgent: SuperAgentTest;
-	let isActiveSpy: MockInstance<ModuleRegistry['isActive']>;
+	let eligibleModulesSpy: MockInstance<() => ModuleName[]>;
 
 	beforeAll(async () => {
 		workflowsConfig.useWorkflowPublicationService = false;
@@ -72,13 +72,13 @@ describe('version-scoped settings', () => {
 			isValid: true,
 		});
 
-		isActiveSpy = vi
-			.spyOn(Container.get(ModuleRegistry), 'isActive')
-			.mockImplementation((name) => name === 'engine-v2');
+		eligibleModulesSpy = vi
+			.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get')
+			.mockReturnValue(['engine-v2']);
 	});
 
 	afterEach(() => {
-		isActiveSpy.mockRestore();
+		eligibleModulesSpy.mockRestore();
 		vi.clearAllMocks();
 	});
 

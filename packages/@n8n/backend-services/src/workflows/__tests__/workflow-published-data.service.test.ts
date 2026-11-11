@@ -1,4 +1,4 @@
-import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import type {
 	PublishedVersionForExecution,
 	WorkflowPublishedVersionRepository,
@@ -15,14 +15,15 @@ describe('WorkflowPublishedDataService', () => {
 	logger.scoped.mockReturnValue(logger);
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const cacheService = mock<CacheService>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 	let service: WorkflowPublishedDataService;
 
 	const cacheKey = 'workflow-published-data:wf-1';
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		moduleRegistry.isActive.mockReturnValue(false);
+		eligibleModules.length = 0;
 		service = new WorkflowPublishedDataService(
 			logger,
 			workflowPublishedVersionRepository,
@@ -31,8 +32,7 @@ describe('WorkflowPublishedDataService', () => {
 		);
 	});
 
-	const enableEngineV2Module = () =>
-		moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+	const enableEngineV2Module = () => eligibleModules.push('engine-v2');
 
 	function makeRecord() {
 		const nodes = [

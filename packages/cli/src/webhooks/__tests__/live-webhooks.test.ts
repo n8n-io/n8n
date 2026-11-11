@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -58,7 +58,8 @@ describe('LiveWebhooks', () => {
 		allowWebhookIsolateSkip: true,
 	});
 	const workflowPublisherService = mock<WorkflowPublisherService>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -66,7 +67,7 @@ describe('LiveWebhooks', () => {
 		vi.clearAllMocks();
 		// `clearAllMocks` resets call history, not properties set on a mock
 		expressionEngineConfig.allowWebhookIsolateSkip = true;
-		moduleRegistry.isActive.mockReturnValue(false);
+		eligibleModules.length = 0;
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
@@ -258,7 +259,7 @@ describe('LiveWebhooks', () => {
 			};
 
 			it('runs the engine of the published version with the engine-v2 module', async () => {
-				moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+				eligibleModules.push('engine-v2');
 
 				expect(await runEngine()).toEqual(['v1', 'v1']);
 			});

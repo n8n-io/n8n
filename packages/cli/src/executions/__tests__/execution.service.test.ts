@@ -1,5 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type EventService,
 	type ExecutionRedactionServiceProxy,
@@ -70,7 +70,8 @@ describe('ExecutionService', () => {
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 	const workflowRepository = mock<WorkflowRepository>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -792,14 +793,14 @@ describe('ExecutionService', () => {
 			});
 
 			beforeEach(() => {
-				moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+				eligibleModules.push('engine-v2');
 				executionRedactionServiceProxy.processExecution.mockImplementation(
 					async (execution) => execution,
 				);
 			});
 
 			afterEach(() => {
-				moduleRegistry.isActive.mockReset();
+				eligibleModules.length = 0;
 			});
 
 			it('should return the newest success of both engines', async () => {

@@ -91,8 +91,8 @@ describe('production runs on the engine of the published version', () => {
 
 	const enableEngineV2Module = () =>
 		vi
-			.spyOn(Container.get(ModuleRegistry), 'isActive')
-			.mockImplementation((name) => name === 'engine-v2');
+			.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get')
+			.mockReturnValue(['engine-v2']);
 
 	/** Published v1 version, and a newer draft version on v2 (an engine-only save). */
 	const createPublishedV1WithV2Draft = async () => {

@@ -1,20 +1,20 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowVersionedSettingsService } from '../workflow-versioned-settings.service';
 
 describe('WorkflowVersionedSettingsService', () => {
-	const moduleRegistry = mock<ModuleRegistry>();
-	const service = new WorkflowVersionedSettingsService(moduleRegistry);
+	const createService = (eligibleModules: ModuleName[]) =>
+		new WorkflowVersionedSettingsService(
+			mock<ModuleRegistry>({ eligibleModules, isActive: () => false }),
+		);
 
 	const draftSettings = { engineType: 'v2', timezone: 'Europe/Berlin' } as const;
 
 	describe('with the engine-v2 module', () => {
-		beforeEach(() => {
-			moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
-		});
+		const service = createService(['engine-v2']);
 
-		it('is enabled', () => {
+		it('is enabled, also on an instance type that does not start the module', () => {
 			expect(service.isEnabled()).toBe(true);
 		});
 
@@ -31,9 +31,7 @@ describe('WorkflowVersionedSettingsService', () => {
 	});
 
 	describe('without the engine-v2 module', () => {
-		beforeEach(() => {
-			moduleRegistry.isActive.mockReturnValue(false);
-		});
+		const service = createService([]);
 
 		it('is not enabled', () => {
 			expect(service.isEnabled()).toBe(false);

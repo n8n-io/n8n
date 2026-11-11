@@ -15,9 +15,10 @@ import {
 export class WorkflowVersionedSettingsService {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
-	// Read at call time: modules become active after services are constructed.
+	// Read the module config, not the active modules: the module starts only on main,
+	// but webhook and worker instances also run published versions.
 	isEnabled(): boolean {
-		return this.moduleRegistry.isActive('engine-v2');
+		return this.moduleRegistry.eligibleModules.includes('engine-v2');
 	}
 
 	/**

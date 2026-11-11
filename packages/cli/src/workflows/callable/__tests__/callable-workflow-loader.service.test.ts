@@ -28,10 +28,9 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}) {
 function makeService({ useWorkflowPublicationService = false, engineV2ModuleActive = false } = {}) {
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockImplementation(
-		(name) => engineV2ModuleActive && name === 'engine-v2',
-	);
+	const moduleRegistry = mock<ModuleRegistry>({
+		eligibleModules: engineV2ModuleActive ? ['engine-v2'] : [],
+	});
 	const service = new CallableWorkflowLoader(
 		workflowRepository,
 		{ useWorkflowPublicationService } as WorkflowsConfig,

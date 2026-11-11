@@ -1,4 +1,4 @@
-import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleName, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type EventService,
 	type InstanceWriteAccessService,
@@ -108,6 +108,9 @@ const mockOwnershipService = () => {
 	return ownershipService;
 };
 
+const versionedSettings = (eligibleModules: ModuleName[] = []) =>
+	new WorkflowVersionedSettingsService(mock<ModuleRegistry>({ eligibleModules }));
+
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
@@ -135,7 +138,7 @@ describe('WorkflowExecutionService', () => {
 		pollCursorService,
 		executionCrashService,
 		mock(),
-		new WorkflowVersionedSettingsService(mock()),
+		versionedSettings(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -184,7 +187,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 			const node = mock<INode>();
 			const workflow = mock<IWorkflowBase>({
@@ -705,7 +708,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 			const user = mock<User>({ id: 'user-id' });
 			const workflowData = mock<IWorkflowBase>({ nodes: [webhookNode], connections: {} });
@@ -1186,7 +1189,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -1265,7 +1268,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -1455,7 +1458,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 		});
 
@@ -1615,7 +1618,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1762,7 +1765,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1870,7 +1873,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1927,7 +1930,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1994,9 +1997,6 @@ describe('WorkflowExecutionService', () => {
 					publishedVersion: mock<WorkflowHistory>(publishedVersion),
 				});
 
-				const moduleRegistry = mock<ModuleRegistry>();
-				moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
-
 				const service = new WorkflowExecutionService(
 					mock(),
 					mock(),
@@ -2016,7 +2016,7 @@ describe('WorkflowExecutionService', () => {
 					pollCursorService,
 					mock(),
 					mock(),
-					new WorkflowVersionedSettingsService(moduleRegistry),
+					versionedSettings(['engine-v2']),
 				);
 
 				await service.executeErrorWorkflow(
@@ -2068,7 +2068,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
-				new WorkflowVersionedSettingsService(mock()),
+				versionedSettings(),
 			);
 
 			const user = mock<User>({ id: 'user-id' });
