@@ -141,6 +141,12 @@ unauthenticated and serves the whole table: keep it on loopback.
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
 
+### Docker images
+
+`docker/docker-bake.hcl` holds every base image pin. Images that n8n publishes
+(`n8nio/base`, `n8nio/node-pc`) change in two PRs: inputs first, then the pin
+of the digest that master published. See [docker/AGENTS.md](docker/AGENTS.md).
+
 ## Architecture Overview
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
