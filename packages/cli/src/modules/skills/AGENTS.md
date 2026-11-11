@@ -74,7 +74,6 @@ Two checks enforce two rules. The code-health rule `skills-module-boundary` reso
 
 | Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
 | ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `userHasScopes` (`@/permissions.ee/check-access`) | `SkillAccessService`                           | The scope checks move to `@n8n/backend-services`, as its README plans. |
 | `PostHogClient` (`@/posthog`)                     | `AssistantSkillsFlagGate`, `SkillSyncFlagGate` | A shared package, or a contract that cli implements                    |
 | `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
 

@@ -8,7 +8,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the project.
+    description: The ID of the project, or `personal` for the calling user's own personal project.
     name: projectId
     in: path
   - schema:

@@ -9,6 +9,7 @@ import { RedisClientService } from '@n8n/backend-services';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import { EngineTlsMaterial } from '../engine-tls-material';
 import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
@@ -16,6 +17,14 @@ import { ExecutionChannelReceiver } from '../execution-channel/execution-channel
 import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
 import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
+
+const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+/** The real boot check, over files this test does not need to write. */
+const useTls = (value: EngineTlsMaterial['tls']) => {
+	const material = new EngineTlsMaterial(Container.get(EngineConfig));
+	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
+	Container.set(EngineTlsMaterial, material);
+};
 
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
@@ -37,7 +46,9 @@ describe('EngineV2Module', () => {
 			authSecret: '',
 			mode: 'in-process',
 			resumeSecret: '',
+			tlsInsecureAllowPlainHttp: false,
 		});
+		useTls(undefined);
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
@@ -85,7 +96,7 @@ describe('EngineV2Module', () => {
 			expect(client.startExecution).toHaveBeenCalledWith(request);
 		});
 
-		it('starts the control plane server before the engine, so a report always lands', async () => {
+		it('starts the control plane server before the engine, so the first step can resolve credentials', async () => {
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
@@ -140,6 +151,13 @@ describe('EngineV2Module', () => {
 			expect(engineConfig.authSecret).toMatch(/^[0-9a-f]{64}$/);
 		});
 
+		it('refuses TLS files, which only remote mode uses', async () => {
+			useTls(tls);
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_MODE=remote');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
+		});
+
 		it('leaves a configured secret untouched', async () => {
 			engineConfig.authSecret = 'a-configured-secret';
 
@@ -154,6 +172,31 @@ describe('EngineV2Module', () => {
 			engineConfig.mode = 'remote';
 			engineConfig.authSecret = 'a'.repeat(32);
 			engineConfig.baseUrl = 'http://engine:3000';
+			engineConfig.tlsInsecureAllowPlainHttp = true;
+		});
+
+		it('starts over mutual TLS with an https data plane address', async () => {
+			useTls(tls);
+			engineConfig.baseUrl = 'https://engine:3000';
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+		});
+
+		it('refuses to start over plain HTTP without the opt-out', async () => {
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
+		});
+
+		it('refuses an http data plane address when TLS is on', async () => {
+			useTls(tls);
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_BASE_URL must start with https://');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
 		});
 
 		it('starts the control plane server and not the data plane', async () => {
@@ -283,7 +326,7 @@ describe('EngineV2Module', () => {
 			expect(runtime.shutdown).toHaveBeenCalled();
 		});
 
-		it('stops the control plane server after the engine, so a final flush still lands', async () => {
+		it('stops the control plane server after the engine, so a running step can still resolve credentials', async () => {
 			await module.shutdown();
 
 			expect(controlPlaneServer.stop).toHaveBeenCalled();

@@ -20,7 +20,7 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@n8n/backend-services';
+import { EventService, RoleCacheService } from '@n8n/backend-services';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -662,6 +662,47 @@ describe('GET /credentials/for-workflow', () => {
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
 describe('GET /credentials/:id', () => {
+	test('should emit `credentials-data-read` when the owner reads the data of a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeDefined();
+			expect(emitSpy).toHaveBeenCalledWith('credentials-data-read', {
+				user: expect.objectContaining({ id: owner.id }),
+				credentialType: savedCredential.type,
+				credentialId: savedCredential.id,
+				publicApi: false,
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	test('should not emit `credentials-data-read` for a member who may only read a shared credential', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(response.body.data.data).toBeUndefined();
+			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('project viewers can view credentials', async () => {
 		const teamProject = await createTeamProject();
 		await linkUserToProject(member, teamProject, 'project:viewer');

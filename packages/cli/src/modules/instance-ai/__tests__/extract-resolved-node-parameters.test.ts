@@ -11,7 +11,7 @@ import {
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
 
@@ -135,7 +135,7 @@ function parseResolved(resolved: string | null): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 describe('extractResolvedNodeParameters', () => {
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 
 	it('resolves expressions against the parent node output and mirrors the parameter tree', async () => {
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');

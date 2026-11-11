@@ -9,6 +9,11 @@ binds `ExecutionLedgerRowWriter` to that service. When the module is off, the se
 nothing. The writer records workflow runs only (`entityType = workflow`). Agent messages have no
 execution row and get their own hook in a later ticket.
 
+Every 5 seconds, the `execution-ledger-fold` system task claims a batch of rows and runs every
+registered fold step on it, in one transaction with a savepoint for each step. When a step fails,
+the whole batch rolls back and stays in the ledger. When no step is registered, the fold does not
+claim rows.
+
 The n8n runtime loads the module through the lazy import in
 `packages/cli/src/modules/modules.manifest.ts`.
 

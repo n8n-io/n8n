@@ -27,4 +27,10 @@ describe('ExecutionLedgerModule', () => {
 
 		expect(ledger.setImplementation).toHaveBeenCalledWith(writer);
 	});
+
+	it('registers the fold system task', async () => {
+		const tasks = await new ExecutionLedgerModule().systemTasks();
+
+		expect(tasks.map((task) => task.name)).toEqual(['ExecutionLedgerFoldTask']);
+	});
 });

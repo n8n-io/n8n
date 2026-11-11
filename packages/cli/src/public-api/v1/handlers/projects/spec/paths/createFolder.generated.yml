@@ -9,7 +9,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the project, or `personal` to create the folder in the calling user's own personal project.
+    description: The ID of the project, or `personal` for the calling user's own personal project.
     name: projectId
     in: path
 requestBody:

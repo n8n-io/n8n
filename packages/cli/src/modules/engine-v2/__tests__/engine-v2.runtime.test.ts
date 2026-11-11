@@ -14,12 +14,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
@@ -50,8 +51,10 @@ const mocks = vi.hoisted(() => {
 		}),
 	};
 
+	const httpServer = { listen: vi.fn((_port: number, _host: string) => server) };
+
 	const engine = {
-		app: { listen: vi.fn((_port: number, _host: string) => server) },
+		app: {},
 		start: vi.fn(),
 		stop: vi.fn(async () => {}),
 	};
@@ -80,10 +83,12 @@ const mocks = vi.hoisted(() => {
 		dataSource,
 		listen,
 		server,
+		httpServer,
 		engine,
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
+		createEngineHttpServer: vi.fn((_app: unknown, _tls: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
 			return stepDataLoader;
@@ -100,6 +105,7 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
+	createEngineHttpServer: mocks.createEngineHttpServer,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -121,7 +127,7 @@ describe('EngineV2Runtime', () => {
 			...overrides,
 		});
 
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 
 	let credentialsClient: EngineCredentialsClient;
 	let transport: EngineControlPlaneTransport;
@@ -138,9 +144,14 @@ describe('EngineV2Runtime', () => {
 		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
 	});
 
-	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
+	const newRuntime = (
+		databaseUrl = 'postgres://engine',
+		config: Partial<EngineConfig> = {},
+		tls?: EngineTlsMaterial['tls'],
+	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
+			{ tls } as EngineTlsMaterial,
 			nodeTypes,
 			mockLogger(),
 			credentialsClient,
@@ -414,7 +425,16 @@ describe('EngineV2Runtime', () => {
 		it('serves the engine API on the configured address', async () => {
 			await newRuntime().init(senders());
 
-			expect(mocks.engine.app.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, undefined);
+			expect(mocks.httpServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+		});
+
+		it('serves the engine API over mutual TLS when TLS is on', async () => {
+			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+
+			await newRuntime(undefined, {}, tls).init(senders());
+
+			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, tls);
 		});
 
 		it('closes the connection when migrations fail', async () => {
