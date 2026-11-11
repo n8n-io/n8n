@@ -483,6 +483,21 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(agentRepository.updateIntegrations).not.toHaveBeenCalled();
 		});
 
+		it('rejects a channel update on an archived agent', async () => {
+			const { service, agent, row, agentRepository } = setup();
+			// The service reads the archive state from the persisted row.
+			row.isArchived = true;
+
+			await expect(
+				service.applyIntegrationDelta(
+					agent,
+					{ add: { type: 'slack', credentialId: 'slack-1' } },
+					byUser,
+				),
+			).rejects.toThrow('Cannot update an archived agent');
+			expect(agentRepository.updateIntegrations).not.toHaveBeenCalled();
+		});
+
 		it('persists n8n Chat despite its empty credentialId', async () => {
 			const { service, agent, row } = setup();
 
