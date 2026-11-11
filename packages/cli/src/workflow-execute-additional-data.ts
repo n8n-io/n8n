@@ -33,6 +33,7 @@ import type {
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
+	IWorkflowExecutionTelemetryMetadata,
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
@@ -85,7 +86,7 @@ import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
-import { objectToError } from '@/utils/object-to-error';
+import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
@@ -657,6 +658,24 @@ async function startExecution(
 		CredentialsPermissionChecker,
 	).getCredentialIdsForNodes(workflowData.nodes);
 
+	// A failed sub-workflow returns an error, not a result. Attach to the error the private
+	// credentials that the sub-workflow used and the channels that it redacts. The parent reads
+	// them in `BaseExecuteContext.executeWorkflow`, also when its node continues on fail.
+	const buildErrorForParent = (
+		error: unknown,
+		executionData: IRunExecutionData | undefined,
+	): Error =>
+		attachSubWorkflowRedaction(
+			attachDynamicCredentialsUsage(
+				buildSubWorkflowError(error, workflow, {
+					executionId,
+					workflowId: workflowData.id,
+				}),
+				summarizeDynamicCredentialsUsage(executionData, workflowCredentialIds),
+			),
+			summarizeSubWorkflowRedaction(executionData, { includeOwn }),
+		);
+
 	let hooks: ExecutionLifecycleHooks | undefined;
 	let callerAllowed = false;
 	let credentialChecksPassed = false;
@@ -670,6 +689,9 @@ async function startExecution(
 		 */
 		await executionRepository.setRunning(executionId);
 
+		// The hooks read this object when the run ends, so the credential check
+		// below can still fill it in.
+		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = {};
 		const push = subExecutionPushOptions(additionalData, options);
 		hooks = getLifecycleHooksForSubExecutions({
 			mode: runData.executionMode,
@@ -678,6 +700,7 @@ async function startExecution(
 			userId: additionalData.userId,
 			parentExecution: options.parentExecution,
 			...push,
+			telemetryMetadata,
 		});
 
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -713,11 +736,12 @@ async function startExecution(
 			// acting user rides along only for what that project does not carry: a
 			// credential reachable personally has to stay runnable by the person it
 			// belongs to, one level down as much as at the top.
-			await Container.get(CredentialsPermissionChecker).check(
+			const { personalCredentialsCount } = await Container.get(CredentialsPermissionChecker).check(
 				workflowData.id,
 				workflowData.nodes,
 				additionalData.userId,
 			);
+			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
 		credentialChecksPassed = true;
 
@@ -854,34 +878,17 @@ async function startExecution(
 		} catch (recordError) {
 			logUnrecordedFailure(recordError);
 		}
+
 		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
-		// credential flags on already-executed tasks — ride them on the error like the
-		// regular failure path below.
-		throw attachSubWorkflowRedaction(
-			attachDynamicCredentialsUsage(
-				objectToError(
-					{
-						...executionError,
-						executionId,
-						workflowId: workflowData.id,
-						stack: executionError?.stack,
-						message: executionError?.message,
-					},
-					workflow,
-				),
-				summarizeDynamicCredentialsUsage(runData.executionData, workflowCredentialIds),
-			),
-			summarizeSubWorkflowRedaction(runData.executionData, { includeOwn }),
-		);
+		// credential flags on already-executed tasks.
+		throw buildErrorForParent(executionError, runData.executionData);
 	}
+
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
-		// Workflow did finish successfully
-
-		activeExecutions.finalizeExecution(executionId, data);
-
 		return {
 			executionId,
 			data: data.data.subWorkflowOutput
@@ -893,30 +900,9 @@ async function startExecution(
 			// The caller keeps a copy of the output above, so it must redact what this run redacts.
 			subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn }),
 		};
+	} else {
+		throw buildErrorForParent(data.data.resultData.error, data.data);
 	}
-	activeExecutions.finalizeExecution(executionId, data);
-
-	// Workflow did fail
-	const { error } = data.data.resultData;
-
-	// A failed child may still have attempted or resolved private credentials before failing;
-	// ride the usage on the error so a continue-on-fail caller still flags its task
-	// (see `BaseExecuteContext.executeWorkflow`). The redaction channels ride along the same way.
-	throw attachSubWorkflowRedaction(
-		attachDynamicCredentialsUsage(
-			objectToError(
-				{
-					...error,
-					executionId,
-					workflowId: workflowData.id,
-					stack: error?.stack,
-				},
-				workflow,
-			),
-			summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
-		),
-		summarizeSubWorkflowRedaction(data.data, { includeOwn }),
-	);
 }
 
 export function setExecutionStatus(this: { executionId?: string }, status: ExecutionStatus) {
