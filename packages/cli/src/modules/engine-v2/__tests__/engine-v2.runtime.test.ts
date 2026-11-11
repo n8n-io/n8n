@@ -43,7 +43,7 @@ const mocks = vi.hoisted(() => {
 	const listen: { error?: Error } = {};
 
 	const server = {
-		close: vi.fn((done: (error?: Error) => void) => done()),
+		close: vi.fn((done?: (error?: Error) => void) => done?.()),
 		once: vi.fn((event: string, listener: (error?: Error) => void) => {
 			if (event === 'listening' && !listen.error) listener();
 			if (event === 'error' && listen.error) listener(listen.error);
@@ -433,12 +433,13 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
 		});
 
-		it('stops the engine and closes the connection when the server fails to listen', async () => {
+		it('closes the unbound server, stops the engine and closes the connection when the server fails to listen', async () => {
 			mocks.listen.error = new Error('listen failed');
 
 			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
 
-			expect(mocks.server.close).not.toHaveBeenCalled();
+			// Closing it drops its subscription to TLS reloads.
+			expect(mocks.server.close).toHaveBeenCalledOnce();
 			expect(mocks.engine.stop).toHaveBeenCalled();
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 		});
@@ -466,7 +467,7 @@ describe('EngineV2Runtime', () => {
 		it('stops the engine and closes the connection when the server fails to close', async () => {
 			const runtime = newRuntime();
 			await runtime.init(senders());
-			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			const error = await runtime
 				.shutdown()
@@ -518,7 +519,7 @@ describe('EngineV2Runtime', () => {
 		it('releases a resource again when its first release failed', async () => {
 			const runtime = newRuntime();
 			await runtime.init(senders());
-			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
 			await expect(runtime.shutdown()).resolves.toBeUndefined();

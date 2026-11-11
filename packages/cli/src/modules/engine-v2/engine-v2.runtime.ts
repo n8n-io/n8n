@@ -201,7 +201,11 @@ export class EngineV2Runtime {
 
 			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
 			listener.once('listening', () => resolve(listener));
-			listener.once('error', reject);
+			listener.once('error', (error) => {
+				// Also ends its subscription to TLS reloads.
+				listener.close();
+				reject(error);
+			});
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
