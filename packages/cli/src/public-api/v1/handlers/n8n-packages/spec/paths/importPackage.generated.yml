@@ -18,6 +18,8 @@ description: |-
   Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, directory imports, and Promotions before writes.
 
   Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, `publishingPolicy=match-source`, and `bindings={"credentials":{"source-credential":"target-credential"}}`.
+
+  Requires one of these API key scopes: `workflow:import`, `agent:import`.
 x-required-scope: workflow:import,agent:import
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

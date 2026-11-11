@@ -1,10 +1,10 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import {
 	CredentialsRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
-	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
@@ -32,7 +32,7 @@ Container.set(
 
 const testServer = setupTestServer({ endpointGroups: ['ai'] });
 
-let owner: User;
+let owner: Person;
 let ownerPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
@@ -104,8 +104,8 @@ describe('POST /ai/free-credits', () => {
 		expect(sharedCredential.credentials.name).toBe(FREE_AI_CREDITS_CREDENTIAL_NAME);
 		expect(sharedCredential.credentials.isManaged).toBe(true);
 
-		const user = await Container.get(UserRepository).findOneOrFail({ where: { id: owner.id } });
+		const person = await Container.get(PersonRepository).findById(owner.id);
 
-		expect(user.settings?.userClaimedAiCredits).toBe(true);
+		expect(person?.settings?.userClaimedAiCredits).toBe(true);
 	});
 });

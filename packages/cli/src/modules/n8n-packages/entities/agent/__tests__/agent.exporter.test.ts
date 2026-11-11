@@ -113,6 +113,20 @@ describe('AgentExporter', () => {
 		},
 	);
 
+	it('keeps the webhook channel in a published export', async () => {
+		const { agent, exporter } = setup();
+		const webhook = {
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		} as const;
+		agent.integrations = [webhook];
+
+		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
+
+		expect(snapshot?.content.config?.integrations).toContainEqual(webhook);
+	});
+
 	it('skips an unpublished Agent under ignore-unpublished', async () => {
 		const { agent, exporter } = setup();
 		agent.activeVersionId = null;
