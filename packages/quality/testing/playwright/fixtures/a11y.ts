@@ -118,12 +118,7 @@ export class A11yChecker {
 		}
 	}
 
-	/**
-	 * WCAG contrast ratio between the rendered text color of `text` and the rendered
-	 * background color of `background`, scored with the color math of axe-core.
-	 * Use it where the `color-contrast` rule reports the element as incomplete, for
-	 * example in tooltips, which axe treats as overlapped.
-	 */
+	/** WCAG contrast ratio of rendered colors, for text axe `color-contrast` cannot score. */
 	async contrastRatio(text: Locator, background: Locator): Promise<number> {
 		const backgroundColor = await background.evaluate(
 			(element) => getComputedStyle(element).backgroundColor,

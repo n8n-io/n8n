@@ -63,7 +63,6 @@ export class CredentialModal extends BaseModal {
 		await field.locator('[data-icon="circle-help"]').hover();
 	}
 
-	/** The open field description tooltip. It renders outside the modal. */
 	getFieldHelpTooltip(): Locator {
 		return this.root.page().locator('.n8n-tooltip:visible');
 	}
