@@ -1,0 +1,59 @@
+operationId: deleteAgent
+tags:
+  - Agent
+summary: Delete an agent
+description: |-
+  Delete an agent and its associated resources.
+
+  Requires the `agent:delete` API key scope.
+x-required-scope: agent:delete
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            projectId:
+              type: string
+            availableInMCP:
+              type: boolean
+            versionId:
+              type: string
+              nullable: true
+            activeVersionId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+          required:
+            - id
+            - name
+            - projectId
+            - availableInMCP
+            - versionId
+            - activeVersionId
+            - createdAt
+            - updatedAt
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
