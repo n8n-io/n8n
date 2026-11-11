@@ -12,7 +12,7 @@ name: 'CI: Owners Assign Reviewers'
 #
 # Runs on `labeled` (so adding the label assigns immediately) and on
 # `synchronize` (so newly-touched files still get assigned before the marker
-# lands). The label checks live in the script, so other PRs exit early.
+# lands). Other label events skip the job before it starts a runner.
 
 on:
   pull_request:
@@ -33,6 +33,7 @@ jobs:
     #    owning team
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'Auto-assign reviewers') &&
       (github.event.pull_request.user.type != 'Bot' ||
        github.event.pull_request.user.login == 'n8n-cat-bot[bot]')
     runs-on: ubuntu-latest
