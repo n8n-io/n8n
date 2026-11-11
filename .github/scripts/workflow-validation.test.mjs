@@ -146,7 +146,11 @@ describe('automated release PR CI bypass', () => {
 		"startsWith(github.event.pull_request.head.ref, 'release-pr/')",
 		"startsWith(github.event.pull_request.base.ref, 'release/')",
 	].join(' && ');
-	const compact = (condition) => condition.replaceAll(/\s/g, '');
+	const compact = (condition) =>
+		condition
+			.trim()
+			.replace(/^\$\{\{(.*)\}\}$/s, '$1')
+			.replaceAll(/\s/g, '');
 
 	const assertSkipsReleasePr = (condition) => {
 		assert.ok(compact(condition).includes(`!(${compact(releasePrConjunction)})`));
@@ -157,25 +161,48 @@ describe('automated release PR CI bypass', () => {
 			compact(`github.event_name == 'pull_request' && ${releasePrConjunction}`),
 		);
 	};
+	const assertNeedsPrPolicy = (job) => {
+		assert.ok(job.needs === 'pr-policy' || job.needs.includes('pr-policy'));
+	};
+	const assertUsesPrPolicy = (job) => {
+		assertNeedsPrPolicy(job);
+		assert.match(job.if, /needs\.pr-policy\.outputs\.skip-ci != 'true'/);
+	};
 
 	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
+		const policy = workflowFile('ci-pr-policy-reusable.yml');
+		assert.equal(policy.jobs.classify.outputs['skip-ci'], '${{ steps.policy.outputs.skip-ci }}');
+		assertPassesReleasePr(stepNamed(policy, 'classify', 'Evaluate PR policy').env.SKIP_CI);
+
 		const ci = workflowFile('ci-pull-requests.yml');
-		assertSkipsReleasePr(ci.jobs['install-and-build'].if);
-		assertSkipsReleasePr(ci.jobs['format-check'].if);
+		assert.equal(ci.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(ci.jobs['install-and-build']);
+		assertUsesPrPolicy(ci.jobs['format-check']);
 		assert.equal(ci.jobs['required-checks'].if, 'always()');
-		assertSkipsReleasePr(stepNamed(ci, 'required-checks', 'Validate required checks').if);
-		assertPassesReleasePr(stepNamed(ci, 'required-checks', 'Pass automated release PR').if);
+		assertNeedsPrPolicy(ci.jobs['required-checks']);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
 
 		const quality = workflowFile('ci-pr-quality.yml');
-		assertSkipsReleasePr(quality.jobs.changes.if);
-		assertSkipsReleasePr(quality.jobs['check-knip'].if);
-		assertSkipsReleasePr(quality.jobs['check-do-not-merge'].if);
+		assert.equal(quality.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(quality.jobs.changes);
+		assertUsesPrPolicy(quality.jobs['check-knip']);
+		assertUsesPrPolicy(quality.jobs['check-do-not-merge']);
 		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
-		assertSkipsReleasePr(
+		assertNeedsPrPolicy(quality.jobs['required-pr-quality-checks']);
+		assert.equal(
 			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
 		);
-		assertPassesReleasePr(
+		assert.equal(
 			stepNamed(quality, 'required-pr-quality-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
 		);
 	});
 

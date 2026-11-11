@@ -9,14 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-policy:
+    uses: ./.github/workflows/ci-pr-policy-reusable.yml
+
   install-and-build:
     name: Install & Build
-    if: >-
-      github.event_name != 'pull_request' || !(
-        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
-        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
-        startsWith(github.event.pull_request.base.ref, 'release/')
-      )
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
@@ -155,6 +154,7 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               .github/workflows/ci-pull-requests.yml
+              .github/workflows/ci-pr-policy-reusable.yml
               .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
@@ -302,12 +302,8 @@ jobs:
 
   format-check:
     name: Format check
-    if: >-
-      github.event_name != 'pull_request' || !(
-        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
-        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
-        startsWith(github.event.pull_request.base.ref, 'release/')
-      )
+    needs: pr-policy
+    if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
@@ -608,6 +604,7 @@ jobs:
     name: Required Checks
     needs:
       [
+        pr-policy,
         install-and-build,
         format-check,
         unit-test,
@@ -628,33 +625,19 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout CI filter
-        if: >-
-          github.event_name != 'pull_request' || !(
-            github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
-            startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
-            startsWith(github.event.pull_request.base.ref, 'release/')
-          )
+        if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
       - name: Validate required checks
-        if: >-
-          github.event_name != 'pull_request' || !(
-            github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
-            startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
-            startsWith(github.event.pull_request.base.ref, 'release/')
-          )
+        if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
       - name: Pass automated release PR
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
-          startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
-          startsWith(github.event.pull_request.base.ref, 'release/')
+        if: needs.pr-policy.outputs.skip-ci == 'true'
         run: echo 'CI is not required for automated release PRs.'
 
   # A red `chore: Bundle/*` PR blocks publishing every fix batched into it, so the
