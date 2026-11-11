@@ -16,6 +16,24 @@ export interface AutoSelectedCredential {
 }
 
 /**
+ * Picker rows for a host-supplied credential list, for the `credentials`
+ * override of NodeCredentials. A row the store holds keeps its badges, such as
+ * resolvable or managed. Other rows are built from the listed `{ id, name }`.
+ */
+export function toOverrideCredentials(
+	listed: Array<{ id: string; name: string }>,
+	type: string,
+	getStored: (id: string) => ICredentialsResponse | undefined,
+): ICredentialsResponse[] {
+	return listed.map(({ id, name }) => {
+		const stored = getStored(id);
+		return stored?.type === type
+			? stored
+			: { id, name, type, isManaged: false, createdAt: '', updatedAt: '' };
+	});
+}
+
+/**
  * For a node with no credentials set, pick the most recently updated usable
  * credential across its displayed credential types.
  *
@@ -63,4 +81,9 @@ export function hasManagedOAuthApp(credentialType: ICredentialType | undefined):
 	return (
 		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
 	);
+}
+
+/** Whether n8n registers the OAuth app on connect. A managed app takes precedence. */
+export function hasAutomaticOAuthApp(credentialType: ICredentialType | undefined): boolean {
+	return !!credentialType?.dynamicClientRegistration && !hasManagedOAuthApp(credentialType);
 }

@@ -2,6 +2,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
@@ -9,17 +10,24 @@ import type { BuilderModelLiveLookupService } from '../builder/builder-model-liv
 
 const user = { id: 'user-1' } as never;
 
-function makeService(credentials: Array<{ id: string; name: string; type: string }> = []) {
+type TestCredential = { id: string; name: string; type: string };
+
+function makeService(credentials: TestCredential[] = [], inaccessibleIds: string[] = []) {
 	const credentialsService = mock<CredentialsService>();
 	const modelLookupService = mock<BuilderModelLiveLookupService>();
 	const aiGatewayService = mock<AiGatewayService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(credentials as never);
+	credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(async (_user, all) =>
+		all.filter((c) => !inaccessibleIds.includes(c.id)),
+	);
 
 	return {
 		service: new AgentDefaultModelResolverService(
 			credentialsService,
 			modelLookupService,
 			aiGatewayService,
+			credentialsPermissionChecker,
 		),
 		modelLookupService,
 		aiGatewayService,
@@ -38,6 +46,18 @@ describe('AgentDefaultModelResolverService', () => {
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
 			model: 'anthropic/claude-sonnet-5',
 			credential: 'anthropic-credential',
+		});
+	});
+
+	it("never picks another user's personal credential as the default", async () => {
+		const own = { id: 'own', name: 'My OpenAI', type: 'openAiApi' };
+		const colleague = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
+		const { service, modelLookupService } = makeService([own, colleague], [colleague.id]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+
+		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
+			model: 'openai/gpt-5.6-terra',
+			credential: 'own',
 		});
 	});
 

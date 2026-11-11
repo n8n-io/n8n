@@ -4,10 +4,15 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_ADMIN_ROLE,
+	isPerson,
+	Person,
 	ProjectRepository,
+	type User,
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import type { Repository } from '@n8n/typeorm';
 
 import {
 	IdentityResolutionService,
@@ -19,8 +24,14 @@ import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchang
 
 import { createOwner, createUser } from '../shared/db/users';
 
+function asPerson(user: User): Person {
+	if (!isPerson(user)) throw new Error('Expected a person');
+	return user;
+}
+
 let service: IdentityResolutionService;
 let userRepository: UserRepository;
+let personTable: Repository<Person>;
 let authIdentityRepository: AuthIdentityRepository;
 let projectRepository: ProjectRepository;
 let trustedKeyService: TrustedKeyService;
@@ -31,6 +42,7 @@ beforeAll(async () => {
 
 	service = Container.get(IdentityResolutionService);
 	userRepository = Container.get(UserRepository);
+	personTable = Container.get(DataSource).getRepository(Person);
 	authIdentityRepository = Container.get(AuthIdentityRepository);
 	projectRepository = Container.get(ProjectRepository);
 	trustedKeyService = Container.get(TrustedKeyService);
@@ -88,7 +100,7 @@ describe('IdentityResolutionService (integration)', () => {
 			);
 
 			expect(result.id).toBe(user.id);
-			expect(result.email).toBe('known@example.com');
+			expect(asPerson(result).email).toBe('known@example.com');
 			expect(result.role).toBeDefined();
 			expect(result.role.slug).toBe('global:member');
 			expect(result.role.scopes.length).toBeGreaterThan(0);
@@ -118,7 +130,7 @@ describe('IdentityResolutionService (integration)', () => {
 
 			expect(result.id).toBe(user.id);
 
-			const dbUser = await userRepository.findOneBy({ id: user.id });
+			const dbUser = await personTable.findOneBy({ id: user.id });
 			expect(dbUser!.firstName).toBe('Same');
 			expect(dbUser!.lastName).toBe('Name');
 		});
@@ -204,13 +216,13 @@ describe('IdentityResolutionService (integration)', () => {
 
 			const result = await service.resolve(claims, undefined, ctx());
 
-			expect(result.email).toBe('jit@example.com');
-			expect(result.firstName).toBe('Jay');
-			expect(result.lastName).toBe('Tee');
+			expect(asPerson(result).email).toBe('jit@example.com');
+			expect(asPerson(result).firstName).toBe('Jay');
+			expect(asPerson(result).lastName).toBe('Tee');
 			expect(result.role.slug).toBe('global:member');
 			expect(result.role.scopes.length).toBeGreaterThan(0);
 
-			const dbUser = await userRepository.findOne({
+			const dbUser = await personTable.findOne({
 				where: { id: result.id },
 				select: ['id', 'password'],
 			});
@@ -460,11 +472,11 @@ describe('IdentityResolutionService (integration)', () => {
 				ctx(),
 			);
 
-			expect(result.firstName).toBe('New');
-			expect(result.lastName).toBe('Last');
+			expect(asPerson(result).firstName).toBe('New');
+			expect(asPerson(result).lastName).toBe('Last');
 			expect(result.role).toEqual(expect.objectContaining({ slug: 'global:admin' }));
 
-			const dbUser = await userRepository.findOne({
+			const dbUser = await personTable.findOne({
 				where: { id: user.id },
 				relations: ['role'],
 			});

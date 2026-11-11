@@ -6,11 +6,9 @@ description: >-
   remove an evaluation, score, grade, or judge a workflow's output, or measure
   answer quality against a test dataset. This is the only eval form Instance AI
   handles — it does not touch on-canvas evaluation nodes.
-recommended_tools:
-  - eval-config
-  - list_data_tables
-  - create_data_table
-  - insert_data_table_rows
+recommended_tool_groups:
+  - tools
+  - data_tables
 platforms:
   - daytona
 ---
@@ -34,7 +32,7 @@ build a config eval instead and briefly say that is how you set up evaluations.
   Must be a node with an incoming connection — **never a trigger** (see step 2).
 - `endNodeName` — the node whose output is judged.
 - `dataTableId` — a Data Table holding the test dataset. Create and populate it
-  with `create_data_table` and `insert_data_table_rows` first, then link it here by id.
+  by running `create_data_table` and `insert_data_table_rows` through `call_tool` first, then link it here by id.
 - `metrics` — one or more judged metrics (see below).
 
 ## Default Procedure
@@ -49,9 +47,9 @@ build a config eval instead and briefly say that is how you set up evaluations.
      workflow this is usually the agent node (often the same as `endNodeName`).
    - `endNodeName` is the node whose output you want scored (usually the AI agent
      or the final response node).
-3. Resolve the dataset. Call `list_data_tables` to find an existing
-   dataset, or create and seed one with `create_data_table` and
-   `insert_data_table_rows` before creating the config.
+3. Resolve the dataset. Run `list_data_tables` through `call_tool` to find an existing
+   dataset, or create and seed one by running `create_data_table` and
+   `insert_data_table_rows` through `call_tool` before creating the config.
    Never invent a `dataTableId`; use one returned by the data table tools.
 4. Choose metrics and build the `actualAnswer` / `expectedAnswer` / `userQuery`
    expressions (see Metrics).
@@ -109,7 +107,7 @@ relative to the request. Use `prompt` only to override the default judge prompt.
 
 ## Dataset Boundary
 
-- Build the dataset with `create_data_table` and `insert_data_table_rows`: one column for each input the
+- Build the dataset by running `create_data_table` and `insert_data_table_rows` through `call_tool`: one column for each input the
   evaluation varies, plus a ground-truth column when using `correctness`.
 - The config only references the dataset by `dataTableId`; the `eval-config` tool
   does not create or populate rows. If no suitable dataset exists, create one

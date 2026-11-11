@@ -392,6 +392,18 @@ describe('TelegramInteractionWebhooks', () => {
 			);
 		});
 
+		it('answers 400 and does not resume for a step-bound reference the data plane does not read', async () => {
+			dataPlane.readApprovalCallback.mockReturnValue(undefined);
+			const res = makeRes();
+
+			const result = await svc.executeWebhook(makeReq('nhitl2|AZJqTn9ccACAAAAAAAAAAQ|a|mac'), res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(getWebhookExecutionData).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			[401, 'invalid_token', 404],
 			[404, 'not_found', 404],

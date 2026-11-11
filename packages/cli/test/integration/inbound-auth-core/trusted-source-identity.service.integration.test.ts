@@ -3,7 +3,12 @@ import { LicenseState } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
 import { RoleMappingProxyService } from '@n8n/backend-services/auth';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import {
+	PersonRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	trustedSourceConfigSchemaFor,
@@ -38,6 +43,7 @@ let cacheService: CacheService;
 let rows: Repository<TrustedSourceEntity>;
 let bindings: Repository<TrustedSourceIdentityEntity>;
 let users: UserRepository;
+let people: PersonRepository;
 let service: TrustedSourceIdentityService;
 let emit: ReturnType<typeof spyOnEmit>;
 
@@ -153,6 +159,7 @@ beforeAll(async () => {
 	rows = Container.get(DataSource).getRepository(TrustedSourceEntity);
 	bindings = Container.get(DataSource).getRepository(TrustedSourceIdentityEntity);
 	users = Container.get(UserRepository);
+	people = Container.get(PersonRepository);
 	service = Container.get(TrustedSourceIdentityService);
 });
 
@@ -545,28 +552,25 @@ describe('TrustedSourceIdentityService (integration)', () => {
 					),
 				);
 
-				const user = await users.findOneOrFail({
-					where: { email: 'new.user@example.com' },
-					relations: ['role'],
-				});
-				expect(user).toMatchObject({
+				const person = (await people.findByEmailWithAuthIdentities('new.user@example.com'))!;
+				expect(person).toMatchObject({
 					kind: 'person',
 					firstName: 'Ada',
 					lastName: 'King Lovelace',
 					password: '!trusted-source-no-password',
 				});
-				expect(user.role.slug).toBe('global:member');
+				expect(person.role.slug).toBe('global:member');
 				expect(
-					await Container.get(ProjectRepository).getPersonalProjectForUser(user.id),
+					await Container.get(ProjectRepository).getPersonalProjectForUser(person.id),
 				).not.toBeNull();
 				expect(await readBinding(source, 'bob')).toMatchObject({
 					provenance: 'jit',
 					status: 'active',
-					userId: user.id,
+					userId: person.id,
 				});
-				expect(context.subject.id).toBe(user.id);
+				expect(context.subject.id).toBe(person.id);
 				expect(emit).toHaveBeenCalledWith('trusted-source-user-provisioned', {
-					userId: user.id,
+					userId: person.id,
 					sourceId: source.id,
 					issuer: source.issuer,
 					subject: 'bob',
@@ -590,9 +594,9 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				),
 			);
 
-			const user = await users.findOneByOrFail({ email: 'bob@example.com' });
-			expect(user.firstName).toHaveLength(32);
-			expect(user.lastName).toBe('Lovelace');
+			const person = (await people.findByEmail('bob@example.com'))!;
+			expect(person.firstName).toHaveLength(32);
+			expect(person.lastName).toBe('Lovelace');
 		});
 
 		it.each([
@@ -617,7 +621,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('provision-refused');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -632,7 +636,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -673,8 +677,8 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				),
 			);
 
-			const user = await users.findOneByOrFail({ email: 'bob@example.com' });
-			expect(context.subject.id).toBe(user.id);
+			const person = (await people.findByEmail('bob@example.com'))!;
+			expect(context.subject.id).toBe(person.id);
 			expect((await readBinding(source, 'bob')).provenance).toBe('jit');
 		});
 	});
@@ -971,7 +975,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 
@@ -998,7 +1002,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			);
 
 			expect(rejectReason(result)).toBe('no-role');
-			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await people.findByEmail('bob@example.com')).toBeNull();
 			expect(await bindings.count()).toBe(0);
 		});
 

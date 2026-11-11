@@ -5,7 +5,9 @@
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
-		"implicitDependencies": ["~icons"]
+		// `k6` modules are provided by the k6 runtime that runs the benchmark scenario
+		// scripts. npm only has their types (`@types/k6`).
+		"implicitDependencies": ["~icons", "k6"]
 	},
 	"futureFlags": {
 		// `--affected` uses task `inputs`, so it selects a task that reads a file from another package.

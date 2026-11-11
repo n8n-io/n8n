@@ -10,16 +10,9 @@ import type { ArtifactThread } from '../artifactThread';
  * panel, or a full-page builder in another route.
  */
 export function useAgentMutationRefresh(thread: ArtifactThread): void {
-	const latestAgentConfigMutation = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestAgentConfigMutation(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestAgentConfigMutation = computed(
+		() => getLatestAgentConfigMutation(thread.artifactTurns) ?? null,
+	);
 
 	watch(
 		() => latestAgentConfigMutation.value?.toolCallId,
