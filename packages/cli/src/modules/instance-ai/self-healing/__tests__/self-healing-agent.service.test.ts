@@ -293,20 +293,27 @@ describe('SelfHealingAgentService', () => {
 		);
 	});
 
-	it('adds the credits of verification helper calls to the run total', async () => {
-		credits.claimHelperUsage.mockResolvedValue(0.05);
+	const helperReport = {
+		helper: 'verification-simulation-fixtures',
+		model: 'anthropic/claude-haiku-5-5',
+		usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
+		reportId: 'report-1',
+	};
+
+	function reportHelperUsageDuringRun(reportIds: string[]) {
 		vi.mocked(streamAgentRun).mockImplementationOnce(async () => {
 			const { onHelperUsage } = adapter.createContext.mock.calls[0][1] ?? {};
-			const report = {
-				helper: 'verification-simulation-fixtures',
-				model: 'anthropic/claude-haiku-5-5',
-				usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
-				reportId: 'report-1',
-			};
-			await onHelperUsage?.(report);
-			await onHelperUsage?.({ ...report, reportId: 'report-2' });
+			// Helpers do not await their billing, so the run must still collect it.
+			for (const reportId of reportIds) void onHelperUsage?.({ ...helperReport, reportId });
 			return stream;
 		});
+	}
+
+	it('adds the credits of verification helper calls to the run total', async () => {
+		credits.claimHelperUsage.mockImplementation(
+			async () => await new Promise((resolve) => setTimeout(() => resolve(0.05), 5)),
+		);
+		reportHelperUsageDuringRun(['report-1', 'report-2']);
 
 		const result = await service.execute(input, options);
 
@@ -318,6 +325,16 @@ describe('SelfHealingAgentService', () => {
 			'self_healing',
 		);
 		expect(result.usage).toMatchObject({ credits: 0.35 });
+	});
+
+	it('keeps null credits when the run claim fails, even with helper credits', async () => {
+		credits.claimHelperUsage.mockResolvedValue(0.05);
+		credits.claimRunUsage.mockResolvedValueOnce(undefined);
+		reportHelperUsageDuringRun(['report-1']);
+
+		const result = await service.execute(input, options);
+
+		expect(result.usage).toMatchObject({ credits: null });
 	});
 
 	it('names the triggering workflow and binds verification', async () => {

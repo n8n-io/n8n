@@ -91,7 +91,8 @@ export async function generateValidatedJson<T>(
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
-		if (result.usage) await reportUsage(agentName, options, result.usage);
+		// Not awaited: billing must not delay the helper result.
+		if (result.usage) void reportUsage(agentName, options, result.usage);
 		text = extractText(result);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

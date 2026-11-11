@@ -191,6 +191,24 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		it('wires helper usage billing into the context', async () => {
+			const { factory, fields } = createSetupFactory();
+			const claimer = vi.fn();
+			fields.creditService.helperUsageClaimer.mockReturnValue(claimer);
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.creditService.helperUsageClaimer).toHaveBeenCalledWith(
+				params.user,
+				params.threadId,
+				params.runId,
+			);
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				params.user,
+				expect.objectContaining({ onHelperUsage: claimer }),
+			);
+		});
+
 		it('gives the trace of the turn to the error reports of the setup', async () => {
 			const { factory, fields } = createSetupFactory();
 			const report = vi.fn();

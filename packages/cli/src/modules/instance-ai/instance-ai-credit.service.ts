@@ -96,18 +96,6 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Claim decimal, token-based credits for one finished run segment.
-	 *
-	 * Billed for every terminal outcome (completed / cancelled / errored) so stopped
-	 * and errored runs still count, deduped per `dedupeId` (the run segment's
-	 * `agentRunId`, or the run id when none is available). The service is the billing
-	 * authority and dedupes replays atomically; the in-memory set is a fast intra-process
-	 * guard, claimed before the async call and released on failure so a retry can re-claim.
-	 *
-	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
-	 * authoritative ledger is the service-side claimedCount.
-	 */
-	/**
 	 * Claims the usage of one helper LLM call, such as the verification classifier
 	 * or the simulation fixtures. Returns the claimed credits. Best effort: a
 	 * billing failure is logged and never fails the helper.
@@ -150,6 +138,18 @@ export class InstanceAiCreditService {
 		};
 	}
 
+	/**
+	 * Claim decimal, token-based credits for one finished run segment.
+	 *
+	 * Billed for every terminal outcome (completed / cancelled / errored) so stopped
+	 * and errored runs still count, deduped per `dedupeId` (the run segment's
+	 * `agentRunId`, or the run id when none is available). The service is the billing
+	 * authority and dedupes replays atomically; the in-memory set is a fast intra-process
+	 * guard, claimed before the async call and released on failure so a retry can re-claim.
+	 *
+	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
+	 * authoritative ledger is the service-side claimedCount.
+	 */
 	async claimRunUsage(
 		user: User,
 		threadId: string,
