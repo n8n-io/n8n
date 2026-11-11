@@ -58,8 +58,8 @@ export class EngineMtls {
 
 	/**
 	 * With TLS, a client that presents this process's certificate and trusts
-	 * only the engine CA. After a reload it sends new requests with the new
-	 * certificate and lets running ones finish.
+	 * only the engine CA, added to the caller's `connectionPool`. After a reload
+	 * it sends new requests with the new certificate and lets running ones finish.
 	 */
 	requests(options: HttpRequestClientOptions): HttpRequestClient {
 		const client = this.newClient(options);
@@ -83,7 +83,14 @@ export class EngineMtls {
 				this.outboundHttp.requests({
 					...options,
 					// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
-					connectionPool: { agentOptions: { ...tls.current, rejectUnauthorized: true } },
+					connectionPool: {
+						...options.connectionPool,
+						agentOptions: {
+							...options.connectionPool?.agentOptions,
+							...tls.current,
+							rejectUnauthorized: true,
+						},
+					},
 				}),
 			(reload) => tls.subscribe(reload),
 		);

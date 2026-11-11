@@ -121,6 +121,20 @@ describe('EngineMtls', () => {
 			});
 		});
 
+		it("keeps the caller's connection pool settings and adds the certificate to them", () => {
+			mtls.requests({
+				...options,
+				connectionPool: { agentOptions: { keepAlive: false, rejectUnauthorized: false } },
+			});
+
+			expect(outboundHttp.requests).toHaveBeenCalledExactlyOnceWith({
+				...options,
+				connectionPool: {
+					agentOptions: { keepAlive: false, ...tlsOf('old'), rejectUnauthorized: true },
+				},
+			});
+		});
+
 		it('rebuilds a client with the reloaded certificate and closes the old one', async () => {
 			const client = mtls.requests(options);
 
