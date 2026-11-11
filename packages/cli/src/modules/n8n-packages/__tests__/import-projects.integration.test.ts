@@ -2231,9 +2231,9 @@ describe('project custom span attributes (LIGO-862)', () => {
 		});
 
 		expect(result.projects).toEqual([
-			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'updated' },
+			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'skipped' },
 		]);
-		// The update path leaves the column untouched when the incoming value is undefined.
+		// A missing field keeps its value, so nothing changes and the project is not updated.
 		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
 	});
 });

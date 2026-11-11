@@ -1267,7 +1267,7 @@ erDiagram
   varchar_8_ origin
   varchar_16_ outcome
   varchar_36_ projectId
-  integer runtimeMs
+  bigint runtimeMs
   varchar_32_ source
   integer timeSavedMin
 }
