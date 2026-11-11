@@ -7,7 +7,7 @@ import type { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -44,6 +44,7 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -174,6 +175,7 @@ function makeService() {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			knowledgeUsageTracker,
+			mock<AgentSandboxFilesService>(),
 		),
 		telemetry,
 		credentialsService,

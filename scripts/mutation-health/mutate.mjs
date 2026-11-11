@@ -285,9 +285,6 @@ function findPackageRoot(fromAbs) {
 
 // --- diff-mode planning (pure helpers exported for the unit tests) ---
 
-// Stryker's dry run stops with SIGABRT on the isolated-vm engine. See DEVP-257.
-const BLOCKED_PACKAGES = new Set(['@n8n/expression-runtime']);
-
 const NON_SOURCE = [
 	/\.d\.ts$/,
 	/\.(test|spec)\.[cm]?tsx?$/,
@@ -481,9 +478,6 @@ function packageUsesVitest(pkgRoot) {
 // so a named target and a --diff target always get the same answer.
 function ineligibleReason(pkgRoot) {
 	const pkgName = packageNameOf(pkgRoot) || path.relative(repoRoot, pkgRoot);
-	if (BLOCKED_PACKAGES.has(packageNameOf(pkgRoot))) {
-		return `${pkgName} is blocked: the isolated-vm engine crashes Stryker's dry run (DEVP-257)`;
-	}
 	if (!packageUsesVitest(pkgRoot)) return `${pkgName} is not a vitest package`;
 	return null;
 }

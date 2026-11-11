@@ -4,7 +4,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import type { StateAdapter, Lock, QueueEntry } from 'chat';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';

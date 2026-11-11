@@ -1,5 +1,5 @@
 import type { AgentMessage } from '@n8n/agents';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /** Keep the reserved identity when the runtime adds model-input enrichment. */
 export function bindExecutionInput(

@@ -17,12 +17,8 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import {
-	createRunExecutionData,
-	ExpressionError,
-	UnexpectedError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { createRunExecutionData, ExpressionError, WorkflowOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	IRunExecutionData,
 	ITaskData,
@@ -2262,6 +2258,28 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		it('should emit telemetry metadata that was filled in after the hooks were created', async () => {
+			const telemetryMetadata: NonNullable<IWorkflowExecutionDataProcess['telemetryMetadata']> = {};
+			lifecycleHooks = getLifecycleHooksForSubExecutions(
+				'integrated',
+				executionId,
+				workflowData,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				telemetryMetadata,
+			);
+
+			telemetryMetadata.personalCredentialsCount = 2;
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-post-execute',
+				expect.objectContaining({ telemetryMetadata: { personalCredentialsCount: 2 } }),
+			);
 		});
 
 		describe('when parentExecution is provided', () => {

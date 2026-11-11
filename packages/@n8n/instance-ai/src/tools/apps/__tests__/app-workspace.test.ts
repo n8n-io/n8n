@@ -7,7 +7,7 @@ import {
 	runInSandbox,
 	writeFileViaSandbox,
 } from '../../../workspace/sandbox-fs';
-import { checkOutDraft, packAppFolder, readBaseVersion } from '../app-workspace';
+import { checkOutDraft, installSdk, packAppFolder, readBaseVersion } from '../app-workspace';
 
 vi.mock('@n8n/agents/sandbox', () => ({ getWorkspaceRoot: async () => '/home/user/workspace' }));
 vi.mock('../../../workspace/sandbox-fs', async (importOriginal) => ({
@@ -41,6 +41,22 @@ describe('app workspace', () => {
 		);
 		expect(command).toContain(`tar -xzf '${DIR}.tgz' --no-same-owner -C '${DIR}'`);
 		expect(writeFileViaSandbox).toHaveBeenCalledWith(workspace, `${DIR}.base-version`, 'v1');
+	});
+
+	it('installs the app SDK beside the app folders, where npm ci does not remove it', async () => {
+		const apps = mock<InstanceAiAppService>();
+		const sdk = Buffer.from('sdk');
+		apps.exportSdk.mockResolvedValue(sdk);
+		const archive = '/home/user/workspace/apps/.app-sdk.tgz';
+		const sdkDir = '/home/user/workspace/apps/node_modules/@n8n/app-sdk';
+
+		await installSdk(workspace, apps);
+
+		expect(writeFileViaSandbox).toHaveBeenCalledWith(workspace, archive, sdk);
+		const [, command] = vi.mocked(runInSandbox).mock.calls[0];
+		expect(command).toBe(
+			`rm -rf '${sdkDir}' && mkdir -p '${sdkDir}' && tar -xzf '${archive}' --no-same-owner -C '${sdkDir}' && rm -f '${archive}'`,
+		);
 	});
 
 	it('packs the folder without dependencies and build output and reads the archive as a file', async () => {

@@ -282,7 +282,7 @@ defineExpose({ focus });
 		</div>
 		<ContactAdminModal
 			kind="credential"
-			:node-type-name="contactAdmin.subject"
+			:type-name="contactAdmin.subject"
 			:audience="contactAdmin.audience"
 			v-model:open="isContactAdminOpen"
 		/>

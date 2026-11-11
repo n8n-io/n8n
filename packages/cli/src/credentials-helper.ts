@@ -33,13 +33,12 @@ import {
 	MANAGED_VERSION_KEY,
 	NodeHelpers,
 	Workflow,
-	UnexpectedError,
-	UserError,
 	classifyTriggerIdentity,
 	getCredentialOwnRequestAllowedDomains,
 	isExpression,
 	jsonParse,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -391,6 +390,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// `typeDef.supportedNodes` from the loader holds short node names; the FQ
 		// list (matching the `nodeType` we receive) is exposed via `getSupportedNodes`.
 		return this.credentialTypes.getSupportedNodes(credentialType).includes(nodeType);
+	}
+
+	/** Whether the credential type offers Automatic OAuth mode (dynamic client registration). */
+	supportsDynamicClientRegistration(type: string): boolean {
+		return !!this.credentialTypes.getByName(type)?.dynamicClientRegistration;
 	}
 
 	/**
@@ -757,11 +761,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
+		const dynamicClientRegistration = this.supportsDynamicClientRegistration(type);
 
 		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
 		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.
+		// Registration types let the user choose, so keep the stored choice.
 		const storedData = { ...decryptedDataOriginal };
 		for (const field of OAUTH_PINNED_FIELDS) {
+			if (dynamicClientRegistration && field === 'useDynamicClientRegistration') continue;
 			if (credentialsProperties.some((p) => p.name === field && p.type === 'hidden')) {
 				delete storedData[field];
 			}

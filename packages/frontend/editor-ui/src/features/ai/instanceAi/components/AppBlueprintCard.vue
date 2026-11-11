@@ -3,15 +3,32 @@ import {
 	appNameSchema,
 	appNamespaceSchema,
 	type AppBlueprint,
+	type AppBlueprintErrors,
 	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
-import { N8nButton, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nTag,
+	N8nText,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+
+import ToolIcon from '@/features/shared/toolsConnection/ToolIcon.vue';
+
+type AppBlueprintBinding = NonNullable<AppBlueprint['bindings']>[number];
 
 const props = defineProps<{
 	blueprint: AppBlueprint;
 	readOnly?: boolean;
+	/** Field errors from the previous attempt. The card reopens with them. */
+	errors?: AppBlueprintErrors;
+	/** n8n tried to create the app after approval and failed. */
+	failed?: boolean;
 }>();
 
 const emit = defineEmits<{ submit: [body: InstanceAiConfirmRequest] }>();
@@ -23,7 +40,13 @@ const visibility = ref(props.blueprint.visibility);
 const theme = ref(props.blueprint.theme);
 const additionalInstructions = ref(props.blueprint.additionalInstructions ?? '');
 
-const visibilityOptions = ['project', 'instance', 'public'] as const;
+const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
+	workflow: 'workflow',
+	dataTable: 'table',
+	agent: 'robot',
+};
+
+const visibilityOptions = ['project', 'instance'] as const;
 const themeOptions = computed(() =>
 	(['light', 'dark', 'both'] as const).map((value) => ({
 		value,
@@ -36,14 +59,25 @@ const editedBlueprint = computed<AppBlueprint>(() => ({
 	visibility: visibility.value,
 	description: props.blueprint.description,
 	theme: theme.value,
+	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
 	...(additionalInstructions.value.trim()
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),
 }));
+// The error applies to the rejected namespace only. It clears when the user edits it.
+// A resolved card shows the approved blueprint, so the error no longer applies.
+const namespaceError = computed(() =>
+	!props.readOnly &&
+	props.errors?.namespace === 'taken' &&
+	editedBlueprint.value.namespace === props.blueprint.namespace
+		? i18n.baseText('instanceAi.appBlueprint.namespace.taken')
+		: undefined,
+);
 const isValid = computed(
 	() =>
 		appNameSchema.safeParse(editedBlueprint.value.name).success &&
 		appNamespaceSchema.safeParse(editedBlueprint.value.namespace).success &&
+		!namespaceError.value &&
 		editedBlueprint.value.description.length > 0,
 );
 
@@ -104,8 +138,19 @@ function cancel() {
 						v-model="namespace"
 						size="medium"
 						:disabled="readOnly"
+						:class="namespaceError && $style.fieldInvalid"
+						:aria-invalid="namespaceError ? 'true' : undefined"
 						data-test-id="instance-ai-app-blueprint-namespace"
 					/>
+					<N8nText
+						v-if="namespaceError"
+						size="small"
+						color="danger"
+						role="alert"
+						data-test-id="instance-ai-app-blueprint-namespace-error"
+					>
+						{{ namespaceError }}
+					</N8nText>
 				</label>
 				<label :class="$style.field">
 					<N8nText size="medium" color="text-dark">{{
@@ -144,6 +189,48 @@ function cancel() {
 					</N8nSelect>
 				</label>
 			</div>
+
+			<div v-if="blueprint.bindings?.length" :class="$style.bindings">
+				<N8nText size="medium" color="text-dark" bold>
+					{{ i18n.baseText('instanceAi.appBlueprint.bindings.title') }}
+				</N8nText>
+				<div
+					v-for="binding in blueprint.bindings"
+					:key="`${binding.status}:${binding.kind}:${binding.name}`"
+					:class="$style.binding"
+					:data-binding-kind="binding.kind"
+					data-test-id="instance-ai-app-blueprint-binding"
+				>
+					<ToolIcon
+						:source="{
+							type: 'icon',
+							name: bindingIcons[binding.kind],
+							color: 'var(--color--text)',
+						}"
+					/>
+					<div :class="$style.bindingLabels">
+						<div :class="$style.bindingTitle">
+							<N8nText size="medium" color="text-dark">{{ binding.name }}</N8nText>
+							<N8nTag
+								:text="i18n.baseText(`instanceAi.appBlueprint.bindings.${binding.status}`)"
+								:clickable="false"
+							/>
+						</div>
+						<N8nText size="small" color="text-light">{{ binding.description }}</N8nText>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div
+			v-if="failed"
+			:class="$style.failed"
+			role="alert"
+			data-test-id="instance-ai-app-blueprint-failed"
+		>
+			<N8nText size="medium" color="danger">
+				{{ i18n.baseText('instanceAi.appBlueprint.failed') }}
+			</N8nText>
 		</div>
 
 		<div :class="$style.instructions">
@@ -225,11 +312,53 @@ function cancel() {
 	min-width: 0;
 }
 
+.bindings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
+	padding-top: var(--spacing--sm);
+	border-top: var(--border);
+}
+
+.binding {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) 0;
+}
+
+.bindingLabels {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.bindingTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .instructions {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
+	border-top: var(--border);
+}
+
+/* The input declares its own border variable, so set it on the input element itself. */
+.fieldInvalid:global(.n8n-input) {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
+	--input--border-color--focus: var(--color--danger);
+}
+
+.failed {
+	padding: var(--spacing--xs) var(--spacing--sm);
 	border-top: var(--border);
 }
 

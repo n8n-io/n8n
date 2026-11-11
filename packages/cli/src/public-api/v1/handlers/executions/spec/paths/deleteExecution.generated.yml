@@ -2,7 +2,10 @@ operationId: deleteExecution
 tags:
   - Executions
 summary: Delete an execution
-description: Deletes an execution from your instance.
+description: |-
+  Deletes an execution from your instance.
+
+  Requires the `execution:delete` API key scope.
 x-required-scope: execution:delete
 parameters:
   - schema:

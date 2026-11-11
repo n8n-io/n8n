@@ -9,14 +9,22 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
+import { AppNamespaceTakenError } from '../../../errors/app-namespace-taken.error';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiAppService, InstanceAiContext } from '../../../types';
 import { createAppsTool } from '../apps.tool';
-import { checkOutDraft, packAppFolder, readBaseVersion, writeBaseVersion } from '../app-workspace';
+import {
+	checkOutDraft,
+	installSdk,
+	packAppFolder,
+	readBaseVersion,
+	writeBaseVersion,
+} from '../app-workspace';
 
 vi.mock('../app-workspace', () => ({
 	appFolder: (appId: string) => `apps/${appId}`,
 	checkOutDraft: vi.fn(),
+	installSdk: vi.fn(),
 	packAppFolder: vi.fn(),
 	readBaseVersion: vi.fn(),
 	writeBaseVersion: vi.fn(),
@@ -66,6 +74,21 @@ const BLUEPRINT: AppBlueprint = {
 	visibility: 'project',
 	description: 'Track tasks and mark them complete.',
 	theme: 'both',
+	bindings: [
+		{
+			kind: 'dataTable',
+			name: 'Tasks',
+			description: 'Stores the tasks shown in the app.',
+			status: 'existing',
+			resourceId: 'table-1',
+		},
+		{
+			kind: 'workflow',
+			name: 'Task reminders',
+			description: 'Sends reminders for tasks that are due.',
+			status: 'new',
+		},
+	],
 };
 
 function createInput(blueprint: AppBlueprint = BLUEPRINT) {
@@ -304,6 +327,47 @@ describe('apps tool', () => {
 		expect(appService.createApp).not.toHaveBeenCalled();
 	});
 
+	it('shows the edited blueprint again with a namespace error when the namespace is taken', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup();
+		appService.createApp.mockRejectedValue(new AppNamespaceTakenError('taken-name'));
+		const blueprint = {
+			...BLUEPRINT,
+			namespace: 'taken-name',
+			additionalInstructions: 'Use compact cards.',
+		};
+		const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+
+		await executeTool(tool, createInput(), {
+			resumeData: { approved: true, blueprint },
+			suspend,
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			requestId: expect.any(String),
+			message: 'Review the blueprint for Todos',
+			severity: 'info',
+			inputType: 'app-blueprint',
+			appBlueprint: blueprint,
+			appBlueprintErrors: { namespace: 'taken' },
+		});
+		expect(thread.metadata).toEqual({});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
+	it('returns other create failures to the model', async () => {
+		const { tool, appService } = setup();
+		appService.createApp.mockRejectedValue(new Error('Database unavailable'));
+		const suspend = vi.fn();
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: { approved: true, blueprint: BLUEPRINT },
+			suspend,
+		});
+
+		expect(result).toEqual({ approved: true, blueprint: BLUEPRINT, error: 'Database unavailable' });
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
 	it('keeps an open app folder, binds it to the thread and preserves uncommitted edits', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup();
 		vi.mocked(readBaseVersion).mockResolvedValue('v1');
@@ -313,6 +377,7 @@ describe('apps tool', () => {
 
 		expect(result).toEqual({ path: `apps/${SERVER_ID}`, baseVersionId: 'v1', alreadyOpen: true });
 		expect(checkOutDraft).not.toHaveBeenCalled();
+		expect(installSdk).toHaveBeenCalledWith({}, expect.anything());
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
 			{ appId: SERVER_ID, projectId: 'project-1' },
 		]);
@@ -322,6 +387,171 @@ describe('apps tool', () => {
 			name: 'Todos',
 			projectId: 'project-1',
 		});
+	});
+
+	it('installs the app SDK before it checks out a new app', async () => {
+		const { tool, appService } = setup();
+
+		await executeTool(tool, { action: 'open', appId: SERVER_ID });
+
+		expect(installSdk).toHaveBeenCalledWith({}, appService);
+		expect(vi.mocked(installSdk).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(checkOutDraft).mock.invocationCallOrder[0],
+		);
+	});
+
+	describe('binding changes', () => {
+		const tasks = {
+			key: 'tasks',
+			kind: 'dataTable' as const,
+			dataTableId: 't1',
+			permissions: ['read' as const],
+		};
+		const submit = { key: 'submit', kind: 'workflow' as const, workflowId: 'w1' };
+		const saved = { versionId: 'v2', bindings: [], warnings: [], types: '' };
+
+		function withBindings() {
+			const ctx = setup();
+			ctx.appService.getBindings.mockResolvedValue({
+				versionId: 'v1',
+				bindings: [
+					{ ...tasks, name: 'Tasks', columns: [], row: {} },
+					{ ...submit, name: 'Submit', published: true, input: {}, output: {} },
+				],
+				warnings: [],
+				types: '',
+			});
+			ctx.appService.setBindings.mockResolvedValue(saved);
+			ctx.appService.getApp.mockResolvedValue(app(SERVER_ID));
+			return ctx;
+		}
+
+		it('replaces the binding with the same key and keeps the others', async () => {
+			const { tool, appService, onArtifactChanged } = withBindings();
+			const writable = { ...tasks, permissions: ['read' as const, 'insert' as const] };
+
+			const result = await executeTool(tool, {
+				action: 'bind',
+				appId: SERVER_ID,
+				binding: writable,
+			});
+
+			expect(result).toEqual(saved);
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit, writable]);
+			expect(onArtifactChanged).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'app', id: SERVER_ID }),
+			);
+		});
+
+		it('adds the first binding to an app without a version', async () => {
+			const { tool, appService } = setup();
+			appService.getBindings.mockResolvedValue({
+				versionId: null,
+				bindings: [],
+				warnings: [],
+				types: '',
+			});
+			appService.setBindings.mockResolvedValue(saved);
+
+			await executeTool(tool, { action: 'bind', appId: SERVER_ID, binding: tasks });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, null, [tasks]);
+		});
+
+		it('removes a binding by its key', async () => {
+			const { tool, appService } = withBindings();
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit]);
+		});
+
+		it('reports an unknown key and saves nothing', async () => {
+			const { tool, appService } = withBindings();
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'other' });
+
+			expect(result).toEqual({ error: 'The app has no binding with the key "other".' });
+			expect(appService.setBindings).not.toHaveBeenCalled();
+		});
+
+		it('moves an open folder on the old draft to the new version', async () => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue('v1');
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).toHaveBeenCalledWith({}, SERVER_ID, 'v2');
+		});
+
+		it.each([
+			{ name: 'is not open', base: undefined },
+			{ name: 'is on another version', base: 'v0' },
+		])('leaves the folder alone when it $name', async ({ base }) => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue(base);
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).not.toHaveBeenCalled();
+		});
+
+		it('keeps the saved bindings when the workspace is unavailable', async () => {
+			const { tool, logger } = withBindings();
+			vi.mocked(readBaseVersion).mockRejectedValue(new Error('Sandbox unavailable'));
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(result).toEqual(saved);
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('rejects an invalid binding key in the input', () => {
+			const { tool } = setup();
+
+			expect(
+				parseToolInput(tool, {
+					action: 'bind',
+					appId: SERVER_ID,
+					binding: { ...submit, key: 'Not valid' },
+				}).success,
+			).toBe(false);
+		});
+
+		it.each([
+			{ key: 'support', kind: 'agent', agentId: 'a1', permissions: ['chat', 'history'] },
+			{ key: 'tasks', kind: 'dataTable', dataTableId: 't1', permissions: ['read', 'insert'] },
+		])('accepts the permissions of a $kind binding in the input', (binding) => {
+			const { tool } = setup();
+
+			expect(parseToolInput(tool, { action: 'bind', appId: SERVER_ID, binding }).success).toBe(
+				true,
+			);
+		});
+	});
+
+	it('returns the bindings of the draft with their types', async () => {
+		const { tool, appService } = setup();
+		const bindings = {
+			versionId: 'v1',
+			bindings: [
+				{
+					key: 'submit',
+					kind: 'workflow' as const,
+					workflowId: 'w1',
+					name: 'Submit',
+					missing: true as const,
+				},
+			],
+			warnings: [],
+			types: '// Generated by n8n',
+		};
+		appService.getBindings.mockResolvedValue(bindings);
+
+		const result = await executeTool(tool, { action: 'bindings', appId: SERVER_ID });
+
+		expect(result).toEqual(bindings);
+		expect(appService.getBindings).toHaveBeenCalledWith(SERVER_ID);
 	});
 
 	it('refuses to commit an app that is not open', async () => {

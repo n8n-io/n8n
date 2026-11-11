@@ -14,11 +14,13 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
+	AgentWebhookSettingsSchema,
 	McpAuthenticationSchemaTypes,
 	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
 	sanitizeAgentJsonConfig,
+	WEBHOOK_INTEGRATION_TYPE,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -26,11 +28,10 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -63,10 +64,9 @@ import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtim
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService, UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService, NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -142,6 +142,7 @@ function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 }
 
 const TELEGRAM_SETTINGS_JSON_SCHEMA = zodSchemaToJsonSchema(AgentTelegramSettingsSchema);
+const WEBHOOK_SETTINGS_JSON_SCHEMA = zodSchemaToJsonSchema(AgentWebhookSettingsSchema);
 
 const httpUrlSchema = z
 	.string()
@@ -381,7 +382,7 @@ const updateIntegrationInput = {
 		.min(1)
 		.optional()
 		.describe(
-			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup',
+			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup, and for a channel that runs without a credential, such as a webhook with authentication none',
 		),
 	managerCredentialId: z
 		.string()
@@ -400,7 +401,7 @@ const updateIntegrationInput = {
 	settings: z
 		.record(z.unknown())
 		.optional()
-		.describe('Integration settings; required for Telegram connect operations'),
+		.describe('Integration settings; required for Telegram and webhook connect operations'),
 	replacesCredentialId: z
 		.string()
 		.min(1)
@@ -450,6 +451,7 @@ type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>
 /** Telemetry label for the connect flow that an update_agent_integration call takes. */
 function integrationSetupPath(input: UpdateIntegrationInput) {
 	if (input.action === 'disconnect' || input.credentialId) return 'credential';
+	if (input.type === WEBHOOK_INTEGRATION_TYPE) return 'credential';
 	return input.managerCredentialId || input.workspaceId ? 'managed_install' : 'managed_discovery';
 }
 type CallAgentInput = z.infer<z.ZodObject<typeof callAgentInput>>;
@@ -479,7 +481,7 @@ export class McpAgentToolsService {
 		private readonly agentModelCatalogService: AgentModelCatalogService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly urlService: UrlService,
@@ -1164,7 +1166,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace.",
+					"Configure or disconnect a Slack, Telegram, Linear, or webhook conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace. For a webhook, pass settings.authentication, and omit credentialId when it is none.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -1808,7 +1810,8 @@ export class McpAgentToolsService {
 			case 'integrations':
 				return this.integrationPersistenceService.listChatIntegrations().map((integration) => ({
 					...integration,
-					settingsRequired: integration.type === 'telegram',
+					settingsRequired:
+						integration.type === 'telegram' || integration.type === WEBHOOK_INTEGRATION_TYPE,
 					...(integration.type === SLACK_INTEGRATION_TYPE
 						? {
 								setupGuidance:
@@ -1820,6 +1823,13 @@ export class McpAgentToolsService {
 								settingsSchema: TELEGRAM_SETTINGS_JSON_SCHEMA,
 								settingsGuidance:
 									'Pass accessMode=public with allowedUsers=[], or accessMode=private with at least one Telegram user ID or username.',
+							}
+						: {}),
+					...(integration.type === WEBHOOK_INTEGRATION_TYPE
+						? {
+								settingsSchema: WEBHOOK_SETTINGS_JSON_SCHEMA,
+								settingsGuidance:
+									'Pass authentication=headerAuth with an httpHeaderAuth credential, or authentication=jwtAuth with a jwtAuth credential. Pass authentication=none only when anyone with the URL may call the Agent. Omit credentialId for none.',
 							}
 						: {}),
 				}));
@@ -1902,8 +1912,14 @@ export class McpAgentToolsService {
 		input: UpdateIntegrationInput,
 		agent: ProjectAgent,
 	) {
-		const { credentialId } = input;
-		if (!credentialId) throw new UserError('credentialId is required to disconnect');
+		// A webhook without authentication is stored with an empty credential.
+		const hasCredentialFreeWebhook = agent.integrations?.some(
+			(entry) => entry.type === WEBHOOK_INTEGRATION_TYPE && entry.credentialId === '',
+		);
+		const credentialId =
+			input.credentialId ??
+			(input.type === WEBHOOK_INTEGRATION_TYPE && hasCredentialFreeWebhook ? '' : undefined);
+		if (credentialId === undefined) throw new UserError('credentialId is required to disconnect');
 		if (input.managerCredentialId || input.workspaceId) {
 			throw new UserError('managerCredentialId and workspaceId apply only to connect');
 		}
@@ -1930,6 +1946,10 @@ export class McpAgentToolsService {
 		const managedTarget = this.managedSlackTarget(input);
 		if (managedTarget) return await this.installManagedSlackApp(user, agent, managedTarget);
 		if (!input.credentialId) {
+			// A webhook without authentication runs without a credential. The integration checks the settings.
+			if (input.type === WEBHOOK_INTEGRATION_TYPE) {
+				return await this.connectWithCredential(user, input, agent, '');
+			}
 			if (input.type !== SLACK_INTEGRATION_TYPE) {
 				throw new UserError('credentialId is required to connect this integration');
 			}

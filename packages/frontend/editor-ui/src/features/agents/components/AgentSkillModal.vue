@@ -56,6 +56,7 @@ import {
 	type SkillMoveTarget,
 } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
+import AgentSkillInlineShell from './AgentSkillInlineShell.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -84,6 +85,10 @@ export type AgentSkillModalData = {
 	agentId?: string;
 	skill?: AgentSkill;
 	skillId?: string;
+	/** Create only: opens the form at once, without the upload step. */
+	initialStep?: 'manual';
+	/** Create only: how the caller got `skill`, such as a folder that the user uploaded. */
+	initialMethod?: SkillCreateMethod;
 	/**
 	 * Names of the agent's other skills, so a duplicate name blocks save while
 	 * the modal is still open — skill names must be unique per agent.
@@ -133,10 +138,8 @@ export type AgentSkillModalData = {
 	onStopSyncing?: (id: string) => void | Promise<void>;
 	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
 	latestVersion?: number;
-	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
+	/** Opens the editor with the Versions panel shown ("Version history" in Settings). */
 	initialVersionsOpen?: boolean;
-	/** Opens the editor comparing the latest version with the one before it. */
-	initialCompare?: boolean;
 	/** Agent builder: the versions the agent's draft and published agent run. */
 	agentVersions?: { draft: number; published: number | null; pinned: boolean };
 	/** Agent builder: pins the agent draft to a saved version. The caller reopens the editor. */
@@ -164,10 +167,15 @@ export type AgentSkillModalData = {
 	onRemove?: (id: string) => void;
 };
 
-const props = defineProps<{
-	modalName: string;
-	data: AgentSkillModalData;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modalName?: string;
+		data: AgentSkillModalData;
+		/** Embeds the editor without modal controls or version history. */
+		inline?: boolean;
+	}>(),
+	{ modalName: '', inline: false },
+);
 
 const i18n = useI18n();
 const $style = useCssModule();
@@ -177,7 +185,9 @@ const router = useRouter();
 const rootStore = useRootStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
-const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const modalOpen = computed(
+	() => props.inline || uiStore.modalsById[props.modalName]?.open === true,
+);
 
 const existingNameKeys = computed(() => {
 	const names = props.data.getAttachedSkills
@@ -211,10 +221,19 @@ const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 // An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
-const createMethod = ref<SkillCreateMethod>('manual');
+const createMethod = ref<SkillCreateMethod>(props.data.initialMethod ?? 'manual');
 const hasPicker = !props.data.skillId && !!props.data.skillRefsEnabled && !!props.data.onAttach;
+// The caller chose "Create manually", so there is no upload step to go back to.
+const startsManual =
+	!props.data.skill && !props.data.skillId && props.data.initialStep === 'manual';
 const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
-	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
+	props.data.skill || props.data.skillId
+		? 'edit'
+		: startsManual
+			? 'manual'
+			: hasPicker
+				? 'select'
+				: 'upload',
 );
 /** The form steps show the scope badge, the header menu and "Close" instead of "Cancel". */
 const isFormStep = computed(() => step.value === 'manual' || step.value === 'edit');
@@ -797,6 +816,7 @@ function onPreviewAdd() {
 }
 
 onMounted(() => {
+	if (startsManual) void refreshDefaultName();
 	if (hasPicker) void loadLibrarySkills();
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
@@ -808,7 +828,7 @@ const showMcpToggle = computed(
 	() => showScope.value && showAvailableToMCP.value && !cannotEdit.value,
 );
 
-const versionsOpen = ref(!!props.data.initialVersionsOpen);
+const versionsOpen = ref(!props.inline && !!props.data.initialVersionsOpen);
 const {
 	versions,
 	viewedVersion,
@@ -821,7 +841,6 @@ const {
 	diffCounts,
 	comparedSkill,
 	compareVersions,
-	compareLatestTwo,
 } = useSkillVersions(
 	() => props.data.skillId,
 	() => baseVersion.value,
@@ -947,10 +966,6 @@ function leaveCompare() {
 	comparison.value = null;
 	viewedVersion.value = null;
 }
-
-onMounted(() => {
-	if (props.data.initialCompare) void compareLatestTwo();
-});
 
 /** Saves the content of an older version as the next version and keeps the editor open on it. */
 async function restoreVersion(version: number) {
@@ -1084,7 +1099,10 @@ async function onSave() {
 		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
-	if (saved) closeModal();
+	if (saved) {
+		if (props.inline) showSavedSkill(payload);
+		else closeModal();
+	}
 }
 
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
@@ -1149,7 +1167,7 @@ watch(
 	(next) => {
 		if (!next || !isEditing.value) return;
 		showSavedSkill(next);
-		if (props.data.initialVersionsOpen) versionsOpen.value = true;
+		if (!props.inline && props.data.initialVersionsOpen) versionsOpen.value = true;
 	},
 );
 
@@ -1166,11 +1184,14 @@ function onRemove() {
 </script>
 
 <template>
-	<AgentModalMultiStep
+	<component
+		:is="inline ? AgentSkillInlineShell : AgentModalMultiStep"
 		:open="modalOpen"
 		:step="step"
 		:title="modalTitle"
-		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
+		:show-back="
+			(step === 'manual' && !startsManual) || step === 'preview' || (step === 'upload' && hasPicker)
+		"
 		:show-footer="
 			!comparison &&
 			(step === 'select' || step === 'manual' || step === 'edit' || step === 'preview')
@@ -1463,7 +1484,9 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div :class="[$style.content, isFormStep && $style.contentFlush]">
+			<div
+				:class="[$style.content, isFormStep && $style.contentFlush, inline && $style.inlineContent]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1660,7 +1683,7 @@ function onRemove() {
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
-	</AgentModalMultiStep>
+	</component>
 </template>
 
 <style module>
@@ -1782,6 +1805,18 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
+}
+
+@container skill-editor (max-width: 480px) {
+	.inlineContent {
+		flex-direction: column;
+	}
+
+	.inlineContent .fileColumn {
+		width: 100%;
+		border-right: none;
+		border-bottom: var(--border);
+	}
 }
 
 /* Geist sits high in its line box, as in the Settings scope badge. */

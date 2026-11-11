@@ -271,6 +271,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
@@ -290,13 +291,17 @@ export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
-export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	AgentBuilderTarget,
+	AgentTargetsMetadata,
+} from './tools/orchestration/agent-target-binding';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
@@ -307,6 +312,7 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
@@ -817,6 +823,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';
