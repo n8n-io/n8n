@@ -148,16 +148,29 @@ describe('oauth2BasicCredentials', () => {
 	});
 
 	it.each([
-		['a colon, which would otherwise split the pair in the wrong place', 'client-1', 'cs:9f2a71c4'],
-		['the characters base64 reads back ambiguously', 'client-1', 'cs+a/b=9f2a71c4'],
-		['a space', 'client 1', 'cs 9f2a71c4'],
-		['nothing that needs encoding', 'client-1', 'cs-9f2a71c4'],
-	])('percent-encodes both halves when the pair holds %s', (_name, clientId, clientSecret) => {
+		['nothing that needs encoding', 'client-1', 'cs-9f2a71c4', 'client-1:cs-9f2a71c4'],
+		[
+			'a colon in the client id, which splits the pair early when it is left raw',
+			'client:1',
+			'cs-9f2a71c4',
+			'client%3A1:cs-9f2a71c4',
+		],
+		[
+			'a space, which the form encoding writes as a plus',
+			'client 1',
+			'cs 9f2a71c4',
+			'client+1:cs+9f2a71c4',
+		],
+		[
+			'the characters base64 reads back ambiguously',
+			'client-1',
+			'cs+a/b=9f2a71c4',
+			'client-1:cs%2Ba%2Fb%3D9f2a71c4',
+		],
+	])('encodes the pair that holds %s', (_name, clientId, clientSecret, pair) => {
 		const decoded = Buffer.from(oauth2BasicCredentials(oauth2(clientId, clientSecret)), 'base64');
 
-		expect(decoded.toString('utf8')).toBe(
-			`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`,
-		);
+		expect(decoded.toString('utf8')).toBe(pair);
 	});
 });
 
