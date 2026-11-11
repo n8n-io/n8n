@@ -1,0 +1,26 @@
+packages/cli/src/license.ts
+  s_971164a06e94dc::t_d0959a600cafa2 39-40
+  s_971164a06e94dc::t_95b4773e3471b0 549
+  s_971164a06e94dc::t_bbd97b42be6c34 523-525,529,533
+  s_971164a06e94dc::t_d15a7ce6f60c8d 49-51
+.agents/review-rules/backend/license-enforcement.md
+  s_971164a06e94dc::t_35b23a305df8f2 15-18
+packages/cli/src/__tests__/license.test.ts
+  s_971164a06e94dc::t_345fe4fdbc1d66 41-42,373-386,395-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be213ca9b5a6baf8c6798bfefe9108a822948e7d",
+  "prompts": {},
+  "sessions": {
+    "s_971164a06e94dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29d7b611-e2a7-4f34-9dbb-f96d0155c965",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jessie Auguste <jessie.auguste@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_dde4b160feca22::t_d81aa38cf13494 3-4,35
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_dde4b160feca22::t_d81aa38cf13494 1288-1290
+packages/@n8n/api-types/src/dto/packages/__tests__/credential.schema.test.ts
+  s_dde4b160feca22::t_d81aa38cf13494 1,17-25
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_dde4b160feca22::t_d81aa38cf13494 166-167
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_dde4b160feca22::t_d81aa38cf13494 552-576
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  ai_agent 510,538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "434f018db448f0be35d7293a1e81530c01adc39c",
+  "prompts": {},
+  "sessions": {
+    "s_dde4b160feca22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e527f496-4a61-4be2-9be7-62b23df9f325",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

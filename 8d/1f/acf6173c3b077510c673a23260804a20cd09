@@ -1,0 +1,19 @@
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-tool-references.integration.test.ts
+  s_dddd9c68314b1b::t_953741570b5c48 10,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d1facf6173c3b077510c673a23260804a20cd09",
+  "prompts": {},
+  "sessions": {
+    "s_dddd9c68314b1b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c624-7b80-77f3-88b5-5b4ee2a2590e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
