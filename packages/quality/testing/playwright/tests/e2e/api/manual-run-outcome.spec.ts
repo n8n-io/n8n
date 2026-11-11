@@ -48,7 +48,7 @@ test.describe(
 			// the link Split Out gave them, so the expression must still name item 2.
 			const { resultData } = flatted.parse(execution.data);
 			const output = resultData.runData['Read Split Out'][0].data.main[0][0].json;
-			expect(output).toEqual({ number: 2 });
+			expect(output).toEqual({ fromSplitOut: 2 });
 		});
 	},
 );

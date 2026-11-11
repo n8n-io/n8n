@@ -75,7 +75,7 @@
 					"assignments": [
 						{
 							"id": "9e1f4a27-5c3d-4b8e-a6f0-2d7c1b9e4a03",
-							"name": "number",
+							"name": "fromSplitOut",
 							"value": "={{ $('Split Out').item.json.numbers }}",
 							"type": "number"
 						}
