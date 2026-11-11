@@ -3,12 +3,13 @@ import { TSESTree } from '@typescript-eslint/utils';
 import { parse, wcagContrast, type Rgb } from 'culori';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
 
 import {
 	isNodeTypeClass,
 	isCredentialTypeClass,
 	findClassProperty,
+	findNodeDescriptionObject,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
@@ -17,20 +18,19 @@ import {
 
 type Theme = 'light' | 'dark';
 
-/** `--node--color--background` of each editor theme. */
+/**
+ * `--node--color--background` of each editor theme. The design system defines it in
+ * SCSS only, so the published plugin keeps a copy of the values.
+ */
 const NODE_BACKGROUNDS: Record<Theme, string> = { light: '#ffffff', dark: '#2b2b2b' };
-
-/** A pixel counts as visible when it reaches this contrast with the node background. */
-const PIXEL_CONTRAST_MINIMUM = 1.5;
 
 /** Share of the icon's pixels that must be visible. Calibrated on the icons n8n ships. */
 const VISIBLE_SHARE_MINIMUM = 0.1;
 
-const RENDER_OPTIONS = {
-	fitTo: { mode: 'width', value: 64 },
-	// System fonts differ between machines, so text in an icon does not count.
-	font: { loadSystemFonts: false },
-} as const;
+/** Icon formats the editor shows, with the media type to embed them. */
+const MEDIA_TYPES: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png' };
+
+const RENDER_SIZE = 64;
 
 function isResvgModule(value: unknown): value is typeof import('@resvg/resvg-js') {
 	return typeof value === 'object' && value !== null && 'Resvg' in value;
@@ -50,15 +50,24 @@ function loadResvg(): typeof ResvgClass | null {
 }
 
 /**
- * Renders the SVG on the background and returns the share of icon pixels that reach
- * the pixel contrast minimum. Returns null when the SVG paints no pixels.
+ * Renders the icon file the way the editor shows it, as an image scaled into a square,
+ * and returns the share of icon pixels that reach the contrast minimum on the background.
+ * Returns null when the icon paints no pixels.
  */
-function getVisibleShare(Resvg: typeof ResvgClass, svg: string, background: string): number | null {
+function getVisibleShare(
+	Resvg: typeof ResvgClass,
+	image: string,
+	background: string,
+	minimum: number,
+): number | null {
 	const backgroundColor = parse(background);
 	if (!backgroundColor) return null;
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${RENDER_SIZE}" height="${RENDER_SIZE}"><image width="${RENDER_SIZE}" height="${RENDER_SIZE}" href="${image}"/></svg>`;
+	// System fonts differ between machines, so text in an icon does not count.
+	const options = { font: { loadSystemFonts: false } };
 	// The first render gives the icon's shape, the second its colors on the background.
-	const shape = new Resvg(svg, RENDER_OPTIONS).render().pixels;
-	const shown = new Resvg(svg, { ...RENDER_OPTIONS, background }).render().pixels;
+	const shape = new Resvg(svg, options).render().pixels;
+	const shown = new Resvg(svg, { ...options, background }).render().pixels;
 
 	let iconPixels = 0;
 	let visiblePixels = 0;
@@ -68,7 +77,7 @@ function getVisibleShare(Resvg: typeof ResvgClass, svg: string, background: stri
 		iconPixels++;
 		const [r = 0, g = 0, b = 0] = shown.subarray(i, i + 3);
 		const pixel: Rgb = { mode: 'rgb', r: r / 255, g: g / 255, b: b / 255 };
-		if (wcagContrast(pixel, backgroundColor) >= PIXEL_CONTRAST_MINIMUM) visiblePixels++;
+		if (wcagContrast(pixel, backgroundColor) >= minimum) visiblePixels++;
 	}
 	return iconPixels === 0 ? null : visiblePixels / iconPixels;
 }
@@ -78,51 +87,59 @@ export const IconContrastRule = createRule({
 	meta: {
 		type: 'suggestion',
 		docs: {
-			description: 'Warn when an SVG icon is hard to see on the light or dark node background',
+			description: 'Warn when an icon is hard to see on the light or dark node background',
 		},
 		messages: {
 			lowContrast:
 				'Icon "{{ iconPath }}" is hard to see on the {{ theme }} theme: only {{ visible }}% of it stands out from the node background.',
 		},
-		schema: [],
+		schema: [
+			{
+				type: 'object',
+				properties: {
+					minimum: {
+						type: 'number',
+						minimum: 1,
+						description:
+							'Contrast ratio with the node background at which a pixel counts as visible.',
+					},
+				},
+				additionalProperties: false,
+			},
+		],
 	},
-	defaultOptions: [],
-	create(context) {
-		if (
-			!isFileType(context.filename, '.node.ts') &&
-			!isFileType(context.filename, '.credentials.ts')
-		) {
-			return {};
-		}
+	defaultOptions: [{ minimum: 1.5 }],
+	create(context, [{ minimum }]) {
+		const isNodeOrCredentialFile =
+			isFileType(context.filename, '.node.ts') || isFileType(context.filename, '.credentials.ts');
+		if (!isNodeOrCredentialFile) return {};
 
 		const Resvg = loadResvg();
 		if (!Resvg) return {};
 
 		const checkIcon = (iconNode: TSESTree.Node, themes: Theme[]) => {
-			const iconPath = getStringLiteralValue(iconNode);
-			if (!iconPath?.startsWith('file:') || !iconPath.toLowerCase().endsWith('.svg')) return;
+			const icon = getStringLiteralValue(iconNode);
+			if (!icon?.startsWith('file:')) return;
+			const iconPath = icon.slice('file:'.length);
+			const mediaType = MEDIA_TYPES[extname(iconPath).toLowerCase()];
+			if (!mediaType) return;
 
-			let svg: string;
+			let image: string;
 			try {
-				svg = readFileSync(join(dirname(context.filename), iconPath.slice(5)), 'utf8');
+				const file = readFileSync(join(dirname(context.filename), iconPath));
+				image = `data:${mediaType};base64,${file.toString('base64')}`;
 			} catch {
 				// icon-validation reports missing files.
 				return;
 			}
 
 			for (const theme of themes) {
-				let share: number | null;
-				try {
-					share = getVisibleShare(Resvg, svg, NODE_BACKGROUNDS[theme]);
-				} catch {
-					// Invalid SVG markup is out of scope for this rule.
-					return;
-				}
+				const share = getVisibleShare(Resvg, image, NODE_BACKGROUNDS[theme], minimum);
 				if (share !== null && share < VISIBLE_SHARE_MINIMUM) {
 					context.report({
 						node: iconNode,
 						messageId: 'lowContrast',
-						data: { iconPath: iconPath.slice(5), theme, visible: Math.round(share * 100) },
+						data: { iconPath, theme, visible: Math.floor(share * 100) },
 					});
 				}
 			}
@@ -143,11 +160,8 @@ export const IconContrastRule = createRule({
 		return {
 			ClassDeclaration(node) {
 				if (isNodeTypeClass(node)) {
-					const descriptionProperty = findClassProperty(node, 'description');
-					if (descriptionProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
-						return;
-					}
-					const iconProperty = findObjectProperty(descriptionProperty.value, 'icon');
+					const description = findNodeDescriptionObject(node);
+					const iconProperty = description && findObjectProperty(description, 'icon');
 					if (iconProperty) checkIconValue(iconProperty.value);
 				} else if (isCredentialTypeClass(node)) {
 					const iconProperty = findClassProperty(node, 'icon');

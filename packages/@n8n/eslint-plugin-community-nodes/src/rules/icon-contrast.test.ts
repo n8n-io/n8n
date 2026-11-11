@@ -1,5 +1,7 @@
+import { Resvg } from '@resvg/resvg-js';
 import { RuleTester } from '@typescript-eslint/rule-tester';
 import * as fs from 'node:fs';
+import { basename } from 'node:path';
 import { vi } from 'vitest';
 
 import { IconContrastRule } from './icon-contrast.js';
@@ -10,6 +12,9 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 
 const svgFiles: Record<string, string> = {
+	// A mid gray: visible at the default minimum, too faint for 3:1 on the light theme.
+	'gray.svg':
+		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#999" d="M0 0h24v24H0z"/></svg>',
 	'black.svg':
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>',
 	'white.svg':
@@ -31,11 +36,16 @@ const svgFiles: Record<string, string> = {
 	'broken.svg': '<svg',
 };
 
+const pngFiles: Record<string, Buffer> = {
+	'black.png': new Resvg(svgFiles['black.svg'] ?? '').render().asPng(),
+	'white.png': new Resvg(svgFiles['white.svg'] ?? '').render().asPng(),
+};
+
 vi.mocked(fs.readFileSync).mockImplementation((path) => {
-	const name = path.toString().split('/').pop() ?? '';
-	const svg = svgFiles[name];
-	if (svg === undefined) throw new Error(`ENOENT: ${name}`);
-	return svg;
+	const name = basename(path.toString());
+	const file = pngFiles[name] ?? svgFiles[name];
+	if (file === undefined) throw new Error(`ENOENT: ${name}`);
+	return Buffer.from(file);
 });
 
 const nodeFilePath = '/tmp/TestNode.node.ts';
@@ -74,6 +84,26 @@ export class TestCredential implements ICredentialType {
 	displayName = 'Test API';
 	icon = '${icon}';
 	properties: INodeProperties[] = [];
+}`;
+}
+
+function createVersionedNodeCode(icon: string): string {
+	return `
+import type { INodeTypeBaseDescription, VersionedNodeType } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'Test Node',
+			name: 'testNode',
+			icon: '${icon}',
+			version: 1,
+			properties: [],
+		};
+	}
 }`;
 }
 
@@ -131,6 +161,16 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			code: createCredentialCode('file:teal.svg'),
 			filename: credentialFilePath,
 		},
+		{
+			name: 'PNG variants that each fit their theme',
+			code: createNodeCode({ light: 'file:black.png', dark: 'file:white.png' }),
+			filename: nodeFilePath,
+		},
+		{
+			name: 'mid gray icon at the default minimum',
+			code: createNodeCode('file:gray.svg'),
+			filename: nodeFilePath,
+		},
 	],
 	invalid: [
 		{
@@ -179,7 +219,7 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			errors: [
 				{
 					messageId: 'lowContrast',
-					data: { iconPath: 'dark-tile-with-dot.svg', theme: 'dark', visible: 1 },
+					data: { iconPath: 'dark-tile-with-dot.svg', theme: 'dark', visible: 0 },
 				},
 			],
 		},
@@ -189,6 +229,31 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			filename: credentialFilePath,
 			errors: [
 				{ messageId: 'lowContrast', data: { iconPath: 'white.svg', theme: 'light', visible: 0 } },
+			],
+		},
+		{
+			name: 'single black PNG on the dark theme',
+			code: createNodeCode('file:black.png'),
+			filename: nodeFilePath,
+			errors: [
+				{ messageId: 'lowContrast', data: { iconPath: 'black.png', theme: 'dark', visible: 0 } },
+			],
+		},
+		{
+			name: 'description assigned in the constructor',
+			code: createVersionedNodeCode('file:black.svg'),
+			filename: nodeFilePath,
+			errors: [
+				{ messageId: 'lowContrast', data: { iconPath: 'black.svg', theme: 'dark', visible: 0 } },
+			],
+		},
+		{
+			name: 'mid gray icon with a minimum of 3:1',
+			code: createNodeCode('file:gray.svg'),
+			filename: nodeFilePath,
+			options: [{ minimum: 3 }],
+			errors: [
+				{ messageId: 'lowContrast', data: { iconPath: 'gray.svg', theme: 'light', visible: 0 } },
 			],
 		},
 	],
