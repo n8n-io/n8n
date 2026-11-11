@@ -663,8 +663,8 @@ export class LmChatOpenAi implements INodeType {
 						},
 					},
 					{
-						// Instance 3: custom OpenAI-compatible endpoints — low, medium, high only.
-						// none is excluded here because capability cannot be verified for arbitrary endpoints.
+						// Instance 3: unrecognized models on custom OpenAI-compatible endpoints — low,
+						// medium, high only. Model IDs n8n cannot verify never receive `none`.
 						...reasoningEffort,
 						displayOptions: {
 							show: { modelSupportsReasoning: [true] },
