@@ -169,13 +169,28 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding?: never;
+			round?: never;
+	  }
+	| {
+			/**
+			 * The round whose actions this step waits for. Only the engine ends this
+			 * wait, when the last action of the round settles.
+			 */
+			round: number;
+			subExecutionId?: never;
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			resumeBinding?: never;
 	  };
 
 /**
  * The waits an executor may declare. A wait on a sub-execution is the
  * engine's own: an executor asks for one with a sub-execution declaration.
  */
-export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId: string }>;
+export type ExecutorWaitDeclaration = Exclude<
+	WaitDeclaration,
+	{ subExecutionId: string } | { round: number }
+>;
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
@@ -215,7 +230,14 @@ export type SubExecutionOutcome =
 export type ResumeCause =
 	| { kind: 'deadline' }
 	| { kind: 'request'; outputs: StepSlots }
-	| SubExecutionResumeCause;
+	| SubExecutionResumeCause
+	| ActionsResumeCause;
+
+/**
+ * Every action of a round settled, so the declaring step continues. It carries
+ * no results: the engine derives the continuation from the rows.
+ */
+export type ActionsResumeCause = { kind: 'actions'; round: number };
 
 /**
  * An executor's wait with no deadline and no resume request would never end,

@@ -1,6 +1,7 @@
 export { isBatchStepConfig } from './workflow-graph';
 export type {
 	BatchStepConfig,
+	GraphAttachment,
 	GraphEdge,
 	GraphNode,
 	StepConfig,

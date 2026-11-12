@@ -90,6 +90,7 @@ export type { JsonObject, JsonValue } from './common';
 export { deriveLoops, isBatchStepConfig } from './graph';
 export type {
 	BatchStepConfig,
+	GraphAttachment,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
@@ -129,6 +130,13 @@ export type {
 
 export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
+	ActionContinuation,
+	ActionDeclaration,
+	ActionOutcome,
+	ActionsDeclaration,
+	ActionsResumeCause,
+	ContinuationRound,
+	SpawnedAction,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,

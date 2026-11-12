@@ -8,6 +8,15 @@ export type {
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
+	ActionContinuation,
+	ActionDeclaration,
+	ActionOutcome,
+	ActionsDeclaration,
+	ContinuationRound,
+	SpawnedAction,
+} from './actions.types';
+export type {
+	ActionsResumeCause,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,
