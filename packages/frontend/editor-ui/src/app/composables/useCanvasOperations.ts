@@ -4106,13 +4106,12 @@ export function useCanvasOperations() {
 
 			uiStore.resetLastInteractedWith();
 
-			if (trackHistory && trackBulk) {
-				historyStore.stopRecordingUndo();
-			}
-
 			return { addedNodes };
 		} finally {
 			initialization.resolve(undefined);
+			if (trackHistory && trackBulk) {
+				historyStore.stopRecordingUndo();
+			}
 		}
 	}
 

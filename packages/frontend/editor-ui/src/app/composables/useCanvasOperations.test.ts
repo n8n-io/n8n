@@ -1670,13 +1670,16 @@ describe('useCanvasOperations', () => {
 			it('should initialize an editable prompt without the chat input expression when no chat trigger is connected', async () => {
 				await useCanvasOperations().addNodesAndConnections([{ type: AGENT_NODE_TYPE }], [], {});
 
+				const historyStore = useHistoryStore();
 				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledWith({
 					name: expect.any(String),
 					value: { promptType: 'define', text: '' },
 				});
-				expect(useHistoryStore().pushCommandToUndo).toHaveBeenCalledWith(
+				expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 					expect.any(ReplaceNodeParametersCommand),
 				);
+				expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+				expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
 			});
 
 			it('should keep the chat prompt default when a chat trigger is connected', async () => {
@@ -1744,6 +1747,10 @@ describe('useCanvasOperations', () => {
 					);
 					await nextTick();
 
+					const historyStore = useHistoryStore();
+					expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+					expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+					expect(historyStore.stopRecordingUndo).toHaveBeenCalledBefore(openEditor);
 					for (const { name } of nodes) {
 						expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(name, true);
 						expect(updateNodeParameterIssues).toHaveBeenCalledWith(
@@ -1751,6 +1758,27 @@ describe('useCanvasOperations', () => {
 						);
 					}
 					expect(openEditor).toHaveBeenCalledWith('Agent 2', 'added_new_node');
+				},
+			);
+
+			it.each([{ trackHistory: false }, { trackBulk: false }])(
+				'should leave undo recording to the caller when prompt initialization fails with %j',
+				async (options) => {
+					const error = new Error('Prompt initialization failed');
+					vi.mocked(
+						workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+					).mockImplementationOnce(() => {
+						throw error;
+					});
+
+					await expect(
+						useCanvasOperations().addNodesAndConnections([{ type: AGENT_NODE_TYPE }], [], options),
+					).rejects.toBe(error);
+					await nextTick();
+
+					const historyStore = useHistoryStore();
+					expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+					expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
 				},
 			);
 
