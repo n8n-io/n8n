@@ -58,15 +58,14 @@ interface DraftRunConsumptionOptions {
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
 }
 
-/** How one tool call of a test run ran. */
 export interface SimulatedToolCall extends ToolCallSimulation {
 	toolCallId: string;
 	toolName: string;
 }
 
-/** Set on the result of a test run (safe testing). Absent for a live run. */
+/** Absent for a live run. */
 export interface DraftRunSimulation {
-	/** Absent when the simulator was not available: every simulated call was blocked. */
+	/** Absent when the simulator was unavailable. */
 	worldId?: string;
 	toolCalls: SimulatedToolCall[];
 }
@@ -385,10 +384,7 @@ export class AgentTestRunService {
 		}
 	}
 
-	/**
-	 * The orchestrator resolves the test chat's session once it knows the
-	 * thread. `session()` returns it afterwards, for this run's bookkeeping.
-	 */
+	// The orchestrator resolves the session once it knows the thread; `session()` reads it back.
 	private simulationResolver(
 		execution: { user?: User; agentId: string; projectId: string },
 		message: string,
@@ -489,7 +485,6 @@ export class AgentTestRunService {
 		}
 	}
 
-	/** Adds the route of a settled tool call to its result chunk. */
 	private withSimulation(
 		chunk: AgentExecutionStreamChunk,
 		session: SimulationSession | undefined,
@@ -506,7 +501,7 @@ export class AgentTestRunService {
 		return { ...chunk, simulation };
 	}
 
-	/** Marks the execution as a test run and stores the world on the test chat. */
+	/** Marks the execution and stores the world on the test chat. */
 	private async recordSimulation(
 		session: SimulationSession | undefined,
 		executionId: string | undefined,

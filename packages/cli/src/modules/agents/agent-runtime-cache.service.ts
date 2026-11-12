@@ -52,10 +52,7 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
-	/**
-	 * A test run (safe testing). The runtime sends its tool traffic to this
-	 * session's simulated world, so it is cached for this test chat only.
-	 */
+	/** A test run. The runtime is cached for this session only. */
 	simulation?: SimulationSession;
 }
 
@@ -141,7 +138,6 @@ export class AgentRuntimeCacheService {
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
-		// A simulated runtime must never serve a live run, or another test chat.
 		if (params.simulation) parts.push(params.simulation.runtimeCacheKey);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
