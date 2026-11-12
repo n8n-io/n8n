@@ -96,7 +96,9 @@ export function toUsage(usage: TokenUsage | undefined): LanguageModelV4Usage {
 		inputTokens: {
 			total: usage?.promptTokens,
 			// `promptTokens` includes the cached tokens, like LangChain's `input_tokens`.
-			noCache: usage ? Math.max(0, usage.promptTokens - (cacheRead ?? 0)) : undefined,
+			// Without a cache read count the split is unknown.
+			noCache:
+				usage && cacheRead !== undefined ? Math.max(0, usage.promptTokens - cacheRead) : undefined,
 			cacheRead,
 			cacheWrite: undefined,
 		},

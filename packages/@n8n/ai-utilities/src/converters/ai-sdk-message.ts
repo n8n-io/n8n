@@ -1,5 +1,4 @@
 import type {
-	JSONObject,
 	JSONValue,
 	LanguageModelV4Content,
 	LanguageModelV4Message,
@@ -17,8 +16,15 @@ import type { ContentToolResult, Message, MessageContent } from '../types/messag
 
 type PromptPart = Exclude<LanguageModelV4Message['content'], string>[number];
 
-/** Converts an AI SDK prompt into the messages a chat model takes. */
-export function toChatModelMessages(prompt: LanguageModelV4Prompt): {
+/**
+ * Converts an AI SDK prompt into the messages a chat model takes. The provider
+ * options of a part become the metadata of its block, so the metadata that
+ * `fromChatModelMessage` sent out comes back to the chat model.
+ */
+export function toChatModelMessages(
+	prompt: LanguageModelV4Prompt,
+	provider: string,
+): {
 	messages: Message[];
 	warnings: SharedV4Warning[];
 } {
@@ -34,7 +40,8 @@ export function toChatModelMessages(prompt: LanguageModelV4Prompt): {
 		const content: MessageContent[] = [];
 		for (const part of message.content) {
 			const block = toMessageContent(part, warnings);
-			if (block) content.push(block);
+			const providerMetadata = part.providerOptions?.[provider];
+			if (block) content.push(providerMetadata ? { ...block, providerMetadata } : block);
 		}
 		if (content.length > 0) {
 			messages.push({ role: message.role, content });
@@ -150,20 +157,27 @@ function toJsonFileData(data: SharedV4FileData): JSONValue {
 }
 
 /** Converts a generated chat model message into AI SDK content parts. */
-export function fromChatModelMessage(message: Message): LanguageModelV4Content[] {
+export function fromChatModelMessage(message: Message, provider: string): LanguageModelV4Content[] {
 	// A chat model tool result carries no tool name. Take it from the tool call
 	// with the same id in the same message.
 	const toolNames = new Map<string, string>();
+	const toolResultIds = new Set<string>();
 	for (const block of message.content) {
 		if (block.type === 'tool-call' && block.toolCallId) {
 			toolNames.set(block.toolCallId, block.toolName);
 		}
+		if (block.type === 'tool-result') toolResultIds.add(block.toolCallId);
 	}
 
 	const content: LanguageModelV4Content[] = [];
 	for (const block of message.content) {
-		const part = fromMessageContent(block, toolNames);
-		if (part) content.push(part);
+		const part = fromMessageContent(block, toolNames, provider);
+		if (part?.type === 'tool-call' && toolResultIds.has(part.toolCallId)) {
+			// The model produced the result itself, so the caller must not run the tool.
+			content.push({ ...part, providerExecuted: true });
+		} else if (part) {
+			content.push(part);
+		}
 	}
 	return content;
 }
@@ -171,8 +185,9 @@ export function fromChatModelMessage(message: Message): LanguageModelV4Content[]
 function fromMessageContent(
 	block: MessageContent,
 	toolNames: Map<string, string>,
+	provider: string,
 ): LanguageModelV4Content | undefined {
-	const providerMetadata = toProviderMetadata(block.providerMetadata);
+	const providerMetadata = toProviderMetadata(provider, block.providerMetadata);
 
 	switch (block.type) {
 		case 'text':
@@ -242,27 +257,34 @@ function withMetadata<T extends LanguageModelV4Content>(
 }
 
 function toJsonResult(result: unknown): NonNullable<JSONValue> {
-	if (result === null || result === undefined) return '';
 	if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
 		return result;
 	}
-	// A round trip through JSON turns class instances such as a Date into plain
-	// JSON. `isJSONValue` alone lets them pass, because it only inspects own
-	// enumerable properties. `JSON.stringify` returns undefined for a function
-	// or a symbol.
-	const serialized: string | undefined = JSON.stringify(result);
-	if (serialized === undefined) return '';
-	const parsed = jsonParse<unknown>(serialized);
-	return isJSONValue(parsed) && parsed !== null ? parsed : serialized;
+	return toJsonValue(result) ?? '';
 }
 
-/** Keeps the entries of chat model provider metadata that the AI SDK accepts. */
+/**
+ * A round trip through JSON turns class instances such as a Date into plain
+ * JSON. `isJSONValue` alone lets them pass, because it only inspects own
+ * enumerable properties. `JSON.stringify` returns undefined for a function or
+ * a symbol.
+ */
+function toJsonValue(value: unknown): NonNullable<JSONValue> | undefined {
+	const serialized: string | undefined = JSON.stringify(value);
+	if (serialized === undefined) return undefined;
+	const parsed = jsonParse<unknown>(serialized);
+	return isJSONValue(parsed) && parsed !== null ? parsed : undefined;
+}
+
+/**
+ * Chat model metadata is a flat record that belongs to the chat model. The AI
+ * SDK keys metadata by provider, so the record goes under the provider name.
+ */
 export function toProviderMetadata(
+	provider: string,
 	metadata: Record<string, unknown> | undefined,
 ): SharedV4ProviderMetadata | undefined {
 	if (!metadata) return undefined;
-	const entries = Object.entries(metadata).filter((entry): entry is [string, JSONObject] =>
-		isJSONObject(entry[1]),
-	);
-	return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+	const value = toJsonValue(metadata);
+	return isJSONObject(value) && Object.keys(value).length > 0 ? { [provider]: value } : undefined;
 }
