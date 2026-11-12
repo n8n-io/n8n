@@ -85,21 +85,6 @@ const skillsModuleEntryForTests = {
 		'Import the skills module from @/modules/skills, or its test fixtures from @/modules/skills/testing.',
 };
 
-// The Assistant agent eval code loads only on an eval instance, through a dynamic import in
-// instance-ai.module.ts. Product code reads the overrides through `AssistantTurnOverrides`.
-// oxlint's rule also checks `import()`, so this covers dynamic imports.
-const assistantAgentEvalBoundary = {
-	group: ['**/assistant-agent/eval', '**/assistant-agent/eval/**'],
-	message:
-		'Only the instance-ai module loads the Assistant agent eval code, on an eval instance. Use AssistantTurnOverrides.',
-};
-
-// The files next to the eval directory reach it as `./eval`, which the pattern above cannot see.
-const assistantAgentEvalSiblingBoundary = {
-	...assistantAgentEvalBoundary,
-	group: ['./eval', './eval/**'],
-};
-
 // The skills module imports nothing else from cli, so it can move into its own package. The
 // allowlist only shrinks. It does not import the modules that use skills either: the agents
 // module registers what the skills module needs on `SkillUsageProxy`.
@@ -203,11 +188,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
-						patterns: [
-							jsonwebtokenSubpathRestriction,
-							skillsModuleEntry,
-							assistantAgentEvalBoundary,
-						],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
 			},
@@ -218,52 +199,6 @@ export default defineConfig({
 			rules: {
 				// Repeats the engine restriction: a later block replaces the rule's options
 				// wholesale rather than merging them.
-				'no-restricted-imports': [
-					'error',
-					{
-						paths: [
-							POLICY_INTERNAL_RESTRICTION,
-							...instanceAiLazyRuntimeImports,
-							engineV2ModuleOnlyImport,
-							jsonwebtokenSigningRestriction,
-						],
-						patterns: [
-							jsonwebtokenSubpathRestriction,
-							skillsModuleEntry,
-							assistantAgentEvalBoundary,
-						],
-					},
-				],
-			},
-		},
-		{
-			files: ['./src/modules/instance-ai/assistant-agent/*.ts'],
-			rules: {
-				// Repeats the instance-ai restrictions: a later block replaces the rule's options
-				// wholesale rather than merging them.
-				'no-restricted-imports': [
-					'error',
-					{
-						paths: [
-							POLICY_INTERNAL_RESTRICTION,
-							...instanceAiLazyRuntimeImports,
-							engineV2ModuleOnlyImport,
-							jsonwebtokenSigningRestriction,
-						],
-						patterns: [
-							jsonwebtokenSubpathRestriction,
-							skillsModuleEntry,
-							assistantAgentEvalBoundary,
-							assistantAgentEvalSiblingBoundary,
-						],
-					},
-				],
-			},
-		},
-		{
-			// The one sanctioned loader: it imports the eval code dynamically, on an eval instance only.
-			files: ['./src/modules/instance-ai/instance-ai.module.ts'],
-			rules: {
 				'no-restricted-imports': [
 					'error',
 					{

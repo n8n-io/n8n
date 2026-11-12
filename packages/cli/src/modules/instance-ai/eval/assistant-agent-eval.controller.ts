@@ -14,12 +14,12 @@ import type { Response } from 'express';
 
 import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 
-import { EvalAssistantTurnOverrides } from '../../eval/eval-assistant-turn-overrides';
-import { FailedExecutionPortabilityService } from '../../eval/failed-execution-portability.service';
-import { EvalThreadCredentialAllowlistService } from '../../eval/thread-credential-allowlist.service';
-import { EvalThreadRestoreService } from '../../eval/thread-restore.service';
-import { InstanceAiSettingsService } from '../../instance-ai-settings.service';
-import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
+import { ASSISTANT_AGENT_ID } from '../assistant-agent/assistant-turn-options';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
+import { FailedExecutionPortabilityService } from './failed-execution-portability.service';
+import { EvalThreadCredentialAllowlistService } from './thread-credential-allowlist.service';
+import { EvalThreadRestoreService } from './thread-restore.service';
 
 /**
  * Eval harness routes for Assistant agent threads. The module loads this

@@ -95,7 +95,7 @@ vi.mock('../assistant-agent/assistant-agent.controller', () => {
 	loadAssistantAgentController();
 	return {};
 });
-vi.mock('../assistant-agent/eval/assistant-agent-eval.controller', () => {
+vi.mock('../eval/assistant-agent-eval.controller', () => {
 	loadAssistantAgentEvalController();
 	return {};
 });
