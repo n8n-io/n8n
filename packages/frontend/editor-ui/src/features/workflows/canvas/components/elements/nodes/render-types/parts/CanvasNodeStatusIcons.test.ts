@@ -44,7 +44,6 @@ vi.mock('vue-router', async (importOriginal) => {
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
 const executionIssuesByNodeId = new Map<string, ComputedRef<string[]>>();
-let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -53,9 +52,9 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 		injectCanvasRenderData: vi.fn(() => ({
 			value: actual.createEmptyCanvasRenderData({
 				pinnedDataByNodeName,
-				executionPinDataByNodeId,
+				getDisplayedExecutionPinData: (nodeId: string) =>
+					executionPinDataByNodeId.get(nodeId)?.value,
 				executionIssuesByNodeId,
-				isExecutionDataDisplayed,
 			}),
 		})),
 	};
@@ -80,7 +79,6 @@ describe('CanvasNodeStatusIcons', () => {
 		}
 		executionPinDataByNodeId.clear();
 		executionIssuesByNodeId.clear();
-		isExecutionDataDisplayed = false;
 	});
 
 	it.each([
@@ -250,7 +248,6 @@ describe('CanvasNodeStatusIcons', () => {
 			'node',
 			computed(() => [{ json: { key: 'value' } }]),
 		);
-		isExecutionDataDisplayed = true;
 
 		const { getByTestId } = renderComponent({
 			global: {
@@ -269,13 +266,10 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
-	it('should not render the pinned icon for execution pin data outside execution preview mode', () => {
-		executionPinDataByNodeId.set(
-			'node',
-			computed(() => [{ json: { key: 'value' } }]),
-		);
+	it('should render the pinned icon for workflow pin data that the displayed execution did not use', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
-		const { queryByTestId, getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
@@ -289,30 +283,8 @@ describe('CanvasNodeStatusIcons', () => {
 			},
 		});
 
-		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
-		expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
-	});
-
-	it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
-		pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
-		isExecutionDataDisplayed = true;
-
-		const { queryByTestId, getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							execution: { status: 'success', running: false },
-							runData: { outputMap: {}, iterations: 1, visible: true },
-						},
-					}),
-				},
-			},
-		});
-
-		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
-		expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
+		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
+		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
 	});
 
 	it('should use the pinned icon when both workflow and execution pin data are present', () => {
