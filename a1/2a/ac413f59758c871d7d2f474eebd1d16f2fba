@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_a8eed64f273553::t_205a242a4829e2 35,372-373,435-446
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_a8eed64f273553::t_205a242a4829e2 431-432,435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a12aac413f59758c871d7d2f474eebd1d16f2fba",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a8eed64f273553": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea096ffc-0834-4786-b302-8747a279542a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.test.ts
+  s_8ac3ccee0e6ce8::t_51c7e2a0c12f18 47-51,81-86
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.ts
+  s_8ac3ccee0e6ce8::t_db308f2f5fdd1b 33-39,43-45
+  s_8ac3ccee0e6ce8::t_89a41462fb9c25 130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06b5deb34e8ac6b4e018db6b16b351806d99849c",
+  "prompts": {},
+  "sessions": {
+    "s_8ac3ccee0e6ce8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e35438a-dee8-4247-87ca-0c4c57102d3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
