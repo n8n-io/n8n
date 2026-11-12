@@ -1,7 +1,5 @@
 ---
 title: Agent turn
-audience: Backend engineers new to n8n
-tier: 2
 last_reviewed: 2026-11-05
 contact: bjorger
 ---

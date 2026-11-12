@@ -1,7 +1,5 @@
 ---
 title: Start here
-audience: Backend engineers new to n8n
-tier: 1
 last_reviewed: 2026-11-05
 contact: ivov
 ---

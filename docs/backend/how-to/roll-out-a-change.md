@@ -1,7 +1,5 @@
 ---
 title: Roll out a backend change
-audience: Backend engineers who release a risky change to n8n Cloud
-tier: 3
 last_reviewed: 2026-11-06
 contact: ivov
 ---

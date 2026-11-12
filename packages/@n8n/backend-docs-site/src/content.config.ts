@@ -16,8 +16,6 @@ export const collections = {
 		}),
 		schema: docsSchema({
 			extend: z.object({
-				audience: z.string().optional(),
-				tier: z.number().optional(),
 				last_reviewed: z.preprocess((value) => value ?? undefined, z.coerce.date().optional()),
 				contact: z.string().optional(),
 			}),

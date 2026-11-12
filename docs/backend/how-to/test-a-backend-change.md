@@ -1,7 +1,5 @@
 ---
 title: Test a backend change
-audience: Backend engineers who change backend code
-tier: 3
 last_reviewed: 2026-11-06
 contact: ivov
 ---

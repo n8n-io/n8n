@@ -145,8 +145,8 @@ profiles, tokens, determinism, and the other commands.
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
 
-For an orientation to the backend (process roles, a map of the code, the two
-"life of" walkthroughs, and what is legacy versus new), read
+For an orientation to the backend (process roles, a map of the code, and
+walkthroughs of how workflows and agents run), read
 [docs/backend/README.md](docs/backend/README.md) when a task needs it.
 
 ### Package Structure

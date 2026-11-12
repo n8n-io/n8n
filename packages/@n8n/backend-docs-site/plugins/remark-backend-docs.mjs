@@ -1,4 +1,4 @@
-// Remark plugin for the backend docs site. It does four things:
+// Remark plugin for the backend docs site. It does these things:
 // 1. Drops the leading `#` heading. Starlight already renders the front matter title,
 //    and GitHub needs the heading in the file, so the page would show it twice.
 // 2. Turns ```mermaid fences into <pre class="mermaid"> so the browser renders them.

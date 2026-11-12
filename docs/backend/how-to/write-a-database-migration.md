@@ -1,7 +1,5 @@
 ---
 title: Write a database migration
-audience: Backend engineers who change the database schema
-tier: 3
 last_reviewed: 2026-11-06
 contact: ivov
 ---

@@ -1,7 +1,5 @@
 ---
 title: Build a backend module
-audience: Backend engineers who add a feature to n8n
-tier: 3
 last_reviewed: 2026-11-06
 contact: ivov
 ---

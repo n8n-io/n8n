@@ -1,7 +1,5 @@
 ---
 title: Run queue mode locally
-audience: Backend engineers new to n8n
-tier: 4
 last_reviewed: 2026-11-06
 contact: ivov
 ---
