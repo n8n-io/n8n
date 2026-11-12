@@ -33,7 +33,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, IconOrEmoji } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -45,6 +45,7 @@ import { sourceLineOf } from '@/features/settings/context/skillSourceReview.util
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	SkillConnectionItem,
@@ -194,6 +195,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const router = useRouter();
 const rootStore = useRootStore();
+const projectsStore = useProjectsStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(
@@ -469,7 +471,22 @@ const scopeChoices = computed<ScopeChoice[]>(() => {
 	return availabilityOptions.value.map((option) => ({
 		...option,
 		icon: AVAILABILITY_ICONS[option.value],
+		projectIcon: option.value === 'project' ? builderProjectIcon.value : undefined,
 	}));
+});
+/** The agent's project icon, so the "Change scope" menu matches the scope badge. */
+const builderProjectIcon = computed(() => {
+	const projectId = props.data.projectId;
+	if (!projectId) return null;
+	if (skillAccess.value?.projectId === projectId && skillAccess.value.projectIcon) {
+		return skillAccess.value.projectIcon;
+	}
+	const project = [
+		projectsStore.personalProject,
+		projectsStore.currentProject,
+		...projectsStore.myProjects,
+	].find((candidate) => candidate?.id === projectId);
+	return project?.icon ?? null;
 });
 const selectedScopeValue = computed(() => (showScope.value ? scope.value : availableTo.value));
 const selectedScope = computed(() =>
@@ -515,11 +532,21 @@ function onScopeChoice(value: string) {
 	if (value === 'project' || value === 'instance') availableTo.value = value;
 }
 
+/** A project row shows the project's own icon or emoji, as the scope badge does. */
+function scopeItemIcon(choice: ScopeChoice): IconOrEmoji {
+	const projectIcon = choice.projectIcon;
+	if (projectIcon?.type === 'emoji') return { type: 'emoji', value: projectIcon.value };
+	if (projectIcon?.type === 'icon') {
+		return { type: 'icon', value: projectIcon.value, color: projectIcon.color };
+	}
+	return { type: 'icon', value: choice.icon };
+}
+
 function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> {
 	return scopeChoices.value.map((choice) => ({
 		id: `scope:${choice.value}`,
 		label: choice.label,
-		icon: { type: 'icon', value: choice.icon },
+		icon: scopeItemIcon(choice),
 		checked: choice.value === selectedScopeValue.value,
 		testId: `${testIdPrefix}${choice.value}`,
 	}));

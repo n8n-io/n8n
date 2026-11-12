@@ -123,6 +123,7 @@ type StubItem = {
 	disabled?: boolean;
 	checked?: boolean;
 	checkbox?: boolean;
+	icon?: { type: 'icon' | 'emoji'; value: string };
 	children?: StubItem[];
 };
 
@@ -143,6 +144,7 @@ const DropdownMenuStub = defineComponent({
 				:key="item.id"
 				:data-testid="item.testId"
 				:data-checked="item.checked ? 'true' : undefined"
+				:data-item-icon="item.icon?.value"
 				:disabled="item.disabled"
 				@click="$emit('select', item.id)"
 			>
@@ -1855,6 +1857,62 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge).toHaveTextContent(/🚀\s*Marketing/);
 		// The saved personal type belongs to the saved scope only.
 		expect(badge.querySelector('[data-icon="user"]')).toBeNull();
+	});
+
+	it('shows each project icon in the Change scope menu', () => {
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' },
+					{
+						value: 'project:team-1',
+						label: 'Marketing',
+						icon: 'layers',
+						projectIcon: { type: 'emoji', value: '🚀' },
+					},
+					{
+						value: 'project:team-2',
+						label: 'Sales',
+						icon: 'layers',
+						projectIcon: { type: 'icon', value: 'briefcase' },
+					},
+					{ value: 'project:team-3', label: 'Ops', icon: 'layers' },
+				],
+				initialScope: 'instance',
+			},
+		});
+
+		const iconOf = (value: string) =>
+			getByTestId(`agent-skill-menu-scope-option-${value}`).getAttribute('data-item-icon');
+		expect(iconOf('instance')).toBe('globe');
+		expect(iconOf('project:team-1')).toBe('🚀');
+		expect(iconOf('project:team-2')).toBe('briefcase');
+		expect(iconOf('project:team-3')).toBe('layers');
+	});
+
+	it("shows the agent's project icon in the builder's Change scope menu", async () => {
+		mockedStore(useProjectsStore).myProjects = [
+			{ id: 'p1', name: 'Marketing', type: 'team', icon: { type: 'emoji', value: '🚀' } },
+		] as ProjectListItem[];
+		listAttachableSkills.mockResolvedValue([]);
+		const { getByTestId, findByTestId } = renderModal({
+			skillRefsEnabled: true,
+			canCreateInstanceSkills: true,
+			projectLabel: 'Marketing',
+			onAttach: vi.fn(),
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-picker-create'));
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		expect(
+			(await findByTestId('agent-skill-menu-scope-option-project')).getAttribute('data-item-icon'),
+		).toBe('🚀');
+		expect(
+			getByTestId('agent-skill-menu-scope-option-instance').getAttribute('data-item-icon'),
+		).toBe('globe');
 	});
 
 	it('keeps a synced skill scope locked without a badge dropdown', async () => {
