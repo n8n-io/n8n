@@ -16,13 +16,13 @@ describe('removed nodes with replacements rules', () => {
 				{
 					action: 'Replace with Extract From File',
 					description: expect.stringMatching(
-						/Binary to JSON with Set All Data on, replace this node with Extract From File and select Extract From JSON\..*not at the root of the item/,
+						/Binary to JSON with Set All Data on, replace this node with Extract From File and select Extract From JSON\..*not at the root of the item.*set the Keep Source option to Binary/,
 					),
 				},
 				{
 					action: 'Replace with Extract From File',
 					description: expect.stringMatching(
-						/Binary to JSON with Set All Data off, replace this node with Extract From File\. Select Move File to Base64 String if Keep As Base64 is on, Extract From JSON if JSON Parse is on, or else Extract From Text File\..*set the Keep Source option to JSON/,
+						/Binary to JSON with Set All Data off, replace this node with Extract From File\. Select Move File to Base64 String if Keep As Base64 is on, Extract From JSON if JSON Parse is on, or else Extract From Text File\..*set the Keep Source option to JSON, or to Both if Keep Source is on/,
 					),
 				},
 				{
@@ -34,13 +34,13 @@ describe('removed nodes with replacements rules', () => {
 				{
 					action: 'Replace with Convert to File',
 					description: expect.stringMatching(
-						/JSON to Binary with Convert All Data off, replace this node with Convert to File\. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File\..*without the JSON quotes.*add a Merge node/,
+						/JSON to Binary with Convert All Data off, replace this node with Convert to File\. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File\..*without the JSON quotes.*In both JSON to Binary modes.*add a Merge node/,
 					),
 				},
 				{
 					action: 'Check items without the input field',
 					description: expect.stringContaining(
-						'the new node fails when the input field is missing, but the old node skipped the item',
+						'Except for JSON to Binary with Convert All Data on, the new node fails when the input field is missing, but the old node skipped the item',
 					),
 				},
 			]);
