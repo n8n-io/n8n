@@ -3,12 +3,8 @@ import { ChatBedrockConverse } from '@langchain/aws';
 import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import {
-	UserError,
-	type ILoadOptionsFunctions,
-	type INode,
-	type ISupplyDataFunctions,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';

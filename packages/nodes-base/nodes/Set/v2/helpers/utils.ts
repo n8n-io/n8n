@@ -3,7 +3,6 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 import {
 	NodeOperationError,
-	UserError,
 	deepCopy,
 	getValueDescription,
 	jsonParse,
@@ -11,6 +10,7 @@ import {
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	AssignmentCollectionValue,
 	FieldType,

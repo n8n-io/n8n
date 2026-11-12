@@ -48,6 +48,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
+| [public.agents_tags](public.agents_tags.md) | 2 |  | BASE TABLE |
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.ai_preference](public.ai_preference.md) | 8 |  | BASE TABLE |
@@ -285,6 +286,8 @@ erDiagram
 "public.agents_observations" }o--o| "public.agents_observations" : "FOREIGN KEY (#quot;supersededBy#quot;) REFERENCES agents_observations(id)"
 "public.agents_observations" }o--o| "public.agents_observations" : "FOREIGN KEY (#quot;parentId#quot;) REFERENCES agents_observations(id)"
 "public.agents_observations" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
+"public.agents_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
+"public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -951,6 +954,10 @@ erDiagram
   varchar_255_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
+}
+"public.agents_tags" {
+  varchar_36_ agentId FK
+  varchar_36_ tagId FK
 }
 "public.agents_threads" {
   timestamp_3__with_time_zone createdAt
