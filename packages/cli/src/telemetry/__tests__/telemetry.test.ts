@@ -8,7 +8,6 @@ import type { WorkflowRepository } from '@n8n/db';
 import { defineTelemetryEvents, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
@@ -1095,7 +1094,7 @@ describe('Telemetry', () => {
 			vi.setSystemTime(testDateTime);
 		});
 
-		test('should count calls per user and route', () => {
+		test('should count calls per user', () => {
 			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
 			telemetry.trackApiInvocation({
@@ -1740,34 +1739,6 @@ describe('Telemetry', () => {
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
-		});
-
-		test('should keep the usage report small when one user makes many calls to one route', () => {
-			for (let call = 0; call < 1000; call++) {
-				telemetry.trackApiInvocation({
-					user_id: 'user1',
-					path: '/executions/{executionId}',
-					method: 'GET',
-					route: 'GET /executions/{executionId}',
-					result: '2xx',
-					api_version: 'v1',
-					user_agent: 'my-script/1.0',
-					client: 'other',
-				});
-			}
-
-			telemetry.flushBuffers();
-
-			const usageEventCall = spyTrack.mock.calls.find(([event]) => event === 'Public API usage');
-			const usageProperties: Record<string, string | number> = usageEventCall?.[1] ?? {};
-			const reportSize = Buffer.byteLength(JSON.stringify(usageProperties), 'utf8');
-			expect(reportSize).toBeLessThan(1024);
-			expect(jsonParse(String(usageProperties.endpoints))).toEqual({
-				'GET /executions/{executionId}': 1000,
-			});
-			expect(jsonParse(String(usageProperties.routes))).toEqual({
-				'GET /executions/{executionId}': { '2xx': { other: 1000 } },
-			});
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {

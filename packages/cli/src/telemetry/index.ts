@@ -593,22 +593,13 @@ export class Telemetry {
 			editorUiEndpoints[route] = (editorUiEndpoints[route] ?? 0) + 1;
 		}
 
-		this.countRouteInvocation(entry, route, result, client);
+		const resultCounts = (entry.routes[route] ??= {});
+		const clientCounts = (resultCounts[result] ??= {});
+		clientCounts[client] = (clientCounts[client] ?? 0) + 1;
 
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
-	}
-
-	private countRouteInvocation(
-		entry: IApiInvocationsBufferEntry,
-		route: string,
-		result: PublicApiResult,
-		client: PublicApiClient,
-	) {
-		const resultCounts = (entry.routes[route] ??= {});
-		const clientCounts = (resultCounts[result] ??= {});
-		clientCounts[client] = (clientCounts[client] ?? 0) + 1;
 	}
 
 	/** Sends the queued events now, instead of at the next flush interval. */
