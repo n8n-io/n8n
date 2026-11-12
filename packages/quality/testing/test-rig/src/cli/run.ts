@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { z } from 'zod';
@@ -43,7 +43,9 @@ export function parseRunArgs(argv: string[], now = new Date()): RunOptions {
 		scenarios: positionals,
 		runs,
 		variants: values.variant ? [values.variant] : ['before', 'after'],
-		out: values.out ?? join(tmpdir(), 'test-rig-results', now.toISOString().replace(/[:.]/g, '-')),
+		out: resolve(
+			values.out ?? join(tmpdir(), 'test-rig-results', now.toISOString().replace(/[:.]/g, '-')),
+		),
 		manifest: values.manifest,
 		playwrightDir: values['playwright-dir'],
 	};
