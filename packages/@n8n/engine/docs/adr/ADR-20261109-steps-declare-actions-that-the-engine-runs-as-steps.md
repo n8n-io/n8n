@@ -34,14 +34,15 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
 ## Decision
 
 1. **A step can declare actions.** This is a fourth kind of step result, next to outputs, a wait
-   and a sub-execution. Each action names a target node, a call id, its position, the input item
-   it belongs to, opaque arguments and opaque metadata. The declaration also carries an opaque
-   round payload. The engine never reads what an action or a payload means. Only node types that
-   opt in can declare actions. Any other node that returns an `EngineRequest` fails its step.
+   and a sub-execution. Each action names a target node, a call id, its position in the round,
+   the input item it belongs to, opaque arguments and opaque metadata. The declaration also
+   carries an opaque round payload. The engine never reads what an action or a payload means. Only
+   node types that opt in can declare actions. Any other node that declares actions fails its
+   step. The shim turns a v1 `EngineRequest` into actions.
 2. **The engine runs each action as a spawned step in the same execution.** A spawned step has the
    full step lifecycle. It can complete, fail, wait for a deadline or a resume request, declare its
-   own actions, or declare a sub-execution. It uses the retry settings of its node, as a graph step
-   does. Its outcome never plans graph successors.
+   own actions, or declare a sub-execution. It follows the retry settings of its node. Its outcome
+   never plans graph successors.
 3. **A step that waits for its actions is `waiting`, as a step that awaits a sub-execution is.**
    The engine writes this wait itself. The wait names the round, and it has no deadline and no
    resume binding. So no resume request and no deadline can end it. Only the engine ends it. The
@@ -57,13 +58,16 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
 5. **A failed action is data.** Its error goes into the continuation. It does not fail the declaring
    step or the execution. The node decides what the error means.
 6. **A continue runs node code. A resume after a deadline or a resume request does not.** The rule
-   of ADR-20260902-steps-declare-waits stays true for waits.
+   of ADR-20260902-steps-declare-waits stays true for waits. A continue is the second case that
+   runs node code again, after the sub-execution resume of
+   ADR-20261020-run-a-sub-workflow-as-its-own-execution.
 7. **All rounds share one step row and one iteration.** `step:started` is published once, before the
-   first round. A retry or a timeout applies to one round, and the time a step waits for its actions
-   does not count. The declaring step's graph successors run only after its final outputs.
+   first round, so the editor shows one run of the node, as engine v1 does. A retry or a timeout of
+   a declaring step applies to one round, and the time it waits for its actions does not count.
+   The declaring step's graph successors run only after its final outputs.
 8. **The engine and the shim know no AI library.** All AI knowledge stays in the node. The node
    counts its own rounds (for example `maxIterations`). The engine caps the number of rounds and
-   spawned steps in one execution.
+   spawned steps in one execution. A step that goes over the cap fails.
 
 ```mermaid
 sequenceDiagram
@@ -107,9 +111,11 @@ sequenceDiagram
 
 ## Consequences
 
-- The number of steps in an execution no longer follows from the graph. Every rule that counts or
-  reads graph steps must ignore spawned steps: the completion count, fail-fast, the expression data
-  loader and successor planning. Without that, an execution can end early.
+- The number of steps in an execution no longer follows from the graph. Every rule that counts
+  graph steps, or keys a step by node and iteration, must leave spawned steps out or handle them
+  apart: the completion count, fail-fast, the final status, the expression data loader, successor
+  planning and the read path. Without that, an execution can end early, a failed action can fail the execution, and two
+  calls of one tool overwrite each other.
 - Expressions cannot read the outputs of a spawned step, as in engine v1, where a tool's output
   is not on its `main` output.
 - A `waiting` step does not always wait for something outside the execution. The `step:waiting`
@@ -118,7 +124,14 @@ sequenceDiagram
 - A crash during a round repeats one LLM call. The answer can differ, and stream chunks can repeat.
 - Two open approvals in one execution need step-bound resume tokens
   (ADR-20260904-a-derived-token-authorizes-a-resume-request).
-- Without concurrent steps, the actions of one round run one after the other.
+- The actions of one round can run in any order. The continuation lists their outcomes in the
+  order that the node declared them.
+- The wake must see every settlement of the round. Two actions that settle at the same time must
+  not both miss it, because nothing from outside can end the wait. The engine wakes the declaring
+  step before it refreshes the live status of the execution. Reconciliation repairs a waiting
+  declaring step whose actions have all settled.
+- A tool that calls a stored workflow fails until a record allows its node type to call a
+  sub-workflow (ADR-20261020-run-a-sub-workflow-as-its-own-execution, decision 3).
 - Cancelling an execution cancels its pending spawned steps.
 - The continuation grows with each round. The node's own round limit and the engine cap bound it.
 - A node can move from one AI library to another without a change in the engine or the shim.

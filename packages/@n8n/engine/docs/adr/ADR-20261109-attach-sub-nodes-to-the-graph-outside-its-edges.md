@@ -37,12 +37,15 @@ spawned step, so it must be a node of the graph.
 4. **The engine validates attachments.** Both ends exist. An `attached` node has no edge. Each
    `attached` node leads, through attachments, to a node that the trigger reaches. Attachments
    have no cycles.
-5. **An action must target an `attached` node that is attached to the declaring step's node.**
-   Its attachment must also have a kind that the declaring node allows as a target. The shim gives
-   the engine these kinds. The engine compares the strings and does not read them.
+5. **An action must target an `attached` node that leads, through attachments, to the declaring
+   step's node.** Each attachment on that path must have a kind that the node it attaches to allows
+   as a target. For example, a tool that a human approval gates attaches to the approval node, and
+   the approval node attaches to the agent. The converter stores the allowed kinds with the graph,
+   so the check does not depend on the run that declares the actions. The engine compares the
+   strings and does not read them.
 6. **The converter adds the sub-nodes of every node it keeps, recursively.** It drops disabled
-   sub-nodes. The shim turns attachments back into v1 connections, so a root node reads its
-   sub-nodes as in engine v1.
+   sub-nodes and every attachment whose node it drops. The shim turns attachments back into v1
+   connections, so a root node reads its sub-nodes as in engine v1.
 7. **A graph without attachments has none.** Graphs stored before this decision stay valid.
 
 ```mermaid
@@ -79,6 +82,10 @@ Solid arrows are edges. Dashed arrows are attachments.
 - Pinned data on a sub-node is not supported, because only reachable nodes can be seeded.
 - The read path shows a spawned step under its declaring node, with the output under the
   attachment kind, as engine v1 does.
+- A sub-node that runs inside its root's step, such as a chat model, records its runs and token
+  usage in engine v1. These records are not stored. Where they go is a separate decision.
+- The target check allows any node on a path of allowed kinds. A tool of a nested agent is on such
+  a path too, so the check alone cannot stop the outer agent from calling it.
 
 ## Links
 

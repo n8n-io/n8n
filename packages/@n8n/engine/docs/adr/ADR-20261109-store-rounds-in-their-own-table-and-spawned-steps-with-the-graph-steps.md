@@ -71,7 +71,8 @@ derives inputs.
 - A round payload must be JSON. The node serialises its own state.
 - Only graph steps follow from the graph. A spawned step follows from a round row.
 - The live execution status never reads `waiting` between a round and its spawned steps, because
-  queued spawned steps exist as soon as the declaring step waits.
+  queued spawned steps exist as soon as the declaring step waits. Nor does it between the last
+  settled action and the continue, because the engine wakes the declaring step first.
 
 ## Links
 
