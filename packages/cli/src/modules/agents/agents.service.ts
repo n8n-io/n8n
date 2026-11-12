@@ -306,7 +306,7 @@ export class AgentsService {
 	}
 
 	private async insertAgent(
-		agent: ProjectAgent,
+		agent: Agent,
 		skillRefs: AgentSkillRefs,
 		options: DraftAgentCreateOptions,
 	) {

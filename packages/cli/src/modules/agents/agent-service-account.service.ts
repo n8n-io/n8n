@@ -5,9 +5,9 @@ import { BadRequestError } from '@n8n/errors';
 
 import { ServiceAccountService } from '@/services/service-account.service';
 
-import type { ProjectAgent } from './entities/agent.entity';
+import type { Agent } from './entities/agent.entity';
 
-/** Links a project agent to the service account that acts for it. */
+/** Links an agent to the service account that acts for it. */
 @Service()
 export class AgentServiceAccountService {
 	constructor(
@@ -20,7 +20,7 @@ export class AgentServiceAccountService {
 	 * `agent.identityId`. Call it in the transaction that inserts the agent,
 	 * so a failed insert leaves no account behind.
 	 */
-	async assignToNewAgent(agent: ProjectAgent, ctx: OperationContext): Promise<void> {
+	async assignToNewAgent(agent: Agent, ctx: OperationContext): Promise<void> {
 		if (!this.agentsConfig.serviceAccountsEnabled) return;
 		// The REST create trims the name, but an import takes it from the package.
 		if (agent.name.trim() === '') throw new BadRequestError('An agent needs a name');
