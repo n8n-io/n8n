@@ -19,10 +19,6 @@ import type { ChatModel, ChatModelConfig } from '../types/chat-model';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
 
-/**
- * LangChain merges streamed tool call chunks by index. A delta with a new id
- * starts a new call; a delta without an id continues the most recent call.
- */
 function createToolCallIndexer() {
 	const indexById = new Map<string, number>();
 	let nextIndex = 0;
@@ -44,10 +40,6 @@ function createToolCallIndexer() {
 	};
 }
 
-/**
- * LangChain names the abort signal and stop sequences `signal` and `stop`.
- * Community models can read either name, so keep both.
- */
 function toChatModelConfig(
 	options: ChatModelConfig & Pick<BaseChatModelCallOptions, 'signal' | 'stop'>,
 ): ChatModelConfig {
