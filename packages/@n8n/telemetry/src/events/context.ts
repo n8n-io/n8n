@@ -471,7 +471,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_IMPORTED_SKILLS_FROM_SOURCE: {
 		name: 'User imported skills from source',
 		description:
-			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts only, never names or content.',
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
@@ -494,6 +494,16 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
 				),
 			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			skipped_file_extensions: z
+				.record(z.string(), z.number())
+				.describe(
+					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts unusual extensions and the extensions after the 20 most common',
+				),
+			skipped_script_files: z
+				.number()
+				.describe(
+					'The `skipped_files` that are scripts or code, such as `.py`, `.sh`, `.js` or `.ts`. The security check flags these for review',
+				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),
