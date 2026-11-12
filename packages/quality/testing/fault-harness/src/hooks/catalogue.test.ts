@@ -1,8 +1,8 @@
-import type { HookedMethod } from './catalogue';
 import { HOOKED_METHODS, observeHookedMethods, olderThan } from './catalogue';
 import { LEADER_HOOKS } from '../multi-main';
 
-const refOf = (ref: HookedMethod) => `${ref.file} ${ref.target}.${ref.method}`;
+const refOf = (ref: { file: string; target: string; method: string }) =>
+	`${ref.file} ${ref.target}.${ref.method}`;
 const listed = new Set(HOOKED_METHODS.map(refOf));
 
 describe('HOOKED_METHODS', () => {
