@@ -78,7 +78,7 @@ function defineLazyValue(
 ): void {
 	let value: unknown;
 	let isCreated = false;
-	Object.defineProperty(target, key, {
+	defineProperty(target, key, {
 		get: () => {
 			if (!isCreated) {
 				value = create();
