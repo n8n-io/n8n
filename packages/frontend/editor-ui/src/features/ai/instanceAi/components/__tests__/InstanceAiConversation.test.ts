@@ -18,7 +18,9 @@ import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import {
+	consumePendingFirstMessage,
 	getPendingWorkflowAttachment,
+	stashPendingFirstMessage,
 	stashPendingAgentAttachment,
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
@@ -578,6 +580,70 @@ describe('InstanceAiConversation', () => {
 			}),
 		);
 	});
+
+	it('replays a local draft opening prompt once, after provisioning, with its pending agent', async () => {
+		store.threads = [];
+		stashPendingFirstMessage(thread.id, {
+			message: 'Build a support agent',
+			authorship: USER_TYPED_MESSAGE,
+			responseStartedAtEpochMs: 123,
+		});
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{ props: { newThread: true, beforeSend } },
+			() => thread,
+		);
+		renderer();
+		await flushPromises();
+
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+			'Build a support agent',
+			expect.objectContaining({
+				authorship: USER_TYPED_MESSAGE,
+				responseStartedAtEpochMs: 123,
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+		expect(consumePendingFirstMessage(thread.id)).toBeNull();
+	});
+
+	it.each(['provisioning failed', 'send refused'])(
+		'retains a local opening prompt when %s',
+		async (failure) => {
+			store.threads = [];
+			const pending = { message: 'Build a support agent', authorship: USER_TYPED_MESSAGE };
+			stashPendingFirstMessage(thread.id, pending);
+			const beforeSend = vi.fn(async () => {
+				if (failure === 'provisioning failed') throw new Error('provisioning failed');
+			});
+			vi.mocked(thread.sendMessage).mockResolvedValue(false);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{ props: { newThread: true, beforeSend } },
+				() => thread,
+			);
+			renderer();
+			await flushPromises();
+
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(consumePendingFirstMessage(thread.id)).toEqual(pending);
+		},
+	);
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
 		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));

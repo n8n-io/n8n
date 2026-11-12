@@ -64,7 +64,8 @@ control layout. Keep the experiment layouts unchanged.
 
 Keep a new Assistant chat local until the user sends a message. Opening the
 panel must not add an empty chat to history. Resume an existing chat when one
-is available.
+is available. Send an opening prompt from the Agents list after the local chat
+is saved. Keep manual Agent edits independent of Assistant chat persistence.
 
 ## Builder side panel widths
 

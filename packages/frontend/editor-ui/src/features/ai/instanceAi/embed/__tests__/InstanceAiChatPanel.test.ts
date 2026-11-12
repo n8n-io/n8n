@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, h, reactive, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -12,9 +12,18 @@ import { useInstanceAiStore } from '../../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { forgetAssistantAgentThread } from '../../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
-import { makeThread } from '../../__tests__/createThreadComponentRenderer';
+import {
+	defaultModuleSettings,
+	InstanceAiInputStub,
+	makeThread,
+} from '../../__tests__/createThreadComponentRenderer';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { USER_TYPED_MESSAGE } from '../../prefills';
 import {
 	clearPendingComposerDraft,
+	consumePendingFirstMessage,
+	stashPendingFirstMessage,
 	clearPendingHandoffContext,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
@@ -206,6 +215,65 @@ describe('InstanceAiChatPanel', () => {
 		conversation.vm.$emit('content-change', true);
 		expect(wrapper.emitted('content-change')).toEqual([[true]]);
 		expect(wrapper.find('[data-test-id="instance-ai-embed-close"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('sends the host opening prompt through the real conversation after provisioning its local draft', async () => {
+		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
+		mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
+		store.getThreadMetadata.mockReturnValue(undefined);
+		const thread = reactive({ ...makeThread(), id: 'thread-2' });
+		store.getRuntime.mockReturnValue(thread);
+		store.getOrCreateRuntime.mockReturnValue(thread);
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const Host = defineComponent({
+			setup() {
+				const threadId = ref<string>();
+				return () =>
+					h(InstanceAiChatPanel, {
+						subject: { ...subject, pending: true },
+						launch,
+						threadId: threadId.value,
+						beforeSend,
+						'onUpdate:threadId': (id: string) => {
+							stashPendingFirstMessage(id, {
+								message: 'Build a support agent',
+								authorship: USER_TYPED_MESSAGE,
+							});
+							threadId.value = id;
+						},
+					});
+			},
+		});
+		const wrapper = mount(Host, {
+			global: {
+				stubs: {
+					...panelStubs,
+					InstanceAiConversation: false,
+					InstanceAiInput: InstanceAiInputStub,
+				},
+			},
+		});
+		await flushPromises();
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		gate.resolve();
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+			'Build a support agent',
+			expect.objectContaining({
+				attachments: [
+					expect.objectContaining({ type: 'agent', id: 'agent-1', projectId: 'p1', pending: true }),
+				],
+			}),
+		);
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(consumePendingFirstMessage('thread-2')).toBeNull();
 		wrapper.unmount();
 	});
 

@@ -593,6 +593,23 @@ async function syncThread() {
 	if (props.newThread) {
 		// A local draft has no server history to load.
 		thread.hydrationStatus = 'ready';
+		if (!settingsStore.isWorkflowBuilderAvailable) return;
+		const pending = consumePendingFirstMessage(requestedThreadId);
+		if (pending) {
+			pendingComposerContext.value = pending.context ?? pendingComposerContext.value;
+			// Opening prompts are real sends: provision the draft and include its agent.
+			void handleSubmit(
+				pending.message,
+				pending.attachments,
+				() => {
+					if (!isCurrentThreadRuntime()) return false;
+					stashPendingFirstMessage(requestedThreadId, pending);
+					return true;
+				},
+				pending.authorship,
+				pending.responseStartedAtEpochMs,
+			);
+		}
 		return;
 	}
 	// The history list is paginated, so an unknown id is resolved on its own
