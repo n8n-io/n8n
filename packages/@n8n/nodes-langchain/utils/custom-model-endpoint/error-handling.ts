@@ -19,8 +19,10 @@ function parseJson(text: string): unknown {
 	}
 }
 
-function isAlreadyClientShaped(body: Record<string, unknown>): boolean {
-	return isRecord(body.error) && typeof body.error.message === 'string';
+function clientShapedMessage(parsed: unknown): string | undefined {
+	return isRecord(parsed) && isRecord(parsed.error) && typeof parsed.error.message === 'string'
+		? parsed.error.message
+		: undefined;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -50,16 +52,19 @@ function messageFromHtml(text: string): string | undefined {
 	return flattened.length > 0 ? flattened : undefined;
 }
 
-function messageFromBody(text: string): string | undefined {
+export function messageFromBody(text: string): string | undefined {
 	if (text.length === 0) return undefined;
 	if (text.startsWith('<')) return messageFromHtml(text);
 
 	const parsed = parseJson(text);
 	if (parsed === UNPARSED) return text;
-	if (!isRecord(parsed) || isAlreadyClientShaped(parsed)) return undefined;
+	if (!isRecord(parsed)) return undefined;
 
-	return [parsed.error_description, parsed.error, parsed.message, parsed.detail].find(
-		(value): value is string => typeof value === 'string',
+	return (
+		clientShapedMessage(parsed) ??
+		[parsed.error_description, parsed.error, parsed.message, parsed.detail].find(
+			(value): value is string => typeof value === 'string',
+		)
 	);
 }
 
@@ -69,7 +74,9 @@ export function wrapCustomModelEndpointErrorFetch(baseFetch: typeof fetch): type
 		if (response.ok) return response;
 
 		const text = (await response.text()).trim();
-		const message = messageFromBody(text);
+		// Reshaping a body the client already understands would drop the fields beside its message
+		const message =
+			clientShapedMessage(parseJson(text)) === undefined ? messageFromBody(text) : undefined;
 
 		const headers = new Headers(response.headers);
 		headers.delete('content-length');

@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { truncateMessage } from './error-handling';
+import { messageFromBody, truncateMessage } from './error-handling';
 import { oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
@@ -53,22 +53,14 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 	};
 }
 
-function reasonFor(text: string, status: number): string {
-	const stated = (() => {
-		try {
-			const parsed: unknown = JSON.parse(text);
-			if (!isRecord(parsed)) return undefined;
-			if (typeof parsed.error_description === 'string') return parsed.error_description;
-			if (isRecord(parsed.error) && typeof parsed.error.message === 'string') {
-				return parsed.error.message;
-			}
-			if (typeof parsed.error === 'string') return parsed.error;
-		} catch {}
-		return undefined;
-	})();
+function refusedToSignIn(text: string, status: number): UserError {
+	const stated = messageFromBody(text.trim());
+	const reason =
+		stated === undefined ? `the login server answered ${status}` : truncateMessage(stated);
 
-	if (stated === undefined) return `the login server answered ${status}`;
-	return truncateMessage(stated);
+	return new UserError(`Could not sign in to the gateway: ${reason}`, {
+		description: 'Check the token URL, client ID, client secret and scope on the credential.',
+	});
 }
 
 /** Trimmed because `Headers` trims it anyway, and a padded token is not worth sending. */
@@ -128,14 +120,8 @@ export function createClientCredentialsTokenSource(
 			},
 		);
 		const text = await response.text();
-		if (!response.ok) {
-			const reason = reasonFor(text, response.status);
-			throw new UserError(`Could not sign in to the gateway: ${reason}`, {
-				description: 'Check the token URL, client ID, client secret and scope on the credential.',
-			});
-		}
-		const token = readToken(text);
-		return token;
+		if (!response.ok) throw refusedToSignIn(text, response.status);
+		return readToken(text);
 	};
 
 	return {

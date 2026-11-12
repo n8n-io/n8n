@@ -122,21 +122,44 @@ describe('createClientCredentialsTokenSource', () => {
 	});
 
 	describe('when the login server refuses', () => {
-		it("gives the server's own reason", async () => {
-			const { fetchImpl } = granting(
-				{ error: 'invalid_client', error_description: 'Client authentication failed' },
+		const refusing = (body: string, status: number) =>
+			(async () => new Response(body, { status })) as typeof fetch;
+
+		it.each<[string, string, number, string]>([
+			[
+				'the description of the OAuth2 error',
+				JSON.stringify({
+					error: 'invalid_client',
+					error_description: 'Client authentication failed',
+				}),
 				401,
-			);
-			const source = createClientCredentialsTokenSource(login(), fetchImpl);
+				'Client authentication failed',
+			],
+			[
+				'the bare error code when that is all there is',
+				JSON.stringify({ error: 'invalid_scope' }),
+				400,
+				'invalid_scope',
+			],
+			[
+				'the message of a body already shaped for the client',
+				JSON.stringify({ error: { message: 'Client authentication failed' } }),
+				401,
+				'Client authentication failed',
+			],
+			[
+				'the title of the page a proxy refused with',
+				'<html><head><title>Access Denied: corporate proxy rule 42</title></head></html>',
+				403,
+				'Access Denied: corporate proxy rule 42',
+			],
+			['a plain text refusal', 'Unauthorized\n', 401, 'Unauthorized'],
+			['the status when the body states no reason', JSON.stringify({}), 503, 'answered 503'],
+			['the status when there is no body at all', '', 503, 'answered 503'],
+		])('gives %s', async (_name, body, status, expected) => {
+			const source = createClientCredentialsTokenSource(login(), refusing(body, status));
 
-			await expect(source.getToken()).rejects.toThrow('Client authentication failed');
-		});
-
-		it('falls back to the status when it gives no reason', async () => {
-			const { fetchImpl } = granting({}, 503);
-			const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-			await expect(source.getToken()).rejects.toThrow('answered 503');
+			await expect(source.getToken()).rejects.toThrow(expected);
 		});
 	});
 
