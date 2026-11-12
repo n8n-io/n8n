@@ -28,6 +28,7 @@ const postgresEnv: Record<string, string> = {
 const projectName = 'proj';
 const authSecret = 'test-stack-secret'.repeat(3);
 const engineOptions = { projectName, authSecret };
+const containerEnvOptions = { ...engineOptions, mains: 1 };
 const dedicatedEngineEnv = {
 	...postgresEnv,
 	N8N_ENGINE_DATABASE_URL:
@@ -38,7 +39,7 @@ describe('applyEngineEnv', () => {
 	test('leaves the env untouched when no engine mode is set', () => {
 		const env = { ...postgresEnv };
 
-		applyEngineEnv(env, { engine: undefined, mains: 1, isQueueMode: false, projectName });
+		applyEngineEnv(env, { engine: undefined, mains: 1, workers: 0, webhooks: 0, projectName });
 
 		expect(env).toEqual(postgresEnv);
 	});
@@ -47,7 +48,7 @@ describe('applyEngineEnv', () => {
 		test('enables the engine-v2 module', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENABLED_MODULES).toBe('engine-v2');
 		});
@@ -55,7 +56,7 @@ describe('applyEngineEnv', () => {
 		test('keeps modules the caller already enabled', () => {
 			const env = { ...postgresEnv, N8N_ENABLED_MODULES: 'insights,engine-v2' };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENABLED_MODULES).toBe('insights,engine-v2');
 		});
@@ -63,7 +64,7 @@ describe('applyEngineEnv', () => {
 		test('points the data plane at its own database on the stack Postgres', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENGINE_DATABASE_URL).toBe(
 				`postgres://n8n_user:test_password@postgres:5432/${ENGINE_DATABASE}`,
@@ -73,7 +74,7 @@ describe('applyEngineEnv', () => {
 		test('keeps an explicit data plane database URL', () => {
 			const env = { ...postgresEnv, N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db' };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
 		});
@@ -81,7 +82,7 @@ describe('applyEngineEnv', () => {
 		test('gives the main the resume secret, because it hosts the data plane', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENGINE_RESUME_SECRET).toMatch(/^[0-9a-f]{64}$/);
 		});
@@ -89,7 +90,7 @@ describe('applyEngineEnv', () => {
 		test('leaves the mode unset so the module hosts the data plane', () => {
 			const env = { ...postgresEnv };
 
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 			expect(env.N8N_ENGINE_MODE).toBeUndefined();
 		});
@@ -102,7 +103,13 @@ describe('applyEngineEnv', () => {
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
 				N8N_ENGINE_RESUME_SECRET: 'caller-resume-secret'.repeat(2),
 			};
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 0,
+				webhooks: 0,
+				...engineOptions,
+			});
 			return env;
 		};
 
@@ -123,7 +130,13 @@ describe('applyEngineEnv', () => {
 
 		test('sends traffic between the planes past the HTTP proxy, and keeps the caller NO_PROXY hosts', () => {
 			const env: Record<string, string> = { ...postgresEnv, NO_PROXY: 'localhost,keycloak' };
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 0,
+				webhooks: 0,
+				...engineOptions,
+			});
 
 			expect(env.NO_PROXY).toBe('localhost,keycloak,proj-n8n-engine,proj-n8n');
 		});
@@ -137,7 +150,13 @@ describe('applyEngineEnv', () => {
 
 		test('keeps the control plane port the engine dials, whatever the caller set', () => {
 			const env: Record<string, string> = { ...postgresEnv, N8N_ENGINE_CONTROL_PLANE_PORT: '4001' };
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 0,
+				webhooks: 0,
+				...engineOptions,
+			});
 
 			expect(env.N8N_ENGINE_CONTROL_PLANE_PORT).toBe('3001');
 		});
@@ -169,7 +188,13 @@ describe('applyEngineEnv', () => {
 				N8N_STORAGE_PATH: '/custom/storage',
 				N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
 			};
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 0,
+				webhooks: 0,
+				...engineOptions,
+			});
 
 			expect(env.N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
 			expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
@@ -178,7 +203,7 @@ describe('applyEngineEnv', () => {
 
 	test('leaves the storage path alone in in-process mode, since one process holds both planes', () => {
 		const env = { ...postgresEnv };
-		applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+		applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName });
 
 		expect(env.N8N_STORAGE_PATH).toBeUndefined();
 	});
@@ -189,7 +214,7 @@ describe('applyEngineEnv', () => {
 		// The connection-env error also says "Postgres", so match what only this
 		// error says. Otherwise the test passes when the guard is gone.
 		expect(() =>
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName }),
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName }),
 		).toThrow(/set `postgres: true`/);
 	});
 
@@ -198,54 +223,104 @@ describe('applyEngineEnv', () => {
 		const env: Record<string, string> = { DB_TYPE: 'postgresdb' };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName }),
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 0, webhooks: 0, projectName }),
 		).toThrow(
 			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_HOST, DB_POSTGRESDB_PORT/,
 		);
 	});
 
-	test('rejects queue mode', () => {
+	test('rejects workers, since the engine-v2 module runs on mains only', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions }),
-		).toThrow(/queue mode/);
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 1,
+				webhooks: 0,
+				...engineOptions,
+			}),
+		).toThrow(/workers or webhook processes/);
+	});
+
+	test('rejects webhook processes, since the engine-v2 module runs on mains only', () => {
+		const env = { ...postgresEnv };
+
+		expect(() =>
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 1,
+				workers: 0,
+				webhooks: 1,
+				...engineOptions,
+			}),
+		).toThrow(/workers or webhook processes/);
 	});
 
 	test('rejects a stack without a main, since the engine would be started as one', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, ...engineOptions }),
-		).toThrow(/exactly one main/);
+			applyEngineEnv(env, {
+				engine: 'container',
+				mains: 0,
+				workers: 0,
+				webhooks: 0,
+				...engineOptions,
+			}),
+		).toThrow(/at least one main/);
+	});
+
+	test('accepts more than one main with an engine container', () => {
+		const env = { ...postgresEnv };
+
+		applyEngineEnv(env, {
+			engine: 'container',
+			mains: 2,
+			workers: 0,
+			webhooks: 0,
+			...engineOptions,
+		});
+
+		expect(env.N8N_ENGINE_MODE).toBe('remote');
+	});
+
+	test('rejects more than one main with an in-process engine, which they cannot share', () => {
+		const env = { ...postgresEnv };
+
+		expect(() =>
+			applyEngineEnv(env, { engine: 'in-process', mains: 2, workers: 0, webhooks: 0, projectName }),
+		).toThrow(/in-process mode needs exactly one main/);
 	});
 });
 
 describe('engineContainerEnv', () => {
 	test('has no control plane database access', () => {
-		const env = engineContainerEnv(dedicatedEngineEnv, engineOptions);
+		const env = engineContainerEnv(dedicatedEngineEnv, containerEnvOptions);
 
 		expect(Object.keys(env).filter((key) => key.startsWith('DB_'))).toEqual([]);
 	});
 
 	test('has no encryption key, since it holds no credential store', () => {
 		expect(
-			engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENCRYPTION_KEY,
+			engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).N8N_ENCRYPTION_KEY,
 		).toBeUndefined();
 	});
 
 	test('keeps the rest of the shared env', () => {
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_LOG_LEVEL).toBe('debug');
+		expect(engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).N8N_LOG_LEVEL).toBe('debug');
 	});
 
 	test('requires a dedicated data plane database URL', () => {
-		expect(() => engineContainerEnv(postgresEnv, engineOptions)).toThrow(/N8N_ENGINE_DATABASE_URL/);
+		expect(() => engineContainerEnv(postgresEnv, containerEnvOptions)).toThrow(
+			/N8N_ENGINE_DATABASE_URL/,
+		);
 	});
 
 	test('keeps an explicit data plane database URL', () => {
 		const env = engineContainerEnv(
 			{ ...postgresEnv, N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db' },
-			engineOptions,
+			containerEnvOptions,
 		);
 
 		expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
@@ -253,22 +328,37 @@ describe('engineContainerEnv', () => {
 
 	test('dials the control plane server on the main over https', () => {
 		expect(
-			engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_CONTROL_PLANE_BASE_URL,
+			engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).N8N_ENGINE_CONTROL_PLANE_BASE_URL,
 		).toBe('https://proj-n8n:3001');
 	});
 
 	test('gives the engine its TLS files for mutual TLS with the main', () => {
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions)).toMatchObject(ENGINE_TLS_ENV);
+		expect(engineContainerEnv(dedicatedEngineEnv, containerEnvOptions)).toMatchObject(
+			ENGINE_TLS_ENV,
+		);
 	});
 
 	test('sends traffic between the planes past the HTTP proxy', () => {
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).NO_PROXY).toBe(
+		expect(engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).NO_PROXY).toBe(
 			'proj-n8n-engine,proj-n8n',
 		);
 	});
 
+	test('dials the control plane server on main 1 when the stack has more than one main', () => {
+		expect(
+			engineContainerEnv(dedicatedEngineEnv, { ...engineOptions, mains: 2 })
+				.N8N_ENGINE_CONTROL_PLANE_BASE_URL,
+		).toBe('https://proj-n8n-main-1:3001');
+	});
+
+	test('sends traffic to every main past the HTTP proxy when the stack has more than one main', () => {
+		expect(engineContainerEnv(dedicatedEngineEnv, { ...engineOptions, mains: 2 }).NO_PROXY).toBe(
+			'proj-n8n-engine,proj-n8n-main-1,proj-n8n-main-2',
+		);
+	});
+
 	test('shares the secret both planes verify against', () => {
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_AUTH_SECRET).toBe(
+		expect(engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).N8N_ENGINE_AUTH_SECRET).toBe(
 			authSecret,
 		);
 	});
@@ -278,13 +368,14 @@ describe('engineContainerEnv', () => {
 		applyEngineEnv(inProcessEnv, {
 			engine: 'in-process',
 			mains: 1,
-			isQueueMode: false,
+			workers: 0,
+			webhooks: 0,
 			projectName,
 		});
 
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_RESUME_SECRET).toBe(
-			inProcessEnv.N8N_ENGINE_RESUME_SECRET,
-		);
+		expect(
+			engineContainerEnv(dedicatedEngineEnv, containerEnvOptions).N8N_ENGINE_RESUME_SECRET,
+		).toBe(inProcessEnv.N8N_ENGINE_RESUME_SECRET);
 	});
 
 	test('stores binary data where the main stores it, whatever storage path the caller set', () => {
@@ -297,11 +388,12 @@ describe('engineContainerEnv', () => {
 		applyEngineEnv(mainEnv, {
 			engine: 'container',
 			mains: 1,
-			isQueueMode: false,
+			workers: 0,
+			webhooks: 0,
 			...engineOptions,
 		});
 
-		const env = engineContainerEnv(callerEnv, engineOptions);
+		const env = engineContainerEnv(callerEnv, containerEnvOptions);
 
 		expect(env.N8N_STORAGE_PATH).toBe(mainEnv.N8N_STORAGE_PATH);
 		expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
@@ -310,7 +402,7 @@ describe('engineContainerEnv', () => {
 	test('passes the Redis connection through for the response channel', () => {
 		const env = engineContainerEnv(
 			{ ...dedicatedEngineEnv, QUEUE_BULL_REDIS_HOST: 'redis', QUEUE_BULL_REDIS_PORT: '6379' },
-			engineOptions,
+			containerEnvOptions,
 		);
 
 		expect(env.QUEUE_BULL_REDIS_HOST).toBe('redis');
@@ -320,7 +412,7 @@ describe('engineContainerEnv', () => {
 	test('serves on the address the main dials and the stack probes, whatever the caller set', () => {
 		const env = engineContainerEnv(
 			{ ...dedicatedEngineEnv, N8N_ENGINE_HOST: '127.0.0.1', N8N_ENGINE_PORT: '4000' },
-			engineOptions,
+			containerEnvOptions,
 		);
 
 		expect(env.N8N_ENGINE_HOST).toBe('0.0.0.0');
@@ -333,7 +425,13 @@ describe('assertEngineSupported', () => {
 	// that do not run engine v2 starting at all.
 	test('accepts any stack that does not run engine v2', () => {
 		expect(() =>
-			assertEngineSupported({ engine: undefined, mains: 0, isQueueMode: true, usePostgres: false }),
+			assertEngineSupported({
+				engine: undefined,
+				mains: 0,
+				workers: 1,
+				webhooks: 1,
+				usePostgres: false,
+			}),
 		).not.toThrow();
 	});
 });
@@ -352,7 +450,7 @@ describe('redis service', () => {
 });
 
 describe('createEngineTlsFiles', () => {
-	const files = createEngineTlsFiles(projectName);
+	const files = createEngineTlsFiles(projectName, 1);
 	const contentOf = (set: FileToMount[], target: string) =>
 		set.find((file) => file.target === target)?.content ?? '';
 
@@ -388,5 +486,14 @@ describe('createEngineTlsFiles', () => {
 					.publicKey,
 			),
 		).toBe(true);
+	});
+
+	test('names every main in the main certificate, since all mains share it', () => {
+		const multiMainFiles = createEngineTlsFiles(projectName, 2);
+		const cert = new X509Certificate(
+			contentOf(multiMainFiles.main, ENGINE_TLS_ENV.N8N_ENGINE_TLS_CERT_FILE),
+		);
+
+		expect(cert.subjectAltName).toBe('DNS:proj-n8n-main-1, DNS:proj-n8n-main-2');
 	});
 });
