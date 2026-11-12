@@ -18,9 +18,7 @@ import {
 
 const EXTERNAL = process.env.TEST_RIG_RUNNERS === 'external';
 const RUNNERS = EXTERNAL ? 'external' : 'internal';
-const NAME = EXTERNAL
-	? 'worker-drain-detached-subworkflow-external'
-	: 'worker-drain-detached-subworkflow';
+const NAME = `worker-drain-detached-subworkflow${EXTERNAL ? '-external' : ''}`;
 
 test.afterEach(async () => await stopAllStacks());
 
@@ -28,8 +26,6 @@ test(
 	'worker drain: detached sub-workflow finishes before the worker exits',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	async () => {
-		test.setTimeout(300_000);
-
 		const rig = await RigStack.start({
 			name: 'detached-sub',
 			workers: 1,

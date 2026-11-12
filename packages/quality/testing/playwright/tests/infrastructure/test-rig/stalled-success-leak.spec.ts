@@ -24,8 +24,6 @@ test(
 	'stalled job that succeeded: main settles the execution and shuts down cleanly',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	async () => {
-		test.setTimeout(300_000);
-
 		const rig = await RigStack.start({
 			name: 'stalled-success',
 			workers: 1,

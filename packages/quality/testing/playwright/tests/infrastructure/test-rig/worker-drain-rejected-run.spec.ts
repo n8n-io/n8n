@@ -24,8 +24,6 @@ test(
 	'worker drain: a job whose run rejects no longer holds the drain',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	async () => {
-		test.setTimeout(300_000);
-
 		const rig = await RigStack.start({
 			name: 'rejected-run',
 			workers: 1,
