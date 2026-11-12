@@ -17,7 +17,7 @@ import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-s
 import { saveCredential } from './shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { addApiKey, createUser } from './shared/db/users';
-import type { SuperAgentTest, TestAgent } from './shared/types';
+import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
@@ -410,7 +410,7 @@ describe('destination credential project roles', () => {
 		{ role: 'global:owner', statusCode: 200 },
 	] as const;
 	let agents: Record<(typeof roles)[number]['role'], SuperAgentTest>;
-	let publicAgents: Record<(typeof roles)[number]['role'], TestAgent>;
+	let publicAgents: Record<(typeof roles)[number]['role'], SuperAgentTest>;
 	let credential: CredentialsEntity;
 	let destinationId: string;
 
