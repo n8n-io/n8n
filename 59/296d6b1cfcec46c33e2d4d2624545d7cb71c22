@@ -12,6 +12,7 @@ packages/cli/src/auth/handlers/email.auth-handler.ts
 packages/cli/src/auth/handlers/__tests__/email.auth-handler.test.ts
   s_252e1a6ea6d36e::t_00539bdf84a13c 56,101
   s_252e1a6ea6d36e::t_2cedf54f4b0cd5 62-81,112-119,121-125,127-135,137-141,143
+  s_252e1a6ea6d36e::t_38d3a36a5137fd 120,126,136,142
 ---
 {
   "schema_version": "authorship/3.0.0",
