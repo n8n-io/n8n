@@ -64,7 +64,7 @@ function refusedToSignIn(text: string, status: number): UserError {
 }
 
 /** Trimmed because `Headers` trims it anyway, and a padded token is not worth sending. */
-export function accessTokenIn(parsed: unknown): string {
+function accessTokenIn(parsed: unknown): string {
 	const stated =
 		isRecord(parsed) && typeof parsed.access_token === 'string' ? parsed.access_token : '';
 	const token = stated.trim();
@@ -74,6 +74,20 @@ export function accessTokenIn(parsed: unknown): string {
 		});
 	}
 	return token;
+}
+
+function bodyText(body: unknown): string {
+	if (typeof body === 'string') return body;
+	return body === undefined ? '' : JSON.stringify(body);
+}
+
+/** The shape `returnFullResponse` gives: a refusal states its reason in the body, not in the error thrown in its place. */
+export function accessTokenInResponse(response: unknown): string {
+	const full: Record<string, unknown> = isRecord(response) ? response : {};
+	const status = typeof full.statusCode === 'number' ? full.statusCode : 0;
+
+	if (status >= 200 && status < 300) return accessTokenIn(full.body);
+	throw refusedToSignIn(bodyText(full.body), status);
 }
 
 function statedLifetime(parsed: unknown): number {

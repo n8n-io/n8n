@@ -12,7 +12,7 @@ import { UserError } from 'n8n-workflow';
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
 import {
-	accessTokenIn,
+	accessTokenInResponse,
 	clientCredentialsTokenRequest,
 } from '../utils/custom-model-endpoint/oauth2';
 
@@ -232,6 +232,9 @@ export class CustomModelEndpointApi implements ICredentialType {
 				timeout,
 				// Following one would re-POST the secret to wherever it pointed
 				disableFollowRedirect: redirect === 'manual',
+				// The refusal body states the reason; the error thrown in its place does not
+				ignoreHttpStatusErrors: true,
+				returnFullResponse: true,
 			});
 		} catch (error) {
 			// A refusal from the domain allowlist or the egress policy names the host
@@ -244,7 +247,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 			});
 		}
 
-		return { sessionToken: accessTokenIn(response) };
+		return { sessionToken: accessTokenInResponse(response) };
 	}
 
 	async authenticate(

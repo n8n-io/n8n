@@ -189,7 +189,10 @@ describe('CustomModelEndpointApi Credential', () => {
 		};
 
 		it('asks the login server for a token and hands it to authenticate', async () => {
-			const { httpRequest, mint } = minting({ access_token: 'tok-abc', expires_in: 3600 });
+			const { httpRequest, mint } = minting({
+				statusCode: 200,
+				body: { access_token: 'tok-abc', expires_in: 3600 },
+			});
 
 			expect(await mint(OAUTH2)).toEqual({ sessionToken: 'tok-abc' });
 			expect(httpRequest).toHaveBeenCalledWith({
@@ -204,7 +207,36 @@ describe('CustomModelEndpointApi Credential', () => {
 				timeout: 30_000,
 				// A redirect would re-POST the secret somewhere else
 				disableFollowRedirect: true,
+				// The refusal body states the reason; the error thrown in its place does not
+				ignoreHttpStatusErrors: true,
+				returnFullResponse: true,
 			});
+		});
+
+		it.each<[string, number, unknown, string]>([
+			[
+				'the description of the OAuth2 error',
+				401,
+				{ error: 'invalid_client', error_description: 'Client authentication failed' },
+				'Client authentication failed',
+			],
+			[
+				'the bare error code when that is all there is',
+				400,
+				{ error: 'invalid_scope' },
+				'invalid_scope',
+			],
+			[
+				'the title of the page a proxy refused with',
+				403,
+				'<html><head><title>Access Denied: corporate proxy rule 42</title></head></html>',
+				'Access Denied: corporate proxy rule 42',
+			],
+			['the status when the body states no reason', 503, {}, 'answered 503'],
+		])('gives %s when the login server refuses', async (_name, statusCode, body, expected) => {
+			const { mint } = minting({ statusCode, body });
+
+			await expect(mint(OAUTH2)).rejects.toThrow(expected);
 		});
 
 		it('never surfaces the transport failure, which repeats the request that caused it', async () => {
@@ -239,7 +271,7 @@ describe('CustomModelEndpointApi Credential', () => {
 		});
 
 		it('fails when the login server returns no access token', async () => {
-			const { mint } = minting({ token_type: 'Bearer' });
+			const { mint } = minting({ statusCode: 200, body: { token_type: 'Bearer' } });
 
 			await expect(mint(OAUTH2)).rejects.toThrow('no access token');
 		});
