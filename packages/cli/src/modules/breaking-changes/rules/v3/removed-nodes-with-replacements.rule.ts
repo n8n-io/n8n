@@ -50,7 +50,7 @@ export const ConvertToFromBinaryDataRemovedRule = createNodeReplacementRule({
 		{
 			action: 'Replace with Convert to File',
 			description:
-				'For JSON to Binary with Convert All Data off, replace this node with Convert to File. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File.',
+				'For JSON to Binary with Convert All Data off, replace this node with Convert to File. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File. Convert to Text File writes a text value without the JSON quotes that the old node added when Use Raw Data was off. Convert to File does not keep the other fields of the item. To keep them, add a Merge node that combines the items by position.',
 		},
 		{
 			action: 'Check items without the input field',
