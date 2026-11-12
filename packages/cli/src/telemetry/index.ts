@@ -8,7 +8,7 @@ import {
 	WorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -17,7 +17,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type {
 	AgentRunTelemetryType,
 	IAgentConfigurationTelemetryProperties,

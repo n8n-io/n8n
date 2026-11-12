@@ -3,13 +3,12 @@ import {
 	type BreakingChangeVersion,
 	type BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
-import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
@@ -29,7 +28,7 @@ import { diffMigrationFindings, type MigrationFindingHit } from './migration-fin
  * The n8n version is part of the hash: a release can change how a rule detects
  * issues without changing its id, so the first read after an upgrade re-syncs.
  */
-export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = N8N_VERSION): string {
+export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = getN8nVersion()): string {
 	return createHash('sha256')
 		.update([n8nVersion, ...[...ruleIds].sort()].join('\n'))
 		.digest('hex');

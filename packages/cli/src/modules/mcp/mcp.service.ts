@@ -7,7 +7,7 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	UrlService,
@@ -38,7 +38,6 @@ import type z from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
@@ -342,7 +341,7 @@ export class McpService {
 			dataPlaneUrl: '',
 			configUrl: '',
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		if (!enabled) return { telemetry: disabledTelemetry };
@@ -357,7 +356,7 @@ export class McpService {
 			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
 			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		try {
