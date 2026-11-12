@@ -971,7 +971,9 @@ describe('InstanceAiChatPanel', () => {
 		}
 
 		beforeEach(() => {
-			mockedStore(useInstanceAiSettingsStore).isAssistantAgentEnabled = true;
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.isAssistantAgentEnabled = true;
+			settingsStore.newThreadsUseAssistantAgent = true;
 			// The current runtime knows only its own threads.
 			store.getThreadMetadata.mockImplementation(
 				(threadId) => store.threads.find(({ id }) => id === threadId)?.metadata,
@@ -1009,6 +1011,16 @@ describe('InstanceAiChatPanel', () => {
 			conversation.vm.$emit('content-change', true);
 			expect(wrapper.emitted('content-change')).toEqual([[true]]);
 			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
+		});
+
+		it('starts a new thread on the current runtime for a user outside the rollout', async () => {
+			mockedStore(useInstanceAiSettingsStore).newThreadsUseAssistantAgent = false;
+
+			const { emitted } = renderPanel({ props: { subject, launch } });
+			await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+			expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+			expect(store.syncThread).toHaveBeenCalled();
 		});
 
 		it('resumes the newest thread of the subject across both runtimes', async () => {
