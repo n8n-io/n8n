@@ -7,6 +7,7 @@ import {
 	getWorkflowStaging,
 	stagingFilePath,
 	toStagingWorkflowNodes,
+	worksOnSavedWorkflow,
 	type StagingNodeTypeInfo,
 } from '../instanceAi.workflowStaging';
 
@@ -20,7 +21,15 @@ function findRunningTurn(messages: InstanceAiMessage[]) {
 	const message = messages[index];
 	if (message?.role !== 'assistant' || !message.isStreaming || !message.agentTree) return undefined;
 	const request = messages[index - 1];
-	return { tree: message.agentTree, request: request?.role === 'user' ? request : undefined };
+	// A follow-up can edit the workflow of an earlier turn without reading it again.
+	const continuesSavedWorkflow = messages
+		.slice(0, index)
+		.some((earlier) => earlier.agentTree !== undefined && worksOnSavedWorkflow(earlier.agentTree));
+	return {
+		tree: message.agentTree,
+		request: request?.role === 'user' ? request : undefined,
+		continuesSavedWorkflow,
+	};
 }
 
 /**
@@ -39,6 +48,7 @@ export function useWorkflowStaging(options: {
 	const stagingDraft = computed((): WorkflowDraft | undefined => {
 		const turn = runningTurn.value;
 		if (!options.enabled() || !turn) return undefined;
+		if (turn.continuesSavedWorkflow) return undefined;
 		if (turn.request?.attachments?.some(attachesWorkflow)) return undefined;
 		const staging = getWorkflowStaging(turn.tree, {
 			hasNodeType: (nodeType) => options.describeType(nodeType) !== undefined,

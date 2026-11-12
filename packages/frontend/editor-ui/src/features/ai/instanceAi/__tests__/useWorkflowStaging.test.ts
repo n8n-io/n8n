@@ -124,6 +124,37 @@ describe('useWorkflowStaging', () => {
 		expect(stagingDraft.value).toBeUndefined();
 	});
 
+	it.each<[string, InstanceAiToolCallState]>([
+		['read a saved workflow', call('get_workflow_as_code', { workflowId: 'wf-1' })],
+		[
+			'saved a workflow',
+			{
+				...call('workflow_builder_build_workflow', { filePath: 'a.ts' }),
+				result: { success: true, filePath: 'a.ts', workflowId: 'wf-1' },
+			},
+		],
+	])('stages nothing when an earlier turn of the thread %s', (_, earlierCall) => {
+		const { stagingDraft } = setup([
+			userMessage(),
+			{ ...assistantMessage([earlierCall], false), id: 'm-earlier', runId: 'run-0' },
+			userMessage(),
+			assistantMessage([loadBuilder, readSlack]),
+		]);
+
+		expect(stagingDraft.value).toBeUndefined();
+	});
+
+	it('stages a new workflow when earlier turns did not work on a workflow', () => {
+		const { stagingDraft } = setup([
+			userMessage(),
+			{ ...assistantMessage([call('list_workflows')], false), id: 'm-earlier', runId: 'run-0' },
+			userMessage(),
+			assistantMessage([loadBuilder, readSlack]),
+		]);
+
+		expect(stagingDraft.value).toBeDefined();
+	});
+
 	it('ends when the run has its first draft', async () => {
 		const { stagingDraft, drafts } = setup([userMessage(), assistantMessage([loadBuilder])]);
 

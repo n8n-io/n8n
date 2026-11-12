@@ -138,6 +138,11 @@ export function getWorkflowStaging(
 	return { runId: tree.runId ?? tree.agentId, nodes: [...nodes.values()] };
 }
 
+/** The run read or saved a workflow, so later turns of the thread work on it. */
+export function worksOnSavedWorkflow(tree: InstanceAiAgentNode): boolean {
+	return collectToolCalls(tree).some((toolCall) => isEditCall(toolCall) || isSavedBuild(toolCall));
+}
+
 type StagingDraftNode = WorkflowDraft['workflow']['nodes'][number];
 
 export interface StagingNodeTypeInfo {
