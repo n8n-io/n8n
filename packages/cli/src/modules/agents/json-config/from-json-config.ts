@@ -5,6 +5,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
+	ExecutionOptions,
 	FetchFn,
 	McpClient,
 	ModelConfig,
@@ -295,8 +296,14 @@ export async function buildFromJson(
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
-		if (config.config.maxIterations) {
-			agent.configuration({ maxIterations: config.config.maxIterations });
+		const executionOptions: ExecutionOptions = {
+			...(config.config.maxIterations ? { maxIterations: config.config.maxIterations } : {}),
+			...(config.config.serviceTier && getProviderPrefix(config.model) === 'openai'
+				? { providerOptions: { openai: { serviceTier: config.config.serviceTier } } }
+				: {}),
+		};
+		if (Object.keys(executionOptions).length > 0) {
+			agent.configuration(executionOptions);
 		}
 	}
 

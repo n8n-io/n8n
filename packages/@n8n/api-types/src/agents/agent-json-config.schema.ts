@@ -699,6 +699,8 @@ export const AgentJsonConfigBaseSchema = z.object({
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
+			/** OpenAI service tier. Ignored for other providers. */
+			serviceTier: z.enum(['default', 'flex', 'priority']).optional(),
 			maxIterations: z
 				.number()
 				.int()

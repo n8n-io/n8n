@@ -168,7 +168,11 @@ describe('buildFromJson()', () => {
 		).tools?.map((tool) => tool.name) ?? [];
 
 	const getDefaultExecutionOptions = (agent: unknown) =>
-		(agent as { defaultExecutionOptions?: { maxIterations?: number } }).defaultExecutionOptions;
+		(
+			agent as {
+				defaultExecutionOptions?: { maxIterations?: number; providerOptions?: unknown };
+			}
+		).defaultExecutionOptions;
 
 	const makeMockMemoryFactory = () => vi.fn();
 
@@ -1240,6 +1244,48 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(getDefaultExecutionOptions(agent)?.maxIterations).toBe(10);
+	});
+
+	describe('serviceTier', () => {
+		const build = async (overrides: Parameters<typeof makeConfig>[0]) =>
+			await buildFromJson(
+				makeConfig(overrides),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			);
+
+		it('passes the tier to OpenAI models as a provider option', async () => {
+			const agent = await build({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } });
+
+			expect(getDefaultExecutionOptions(agent)?.providerOptions).toEqual({
+				openai: { serviceTier: 'flex' },
+			});
+		});
+
+		it('keeps maxIterations when a tier is set', async () => {
+			const agent = await build({
+				model: 'openai/gpt-6.1-sol',
+				config: { maxIterations: 10, serviceTier: 'priority' },
+			});
+
+			expect(getDefaultExecutionOptions(agent)).toMatchObject({
+				maxIterations: 10,
+				providerOptions: { openai: { serviceTier: 'priority' } },
+			});
+		});
+
+		it('ignores the tier for other providers', async () => {
+			const agent = await build({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { serviceTier: 'flex' },
+			});
+
+			expect(getDefaultExecutionOptions(agent)).toBeUndefined();
+		});
 	});
 
 	it('configures memory when enabled', async () => {
