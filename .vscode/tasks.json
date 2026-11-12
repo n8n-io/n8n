@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Open n8n inspector port",
+			"type": "shell",
+			"command": "pkill -USR1 -x n8n",
+			"presentation": {
+				"reveal": "silent",
+				"close": true
+			},
+			"problemMatcher": []
+		}
+	]
+}

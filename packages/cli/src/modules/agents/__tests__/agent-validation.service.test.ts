@@ -14,6 +14,7 @@ import type { AgentPolicyService } from '../agent-policy.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { WebhookIntegration } from '../integrations/platforms/webhook/webhook-integration';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -1075,6 +1076,7 @@ describe('AgentValidationService — structured issues', () => {
 		chatIntegrationRegistry.get.mockReturnValue({
 			type: 'slack',
 			credentialTypes: ['slackOAuth2Api'],
+			acceptedCredentialTypes: () => ['slackOAuth2Api'],
 		} as never);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent(
@@ -1110,6 +1112,45 @@ describe('AgentValidationService — structured issues', () => {
 				path: 'integrations.1.credentialId',
 				capability: { kind: 'channel', id: 'slack', index: 1 },
 			}),
+		]);
+	});
+
+	it('checks a webhook credential against its authentication, and skips authentication none', async () => {
+		const { service, agentRepository, chatIntegrationRegistry } = makeService();
+		chatIntegrationRegistry.get.mockReturnValue(new WebhookIntegration());
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				runnableConfig,
+				{},
+				{
+					integrations: [
+						{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+						{
+							type: 'webhook',
+							credentialId: 'jwt-cred',
+							settings: { authentication: 'headerAuth' },
+						},
+						{ type: 'webhook', credentialId: 'jwt-cred' },
+					],
+				},
+			),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'jwt-cred', type: 'jwtAuth' },
+			]),
+		);
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'integrations.1.credentialId',
+			}),
+			expect.objectContaining({ code: 'missing_credential', path: 'integrations.2.credentialId' }),
 		]);
 	});
 
@@ -1223,6 +1264,79 @@ describe('AgentValidationService — structured issues', () => {
 				},
 			]),
 		);
+	});
+
+	it.each(['publish', 'runtime'] as const)(
+		'flags a tool guardrail ref that points at no configured tool (%s scope)',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					config: {
+						guardrails: {
+							tools: [
+								{
+									kind: 'keywords',
+									id: 'guard_1',
+									stage: 'before',
+									keywords: ['secret'],
+									tools: [{ type: 'workflow', workflowId: 'wf-missing' }],
+								},
+							],
+						},
+					},
+				}),
+			);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				scope,
+			);
+
+			expect(result.status).toBe('invalid');
+			expect(result.issues).toEqual(
+				expect.arrayContaining([
+					{
+						code: 'invalid_value',
+						path: 'config.guardrails.tools.0.tools.0',
+						capability: { kind: 'guardrail', id: 'guard_1' },
+					},
+				]),
+			);
+		},
+	);
+
+	it('reports no guardrail issue when every guardrail ref resolves', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1' }],
+				config: {
+					guardrails: {
+						tools: [
+							{
+								kind: 'nsfw',
+								id: 'guard_1',
+								stage: 'after',
+								tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							},
+						],
+					},
+				},
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues.filter((i) => i.path.startsWith('config.guardrails.tools'))).toEqual([]);
 	});
 
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {

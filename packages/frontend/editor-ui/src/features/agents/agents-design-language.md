@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
+
 ## Configuration add actions
 
 Show a leading `plus` icon beside empty-state configuration add labels. Use
@@ -599,8 +606,14 @@ publication and unpublication event, including repeated publication of a version
 Show unknown durations for incomplete legacy records.
 
 Use the small Agent modal shell for version details and publication. Reuse the
-workflow version name and description fields. Both fields are optional. Keep
-Cancel before Save or Publish. Keep entered values when the request fails.
+workflow version name and description fields. Require a nonblank version name
+in both dialogs. Prefill an unnamed version with `Version <first 8 ID characters>`.
+Select the name text on initial focus. Keep the description optional. Keep Cancel
+before Save or Publish. Keep entered values when the request fails.
+
+Order version actions as Restore version, Publish version, and Name version.
+For the published version, replace Publish version with Unpublish agent.
+Keep automatic draft saves unnamed unless the user names them.
 
 Flush pending editor changes before opening the publish dialog. Keep the selected
 saved version fixed while the dialog is open. Later edits remain in the draft.

@@ -110,6 +110,7 @@ function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): Pr
 			...config,
 		}),
 		availableInMCP: false,
+		isArchived: false,
 		tools: {},
 		tasks: {},
 		metadata: { versionId: 'source-version', publishedVersionId: null },
