@@ -104,6 +104,9 @@ type OpenAiCompatibleCreds = {
 	headers?: Record<string, string>;
 };
 
+/** A model the AI SDK's `wrapLanguageModel` accepts. */
+type UnwrappedLanguageModel = Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'];
+
 /**
  * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
  * `AZURE_OPENAI_SCOPE` and the `resource` claim the reference impl sends in the
@@ -203,14 +206,19 @@ function buildOpenAiCompatible(
 	creds: OpenAiCompatibleCreds,
 	model: string,
 	fetch: FetchFn | undefined,
-	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
-): LanguageModel {
+	options?: {
+		includeUsage?: boolean;
+		supportsStructuredOutputs?: boolean;
+		supportedUrls?: Record<string, RegExp[]>;
+	},
+): UnwrappedLanguageModel {
 	const { createOpenAICompatible } =
 		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
 	const baseURL = creds.baseURL ?? defaultBaseURL;
 	if (!baseURL) {
 		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
 	}
+	const supportedUrls = options?.supportedUrls;
 	return createOpenAICompatible({
 		name,
 		baseURL,
@@ -219,7 +227,59 @@ function buildOpenAiCompatible(
 		fetch,
 		includeUsage: options?.includeUsage,
 		supportsStructuredOutputs: options?.supportsStructuredOutputs,
+		...(supportedUrls && { supportedUrls: () => supportedUrls }),
 	})(model);
+}
+
+/** The `openai` call options that the OpenAI-compatible chat adapter reads. */
+const OPENAI_COMPATIBLE_CHAT_OPTIONS = new Set([
+	'reasoningEffort',
+	'strictJsonSchema',
+	'textVerbosity',
+	'user',
+]);
+
+/**
+ * The chat route of an `openai/` model on a custom base URL. A server there
+ * speaks chat completions but is not OpenAI, so it gets the OpenAI-compatible
+ * adapter. That adapter accepts streams that leave out fields OpenAI always
+ * sends, and it sends back the metadata a server attaches to a tool call. The
+ * options keep what the OpenAI chat adapter sent: usage on streams, JSON Schema
+ * response formats, and image URLs.
+ */
+function buildOpenAiCompatibleChat(
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn,
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	// Without a key, `createOpenAI` falls back to OPENAI_API_KEY. This adapter has
+	// no fallback, so it gets the same key, or the chat route sends no auth.
+	const apiKey = creds.apiKey ?? process.env.OPENAI_API_KEY;
+	const chat = buildOpenAiCompatible('openai', undefined, { ...creds, apiKey }, model, fetch, {
+		includeUsage: true,
+		supportsStructuredOutputs: true,
+		supportedUrls: { 'image/*': [/^https?:\/\/.*$/] },
+	});
+	// The adapter sends each `openai` option it does not know as a raw body
+	// field, so the OpenAI-only options (such as the prompt cache key) are dropped.
+	return loadAi().wrapLanguageModel({
+		model: chat,
+		middleware: {
+			transformParams: async ({ params }) => {
+				const openai = params.providerOptions?.openai;
+				if (!openai) return params;
+				return {
+					...params,
+					providerOptions: {
+						...params.providerOptions,
+						openai: Object.fromEntries(
+							Object.entries(openai).filter(([key]) => OPENAI_COMPATIBLE_CHAT_OPTIONS.has(key)),
+						),
+					},
+				};
+			},
+		},
+	});
 }
 
 /**
@@ -237,6 +297,39 @@ function statelessResponses(
 		middleware: defaultSettingsMiddleware({
 			settings: { providerOptions: { openai: { store: false } } },
 		}),
+	});
+}
+
+/**
+ * Sends a requested reasoning level to a custom endpoint whatever the model id.
+ * The OpenAI SDK sends reasoning only for model ids it knows as OpenAI reasoning
+ * models and drops it for all others without an error. A custom endpoint names
+ * its own models (for example Claude behind an OpenAI-compatible proxy), so the
+ * SDK cannot tell from the id.
+ */
+function sendRequestedReasoning(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	return loadAi().wrapLanguageModel({
+		model,
+		middleware: {
+			transformParams: async ({ params }) => {
+				const openai = params.providerOptions?.openai;
+				const requested =
+					(params.reasoning !== undefined &&
+						params.reasoning !== 'provider-default' &&
+						params.reasoning !== 'none') ||
+					openai?.reasoningEffort !== undefined;
+				if (!requested || openai?.forceReasoning !== undefined) return params;
+				return {
+					...params,
+					providerOptions: {
+						...params.providerOptions,
+						openai: { ...openai, forceReasoning: true },
+					},
+				};
+			},
+		},
 	});
 }
 
@@ -389,21 +482,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// 200 with an HTML page, which the SDK stream parser accepts as an empty
 			// stream. Every route through such an endpoint runs on the guarded
 			// transport, whichever API the user pinned.
-			const guarded = createOpenAI({
-				...providerCreds,
-				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
-			});
+			const guardedFetch = guardOpenAiRoutes(fetch ?? globalFetch);
+			const guarded = createOpenAI({ ...providerCreds, fetch: guardedFetch });
 			// `apiStyle` is the explicit override and wins over the automatic choice:
 			// it pins the route, so a refusal on it surfaces instead of falling back.
-			if (apiStyle === 'chat') return guarded.chat(model);
-			if (apiStyle === 'responses') return guarded(model);
+			if (apiStyle === 'chat') return buildOpenAiCompatibleChat(providerCreds, model, guardedFetch);
+			if (apiStyle === 'responses') return sendRequestedReasoning(guarded(model));
 			// Without it, only the endpoint knows whether it is a proxy for real
 			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				statelessResponses(guarded(model)),
-				guarded.chat(model),
+				statelessResponses(sendRequestedReasoning(guarded(model))),
+				buildOpenAiCompatibleChat(providerCreds, model, guardedFetch),
 			);
 		},
 	},

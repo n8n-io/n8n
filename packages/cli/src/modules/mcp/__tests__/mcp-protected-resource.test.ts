@@ -13,6 +13,12 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 
 const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
+/** The role holds every global scope except the ones listed. */
+const denyGlobalScopes = (...denied: string[]) =>
+	hasGlobalScope.mockImplementation((_user, scope) =>
+		[scope].flat().every((s) => !denied.includes(s)),
+	);
+
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -127,7 +133,7 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('keeps only node usage in consent when the module is inactive', async () => {
+		it('keeps only the index tools in consent when the module is inactive', async () => {
 			moduleRegistry.isActive.mockImplementation((name) => name !== 'instance-ai');
 
 			const scopeTools = await resource.getScopeTools();
@@ -136,6 +142,7 @@ describe('McpProtectedResource', () => {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
 			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 			// Unrelated entries under the same scope are untouched.
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
@@ -376,7 +383,7 @@ describe('McpProtectedResource', () => {
 			// Otherwise a member could tick a box that records a grant which can
 			// never do anything, because install_community_node is never registered
 			// for them.
-			hasGlobalScope.mockReturnValue(false);
+			denyGlobalScopes('communityPackage:install');
 
 			const scopes = await resource.getGrantableScopes(user);
 
@@ -393,7 +400,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('narrows only the install scope, leaving every other scope grantable', async () => {
-			hasGlobalScope.mockReturnValue(false);
+			denyGlobalScopes('communityPackage:install');
 
 			const scopes = await resource.getGrantableScopes(user);
 
@@ -450,7 +457,7 @@ describe('McpProtectedResource', () => {
 			});
 
 			it('keeps the preference scopes when the install scope is narrowed', async () => {
-				hasGlobalScope.mockReturnValue(false);
+				denyGlobalScopes('communityPackage:install');
 
 				const scopes = await resource.getGrantableScopes(user);
 
@@ -460,6 +467,58 @@ describe('McpProtectedResource', () => {
 			it('advertises the preference scopes in discovery, which is unauthenticated', () => {
 				expect(resource.scopes).toContain('aiPreference:read');
 				expect(resource.scopes).toContain('aiPreference:write');
+			});
+		});
+
+		describe('migration report scopes', () => {
+			const READ_TOOLS = ['get_migration_report', 'get_migration_findings'];
+			const ALL_TOOLS = [...READ_TOOLS, 'migrate_workflow', 'set_migration_finding_status'];
+
+			it('offers both to a user whose role holds both permissions', async () => {
+				hasGlobalScope.mockReturnValue(true);
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toContain('breakingChanges:list');
+				expect(scopes).toContain('breakingChanges:migrate');
+			});
+
+			it('offers both to a user who can read the report, as the REST routes do', async () => {
+				denyGlobalScopes('breakingChanges:migrate');
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toContain('breakingChanges:list');
+				expect(scopes).toContain('breakingChanges:migrate');
+			});
+
+			it('offers neither to a user who cannot read the report', async () => {
+				denyGlobalScopes('breakingChanges:list');
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).not.toContain('breakingChanges:list');
+				expect(scopes).not.toContain('breakingChanges:migrate');
+				expect(hasGlobalScope).toHaveBeenCalledWith(user, 'breakingChanges:list');
+			});
+
+			it('drops both everywhere when the breaking-changes module is inactive', async () => {
+				hasGlobalScope.mockReturnValue(true);
+				moduleRegistry.isActive.mockImplementation((name) => name !== 'breaking-changes');
+
+				const scopeTools = await resource.getScopeTools();
+				for (const scope of ['breakingChanges:list', 'breakingChanges:migrate']) {
+					expect(resource.scopes).not.toContain(scope);
+					expect(await resource.getGrantableScopes(user)).not.toContain(scope);
+					expect(scopeTools).not.toHaveProperty([scope]);
+				}
+			});
+
+			it('lists the tools of each on the consent screen while the module is active', async () => {
+				expect(await resource.getScopeTools()).toMatchObject({
+					'breakingChanges:list': READ_TOOLS,
+					'breakingChanges:migrate': ALL_TOOLS,
+				});
 			});
 		});
 	});

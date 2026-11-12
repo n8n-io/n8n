@@ -1,8 +1,13 @@
 operationId: disconnectPromotionCheckout
 tags:
   - Promotions
-summary: Remove an environment's local checkout
-description: Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.
+summary: "Beta: Remove an environment's local checkout"
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys.
+
+  Requires the `promotions:connect` API key scope.
 x-required-scope: promotions:connect
 parameters:
   - schema:

@@ -286,7 +286,8 @@ export class CredentialsFinderService {
 	 *
 	 * @param ignoreGlobalUseScope - answer for this user's own access only, as if
 	 * they held no instance-wide `credential:use`. Redaction asks this way: an
-	 * Owner must not see execution data through a grant nobody else has.
+	 * Owner must not see execution data through a grant nobody else has. Global
+	 * credentials still count, because every user may use them.
 	 */
 	async findUnusableCredentialsForUser(
 		user: User | null,
@@ -368,22 +369,22 @@ export class CredentialsFinderService {
 			access,
 		);
 
-		// Also include global credentials if scopes allow read-only access.
-		if (!options.ignoreGlobalOverride) {
-			if (this.hasGlobalReadOnlyAccess(scopes)) {
-				const globalIds = await this.credentialAccessRepository.findGlobalProjectCredentialIds(
-					credentialIds,
-					false,
-				);
-				for (const id of globalIds) result.add(id);
-			} else if (this.hasGlobalConnectAccess(scopes)) {
-				// Only end-user (resolvable) global credentials grant connect access.
-				const globalIds = await this.credentialAccessRepository.findGlobalProjectCredentialIds(
-					credentialIds,
-					true,
-				);
-				for (const id of globalIds) result.add(id);
-			}
+		// Also include global credentials if scopes allow read-only access. Every user
+		// may use a global credential, so this applies even when the instance-wide
+		// override is ignored.
+		if (this.hasGlobalReadOnlyAccess(scopes)) {
+			const globalIds = await this.credentialAccessRepository.findGlobalProjectCredentialIds(
+				credentialIds,
+				false,
+			);
+			for (const id of globalIds) result.add(id);
+		} else if (this.hasGlobalConnectAccess(scopes)) {
+			// Only end-user (resolvable) global credentials grant connect access.
+			const globalIds = await this.credentialAccessRepository.findGlobalProjectCredentialIds(
+				credentialIds,
+				true,
+			);
+			for (const id of globalIds) result.add(id);
 		}
 
 		return result;

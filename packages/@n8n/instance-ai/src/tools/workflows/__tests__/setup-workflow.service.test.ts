@@ -164,7 +164,7 @@ describe('buildSetupRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].parameterIssues?.model).toEqual([
 				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
-					'Pick a value the credential offers instead — use get_node_parameter_options to list allowed models.',
+					'Pick a value the credential offers instead — run get_node_parameter_options through call_tool to list allowed models.',
 			]);
 			expect(result[0].needsAction).toBe(true);
 		});
