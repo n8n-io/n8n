@@ -10,6 +10,7 @@ import type { AgentExecutionRepository } from '../../repositories/agent-executio
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { SafeTestingFlagGate } from '../safe-testing-flag-gate';
 import { SimulationBackendRegistry } from '../simulation-backend-registry';
+import { SimulationBlockedError, type SimulationSession } from '../simulation-session';
 import { SimulationSessionService } from '../simulation-session.service';
 import type {
 	SimulatedAgent,
@@ -201,5 +202,29 @@ describe('SimulationSessionService', () => {
 			{ id: 'execution-1' },
 			{ simulated: true },
 		);
+	});
+
+	it('blocks a workflow tool in queue mode, also after the tool list refreshes', async () => {
+		const { service } = setup({ backend: llmBackend(), queueMode: true });
+		const handler = vi.fn();
+		const tool = {
+			name: 'create-ticket',
+			description: '',
+			metadata: { kind: 'workflow' },
+			handler,
+		};
+		const run = async (session: SimulationSession, toolCallId: string) =>
+			await session.interceptor({ tool, toolCallId, input: {} }, async () => await handler());
+
+		const session = await service.openForDraftRun(openInput);
+		await expect(run(session!, 'tc-1')).rejects.toThrow(SimulationBlockedError);
+		const refreshed = await service.openForDraftRun({ ...openInput, message: 'again' });
+		await expect(run(refreshed!, 'tc-2')).rejects.toThrow(SimulationBlockedError);
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(refreshed!.takeDecision('tc-2')).toMatchObject({
+			route: 'blocked',
+			detail: 'Workflow tools cannot run in a test run in queue mode yet.',
+		});
 	});
 });

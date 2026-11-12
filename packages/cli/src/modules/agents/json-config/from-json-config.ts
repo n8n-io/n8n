@@ -503,6 +503,8 @@ async function resolveToolRef(
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
 				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
+				// Lets a test run block custom code even when its name matches a built-in tool.
+				metadata: { customTool: true },
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
