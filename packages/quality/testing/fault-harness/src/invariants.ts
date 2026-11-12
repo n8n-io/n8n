@@ -15,8 +15,6 @@ export interface RunRecord {
 	bull: Pick<BullState, 'wait' | 'active'>;
 }
 
-const accepted = (requests: WorkloadRequest[]) => requests.filter((r) => r.status === 200);
-
 const repeated = (values: string[]) => {
 	const counts = new Map<string, number>();
 	for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
@@ -26,7 +24,7 @@ const repeated = (values: string[]) => {
 /** Every execution reached a final status. */
 export function everyExecutionFinished({ executions }: RunRecord): Violation[] {
 	const pending = Object.entries(executions).filter(
-		([, status]) => !(FINAL_STATUSES as readonly string[]).includes(status),
+		([, status]) => !FINAL_STATUSES.includes(status),
 	);
 	return pending.length
 		? [{ invariant: 'every execution finished', detail: Object.fromEntries(pending) }]
@@ -36,7 +34,8 @@ export function everyExecutionFinished({ executions }: RunRecord): Violation[] {
 /** An accepted request has its effect, or an execution that ended without success accounts for it. */
 export function noAcceptedRequestLost({ requests, executions, effects }: RunRecord): Violation[] {
 	const done = new Set(effects.map((e) => e.requestId));
-	const lost = accepted(requests)
+	const lost = requests
+		.filter((r) => r.status === 200)
 		.filter((r) => !done.has(r.requestId))
 		.filter((r) => {
 			const status = r.executionId && executions[r.executionId];
@@ -71,7 +70,7 @@ export function queueDrained({ bull }: RunRecord): Violation[] {
 		: [];
 }
 
-export const WORKLOAD_INVARIANTS = [
+const WORKLOAD_INVARIANTS = [
 	everyExecutionFinished,
 	noAcceptedRequestLost,
 	noRepeatedEffects,
