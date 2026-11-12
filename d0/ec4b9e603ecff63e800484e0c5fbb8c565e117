@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-overrides.ts
+  s_f31807e8ae1d38::t_ceadf6f492382f 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d0ec4b9e603ecff63e800484e0c5fbb8c565e117",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/eslint.config.mjs
+  s_f31807e8ae1d38::t_ad9c2df700ba34 115
+  s_f31807e8ae1d38::t_07e62ad209df2c 221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e119c68bfb0b303119c3acfebfb85bf5d281de4c",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
