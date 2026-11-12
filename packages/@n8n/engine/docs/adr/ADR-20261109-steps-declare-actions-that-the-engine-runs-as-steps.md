@@ -114,8 +114,8 @@ sequenceDiagram
 - The number of steps in an execution no longer follows from the graph. Every rule that counts
   graph steps, or keys a step by node and iteration, must leave spawned steps out or handle them
   apart: the completion count, fail-fast, the final status, the expression data loader, successor
-  planning and the read path. Without that, an execution can end early, a failed action can fail the execution, and two
-  calls of one tool overwrite each other.
+  planning and the read path. Without that, an execution can end early, a failed action can fail
+  the execution, and two calls of one tool overwrite each other.
 - Expressions cannot read the outputs of a spawned step, as in engine v1, where a tool's output
   is not on its `main` output.
 - A `waiting` step does not always wait for something outside the execution. The `step:waiting`
