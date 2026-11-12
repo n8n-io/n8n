@@ -182,10 +182,17 @@ describe('Agent service accounts', () => {
 			vi.spyOn(Container.get(ServiceAccountRepository), 'rename').mockRejectedValueOnce(
 				new Error('rename failed'),
 			);
+			const draft = await agentRepo.findOneByOrFail({ id: agent.id });
+			const { revision } = draft;
+			draft.name = 'Support Agent';
 
-			await expect(rename(agent.id, 'Support Agent')).rejects.toThrow('rename failed');
+			await expect(agentRepo.saveDraftFenced(draft)).rejects.toThrow('rename failed');
 
 			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Untitled');
+			// The caller's agent keeps the stored revision, so a retry still passes the fence.
+			expect(draft.revision).toBe(revision);
+			expect(await agentRepo.saveDraftFenced(draft)).toBe(true);
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
 		});
 
 		it('renames an agent without a service account', async () => {

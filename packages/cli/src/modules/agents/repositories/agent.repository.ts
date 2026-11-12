@@ -977,10 +977,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			// Before the in-memory fields change, so a failed rename leaves the caller's agent as stored.
+			await this.renameIdentity(previous, agent.name, ctx);
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
-			await this.renameIdentity(previous, agent.name, ctx);
 		}
 		return won;
 	}
