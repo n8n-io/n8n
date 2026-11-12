@@ -196,7 +196,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 			await eventually(() => expect(gated.finished).toHaveLength(2));
 		});
 
-		it('keeps other in-flight handlers running when one handler throws', async () => {
+		it('starts the next message after a handler throws, while another handler still runs', async () => {
 			const queue = await build(2);
 			const gated = gatedHandler();
 			queue.start(gated.handler);
