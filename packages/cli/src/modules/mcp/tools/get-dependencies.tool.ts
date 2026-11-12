@@ -27,6 +27,8 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { toolResult } from './tool-result.utils';
+import { validateMcpWorkflow } from './workflow-validation.utils';
 
 export const GET_DEPENDENCIES_TOOL_NAME = 'get_dependencies';
 
@@ -182,19 +184,8 @@ export const createGetDependenciesTool = (
 			const workflow = await workflowFinderService.findWorkflowForUser(resourceId, user, [
 				'workflow:read',
 			]);
-			if (!workflow) {
-				throw new WorkflowAccessError(
-					"Workflow not found or you don't have permission to access it.",
-					'no_permission',
-				);
-			}
 			// Archived workflows stay readable: "is it safe to delete?" is a question about them.
-			if (!workflow.settings?.availableInMCP) {
-				throw new WorkflowAccessError(
-					'Workflow is not available in MCP. Ask the user to enable MCP access for it.',
-					'not_available_in_mcp',
-				);
-			}
+			validateMcpWorkflow(workflow, { allowArchived: true });
 			return;
 		}
 
@@ -299,10 +290,7 @@ export const createGetDependenciesTool = (
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output) }],
-					structuredContent: output,
-				};
+				return toolResult(output);
 			} catch (er) {
 				const error = ensureError(er);
 				const isAccessError = error instanceof WorkflowAccessError;
@@ -326,11 +314,7 @@ export const createGetDependenciesTool = (
 					inaccessibleCount: 0,
 					error: error.message,
 				};
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output) }],
-					structuredContent: output,
-					isError: true,
-				};
+				return toolResult(output, true);
 			}
 		},
 	};

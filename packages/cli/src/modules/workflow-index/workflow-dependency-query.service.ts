@@ -170,7 +170,12 @@ export class WorkflowDependencyQueryService {
 		user: User,
 		options: { listUnavailableCredentials?: boolean; includeVersions?: boolean } = {},
 	): Promise<DependenciesBatchResponse> {
-		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
+		const loaded = await this.loadDepsForResources(
+			resourceIds,
+			resourceType,
+			user,
+			options.includeVersions === true,
+		);
 		if (!loaded) return {};
 
 		const { accessibleInputIds, maps } = loaded;
@@ -354,6 +359,7 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		includeVersions = false,
 	): Promise<{ accessibleInputIds: string[]; maps: RawDepMaps } | null> {
 		const accessibleInputIds = await this.filterByAccess(resourceIds, resourceType, user);
 		if (accessibleInputIds.length === 0) return null;
@@ -369,7 +375,10 @@ export class WorkflowDependencyQueryService {
 
 		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
 
-		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps, resourceType) };
+		return {
+			accessibleInputIds,
+			maps: this.buildDepMaps(rawDeps, agentDeps, resourceType, includeVersions),
+		};
 	}
 
 	/** Agents using the resources, as `{ agentId, resourceId }` regardless of resource type. */
@@ -389,6 +398,7 @@ export class WorkflowDependencyQueryService {
 		>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
 		resourceType: DependencyResourceType,
+		includeVersions: boolean,
 	): RawDepMaps {
 		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
@@ -402,23 +412,30 @@ export class WorkflowDependencyQueryService {
 		const allWfIds = new Set<string>();
 		const allDtIds = new Set<string>();
 		const versionMap = new Map<string, Set<DependencyVersion>>();
+		const addVersion = (
+			dep: (typeof rawDeps)[number],
+			type: ResolvedDependency['type'],
+			resourceId: string,
+			id: string,
+		) => {
+			if (!includeVersions) return;
+			const version: DependencyVersion = dep.publishedVersionId ? 'published' : 'draft';
+			addToSet(versionMap, linkKey(type, resourceId, id), version);
+		};
 
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
-			const version: DependencyVersion = dep.publishedVersionId ? 'published' : 'draft';
-			const addVersion = (type: ResolvedDependency['type'], resourceId: string, id: string) =>
-				addToSet(versionMap, linkKey(type, resourceId, id), version);
 
 			// Batch queries also load outgoing dependencies. Only matching target types can add parents.
 			if (RESOURCE_DEPENDENCY_TYPES[resourceType].includes(dep.dependencyType)) {
-				const parentType =
-					dep.dependencyType === 'errorWorkflow' ? 'errorWorkflowParent' : 'workflowParent';
-				addToSet(
-					parentType === 'errorWorkflowParent' ? errorWfParentMap : parentMap,
+				const isErrorParent = dep.dependencyType === 'errorWorkflow';
+				addToSet(isErrorParent ? errorWfParentMap : parentMap, dep.dependencyKey, dep.workflowId);
+				addVersion(
+					dep,
+					isErrorParent ? 'errorWorkflowParent' : 'workflowParent',
 					dep.dependencyKey,
 					dep.workflowId,
 				);
-				addVersion(parentType, dep.dependencyKey, dep.workflowId);
 			}
 			if (resourceType !== 'workflow') continue;
 
@@ -426,24 +443,23 @@ export class WorkflowDependencyQueryService {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
 					allCredIds.add(dep.dependencyKey);
-					addVersion('credentialId', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
 					allDtIds.add(dep.dependencyKey);
-					addVersion('dataTableId', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
 					allWfIds.add(dep.dependencyKey);
-					addVersion('workflowCall', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'errorWorkflow':
 					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
 					allWfIds.add(dep.dependencyKey);
-					addVersion('errorWorkflow', dep.workflowId, dep.dependencyKey);
 					break;
+				default:
+					continue;
 			}
+			addVersion(dep, dep.dependencyType, dep.workflowId, dep.dependencyKey);
 		}
 
 		for (const dep of agentDeps) {
