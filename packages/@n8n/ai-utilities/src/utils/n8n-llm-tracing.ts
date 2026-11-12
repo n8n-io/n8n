@@ -8,6 +8,7 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Generation, LLMResult } from '@langchain/core/outputs';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
@@ -32,7 +33,46 @@ type ProviderTokenUsageResult = TokenUsageResult & {
 	totalCost?: number;
 };
 
-type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+export type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+
+function readUsageMetadata(generation: Generation) {
+	const message = 'message' in generation ? generation.message : undefined;
+	if (!isRecord(message)) return undefined;
+
+	const usage = message.usage_metadata;
+	if (!isRecord(usage)) return undefined;
+
+	const inputTokens = typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
+	const outputTokens = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
+
+	return {
+		inputTokens,
+		outputTokens,
+		totalTokens:
+			typeof usage.total_tokens === 'number' ? usage.total_tokens : inputTokens + outputTokens,
+	};
+}
+
+/**
+ * Reads the LangChain-standard `usage_metadata` off the generation message. Use it for providers
+ * that report usage there and leave `llmOutput` empty, such as AWS Bedrock Converse.
+ */
+export function usageMetadataTokensUsageParser(result: LLMResult): TokenUsageResult {
+	let promptTokens = 0;
+	let completionTokens = 0;
+	let totalTokens = 0;
+
+	for (const generation of result.generations.flat()) {
+		const usage = readUsageMetadata(generation);
+		if (!usage) continue;
+
+		promptTokens += usage.inputTokens;
+		completionTokens += usage.outputTokens;
+		totalTokens += usage.totalTokens;
+	}
+
+	return { completionTokens, promptTokens, totalTokens };
+}
 
 /** Anthropic Messages usage. Cached input tokens count as prompt tokens. */
 export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult {
@@ -163,6 +203,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
+		// Parse usage before trimming: `toRunDataGeneration` drops the message that carries
+		// `usage_metadata`.
+		const tokenUsage = this.options.tokensUsageParser(output);
+
 		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
@@ -170,7 +214,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output);
 
 		if (output.generations.length > 0) {
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(

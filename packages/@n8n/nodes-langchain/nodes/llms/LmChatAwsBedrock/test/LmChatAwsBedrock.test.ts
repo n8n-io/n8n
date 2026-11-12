@@ -1,6 +1,11 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
-import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	getNodeProxyAgent,
+	N8nLlmTracing,
+	usageMetadataTokensUsageParser,
+} from '@n8n/ai-utilities';
 import { createResultError } from '@n8n/utils/result';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -22,6 +27,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 	makeN8nLlmFailedAttemptHandler: vi.fn(),
 	N8nLlmTracing: vi.fn(),
 	getNodeProxyAgent: vi.fn(),
+	usageMetadataTokensUsageParser: vi.fn(),
 }));
 vi.mock('@utils/aws/resolveAwsCredentials', () => ({
 	resolveAwsCredentials: vi.fn(),
@@ -117,6 +123,21 @@ describe('LmChatAwsBedrock', () => {
 			expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
 				expect.objectContaining({ region: 'us-east-1' }),
 			);
+		});
+
+		it('should report the token usage Bedrock puts on the generation message', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(vi.mocked(N8nLlmTracing)).toHaveBeenCalledWith(ctx, {
+				tokensUsageParser: usageMetadataTokensUsageParser,
+			});
 		});
 
 		it('should use credential region for inference profile IDs (not ARNs)', async () => {
