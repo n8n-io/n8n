@@ -20,7 +20,7 @@ exports[`V1 Banner > should render banner 1`] = `
         />
       </div>
       <span
-        class="n8n-text size-small regular"
+        class="n8n-text size-small regular text text"
       >
         
         
@@ -88,7 +88,7 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
         />
       </div>
       <span
-        class="n8n-text size-small regular"
+        class="n8n-text size-small regular text text"
       >
         
         
