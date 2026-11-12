@@ -33,4 +33,36 @@ describe('ScheduledTaskRepository', () => {
 			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('findRunningTasks', () => {
+		const selectRunning = () => {
+			const qb = {
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValue([]),
+			};
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			return qb;
+		};
+
+		it('reads every running row whose handler started', async () => {
+			const qb = selectRunning();
+
+			await repository.findRunningTasks();
+
+			expect(qb.where).toHaveBeenCalledWith('t.status = :running', {
+				running: ScheduledTaskStatus.Running,
+			});
+			expect(qb.andWhere).toHaveBeenCalledTimes(1);
+			expect(qb.andWhere).toHaveBeenCalledWith('t.startedAt IS NOT NULL');
+		});
+
+		it('reads only the rows one host claimed', async () => {
+			const qb = selectRunning();
+
+			await repository.findRunningTasks({ claimedBy: 'main-1' });
+
+			expect(qb.andWhere).toHaveBeenCalledWith('t.claimedBy = :claimedBy', { claimedBy: 'main-1' });
+		});
+	});
 });

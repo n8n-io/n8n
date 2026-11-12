@@ -42,6 +42,7 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { ScheduledJobCrashRecovery } from '@/scheduling/scheduled-job-crash-recovery';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
 
@@ -459,6 +460,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
+		// Before the scheduler starts, so that its reaper has not recovered the rows yet.
+		await Container.get(ScheduledJobCrashRecovery).recover();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

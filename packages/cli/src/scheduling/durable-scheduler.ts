@@ -18,6 +18,7 @@ import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/schedule
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+import { ScheduledJobCrashJournal } from './scheduled-job-crash-journal';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
 import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
@@ -49,6 +50,7 @@ export class DurableScheduler implements Scheduler {
 		agentOwner: AgentScheduledJobOwner,
 		systemTaskOwner: SystemTaskScheduledJobOwner,
 		eventService: EventService,
+		private readonly crashJournal: ScheduledJobCrashJournal,
 	) {
 		const config = globalConfig.scheduler;
 		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
@@ -137,7 +139,13 @@ export class DurableScheduler implements Scheduler {
 			);
 			return;
 		}
-		this.scheduler.registerTaskHandler(taskType, handler);
+		this.scheduler.registerTaskHandler(taskType, {
+			execute: async (task, report, run) => {
+				const decision = await handler.execute(task, report, run);
+				this.crashJournal.recordCompletion(task.payload);
+				return decision;
+			},
+		});
 	}
 
 	start(): void {

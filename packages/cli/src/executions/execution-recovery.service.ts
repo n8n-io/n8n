@@ -67,54 +67,62 @@ export class ExecutionRecoveryService {
 				lastExecutions.length >= maxLastExecutions &&
 				lastExecutions.length === numberOfCrashedExecutions
 			) {
-				// Get workflow to preserve existing meta
-				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
-
-				if (!workflow) {
-					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
-					continue;
-				}
-
-				if (workflow.activeVersionId !== null) {
-					try {
-						// Lazy resolution breaks the DI cycle: WorkflowService →
-						// ActiveWorkflowManager → MessageEventBus → this service
-						const { WorkflowService } = await import('@/workflows/workflow.service.js');
-						await Container.get(WorkflowService).deactivateWorkflowAsSystem(
-							workflowId,
-							'crash-recovery',
-						);
-						this.logger.warn(
-							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
-						);
-
-						const recipient = await this.getAutodeactivationRecipient(workflow);
-						await this.userManagementMailer.notifyWorkflowAutodeactivated({
-							recipient,
-							workflow,
-						});
-
-						this.push.once('editorUiConnected', async () => {
-							await sleep(1000);
-							await this.workflowPushNotifier.notify(workflowId, {
-								type: 'workflowAutoDeactivated',
-								data: { workflowId },
-							});
-						});
-					} catch (error) {
-						// A throw here would abort startup recovery for the remaining
-						// workflows and leave the event bus's recovery-in-progress marker
-						// behind, making every future startup skip recovery entirely.
-						this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
-							workflowId,
-							error: ensureError(error),
-						});
-					}
-				}
+				const workflowExists = await this.autoDeactivateWorkflow(workflowId);
+				if (!workflowExists) continue;
 
 				await this.executionCrashService.markWorkflowExecutionsAsCrashed(workflowId);
 			}
 		}
+	}
+
+	/** Returns `false` when the workflow does not exist. */
+	async autoDeactivateWorkflow(workflowId: string): Promise<boolean> {
+		// Get workflow to preserve existing meta
+		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+
+		if (!workflow) {
+			this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
+			return false;
+		}
+
+		if (workflow.activeVersionId !== null) {
+			try {
+				// Lazy resolution breaks the DI cycle: WorkflowService →
+				// ActiveWorkflowManager → MessageEventBus → this service
+				const { WorkflowService } = await import('@/workflows/workflow.service.js');
+				await Container.get(WorkflowService).deactivateWorkflowAsSystem(
+					workflowId,
+					'crash-recovery',
+				);
+				this.logger.warn(
+					`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+				);
+
+				const recipient = await this.getAutodeactivationRecipient(workflow);
+				await this.userManagementMailer.notifyWorkflowAutodeactivated({
+					recipient,
+					workflow,
+				});
+
+				this.push.once('editorUiConnected', async () => {
+					await sleep(1000);
+					await this.workflowPushNotifier.notify(workflowId, {
+						type: 'workflowAutoDeactivated',
+						data: { workflowId },
+					});
+				});
+			} catch (error) {
+				// A throw here would abort startup recovery for the remaining
+				// workflows and leave the event bus's recovery-in-progress marker
+				// behind, making every future startup skip recovery entirely.
+				this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
+					workflowId,
+					error: ensureError(error),
+				});
+			}
+		}
+
+		return true;
 	}
 
 	/**
