@@ -1,11 +1,9 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { N8n } from '../N8n.node';
+import { searchWorkflows } from '../../shared/WorkflowLocator';
 
 describe('n8n workflow list search', () => {
-	const node = new N8n();
-
 	it.each([
 		{
 			baseUrl: 'http://localhost:5678/api/v1',
@@ -46,7 +44,7 @@ describe('n8n workflow list search', () => {
 			data: [{ id: 1, name: 'Example Workflow' }],
 		});
 
-		const result = await node.methods.listSearch.searchWorkflows.call(context);
+		const result = await searchWorkflows.call(context);
 
 		expect(context.getCredentials).toHaveBeenCalledWith('n8nApi');
 		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledExactlyOnceWith(

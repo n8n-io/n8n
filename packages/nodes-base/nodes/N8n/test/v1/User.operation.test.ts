@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { userOperations } from '../UserDescription';
+import { userOperations } from '../../v1/UserDescription';
 
 const getOption = (userOperations[0].options as INodePropertyOptions[]).find(
 	(option) => option.value === 'get',
