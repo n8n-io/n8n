@@ -397,11 +397,6 @@ describe('credential access enforcement', () => {
 	});
 });
 
-/*
- * Regression test — destination credentials follow project role permissions.
- * Ref: GOV-348
- * 2026-11-12
- */
 describe('destination credential project roles', () => {
 	const headerValue = 'Bearer test-destination-value';
 	const roles = [
