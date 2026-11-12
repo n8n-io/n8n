@@ -1,7 +1,12 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	ICredentialsHelper,
+	IExecuteFunctions,
+	INode,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 
 import { SimulationBlockedError, SimulationSession } from '../simulation-session';
 import type { SimulatedReply, SimulationWorld } from '../tool-simulation.contracts';
@@ -175,6 +180,10 @@ describe('SimulationSession', () => {
 		['a chat integration action', { name: 'slack_send_message', description: '' }],
 		['a shell command', { name: 'workspace_execute_command', description: '' }],
 		['an undispatched call_tool', { name: 'call_tool', description: '' }],
+		[
+			'a custom tool named like a built-in',
+			{ name: 'read_file', description: '', metadata: { customTool: true } },
+		],
 	])('blocks %s that it cannot route', async (_label, partial) => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const session = new SimulationSession({ testChatId: 't', world });
@@ -282,5 +291,39 @@ describe('SimulationSession', () => {
 		).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
 		expect(session.takeDecision('tc-1')).toMatchObject({ reason: 'not_simulatable' });
+	});
+
+	it('keeps a decrypted credential out of the request the world receives', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({ testChatId: 't', world });
+		const credentialsHelper = mock<ICredentialsHelper>();
+		credentialsHelper.getDecrypted.mockResolvedValue({
+			accessToken: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw',
+		} as never);
+		const additionalData = Object.assign(mock<IWorkflowExecuteAdditionalData>(), {
+			credentialsHelper,
+		});
+		session.instrumentation().configureToolAdditionalData?.(additionalData, {
+			toolName: 'send_telegram',
+			toolKind: 'node',
+		});
+		const credentials = await additionalData.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: '1', name: 'Telegram' },
+			'telegramApi',
+			'manual',
+		);
+		const tool = nodeTool('send_telegram', 'n8n-nodes-base.telegram', async () => {
+			const token = String((credentials as { accessToken: string }).accessToken);
+			return await additionalData.evalLlmMockHandler!(
+				{ url: `https://api.telegram.org/bot${token}/sendMessage`, method: 'POST' },
+				mock<INode>({ type: 'n8n-nodes-base.telegram' }),
+			);
+		});
+
+		await runTool(session, tool);
+
+		const [request] = vi.mocked(world.handleRequest).mock.calls[0];
+		expect(request.url).toBe('https://api.telegram.org/bot[REDACTED]/sendMessage');
 	});
 });

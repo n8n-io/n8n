@@ -744,6 +744,10 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError('This background approval does not belong to this chat');
 		}
+		// A test run has no background jobs; one started before the chat became a test run stays parked.
+		if (config.simulation && (await config.simulation(memoryScope.threadId))) {
+			throw new UserError('Background jobs cannot run in a test run.');
+		}
 		const { scope } = await this.resolveResumeScope(resume, memoryScope);
 		// n8n Chat is a direct conversation, not an external platform integration,
 		// so it has no inbound message context to match against.

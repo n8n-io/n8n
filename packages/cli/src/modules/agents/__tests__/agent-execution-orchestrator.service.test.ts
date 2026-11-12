@@ -525,6 +525,46 @@ describe('background approvals', () => {
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
+	it('refuses to resume a background job in a test chat', async () => {
+		const { service, backgroundJobRepository, backgroundJobs, runtimeCacheService } =
+			makeService(false);
+		backgroundJobRepository.findById.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				id: 'job-1',
+				parentAgentId: agentId,
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+				parentPrincipalHash: userPrincipalHash,
+				status: 'suspended',
+			}),
+		);
+		backgroundJobs.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				token: 'gate-1',
+				scope: { projectId, principalHash: userPrincipalHash },
+			}),
+		);
+		const simulation = vi.fn().mockResolvedValue(mock<SimulationSession>());
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					usePublishedVersion: false,
+					user,
+					simulation,
+				}),
+			),
+		).rejects.toThrow('Background jobs cannot run in a test run.');
+		expect(simulation).toHaveBeenCalledWith('thread-1');
+		expect(backgroundJobs.resume).not.toHaveBeenCalled();
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{ ...selectedContext, platform: 'telegram' },
 		{ ...selectedContext, integrationConnectionId: 'slack:other-credential' },
