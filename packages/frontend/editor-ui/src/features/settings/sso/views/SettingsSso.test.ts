@@ -1,6 +1,6 @@
 import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { within, waitFor } from '@testing-library/vue';
+import { screen, within, waitFor } from '@testing-library/vue';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import SettingsSso from './SettingsSso.vue';
 import userEvent from '@testing-library/user-event';
@@ -11,8 +11,12 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
+import { getScimConfig } from '@n8n/rest-api-client/api/scim';
 
 const renderView = createComponentRenderer(SettingsSso);
+
+/** The SSO page saves the SAML and OIDC forms through the settings save bar. */
+const SAVE_BUTTON = 'settings-save-bar-save';
 
 const samlConfig = {
 	metadata: 'metadata dummy',
@@ -198,16 +202,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = getByTestId('sso-save');
-			expect(saveButton).toBeDisabled();
+			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
 
 			const urlInput = getByTestId('sso-provider-url');
 
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
 
-			expect(saveButton).not.toBeDisabled();
-			await userEvent.click(saveButton);
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -227,6 +229,33 @@ describe('SettingsSso View', () => {
 			);
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('restores the saved values when the user discards the changes', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.isSamlLoginEnabled = true;
+			ssoStore.samlConfig = { ...samlConfig, loginEnabled: true };
+			ssoStore.getSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: true });
+
+			const { getByTestId } = renderView();
+			await waitFor(() =>
+				expect(getByTestId('sso-provider-url')).toHaveValue(samlConfig.metadataUrl),
+			);
+			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
+
+			const urlInput = getByTestId('sso-provider-url');
+			await userEvent.clear(urlInput);
+			await userEvent.type(urlInput, 'https://other-idp.example.com/metadata');
+			await screen.findByTestId(SAVE_BUTTON);
+
+			await userEvent.click(screen.getByTestId('settings-save-bar-discard'));
+
+			await waitFor(() =>
+				expect(getByTestId('sso-provider-url')).toHaveValue(samlConfig.metadataUrl),
+			);
+			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
 		});
 
 		it("allows user to fill Identity Provider's XML", async () => {
@@ -260,8 +289,7 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = getByTestId('sso-save');
-			expect(saveButton).toBeDisabled();
+			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
 
 			await userEvent.click(getByTestId('radio-button-xml'));
 
@@ -270,8 +298,7 @@ describe('SettingsSso View', () => {
 			expect(xmlInput).toBeVisible();
 			await userEvent.type(xmlInput, samlConfig.metadata!);
 
-			expect(saveButton).not.toBeDisabled();
-			await userEvent.click(saveButton);
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -375,16 +402,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = getByTestId('sso-save');
-			expect(saveButton).toBeDisabled();
+			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
 
 			const urlInput = getByTestId('sso-provider-url');
 
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadata as string);
 
-			expect(saveButton).not.toBeDisabled();
-			await userEvent.click(saveButton);
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
 
 			expect(showError).toHaveBeenCalled();
 			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
@@ -403,16 +428,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = getByTestId('sso-save');
-			expect(saveButton).toBeDisabled();
+			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
 
 			const urlinput = getByTestId('sso-provider-url');
 
 			expect(urlinput).toBeVisible();
 			await userEvent.type(urlinput, 'mailto://test@example.com');
 
-			expect(saveButton).not.toBeDisabled();
-			await userEvent.click(saveButton);
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
 
 			expect(showError).toHaveBeenCalled();
 			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
@@ -507,8 +530,7 @@ describe('SettingsSso View', () => {
 			const { getByTestId } = renderView();
 
 			// Wait for onMounted to initialize authProtocol to OIDC
-			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
-			expect(saveButton).toBeVisible();
+			await waitFor(() => getByTestId('sso-oidc-test'));
 
 			const oidcDiscoveryUrlInput = getByTestId('oidc-discovery-endpoint');
 
@@ -522,7 +544,7 @@ describe('SettingsSso View', () => {
 			expect(clientSecretInput).toBeVisible();
 			await userEvent.type(clientSecretInput, 'test-client-secret');
 
-			expect(saveButton).not.toBeDisabled();
+			const saveButton = await screen.findByTestId(SAVE_BUTTON);
 
 			// Pinia mocked stores don't execute real store logic. In production, saveOidcConfig
 			// updates oidcConfig.value (sso.store.ts:144), but the mock just returns a value.
@@ -571,7 +593,7 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+			await waitFor(() => getByTestId('sso-oidc-test'));
 			expect(getByTestId('sso-oidc-logout-toggle')).toBeVisible();
 
 			// Change another field so the form is dirty and Save is enabled.
@@ -579,6 +601,7 @@ describe('SettingsSso View', () => {
 			await userEvent.type(getByTestId('oidc-client-id'), 'test-client-id');
 			await userEvent.type(getByTestId('oidc-client-secret'), 'test-client-secret');
 
+			const saveButton = await screen.findByTestId(SAVE_BUTTON);
 			ssoStore.oidcConfig = { ...oidcConfig, rpInitiatedLogoutEnabled: true };
 			await userEvent.click(saveButton);
 
@@ -605,8 +628,7 @@ describe('SettingsSso View', () => {
 			showError.mockClear();
 
 			// Wait for onMounted to initialize authProtocol to OIDC
-			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
-			expect(saveButton).toBeVisible();
+			await waitFor(() => getByTestId('sso-oidc-test'));
 
 			const oidcDiscoveryUrlInput = getByTestId('oidc-discovery-endpoint');
 
@@ -620,8 +642,7 @@ describe('SettingsSso View', () => {
 			expect(clientSecretInput).toBeVisible();
 			await userEvent.type(clientSecretInput, 'test-client-secret');
 
-			expect(saveButton).not.toBeDisabled();
-			await userEvent.click(saveButton);
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
 
 			expect(ssoStore.saveOidcConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -638,7 +659,7 @@ describe('SettingsSso View', () => {
 	});
 
 	describe('Env-managed readonly mode', () => {
-		it('should hide save button but keep test button when SAML is managed by env and mapping method is not rules_in_n8n', async () => {
+		it('should hide the save bar but keep test button when SAML is managed by env and mapping method is not rules_in_n8n', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.ssoManagedByEnv = true;
@@ -648,7 +669,7 @@ describe('SettingsSso View', () => {
 			const { queryByTestId } = renderView();
 
 			await waitFor(() => {
-				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
+				expect(queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
 				expect(queryByTestId('sso-test')).toBeInTheDocument();
 			});
 		});
@@ -665,7 +686,7 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			const saveButton = await waitFor(() => getByTestId('sso-save'));
+			const saveButton = await waitFor(() => getByTestId(SAVE_BUTTON));
 			await userEvent.click(saveButton);
 
 			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
@@ -693,14 +714,14 @@ describe('SettingsSso View', () => {
 			);
 			await userEvent.click(oidcItem!);
 
-			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+			const saveButton = await waitFor(() => getByTestId(SAVE_BUTTON));
 			await userEvent.click(saveButton);
 
 			expect(ssoStore.saveOidcConfig).not.toHaveBeenCalled();
 			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
 
-		it('should show save button when SAML is managed by env and mapping method is rules_in_n8n', async () => {
+		it('should show the save bar when SAML is managed by env and mapping method is rules_in_n8n', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.ssoManagedByEnv = true;
@@ -713,7 +734,7 @@ describe('SettingsSso View', () => {
 			const { queryByTestId } = renderView();
 
 			await waitFor(() => {
-				expect(queryByTestId('sso-save')).toBeInTheDocument();
+				expect(queryByTestId(SAVE_BUTTON)).toBeInTheDocument();
 				expect(queryByTestId('sso-test')).toBeInTheDocument();
 			});
 		});
@@ -787,7 +808,7 @@ describe('SettingsSso View', () => {
 			const urlInput = getByTestId('sso-provider-url');
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
 
-			const saveButton = getByTestId('sso-save');
+			const saveButton = await screen.findByTestId(SAVE_BUTTON);
 			await userEvent.click(saveButton);
 
 			// Verify store selectedAuthProtocol is updated to SAML after save
@@ -829,7 +850,7 @@ describe('SettingsSso View', () => {
 			const clientSecretInput = getByTestId('oidc-client-secret');
 			await userEvent.type(clientSecretInput, 'test-client-secret');
 
-			const saveButton = getByTestId('sso-oidc-save');
+			const saveButton = await screen.findByTestId(SAVE_BUTTON);
 			await userEvent.click(saveButton);
 
 			// Now verify store selectedAuthProtocol is updated to OIDC after save
@@ -855,7 +876,7 @@ describe('SettingsSso View', () => {
 			// Wait for component to mount and initialize authProtocol to OIDC from store
 			// The OIDC form should be rendered (it only renders when authProtocol === OIDC)
 			await waitFor(() => {
-				expect(getByTestId('sso-oidc-save')).toBeInTheDocument();
+				expect(getByTestId('sso-oidc-test')).toBeInTheDocument();
 			});
 		});
 
@@ -913,12 +934,31 @@ describe('SettingsSso View', () => {
 			);
 		};
 
-		it('shows the SCIM section with the license, the opt-in and the scope', async () => {
+		it('shows the SCIM row with the license, the opt-in and the scope', async () => {
 			setUpScim();
 
 			const { findByTestId } = renderView();
 
-			expect(await findByTestId('sso-scim-section')).toBeInTheDocument();
+			const row = await findByTestId('sso-scim-row');
+			expect(row).toHaveTextContent('Configure');
+		});
+
+		it('shows that SCIM is enabled on its row', async () => {
+			setUpScim();
+			vi.mocked(getScimConfig).mockResolvedValueOnce({
+				enabled: true,
+				hasToken: true,
+				tokenHint: 'abcd',
+				baseUrl: 'https://n8n.example.com/scim/v2',
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			});
+
+			const { findByTestId } = renderView();
+
+			const row = await findByTestId('sso-scim-row');
+			await waitFor(() => expect(row).toHaveTextContent('Enabled'));
 		});
 
 		it.each([
@@ -927,12 +967,13 @@ describe('SettingsSso View', () => {
 			// The backend accepts only 'true' for the opt-in.
 			['the opt-in is not exactly true', { optIn: '1' }],
 			['the user cannot manage SCIM', { canManage: false }],
-		])('hides the SCIM section when %s', async (_, options) => {
+		])('hides the SCIM row when %s', async (_, options) => {
 			setUpScim(options);
 
 			const { queryByTestId } = renderView();
 
-			await waitFor(() => expect(queryByTestId('sso-scim-section')).not.toBeInTheDocument());
+			await waitFor(() => expect(queryByTestId('sso-scim-row')).not.toBeInTheDocument());
+			expect(getScimConfig).not.toHaveBeenCalled();
 		});
 	});
 });

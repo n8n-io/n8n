@@ -105,9 +105,9 @@ watch(
 </script>
 
 <template>
+	<!-- The SCIM page header carries the feature title and description. -->
 	<N8nSettingsSection
-		:title="i18n.baseText('settings.sso.scim.title')"
-		:description="i18n.baseText('settings.sso.scim.description')"
+		:title="i18n.baseText('settings.sso.scim.connection.title')"
 		data-test-id="sso-scim-section"
 	>
 		<N8nSettingsRowGroup v-if="config">

@@ -4,9 +4,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
-import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { onBeforeRouteLeave, useRouter, type NavigationGuardNext } from 'vue-router';
+import * as scimApi from '@n8n/rest-api-client/api/scim';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nDialog,
@@ -16,19 +16,25 @@ import {
 	N8nCallout,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowConfigure,
+	N8nSettingsRowGroup,
+	N8nSettingsSaveBar,
+	N8nSettingsSection,
 	N8nText,
 } from '@n8n/design-system';
-import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
+import { VIEWS } from '@/app/constants';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
-import ScimProvisioningSection from '../components/ScimProvisioningSection.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
+import { isScimAvailable } from '../scim-availability';
 
 const i18n = useI18n();
+const router = useRouter();
 const ssoStore = useSSOStore();
-const settingsStore = useSettingsStore();
-const rbacStore = useRBACStore();
+const rootStore = useRootStore();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -62,21 +68,25 @@ const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
 );
 
-/**
- * SCIM needs the `feat:scim` license, the pre-GA opt-in `N8N_ENV_FEAT_SCIM`
- * and the `scim:manage` scope. The backend accepts only `'true'` for the
- * opt-in, so the page does not use the looser `useEnvFeatureFlag` check.
- */
-const showScimSection = computed(
-	() =>
-		settingsStore.isModuleActive('scim') &&
-		settingsStore.settings.envFeatureFlags?.N8N_ENV_FEAT_SCIM === 'true' &&
-		rbacStore.hasScope('scim:manage'),
-);
+const showScimRow = computed(() => isScimAvailable());
+const scimEnabled = ref(false);
 
-const isSsoLoginEnabled = computed(
-	() => ssoStore.isSamlLoginEnabled || ssoStore.isOidcLoginEnabled,
-);
+async function loadScimStatus() {
+	if (!showScimRow.value) return;
+	try {
+		scimEnabled.value = (await scimApi.getScimConfig(rootStore.restApiContext)).enabled;
+	} catch {
+		// The row still opens the SCIM page, which shows the load error.
+	}
+}
+
+async function openScim() {
+	await router.push({ name: VIEWS.SCIM_SETTINGS });
+}
+
+async function goToAuthentication() {
+	await router.push({ name: VIEWS.AUTHENTICATION_SETTINGS });
+}
 
 const activeForm = computed(() => {
 	if (authProtocol.value === SupportedProtocols.SAML) return samlFormRef.value;
@@ -85,6 +95,25 @@ const activeForm = computed(() => {
 });
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
+
+/** A new key remounts the form, which loads the saved values again. */
+const formKey = ref(0);
+
+const showSaveBar = computed(
+	() => Boolean(activeForm.value?.hasUnsavedChanges) || Boolean(activeForm.value?.saving),
+);
+
+async function onSaveBarSave() {
+	await activeForm.value?.onSave();
+}
+
+function onDiscardChanges() {
+	// The OIDC login switch writes to the store, so put the saved value back first.
+	if (authProtocol.value === SupportedProtocols.OIDC) {
+		ssoStore.isOidcLoginEnabled = ssoStore.oidcConfig?.loginEnabled ?? false;
+	}
+	formKey.value++;
+}
 
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
@@ -137,70 +166,77 @@ onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	ssoStore.initializeSelectedProtocol();
 	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
+	void loadScimStatus();
 });
 </script>
 
 <template>
-	<div class="pb-2xl">
-		<AuthenticationBackLink />
+	<N8nSettingsLayout
+		:class="$style.layout"
+		show-back
+		:back-label="i18n.baseText('settings.authentication.back')"
+		data-test-id="sso-settings-view"
+		@back="goToAuthentication"
+	>
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"
 			docs-url="https://docs.n8n.io/user-management/saml/"
-			:class="$style.header"
 			data-test-id="sso-settings-header"
 		/>
-		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
+		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning">
 			{{
 				isRulesMappingInN8n
 					? i18n.baseText('settings.sso.settings.envConfigBannerWithRules')
 					: i18n.baseText('settings.sso.settings.envConfigBanner')
 			}}
 		</N8nCallout>
-		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
-		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
-			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
-				<div :class="shared.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
-					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
-				</div>
-				<div :class="shared.settingsItemControl">
-					<N8nSelect
-						filterable
-						size="medium"
-						:disabled="ssoStore.ssoManagedByEnv"
-						:model-value="authProtocol"
-						:placeholder="i18n.baseText('parameterInput.select')"
-						@update:model-value="onAuthProtocolUpdated"
-						@keydown.stop
-					>
-						<N8nOption
-							v-for="{ label, value } in options"
-							:key="value"
-							:value="value"
-							:label="label"
-							data-test-id="credential-select-option"
-						/>
-					</N8nSelect>
+		<!-- One wrapper keeps the protocol card joined to the form: the layout spaces its direct children. -->
+		<div v-if="hasAnySsoEnabled">
+			<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
+			<div :class="[shared.card, $style.protocolCard]">
+				<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+					<div :class="shared.settingsItemLabel">
+						<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+						<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
+					</div>
+					<div :class="shared.settingsItemControl">
+						<N8nSelect
+							filterable
+							size="medium"
+							:disabled="ssoStore.ssoManagedByEnv"
+							:model-value="authProtocol"
+							:placeholder="i18n.baseText('parameterInput.select')"
+							@update:model-value="onAuthProtocolUpdated"
+							@keydown.stop
+						>
+							<N8nOption
+								v-for="{ label, value } in options"
+								:key="value"
+								:value="value"
+								:label="label"
+								data-test-id="credential-select-option"
+							/>
+						</N8nSelect>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div
-			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
-			data-test-id="sso-content-licensed"
-		>
-			<SamlSettingsForm ref="samlForm" />
-		</div>
-		<div
-			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
-			data-test-id="sso-content-licensed"
-		>
-			<OidcSettingsForm ref="oidcForm" />
+			<div
+				v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
+				data-test-id="sso-content-licensed"
+			>
+				<SamlSettingsForm ref="samlForm" :key="formKey" />
+			</div>
+			<div
+				v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
+				data-test-id="sso-content-licensed"
+			>
+				<OidcSettingsForm ref="oidcForm" :key="formKey" />
+			</div>
 		</div>
 		<N8nEmptyState
-			v-if="!hasAnySsoEnabled"
+			v-else
 			data-test-id="sso-content-unlicensed"
-			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
 			:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
 			@click:button="goToUpgrade"
@@ -210,11 +246,27 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
-		<ScimProvisioningSection
-			v-if="showScimSection"
-			:class="$style.scim"
-			:sso-enabled="isSsoLoginEnabled"
-		/>
+		<N8nSettingsSection
+			v-if="showScimRow"
+			:title="i18n.baseText('settings.sso.provisioning.title')"
+			data-test-id="sso-provisioning-section"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					clickable
+					:title="i18n.baseText('settings.sso.scim.title')"
+					:description="i18n.baseText('settings.sso.scim.description')"
+					data-test-id="sso-scim-row"
+					@click="openScim"
+				>
+					<template #action>
+						<N8nSettingsRowConfigure
+							:value="scimEnabled ? i18n.baseText('settings.sso.scim.status.enabled') : undefined"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
 
 		<N8nDialog
 			:open="showUnsavedChangesDialog"
@@ -239,15 +291,27 @@ onMounted(() => {
 				</N8nButton>
 			</N8nDialogFooter>
 		</N8nDialog>
-	</div>
+
+		<!-- The save bar must be the last child of the content column to dock at the page end. -->
+		<N8nSettingsSaveBar
+			floating
+			:visible="showSaveBar"
+			:saving="Boolean(activeForm?.saving)"
+			:message="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
+			:save-label="i18n.baseText('settings.sso.settings.save')"
+			:discard-label="i18n.baseText('settings.sso.settings.discard')"
+			@save="onSaveBarSave"
+			@discard="onDiscardChanges"
+		/>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-/* This page is not inside N8nSettingsLayout (which owns the header → content gap), so it keeps its own. */
-.header {
-	margin-bottom: var(--spacing--lg);
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+.layout {
+	padding-top: 0;
 }
 
 .protocolCard {
@@ -256,13 +320,5 @@ onMounted(() => {
 	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
-}
-
-.actionBox {
-	margin-top: var(--spacing--lg);
-}
-
-.scim {
-	margin-top: var(--spacing--2xl);
 }
 </style>
