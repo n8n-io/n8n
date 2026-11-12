@@ -1,4 +1,8 @@
-import type { AgentChatMessagesResponse, InstanceAiConfirmRequest } from '@n8n/api-types';
+import type {
+	AgentChatMessagesResponse,
+	AgentThreadUsageResponse,
+	InstanceAiConfirmRequest,
+} from '@n8n/api-types';
 import { vi } from 'vitest';
 
 import {
@@ -24,16 +28,60 @@ function history(overrides: Partial<AgentChatMessagesResponse> = {}): AgentChatM
 	return { messages: [], openSuspensions: [], activeExecutionId: null, ...overrides };
 }
 
+const noUsage: AgentThreadUsageResponse = {
+	executions: [],
+	total: {
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+		cacheReadTokens: null,
+		cacheWriteTokens: null,
+		cost: null,
+	},
+};
+
 /** Serves the given history snapshots in order, then repeats the last one. */
-function scriptedClient(snapshots: AgentChatMessagesResponse[]) {
+function scriptedClient(snapshots: AgentChatMessagesResponse[], usage = noUsage) {
 	let call = 0;
 	const client = {
 		getHistory: vi.fn(async () => snapshots[Math.min(call++, snapshots.length - 1)]),
 		resume: vi.fn(
 			async (_runId: string, _toolCallId: string, _body: InstanceAiConfirmRequest) => {},
 		),
+		getUsage: vi.fn(async () => usage),
 	} satisfies AssistantV2WaitClient;
 	return client;
+}
+
+/** A user message that an execution took, as the history shows it. */
+const takenUserMessage: AgentChatMessagesResponse['messages'][number] = {
+	id: 'user-1',
+	role: 'user',
+	executionId: 'exec-1',
+	createdAt: new Date(SENT_AT + 100).toISOString(),
+	content: [{ type: 'text', text: 'Build it' }],
+};
+
+/** Usage that lists one top-level execution with the given status. */
+function usageWith(status: 'error' | 'success'): AgentThreadUsageResponse {
+	return {
+		...noUsage,
+		executions: [
+			{
+				...noUsage.total,
+				executionId: 'exec-1',
+				threadId: 'thread-1',
+				parentExecutionId: null,
+				status,
+				model: null,
+				startedAt: new Date(SENT_AT + 100).toISOString(),
+				stoppedAt: new Date(SENT_AT + 200).toISOString(),
+				duration: 100,
+				descendants: [],
+				total: noUsage.total,
+			},
+		],
+	};
 }
 
 function config(
@@ -122,6 +170,32 @@ describe('waitForAssistantV2Activity', () => {
 		const client = scriptedClient([history({ messages: [partialTurn] })]);
 
 		await expect(waitForAssistantV2Activity(config(client))).resolves.toBeUndefined();
+	});
+
+	it('fails a turn that the history leaves out because it failed without output or message', async () => {
+		const client = scriptedClient([history({ messages: [takenUserMessage] })], usageWith('error'));
+
+		await expect(waitForAssistantV2Activity(config(client))).rejects.toThrow(
+			'Assistant agent turn failed: the execution ended with status "error" and no error message',
+		);
+		expect(client.getUsage).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('returns for a turn that ended without a reply and did not fail', async () => {
+		const client = scriptedClient(
+			[history({ messages: [takenUserMessage] })],
+			usageWith('success'),
+		);
+
+		await expect(waitForAssistantV2Activity(config(client))).resolves.toBeUndefined();
+	});
+
+	it('reads no usage when the turn has a reply', async () => {
+		const client = scriptedClient([history({ messages: [takenUserMessage, finishedTurn] })]);
+
+		await waitForAssistantV2Activity(config(client));
+
+		expect(client.getUsage).not.toHaveBeenCalled();
 	});
 
 	it('answers an open card through resume with the confirmation strategy', async () => {

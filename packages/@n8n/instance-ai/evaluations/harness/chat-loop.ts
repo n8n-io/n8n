@@ -145,7 +145,10 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 			confirmationRetries: config.confirmationRetries,
 			maxConfirmationRetries: MAX_CONFIRMATION_RETRIES,
 			proxyResponses: config.proxyResponses,
-			timeoutBreach: () => timeoutBreach(config),
+			// No inactivity bound: v2 events come from the stored history, which can
+			// stay the same for minutes while a long tool call runs. The turn and
+			// conversation budgets still stop a turn that hangs.
+			timeoutBreach: () => elapsedBudgetBreach(config),
 			onTimeout: async (breach) => await cancelAndThrow(config, breach),
 			log: (message) => config.logger.verbose(message),
 		});

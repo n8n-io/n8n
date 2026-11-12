@@ -297,7 +297,10 @@ export class AssistantAgentsApi {
 }
 
 function throwOnSseError(event: AssistantSseEvent | undefined, prefix: string): void {
-	if (event?.type !== 'error') return;
+	// A stream that closes before the server confirms is not a success. The
+	// caller retries, or the case fails, instead of grading an unanswered card.
+	if (event === undefined) throw new Error(`${prefix}: the response ended before any event`);
+	if (event.type !== 'error') return;
 	const message = typeof event.message === 'string' ? event.message : 'unknown error';
 	throw new Error(`${prefix}: ${message}`);
 }

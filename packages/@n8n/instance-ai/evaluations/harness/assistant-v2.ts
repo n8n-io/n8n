@@ -34,6 +34,7 @@ export const ASSISTANT_V2_POLL_INTERVAL_MS = 1_500;
 export interface AssistantV2WaitClient {
 	getHistory(threadId: string): Promise<AgentChatMessagesResponse>;
 	resume(runId: string, toolCallId: string, resumeData: InstanceAiConfirmRequest): Promise<void>;
+	getUsage(threadId: string): Promise<AgentThreadUsageResponse>;
 }
 
 export interface AssistantV2WaitConfig {
@@ -119,13 +120,15 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 		if (busy) {
 			sawActivity = true;
 			quiet = 0;
-		} else if (sawActivity || hasAssistantReplySince(history.messages, config.sentAt)) {
+		} else if (sawActivity || turnStartedSince(history.messages, config.sentAt)) {
 			quiet++;
 			if (quiet >= quietPolls) {
 				config.log(`[v2] Thread ${config.threadId} is quiet`);
 				// v1 rejects a turn that cannot run, so the build fails. v2 queues the
 				// message first and the turn fails later, so report that failure here.
-				const failure = failedTurnWithoutOutput(history.messages, config.sentAt);
+				const failure =
+					failedTurnWithoutOutput(history.messages, config.sentAt) ??
+					(await failedTurnWithoutMessage(config, history.messages));
 				if (failure !== undefined) throw new Error(`Assistant agent turn failed: ${failure}`);
 				return;
 			}
@@ -166,13 +169,45 @@ export function failedTurnWithoutOutput(
 	return hasOutput ? undefined : (latest.executionError ?? 'unknown error');
 }
 
-function hasAssistantReplySince(messages: AgentPersistedMessageDto[], since: number): boolean {
+/**
+ * Whether a turn started since `since`. An execution takes the user message,
+ * so its id is on the user message also when the turn writes no reply.
+ */
+function turnStartedSince(messages: AgentPersistedMessageDto[], since: number): boolean {
 	return messages.some(
 		(message) =>
-			message.role === 'assistant' &&
+			message.executionId !== undefined &&
 			message.createdAt !== undefined &&
 			Date.parse(message.createdAt) >= since,
 	);
+}
+
+/**
+ * The history leaves out a failed execution that wrote nothing and has no
+ * error text. Read the status of the latest such execution from the usage
+ * route, which lists every execution.
+ */
+async function failedTurnWithoutMessage(
+	config: AssistantV2WaitConfig,
+	messages: AgentPersistedMessageDto[],
+): Promise<string | undefined> {
+	const latestExecutionId = messages
+		.filter(
+			(message) =>
+				message.executionId !== undefined &&
+				message.createdAt !== undefined &&
+				Date.parse(message.createdAt) >= config.sentAt,
+		)
+		.at(-1)?.executionId;
+	if (latestExecutionId === undefined) return undefined;
+	const hasReply = messages.some(
+		(message) => message.role === 'assistant' && message.executionId === latestExecutionId,
+	);
+	if (hasReply) return undefined;
+	const usage = await config.client.getUsage(config.threadId);
+	const execution = usage.executions.find((entry) => entry.executionId === latestExecutionId);
+	if (execution?.status !== 'error' && execution?.status !== 'interrupted') return undefined;
+	return `the execution ended with status "${execution.status}" and no error message`;
 }
 
 /**

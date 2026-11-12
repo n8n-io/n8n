@@ -153,6 +153,26 @@ describe('N8nClient on the Agents runtime', () => {
 		);
 	});
 
+	it('throws when the chat stream ends before the message is queued', async () => {
+		mockN8n([
+			['POST', /^\/rest\/agents\/system\/assistant\/chat/, { sse: sse({ type: 'heartbeat' }) }],
+		]);
+		const client = await agentsClient();
+
+		await expect(client.sendMessage('t-1', 'hi')).rejects.toThrow(
+			'Assistant chat failed: the response ended before any event',
+		);
+	});
+
+	it('throws when the resume stream ends before any event', async () => {
+		mockN8n([['POST', '/rest/agents/system/assistant/chat/resume', { sse: '' }]]);
+		const client = await agentsClient();
+
+		await expect(
+			client.assistantAgents()?.resume('run-1', 'call-1', { kind: 'approval', approved: true }),
+		).rejects.toThrow('Assistant resume failed: the response ended before any event');
+	});
+
 	it('skips stream events until the message is queued', async () => {
 		mockN8n([
 			[
