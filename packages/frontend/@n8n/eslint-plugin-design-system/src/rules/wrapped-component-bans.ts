@@ -165,6 +165,14 @@ export const wrappedComponentBans = [
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',
 	},
+	{
+		library: 'element-plus',
+		names: ['ElSwitch'],
+		componentPaths: ['switch'],
+		templateNames: ['el-switch', 'ElSwitch'],
+		allowedFolders: ['components/N8nSwitch'],
+		replacement: 'N8nSwitch',
+	},
 ] as const satisfies readonly WrappedComponentBan[];
 
 export function formatWrappedComponentReplacement(replacement: string | readonly string[]): string {
