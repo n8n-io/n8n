@@ -9,7 +9,8 @@ import {
 } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
-import { useNow } from '@vueuse/core';
+import { useIntervalFn, useNow } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -299,5 +300,100 @@ export function useSteadyRunActivity(messages: () => InstanceAiMessage[]) {
 	return useSteadyValue(() => deriveActivity(messages(), now.value.getTime()) ?? undefined, {
 		key: runActivityKey,
 		urgent: (activity) => activity.waiting === true,
+	});
+}
+
+/** The canvas shows one of these while an agent reasons, not the reasoning itself. */
+const REASONING_PHRASE_KEYS: readonly BaseTextKey[] = [
+	'instanceAi.activity.reasoningPhrase.thinking',
+	'instanceAi.activity.reasoningPhrase.considering',
+	'instanceAi.activity.reasoningPhrase.pondering',
+	'instanceAi.activity.reasoningPhrase.mullingItOver',
+	'instanceAi.activity.reasoningPhrase.reasoning',
+	'instanceAi.activity.reasoningPhrase.planning',
+	'instanceAi.activity.reasoningPhrase.reflecting',
+	'instanceAi.activity.reasoningPhrase.weighingItUp',
+	'instanceAi.activity.reasoningPhrase.thinkingAhead',
+	'instanceAi.activity.reasoningPhrase.gatheringThoughts',
+	'instanceAi.activity.reasoningPhrase.liningThingsUp',
+	'instanceAi.activity.reasoningPhrase.thinkingHard',
+	'instanceAi.activity.reasoningPhrase.thinkingItThrough',
+	'instanceAi.activity.reasoningPhrase.weighingTheOptions',
+	'instanceAi.activity.reasoningPhrase.workingItOut',
+	'instanceAi.activity.reasoningPhrase.figuringItOut',
+	'instanceAi.activity.reasoningPhrase.sortingOutTheDetails',
+	'instanceAi.activity.reasoningPhrase.connectingTheDots',
+	'instanceAi.activity.reasoningPhrase.puttingThePiecesTogether',
+	'instanceAi.activity.reasoningPhrase.comparingApproaches',
+	'instanceAi.activity.reasoningPhrase.takingACloserLook',
+	'instanceAi.activity.reasoningPhrase.turningItOver',
+	'instanceAi.activity.reasoningPhrase.followingTheThread',
+	'instanceAi.activity.reasoningPhrase.thinkingReallyHard',
+	'instanceAi.activity.reasoningPhrase.deepInThought',
+	'instanceAi.activity.reasoningPhrase.diggingDeeper',
+	'instanceAi.activity.reasoningPhrase.untanglingTheDetails',
+	'instanceAi.activity.reasoningPhrase.workingThroughIt',
+	'instanceAi.activity.reasoningPhrase.lookingAtEveryAngle',
+	'instanceAi.activity.reasoningPhrase.piecingItTogether',
+	'instanceAi.activity.reasoningPhrase.takingItStepByStep',
+	'instanceAi.activity.reasoningPhrase.exploringTheOptions',
+	'instanceAi.activity.reasoningPhrase.testingIdeas',
+	'instanceAi.activity.reasoningPhrase.thinkingInDepth',
+	'instanceAi.activity.reasoningPhrase.thinkingVeryHard',
+	'instanceAi.activity.reasoningPhrase.deepThinking',
+	'instanceAi.activity.reasoningPhrase.consideringEveryDetail',
+	'instanceAi.activity.reasoningPhrase.makingSureItFitsTogether',
+	'instanceAi.activity.reasoningPhrase.givingItFullAttention',
+	'instanceAi.activity.reasoningPhrase.stillThinking',
+];
+
+/** Any index of a list of this length, except the current one. */
+function randomOtherIndex(length: number, current: number | undefined): number {
+	if (current === undefined) return Math.floor(Math.random() * length);
+	const index = Math.floor(Math.random() * (length - 1));
+	return index >= current ? index + 1 : index;
+}
+
+/** A random reasoning phrase while `active`, a different one every few seconds. */
+function useReasoningPhrase(active: () => boolean) {
+	const i18n = useI18n();
+	const index = ref<number>();
+	const next = () => {
+		index.value = randomOtherIndex(REASONING_PHRASE_KEYS.length, index.value);
+	};
+	const rotation = useIntervalFn(next, ROTATION_MS, { immediate: false });
+	watch(
+		active,
+		(isActive) => {
+			if (isActive) {
+				next();
+				rotation.resume();
+			} else {
+				rotation.pause();
+				index.value = undefined;
+			}
+		},
+		{ immediate: true },
+	);
+	return computed(() =>
+		index.value === undefined ? undefined : i18n.baseText(REASONING_PHRASE_KEYS[index.value]),
+	);
+}
+
+/**
+ * The run activity for the draft canvas. It is the status bar text, but a
+ * reasoning sentence is out of place on the canvas, so a short phrase replaces it.
+ */
+export function useCanvasRunActivity(messages: () => InstanceAiMessage[]) {
+	const activity = useSteadyRunActivity(messages);
+	const phrase = useReasoningPhrase(() => activity.value?.streaming === true);
+	return computed(() => {
+		const current = activity.value;
+		if (!current) return undefined;
+		const shown =
+			current.streaming && phrase.value
+				? { ...current, ...(current.detail ? { detail: phrase.value } : { label: phrase.value }) }
+				: current;
+		return { text: formatRunActivity(shown), waiting: current.waiting === true };
 	});
 }

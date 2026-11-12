@@ -67,7 +67,7 @@ import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/e
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
-import { formatRunActivity, useSteadyRunActivity } from './composables/useRunActivity';
+import { useCanvasRunActivity } from './composables/useRunActivity';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
@@ -301,11 +301,8 @@ watch(
 	{ immediate: true },
 );
 
-/** What the agent does now, on the draft canvas. The same text as the chat status bar. */
-const draftRunActivity = useSteadyRunActivity(() => thread.messages);
-const draftStatusText = computed(() =>
-	draftRunActivity.value ? formatRunActivity(draftRunActivity.value) : undefined,
-);
+/** What the agent does now, on the draft canvas. It changes with the chat status bar. */
+const draftRunActivity = useCanvasRunActivity(() => thread.messages);
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
@@ -1083,7 +1080,7 @@ function handleNewThreadClick() {
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
-								:status-text="draftStatusText"
+								:status-text="draftRunActivity?.text"
 								:waiting="draftRunActivity?.waiting === true"
 							/>
 							<InstanceAiDataTablePreview

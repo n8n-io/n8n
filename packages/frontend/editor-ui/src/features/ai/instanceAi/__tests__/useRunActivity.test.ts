@@ -8,10 +8,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-import { effectScope, nextTick, ref } from 'vue';
+import { computed, effectScope, nextTick, ref } from 'vue';
 
 import {
 	formatRunActivity,
+	useCanvasRunActivity,
 	useRunActivity,
 	useSteadyRunActivity,
 } from '../composables/useRunActivity';
@@ -363,6 +364,92 @@ describe('useSteadyRunActivity', () => {
 
 		expect(activity?.value?.label).toBe('Gmail can filter by label');
 		scope.stop();
+	});
+});
+
+describe('useCanvasRunActivity', () => {
+	const SENTENCE = 'Gmail can filter by label';
+	const reasoning = (overrides: Partial<InstanceAiAgentNode> = {}) =>
+		agent({ timeline: [{ type: 'reasoning', content: SENTENCE }], ...overrides });
+
+	beforeEach(() => {
+		createTestingPinia();
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	function canvasText(messages: InstanceAiMessage[]) {
+		const scope = effectScope();
+		const activity = scope.run(() => useCanvasRunActivity(() => messages));
+		return { text: computed(() => activity?.value?.text), activity, stop: () => scope.stop() };
+	}
+
+	it('shows a reasoning phrase instead of the reasoning sentence', () => {
+		const { text, stop } = canvasText([message(reasoning())]);
+
+		expect(text?.value).toBeTruthy();
+		expect(text?.value).not.toContain('Gmail');
+		stop();
+	});
+
+	it('changes the reasoning phrase every few seconds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		const { text, stop } = canvasText([message(reasoning())]);
+		const first = text?.value;
+
+		vi.advanceTimersByTime(3000);
+		await nextTick();
+
+		expect(text?.value).toBeTruthy();
+		expect(text?.value).not.toBe(first);
+		stop();
+	});
+
+	it('keeps the role of a sub-agent that reasons', () => {
+		const child = reasoning({ agentId: 'child', role: 'workflow-builder', kind: 'builder' });
+
+		const { text, stop } = canvasText([message(agent({ children: [child] }))]);
+
+		expect(text?.value).toMatch(/^Building workflow · /);
+		expect(text?.value).not.toContain('Gmail');
+		stop();
+	});
+
+	it('shows the same text as the status bar when the agent does not reason', () => {
+		const { text, stop } = canvasText([
+			message(agent({ toolCalls: [call('search_nodes', { queries: ['gmail'] })] })),
+		]);
+
+		expect(text?.value).toBe('Searching for gmail');
+		stop();
+	});
+
+	it('marks a run that waits on the user', () => {
+		const { activity, stop } = canvasText([
+			message(
+				agent({
+					toolCalls: [
+						{
+							...call('ask_user'),
+							confirmation: {
+								requestId: 'r-1',
+								severity: 'info',
+								message: 'Please answer',
+								inputType: 'questions',
+							},
+							confirmationStatus: 'pending',
+						},
+					],
+				}),
+			),
+		]);
+
+		expect(activity?.value?.waiting).toBe(true);
+		stop();
 	});
 });
 
