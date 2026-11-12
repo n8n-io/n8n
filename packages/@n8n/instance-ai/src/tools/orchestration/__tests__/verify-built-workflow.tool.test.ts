@@ -1326,11 +1326,13 @@ describe('workflow_builder_verify_built_workflow tool — node simulation plan',
 		const previews = result.nodePreviews ?? [];
 		expect(previews.find((p) => p.nodeName === 'Send Slack')).toMatchObject({ simulated: true });
 		expect(previews.find((p) => p.nodeName === 'Transform')?.simulated).toBeUndefined();
-		expect(result.simulatedNodes).toEqual([
+		// The node list lives only in the claim; the note counts it instead of repeating it.
+		expect(result.simulatedNodes).toBeUndefined();
+		expect(result.claim?.simulatedNodes).toEqual([
 			{ nodeName: 'Send Slack', reason: 'Sends a message to a Slack channel' },
 		]);
-		expect(result.simulationNote).toContain('Send Slack');
-		expect(result.simulationNote).toContain('with fixture output');
+		expect(result.simulationNote).toContain('Simulated 1 node(s) with fixture output');
+		expect(result.simulationNote).not.toContain('Sends a message to a Slack channel');
 	});
 
 	it('surfaces parameters of reached simulated nodes that resolved to empty or threw', async () => {
@@ -2387,8 +2389,10 @@ describe('workflow_builder_verify_built_workflow tool — attached tools', () =>
 			workflowId: 'wf-1',
 			triggerNodeName: 'Other Trigger',
 		});
-		expect(second.simulatedNodes).toEqual([{ nodeName: 'Other Write', reason: 'Writes data' }]);
-		expect(second.simulationNote).toContain('Other Write');
+		expect(second.claim?.simulatedNodes).toEqual([
+			{ nodeName: 'Other Write', reason: 'Writes data' },
+		]);
+		expect(second.simulationNote).toContain('Simulated 1 node(s)');
 		expect(second.simulationNote).not.toContain('no real external writes');
 		expect(getOutcome().verification?.claim?.nodesNotReached).toEqual(['Write']);
 		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1', triggerNodeName: 'Trigger' });

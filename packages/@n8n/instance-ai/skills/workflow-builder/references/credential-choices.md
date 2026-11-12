@@ -49,38 +49,12 @@ authentication. Pick in this order:
 
 ## Explicit request for a new credential
 
-When the user explicitly asks for a **new** credential ("create a new Slack
-credential"), an unresolved `newCredential('Name')` is not enough: the build
-would still attach their sole existing credential of that type, and setup
-would preselect their most recent one. Pass the credential type in
-`preferNewCredentials` on `workflow_builder_build_workflow` **and** on
-`setup_workflow` (or `preferNew: true` on the entry of `setup_credentials`).
-The slot then stays unresolved through the build and the card opens on
-credential creation, with existing credentials still listed. Pass it only on
-an explicit request, never by default — reuse is the right behavior everywhere
-else. Never ask the user to choose among existing credentials, not even when
-exactly one exists: setup still lists them, so say so in one short sentence.
-If they had skipped that card earlier, also pass `reopenSkipped` to `setup_workflow`
-(`setup_credentials` has no such parameter).
+When the user explicitly asks for a **new** credential, an unresolved
+`newCredential('Name')` is not enough: the build would still attach their
+existing one. Pass the type in `preferNewCredentials`. Reuse is the default
+everywhere else.
 
 ## Credential choices during setup
 
-Before the first build, do not ask about credentials: the builder preserves
-explicit valid credentials and auto-mocks missing or unselected ones.
-Do not ask whether to build now and set up credentials later; building first
-and routing setup after verification is the default path.
-
-**Let setup collect the choice when a service has multiple credentials of the
-same type.** The setup card lists every credential of that type, so the user
-picks one there. Do not ask this in chat or with `ask_user`. Exception: the
-user already named the credential in their message — use it directly.
-
-**Ask which auth type to use when a service supports more than one** only for a
-standalone credential request: `setup_credentials` outside any workflow. That
-picker is locked to a single `credentialType`. When `search_credential_types`
-returns more than one auth option (e.g. `notionApi` and `notionOAuth2Api`), use
-`ask_user` with a single-select, OAuth2 first and recommended. Skip the
-question when the user named an auth type ("api key", "oauth"). In a
-workflow build, never ask about the auth type, before or after the build: let
-the build pick it from the node definition, and let setup collect the
-credential.
+Let the setup card collect credential choices. Ask about the auth type only
+for a standalone `setup_credentials` request, never in a workflow build.

@@ -65,22 +65,12 @@ For an unspecified model, leave `query` empty unless the user requested a model
 maker or family. Do not search for a remembered model ID and treat its presence
 as proof that it is current. Compare current candidates before choosing one.
 
-Keep the requested serving provider and model maker. For Claude through OpenRouter,
-call `search_models({ provider: "openrouter", query: "claude" })`. For OpenAI through
-OpenRouter, use `query: "openai"`. The query filters model IDs and names before
-selecting the ten most recent matches, so other makers do not fill the results.
-Use an exact returned ID in the `anthropic/` or `openai/` namespace. Do not construct
-OpenRouter IDs from direct-provider names. If no suitable model is returned,
-consult the serving provider's official catalog or documentation.
+Keep the requested serving provider and model maker. If no suitable model is
+returned, consult the serving provider's official catalog or documentation.
+Never use catalog search to replace a failed credential lookup or merely to
+check an unfamiliar model.
 
-Catalog results are advisory and may include previews. Prefer a stable model
-that fits the task, and report the source and freshness of catalog-based advice.
-Catalog presence does not prove credential access. Once a credential is connected,
-its resource lookup takes precedence. Never use catalog search to replace a
-failed credential lookup or merely to check an unfamiliar model.
-
-When making a new recommendation, state which access or capabilities remain
-unverified. Do not invent model IDs, versions, prices, or rankings. Do not force
+Do not invent model IDs, versions, prices, or rankings. Do not force
 a paid credential to get a newer model.
 
 ## Diagnose availability
@@ -94,9 +84,3 @@ prove global model nonexistence or account-wide unavailability. Check the actual
 request, provider endpoint, credential, operation, and execution evidence before
 recommending a replacement. Scope any provider rejection to what it establishes.
 Absence from a partial model list or documentation page is not a rejection.
-
-Use execution-specific evidence to distinguish simulated verification from real
-provider calls. The current credential inventory does not establish whether an
-earlier run was simulated. When direct execution and chat behave differently,
-compare their records and configuration. Keep unsupported causes as hypotheses;
-do not claim a live fix from mocked verification.

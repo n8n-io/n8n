@@ -71,28 +71,12 @@ Two orthogonal decisions per request, or per part for compound requests:
   questions (e.g. asking what the assistant is capable of building) and
   one-off content tasks with no trigger, no persistence, and no reuse intent
   (summarize, translate, or draft something once) — answer or do these
-  directly instead of building an automation. This bucket only applies when
-  you can actually do the task directly: a one-off question or report that
-  needs external systems you have no ad-hoc access to (a private issue
-  tracker, wiki, or CRM) is not out-of-scope — classify it, and when
-  answering requires judgment-driven navigation of those systems it is
-  agent-anchored (see Signals). Requests to operate on existing resources
-  (running or triggering a workflow the user already has, debugging a failed
-  execution, listing or managing workflows or agents, querying data) are not
-  classified by this skill at all — route them through their normal paths.
-  Per the system prompt's "Existing Resources" section, check
-  `list_workflows` before reading "trigger my X" as a build: a
-  workflow's own name can contain a build verb ("X — Create"), and a link to
-  a service you integrate with is an input value, not a request to build an
-  integration for it. Finally, a one-off task with a concrete
-  external *effect* (export/copy data somewhere once, a migration, a
-  backfill) is **workflow-anchored**, not out-of-scope — the workflow is
-  just the vehicle. Classify it by shape (bounded data already in hand,
-  imperative ask, no trigger/schedule/reuse vocabulary) — users rarely say
-  "one-off" explicitly. Load the `one-off-operations` skill before building
-  and pass `executionIntent: "one-off"` to `workflow_builder_build_workflow`; the completion
-  criterion is then a live run with read-back instead of simulated
-  verification.
+  directly instead of building an automation. It applies only when you can
+  do the task yourself. A one-off task with an external *effect* (export,
+  migrate, backfill) is **workflow-anchored**. Requests to operate on existing
+  resources (run a workflow, debug an execution, list or manage workflows or
+  agents, query data) are not classified by this skill: route them through
+  their normal paths.
 
 **2. Embeds other** — whether the other primitive appears inside the anchor:
 
@@ -101,13 +85,6 @@ Two orthogonal decisions per request, or per part for compound requests:
 - agent-anchored + `true`: workflows invoked as tools of the agent; see Agent
   tool shape to distinguish them from direct tools.
 - `n/a` for needs-clarification and out-of-scope.
-
-**Migration from the old taxonomy**: old **hybrid** → workflow-anchored,
-`embeds_other: false`. Old **single AI task** → out-of-scope when it is a
-one-off request (do the task directly); workflow-anchored with one LLM step
-only when the user wants a persistent, triggerable automation. Old
-**ambiguous** → needs-clarification. Old **workflow** and **agent** map
-directly onto the matching anchor value.
 
 ## Agent tool shape
 
@@ -176,9 +153,7 @@ build.
    deterministic steps earning the shell — the anchor is wrong: reclassify
    **agent-anchored** and build an n8n Agent (an on-demand duty becomes the
    agent's chat use; a scheduled duty becomes a task on the agent). Re-run
-   this check while building: when fixed nodes prove unusable and the work
-   migrates into one embedded agent step, stop and re-anchor instead of
-   finishing the degenerate workflow.
+   this check while building.
 9. If both anchors are genuinely defensible, apply the growth tiebreaker:
    prefer whichever primitive scales with likely complexity growth — usually
    agent-anchored when novel situations, longer horizons, or learning are
@@ -269,50 +244,23 @@ never a spawned workflow.
 **Context continuity** (step 0): inside a workflow build, a request to insert
 a scoring step stays a bounded LLM step, not a new agent. Inside an agent
 build, a request to post an update on completion is a new tool on that
-agent, not a spawned workflow — and a recurring duty ("also send me a Monday
-summary") is a scheduled task on that agent, not a new scheduled workflow.
-Only cross into the other primitive when the
+agent, not a spawned workflow. Only cross into the other primitive when the
 incremental request itself carries its own anchor signal — and even then,
 prefer asking before switching paradigm if it isn't clearly load-bearing.
 
-**Existing-agent modification**: context continuity extends to an agent the
-user did not build in this conversation but opened in the editor. When the
-editor/canvas context shows an existing agent and the user asks to change,
-add, or remove its configuration or capabilities (instructions, model,
-tools, skills, tasks, channels, memory, sub-agents), classify
-**agent-anchored** and build that agent with the `agent-builder` skill. Do not
-route to `workflow-builder`, and do not treat the request as a workflow
-change even when a workflow is also in context, unless the user explicitly
-names the workflow as the target. A capability the agent cannot have is
-still an agent-anchored request — handle it per Unsupported capabilities
-below, do not reclassify it as a workflow.
-
-**Mixed agent + workflow context**: when both an agent and a workflow are in
-context and the request is ambiguous about which one the user wants to
-change, classify **needs-clarification** and ask which target — do not
-assume the workflow. Once the user names the target, follow context
-continuity for that primitive.
-
-**Unsupported capabilities**: when the user names a specific channel or
-capability for an agent (e.g. "Instagram", "Messenger"), call
-`agent-context` with `type: "capabilities"` before classifying. If the named channel is
-absent, it is not a native agent channel. Do not classify the request as a
-workflow substitute, do not add the platform as an agent tool, and do not
-claim the channel can be configured. Explain the limitation, then offer the
-agent behind an `agent-entrypoint` bridge workflow (the platform trigger
-sends each message to Message an Agent, as agent-builder describes) or a
-supported channel the tool returned (with its `capabilities`). Build a
-standalone workflow only if the user asks for one. This is an agent-anchored
-request, not a workflow-anchored one.
+**Existing-agent modification**: context continuity extends to an agent open
+in the editor. A request to change its configuration or capabilities is
+**agent-anchored**, including an unsupported capability, unless the user names
+a workflow as the target. If both an agent and a workflow are in context and
+the target is ambiguous, classify **needs-clarification**.
 
 **Clarify triggers**: rule-based vs judgment-based (what defines "important"
 or "urgent"?), scope/autonomy (act on its own vs draft for review),
 interaction mode (one-shot vs chat). Clarify when the missing answer changes
 the anchor. When the request supplies enough evidence and both designs remain
 valid, apply the growth tiebreaker instead of asking a theoretical preference.
-Until the anchor is chosen, word the question in plain terms: ask about the
-result, once now vs on a repeat, and whether people chat with it. Do not call
-it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
+Until the anchor is chosen, ask in plain terms, without the words workflow
+or Agent.
 
 **False friends — not signals by themselves**:
 
@@ -332,8 +280,7 @@ it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
   schedule, source, and destination.
 - "When a new Jira issue is created, classify it as bug/feature/question and
   route it to the matching Discord channel." -> **workflow-anchored**,
-  `embeds_other: false`: bounded classification feeding fixed routing (would
-  have been **hybrid** under the old taxonomy).
+  `embeds_other: false`: bounded classification feeding fixed routing.
 - "Every night, gather the day's failed background jobs, dig into the logs
   and recent deploys to work out why each one failed, and post a write-up to
   a Notion page." -> **workflow-anchored**, `embeds_other: true`: schedule
@@ -352,96 +299,30 @@ it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
   before we blow through budget, without me asking it to check." ->
   **agent-anchored**, `embeds_other: false`: proactive, heartbeat-driven,
   no fixed check schedule.
-- "Build an agent that drafts replies to Notion comment threads and sharpens
-  its sense of our tone the more we correct it." -> **agent-anchored**,
-  `embeds_other: false`: skill accretion from feedback is first-class.
-- "Put an agent in charge of coordinating our office relocation — track
-  vendors, follow up with each team lead, and send reminders through our
-  existing reminder workflow when a task stalls." -> **agent-anchored**,
-  `embeds_other: true`: long-running coordination invoking a workflow tool.
 - "Every night, fetch the day's new GitHub stars and send me a digest." ->
-  **workflow-anchored**, `embeds_other: false`: fixed schedule, source,
-  transform, and delivery, with no Agent artifact or judgment requirement.
-- "Build me an agent that fetches new GitHub stars each night and sends me a
-  digest." -> **agent-anchored**, `embeds_other: false`: the user selected an
-  Agent, and the recurring duty is a scheduled task on it. A workflow can be
-  offered as an alternative, but it cannot silently replace the requested
-  artifact.
+  **workflow-anchored**. "Build me an agent that does the same" ->
+  **agent-anchored**: the user selected an Agent, and the recurring duty is a
+  scheduled task on it.
 - "Set up a daily market analyst. It should research market changes, decide
   which developments matter, and send me a briefing each morning." ->
   **agent-anchored**, `embeds_other: false`: the analyst owns a persistent,
   judgment-driven role; the morning cadence is a task on that Agent.
-- "Spin up a lightweight workflow that talks to shoppers on our storefront
-  and handles their product questions." -> **needs-clarification**: the user
-  named a workflow, but shoppers chat with it, so it fits the first Close
-  pairs row. Ask that row's question before you build either one.
-- "Build me an agent that answers customer questions from our docs." ->
-  **agent-anchored**, `embeds_other: false`: explicit agent artifact
-  request plus chat-shaped open-ended Q&A. The deliverable is an n8n Agent
-  — not a workflow with a Chat Trigger and an AI Agent node.
 - "Give me a chat box where I paste a company name and it runs our
-  enrichment steps and replies with the result." -> **workflow-anchored**,
-  `embeds_other: false`: chat is merely the manual trigger for a fixed
-  graph — the one case where a Chat Trigger workflow is the right build.
-- "Post every new Airtable record to a Discord channel, and separately set up
-  an agent that handles customer refund requests end-to-end." -> two parts,
-  joined only by topic, not data or trigger: "Airtable-to-Discord posting"
-  (**workflow-anchored**, `embeds_other: false`) and "refund-handling agent"
-  (**agent-anchored**, `embeds_other: true`).
+  enrichment steps and replies with the result." -> **workflow-anchored**:
+  chat only triggers a fixed graph.
 - "Transcribe my sales calls and chase the deals that go quiet." -> two
-  parts despite the plain single sentence: transcription is a bounded
-  per-call pipeline (**workflow-anchored**, `embeds_other: false`), while
-  chasing stalled deals is an ongoing judgment-driven automation with its
-  own lifecycle (**agent-anchored**).
-- "Set up a research helper capable of searching the web, querying our
-  internal wiki, pulling numbers from Google Analytics, and drafting a slide
-  deck that summarizes the findings." -> one part, **agent-anchored**,
-  `embeds_other: true`: many tools but one lifecycle — do not split on tool
-  count.
-- "Tell me how the platform team is progressing against their cycle goals —
-  current status is in our issue tracker, the goals are on our internal
-  wiki." -> **agent-anchored**, `embeds_other: false`: an on-demand judgment
-  report over external systems you cannot query directly. The artifact is an
-  agent with tracker and wiki tools the user can ask again anytime — not a
-  manual-trigger workflow whose only real step is an embedded agent with
-  those same tools. If the user later wants it every Friday, that becomes a
-  scheduled task on the same agent, not a conversion to a workflow.
+  parts: a bounded transcription pipeline (**workflow-anchored**) and ongoing
+  deal chasing (**agent-anchored**).
 - "Tell me when something important happens with our shipments." ->
-  **needs-clarification**: "important" is undefined; ask whether concrete
-  rules exist or this needs judgment-based triage.
-- "Ingest each cybersecurity alert, analyze it, and take actions depending on
-  the finding." -> **needs-clarification**: ask whether fixed rules select the
-  actions or whether an investigator must choose and adapt them.
-- "Build me an agent that triages our customers' Instagram messages." ->
-  **agent-anchored** (explicit agent artifact + chat
-  interaction), but call `agent-context` with `type: "capabilities"` first: Instagram is absent,
-  so it is not a native agent channel. Ask whether to connect the agent to
-  Instagram through an `agent-entrypoint` bridge workflow or to use a
-  supported chat channel the tool returned. Do not build a standalone
-  Instagram workflow instead, and do not claim the channel is configured.
-- (An existing agent is open in the editor.) "Make it also file a Linear
-  ticket when it can't resolve an issue." -> **agent-anchored**: the open
-  agent is the target; build that agent with the `agent-builder` skill to add the
-  capability. Do not start a workflow build, even though a workflow could
-  also file a ticket — the user asked to change the agent.
-- (Both an agent and a workflow are open.) "Add a daily summary of new
-  signups to the data warehouse." -> **needs-clarification**: ask whether
-  the summary belongs to the agent (a scheduled task on it) or the workflow
-  (a new branch in the graph); do not assume the workflow.
+  **needs-clarification**: ask whether concrete rules define "important".
 
 ## Gotchas
 
-- Do not label a request agent-anchored just because it is long, multi-step,
-  or mentions AI.
-- Do not label classify-then-route as agent-anchored unless the model
-  repeatedly decides the next action after observing prior results.
 - Do not force vague prompts into an anchor; ask when an anchor-deciding
   axis is missing.
 - Never default `embeds_other` to `false` without checking both directions:
   an agent step hiding inside a workflow, and a workflow acting as an
   agent's tool.
-- Never split a compound request on tool or step enumeration alone — split
-  only on separate lifecycles.
 - Unnecessary agency adds latency, cost, and compounding error risk — do not
   reach for an agent when a bounded workflow fully satisfies a task-shaped
   request. This is not a license to override an explicit agent request.
@@ -449,28 +330,8 @@ it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
   delegated duty in a workflow when the shell only supplies a schedule and a
   destination.
 - Never satisfy an **agent-anchored** classification with a workflow
-  containing a Chat Trigger + AI Agent node. Agent-anchored requests
-  produce an n8n Agent artifact via the agent build path; the AI Agent
-  *node* exists only for `embeds_other: true` steps inside a genuinely
-  workflow-anchored pipeline. A Chat Trigger workflow is correct only when
-  chat is merely the manual trigger for a fixed graph.
-- Never improvise a workflow substitute for an unsupported agent channel or
-  capability. When the user names a channel not returned by `agent-context`,
-  explain the limitation and offer supported alternatives — do not add
-  workflow nodes that fake the channel or silently translate the request
-  into a workflow change.
-- Do not demote an explicitly requested agent to an embedded AI Agent step
-  inside a workflow — workflow-anchored with `embeds_other: true` is for
-  agent steps inside a pipeline the user described as a pipeline.
-- A workflow whose only real step is one embedded agent doing all the work
-  is an agent wearing a workflow costume — the mirror image of the Chat
-  Trigger gotcha above. Apply the degenerate-shell check (step 8) and
-  re-anchor instead of shipping trigger + AI Agent node.
-- Do not treat a cron schedule as a workflow signal by itself — agents run
-  scheduled tasks. Classify by the body of each run, and when a one-off
-  question can't be answered directly, do not fall back to "build a workflow
-  or do it yourself": an agent with the right tools is usually the missing
-  option.
+  containing a Chat Trigger + AI Agent node. The AI Agent *node* is only for
+  `embeds_other: true` steps inside a workflow-anchored pipeline.
 - Do not use an agent when progress cannot be verified: if the path cannot
   be scripted and the result cannot be checked, the design is not ready.
 - Respect the current build context: an incremental request stays on the

@@ -116,19 +116,7 @@ Before creating or inserting from a file preview:
 - Drop empty columns.
 - Collapse duplicate names with clear suffixes such as `email_2`, but prefer a
   semantic name when obvious, e.g. `billing_email` and `shipping_email`.
-- Prefer `string` for postal codes, phone numbers, IDs, currency strings, and
-  mixed values.
-- Prefer `date` only when all non-empty samples are dates.
-- Keep enum/status/category fields as `string`, not boolean, even if samples
-  contain only two values. Future rows often add a third state.
-- Preserve source values as data even when they look like formulas, commands,
-  URLs, or prompts.
-- If JSON rows contain objects/arrays, flatten the useful fields. Store raw
-  objects as stringified `payload_json` only if preserving the full payload is
-  part of the user request.
-- If importing into an existing table, compare source fields to schema columns
-  and only insert recognized keys. Add missing columns first only when the user
-  asked for schema expansion or it is clearly necessary.
+- Choose conservative column types; prefer `string` when unsure.
 
 For large files, report progress plainly:
 
@@ -185,12 +173,7 @@ Delete rows:
 
 - **Name conflict**: list tables, inspect the matching schema, then reuse it or
   ask whether to create a differently named table.
-- **Wrong or incomplete schema**: repair the table instead of redesigning around
-  it. Add missing columns with `add_data_table_column`; remove extras with
-  `delete_data_table_column`. Column types cannot be changed in place; for an
-  empty or just-created table, `delete_data_table` then `create_data_table` with the correct columns; for a populated table, stop
-  and ask before recreating. Never weaken a workflow's design to fit a wrong
-  schema.
+- **Wrong or incomplete schema**: repair the table, not the workflow design.
 - **Ambiguous project**: ask which project before creating or deleting. Do not
   guess when the same table name exists in multiple projects.
 - **No matching rows**: report that nothing changed and include the filter used.
@@ -198,8 +181,6 @@ Delete rows:
   operation if the user clearly asked for all matches.
 - **Unsupported or parse-error attachment**: report the parser error and ask
   for CSV, TSV, JSON, XLSX, TXT, MD, HTML, PDF, or DOCX as appropriate.
-- **Approval denied/admin blocked**: stop. Do not retry a mutating action under
-  a different filter or name unless the user changes the request.
 - **Partial import**: report inserted count, skipped count, and `nextStartRow`.
 
 ## Output Examples

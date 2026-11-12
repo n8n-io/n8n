@@ -534,10 +534,19 @@ export function getExecutionResultsByWorkflow(
 	return results;
 }
 
-/** Simulated node names from a workflow_builder_verify_built_workflow result (`simulatedNodes: [{nodeName, reason}]`). */
+/**
+ * Simulated node names from a workflow_builder_verify_built_workflow result.
+ * New results carry them only in `claim.simulatedNodes`; older ones also had a top-level copy.
+ */
 function getSimulatedNodeNames(result: object): string[] {
-	if (!('simulatedNodes' in result) || !Array.isArray(result.simulatedNodes)) return [];
-	return result.simulatedNodes
+	const claim = 'claim' in result && isRecord(result.claim) ? result.claim : undefined;
+	const entries =
+		'simulatedNodes' in result && Array.isArray(result.simulatedNodes)
+			? result.simulatedNodes
+			: Array.isArray(claim?.simulatedNodes)
+				? claim.simulatedNodes
+				: [];
+	return entries
 		.map((entry) =>
 			isRecord(entry) && typeof entry.nodeName === 'string' ? entry.nodeName : undefined,
 		)

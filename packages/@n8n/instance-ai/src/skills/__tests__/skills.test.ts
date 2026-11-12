@@ -8,6 +8,10 @@ import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
 import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
 import {
+	CREDENTIAL_CHOICES_CUES,
+	ONE_OFF_OPERATIONS_CUES,
+} from '../context-cues/workflow-references.cues';
+import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiPromptSkills,
 	loadInstanceAiSkills,
@@ -505,9 +509,19 @@ describe('Instance AI skills', () => {
 		// Normalize whitespace so assertions survive markdown re-wrapping.
 		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
 		expect(flattened).toContain('executionIntent: "one-off"');
-		expect(flattened).toContain('not required and never the completion criterion');
+		expect(flattened).toContain('not simulated verification');
 		expect(flattened).toContain('get_execution_node_output');
-		expect(flattened).toContain('keep the workflow for future reuse or delete');
+		expect(flattened).toContain('keep or delete');
+
+		// Step-specific one-off rules arrive as context cues.
+		const cueIds = ONE_OFF_OPERATIONS_CUES.cues.map(({ id }) => id);
+		expect(cueIds).toEqual(
+			expect.arrayContaining([
+				'one-off-read-back',
+				'one-off-cleanup',
+				'one-off-simulated-verification',
+			]),
+		);
 	});
 
 	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
@@ -535,18 +549,12 @@ describe('Instance AI skills', () => {
 		// Credential questions during setup live in the credential-choices reference.
 		expect(loaded?.instructions).toContain('`credential-choices`');
 		const credentialChoices = (await source.loadSkill('credential-choices'))?.instructions ?? '';
-		expect(credentialChoices).toMatch(
-			/Do not ask whether to build now and set up\s+credentials later/,
-		);
-		expect(credentialChoices).toMatch(
-			/Let setup collect the choice when a service has multiple credentials of the\s+same type/,
-		);
-		expect(credentialChoices).toContain(
-			'Ask which auth type to use when a service supports more than one** only for a\nstandalone credential request',
-		);
-		expect(credentialChoices).toMatch(
-			/In a\s+workflow build, never ask about the auth type, before or after the build/,
-		);
+		expect(credentialChoices).toMatch(/Let the setup card collect credential choices/);
+		expect(credentialChoices).toMatch(/never in a workflow build/);
+		const credentialCueText = CREDENTIAL_CHOICES_CUES.cues.map(({ text }) => text).join('\n');
+		expect(credentialCueText).toContain('whether to build now and set up later');
+		expect(credentialCueText).toContain('the setup card lists them');
+		expect(credentialCueText).toContain('never ask about the auth type');
 		expect(loaded?.instructions).not.toContain('Credentials before build');
 		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
 		expect(loaded?.instructions).toContain('load the `publishing` reference');
@@ -615,7 +623,7 @@ describe('Instance AI skills', () => {
 		const loaded = await source.loadSkill('debugging-executions');
 		expect(loaded?.instructions).toContain('debug_execution');
 		expect(loaded?.instructions).toContain('get_resolved_node_parameters(executionId, nodeName)');
-		expect(loaded?.instructions).toContain('unreconstructable-context');
+		expect(loaded?.instructions).toContain('emptyResolutions');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
 		expect(loaded?.instructions).toContain('test_credential');

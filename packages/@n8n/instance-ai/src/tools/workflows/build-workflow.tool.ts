@@ -333,6 +333,27 @@ export function autoImportMissingSdkSymbols(
 	};
 }
 
+/** Matches the legacy `($) => $.fromAi(` and `$ => $.fromAi(` forms, with any parameter name. */
+const ARROW_FROM_AI_REGEX =
+	/(?<![\w$])(?:\(\s*([A-Za-z_$][\w$]*)\s*\)|([A-Za-z_$][\w$]*))\s*=>\s*([A-Za-z_$][\w$]*)\.fromAi\(/g;
+
+/**
+ * Rewrites `($) => $.fromAi(...)` to `fromAi(...)`. The SDK accepts only the direct call.
+ * The agent often writes the legacy form, and the lint warning made it rebuild a saved workflow.
+ */
+export function rewriteArrowFromAi(source: string): { source: string; count: number } | undefined {
+	let count = 0;
+	const rewritten = source.replace(
+		ARROW_FROM_AI_REGEX,
+		(match: string, paren?: string, bare?: string, receiver?: string) => {
+			if (receiver !== (paren ?? bare)) return match;
+			count++;
+			return 'fromAi(';
+		},
+	);
+	return count > 0 ? { source: rewritten, count } : undefined;
+}
+
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
@@ -1026,6 +1047,30 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
+			const sourceFixups: ValidationWarning[] = [];
+			const arrowFix = context.workspace ? rewriteArrowFromAi(sourceCode) : undefined;
+			if (arrowFix && context.workspace) {
+				// Persist so later edits start from the fixed source.
+				try {
+					await writeWorkspaceFile(context.workspace, filePath, arrowFix.source, {
+						logger: context.logger,
+						resourceLabel: 'Workflow source file',
+						abortSignal: ctx.abortSignal,
+					});
+					sourceCode = arrowFix.source;
+					sourceHash = hashWorkflowSource(arrowFix.source);
+					sourceFixups.push({
+						code: 'auto_fixed_arrow_from_ai',
+						message: `Rewrote ${arrowFix.count} \`($) => $.fromAi(...)\` call(s) to \`fromAi(...)\` in the source file. No rebuild is needed. Write \`fromAi(...)\` directly in future source.`,
+						severity: 'informational',
+					});
+				} catch (error) {
+					context.logger.debug('Arrow fromAi rewrite failed; building the original source', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
 			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
 			if (
 				!compiled.success &&
@@ -1132,7 +1177,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const partitionedWarnings = partitionWarnings(
 				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
 			);
-			informational = partitionedWarnings.informational;
+			informational = [...sourceFixups, ...partitionedWarnings.informational];
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
