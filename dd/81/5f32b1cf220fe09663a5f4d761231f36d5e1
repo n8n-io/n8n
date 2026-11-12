@@ -1,0 +1,58 @@
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_8b21af250300d7::t_3f8e599c10a176 243-250
+  s_8b21af250300d7::t_487c149d45b8d3 68-70
+  s_8b21af250300d7::t_8e06c8cfe09014 71-80
+  s_8b21af250300d7::t_74e1201b154f2e 226-229,231
+  s_8b21af250300d7::t_e3da2cc447be9e 266-269
+  s_8b21af250300d7::t_e2ec28dfd9040c 126-128,130
+  s_8b21af250300d7::t_cdac072532f3d4 67
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_8b21af250300d7::t_43b498482a1854 3892,3896,3900,3904,3908,3912
+  s_8b21af250300d7::t_f5cde1b8aaf9b7 3829-3891,3893-3895,3897-3899,3901-3903,3905-3907,3909-3911,3913-3940
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_8b21af250300d7::t_5837c85f30afbb 229-231,242,244
+  s_8b21af250300d7::t_999cdd77fa8a13 228
+  s_8b21af250300d7::t_c037a3a1d02096 146
+  s_8b21af250300d7::t_c3d53fafa48de1 298-302,306,310-314
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_8b21af250300d7::t_5fc6547ebe347a 193
+  s_8b21af250300d7::t_06849b92619137 121,129-132
+  s_8b21af250300d7::t_97791419e1e219 183-186,188,194-222
+  s_8b21af250300d7::t_223d836b3fd4df 223-224
+packages/cli/src/events/maps/relay.event-map.ts
+  s_8b21af250300d7::t_d44baf09a4f5a5 1390-1391,1394-1395,1404-1406,1408-1409,1419-1420,1422-1424,1435,1437-1439,1442,1446-1450,1452,1460-1464
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_8b21af250300d7::t_6331e31117df2e 5595
+  s_8b21af250300d7::t_30580e76247bfa 5563-5565,5567
+  s_8b21af250300d7::t_da2fbd238742fb 5670-5673
+  s_8b21af250300d7::t_59a24a0399b51f 5623,5625
+  s_8b21af250300d7::t_37ab7b2ec76e37 5642-5645,5647
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_8b21af250300d7::t_ba9e5a6f8a8d3d 229,231-232
+  s_8b21af250300d7::t_6c9ad977a4e3c6 162-165,167
+  s_8b21af250300d7::t_e41b780743d524 65-69
+  s_8b21af250300d7::t_4bb483b7dc8111 422-431
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_8b21af250300d7::t_27885a7f0d8ae2 1684
+  s_8b21af250300d7::t_e1536a85b94cea 200-205
+  s_8b21af250300d7::t_905c2d48df19ae 1682-1683,1685-1697,1699-1715,1717-1738,1740-1755,1757-1782,1784-1809,1811-1825
+  s_8b21af250300d7::t_43b498482a1854 1698,1716,1739,1756,1783,1810
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_8b21af250300d7::t_43b498482a1854 180-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd815f32b1cf220fe09663a5f4d761231f36d5e1",
+  "prompts": {},
+  "sessions": {
+    "s_8b21af250300d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e5f30f-62c1-4676-94b5-b0375b1ab1e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

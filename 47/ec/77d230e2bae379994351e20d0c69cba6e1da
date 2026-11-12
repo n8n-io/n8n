@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_86a4adedfe341d::t_2aa5c461b217a0 37,41
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_86a4adedfe341d::t_2aa5c461b217a0 63,424,568
+packages/cli/src/modules/agents/__tests__/agent-default-model-resolver.service.test.ts
+  s_86a4adedfe341d::t_2aa5c461b217a0 35,39,49,53,70,73,83,86,113,116,129,132,142-143,146
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_86a4adedfe341d::t_2aa5c461b217a0 181,204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47ec77d230e2bae379994351e20d0c69cba6e1da",
+  "prompts": {},
+  "sessions": {
+    "s_86a4adedfe341d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c125-dcd0-7141-bde0-7903be7874f9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

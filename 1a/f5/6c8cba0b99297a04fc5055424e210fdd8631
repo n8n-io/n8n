@@ -1,0 +1,26 @@
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  s_9d585191f7c1a7::t_02841748ac856f 384-385
+  s_9d585191f7c1a7::t_b3680520158ea0 324-335
+  s_9d585191f7c1a7::t_12d6d2b5cb6ea6 340-342
+  s_9d585191f7c1a7::t_1875e60a63ebda 386-387
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.vue
+  s_9d585191f7c1a7::t_ae16eaab09952d 93
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_9d585191f7c1a7::t_8434e25f312104 180-188,196,307-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1af56c8cba0b99297a04fc5055424e210fdd8631",
+  "prompts": {},
+  "sessions": {
+    "s_9d585191f7c1a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c0e8-8dbb-725b-91d0-13a67af654ba",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

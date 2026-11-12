@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_e9500be876154b::t_a7e5ad011ec762 170-171,213-221
+  s_e9500be876154b::t_e266d601f91d4e 316-320,322-323
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/reconcile-simulation-plan.test.ts
+  s_e9500be876154b::t_19a23d8bf385d2 3-8,18,117-148
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_e9500be876154b::t_19a23d8bf385d2 133-152
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-agent.service.test.ts
+  s_e9500be876154b::t_eaad92ad1298ad 257-264,267-268,271-277,291-298
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_e9500be876154b::t_011d99e4c04189 135-146
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_e9500be876154b::t_a7e5ad011ec762 94-95
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_e9500be876154b::t_5cacf918f63c83 165-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48db4a4a6945720c7236f747f5fa6cb171cb8e0a",
+  "prompts": {},
+  "sessions": {
+    "s_e9500be876154b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291e6860-30e1-4c99-b5ca-73824ab19abe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
