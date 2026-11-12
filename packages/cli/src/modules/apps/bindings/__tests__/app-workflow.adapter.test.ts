@@ -1,14 +1,16 @@
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext, AppsConfig } from '@n8n/backend-module-apps';
 import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { IRun } from 'n8n-workflow';
+import type { CredentialCheckResult, IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialCheckProxyService } from '@/modules/dynamic-credentials.ee/services/credential-check-proxy.service';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -16,6 +18,10 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { AppWorkflowAdapter } from '../app-workflow.adapter';
+
+vi.mock('@/modules/dynamic-credentials.ee/services/credential-check-proxy.service', () => ({
+	CredentialCheckProxyService: class {},
+}));
 
 const ctx: AppCallContext = {
 	appId: 'app-1',
@@ -57,7 +63,7 @@ function execution(overrides: {
 	};
 }
 
-function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
+function setup({ maxRuns = 20, waitMs = 60_000, dynamicCredentials = false } = {}) {
 	const loader = mock<CallableWorkflowLoader>();
 	const executions = mock<ExecutionPersistence>();
 	const runner = mock<WorkflowRunner>();
@@ -65,6 +71,12 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 	const activeExecutions = mock<ActiveExecutions>();
 	activeExecutions.has.mockReturnValue(false);
 	const logger = mock<Logger>();
+	const moduleRegistry = mock<ModuleRegistry>();
+	moduleRegistry.isActive.mockImplementation(
+		(name) => dynamicCredentials && name === 'dynamic-credentials',
+	);
+	const credentialCheck = mock<CredentialCheckProxyService>();
+	Container.set(CredentialCheckProxyService, credentialCheck);
 	const adapter = new AppWorkflowAdapter(
 		loader,
 		finder,
@@ -75,8 +87,9 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 		mock<AppsConfig>({ apiMaxConcurrentRuns: maxRuns, apiRunWaitMs: waitMs }),
 		mock<GlobalConfig>(),
 		logger,
+		moduleRegistry,
 	);
-	return { adapter, loader, executions, runner, finder, activeExecutions, logger };
+	return { adapter, loader, executions, runner, finder, activeExecutions, logger, credentialCheck };
 }
 
 const passthroughTrigger = {
@@ -274,6 +287,102 @@ describe('AppWorkflowAdapter', () => {
 			await adapter.run(ctx, 'workflow-1', {});
 
 			expect(runner.run.mock.calls[0][0].encryptedRunnerIdentity).toBeUndefined();
+		});
+
+		describe('end-user credentials', () => {
+			const visitor = { ...ctx, runnerIdentity: 'sealed-identity' };
+			const action = {
+				name: 'Fetch',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {},
+			};
+			const unreachable = { ...action, name: 'Other' };
+			const gatedWorkflow = () =>
+				workflow({
+					nodes: [passthroughTrigger, action, unreachable],
+					connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+				});
+			const notReady: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-1',
+						credentialName: 'GitHub',
+						credentialType: 'githubOAuth2Api',
+						resolverId: 'resolver-1',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/rest/credentials/cred-1/authorize?token=t',
+						iconUrl: 'https://n8n.test/icons/github.svg',
+					},
+					{
+						credentialId: 'cred-2',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'resolver-1',
+						status: 'configured',
+						revokeUrl: 'https://n8n.test/rest/credentials/cred-2/revoke',
+					},
+				],
+			};
+
+			it('refuses the run with connect links when the visitor has not connected a credential', async () => {
+				const { adapter, loader, runner, credentialCheck } = setup({ dynamicCredentials: true });
+				loader.loadWorkflow.mockResolvedValue(gatedWorkflow());
+				credentialCheck.checkCredentialStatus.mockResolvedValue(notReady);
+
+				const error = await adapter.run(visitor, 'workflow-1', {}).catch((e: unknown) => e);
+
+				expect(error).toMatchObject({ status: 428, code: 'credentials_required' });
+				expect((error as { toBody(): unknown }).toBody()).toEqual({
+					code: 'credentials_required',
+					message: 'Connect your accounts to run this workflow.',
+					credentials: [
+						{
+							name: 'GitHub',
+							type: 'githubOAuth2Api',
+							status: 'missing',
+							connectUrl: 'https://n8n.test/rest/credentials/cred-1/authorize?token=t',
+							iconUrl: 'https://n8n.test/icons/github.svg',
+						},
+						{ name: 'Slack', type: 'slackOAuth2Api', status: 'configured' },
+					],
+				});
+				expect(runner.run).not.toHaveBeenCalled();
+			});
+
+			it('checks only the nodes that the trigger can reach, as the visitor', async () => {
+				const { adapter, loader, runner, credentialCheck } = setup({ dynamicCredentials: true });
+				loader.loadWorkflow.mockResolvedValue(gatedWorkflow());
+				credentialCheck.checkCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [],
+				});
+				runner.run.mockResolvedValue('12');
+
+				await adapter.run(visitor, 'workflow-1', {});
+
+				const [workflowId, context, options] = credentialCheck.checkCredentialStatus.mock.calls[0];
+				expect(workflowId).toBe('workflow-1');
+				expect(context).toEqual({ credentials: 'sealed-identity' });
+				expect(options?.rootNodes?.map((node) => node.name).sort()).toEqual(['Fetch', 'Start']);
+				expect(runner.run).toHaveBeenCalled();
+			});
+
+			it.each([
+				['the dynamic credentials module is not active', visitor, false],
+				['the visitor has no sealed identity', ctx, true],
+			])('skips the check when %s', async (_, callContext, dynamicCredentials) => {
+				const { adapter, loader, runner, credentialCheck } = setup({ dynamicCredentials });
+				loader.loadWorkflow.mockResolvedValue(gatedWorkflow());
+				runner.run.mockResolvedValue('12');
+
+				await adapter.run(callContext, 'workflow-1', {});
+
+				expect(credentialCheck.checkCredentialStatus).not.toHaveBeenCalled();
+				expect(runner.run).toHaveBeenCalled();
+			});
 		});
 
 		it('returns the items of the last node when the run succeeds', async () => {

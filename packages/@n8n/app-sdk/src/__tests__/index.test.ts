@@ -58,6 +58,31 @@ describe('createClient', () => {
 
 		expect(error).toBeInstanceOf(N8nAppError);
 		expect(error).toMatchObject({ status: 403, code: 'permission_denied', message: 'No.' });
+		expect((error as N8nAppError).credentials).toBeUndefined();
+	});
+
+	it('keeps the connect links of a credentials_required error', async () => {
+		const credentials = [
+			{
+				name: 'GitHub',
+				type: 'githubOAuth2Api',
+				status: 'missing',
+				connectUrl: 'https://n8n.test/rest/credentials/1/authorize?token=t',
+			},
+			{ name: 'Slack', type: 'slackOAuth2Api', status: 'configured' },
+		];
+		fetchMock.mockResolvedValue(
+			json(
+				{ code: 'credentials_required', message: 'Connect.', credentials: [...credentials, 7] },
+				428,
+			),
+		);
+
+		const error = await createClient()
+			.workflows.submit.run({})
+			.catch((e: unknown) => e);
+
+		expect(error).toMatchObject({ status: 428, code: 'credentials_required', credentials });
 	});
 
 	describe('tables', () => {

@@ -2,6 +2,7 @@ import type {
 	AgentChatMessagesResponse,
 	AgentKey,
 	AgentSseEvent,
+	CredentialConnection,
 	MeResponse,
 	NewRow,
 	Row,
@@ -27,6 +28,8 @@ export class N8nAppError extends Error {
 		readonly code: string,
 		message: string,
 		readonly issues?: unknown,
+		/** With code `credentials_required`: the accounts that the run needs. */
+		readonly credentials?: CredentialConnection[],
 	) {
 		super(message);
 		this.name = 'N8nAppError';
@@ -100,6 +103,10 @@ export interface N8nAppClient {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCredentialConnection(value: unknown): value is CredentialConnection {
+	return isRecord(value) && typeof value.name === 'string' && typeof value.status === 'string';
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -292,6 +299,9 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 				typeof error.code === 'string' ? error.code : 'request_failed',
 				typeof error.message === 'string' ? error.message : `Request failed (${response.status})`,
 				error.issues,
+				Array.isArray(error.credentials)
+					? error.credentials.filter(isCredentialConnection)
+					: undefined,
 			);
 		}
 		return response;
