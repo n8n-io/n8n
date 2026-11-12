@@ -23,11 +23,17 @@ export const hookSpecSchema = methodRef
 		scope: methodRef.optional(),
 		where: z
 			.array(
-				z.object({
-					path: z.string().min(1),
-					equals: z.unknown().optional(),
-					truthy: z.boolean().optional(),
-				}),
+				z
+					.object({
+						path: z.string().min(1),
+						equals: z.unknown().optional(),
+						truthy: z.boolean().optional(),
+					})
+					.strict()
+					.refine(
+						(rule) => 'equals' in rule !== 'truthy' in rule,
+						'set exactly one of equals and truthy',
+					),
 			)
 			.optional(),
 		detail: z.record(z.string()).optional(),
