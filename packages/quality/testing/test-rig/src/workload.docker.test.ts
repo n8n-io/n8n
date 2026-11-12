@@ -13,9 +13,11 @@ describe('workload', () => {
 			runners: 'internal',
 			scale: 1,
 		});
+		let started: Workload | undefined;
 		try {
 			await rig.api.signIn();
 			const workload = await Workload.setup(rig);
+			started = workload;
 			workload.start(5);
 			await until(
 				'20 requests answered',
@@ -33,6 +35,7 @@ describe('workload', () => {
 			).toEqual([]);
 			expect(checkWorkload(record)).toEqual([]);
 		} finally {
+			await started?.stop();
 			await rig.stop();
 		}
 	});
