@@ -6,6 +6,7 @@ import { useI18n } from '../../composables/useI18n';
 import N8nIconButton from '../N8nIconButton';
 import type {
 	ChatScrollAreaEmits,
+	ChatScrollAreaExposed,
 	ChatScrollAreaProps,
 	ChatScrollAreaSlots,
 	ScrollAnchorSnapshot,
@@ -17,6 +18,7 @@ import {
 	scrollToBottom,
 	takeScrollSnapshot,
 } from './ChatScrollArea.utils';
+import N8nTooltip from '../N8nTooltip';
 
 defineOptions({ name: 'N8nChatScrollArea' });
 
@@ -87,10 +89,14 @@ watch(
 	},
 );
 
-function onScrollDownClick() {
+/** Scrolls smoothly to the bottom. Following starts again when the bottom is visible. */
+function onScrollToBottom(behaviour: ScrollBehavior = 'smooth') {
 	if (!viewport.value) return;
-	scrollToBottom(viewport.value, 'smooth');
+	scrollToBottom(viewport.value, behaviour);
 }
+
+const exposed: ChatScrollAreaExposed = { scrollToBottom: () => onScrollToBottom('auto') };
+defineExpose(exposed);
 
 /**
  * Measures the input before the first jump, so the spacer has its final
@@ -109,7 +115,14 @@ onMounted(async () => {
 		:style="{ '--chat--input--height': `${inputHeight}px` }"
 		data-test-id="chat-scroll-area"
 	>
-		<div ref="viewport" :class="$style.viewport" data-test-id="chat-scroll-area-viewport">
+		<div
+			ref="viewport"
+			:class="$style.viewport"
+			tabindex="0"
+			role="region"
+			:aria-label="t('chatScrollArea.messages')"
+			data-test-id="chat-scroll-area-viewport"
+		>
 			<div ref="topSentinel" :class="$style.sentinel" aria-hidden="true" />
 			<div ref="content">
 				<slot />
@@ -122,15 +135,18 @@ onMounted(async () => {
 				:enter-active-class="$style.scrollDownButtonEnter"
 				:leave-active-class="$style.scrollDownButtonLeave"
 			>
-				<N8nIconButton
-					v-if="!isAtBottom"
-					:class="$style.scrollDownButton"
-					icon="arrow-down"
-					variant="outline"
-					:aria-label="t('chatScrollArea.scrollToBottom')"
-					data-test-id="chat-scroll-area-scroll-down"
-					@click="onScrollDownClick"
-				/>
+				<div v-if="!isAtBottom" :class="$style.scrollDown">
+					<N8nTooltip :content="t('chatScrollArea.scrollToBottom')">
+						<N8nIconButton
+							icon="arrow-down"
+							variant="solid"
+							:class="$style.scrollDownButton"
+							:aria-label="t('chatScrollArea.scrollToBottom')"
+							data-test-id="chat-scroll-area-scroll-down"
+							@click="onScrollToBottom('smooth')"
+						/>
+					</N8nTooltip>
+				</div>
 			</Transition>
 			<slot name="input" />
 		</div>
@@ -138,6 +154,7 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
 @use '../../css/mixins/motion';
 
 .chatScrollArea {
@@ -152,6 +169,12 @@ onMounted(async () => {
 	width: 100%;
 	overflow-y: auto;
 	overflow-anchor: none;
+	outline: none;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		outline-offset: calc(-1 * var(--focus--border-width));
+	}
 	/**
 	 * Fades content just above the input.
 	 * The `scroll-mask` mixin only fades at the edge, so the offset needs a custom mask.
@@ -160,7 +183,7 @@ onMounted(async () => {
 	mask-image: linear-gradient(
 		to bottom,
 		black 0,
-		black calc(var(--chat--fade--end) - var(--spacing--lg)),
+		black calc(var(--chat--fade--end) - var(--spacing--xl)),
 		transparent var(--chat--fade--end)
 	);
 }
@@ -194,13 +217,17 @@ onMounted(async () => {
  * Sits above the overlay, so it does not change the measured input height.
  * Centered with auto margins because the motion keyframes own `transform`.
  */
-.scrollDownButton {
+.scrollDown {
 	position: absolute;
 	right: 0;
 	bottom: 100%;
 	left: 0;
 	width: fit-content;
 	margin: 0 auto var(--spacing--xs);
+
+	.scrollDownButton {
+		box-shadow: var(--shadow--xs);
+	}
 }
 
 .scrollDownButtonEnter {

@@ -34,6 +34,11 @@ export interface ChatScrollAreaSlots {
 	input(): unknown;
 }
 
+export interface ChatScrollAreaExposed {
+	/** Scrolls smoothly to the bottom and starts following again. */
+	scrollToBottom: () => void;
+}
+
 /** Scroll position used to keep the visible message in place after a top load. */
 export interface ScrollAnchorSnapshot {
 	scrollHeight: number;
