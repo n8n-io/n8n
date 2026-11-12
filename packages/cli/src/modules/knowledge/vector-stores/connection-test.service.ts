@@ -7,16 +7,11 @@ import type { AgentJsonVectorStoreConfig, VectorStoreTestResult } from '@n8n/api
 import { Service } from '@n8n/di';
 
 import { resolveEmbeddingProviderOptionsFromCredential } from './embedding-credential';
+import { createVectorStoreErrorSanitizer } from './error-sanitizer';
 import { buildVectorStoreBackend } from './factory';
 
 const TEST_QUERY = 'n8n connection test';
 const TEST_TIMEOUT_MS = 15_000;
-const MAX_MESSAGE_LENGTH = 500;
-
-function errorMessage(error: unknown): string {
-	const message = error instanceof Error ? error.message : String(error);
-	return message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH)}…` : message;
-}
 
 async function withTimeout<T>(work: () => Promise<T>, timeoutMs: number): Promise<T> {
 	let timer: ReturnType<typeof setTimeout>;
@@ -123,6 +118,7 @@ export class VectorStoreConnectionTestService {
 		vectorStore: AgentJsonVectorStoreConfig,
 		credentialProvider: CredentialProvider,
 	): Promise<VectorStoreTestResult> {
+		const sanitizer = createVectorStoreErrorSanitizer(credentialProvider);
 		// Hoisted so cleanup can reach a backend that finishes building *after*
 		// the timeout below has already won the race — `settled` distinguishes
 		// that late-arriving case from a backend built in time (closed by the
@@ -137,8 +133,12 @@ export class VectorStoreConnectionTestService {
 
 		try {
 			return await withTimeout(async () => {
-				const rawCredential = await credentialProvider.resolve(vectorStore.credential);
-				backend = await buildVectorStoreBackend(vectorStore, credentialProvider, rawCredential);
+				const rawCredential = await sanitizer.credentialProvider.resolve(vectorStore.credential);
+				backend = await buildVectorStoreBackend(
+					vectorStore,
+					sanitizer.credentialProvider,
+					rawCredential,
+				);
 				if (settled) {
 					// The race already produced a response before this backend
 					// finished building — it's orphaned, so close it immediately
@@ -147,10 +147,15 @@ export class VectorStoreConnectionTestService {
 					throw new Error('Connection test timed out');
 				}
 
-				return await this.probeBackend(vectorStore, credentialProvider, rawCredential, backend);
+				return await this.probeBackend(
+					vectorStore,
+					sanitizer.credentialProvider,
+					rawCredential,
+					backend,
+				);
 			}, TEST_TIMEOUT_MS);
 		} catch (error) {
-			return { success: false, message: errorMessage(error) };
+			return { success: false, message: sanitizer.sanitize(error).message };
 		} finally {
 			settled = true;
 			closeBackend();

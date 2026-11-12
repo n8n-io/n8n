@@ -132,7 +132,7 @@ describe('Agent vector-store connection tests', () => {
 
 		await expect(controller.testConnection(request, response, { vectorStore })).resolves.toEqual({
 			success: false,
-			message: `Credential "${credentialId}" not found or not accessible`,
+			message: 'Could not resolve vector store credentials',
 		});
 
 		expect(credentialsHelper.getDecrypted).not.toHaveBeenCalledWith(

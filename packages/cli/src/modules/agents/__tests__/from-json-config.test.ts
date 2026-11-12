@@ -11,7 +11,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
-import type { ToolExecutor } from '../json-config/from-json-config';
+import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
 import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
@@ -1817,45 +1817,69 @@ describe('buildFromJson()', () => {
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
 		});
 
-		async function buildSearchTool(searchHandler: ReturnType<typeof vi.fn>) {
+		function makeVectorStoreCredentialProvider() {
+			const credentialProvider = makeMockCredentialProvider();
+			credentialProvider.resolve.mockImplementation(async (id) => ({
+				apiKey: id === 'embed-cred' ? 'opaque-embedding-value' : 'opaque-store-value',
+			}));
+			return credentialProvider;
+		}
+
+		async function buildSearchTool(
+			searchHandler: ReturnType<typeof vi.fn>,
+			{
+				onVectorStoreSearch,
+				toModelOutput,
+			}: {
+				onVectorStoreSearch?: BuildFromJsonOptions['onVectorStoreSearch'];
+				toModelOutput?: BuiltTool['toModelOutput'];
+			} = {},
+		) {
 			const fakeTool = {
 				name: 'search_product_docs',
 				description: vectorStoreConfig.useWhen,
+				inputSchema: {
+					type: 'object' as const,
+					properties: { query: { type: 'string' as const } },
+				},
 				handler: searchHandler,
+				toModelOutput,
 			};
 			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
-			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
-			const finishSearch = vi.fn();
-			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return mockVectorStore as never;
+			});
 
 			const agent = await buildFromJson(
 				makeConfig({ vectorStores: [vectorStoreConfig] }),
 				{},
 				{
 					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
+					credentialProvider: makeVectorStoreCredentialProvider(),
 					memoryFactory: makeMockMemoryFactory(),
 					onVectorStoreSearch,
 				},
 			);
 			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
-			return { searchTool, onVectorStoreSearch, finishSearch };
+			return { searchTool, fakeTool };
 		}
 
-		it('reports each vector store search with the run id and the size of its result', async () => {
+		it('reports result size and returns the original search result', async () => {
 			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
-			const searchHandler = vi.fn().mockResolvedValue(result);
-			const { searchTool, onVectorStoreSearch, finishSearch } =
-				await buildSearchTool(searchHandler);
-			const input = { query: 'refund policy' };
-			const ctx = { runId: 'run-1' };
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue(result), {
+				onVectorStoreSearch,
+			});
 
-			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual(result);
+			await expect(
+				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
+			).resolves.toBe(result);
 
-			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
-			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
-			expect(finishSearch).toHaveBeenCalledWith({
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
 				failed: false,
 				contentChars: JSON.stringify(result).length,
 				searchDurationMs: expect.any(Number),
@@ -1863,31 +1887,144 @@ describe('buildFromJson()', () => {
 			});
 		});
 
+		it('measures transformed output while preserving the search tool and raw result', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const searchHandler = vi.fn().mockResolvedValue(result);
+			const toModelOutput = vi.fn().mockReturnValue('model-visible output');
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool, fakeTool } = await buildSearchTool(searchHandler, {
+				onVectorStoreSearch,
+				toModelOutput,
+			});
+			const input = { query: 'refund policy' };
+			const ctx = { runId: 'run-1' };
+
+			expect(searchTool).toMatchObject({
+				name: fakeTool.name,
+				description: fakeTool.description,
+				inputSchema: fakeTool.inputSchema,
+				toModelOutput,
+			});
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toBe(result);
+			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
+			expect(searchHandler.mock.contexts[0]).toBe(fakeTool);
+			expect(toModelOutput).toHaveBeenCalledExactlyOnceWith(result);
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
+				failed: false,
+				contentChars: JSON.stringify('model-visible output').length,
+				searchDurationMs: expect.any(Number),
+				emptySearch: false,
+			});
+		});
+
+		it('returns the original search result without transforming it when telemetry is absent', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const toModelOutput = vi.fn().mockReturnValue('model-visible output');
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue(result), {
+				toModelOutput,
+			});
+
+			await expect(searchTool?.handler?.({ query: 'refund policy' }, {})).resolves.toBe(result);
+			expect(toModelOutput).not.toHaveBeenCalled();
+		});
+
 		it('reports a vector store search without results as empty', async () => {
-			const searchHandler = vi.fn().mockResolvedValue({ results: [] });
-			const { searchTool, finishSearch } = await buildSearchTool(searchHandler);
+			const finishSearch = vi.fn();
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue({ results: [] }), {
+				onVectorStoreSearch: vi.fn().mockReturnValue(finishSearch),
+			});
 
 			await searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' });
 
 			expect(finishSearch).toHaveBeenCalledWith(expect.objectContaining({ emptySearch: true }));
 		});
 
-		it('reports a failed vector store search as failed, then throws its error', async () => {
-			const error = new Error('vector store unavailable');
-			const searchHandler = vi.fn().mockRejectedValue(error);
-			const { searchTool, onVectorStoreSearch, finishSearch } =
-				await buildSearchTool(searchHandler);
+		it('reports the original failure type, then throws a sanitised error', async () => {
+			const error = new Error(
+				'Collection docs rejected opaque-store-value and opaque-embedding-value',
+			);
+			error.name = 'QdrantUnexpectedResponseError';
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool } = await buildSearchTool(vi.fn().mockRejectedValue(error), {
+				onVectorStoreSearch,
+			});
 
 			await expect(
 				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
-			).rejects.toBe(error);
+			).rejects.toMatchObject({
+				message: 'Collection docs rejected [REDACTED] and [REDACTED]',
+				stack: undefined,
+			});
 
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
-			expect(finishSearch).toHaveBeenCalledWith({
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
 				failed: true,
 				searchDurationMs: expect.any(Number),
-				errorType: 'Error',
+				errorType: 'QdrantUnexpectedResponseError',
 			});
+		});
+
+		it('sanitises search failures when telemetry is absent', async () => {
+			const { searchTool } = await buildSearchTool(
+				vi.fn().mockRejectedValue('Rejected opaque-embedding-value and opaque-store-value'),
+			);
+
+			await expect(searchTool?.handler?.({ query: 'refund policy' }, {})).rejects.toThrow(
+				'Rejected [REDACTED] and [REDACTED]',
+			);
+		});
+
+		it('sanitises factory failures using both resolved credentials', async () => {
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				throw new Error(
+					'Cannot initialise docs using opaque-store-value and opaque-embedding-value',
+				);
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeVectorStoreCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toThrow('Cannot initialise docs using [REDACTED] and [REDACTED]');
+		});
+
+		it('sanitises tool-build failures after the factory returns', async () => {
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return {
+					asTool: () => ({
+						build: () => {
+							throw new Error(
+								'Cannot build docs tool using opaque-store-value and opaque-embedding-value',
+							);
+						},
+					}),
+				} as never;
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeVectorStoreCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toThrow('Cannot build docs tool using [REDACTED] and [REDACTED]');
 		});
 
 		it.each([
