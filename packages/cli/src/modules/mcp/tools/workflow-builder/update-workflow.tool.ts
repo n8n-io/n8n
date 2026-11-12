@@ -2,6 +2,7 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
 	connectRequiredSubnodeInputs,
@@ -984,7 +985,7 @@ function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes):
 	const unloadedNode = addedNodes.find((node) => isUnloadedNodeType(node, nodeTypes));
 	if (unloadedNode) {
 		throw Object.assign(
-			new Error(
+			new UserError(
 				`Cannot add node '${unloadedNode.name}': this instance does not load the node type '${unloadedNode.type}'. Check the type name, or use a node type that this instance has.`,
 			),
 			{ errorCode: 'UNRECOGNIZED_NODE_TYPE' },
