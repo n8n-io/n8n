@@ -241,11 +241,13 @@ export class SimulationSession {
 	private preflight(
 		classification: Extract<ToolClassification, { type: 'simulated' }>,
 	): ToolCallSimulation | undefined {
-		if (classification.kind === 'node' && classification.nodeType) {
-			const gap = nodeSimulationGap(
-				classification.nodeType,
-				isRecord(classification.parameters) ? classification.parameters : undefined,
-			);
+		if (classification.kind === 'node') {
+			const gap = classification.nodeType
+				? nodeSimulationGap(
+						classification.nodeType,
+						isRecord(classification.parameters) ? classification.parameters : undefined,
+					)
+				: 'This node tool has no node type.';
 			if (gap) return blocked('not_simulatable', gap);
 		}
 		// Checked on the runtime tool, so a stale or same-name list entry cannot allow it.
