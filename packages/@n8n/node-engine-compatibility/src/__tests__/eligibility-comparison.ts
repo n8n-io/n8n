@@ -97,7 +97,7 @@ export function assertEngineAccepts(workflow: IWorkflowBase): void {
 
 export function expectEngineAndCheckAccept(workflow: IWorkflowBase): void {
 	expect(() => assertEngineAccepts(workflow)).not.toThrow();
-	const { eligible, reasons } = checkEngineV2Eligibility(workflow, []);
+	const { eligible, reasons } = checkEngineV2Eligibility(workflow);
 	expect(reasons.filter((reason) => reason.severity === 'blocking')).toEqual([]);
 	expect(eligible).toBe(true);
 }
@@ -122,7 +122,7 @@ export function expectRefusalHolds({ workflow, engineError, check }: EngineRefus
 	).toThrow(engineError);
 
 	if ('code' in check) {
-		const { reasons } = checkEngineV2Eligibility(workflow, []);
+		const { reasons } = checkEngineV2Eligibility(workflow);
 		expect(
 			reasons.map((reason) => reason.code),
 			`The check does not report ${check.code}`,
