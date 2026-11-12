@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/tests/runAgent.memory.test.ts
+  s_cd666d5b8a8d5d::t_32c43632bbbeee 5,78-88,124,127-131,133,135,150,187-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30226dc426587bffaafac5eb170b3cfd4036cc93",
+  "prompts": {},
+  "sessions": {
+    "s_cd666d5b8a8d5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34f59303-ef80-40e1-82b3-2dc1553f8772",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
