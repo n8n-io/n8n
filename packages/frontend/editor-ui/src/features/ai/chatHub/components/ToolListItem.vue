@@ -167,11 +167,10 @@ const toggleLabel = computed(() =>
 				</N8nTooltip>
 
 				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
-					<!-- A restricted tool can still be turned off, so the chat works again, but not back on. -->
 					<N8nSwitch
 						:model-value="enabled"
 						size="large"
-						:disabled="!!restriction && !enabled"
+						:disabled="!!restriction"
 						:aria-label="toggleLabel"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
