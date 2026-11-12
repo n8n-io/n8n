@@ -167,6 +167,7 @@ export class ErrorReporter {
 	private defaultReport(error: Error | string, options?: ReportingOptions) {
 		if (error instanceof Error) {
 			let e = error;
+			const logLevel = this.getLogLevel(error, options);
 
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
@@ -187,13 +188,36 @@ export class ErrorReporter {
 					stack = `\n${e.stack}\n`;
 				}
 				const msg = [e.message + context, stack].join('');
-				// Default to logging the error if option is not specified
+				// Log by default if the option is not specified.
 				if (options?.shouldBeLogged ?? true) {
-					this.logger.error(msg, meta);
+					this.logger[logLevel](msg, meta);
 				}
 				e = e.cause as Error;
 			} while (e && !seen.has(e));
 		}
+	}
+
+	private getLogLevel(error: Error, options?: ReportingOptions): 'error' | 'warn' | 'info' {
+		const optionLevel = options?.level;
+		if (optionLevel && optionLevel !== 'error') return this.toLogLevel(optionLevel);
+
+		let current: Error | undefined = error;
+		const seen = new Set<Error>();
+		while (current && !seen.has(current)) {
+			seen.add(current);
+			if (current instanceof ApplicationError || current instanceof BaseError) {
+				return this.toLogLevel(current.level);
+			}
+			current = current.cause instanceof Error ? current.cause : undefined;
+		}
+
+		return this.toLogLevel(optionLevel);
+	}
+
+	private toLogLevel(level?: ReportingOptions['level']): 'error' | 'warn' | 'info' {
+		if (level === 'warning') return 'warn';
+		if (level === 'info') return 'info';
+		return 'error';
 	}
 
 	async shutdown(timeoutInMs = 1000) {

@@ -373,10 +373,47 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
 		});
 
-		it('should exclude stack trace for warning-level `ApplicationError`', () => {
+		it('should log a warning-level `ApplicationError` as a warning without a stack trace', () => {
 			error.level = 'warning';
 			errorReporter.error(error);
-			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.warn).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log an info-level `ApplicationError` as info without a stack trace', () => {
+			error.level = 'info';
+			errorReporter.error(error);
+			expect(logger.info).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should prefer an explicit non-error reporting level', () => {
+			error.level = 'error';
+			errorReporter.error(error, { level: 'warning' });
+			expect(logger.warn).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should prefer an n8n error level over the default error reporting level', () => {
+			error.level = 'warning';
+			errorReporter.error(error, { level: 'error' });
+			expect(logger.warn).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log `warn` calls as warnings', () => {
+			const warning = new Error('Something went wrong');
+			errorReporter.warn(warning);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Something went wrong\n${warning.stack}\n`,
+				undefined,
+			);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log fatal reporting levels as errors', () => {
+			errorReporter.error(error, { level: 'fatal' });
+			expect(logger.error).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
 		});
 
 		it.each([true, undefined])(
@@ -410,6 +447,25 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenCalledTimes(2);
 			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
 			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
+		});
+
+		it('should use the top-level n8n error level for the whole cause chain', () => {
+			const cause = new ApplicationError('root cause', { level: 'warning' });
+			const outer = new ApplicationError('outer', { cause, level: 'info' });
+			errorReporter.error(outer);
+			expect(logger.info).toHaveBeenCalledWith('outer', undefined);
+			expect(logger.info).toHaveBeenCalledWith('root cause', undefined);
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should use an n8n cause level when the outer error has no level', () => {
+			const cause = new ApplicationError('root cause', { level: 'warning' });
+			const outer = new Error('outer', { cause });
+			errorReporter.error(outer);
+			expect(logger.warn).toHaveBeenCalledWith(`outer\n${outer.stack}\n`, undefined);
+			expect(logger.warn).toHaveBeenCalledWith('root cause', undefined);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it('should stop walking a cause chain that loops back on itself', () => {
