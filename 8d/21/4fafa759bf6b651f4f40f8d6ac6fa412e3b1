@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_957eecb2e18fbf::t_6723dc6ebc92ae 13-17,82
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_957eecb2e18fbf::t_53757d8f5cef45 47,123,298,599-606,621-647,1615,1635,1649-1691
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_957eecb2e18fbf::t_8c8aa5bf55e9bc 1,7-12
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_957eecb2e18fbf::t_be9a5e7ab1c751 127,132-133
+  s_957eecb2e18fbf::t_98133a84c5df68 923-943
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d214fafa759bf6b651f4f40f8d6ac6fa412e3b1",
+  "prompts": {},
+  "sessions": {
+    "s_957eecb2e18fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a69e75d-aa11-4e29-af26-3cdcee83f150",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

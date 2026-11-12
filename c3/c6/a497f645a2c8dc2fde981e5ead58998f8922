@@ -1,0 +1,74 @@
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_8056da22c66cb7::t_3f7268a3d30923 17,226,232,267-273,276-280,286-292,409-413
+  s_8056da22c66cb7::t_e458b5d4e403ac 264-266
+  s_8056da22c66cb7::t_676c9b000cfd22 281-284
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8056da22c66cb7::t_6330475e17c2a7 84,475,2066
+  s_8056da22c66cb7::t_813d3341b0b6bb 8
+  s_8056da22c66cb7::t_d0580c18cbd5ff 85,477
+packages/cli/src/modules/promotions.ee/git-commit-package-reader.ts
+  s_8056da22c66cb7::t_509bcb20e56dd4 1-35
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_8056da22c66cb7::t_3099afb17cefdd 183-222,256-264,278
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_8056da22c66cb7::t_676c9b000cfd22 344-346
+  s_8056da22c66cb7::t_db63c8b42f51dc 28,36,48,381,426,441,447,451,459
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8056da22c66cb7::t_df40daa6e6f265 33-35,186,237
+  s_8056da22c66cb7::t_676c9b000cfd22 90-93,247-249,300,304-307,312-316,364-367,372-374,492-495,517-518,556-559,581,590-593
+  s_8056da22c66cb7::t_b3962f37805529 497-499,501
+  s_8056da22c66cb7::t_e458b5d4e403ac 31,49-50,62-79
+  s_8056da22c66cb7::t_c20b78234a8002 1-13,15-30,32,36-48,51-61,80-89,94-185,187-188,190-236,238-246,250-299,301-303,308-311,317-363,368-371,375-396,400-436,441-443,450-453,456-464,467-472,474-491,496,500,502-516,519-555,560-580,582-589,594-597
+  s_8056da22c66cb7::t_df8ac243b44769 14,189,397-399,437-440,444-449,454-455,465-466,473
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_8056da22c66cb7::t_3099afb17cefdd 4-7,78-84
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_8056da22c66cb7::t_d0580c18cbd5ff 57-60,110,279,289
+  s_8056da22c66cb7::t_df40daa6e6f265 10,33,50
+  s_8056da22c66cb7::t_c2765192c1656b 23
+  s_8056da22c66cb7::t_e4d76f0c7fd9cf 128-132,145-150,152,154-159,164-230,333-337,339,342-348,370,574,638
+  s_8056da22c66cb7::t_f43581f8ea6caa 257
+  s_8056da22c66cb7::t_676c9b000cfd22 24,53
+  s_8056da22c66cb7::t_0df679704e02a6 54-55,108,561-573
+  s_8056da22c66cb7::t_4aa8163bc56f3a 231
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_8056da22c66cb7::t_f43581f8ea6caa 1-27,30-68
+  s_8056da22c66cb7::t_676c9b000cfd22 28-29
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_8056da22c66cb7::t_6d28e1bb17e158 133
+  s_8056da22c66cb7::t_676c9b000cfd22 135-138
+  s_8056da22c66cb7::t_b8f61ac3e56aeb 1-32,34-79,81-109,121,125,127-132,134,139-142,144-145,179-228,250-261
+  s_8056da22c66cb7::t_08d92156c10588 143,149-151,153,156,159-163,167-170
+  s_8056da22c66cb7::t_b944a8fef914bd 171-176
+  s_8056da22c66cb7::t_d0580c18cbd5ff 33,80,146-148,152,154-155,157-158,164-166,177-178
+  s_8056da22c66cb7::t_158c1cdc6dba1a 110-120,122-124,126,229-249
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8056da22c66cb7::t_6d28e1bb17e158 671,725-744
+  s_8056da22c66cb7::t_95a15d6f2930b7 745-746
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8056da22c66cb7::t_4c631166f1c948 889-936
+  s_8056da22c66cb7::t_3bc842bad47627 35,70-75
+  s_8056da22c66cb7::t_d0580c18cbd5ff 79
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8056da22c66cb7::t_3099afb17cefdd 8,195
+packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
+  s_8056da22c66cb7::t_d0580c18cbd5ff 1,3-16,18-27,29,37-38,42-64
+  s_8056da22c66cb7::t_08d92156c10588 2,17,28,30-36
+  s_8056da22c66cb7::t_676c9b000cfd22 39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3c6a497f645a2c8dc2fde981e5ead58998f8922",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

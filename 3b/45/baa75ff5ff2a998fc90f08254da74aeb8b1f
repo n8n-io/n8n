@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_99a98c56568638::t_616e7053260f30 119
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_99a98c56568638::t_8a8da631de0639 1352-1368,1382-1402,1407-1426
+  s_99a98c56568638::t_18ab6f73469f90 1369-1381,1403-1406
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_99a98c56568638::t_047695fb599324 56,73
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/components/InteractionRenderer.vue
+  s_99a98c56568638::t_616e7053260f30 34
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_99a98c56568638::t_047695fb599324 1187
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_99a98c56568638::t_616e7053260f30 110
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_99a98c56568638::t_616e7053260f30 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b45baa75ff5ff2a998fc90f08254da74aeb8b1f",
+  "prompts": {},
+  "sessions": {
+    "s_99a98c56568638": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9cec355-63f4-4ec3-939f-444ee38974fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

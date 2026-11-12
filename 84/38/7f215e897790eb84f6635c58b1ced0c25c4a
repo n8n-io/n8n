@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/src/__tests__/to-ascii.test.ts
+  s_332b5877234e83::t_47e08179a6353e 6,8-9,61-71,74-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "84387f215e897790eb84f6635c58b1ced0c25c4a",
+  "prompts": {},
+  "sessions": {
+    "s_332b5877234e83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779b505d-eab4-4a92-8c8e-111b211d3a06",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

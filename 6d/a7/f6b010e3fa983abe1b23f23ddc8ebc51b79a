@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6da7f6b010e3fa983abe1b23f23ddc8ebc51b79a",
+  "prompts": {},
+  "sessions": {
+    "s_081a931f85efb0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c98b-a59d-723d-8d08-315178c379bf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

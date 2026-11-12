@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_0ca384e1d83392::t_18a34bac022c71 97-98,105-106
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_0ca384e1d83392::t_b7959c645a58f0 54-57
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_0ca384e1d83392::t_d3c236790d5ef9 651
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_0ca384e1d83392::t_449191763c4adc 600
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_0ca384e1d83392::t_779ac48c1e5eb2 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20c3ef6d769a43e5784eb945bad5fa45ca6e1ae6",
+  "prompts": {},
+  "sessions": {
+    "s_0ca384e1d83392": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "745391ba-4a40-4cc2-9a5f-9d83f74092e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

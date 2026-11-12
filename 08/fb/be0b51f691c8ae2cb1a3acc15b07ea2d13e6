@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_2610af1f6c8079::t_ca02f82be8000b 6-7,31,226,910-956,959-972
+  s_2610af1f6c8079::t_5a5d6893aa8410 219,224,249,271,325,337,365,370,398-399,404,833
+  s_2610af1f6c8079::t_2039817f022abe 957-958
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_2610af1f6c8079::t_fc27c3cea802c6 127-137,203-208,250-254,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "08fbbe0b51f691c8ae2cb1a3acc15b07ea2d13e6",
+  "prompts": {},
+  "sessions": {
+    "s_2610af1f6c8079": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4f4c583-d246-4696-be40-138c2318d753",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

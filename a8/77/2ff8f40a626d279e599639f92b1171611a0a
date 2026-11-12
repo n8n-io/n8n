@@ -1,0 +1,80 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_f5d34bb359272c::t_94da4f1d6b1607 166,197,199-200
+  s_f5d34bb359272c::t_6eeae45129e0c7 2-3,22-26,32-34,37-38,69-76,190-196,198
+  s_f5d34bb359272c::t_65fb44000fc0b1 201
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectIcon.vue
+  s_6016f7dace927b::t_466a7e834d8dd5 13-19,38,92-94
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_f5d34bb359272c::t_7840b829c9b103 47-48,50
+  s_f5d34bb359272c::t_d02f721bc0dc72 12-13,15-19,22-23,25,27-28,30,32-33,35-37,39-41,43-44
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_f45225676df5a3::t_67b34086438dda 629-632,852-860
+  s_6016f7dace927b::t_7586c900835f20 2,54,127-128,130,607,667,670,688
+  s_6016f7dace927b::t_8fba7d8a0d936e 608-611
+  s_f45225676df5a3::t_96d73f4846bbef 843-851,861-862
+  s_6016f7dace927b::t_af1e6ed329ab4a 612-628,633-666
+  s_6016f7dace927b::t_88a2b96974dee9 837-842
+  s_f45225676df5a3::t_e24b36cab76881 863-864
+packages/frontend/editor-ui/src/features/core/folders/components/FolderBreadcrumbs.vue
+  s_6016f7dace927b::t_ad46085e2e50cb 38,48,263
+  s_6016f7dace927b::t_e0a4f24f54360c 248
+  s_6016f7dace927b::t_13725b17055872 37,47,247,262
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_6016f7dace927b::t_0174561227e4cd 582,584-586
+  s_6016f7dace927b::t_e0a4f24f54360c 491-495
+  s_6016f7dace927b::t_5e67f17ef47c31 552-562,583,590-596
+  s_6016f7dace927b::t_4fc7335b867ef9 471-476
+  s_6016f7dace927b::t_11e986aaa4a639 488
+  s_f45225676df5a3::t_d19efd35ec0579 597,599-610
+  s_6016f7dace927b::t_0089ef559196f8 479,498
+  s_6016f7dace927b::t_af1e6ed329ab4a 480-487
+  s_f45225676df5a3::t_5aee673c58c58b 598
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_6016f7dace927b::t_a99a4a135b830e 2264,2275
+  s_6016f7dace927b::t_af1e6ed329ab4a 2265-2273,2276-2301
+  s_6016f7dace927b::t_245e707223c612 2303
+  s_6016f7dace927b::t_29eacbfd68da5d 2274
+  s_6016f7dace927b::t_da4471d072ef91 2665
+  s_6016f7dace927b::t_924e5d61a4036f 2617,2619-2622,2667-2669
+  s_6016f7dace927b::t_8667f1793da777 2618
+  s_6016f7dace927b::t_0d03f645c9a8b8 2239,2259,2302,2304,2380
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_6016f7dace927b::t_6f759cbeab91cc 13,22
+  s_6016f7dace927b::t_e0a4f24f54360c 102-105,107-118
+  s_6016f7dace927b::t_c65c1a62c31572 91-95,152-153
+  s_6016f7dace927b::t_55a14e1d4b55f1 7,14,23,101,119
+  s_6016f7dace927b::t_4bc76b10e535d9 106
+  s_6016f7dace927b::t_dc813f2d3f400e 154-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8772ff8f40a626d279e599639f92b1171611a0a",
+  "prompts": {},
+  "sessions": {
+    "s_6016f7dace927b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179d8-25bf-74cd-96da-7756ca7e3abf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f45225676df5a3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179e6-3946-74cd-96da-775b7d044330",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f5d34bb359272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179e3-2b40-74cd-96da-7759950f40a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

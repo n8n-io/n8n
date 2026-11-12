@@ -1,0 +1,53 @@
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8056da22c66cb7::t_3269f348d39d6f 30
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8056da22c66cb7::t_3269f348d39d6f 66
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_8056da22c66cb7::t_3269f348d39d6f 35
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8056da22c66cb7::t_3269f348d39d6f 470-485,493-496,1692,1694,1698,1701-1703,1707-1708,1712-1714,1740,1751,1771,1774,1803,1809
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_8056da22c66cb7::t_cc2c6ac613d778 8
+packages/@n8n/db/src/repositories/index.ts
+  s_8056da22c66cb7::t_601a9a20c83654 101
+packages/@n8n/db/src/repositories/variables.repository.ts
+  s_8056da22c66cb7::t_59ab215404a368 2
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_8056da22c66cb7::t_95cbe78d691f0b 1,4-9,12-15,123
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_8056da22c66cb7::t_28085dca1412cd 29
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8056da22c66cb7::t_d6c7472ffe9dcf 9914-9925,10085
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_8056da22c66cb7::t_c748760cf7618d 171-190,292,294
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_8056da22c66cb7::t_7866dd9e0a3e70 24,115-119,123,128,137-142
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_8056da22c66cb7::t_786aa3c5aa76c1 7,23-24,77-87
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
+  s_8056da22c66cb7::t_a4be80b207431d 78-114
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_8056da22c66cb7::t_8204997a31e9a0 107-117,172,418-421,442,449-454,476,493,505-523,526,546,567,597-599
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_8056da22c66cb7::t_24398cb8552940 23,102-106,109,113-136,140,172-175
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_8056da22c66cb7::t_88bac0d194210b 61-65,103-110,130,156-174
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_8056da22c66cb7::t_5eb65030339634 89-95,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3089b1b021a5565e675edaaa0cc633ab3d76e5cd",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

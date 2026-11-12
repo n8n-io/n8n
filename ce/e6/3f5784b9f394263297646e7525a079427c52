@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  ai_agent 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cee63f5784b9f394263297646e7525a079427c52",
+  "prompts": {}
+}

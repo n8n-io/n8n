@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_b4c3e395e0f4bc::t_958cccc390713c 500-502
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_b4c3e395e0f4bc::t_b1c66d54a8f497 1,11,1409-1431
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_b4c3e395e0f4bc::t_2bb595cf309a37 38,42-47,143-150,157-158
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_b4c3e395e0f4bc::t_9d3bdfae1d6a17 10-11,42-46,57,71-85,91,112,131,143,158,173,191-193,203,212,224,232-234,246,254-256,266
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_b4c3e395e0f4bc::t_958cccc390713c 249-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f1f83ad6dbb61751c00a9f8d2182a0d6f598e53",
+  "prompts": {},
+  "sessions": {
+    "s_b4c3e395e0f4bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a59373a-cd91-42e2-b50a-315efa22e24a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

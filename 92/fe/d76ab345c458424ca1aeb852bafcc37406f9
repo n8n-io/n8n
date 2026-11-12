@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_be7f812aa784b6::t_00433bd20b62a3 28,108-110,117-127
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_be7f812aa784b6::t_2138facd46472e 41-48
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_81de320d07ad15 4,70-76,261,303,373,405,408,411,435-455,466
+  s_be7f812aa784b6::t_2138facd46472e 24,520
+  ai_agent 521-522
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_00433bd20b62a3 329-340
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  ai_agent 1869-1874
+  s_be7f812aa784b6::t_eefd110d7244ac 64-66,1767,1777-1778,1781-1790,1793,1843-1868,1875-1896
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "92fed76ab345c458424ca1aeb852bafcc37406f9",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_22319c2de3343a::t_23348206fca4fc 489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88d15ed0512b5e694e6a6058574e78b76ed56649",
+  "prompts": {},
+  "sessions": {
+    "s_22319c2de3343a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ae94-7f49-7169-8639-af4e8517f4bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+pnpm-workspace.yaml
+  s_05b78bc80227e1::t_0bc0a0ea782702 399-400
+packages/@n8n/nodes-langchain/package.json
+  s_05b78bc80227e1::t_efe2dab73088d3 248-249
+packages/cli/package.json
+  s_05b78bc80227e1::t_7955824543a1a7 148
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_05b78bc80227e1::t_7955824543a1a7 16,40-45,58-95,458,462-475,526
+  s_05b78bc80227e1::t_67a5d57f827dab 46-57
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.test.ts
+  s_05b78bc80227e1::t_7955824543a1a7 7,14-52,66
+  s_05b78bc80227e1::t_67a5d57f827dab 53-65
+  s_05b78bc80227e1::t_f7a72724570650 67
+pnpm-lock.yaml
+  s_05b78bc80227e1::t_a89b931cde7936 985-986,1271,1277,1314,1405,3656-3657,3659-3660,3684,4387,4680-4681,4693,4828,4840,4843,4846,4978,10695-10696,10710-10712,10714-10716,12048,12062,18945-18948,18957-18959,18988-18991,22145-22147,22543-22546,23550-23553,28029,28031-28037,28051,28053,28057,28059,28508,28528,28532,28534,28538,28544,28546,28550,28556,28562,28567,28578,28601,28606,28621,28627,28632,28659-28674,32351-32352,32443-32444,32730,37166-37177,37200,37203,37205-37207,37209,37211-37212,37251-37257,37431,38318-38327,41013,41570-41577,42979-42987,42998
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77fb796608cedc05a5b1c4b0359dcf07e7243d22",
+  "prompts": {},
+  "sessions": {
+    "s_05b78bc80227e1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e8389c9a1ffenqwshS91TZY8sP",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

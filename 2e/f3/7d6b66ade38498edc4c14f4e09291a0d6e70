@@ -1,0 +1,29 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_45741ff70f27eb::t_cebb6704e326fe 1357-1358,1361-1363,1382-1384
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_45741ff70f27eb::t_cebb6704e326fe 2705-2707,2714-2716,2743-2745,2752-2754
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_45741ff70f27eb::t_cebb6704e326fe 33,59-76,152-175,200-201
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_45741ff70f27eb::t_fe8a9e157afcfc 5329,5334-5336,5341,5344-5346,5390-5391,5399-5401
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_45741ff70f27eb::t_cebb6704e326fe 22,25,28-30,52,60-62
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_45741ff70f27eb::t_fe8a9e157afcfc 148-149,153,165-173,241-242,246,253-256,259,271-278,281,287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ef37d6b66ade38498edc4c14f4e09291a0d6e70",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

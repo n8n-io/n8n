@@ -1,0 +1,79 @@
+packages/cli/src/modules/mcp/tools/update-credential-description.tool.ts
+  ai_agent 1-54
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  ai_agent 1042,1064-1073
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_442fddecb5db3a::t_827b2a6ce9a3e0 2985-2986,3059-3062
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  ai_agent 241-253
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  ai_agent 2,8,1090-1102
+packages/@n8n/telemetry/src/events/credentials.ts
+  ai_agent 56,66-69
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  ai_agent 31
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  ai_agent 6,80-88,172,175,178-179
+packages/@n8n/instance-ai/docs/tools.md
+  ai_agent 55,844-853
+packages/cli/src/credentials/credentials.service.ts
+  ai_agent 39-40,1119-1181
+packages/@n8n/api-types/src/schemas/credential-description.schema.ts
+  s_442fddecb5db3a::t_827b2a6ce9a3e0 15-21
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  ai_agent 906-914,932-952
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  ai_agent 3,110-114,126-127
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 805
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 539
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 155-161
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  ai_agent 96
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 4090
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 29,106
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 2067-2091
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  ai_agent 23-48
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  ai_agent 11,46,2333-2373
+packages/@n8n/api-types/src/index.ts
+  ai_agent 210
+packages/cli/src/modules/mcp/__tests__/update-credential-description.tool.test.ts
+  ai_agent 1-55
+packages/cli/src/modules/mcp/mcp.service.ts
+  ai_agent 122,694-699
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  ai_agent 22,368-379
+packages/@n8n/telemetry/credential-descriptions.md
+  ai_agent 82-85
+packages/@n8n/telemetry/src/__tests__/credential-description.test.ts
+  ai_agent 5-18
+packages/@n8n/api-types/src/builder-tool-names.ts
+  ai_agent 71
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  ai_agent 462-596
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  ai_agent 87,111-117,303,333-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad8cb6ae06fe6fd48cb7c3329780c6e76a041c27",
+  "prompts": {},
+  "sessions": {
+    "s_442fddecb5db3a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1822e-a82a-7650-8aca-70edc33a562f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

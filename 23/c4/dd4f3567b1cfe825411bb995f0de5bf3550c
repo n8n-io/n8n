@@ -1,0 +1,42 @@
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_40fadd9b500295::t_4809e0c2ab410e 1155-1175
+packages/cli/src/workflow-runner.ts
+  s_40fadd9b500295::t_ca63453ffb0f8d 924,944
+packages/workflow/src/interfaces.ts
+  s_40fadd9b500295::t_ca63453ffb0f8d 3530-3532
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_40fadd9b500295::t_6c460c28a1112e 2760-2796
+  s_40fadd9b500295::t_fc53146b12e42a 23
+packages/modules/insights/backend/src/insights-collection.service.ts
+  s_40fadd9b500295::t_ca63453ffb0f8d 360-361
+packages/modules/insights/backend/src/__tests__/insights-collection.service.test.ts
+  s_40fadd9b500295::t_f132b90326e9a1 249,256-273
+packages/cli/src/scaling/job-processor.ts
+  s_40fadd9b500295::t_a4e2253aaa0cfa 94
+  s_40fadd9b500295::t_1b1420d16fb681 92-93,95-101
+  s_40fadd9b500295::t_ca63453ffb0f8d 586
+packages/cli/src/scaling/scaling.types.ts
+  s_40fadd9b500295::t_ca63453ffb0f8d 95
+packages/modules/insights/backend/src/__tests__/insights-collection.service.integration.test.ts
+  s_40fadd9b500295::t_0c992395a1001c 668
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_40fadd9b500295::t_ebdb4cd5b4a5c6 1195-1230
+packages/cli/src/scaling/scaling.service.ts
+  s_40fadd9b500295::t_ca63453ffb0f8d 640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23c4dd4f3567b1cfe825411bb995f0de5bf3550c",
+  "prompts": {},
+  "sessions": {
+    "s_40fadd9b500295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc037dc8-eb6f-43aa-93fd-bb363fb3cb4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_eb22d39f685512::t_f3d45cf269f9a3 189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e392434b8e6cffbe60eda722bd2856d685b49757",
+  "prompts": {},
+  "sessions": {
+    "s_eb22d39f685512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66175cd8-3777-4e21-a3c2-a40f4157bd3b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

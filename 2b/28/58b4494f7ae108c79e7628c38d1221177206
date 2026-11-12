@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Postgres/v2/actions/database/upsert.operation.ts
+  s_2932f94fed6b20::t_9b19ac75ec0896 9-10,220,222
+packages/@n8n/utils/src/promise/create-event-loop-yielder.ts
+  s_2932f94fed6b20::t_c35b602e632ee1 4-5,8-11
+  s_2932f94fed6b20::t_9b19ac75ec0896 1-3,6-7,13,15,17-19
+packages/nodes-base/nodes/Postgres/v2/actions/database/update.operation.ts
+  s_2932f94fed6b20::t_02ce18d1998392 9-10,221
+  s_2932f94fed6b20::t_ac61308baeb920 223
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_2932f94fed6b20::t_5f4b55dabdbf34 20-24,1910-1954,1957-1958
+  s_2932f94fed6b20::t_963b033640210b 1955
+packages/nodes-base/nodes/Postgres/v2/actions/database/executeQuery.operation.ts
+  s_2932f94fed6b20::t_02ce18d1998392 66-67
+  s_2932f94fed6b20::t_9b19ac75ec0896 9-10,64-65,68,182-183
+packages/@n8n/utils/src/promise/create-event-loop-yielder.test.ts
+  s_2932f94fed6b20::t_9b19ac75ec0896 1-3,9-30,56-57
+  s_2932f94fed6b20::t_c35b602e632ee1 4-8,31-55
+packages/nodes-base/nodes/Postgres/v2/actions/database/insert.operation.ts
+  s_2932f94fed6b20::t_02ce18d1998392 8-9,188,190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b2858b4494f7ae108c79e7628c38d1221177206",
+  "prompts": {},
+  "sessions": {
+    "s_2932f94fed6b20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d18d722b-8cd8-4b57-b59f-1784503287de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

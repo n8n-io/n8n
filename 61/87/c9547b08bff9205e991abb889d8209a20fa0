@@ -1,0 +1,24 @@
+packages/cli/src/modules/mcp-registry/__tests__/mcp-connection-discovery.service.test.ts
+  s_0124dfca07eaee::t_2a990993193354 85
+  s_0124dfca07eaee::t_78631b2ce26706 404-432
+packages/cli/src/modules/mcp-registry/mcp-credential-access.ts
+  s_0124dfca07eaee::t_64520dde647150 3,9-11,26-27
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_0124dfca07eaee::t_2a990993193354 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6187c9547b08bff9205e991abb889d8209a20fa0",
+  "prompts": {},
+  "sessions": {
+    "s_0124dfca07eaee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4432e389-b611-4d01-a0b8-3b2bacf20633",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

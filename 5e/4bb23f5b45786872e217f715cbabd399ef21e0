@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_c7dd453c2b098d::t_8baf582e002e86 3,572-573,575
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_c7dd453c2b098d::t_3bcd1352e0eea5 2-6,556-569
+  s_c7dd453c2b098d::t_90c851c9424a62 570-571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e4bb23f5b45786872e217f715cbabd399ef21e0",
+  "prompts": {},
+  "sessions": {
+    "s_c7dd453c2b098d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56e882fa-167c-40fe-888e-0255550ae798",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

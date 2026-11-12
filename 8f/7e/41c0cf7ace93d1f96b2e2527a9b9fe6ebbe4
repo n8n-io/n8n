@@ -1,0 +1,14 @@
+.github/workflows/test-db-reusable.yml
+  h_52a137d26d774c 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f7e41c0cf7ace93d1f96b2e2527a9b9fe6ebbe4",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

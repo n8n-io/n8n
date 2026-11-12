@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_817d3f9f59b3ae::t_7a361892b6acbb 81
+  s_817d3f9f59b3ae::t_fe90cb52146286 29-31,39-42,52-53,55,57
+  s_817d3f9f59b3ae::t_0b9ed2dbc77688 82-84
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_817d3f9f59b3ae::t_4db5db51eb931a 329
+  s_817d3f9f59b3ae::t_d2343f38d5e034 6
+  s_817d3f9f59b3ae::t_bf617671e84ad1 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fd7ce79e71471f5bccd0d472dd684978b3c43c5",
+  "prompts": {},
+  "sessions": {
+    "s_817d3f9f59b3ae": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179b5-0915-741e-a7f9-c0fa8204ce96",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

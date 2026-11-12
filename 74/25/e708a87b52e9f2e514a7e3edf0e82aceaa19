@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_66ab5ae14a573f 125
+  s_71ad2034164515::t_e24a0a88ec4dd2 102
+  s_71ad2034164515::t_62b927928e7d07 30
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_6ebe1f167df9ba 410-417,421,426-435,564-565,570,582,585,588-589,379,383
+  s_71ad2034164515::t_b41df06b718df0 581,185-191,314-315
+  s_71ad2034164515::t_44e32f22abf880 258,260,267,310,319-322,337,376-378,380-382
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_25321a61654292 45,124-133,138,157,192-200,202-205,207-229,235-245,247,249-266
+  s_71ad2034164515::t_52f43a91d20755 201,206,246
+  s_71ad2034164515::t_d2bae5f6da46ba 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7425e708a87b52e9f2e514a7e3edf0e82aceaa19",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

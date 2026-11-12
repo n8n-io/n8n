@@ -1,0 +1,25 @@
+packages/@n8n/agents/package.json
+  s_5b451cac28c7c3::t_2ea3992dee3770 115
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_5b451cac28c7c3::t_2ea3992dee3770 1,200
+packages/@n8n/agents/src/runtime/__tests__/tool-result-guard.test.ts
+  s_5b451cac28c7c3::t_2ea3992dee3770 1-2,4,13
+pnpm-lock.yaml
+  s_5b451cac28c7c3::t_27f970fbb784de 1258-1260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d19e66db0e28dc07ae0495513e694d1d5ccdcdfc",
+  "prompts": {},
+  "sessions": {
+    "s_5b451cac28c7c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a74d653-de7e-46f4-8f78-28c593d96231",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

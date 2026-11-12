@@ -1,0 +1,21 @@
+packages/cli/test/integration/commands/publish/workflow.test.ts
+  s_fcdce6e286eebf::t_e9122db1cc7039 48
+packages/cli/src/commands/cli-workflow-publisher.ts
+  s_fcdce6e286eebf::t_1bdd28a54877f0 13,107,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a67602932524302e6adca207920760e0b90f7be9",
+  "prompts": {},
+  "sessions": {
+    "s_fcdce6e286eebf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81e10cb2-a971-41f6-83ef-4c47409adeb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/quality/environments/containers/README.md
+  s_b2c8dff9da12f0::t_161b96cf6f0ead 392-399
+packages/quality/environments/containers/tests/litellm.test.ts
+  s_b2c8dff9da12f0::t_86d38cf8cb35ff 80-81
+  s_b2c8dff9da12f0::t_d6e461ebfda687 65-67
+  s_b2c8dff9da12f0::t_76126e3d9bff27 134
+  s_b2c8dff9da12f0::t_eb2d0c4f31e54b 2,5,7-8,14,24,28,45-52,54,56,58,60,70-71,76-78,82-91,93,104-106,108,112-120,142,147,150,156-158,160-161,164-165,167-177,185-190,206-222,225,227-228,242-249,255-256,268
+  s_b2c8dff9da12f0::t_6d32c206563404 9-13,17,23,25-27,29-38,41-44,53,55,57,59,61-64,68-69,72-75,79,92,94-103,107,109-111,124-129,132-133,137-141,143,145-146,159,162-163,166,178-184,191-205,223-224,226,229-241,250-254,257-267,271-273,276,279-283,289,292-293,301
+  s_b2c8dff9da12f0::t_01ac6bfa687914 121,148-149
+packages/quality/environments/containers/services/litellm.ts
+  s_b2c8dff9da12f0::t_161b96cf6f0ead 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73716e07e1d19e76f56523a89a20a00d2bd51054",
+  "prompts": {},
+  "sessions": {
+    "s_b2c8dff9da12f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3daee663-6a84-4afa-ac29-c0d42efb43a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

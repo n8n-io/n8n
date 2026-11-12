@@ -1,0 +1,35 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_3577b5c5c8d1c1::t_a6fef78d761d60 402,419
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_3577b5c5c8d1c1::t_a6fef78d761d60 502-503,508,517
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 58
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 13
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 60
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 330,340-341,417
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 274
+packages/cli/BREAKING-CHANGES.md
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 48-49
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3577b5c5c8d1c1::t_a82163fb24efa2 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59965cf5ba01571f4816c8e4354d3235b4e41b34",
+  "prompts": {},
+  "sessions": {
+    "s_3577b5c5c8d1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9385f1cb-01a1-4804-b347-ae01a2d5700b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

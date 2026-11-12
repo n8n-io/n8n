@@ -1,0 +1,22 @@
+packages/nodes-base/test/expression-vm2-output.test.ts
+  s_2a512efce24140::t_1b4d096b60267a 124,128-129
+  s_2a512efce24140::t_b54c52c216fcd6 123,125-127,130-131,134-137
+  s_2a512efce24140::t_c9f672b3b663aa 95-99
+  s_2a512efce24140::t_e47f1340bbd30f 132-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9613573b5878f1010a6c6314f471854d487a4fdf",
+  "prompts": {},
+  "sessions": {
+    "s_2a512efce24140": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f86a88b-090a-4f94-8295-7f4643828485",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

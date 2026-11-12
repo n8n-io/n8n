@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/activityNotification/send.error.test.ts
+  s_ae8c4d27e8031a::t_58ee97ddd44ce9 11,45-50
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_ae8c4d27e8031a::t_1c495301d9209a 29,314,347-368,397-402,476,489-493,495,552-562,599-610
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_ae8c4d27e8031a::t_9499c8d58231f3 31-35,100-106,109,112,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4fa4a8911a3549761c2c2ea99ec5eea0dd76dd0",
+  "prompts": {},
+  "sessions": {
+    "s_ae8c4d27e8031a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a19bf9-672c-4086-93a2-90c89a896afc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 475-476,478-545
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb780391c8e997::t_4d0bb9012c6a9f 4274,4297,4310,4312,4351,4355,4393-4398,4830,4983-4990,5169,6722,8345-8350,8436-8441,9818-9819,10021,10087-10090,10189-10190,10193-10196,10229-10232
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_9d1f601ee670fb 89
+  s_c71d8d6a27245a::t_3ca14818f85353 502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d0ebceaefeb3b2f144592371df5a20ffcb8679af",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c71d8d6a27245a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

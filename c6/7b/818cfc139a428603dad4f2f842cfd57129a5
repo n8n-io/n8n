@@ -1,0 +1,43 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.stories.ts
+  s_13c839fa16106b::t_c9f4a4727e3bf1 142
+  s_4a32ae9cadbb6a::t_f52f367d42a2d5 4,65-66,68-75,78-141,143-174
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  s_13c839fa16106b::t_8844d92d2c039c 19
+  s_13c839fa16106b::t_c1744978aafd14 16-18
+  s_13c839fa16106b::t_fc881cb7c3d499 20-22
+  s_13c839fa16106b::t_c85a41370be99c 2,9-15,23-28
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  s_13c839fa16106b::t_aac01929807bf1 28-29,34,53-57,87,101,124-126,147-151,171,289-291,341-342,347-348,363,382
+  s_13c839fa16106b::t_f941a82604af8c 30,35,40,44,49,58,67,72,77,82,88,93,97,102,107,115,119,127,134,143,152,168,172,177,181,185,190,196,206,211,218,222,227,232,237,243,247,253,259,263,268,272,278,283,292,298,312,317,325,331,343,349,353,359,364,372,378,383,387,391,399
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_4a32ae9cadbb6a::t_927c340d072553 358-360
+  s_13c839fa16106b::t_f10e166e092d8f 368,376,382,387,391,398,404,410,414,419,443,450,457,461,468,472,480,484,491,497,506,513,520,527,536,543,551,555,562,565,570,576,579,583,588,592,597,605,610,615,619
+  s_13c839fa16106b::t_70e8a84b88002b 92,373-375,381,386,403,438-442,447-449,465-467,479,503-505,575
+  s_13c839fa16106b::t_b6dfbe3f132a22 89-91
+  s_13c839fa16106b::t_3bfd46fc59414f 93-95
+  s_13c839fa16106b::t_765c21d3907de0 7,77-88,96,122-130,144,150,276-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c67b818cfc139a428603dad4f2f842cfd57129a5",
+  "prompts": {},
+  "sessions": {
+    "s_13c839fa16106b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d82-ccea-7210-a0f1-7dcebdca7295",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4a32ae9cadbb6a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d74-0278-7210-a0f1-7dc581f266aa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

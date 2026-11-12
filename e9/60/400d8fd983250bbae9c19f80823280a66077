@@ -1,0 +1,37 @@
+packages/modules/apps/frontend/src/components/AppActions.test.ts
+  s_b6d332c56aa1c5::t_05739369f44ff9 107
+  s_b6d332c56aa1c5::t_093f726e3595ff 103-106,108-114
+  s_b6d332c56aa1c5::t_6589deaafc8569 5
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_ad8af79e891fd7 90-102
+packages/modules/apps/frontend/src/components/AppCard.vue
+  s_b6d332c56aa1c5::t_8c53b67e9a628a 21-29
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_206cfbae8143ce 30
+packages/modules/apps/frontend/src/components/AppActions.vue
+  s_b6d332c56aa1c5::t_b24c5fcab1df12 6
+  s_b6d332c56aa1c5::t_54fb8b3193ec65 43-46
+packages/modules/apps/frontend/src/components/AppCard.test.ts
+  s_b6d332c56aa1c5::t_1cb19fbe6b56a2 58-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e960400d8fd983250bbae9c19f80823280a66077",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

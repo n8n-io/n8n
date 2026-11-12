@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_925dcfedebf0c9::t_50cbb3b04df134 54
+packages/cli/src/public-api/v1/openapi.yml
+  s_925dcfedebf0c9::t_50cbb3b04df134 108-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d3764888f4e80eb4cd00f9b445b6d2e9469ec4d",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1793603668718-AddLastDispatchedAtToScheduledJob.ts
+  s_565818c1363886::t_76196051a4a268 14
+packages/cli/test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts
+  s_565818c1363886::t_cf92d2183fc059 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e716427dc110fbc1c9798d68d4dba5f0f7771f20",
+  "prompts": {},
+  "sessions": {
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}

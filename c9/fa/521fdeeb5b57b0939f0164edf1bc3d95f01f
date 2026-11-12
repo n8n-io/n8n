@@ -1,0 +1,33 @@
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_587ffbad833930::t_a8245c96a03feb 32
+  s_587ffbad833930::t_dc204a09eba630 103-124
+packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
+  s_587ffbad833930::t_7924b90bedb01e 60
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_587ffbad833930::t_a8245c96a03feb 1863
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_587ffbad833930::t_598596a546b7e3 119
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_587ffbad833930::t_8c852e01f166f0 50
+  s_587ffbad833930::t_7a95b5a623a0ab 212-228
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_587ffbad833930::t_598596a546b7e3 82
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_587ffbad833930::t_c330e8221065b9 15-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9fa521fdeeb5b57b0939f0164edf1bc3d95f01f",
+  "prompts": {},
+  "sessions": {
+    "s_587ffbad833930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1aa0aff7-9297-43ec-bd46-3c2f7dfdeca0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

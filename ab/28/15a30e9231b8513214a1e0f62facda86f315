@@ -1,0 +1,78 @@
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_e96b2a058a8d23::t_43f520845a76b9 168-173
+  s_e96b2a058a8d23::t_fe9b4350a97226 180
+  s_e96b2a058a8d23::t_cc33db22a72ffc 179,300-305,370,409,413-417
+  s_e96b2a058a8d23::t_5de19efa118d5c 346,348-355
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e96b2a058a8d23::t_5de19efa118d5c 782-792,800,809
+  s_e96b2a058a8d23::t_d98ffa61fb411b 781
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_e96b2a058a8d23::t_3c9cf505e2c2e9 158-162,166-171
+  s_e96b2a058a8d23::t_7c41a9571705b5 8,21,28,41,58,63-64,68,73-74,82,86,96,143,152,156
+  s_e96b2a058a8d23::t_fe9b4350a97226 59-62,65-67,135-139,144-148,153-155
+  s_e96b2a058a8d23::t_a1e39e8c4e69db 163-165
+  s_e96b2a058a8d23::t_d446b746b0f0e9 157
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_e96b2a058a8d23::t_3c9cf505e2c2e9 157-158,171
+  s_e96b2a058a8d23::t_0357c971e0be3d 15,116-124,129-132,140-142,148,155-156,166-170,172-173
+  s_e96b2a058a8d23::t_fe9b4350a97226 125-128,133-139,143-147,150-153,159-165
+  s_e96b2a058a8d23::t_a58fbc6755a239 149,154
+  s_e96b2a058a8d23::t_93e852b72c1146 174
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_e96b2a058a8d23::t_17278786363166 85-96
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_e96b2a058a8d23::t_5de19efa118d5c 165-166
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e96b2a058a8d23::t_ec2ea6de43c65c 55-56
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentSessionStop.test.ts
+  s_e96b2a058a8d23::t_8a0f7282d7f4e2 1-42,47-88
+  s_e96b2a058a8d23::t_fe9b4350a97226 43-46
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e96b2a058a8d23::t_17278786363166 997-1010
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_e96b2a058a8d23::t_5de19efa118d5c 2,12,294-304,329-330,372-380,382
+  s_e96b2a058a8d23::t_3c9cf505e2c2e9 305-311,315-328
+  s_e96b2a058a8d23::t_fe9b4350a97226 366-371
+  s_e96b2a058a8d23::t_a1e39e8c4e69db 312-314
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_e96b2a058a8d23::t_fe9b4350a97226 311-326,343-346
+  s_e96b2a058a8d23::t_8a0f7282d7f4e2 308-310,327-342,347-352
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e96b2a058a8d23::t_0357c971e0be3d 991-1005,1010
+  s_e96b2a058a8d23::t_fe9b4350a97226 1006-1009
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_e96b2a058a8d23::t_fe9b4350a97226 96-98,103-105,116-123,126-131
+  s_e96b2a058a8d23::t_8a0f7282d7f4e2 93-95,99-102,106-115,124-125,132-133
+  s_e96b2a058a8d23::t_3242d9aeab7f19 134
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_e96b2a058a8d23::t_17278786363166 32-38
+  s_e96b2a058a8d23::t_a58fbc6755a239 47-55
+  s_e96b2a058a8d23::t_5de19efa118d5c 11,23,46,67
+  s_e96b2a058a8d23::t_fe9b4350a97226 61-65
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e96b2a058a8d23::t_fe9b4350a97226 1469-1472
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_e96b2a058a8d23::t_17278786363166 884,891-903,1295
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_e96b2a058a8d23::t_9e8799086a86a8 290-298,304-305
+  s_e96b2a058a8d23::t_0357c971e0be3d 84,90,94,115,128-131,230,242-244
+  s_e96b2a058a8d23::t_a1e39e8c4e69db 299-303
+  s_e96b2a058a8d23::t_fe9b4350a97226 116-127,237-241,247-277
+  s_e96b2a058a8d23::t_85ca1a6e63bdaf 278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab2815a30e9231b8513214a1e0f62facda86f315",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

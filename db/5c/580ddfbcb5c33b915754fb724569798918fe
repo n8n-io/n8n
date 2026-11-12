@@ -1,0 +1,28 @@
+packages/core/src/execution-engine/__tests__/ssh-clients-manager.test.ts
+  s_0c621b403cea60::t_9543f9eef7a826 100-204
+  s_0c621b403cea60::t_5aaed023f26ba4 4-6
+packages/core/src/execution-engine/ssh-clients-manager.ts
+  s_0c621b403cea60::t_dca98fbbf4a710 124-146
+  s_0c621b403cea60::t_37053ad03a8565 111
+packages/nodes-base/utils/sshTunnel.properties.ts
+  s_0c621b403cea60::t_8cd8022d31444a 65-77
+  s_0c621b403cea60::t_e9662256751a1c 64
+packages/workflow/src/interfaces.ts
+  s_0c621b403cea60::t_eae80442ed15a8 1128-1129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db5c580ddfbcb5c33b915754fb724569798918fe",
+  "prompts": {},
+  "sessions": {
+    "s_0c621b403cea60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c3846d2-bf04-4a3d-a7e1-7bfabe3924c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

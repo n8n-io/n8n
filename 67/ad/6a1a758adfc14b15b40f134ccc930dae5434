@@ -1,0 +1,159 @@
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_f3039407b71bd6::t_9a349e42b232fb 46
+  s_f3039407b71bd6::t_2d956e8910c673 19-22,218-333
+packages/@n8n/api-types/src/dto/variables/environment-variable.ts
+  s_f3039407b71bd6::t_db12ee7f9f025a 1-14
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.types.ts
+  s_f3039407b71bd6::t_db12ee7f9f025a 1-2,4
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_f3039407b71bd6::t_395d0335c4c326 24
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_f3039407b71bd6::t_5799322f435dc2 33-34
+  s_f3039407b71bd6::t_f0c69350e26db4 17,20
+  s_f3039407b71bd6::t_9f8a2d84c33d09 54-57,58-60,70-71,76-83
+  s_f3039407b71bd6::t_db12ee7f9f025a 18-19
+  s_f3039407b71bd6::t_e3582fd8b3bcc5 3
+  s_f3039407b71bd6::t_439801d2536710 84
+packages/frontend/@n8n/rest-api-client/src/api/credentials.ts
+  s_f3039407b71bd6::t_3be0d8aa2f064f 1-12
+packages/frontend/@n8n/frontend-constants/src/inbox.ts
+  s_f3039407b71bd6::t_f2bbf55304ef32 1-2
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_f3039407b71bd6::t_db12ee7f9f025a 1
+  s_f3039407b71bd6::t_5a317bb9b36865 3-7,18,20-23,84-158,165-168
+  s_f3039407b71bd6::t_89de98052b9a27 17
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_f3039407b71bd6::t_db12ee7f9f025a 3,5
+  s_f3039407b71bd6::t_ae53a11302e202 1-2,4,6-7,9-11,71-165
+packages/modules/inbox/frontend/src/inbox.constants.ts
+  s_f3039407b71bd6::t_f2bbf55304ef32 3
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/environmentsSettings.ts
+  s_f3039407b71bd6::t_395d0335c4c326 1-11
+packages/frontend/@n8n/rest-api-client/src/api/projects.ts
+  s_f3039407b71bd6::t_3be0d8aa2f064f 1-2,4-5,53-68
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/projectContext.ts
+  s_f3039407b71bd6::t_395d0335c4c326 1-11
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/resourceEditors.ts
+  s_f3039407b71bd6::t_395d0335c4c326 1-10
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.vue
+  s_f3039407b71bd6::t_80d7f76fcd676c 19,26,29,44,53-54
+  s_f3039407b71bd6::t_66c89c9426f1f8 55
+  s_f3039407b71bd6::t_83331537bb0002 27-28
+packages/frontend/editor-ui/src/app/componentSlots.manifest.test.ts
+  s_f3039407b71bd6::t_4290d79f4e483b 21-22
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.api.ts
+  s_f3039407b71bd6::t_3be0d8aa2f064f 7
+packages/frontend/@n8n/rest-api-client/src/api/index.ts
+  s_f3039407b71bd6::t_c7c24c774e2d18 6
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/tagNames.ts
+  s_f3039407b71bd6::t_395d0335c4c326 1-9
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_f3039407b71bd6::t_395d0335c4c326 2,8,10-11
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.test.ts
+  s_f3039407b71bd6::t_5c563f64786280 15,28,36,89,98,106,114,121-123,125-132,145,146-150,151-152,155-159
+  s_f3039407b71bd6::t_4ca39947248ba0 124,133-144,153-154
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.types.ts
+  s_f3039407b71bd6::t_b7474e2b3968fe 33
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_f3039407b71bd6::t_4290d79f4e483b 20-29,31-33
+  s_f3039407b71bd6::t_e52773021706eb 30
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_f3039407b71bd6::t_3be0d8aa2f064f 1
+  s_f3039407b71bd6::t_f3fc3d94691348 21
+  s_f3039407b71bd6::t_bbfd0ab10441dd 22
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  s_f3039407b71bd6::t_4a242d8d8fdd73 5-9,18
+packages/@n8n/api-types/src/dto/index.ts
+  s_f3039407b71bd6::t_db12ee7f9f025a 223-226
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_f3039407b71bd6::t_857d2e5f738099 6,8
+  s_f3039407b71bd6::t_8fc4b6fd54b020 2
+pnpm-lock.yaml
+  s_f3039407b71bd6::t_dd7fee63759a17 6104-6106
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue
+  s_f3039407b71bd6::t_a27e3be513db65 2-3,8
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/NodeDiff.vue
+  s_f3039407b71bd6::t_a27e3be513db65 2-3,10-12,18-20
+  s_f3039407b71bd6::t_b85312a45ac6ae 13-17
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_f3039407b71bd6::t_88262969472ab3 9,26
+  s_f3039407b71bd6::t_5a4ad689b1943c 63
+  s_f3039407b71bd6::t_93869dee9027d3 64-65
+  s_f3039407b71bd6::t_8097f49537d2b8 226
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_f3039407b71bd6::t_88262969472ab3 7,27
+  s_f3039407b71bd6::t_ac760ab9fea10a 129
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionReviewBlocker.vue
+  s_f3039407b71bd6::t_5a4ad689b1943c 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_f3039407b71bd6::t_f439147023226e 150,208,227
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowPreview.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionGitHostSelect.test.ts
+  s_f3039407b71bd6::t_2748de79705444 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.test.ts
+  s_f3039407b71bd6::t_2748de79705444 2
+  s_f3039407b71bd6::t_f439147023226e 284
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsDialog.vue
+  s_f3039407b71bd6::t_88262969472ab3 19-20
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/review/PromotionReviewChanges.test.ts
+  s_f3039407b71bd6::t_2748de79705444 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_f3039407b71bd6::t_f439147023226e 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_f3039407b71bd6::t_88262969472ab3 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_f3039407b71bd6::t_5a4ad689b1943c 64
+  s_f3039407b71bd6::t_88262969472ab3 3,17,20
+  s_f3039407b71bd6::t_c9af5c10aeec59 65-66
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_f3039407b71bd6::t_2748de79705444 6
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_f3039407b71bd6::t_2748de79705444 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_f3039407b71bd6::t_5a4ad689b1943c 96
+  s_f3039407b71bd6::t_88262969472ab3 2-3
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_f3039407b71bd6::t_88262969472ab3 4,6
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsDialog.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_f3039407b71bd6::t_f439147023226e 1-2,43-46,273,716
+  s_f3039407b71bd6::t_2748de79705444 3
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionGitHostDiscovery.ts
+  s_f3039407b71bd6::t_88262969472ab3 3
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.eventBus.ts
+  s_f3039407b71bd6::t_5a4ad689b1943c 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteSelectionDialog.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_f3039407b71bd6::t_2748de79705444 2
+  s_f3039407b71bd6::t_f439147023226e 1,3
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.test.ts
+  s_f3039407b71bd6::t_2748de79705444 6
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
+  s_f3039407b71bd6::t_2748de79705444 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67ad6a1a758adfc14b15b40f134ccc930dae5434",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

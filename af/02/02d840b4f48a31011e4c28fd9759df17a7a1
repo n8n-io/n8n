@@ -49,6 +49,14 @@ packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     },
+    "s_69e862a8712a35": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aebb-32e6-723a-817d-2447b18c6f59",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_71ad2034164515": {
       "agent_id": {
         "tool": "codex",
