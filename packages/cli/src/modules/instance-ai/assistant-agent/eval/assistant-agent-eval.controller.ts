@@ -13,7 +13,7 @@ import { Body, Delete, Get, GlobalScope, Param, Post, Put, RestController } from
 import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 
 import { AssistantEvalThreadMemoryService } from './assistant-eval-thread-memory.service';
 import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
@@ -35,7 +35,7 @@ import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
 export class AssistantAgentEvalController {
 	constructor(
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly systemAgentExecution: SystemAgentExecutionService,
+		private readonly systemAgentEval: SystemAgentEvalService,
 		private readonly turnOverrides: EvalAssistantTurnOverrides,
 		private readonly credentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly threadMemory: AssistantEvalThreadMemoryService,
@@ -52,7 +52,7 @@ export class AssistantAgentEvalController {
 		@Body payload: InstanceAiAssistantEvalCreateThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
-		const thread = await this.systemAgentExecution.createThread({
+		const thread = await this.systemAgentEval.createThread({
 			agentId: ASSISTANT_AGENT_ID,
 			user: req.user,
 			projectId: payload.projectId,
@@ -69,7 +69,7 @@ export class AssistantAgentEvalController {
 		@Param('threadId') threadId: string,
 	) {
 		this.requireInstanceAiEnabled();
-		await this.systemAgentExecution.deleteThread(ASSISTANT_AGENT_ID, req.user, threadId);
+		await this.systemAgentEval.deleteThread(ASSISTANT_AGENT_ID, req.user, threadId);
 		// Clear only after the delete, which checks that the caller owns the thread.
 		this.turnOverrides.clearThread(threadId);
 		return { ok: true };
@@ -196,6 +196,6 @@ export class AssistantAgentEvalController {
 
 	/** The thread, when the caller owns it and can use it. Otherwise it throws `NotFoundError`. */
 	private async getThread(user: User, threadId: string) {
-		return await this.systemAgentExecution.getUsableThread(ASSISTANT_AGENT_ID, user, threadId);
+		return await this.systemAgentEval.getUsableThread(ASSISTANT_AGENT_ID, user, threadId);
 	}
 }

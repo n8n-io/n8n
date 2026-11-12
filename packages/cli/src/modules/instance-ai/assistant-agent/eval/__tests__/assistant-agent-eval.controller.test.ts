@@ -15,8 +15,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
-import type { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import type { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 
 import type { FailedExecutionPortabilityService } from '../../../eval/failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../../../eval/thread-credential-allowlist.service';
@@ -36,8 +35,8 @@ describe('AssistantAgentEvalController', () => {
 		const res = mock<Response>();
 		const settings = mock<InstanceAiSettingsService>();
 		settings.isInstanceAiEnabled.mockReturnValue(true);
-		const systemAgents = mock<SystemAgentExecutionService>();
-		const thread = mock<AgentExecutionThread>({ id: THREAD_ID, projectId: PROJECT_ID });
+		const systemAgents = mock<SystemAgentEvalService>();
+		const thread = { id: THREAD_ID, projectId: PROJECT_ID };
 		systemAgents.getUsableThread.mockResolvedValue(thread);
 		systemAgents.createThread.mockResolvedValue(thread);
 		const allowlists = new EvalThreadCredentialAllowlistService();
