@@ -97,9 +97,10 @@ comma and a space: `fix(core, editor): ...`.
       show. Delete the sentences that only restate the diff.
    2. Each Summary sentence after the first two describes a surprise (see
       Summary Section). If not, delete it.
-   3. Each sentence uses the exact technical term: the component, function,
-      API, or mechanism, with a plain technical verb.
-   4. Each sentence is true for the diff.
+   3. The first sentence states the area and the nature of the change (bug
+      fix, feature, refactor, or tests).
+   4. Each sentence uses exact technical terms and plain technical verbs.
+   5. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
    If step 5 found new flags, include their test settings in **How to test**.
@@ -148,17 +149,21 @@ Based on `.github/pull_request_template.md`.
 
 Keep the description short. The reviewer reads the diff for the details. The
 description gives only what the diff cannot show: why the change exists, and
-what could surprise the reviewer. If nothing is surprising, the Summary is one
-or two sentences and nothing more.
+what could surprise the reviewer. Keep the length in proportion to the
+complexity of the change. A simple change with no surprises needs one or two
+sentences and nothing more.
 
 Write for an engineer. Use exact technical terms, and do not simplify them.
 Use ASD-STE100 Simplified Technical English: short sentences, active voice,
 plain technical verbs, no metaphors.
 
 ### Summary Section
-1. Start with one or two sentences: what the PR does and why. Name the
-   component, function, API, or mechanism that changes.
-2. Stop there, unless the change has one of these surprises. For each surprise
+1. Start with one or two sentences: what the PR does and why. State the area
+   of the product or code (for example, the RabbitMQ Trigger node, workflow
+   history, or the CI pipeline) and the nature of the change: a bug fix, a
+   feature, a refactor, or tests. Do not name functions or fields here. The
+   diff shows them.
+2. Add more only when the change has one of these surprises. For each surprise
    that applies, add one short paragraph:
    - **Unexpected behaviour:** a change in behaviour for users or for other
      code paths, a changed default, a migration, or a side effect outside the
@@ -178,12 +183,12 @@ plain technical verbs, no metaphors.
 
 Examples of a complete Summary for a change with no surprises:
 
-> `rabbitmqConnectQueue` bound queues in a `forEach` with an `async` callback,
-> so the RabbitMQ Trigger returned the channel before the bindings existed.
-> This PR awaits each binding in a `for...of` loop.
+> This PR fixes a bug in the RabbitMQ Trigger node. The node returned its
+> channel before the queue bindings were complete, so it could miss the first
+> messages.
 
-> `AGENTS.md` referred to the `design-system` skill, which is now
-> `n8n:ui-design`. This PR changes only documentation.
+> This PR fixes the documentation in `AGENTS.md`. It referred to the UI design
+> skill by an old name, so agents could not find the skill.
 
 ### How to test Section
 - Write short steps for a person who tests the product change by hand: the
