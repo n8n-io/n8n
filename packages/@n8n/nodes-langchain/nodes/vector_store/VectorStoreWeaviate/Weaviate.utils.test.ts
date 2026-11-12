@@ -295,9 +295,9 @@ describe('parseCompositeFilter', () => {
 			"'AND' must contain an array of filters.",
 		],
 		[{ OR: 'Elis' }, "'OR' must contain an array of filters."],
-		[{ AND: [] }, "'AND' must contain an array of filters."],
-		[{ OR: [] }, "'OR' must contain an array of filters."],
-		[{ NOT: { AND: [] } }, "'AND' must contain an array of filters."],
+		[{ AND: [] }, "'AND' must contain at least one filter."],
+		[{ OR: [] }, "'OR' must contain at least one filter."],
+		[{ NOT: { AND: [] } }, "'AND' must contain at least one filter."],
 		[
 			{ NOT: [{ path: ['author'], operator: 'Equal', valueString: 'Elis' }] },
 			"'NOT' must contain exactly one filter.",
