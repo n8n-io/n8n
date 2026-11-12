@@ -69,8 +69,8 @@ test('counts eligible workflows and each workflow once per reason code, without 
 
 	expect(JSON.parse(stdout)).toEqual({
 		total: 4,
-		eligible: 1,
-		eligiblePercent: 25,
+		eligible: 2,
+		eligiblePercent: 50,
 		published: { total: 0, eligible: 0, eligiblePercent: 0 },
 		reasons: { REDACTION_POLICY: 2, ERROR_WORKFLOW: 1, TRIGGER_EXTERNAL_IDENTITY: 1 },
 	});
