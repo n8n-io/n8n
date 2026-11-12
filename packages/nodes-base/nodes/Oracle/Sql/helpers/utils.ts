@@ -176,7 +176,7 @@ function getExecuteManyOptions(
 	return execOptions;
 }
 
-function addBindParam(
+export function addBindParam(
 	colInfo: ColumnDefinition,
 	value: any,
 	bindParameters: oracledb.BindParameter[],
@@ -376,6 +376,29 @@ ORDER BY atc.COLUMN_NAME`;
 		if (conn) {
 			await conn.close();
 		}
+	}
+}
+
+export async function getUniqueKeyColumns(
+	pool: oracledb.Pool,
+	schema: string,
+	table: string,
+): Promise<string[]> {
+	const conn = await pool.getConnection();
+	try {
+		const result = await conn.execute<{ COLUMN_NAME: string }>(
+			`SELECT MIN(aic.column_name) AS column_name
+			 FROM all_indexes ai
+			 JOIN all_ind_columns aic ON aic.index_owner = ai.owner AND aic.index_name = ai.index_name
+			 WHERE ai.table_owner = :schema_name AND ai.table_name = :table_name
+			   AND ai.uniqueness = 'UNIQUE' AND ai.index_type IN ('NORMAL', 'IOT - TOP')
+			 GROUP BY ai.owner, ai.index_name HAVING COUNT(*) = 1`,
+			{ schema_name: schema, table_name: table },
+			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+		);
+		return (result.rows ?? []).map((row) => row.COLUMN_NAME);
+	} finally {
+		await conn.close();
 	}
 }
 

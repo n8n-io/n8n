@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type * as oracleDBTypes from 'oracledb';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -16,16 +17,19 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 import {
+	addBindParam,
 	addSortRules,
 	addWhereClauses,
 	quoteSqlIdentifier,
 	getColumnMap,
 	getColumnMetaData,
+	getUniqueKeyColumns,
 } from '../../helpers/utils';
 import {
 	combineConditionsCollection,
 	optionsCollection,
 	sortFixedCollection,
+	startAfterFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
 
@@ -60,6 +64,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	whereFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -86,6 +91,7 @@ export async function execute(
 	pool: oracleDBTypes.Pool,
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
+	const uniqueColumnsByTable = new Map<string, string[]>();
 
 	const conn = await pool.getConnection();
 	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
@@ -114,6 +120,7 @@ export async function execute(
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+		const base = innerQuery;
 		[innerQuery, values] = addWhereClauses(
 			innerQuery,
 			whereClauses,
@@ -123,13 +130,59 @@ export async function execute(
 			i,
 		);
 
-		// Add ORDER BY if needed
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-		innerQuery = addSortRules(innerQuery, sortRules);
+		let rules = sortRules;
+
+		const returnAll = this.getNodeParameter('returnAll', i, false);
+		if (!returnAll) {
+			const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
+				{}) as IDataObject;
+			const column = String(cursor.column ?? '');
+			const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+
+			if (column !== '') {
+				const tableKey = `${schema}.${table}`;
+				let uniqueColumns = uniqueColumnsByTable.get(tableKey);
+				if (!uniqueColumns) {
+					uniqueColumns = await getUniqueKeyColumns(pool, schema, table);
+					uniqueColumnsByTable.set(tableKey, uniqueColumns);
+				}
+				if (!uniqueColumns.includes(column)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
+						{ itemIndex: i },
+					);
+				}
+				if (!columnMetaDataObject[column]) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Column "${column}" was not found in table "${table}"`,
+						{ itemIndex: i },
+					);
+				}
+
+				if (value !== '') {
+					const where = innerQuery.slice(base.length);
+					const predicate = `${quoteSqlIdentifier(column)} > :${values.length}`;
+					innerQuery = where
+						? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
+						: `${base} WHERE ${predicate}`;
+					addBindParam(columnMetaDataObject[column], value, values);
+				}
+
+				// ponytail: the walk is only correct with no Sort rules or Sort = cursor column ASC
+				rules = sortRules.some((rule) => rule.column === column)
+					? sortRules
+					: [...sortRules, { column, direction: 'ASC' }];
+			}
+		}
+
+		// Add ORDER BY if needed
+		innerQuery = addSortRules(innerQuery, rules);
 
 		// Handle LIMIT / pagination
-		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
 			const limitParam = this.getNodeParameter('limit', i, 50);
 			const limit = Number.isFinite(Number(limitParam)) ? Math.trunc(Number(limitParam)) : 0;
@@ -138,7 +191,7 @@ export async function execute(
 				// Oracle 12c+ (FETCH FIRST)
 				query += `${innerQuery} FETCH FIRST ${limit} ROWS ONLY`;
 			} else {
-				if (sortRules.length > 0 || whereClauses.length > 0) {
+				if (rules.length > 0 || whereClauses.length > 0) {
 					// Wrap inner query to preserve WHERE + ORDER BY
 					query = `SELECT * FROM (${innerQuery}) WHERE ROWNUM <= ${limit}`;
 				} else {
