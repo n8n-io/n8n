@@ -213,12 +213,13 @@ describe('ToolSettingsModal', () => {
 		it('shows the callout, locks the settings and disables Save', async () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.testTool': 'instance' });
 
-			const { getByTestId } = renderModal({ valid: true });
+			const { container, getByTestId } = renderModal({ valid: true });
 
 			expect(getByTestId('restricted-chatTool-callout').textContent).toContain(
 				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
 			);
 			expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('true');
+			expect(container.querySelector('[data-readonly]')).toBeTruthy();
 
 			const saveButton = getByTestId('chat-tool-settings-save');
 			await waitFor(() => {
@@ -231,9 +232,10 @@ describe('ToolSettingsModal', () => {
 		it('keeps the settings editable when the tool is not restricted', async () => {
 			mockRestrictedNodeTypes();
 
-			const { getByTestId, queryByTestId } = renderModal({ valid: true });
+			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
 
 			expect(queryByTestId('restricted-chatTool-callout')).toBeNull();
+			expect(container.querySelector('[data-readonly]')).toBeNull();
 			expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('false');
 			await waitFor(() => {
 				expect(getByTestId('chat-tool-settings-save')).not.toBeDisabled();

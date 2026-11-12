@@ -687,6 +687,10 @@ describe('ToolsManagerModal', () => {
 
 			const toggle = getToggle(getConfiguredItems(container)[0]);
 			expect(toggle).not.toBeDisabled();
+			expect(toggle.getAttribute('aria-label')).toContain('Configured Tool A');
+			expect(toggle.getAttribute('aria-label')).toContain(
+				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			);
 			await fireEvent.click(toggle);
 
 			await waitFor(() => {
@@ -722,6 +726,7 @@ describe('ToolsManagerModal', () => {
 			expect(getByTestId('restricted-chatTool-callout').textContent).toContain(
 				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
 			);
+			expect(container.querySelector('[data-readonly]')).toBeTruthy();
 
 			const saveButton = getByTestId('chat-tool-settings-save');
 			expect(saveButton).toBeDisabled();
@@ -754,6 +759,9 @@ describe('ToolsManagerModal', () => {
 
 			const [configured] = getConfiguredItems(container);
 			expect(getToggle(configured)).not.toBeDisabled();
+			expect(getToggle(configured).getAttribute('aria-label')).toContain(
+				'chatHub.toolsManager.disableTool',
+			);
 
 			const [configureBtn] = getActionButtons(configured);
 			await userEvent.click(configureBtn);
@@ -762,6 +770,7 @@ describe('ToolsManagerModal', () => {
 				expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('false');
 			});
 			expect(queryByTestId('restricted-chatTool-callout')).toBeNull();
+			expect(container.querySelector('[data-readonly]')).toBeNull();
 			expect(getByTestId('chat-tool-settings-save')).not.toBeDisabled();
 		});
 

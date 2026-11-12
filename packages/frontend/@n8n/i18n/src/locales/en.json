@@ -973,6 +973,7 @@
 	"chatHub.toolsManager.confirmRemove.message": "Are you sure you want to remove this tool? It will also be removed from all your conversations and personal agents that use it.",
 	"chatHub.toolsManager.confirmRemove.title": "Remove tool",
 	"chatHub.toolsManager.disableTool": "Disable tool",
+	"chatHub.toolsManager.toggleLabel": "{toolName}: {status}",
 	"chatHub.credentials.selector.title": "Select {provider} credential",
 	"chatHub.credentials.selector.chooseOrCreate": "Choose or create a credential for {provider}",
 	"chatHub.credentials.selector.createNew": "Create new",

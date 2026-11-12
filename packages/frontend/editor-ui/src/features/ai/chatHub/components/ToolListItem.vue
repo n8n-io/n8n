@@ -75,6 +75,12 @@ const toggleTooltip = computed(() => {
 		? i18n.baseText('chatHub.toolsManager.disableTool')
 		: i18n.baseText('chatHub.toolsManager.enableTool');
 });
+
+const toggleLabel = computed(() =>
+	i18n.baseText('chatHub.toolsManager.toggleLabel', {
+		interpolate: { toolName: displayName.value, status: toggleTooltip.value },
+	}),
+);
 </script>
 
 <template>
@@ -166,6 +172,7 @@ const toggleTooltip = computed(() => {
 						:model-value="enabled"
 						size="large"
 						:disabled="!!restriction && !enabled"
+						:aria-label="toggleLabel"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
 					/>
