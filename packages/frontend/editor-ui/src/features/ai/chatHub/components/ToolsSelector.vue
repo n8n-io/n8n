@@ -390,7 +390,9 @@ onMounted(async () => {
 	z-index: 10000;
 	min-width: 330px;
 
-	[data-highlighted] [class*='itemSettingsButton'] {
+	// A searchable menu marks the active row as virtually highlighted, because the focus stays in the search.
+	[data-highlighted] [class*='itemSettingsButton'],
+	[data-virtual-highlighted] [class*='itemSettingsButton'] {
 		opacity: 1;
 	}
 }
