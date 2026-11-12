@@ -16,8 +16,8 @@ import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-s
 
 import { saveCredential } from './shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
-import { createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
+import { addApiKey, createUser } from './shared/db/users';
+import type { SuperAgentTest, TestAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
@@ -26,7 +26,7 @@ mockInstance(Publisher);
 mockInstance(ExecutionRecoveryService);
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['eventBus'],
+	endpointGroups: ['eventBus', 'publicApi'],
 	enabledFeatures: ['feat:logStreaming'],
 	modules: ['log-streaming'],
 });
@@ -361,6 +361,7 @@ describe('credential access enforcement', () => {
 			'some-credential-id',
 			expect.objectContaining({ id: owner.id }),
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 	});
 
@@ -406,8 +407,10 @@ describe('destination credential project roles', () => {
 	const roles = [
 		{ role: 'project:viewer', statusCode: 403 },
 		{ role: 'project:editor', statusCode: 200 },
+		{ role: 'global:owner', statusCode: 200 },
 	] as const;
-	let agents: Record<'project:viewer' | 'project:editor', SuperAgentTest>;
+	let agents: Record<(typeof roles)[number]['role'], SuperAgentTest>;
+	let publicAgents: Record<(typeof roles)[number]['role'], TestAgent>;
 	let credential: CredentialsEntity;
 	let destinationId: string;
 
@@ -439,6 +442,12 @@ describe('destination credential project roles', () => {
 		agents = {
 			'project:viewer': testServer.authAgentFor(viewer),
 			'project:editor': testServer.authAgentFor(editor),
+			'global:owner': authOwnerAgent,
+		};
+		publicAgents = {
+			'project:viewer': testServer.publicApiAgentWithApiKey((await addApiKey(viewer)).apiKey),
+			'project:editor': testServer.publicApiAgentWithApiKey((await addApiKey(editor)).apiKey),
+			'global:owner': testServer.publicApiAgentWithApiKey((await addApiKey(owner)).apiKey),
 		};
 		credential = await saveCredential(
 			{
@@ -496,6 +505,28 @@ describe('destination credential project roles', () => {
 			expect.soft(response.statusCode).toBe(statusCode);
 			expect(receiver.isDone()).toBe(statusCode === 200);
 			if (statusCode === 200) expect(response.body.data).toBe(true);
+		},
+	);
+
+	test.each(roles)(
+		'POST /settings/log-streaming/destinations/:id/test returns $statusCode for $role with a project credential',
+		async ({ role, statusCode }) => {
+			await agents['project:editor']
+				.post('/eventbus/destination')
+				.send(destinationPayload())
+				.expect(200);
+			const receiver = nock('https://example.com')
+				.post('/events')
+				.matchHeader('Authorization', headerValue)
+				.reply(200, {});
+
+			const response = await publicAgents[role].post(
+				`/settings/log-streaming/destinations/${destinationId}/test`,
+			);
+
+			expect.soft(response.statusCode).toBe(statusCode);
+			expect(receiver.isDone()).toBe(statusCode === 200);
+			if (statusCode === 200) expect(response.body).toEqual({ success: true });
 		},
 	);
 });

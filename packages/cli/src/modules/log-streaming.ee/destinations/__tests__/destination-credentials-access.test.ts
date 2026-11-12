@@ -40,9 +40,12 @@ describe('assertUserCanUseDestinationCredentials', () => {
 		await expect(
 			assertUserCanUseDestinationCredentials(credentialsFinderService, user, options),
 		).rejects.toThrow(ForbiddenError);
-		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-			'credential:read',
-		]);
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'cred-1',
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
 	});
 
 	it('resolves when the user can access every referenced credential', async () => {

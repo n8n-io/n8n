@@ -23,9 +23,12 @@ export async function assertUserCanUseDestinationCredentials(
 		const credentialId = reference?.id;
 		if (!credentialId) continue;
 
-		const credential = await credentialsFinderService.findCredentialForUser(credentialId, user, [
-			'credential:read',
-		]);
+		const credential = await credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
 
 		if (!credential) {
 			throw new ForbiddenError(
