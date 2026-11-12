@@ -2,6 +2,7 @@ import { INSTANCE_AI_THREAD_SOURCE_FALLBACK } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
@@ -55,7 +56,9 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	function trackSend({ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage) {
 		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(text);
 		const isPrefill = authorship.kind === 'prefill';
-		const attachments = clientContext?.attachments;
+		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
+			? clientContext.attachments
+			: [];
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -66,7 +69,8 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
-			attachment_count: files.length + (Array.isArray(attachments) ? attachments.length : 0),
+			attachment_count: files.length + attachments.length,
+			selected_element_count: attachments.filter((a) => isRecord(a) && a.type === 'element').length,
 			runtime: 'agents',
 		});
 	}

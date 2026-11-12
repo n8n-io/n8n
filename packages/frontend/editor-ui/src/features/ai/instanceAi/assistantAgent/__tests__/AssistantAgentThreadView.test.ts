@@ -1482,6 +1482,7 @@ describe('AssistantAgentThreadView', () => {
 				text: 'Build an agent',
 				files: [],
 				references: [],
+				authorship: USER_TYPED_MESSAGE,
 			});
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
 			await flushPromises();

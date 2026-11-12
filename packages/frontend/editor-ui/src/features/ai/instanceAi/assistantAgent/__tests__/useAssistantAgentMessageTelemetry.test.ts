@@ -20,7 +20,12 @@ function sending(text: string, extra: { isFirstMessage?: boolean; files?: File[]
 	return {
 		text,
 		files: extra.files ?? [],
-		clientContext: { attachments: [{ type: 'agent', id: 'agent-1', projectId: 'p1' }] },
+		clientContext: {
+			attachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'p1' },
+				{ type: 'element', appId: 'app-1' },
+			],
+		},
 		isFirstMessage: extra.isFirstMessage ?? false,
 	};
 }
@@ -48,7 +53,8 @@ describe('useAssistantAgentMessageTelemetry', () => {
 			prefill_id: null,
 			prompt_modified: null,
 			mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS,
-			attachment_count: 2,
+			attachment_count: 3,
+			selected_element_count: 1,
 			runtime: 'agents',
 		});
 	});
