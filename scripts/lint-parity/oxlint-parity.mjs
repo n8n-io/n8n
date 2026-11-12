@@ -137,12 +137,15 @@ function isEnabled(severity) {
 
 const matchesPattern = (file, pattern) => matchesGlob(file, pattern.replace(/^\.\//, ''));
 
-function overrideMatchesSample({ files = [], excludeFiles = [], ignores = [] }) {
-	return sampledFiles.some(
-		(file) =>
-			(files.length === 0 || files.some((pattern) => matchesPattern(file, pattern))) &&
-			![...excludeFiles, ...ignores].some((pattern) => matchesPattern(file, pattern)),
+function overrideMatchesFile({ files = [], excludeFiles = [], ignores = [] }, file) {
+	return (
+		(files.length === 0 || files.some((pattern) => matchesPattern(file, pattern))) &&
+		![...excludeFiles, ...ignores].some((pattern) => matchesPattern(file, pattern))
 	);
+}
+
+function overrideMatchesSample(override) {
+	return sampledFiles.some((file) => overrideMatchesFile(override, file));
 }
 
 /** Native rules oxlint actually resolved for this package. */
@@ -199,10 +202,30 @@ async function declaredJsPluginRules() {
 	};
 	visit(mod.default);
 
-	const ids = [...declared]
-		.filter(([id, severity]) => isEnabled(severity) && JS_PLUGIN_NAMESPACES.has(splitId(id)[0]))
-		.map(([id]) => id);
-	return { ids, overrideOnly, plugins: [...plugins] };
+	// Resolve each sampled file on its own, as for native rules. A rule that an
+	// override turns down on every sampled file is enforced on none of them.
+	const severitiesFor = (file) => {
+		const severities = new Map();
+		const apply = (config) => {
+			for (const parent of config.extends ?? []) apply(parent);
+			for (const [id, severity] of Object.entries(config.rules ?? {})) severities.set(id, severity);
+			for (const override of config.overrides ?? []) {
+				if (!overrideMatchesFile(override, file)) continue;
+				for (const [id, severity] of Object.entries(override.rules ?? {})) {
+					severities.set(id, severity);
+				}
+			}
+		};
+		apply(mod.default);
+		return severities;
+	};
+	const ids = new Set();
+	for (const file of sampledFiles) {
+		for (const [id, severity] of severitiesFor(file)) {
+			if (isEnabled(severity) && JS_PLUGIN_NAMESPACES.has(splitId(id)[0])) ids.add(id);
+		}
+	}
+	return { ids: [...ids], overrideOnly, plugins: [...plugins] };
 }
 
 /**
