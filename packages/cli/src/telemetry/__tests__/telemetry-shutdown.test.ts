@@ -1,3 +1,4 @@
+import type { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import { createServer } from 'node:http';
@@ -7,7 +8,6 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
 vi.unmock('@/telemetry');
