@@ -7,6 +7,7 @@ import { type ApplicableAiPreferences, AiPreferenceService } from '@n8n/backend-
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 import { createGetUserPreferencesTool } from '../tools/get-user-preferences.tool';
 
 /** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
@@ -43,7 +44,10 @@ const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
 		getApplicableForProject: read(),
 	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
-	return { aiPreferenceService, telemetry };
+	const preferencesNoteService = mockInstance(McpPreferencesNoteService, {
+		decideForEmptyResult: vi.fn().mockResolvedValue({ variant: 'control' }),
+	});
+	return { aiPreferenceService, telemetry, preferencesNoteService };
 };
 
 describe('get-user-preferences MCP tool', () => {
@@ -56,25 +60,40 @@ describe('get-user-preferences MCP tool', () => {
 
 	describe('tool definition', () => {
 		test('is named get_user_preferences', () => {
-			const { aiPreferenceService, telemetry } = createMocks();
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
 
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			expect(tool.name).toBe('get_user_preferences');
 		});
 
 		test('carries the agreed description verbatim', () => {
-			const { aiPreferenceService, telemetry } = createMocks();
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
 
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			expect(tool.config.description).toBe(DESCRIPTION);
 		});
 
 		test('takes only the optional projectId, so a plain call still reads everything', () => {
-			const { aiPreferenceService, telemetry } = createMocks();
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
 
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			expect(Object.keys(tool.config.inputSchema!)).toEqual(['projectId']);
 			expect(tool.config.inputSchema!.projectId.safeParse(undefined).success).toBe(true);
@@ -83,9 +102,14 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('is annotated read-only', () => {
-			const { aiPreferenceService, telemetry } = createMocks();
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
 
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			expect(tool.config.annotations).toMatchObject({
 				readOnlyHint: true,
@@ -98,12 +122,17 @@ describe('get-user-preferences MCP tool', () => {
 
 	describe('reading', () => {
 		test('reads the preferences that apply to the calling user', async () => {
-			const { aiPreferenceService, telemetry } = createMocks({
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: [],
 				user: saved('Keep replies short.'),
 				projects: [],
 			});
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -111,12 +140,17 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('returns the rendered preferences', async () => {
-			const { aiPreferenceService, telemetry } = createMocks({
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: saved('Use British English.'),
 				user: saved('Keep replies short.'),
 				projects: [{ id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') }],
 			});
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			const result = await tool.handler({});
 
@@ -143,8 +177,13 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('answers definitely when nothing is saved, so the assistant does not ask again', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(empty);
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			const result = await tool.handler({});
 
@@ -153,8 +192,13 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reads again on every call, so an edit lands without a reconnect', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(empty);
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 			await tool.handler({});
@@ -164,12 +208,17 @@ describe('get-user-preferences MCP tool', () => {
 
 		describe('narrowed to one project (CONTEXT-136)', () => {
 			test('reads the one project instead of every project', async () => {
-				const { aiPreferenceService, telemetry } = createMocks({
+				const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 					instance: saved('Use British English.'),
 					user: saved('Keep replies short.'),
 					projects: [{ id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') }],
 				});
-				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+				const tool = createGetUserPreferencesTool(
+					user,
+					aiPreferenceService,
+					telemetry,
+					preferencesNoteService,
+				);
 
 				const result = await tool.handler({ projectId: 'p-1' });
 
@@ -183,8 +232,13 @@ describe('get-user-preferences MCP tool', () => {
 			});
 
 			test('answers an empty project definitely, naming the project scope', async () => {
-				const { aiPreferenceService, telemetry } = createMocks(empty);
-				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+				const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+				const tool = createGetUserPreferencesTool(
+					user,
+					aiPreferenceService,
+					telemetry,
+					preferencesNoteService,
+				);
 
 				const result = await tool.handler({ projectId: 'p-1' });
 
@@ -193,10 +247,15 @@ describe('get-user-preferences MCP tool', () => {
 			});
 
 			test('rejects a project the caller cannot read as an error result, not an empty success', async () => {
-				const { aiPreferenceService, telemetry } = createMocks(
+				const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(
 					new Error('Project with id p-9 not found'),
 				);
-				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+				const tool = createGetUserPreferencesTool(
+					user,
+					aiPreferenceService,
+					telemetry,
+					preferencesNoteService,
+				);
 
 				const result = await tool.handler({ projectId: 'p-9' });
 
@@ -258,12 +317,17 @@ describe('get-user-preferences MCP tool', () => {
 			])(
 				'instance=$instance personal=$personal projects=$projects',
 				async ({ instance, personal, projects, expected }) => {
-					const { aiPreferenceService, telemetry } = createMocks({
+					const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 						instance: instance ? saved('Use British English.') : [],
 						user: personal ? saved('Keep replies short.') : [],
 						projects: projects ? [MARKETING] : [],
 					});
-					const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+					const tool = createGetUserPreferencesTool(
+						user,
+						aiPreferenceService,
+						telemetry,
+						preferencesNoteService,
+					);
 
 					const result = await tool.handler({});
 
@@ -280,10 +344,79 @@ describe('get-user-preferences MCP tool', () => {
 		});
 	});
 
+	describe('empty preferences note', () => {
+		const NOTE = 'Tell the user about preferences.';
+
+		test('appends the note to an empty result when the service gives one', async () => {
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+			preferencesNoteService.decideForEmptyResult.mockResolvedValue({
+				variant: 'variant',
+				note: NOTE,
+			});
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
+
+			const result = await tool.handler({});
+
+			expect(preferencesNoteService.decideForEmptyResult).toHaveBeenCalledWith(user);
+			expect(result.content).toEqual([{ type: 'text', text: `${NOTHING_SAVED}\n\n${NOTE}` }]);
+			expect(result.structuredContent).toEqual({
+				hasPreferences: false,
+				preferences: [],
+				note: NOTE,
+			});
+			expect(z.object(tool.config.outputSchema!).safeParse(result.structuredContent).success).toBe(
+				true,
+			);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: {
+						success: true,
+						data: expect.objectContaining({
+							preferences_note_variant: 'variant',
+							preferences_note_shown: true,
+						}),
+					},
+				}),
+			);
+		});
+
+		test('does not ask for a note when preferences are saved', async () => {
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
+				instance: [],
+				user: saved('Keep replies short.'),
+				projects: [],
+			});
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
+
+			const result = await tool.handler({});
+
+			expect(preferencesNoteService.decideForEmptyResult).not.toHaveBeenCalled();
+			expect(result.structuredContent).not.toHaveProperty('note');
+		});
+	});
+
 	describe('failures', () => {
 		test('answers with an error result, not with "no preferences", so no build proceeds blind', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(
+				new Error('db down'),
+			);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			const result = await tool.handler({});
 
@@ -300,8 +433,15 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('keeps the error result inside the output schema', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(
+				new Error('db down'),
+			);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			const result = await tool.handler({});
 
@@ -313,12 +453,17 @@ describe('get-user-preferences MCP tool', () => {
 
 	describe('telemetry', () => {
 		test('reports a successful call', async () => {
-			const { aiPreferenceService, telemetry } = createMocks({
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: saved('Use British English.'),
 				user: [],
 				projects: [],
 			});
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -339,12 +484,17 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports the read as its own registered event, apart from the turn event', async () => {
-			const { aiPreferenceService, telemetry } = createMocks({
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: saved('Use British English.'),
 				user: [],
 				projects: [],
 			});
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -361,8 +511,13 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports a read of one project as project scoped, and an empty read as a zero', async () => {
-			const { aiPreferenceService, telemetry } = createMocks();
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({ projectId: 'p-1' });
 
@@ -373,9 +528,14 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports no read when the read failed', async () => {
-			const { aiPreferenceService, telemetry } = createMocks();
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
 			aiPreferenceService.getApplicableAcrossProjects.mockRejectedValue(new Error('db down'));
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -386,8 +546,13 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports nothing saved as a count of zero and no scopes', async () => {
-			const { aiPreferenceService, telemetry } = createMocks();
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks();
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -396,14 +561,21 @@ describe('get-user-preferences MCP tool', () => {
 				expect.objectContaining({
 					results: {
 						success: true,
-						data: { hasPreferences: false, count: 0, scopes: [], rendered_length: 0 },
+						data: {
+							hasPreferences: false,
+							count: 0,
+							scopes: [],
+							rendered_length: 0,
+							preferences_note_variant: 'control',
+							preferences_note_shown: false,
+						},
 					},
 				}),
 			);
 		});
 
 		test('counts every item and keeps the scope list distinct and in render order', async () => {
-			const { aiPreferenceService, telemetry } = createMocks({
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: saved('Use British English.'),
 				user: saved('Keep replies short.'),
 				projects: [
@@ -415,7 +587,12 @@ describe('get-user-preferences MCP tool', () => {
 					},
 				],
 			});
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			const result = await tool.handler({});
 			const rendered = result.content?.[0];
@@ -441,8 +618,15 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports a failed call', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(
+				new Error('db down'),
+			);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({});
 
@@ -455,8 +639,13 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports the projectId a narrowed call passed', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(empty);
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({ projectId: 'p-1' });
 
@@ -467,10 +656,15 @@ describe('get-user-preferences MCP tool', () => {
 		});
 
 		test('reports a rejected projectId as a failure that still names the projectId', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(
 				new Error('Project with id p-9 not found'),
 			);
-			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+			);
 
 			await tool.handler({ projectId: 'p-9' });
 

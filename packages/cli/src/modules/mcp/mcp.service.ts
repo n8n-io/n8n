@@ -112,6 +112,7 @@ import {
 } from './tools/get-instance-context.tool';
 import { createGetDependenciesTool } from './tools/get-dependencies.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
+import { McpPreferencesNoteService } from './mcp-preferences-note.service';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
@@ -289,6 +290,7 @@ export class McpService {
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly preferencesNoteService: McpPreferencesNoteService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -860,7 +862,14 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		registerIfAllowed(createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry));
+		registerIfAllowed(
+			createGetUserPreferencesTool(
+				user,
+				this.aiPreferenceService,
+				this.telemetry,
+				this.preferencesNoteService,
+			),
+		);
 		// The write path. Gated by `aiPreference:write` at registration; the service applies the
 		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
 		registerIfAllowed(

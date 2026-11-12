@@ -81,6 +81,7 @@ import {
 } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo, ToolDefinition } from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -171,6 +172,7 @@ describe('McpService', () => {
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
 			instanceWriteAccess,
+			mockInstance(McpPreferencesNoteService),
 		);
 	});
 
@@ -230,6 +232,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -443,6 +446,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -1453,6 +1457,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1514,6 +1519,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1600,6 +1606,7 @@ describe('McpService', () => {
 					mockInstance(McpConfig),
 					mockInstance(ExecutionRedactionServiceProxy),
 					mockInstance(InstanceWriteAccessService),
+					mockInstance(McpPreferencesNoteService),
 				);
 			};
 
