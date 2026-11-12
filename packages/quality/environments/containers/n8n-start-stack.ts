@@ -71,7 +71,7 @@ ${colors.yellow}Options:${colors.reset}
   --mailpit         Enable Mailpit for email testing
   --kent            Enable Kent (Sentry mock) for error tracking testing
   --mains <n>       Number of main instances (default: 1)
-  --workers <n>     Number of worker instances (default: 1)
+  --workers <n>     Number of worker instances (default: 1, or 0 with --engine)
   --name <name>     Project name for parallel runs
   --network <name>  Docker network name (default: auto-generated)
   --env KEY=VALUE   Set environment variables
@@ -220,7 +220,8 @@ async function main() {
 	// Handle queue mode (mains > 1 or workers > 0)
 	if (values.queue ?? values.mains ?? values.workers) {
 		const mains = parseInt(values.mains ?? '1', 10);
-		const workers = parseInt(values.workers ?? '1', 10);
+		// Engine v2 runs on mains only, so it gets no worker by default.
+		const workers = parseInt(values.workers ?? (values.engine ? '0' : '1'), 10);
 
 		if (isNaN(mains) || isNaN(workers) || mains < 1 || workers < 0) {
 			log.error('Invalid mains or workers count');
