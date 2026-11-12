@@ -91,7 +91,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,
 		includeOutgoing: boolean,
-	): Promise<Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>> {
+	): Promise<
+		Array<
+			Pick<
+				WorkflowDependency,
+				'workflowId' | 'dependencyType' | 'dependencyKey' | 'publishedVersionId'
+			>
+		>
+	> {
 		return await this.find({
 			where: [
 				...(includeOutgoing
@@ -112,7 +119,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 					dependencyType: In(incomingTypes),
 				},
 			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+			select: ['workflowId', 'dependencyType', 'dependencyKey', 'publishedVersionId'],
 		});
 	}
 

@@ -84,7 +84,7 @@ async function tap(api: ApiHelpers, callbackData: string, secret: string) {
 
 test.describe(
 	'Send and wait approval callbacks',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test.beforeEach(async ({ services }) => {
 			await mockTelegram(services.proxy);

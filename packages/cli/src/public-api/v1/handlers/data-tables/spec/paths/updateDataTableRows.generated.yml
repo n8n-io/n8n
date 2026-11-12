@@ -2,7 +2,10 @@ operationId: updateDataTableRows
 tags:
   - DataTable
 summary: Update rows in a data table
-description: Update rows matching filter conditions in a data table.
+description: |-
+  Update rows matching filter conditions in a data table.
+
+  Requires the `dataTableRow:update` API key scope.
 x-required-scope: dataTableRow:update
 parameters:
   - schema:

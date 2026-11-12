@@ -23,7 +23,12 @@ import {
 	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
-import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
+import {
+	GLOBAL_OWNER_ROLE_SLUG,
+	isReservedGlobalRole,
+	type Principal,
+	type SecurityContext,
+} from '@n8n/permissions';
 import { UnexpectedError } from '@n8n/errors';
 
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
@@ -344,7 +349,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 	}
 
 	private async isAssignableInstanceRole(slug: string, ctx: OperationContext): Promise<boolean> {
-		if (slug === GLOBAL_OWNER_ROLE_SLUG) return false;
+		if (isReservedGlobalRole(slug)) return false;
 		if (!(await this.identities.globalRoleExists(slug, ctx))) return false;
 		return this.roleService.isRoleLicensed(slug);
 	}

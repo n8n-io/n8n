@@ -289,6 +289,9 @@ baseline. A new business-logic import fails CI.
   - A repository that `extends BaseRepository` / `extends Repository`, or that
     exposes its table (public property, getter, or a `find(options)`
     passthrough) — the inherited TypeORM surface must stay private to the table.
+- **Account kinds:** the `user` table holds people and service accounts. Before
+  you load or type an account, read "Account kinds" in
+  [packages/@n8n/db/AGENTS.md](packages/@n8n/db/AGENTS.md).
 
 ### ESLint configuration layers
 
