@@ -56,7 +56,7 @@ let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) |
 const workflowName = computed(
 	() =>
 		workflow.value?.name ??
-		detail.value?.suggestion?.payload.original.name ??
+		detail.value?.suggestions[0]?.payload.original.name ??
 		props.selection.workflowId,
 );
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
@@ -174,7 +174,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 	let reviewAction: SelfHealingReviewAction;
 	if (isContinuation) {
-		reviewAction = before.suggestion ? 'apply' : 'dismiss';
+		reviewAction = before.suggestions.length > 0 ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
 	}
@@ -189,9 +189,7 @@ async function onAction(action: SelfHealingResultAction) {
 		responseLost: boolean,
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		const closed =
-			result.reviewState === closedState ||
-			(action === 'dismiss' && result.reviewState === 'discarded');
+		const closed = result.reviewState === closedState;
 		if (!isSelected(target.id) || !closed) return false;
 
 		if (action === 'chat') {

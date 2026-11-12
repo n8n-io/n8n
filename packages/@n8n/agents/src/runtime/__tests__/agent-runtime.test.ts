@@ -42,7 +42,6 @@ import { MAX_HYDRATED_FILE_PARTS } from '../loop/hydrate-file-parts';
 import { StreamSink } from '../loop/stream-sink';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
-import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
 import {
@@ -8885,7 +8884,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 	});
 
-	it('loads only unobserved history when an observation cursor exists', async () => {
+	it('resumes from notes at turn start when the thread is over the limit', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
@@ -8954,8 +8953,11 @@ describe('AgentRuntime — observation log jobs', () => {
 		>;
 		const [{ messages }] = generateTextMock.mock.calls[0];
 		const serialized = JSON.stringify(messages);
+		// Over the limit at turn start: the Observer catches up on the backlog
+		// first, so the resume point moves past the recent message too.
 		expect(serialized).not.toContain('OBSERVED_OLD_MESSAGE');
-		expect(serialized).toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).not.toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).toContain('Current turn question');
 
 		await runtime.dispose();
 	});
@@ -9126,6 +9128,8 @@ describe('AgentRuntime — mid-run observation', () => {
 			observationalMemory: {
 				observerThresholdTokens: 1,
 				observationLogTailLimit: 20,
+				// These tests assert the notes in the system prompt.
+				logPlacement: 'system',
 				observe: async () => await Promise.resolve(OBSERVE_TEXT),
 			},
 		});
@@ -9148,7 +9152,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		// After the first boundary's compaction the prompt is just the reminder,
 		// and the refreshed system prompt carries the observation.
 		const second = capturedCall(1);
-		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
+		// The turn's request stays visible after the swap.
+		expect(second.messages).toHaveLength(1);
+		expect(JSON.stringify(second.messages)).toContain('start work');
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 		expect(second.instructions).toHaveLength(2);
 
@@ -9268,9 +9274,8 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.generate('Build it', { persistence: PERSISTENCE });
 		await runtime.dispose();
 
-		expect(capturedCall(1).messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expect(capturedCall(1).messages).toHaveLength(1);
+		expect(JSON.stringify(capturedCall(1).messages)).toContain('Build it');
 		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 			'Wait for a real execution',
 		);
@@ -9543,11 +9548,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.dispose();
 
 		const resumeCall = capturedCall(2);
-		expect(JSON.stringify(resumeCall.messages)).not.toContain('start work');
-		expect(resumeCall.messages[0]).toEqual({
-			role: 'user',
-			content: OBSERVATION_CONTINUATION_REMINDER,
-		});
+		// The turn's request stays first; the observed step after it is masked.
+		expect(JSON.stringify(resumeCall.messages[0])).toContain('start work');
+		expect(JSON.stringify(resumeCall.messages)).not.toContain('tc-step');
 	});
 
 	it('observes at the resume boundary when the resumed tool results cross the budget', async () => {
@@ -9579,9 +9582,8 @@ describe('AgentRuntime — mid-run observation', () => {
 		// The first post-resume model call already sees the compacted window:
 		// the resumed tool results were observed before reaching the model.
 		const resumeCall = capturedCall(1);
-		expect(resumeCall.messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expect(resumeCall.messages).toHaveLength(1);
+		expect(JSON.stringify(resumeCall.messages)).toContain('start work');
 		expect(flattenInstructions(resumeCall.instructions)).toContain('Mid-run observation captured.');
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});

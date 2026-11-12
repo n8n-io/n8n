@@ -7,9 +7,8 @@
  * schema for entity selection, output/result structures, and the async guardrail
  * check_fn for runtime enforcement.
  */
-import { safeRegex } from 'n8n-workflow';
+import { parseRegexLiteral, safeRegex } from 'n8n-workflow';
 
-import { parseRegex } from '../../helpers/common';
 import type { CreateCheckFn, CustomRegex } from '../types';
 
 /**
@@ -149,13 +148,13 @@ export const PII_NAME_MAP: Record<PIIEntity, string> = {
 const DEFAULT_PII_PATTERNS: Record<PIIEntity, RegExp> = {
 	[PIIEntity.CREDIT_CARD]: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g,
 	[PIIEntity.CRYPTO]: /\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g,
-	[PIIEntity.DATE_TIME]: /\b(0[1-9]|1[0-2])[\/\-](0[1-9]|[12]\d|3[01])[\/\-](19|20)\d{2}\b/g,
+	[PIIEntity.DATE_TIME]: /\b(0[1-9]|1[0-2])[/-](0[1-9]|[12]\d|3[01])[/-](19|20)\d{2}\b/g,
 	[PIIEntity.EMAIL_ADDRESS]: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
 	[PIIEntity.IBAN_CODE]: /\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}\b/g,
 	[PIIEntity.IP_ADDRESS]: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g,
 	[PIIEntity.LOCATION]:
 		/\b[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Way|Highway|Hwy)\b/g,
-	[PIIEntity.PHONE_NUMBER]: /\b[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}\b/g,
+	[PIIEntity.PHONE_NUMBER]: /\b[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}\b/g,
 	[PIIEntity.MEDICAL_LICENSE]: /\b[A-Z]{2}\d{6}\b/g,
 
 	// USA
@@ -256,7 +255,7 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	}
 	if (config.customRegex?.length) {
 		for (const regex of config.customRegex) {
-			matchAgainstPattern(regex.name, parseRegex(regex.value));
+			matchAgainstPattern(regex.name, parseRegexLiteral(regex.value || ''));
 		}
 	}
 

@@ -13,7 +13,7 @@ const DST_CANVAS_NAME = 'Edit Fields';
 
 test.describe(
 	'CAT-2395: consistent node spacing from the plus button',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Application' }] },
 	() => {
 		test('keeps the canonical gap when adding a node off a default node, unchanged by Tidy-up', async ({
 			n8n,
