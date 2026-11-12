@@ -3,6 +3,7 @@ import {
 	initDbUpToMigration,
 	runSingleMigration,
 	type TestMigrationContext,
+	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -111,8 +112,7 @@ describe('AddIdentityIdToAgents migration', () => {
 	});
 
 	it('removes identityId on rollback and keeps the agents and their history', async () => {
-		// The SQLite subclass turns foreign keys off and opens its own transaction.
-		await dataSource.undoLastMigration({ transaction: 'none' });
+		await undoLastSingleMigration();
 
 		const table = await getAgentsTable();
 		expect(table?.findColumnByName('identityId')).toBeUndefined();
