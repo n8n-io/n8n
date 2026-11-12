@@ -32,7 +32,7 @@ export const hookSpecSchema = methodRef
 			.optional(),
 		detail: z.record(z.string()).optional(),
 		phase: z.enum(['before', 'after']).optional(),
-		roles: z.array(z.enum(ROLES)).optional(),
+		roles: z.array(z.enum(ROLES)).min(1).optional(),
 		/** Set when the patched file loads only on first use, so the install check skips it. */
 		lazy: z.boolean().optional(),
 	})
