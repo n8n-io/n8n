@@ -5,6 +5,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryList,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -12,11 +13,12 @@ import {
 	mockInstance,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { GithubAppApi } from 'n8n-nodes-base/credentials/GithubAppApi.credentials';
 import { GithubOAuth2Api } from 'n8n-nodes-base/credentials/GithubOAuth2Api.credentials';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import nock from 'nock';
 import { generateKeyPairSync } from 'node:crypto';
 
@@ -24,10 +26,16 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
-import { PostHogClient } from '@/posthog';
+import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { OauthService } from '@/oauth/oauth.service';
 
-import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
+import {
+	encryptCredentialData,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { initCredentialsTypes, setupTestServer } from '@test-integration/utils';
@@ -44,6 +52,8 @@ beforeAll(async () => {
 	await initCredentialsTypes();
 	const { credentials } = Container.get(LoadNodesAndCredentials).loaded;
 	credentials.githubAppApi = { type: new GithubAppApi(), sourcePath: '' };
+	// GitHub OAuth2 extends the generic OAuth2 type, so both must load.
+	credentials.oAuth2Api = { type: new OAuth2Api(), sourcePath: '' };
 	credentials.githubOAuth2Api = { type: new GithubOAuth2Api(), sourcePath: '' };
 	nock.disableNetConnect();
 	nock.enableNetConnect(/127\.0\.0\.1|localhost/);
@@ -100,8 +110,13 @@ describe('Skill Sync with credentials', () => {
 			ghCredential('Sales GitHub', TOKEN),
 			inProject(otherTeam),
 		);
+		// OAuth2 keeps the token of the connected account in `oauthTokenData`.
 		oauthCredential = await saveCredential(
-			ghCredential('Team OAuth', TOKEN, 'githubOAuth2Api'),
+			{
+				name: 'Team OAuth',
+				type: 'githubOAuth2Api',
+				data: { oauthTokenData: { access_token: TOKEN } },
+			},
 			inProject(team),
 		);
 		badCredential = await saveCredential(ghCredential('Expired', 'ghp_expired'), inProject(team));
@@ -176,7 +191,7 @@ describe('Skill Sync with credentials', () => {
 	const names = (options: SkillSourceCredentialOption[]) => options.map(({ name }) => name).sort();
 
 	describe('credential select', () => {
-		it('lists the GitHub token credentials that the project can use, and never OAuth2', async () => {
+		it('lists the GitHub credentials that the project can use', async () => {
 			const { data } = await get<SkillSourceCredentialOption[]>(
 				editor,
 				`/skill-sources/credentials?scope=project&projectId=${team.id}`,
@@ -190,8 +205,8 @@ describe('Skill Sync with credentials', () => {
 				'Shared GitHub',
 				'Team GitHub',
 				'Team GitHub App',
+				'Team OAuth',
 			]);
-			expect(data.map(({ id }) => id)).not.toContain(oauthCredential.id);
 			expect(data.map(({ id }) => id)).not.toContain(otherTeamCredential.id);
 		});
 
@@ -272,6 +287,177 @@ describe('Skill Sync with credentials', () => {
 	describe('private import', () => {
 		const scope = () => ({ scope: 'project', projectId: team.id });
 
+		it('reads a private repository with a connected OAuth2 account', async () => {
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: oauthCredential.id,
+			});
+
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
+		it('refreshes an expired OAuth2 token before it reads a private repository', async () => {
+			const expired = await saveCredential(
+				{
+					name: 'Expiring OAuth',
+					type: 'githubOAuth2Api',
+					data: {
+						clientId: 'client-id',
+						clientSecret: 'client-secret',
+						oauthTokenData: {
+							access_token: 'ghu_expired',
+							refresh_token: 'ghr_first',
+							token_type: 'bearer',
+							expires_in: 28800,
+							n8n_expires_at: String(Date.now() - 1000),
+						},
+					},
+				},
+				{ project: team, role: 'credential:owner' },
+			);
+			const exchange = nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+				access_token: TOKEN,
+				refresh_token: 'ghr_second',
+				token_type: 'bearer',
+				expires_in: 28800,
+			});
+
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: expired.id,
+			});
+
+			expect(exchange.isDone()).toBe(true);
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
+		describe('a credential that allows only some domains', () => {
+			const expiringWith = async (allowedDomains: string) =>
+				await saveCredential(
+					{
+						name: `Restricted OAuth ${allowedDomains}`,
+						type: 'githubOAuth2Api',
+						data: {
+							clientId: 'client-id',
+							clientSecret: 'client-secret',
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains,
+							oauthTokenData: {
+								access_token: 'ghu_expired',
+								refresh_token: 'ghr_first',
+								token_type: 'bearer',
+								expires_in: 28800,
+								n8n_expires_at: String(Date.now() - 1000),
+							},
+						},
+					},
+					{ project: team, role: 'credential:owner' },
+				);
+			const tokenExchange = () =>
+				nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+					access_token: TOKEN,
+					refresh_token: 'ghr_second',
+					token_type: 'bearer',
+					expires_in: 28800,
+				});
+
+			it('refuses to refresh the token when the token URL is not allowed', async () => {
+				const restricted = await expiringWith('example.com');
+				const exchange = tokenExchange();
+
+				const response = await editor
+					.post('/skill-sources/discover')
+					.send({ url: PRIVATE, ...scope(), credentialId: restricted.id });
+
+				expect(response.status).toBeGreaterThanOrEqual(400);
+				expect(exchange.isDone()).toBe(false);
+			});
+
+			it('refreshes the token when the token URL is allowed', async () => {
+				const restricted = await expiringWith('github.com');
+				const exchange = tokenExchange();
+
+				const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+					url: PRIVATE,
+					...scope(),
+					credentialId: restricted.id,
+				});
+
+				expect(exchange.isDone()).toBe(true);
+				expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+			});
+		});
+
+		it('uses the token that another caller refreshed first, with no second exchange', async () => {
+			const expiring = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				oauthTokenData: {
+					access_token: 'ghu_expired',
+					refresh_token: 'ghr_first',
+					token_type: 'bearer',
+					expires_in: 28800,
+					n8n_expires_at: String(Date.now() - 1000),
+				},
+			};
+			const expired = await saveCredential(
+				{ name: 'Raced OAuth', type: 'githubOAuth2Api', data: expiring },
+				{ project: team, role: 'credential:owner' },
+			);
+			const exchange = nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+				access_token: 'ghu_unexpected',
+				refresh_token: 'ghr_unexpected',
+				token_type: 'bearer',
+				expires_in: 28800,
+			});
+			// Another caller saves a new token after this resolve read the old one, and before
+			// its refresh runs.
+			const oauthService = Container.get(OauthService);
+			const refresh = oauthService.refreshOAuth2CredentialById.bind(oauthService);
+			const refreshSpy = vi
+				.spyOn(oauthService, 'refreshOAuth2CredentialById')
+				.mockImplementation(async (...args) => {
+					const refreshed = Object.assign(new CredentialsEntity(), {
+						id: expired.id,
+						name: expired.name,
+						type: expired.type,
+						data: {
+							...expiring,
+							oauthTokenData: {
+								...expiring.oauthTokenData,
+								access_token: TOKEN,
+								refresh_token: 'ghr_second',
+								n8n_expires_at: String(Date.now() + 28_800_000),
+							},
+						},
+					});
+					await encryptCredentialData(refreshed);
+					await Container.get(CredentialsRepository).update(expired.id, {
+						data: refreshed.data,
+					});
+					return await refresh(...args);
+				});
+
+			try {
+				const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+					url: PRIVATE,
+					...scope(),
+					credentialId: expired.id,
+				});
+
+				expect(refreshSpy).toHaveBeenCalledWith(expired.id, team.id, {
+					accessToken: 'ghu_expired',
+					expiresAt: Number(expiring.oauthTokenData.n8n_expires_at),
+				});
+				expect(exchange.isDone()).toBe(false);
+				expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+			} finally {
+				refreshSpy.mockRestore();
+			}
+		});
+
 		it('imports from a private repository and stores the credential on the source', async () => {
 			const body = { url: PRIVATE, ...scope(), credentialId: teamCredential.id };
 			const { data: discovery } = await post<SkillSourceDiscovery>(
@@ -305,7 +491,6 @@ describe('Skill Sync with credentials', () => {
 
 		it.each([
 			['a credential of another project', () => otherTeamCredential.id],
-			['an OAuth2 credential', () => oauthCredential.id],
 			['a credential that does not exist', () => 'no-such-credential'],
 		])('refuses %s as out of scope', async (_case, credentialId) => {
 			const { meta } = await post(
@@ -460,6 +645,150 @@ describe('Skill Sync with credentials', () => {
 				},
 				200,
 			);
+		});
+	});
+
+	describe('the check of a private source', () => {
+		const db = () => Container.get(DataSource).manager;
+
+		/** Imports the private repository into the team with the credential. */
+		const importPrivate = async () => {
+			const body = {
+				url: PRIVATE,
+				scope: 'project',
+				projectId: team.id,
+				credentialId: teamCredential.id,
+			};
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				editor,
+				'/skill-sources/discover',
+				body,
+			);
+			const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+				...body,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+			return { sourceId: data.sourceId, skillId: data.imported[0].skillId };
+		};
+
+		const lastErrorOf = async (sourceId: string) =>
+			(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).lastErrorReason;
+
+		it('reads the source with its stored credential, without a user', async () => {
+			const { sourceId, skillId } = await importPrivate();
+			github.push(
+				'acme/private',
+				{ 'skills/pdf/SKILL.md': skillMd('pdf').replace('Follow', 'Use') },
+				'main',
+				{
+					private: true,
+				},
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBeNull();
+			expect(await db().findOneByOrFail(SkillSourceLink, { skillId })).toMatchObject({
+				state: 'update_available',
+			});
+		});
+
+		it('reports credential_missing when the scope no longer accepts the credential', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: otherTeamCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('credential_missing');
+		});
+
+		it('reports credential_invalid when GitHub refuses the token', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: badCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('credential_invalid');
+		});
+
+		describe('the wait after a rate limit, for each access', () => {
+			const backoff = () =>
+				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+					string,
+					{ until: number; attempts: number }
+				>;
+
+			/** Imports a public repository into the team, with no credential. */
+			const importPublic = async () => {
+				github.push('acme/public', { 'skills/doc/SKILL.md': skillMd('doc') });
+				const body = {
+					url: 'https://github.com/acme/public',
+					scope: 'project',
+					projectId: team.id,
+				};
+				const { data: discovery } = await post<SkillSourceDiscovery>(
+					editor,
+					'/skill-sources/discover',
+					body,
+				);
+				const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+					...body,
+					skillKeys: discovery.skills.map(({ key }) => key),
+				});
+				return data.sourceId;
+			};
+
+			beforeEach(() => backoff().clear());
+
+			it('still reads a source with a credential while public access waits', async () => {
+				const privateSource = (await importPrivate()).sourceId;
+				const publicSource = await importPublic();
+				backoff().set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
+				github.requests.refs = 0;
+
+				await Container.get(SkillSyncService).checkAll();
+
+				expect(github.requests.refs).toBe(1);
+				expect(await lastErrorOf(privateSource)).toBeNull();
+				expect(await lastErrorOf(publicSource)).toBe('rate_limited');
+			});
+
+			it('still reads a public source while a credential waits', async () => {
+				const privateSource = (await importPrivate()).sourceId;
+				const publicSource = await importPublic();
+				backoff().set(`credential:${teamCredential.id}`, {
+					until: Date.now() + 3_600_000,
+					attempts: 1,
+				});
+				github.requests.refs = 0;
+
+				await Container.get(SkillSyncService).checkAll();
+
+				expect(github.requests.refs).toBe(1);
+				expect(await lastErrorOf(privateSource)).toBe('rate_limited');
+				expect(await lastErrorOf(publicSource)).toBeNull();
+			});
+		});
+
+		it('reports host_blocked for a credential of another GitHub server', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: enterpriseAppCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('host_blocked');
 		});
 	});
 });

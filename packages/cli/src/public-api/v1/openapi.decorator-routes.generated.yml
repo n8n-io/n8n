@@ -294,6 +294,9 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/projects:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/missing-projects:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
   /promotions/environments/{promotionEnvironmentId}/projects/{projectId}:
     post:
       $ref: ./handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
@@ -311,6 +314,9 @@ paths:
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  /promotions/projects/{projectId}/changes/{direction}/details:
+    post:
+      $ref: ./handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
   /promotions/projects/{projectId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml

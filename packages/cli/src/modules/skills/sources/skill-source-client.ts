@@ -65,6 +65,8 @@ export type FetchedSkill = {
 	fidelity: SkillSourceFidelityWarning[];
 	/** Paths of the remote files that the content leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files in `skippedFiles` that n8n left out because it cannot store them. */
+	unstorableFiles?: string[];
 };
 
 /**
@@ -141,6 +143,13 @@ export abstract class SkillSourceClient {
 
 	/** A page in the source that a user can open, for the source or for one skill. */
 	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string;
+
+	/**
+	 * A cheap check for a change, with one request: an opaque cursor, such as the commit at the
+	 * head of the branch. An equal cursor means that nothing in the source changed, so the
+	 * check fetches no skill. A new cursor is also a revision that `fetchLatest` reads.
+	 */
+	probe?(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string>;
 
 	/**
 	 * One page of the skills in the source. Call again with `next` until it is undefined.

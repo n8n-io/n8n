@@ -18,7 +18,11 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError, OperationalError } from '@n8n/errors';
+
+import { AgentProjectDeletionRepository } from './agent-project-deletion.repository';
+import { AgentUserDeletionRepository } from './agent-user-deletion.repository';
 
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
@@ -93,8 +97,41 @@ interface AgentSessionDeletionRefs {
 
 @Service()
 export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutionThread> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AgentExecutionThread, dataSource.manager, transactionRunner);
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly userDeletion: AgentUserDeletionRepository,
+	) {
+		super(AgentExecutionThread, dataSource.manager, txRunner);
+	}
+
+	/** Keep project-agent sessions readable after their user is removed. */
+	async shareUserSessionHistory(userId: string, ctx: OperationContext = {}): Promise<void> {
+		const threads = await this.managerFor(ctx).find(AgentExecutionThread, {
+			select: { id: true },
+			where: { ownerId: userId, accessScope: 'user', agent: { scope: 'project' } },
+		});
+		for (const batch of chunk(threads, CHECKPOINT_BATCH_SIZE)) {
+			await this.managerFor(ctx).update(
+				AgentExecutionThread,
+				{ id: In(batch.map(({ id }) => id)) },
+				{ accessScope: 'project' },
+			);
+		}
+	}
+
+	async deleteCheckpointsForThreads(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		for (const threadId of threadIds) {
+			await this.txRunner.run({}, async (ctx) => {
+				if (!(await this.lockById(threadId, ctx))) return;
+				const manager = this.managerFor(ctx);
+				if (await manager.existsBy(AgentExecution, { threadId, status: 'running' }))
+					throw new OperationalError('Stop the Agent session before deleting its checkpoints');
+				await manager.delete(AgentCheckpoint, { threadId });
+			});
+		}
 	}
 
 	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
@@ -131,6 +168,43 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		taskVersionId?: string | null,
 		sessionMode: AgentSessionMode = 'new',
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+		return await this.projectDeletion.withWritableProject(
+			projectId,
+			async (ctx) =>
+				await this.findOrCreateWritable(
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+					access,
+					ctx,
+					metadata,
+					taskId,
+					taskVersionId,
+					sessionMode,
+				),
+			ctx,
+		);
+	}
+
+	async assertOwnerActive(access: AgentThreadAccess, ctx: OperationContext): Promise<void> {
+		if (access.accessScope === 'user' && access.ownerId) {
+			await this.userDeletion.assertActiveUser(access.ownerId, ctx);
+		}
+	}
+
+	private async findOrCreateWritable(
+		threadId: string,
+		agentId: string,
+		agentName: string,
+		projectId: string,
+		access: AgentThreadAccess,
+		ctx: OperationContext,
+		metadata?: AgentExecutionThreadMetadata,
+		taskId?: string | null,
+		taskVersionId?: string | null,
+		sessionMode: AgentSessionMode = 'new',
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		const manager = this.managerFor(ctx);
 		const repository = manager.getRepository(AgentExecutionThread);
 		if (metadata?.parentThreadId) {
@@ -146,6 +220,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			}
 		}
 		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
+		await this.assertOwnerActive(access, ctx);
 
 		const isPostgres = manager.connection.options.type === 'postgres';
 		const findSession = async () =>
@@ -458,6 +533,12 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
+	async findMemoryThreadsForProject(
+		projectId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId'>>> {
+		return await this.find({ select: ['id', 'agentId'], where: { projectId } });
+	}
+
 	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
 		if (ids.length === 0) return [];
 		return await this.findBy({ id: In(ids) });
@@ -480,6 +561,17 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				agent: { scope: 'instance' },
 			},
 			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	/** Include private child sessions and agents whose provider is no longer registered. */
+	async findPrivateSystemAgentSessionsForDeletion(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: { ownerId, accessScope: 'user', agent: { scope: 'instance' } },
+			order: { createdAt: 'DESC', id: 'DESC' },
 		});
 	}
 
@@ -509,6 +601,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			{ title },
 		);
 		return result.affected === 1;
+	}
+
+	/**
+	 * Store a generated title and emoji on a thread that has no title yet. A
+	 * title that the user set before the generated one arrived stays.
+	 */
+	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<void> {
+		await this.update({ id: threadId, title: IsNull() }, { title, ...(emoji && { emoji }) });
 	}
 
 	/**
@@ -629,6 +729,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			id = thread?.parentThreadId ?? null;
 		}
 		return chain;
+	}
+
+	async findProjectId(threadId: string): Promise<string | null> {
+		const thread = await this.findOne({ select: ['projectId'], where: { id: threadId } });
+		return thread?.projectId ?? null;
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
@@ -922,7 +1027,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				pauseRequestId: stopId,
 				status: In(['paused', 'completed', 'failed', 'cancelled']),
 			},
-			{ notifiedAt: new Date(stop.pause.reportedAt) },
+			{ notifiedAt: new Date(stop.pause.reportedAt), wakeAttemptId: null },
 		);
 	}
 

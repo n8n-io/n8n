@@ -3,11 +3,11 @@ import {
 	ASSISTANT_TRACE_EVENT,
 	type AssistantTracePayload,
 	type InstanceAiEvent,
-	type InstanceAiFileAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifactsContext,
+	unwrapToolCatalogCall,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import {
 	continueInstanceAiTraceContext,
@@ -25,7 +25,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
 	SteeredMessageEvent,
@@ -45,7 +45,10 @@ import {
 	buildSuspensionTraceMetadata,
 	buildSuspensionTraceOutputs,
 } from '../tracing/suspension-trace';
-import { buildAssistantTurnTraceInput } from '../turn-setup/assistant-turn-trace-input';
+import {
+	buildAssistantTurnTraceInput,
+	type TraceFileAttachment,
+} from '../turn-setup/assistant-turn-trace-input';
 
 /** Checkpoint host metadata key that carries the trace of a turn to its resume. */
 const ASSISTANT_TRACE_METADATA_KEY = 'assistantTrace';
@@ -152,7 +155,7 @@ export interface AssistantTraceTurnSetup {
 	/** The chat message group of the turn. */
 	messageGroupId: string;
 	proxyConfig?: ServiceProxyConfig;
-	fileAttachments: InstanceAiFileAttachment[];
+	fileAttachments: TraceFileAttachment[];
 	contextAttachments: InstanceAiResourceAttachment[];
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 }
@@ -289,11 +292,18 @@ export class AssistantTurnTrace {
 				}
 				break;
 			case 'tool-call':
-				this.signals.push({ kind: 'tool-call', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'tool-call',
+					toolName: unwrapToolCatalogCall(chunk.toolName, isRecord(chunk.input) ? chunk.input : {})
+						.toolName,
+				});
 				break;
 			case 'tool-call-suspended':
 				this.suspension = parseSuspension(chunk) ?? undefined;
-				this.signals.push({ kind: 'hitl', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'hitl',
+					toolName: this.suspension?.targetToolName ?? chunk.toolName,
+				});
 				break;
 			case 'message-steered':
 				this.recordSteeredMessage(chunk);
@@ -602,7 +612,7 @@ export class AssistantTurnTracer {
 			messageGroupId: scope.messageGroupId,
 			runId: scope.runId,
 			userId: scope.userId,
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			// Read per turn: Chrome updates extensions silently.
 			browserExtension: this.browserSessionService.getExtensionTraceContext(scope.userId),

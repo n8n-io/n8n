@@ -4,6 +4,7 @@ import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
+import { DbLockUnavailableError } from './db-lock-unavailable.error';
 import type { OperationContext } from './transaction';
 import { TypeOrmTransaction } from './typeorm-transaction';
 
@@ -23,6 +24,7 @@ export const enum DbLock {
 	INSIGHTS_COMPACTION = 1009,
 	/** Unscoped for quota reservations; scoped by app for storage mutations. */
 	APPS_STORAGE = 1010,
+	EXECUTION_LEDGER_FOLD = 1011,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -194,7 +196,7 @@ export class DbLockService {
 	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
 	 *   advisory lock form) to scope the lock, e.g. per entity. Scopes the SQLite
 	 *   in-process mutex the same way.
-	 * @throws {OperationalError} if the lock is already held by another process
+	 * @throws {DbLockUnavailableError} if the lock is already held by another process
 	 */
 	async tryWithLock<T>(
 		lockId: DbLock,
@@ -219,12 +221,26 @@ export class DbLockService {
 				lockKeys,
 			);
 			if (!result[0].pg_try_advisory_xact_lock) {
-				throw new OperationalError(
-					`DbLock ${lockKey(lockId, options?.subKey)} is already held by another process`,
-				);
+				throw new DbLockUnavailableError(lockKey(lockId, options?.subKey));
 			}
 			return await fn(tx);
 		});
+	}
+
+	/**
+	 * `tryWithLock`, but `fn` gets an `OperationContext` for repositories and `withSavepoint`.
+	 * @throws {DbLockUnavailableError} if the lock is already held by another process
+	 */
+	async tryWithLockContext<T>(
+		lockId: DbLock,
+		fn: (ctx: OperationContext) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
+		return await this.tryWithLock(
+			lockId,
+			async (tx) => await fn({ trx: new TypeOrmTransaction(tx) }),
+			options,
+		);
 	}
 
 	/**
@@ -284,7 +300,7 @@ export class DbLockService {
 	 * Try to acquire the in-process lock without blocking.
 	 * Returns a one-shot release function bound to this specific acquisition.
 	 *
-	 * @throws {OperationalError} if the lock is already held
+	 * @throws {DbLockUnavailableError} if the lock is already held
 	 */
 	private tryAcquireLock(lockId: number, subKey?: number): ReleaseFn {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
@@ -295,9 +311,7 @@ export class DbLockService {
 			return this.createReleaseFn(lockState, token);
 		}
 
-		throw new OperationalError(
-			`DbLock ${lockKey(lockId, subKey)} is already held by another process`,
-		);
+		throw new DbLockUnavailableError(lockKey(lockId, subKey));
 	}
 
 	/**

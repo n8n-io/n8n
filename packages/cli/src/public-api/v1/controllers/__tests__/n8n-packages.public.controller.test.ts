@@ -1,9 +1,8 @@
 import { ExportPackageRequestDto } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
@@ -39,7 +38,7 @@ const DEFAULT_SERVICE_OPTIONS = {
 	dependencyPolicy: 'fail',
 	versionPolicy: 'latest',
 	credentialExportPolicy: 'expression-values-only',
-	includeArchivedWorkflows: false,
+	includeArchived: false,
 };
 
 describe('N8nPackagesPublicController', () => {
@@ -360,16 +359,16 @@ describe('N8nPackagesPublicController', () => {
 			);
 		});
 
-		it('forwards includeArchivedWorkflows', async () => {
+		it('forwards includeArchived', async () => {
 			mockExportStream();
 
-			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeArchivedWorkflows: true }, [
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeArchived: true }, [
 				'workflow:export',
 			]);
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ includeArchivedWorkflows: true }),
+				expect.objectContaining({ includeArchived: true }),
 			);
 		});
 

@@ -15,10 +15,12 @@ import type {
 	WorkflowDocument,
 } from '../../execution/execution.types';
 import type { StoredWorkflowGraph } from '../../graph';
+import type { LifecycleEventSubscription } from '../../lifecycle-events';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
-@Index('idx_workflow_execution_workflow_id', ['workflowId'])
+@Index('idx_workflow_execution_workflow_id_created_at_id', ['workflowId', 'createdAt', 'id'])
+@Index('idx_workflow_execution_created_at_id', ['createdAt', 'id'])
 @Index('idx_workflow_execution_status', ['status'])
 @Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'], {
 	where: 'parent_execution_id IS NOT NULL',
@@ -66,6 +68,10 @@ export class WorkflowExecution {
 
 	@Column('boolean', { name: 'parent_awaited', nullable: true })
 	parentAwaited!: boolean | null;
+
+	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
+	@Column('jsonb', { name: 'lifecycle_event_subscription', nullable: true })
+	lifecycleEventSubscription!: LifecycleEventSubscription | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

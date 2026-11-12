@@ -1,7 +1,7 @@
 import {
 	type AgentBackgroundJobsResponse,
 	AgentChatCancelDto,
-	AgentChatMessageDto,
+	SystemAgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatQueueReorderDto,
 	type AgentChatQueueResponse,
@@ -10,6 +10,7 @@ import {
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
 	ListSystemAgentThreadsQueryDto,
+	RenameSystemAgentThreadDto,
 	SystemAgentChatQueryDto,
 	type SystemAgentThreadSummary,
 	type SystemAgentThreadsResponse,
@@ -69,7 +70,7 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: SystemAgentChatMessageDto,
 		@Query { projectId }: SystemAgentChatQueryDto,
 	) {
 		const { message, sessionId, messageId, attachments, clientContext } = payload;
@@ -133,6 +134,19 @@ export class SystemAgentChatController {
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
 		const metadata = await this.memory.getThreadsMetadata([thread.id]);
 		return toThreadSummary(thread, metadata.get(thread.id));
+	}
+
+	/** Rename one of the user's own threads with the agent. Renaming runs the access floor. */
+	@Patch('/:agentId/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+		@Body payload: RenameSystemAgentThreadDto,
+	) {
+		await this.systemAgents.updateThread(agentId, req.user, threadId, { title: payload.title });
+		return { success: true };
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })

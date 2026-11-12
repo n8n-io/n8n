@@ -1,4 +1,5 @@
 import { isLlmMessage } from '../../sdk/message';
+import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentMessage, ContentToolCall, MessageContent } from '../../types/sdk/message';
 
 /**
@@ -36,6 +37,38 @@ export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]
 		});
 		return { ...msg, content };
 	});
+}
+
+/**
+ * Persist the settled form of every pending tool-call block in a thread.
+ *
+ * `settleOrphanedToolMessages` settles only the in-memory copy at load time, so the
+ * stored block stays `pending`. The Observer never observes past a stored pending
+ * call, so compaction would stop for the thread. Call this only when no suspension
+ * in the thread can resume, e.g. after the host cancels the thread's suspended run.
+ *
+ * Returns the number of messages rewritten.
+ */
+export async function settleAbandonedToolCallsInMemory(
+	memory: Pick<BuiltMemory, 'getMessages' | 'saveMessages'>,
+	args: { threadId: string; resourceId: string },
+): Promise<number> {
+	const messages = await memory.getMessages(args.threadId, { resourceId: args.resourceId });
+	const { changed } = settleOrphanedToolMessagesWithChanges(messages);
+	if (changed.length === 0) return 0;
+
+	await memory.saveMessages({ ...args, messages: changed });
+	return changed.length;
+}
+
+/** `settleOrphanedToolMessages`, plus the messages that it changed. */
+export function settleOrphanedToolMessagesWithChanges<T extends AgentMessage>(
+	messages: T[],
+): { settled: T[]; changed: T[] } {
+	const settled = settleOrphanedToolMessages(messages);
+	// Unchanged messages keep their identity, so only settled ones are rewritten.
+	const changed = settled.filter((message, index) => message !== messages[index]);
+	return { settled, changed };
 }
 
 function buildAbandonedSuspensionError(

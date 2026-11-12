@@ -8,11 +8,13 @@ model configuration, and model output.
 - `agent-config`
 - `fromai-helpers`
 - `generic-text-editor`
+- `guardrails`
 - `http-proxy-agent`
 - `json-schema`
 - `llm-output`
 - `model-discovery`
 - `node-catalog`
+- `refreshing-auth-fetch`
 - `text-editor`
 - `tokenizer`
 - `web-search`

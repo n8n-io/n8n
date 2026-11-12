@@ -42,7 +42,7 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
@@ -78,14 +78,24 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from '../internal-messages';
+import {
+	buildMigrationReportContextBlock,
+	resolveMigrationReportFinding,
+} from '../migration-report-handoff';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
-/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+/**
+ * Workflow/agent attachments carry a display name; a nodes attachment doesn't.
+ * An unsaved agent has only a placeholder name, so it cannot title a thread.
+ */
 function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
 ): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
-	return attachment.type !== 'nodes' && Boolean(attachment.name);
+	if (attachment.type === 'agent' && attachment.pending) return false;
+	return (
+		(attachment.type === 'workflow' || attachment.type === 'agent') && Boolean(attachment.name)
+	);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -263,7 +273,6 @@ export class AssistantTurnInputBuilder {
 			memory,
 			taskStorage,
 			conversationHistory,
-			aiPreferencesEnabled,
 			instanceContextEnabled,
 			skillScope,
 		} = environment;
@@ -327,6 +336,16 @@ export class AssistantTurnInputBuilder {
 			});
 		} else if (handoffContext?.source === 'setup-panel-execute' && isSetupPanelEnabled(context)) {
 			handoffContextBlock = buildWorkflowTestRequestBlock(handoffContext.workflowId);
+		} else if (handoffContext?.source === 'migration-report') {
+			const [finding, skill] = await Promise.all([
+				resolveMigrationReportFinding(handoffContext, user),
+				this.skillsService.loadSkill(SKILLS.v3Migration, skillScope),
+			]);
+			handoffContextBlock = buildMigrationReportContextBlock(
+				handoffContext,
+				finding,
+				skill.instructions,
+			);
 		} else {
 			handoffContextBlock = buildHandoffContextBlock(handoffContext);
 		}
@@ -472,7 +491,7 @@ export class AssistantTurnInputBuilder {
 		// same way they skip the other ambient context: the block from the user turn is
 		// already in the history the follow-up replays.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && resumeReason === undefined
+			resumeReason === undefined
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([

@@ -1,3 +1,4 @@
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
 	AgentSessionQueryFilters,
@@ -27,7 +28,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -93,8 +94,10 @@ import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execu
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
+import { AgentUserDeletionRepository } from '@/modules/agents/repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -102,6 +105,7 @@ import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -177,7 +181,12 @@ describe('AgentExecutionRepository', () => {
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
-			? new AgentExecutionThreadRepository(connection, txRunner)
+			? new AgentExecutionThreadRepository(
+					connection,
+					txRunner,
+					new AgentProjectDeletionRepository(connection, txRunner),
+					new AgentUserDeletionRepository(connection, txRunner),
+				)
 			: threadRepo;
 		const queueRepository = new AgentMessageQueueRepository(
 			connection ?? repository.manager.connection,
@@ -216,6 +225,7 @@ describe('AgentExecutionRepository', () => {
 			queueRepository,
 			messageRepository,
 			systemAgents,
+			Container.get(AgentProjectDeletionRepository),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -282,6 +292,7 @@ describe('AgentExecutionRepository', () => {
 				steering,
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 		};
 	}
@@ -507,6 +518,7 @@ describe('AgentExecutionRepository', () => {
 					storage,
 					Container.get(AgentMessageRepository),
 					Container.get(AgentPlanRepository),
+					mock<AgentFileBridge>(),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
@@ -518,11 +530,14 @@ describe('AgentExecutionRepository', () => {
 						mock<AgentToolApprovalService>(),
 						repository,
 						mock<SystemAgentUsageRelay>(),
+						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
+						mock<AgentSandboxFilesService>(),
 					),
 					service,
 					mockLogger(),
 					jobs,
 					workspaceService,
+					mock<AgentChatAttachmentService>(),
 				);
 				return { service, runner };
 			};
@@ -1532,6 +1547,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
+				mock<UserRepository>(),
 			);
 			const resume = async (
 				user: User,
@@ -4589,6 +4605,56 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findFirstSourceByThreadIds([thread.id]);
 
 			expect(result.has(thread.id)).toBe(false);
+		});
+	});
+
+	describe('failExpiredWaitingApprovals', () => {
+		it('keeps earlier tool failures when an approval expires', async () => {
+			const thread = await createThread();
+			const other = await createThread({ sessionNumber: 2 });
+			const toolFailures = {
+				count: 2,
+				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
+			};
+			const awaiting = await createExecution({
+				threadId: thread.id,
+				status: 'awaiting',
+				failureSummary: toolFailures,
+			});
+			const clean = await createExecution({
+				threadId: other.id,
+				status: 'awaiting',
+				failureSummary: null,
+			});
+			const succeeded = await createExecution({
+				threadId: thread.id,
+				status: 'success',
+				failureSummary: null,
+			});
+
+			await repository.failExpiredWaitingApprovals([thread.id, other.id]);
+
+			const expired = await repository.findOneByOrFail({ id: awaiting.id });
+			expect(expired.status).toBe('error');
+			expect(expired.error).toBe('This approval expired.');
+			expect(expired.failureSummary?.count).toBe(3);
+			expect(expired.failureSummary?.latest).toMatchObject({
+				kind: 'execution',
+				name: null,
+				message: 'This approval expired.',
+			});
+			expect(expired.failureSummary?.latest.occurredAt).toBeGreaterThan(10);
+
+			const firstExpiry = await repository.findOneByOrFail({ id: clean.id });
+			expect(firstExpiry.status).toBe('error');
+			expect(firstExpiry.failureSummary).toMatchObject({
+				count: 1,
+				latest: { kind: 'execution', message: 'This approval expired.' },
+			});
+
+			const untouched = await repository.findOneByOrFail({ id: succeeded.id });
+			expect(untouched.status).toBe('success');
+			expect(untouched.failureSummary).toBeNull();
 		});
 	});
 

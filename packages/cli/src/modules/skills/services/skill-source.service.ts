@@ -1,6 +1,4 @@
 import {
-	AGENT_SKILL_NAME_MAX_LENGTH,
-	agentSkillSchema,
 	type AgentSkill,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
@@ -14,6 +12,8 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
+	skillNameKey,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,7 +21,6 @@ import { UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
-import { z } from 'zod';
 
 import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import {
@@ -44,12 +43,19 @@ import {
 	type SkillSourceClient,
 	type SkillSourceLocator,
 } from '../sources/skill-source-client';
-import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/skill-content';
+import {
+	contentToAgentSkill,
+	importableSkillSchema,
+	toSkillContent,
+	type SkillTarget,
+} from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { skillPreview } from '../utils/skill-preview';
+import { skillSourceHealth } from '../utils/skill-source-health';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
-import { isNameTaken } from './skill.policy';
+import { isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -57,14 +63,6 @@ import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telem
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
-
-/**
- * What an imported skill must be. Skills ignore `allowedTools`, as a create does. The name is
- * trimmed as a create stores it, so the name checks and the baseline hash match the stored skill.
- */
-const importableSkillSchema = agentSkillSchema
-	.omit({ allowedTools: true })
-	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
 
 type ScopeType = 'global' | 'team' | 'personal';
 
@@ -159,19 +157,24 @@ export class SkillSourceService {
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
 				duplicate,
-				skills: skills.map(
-					(read): DiscoveredSkill => ({
+				skills: skills.map((read): DiscoveredSkill => {
+					const preview = read.fetched
+						? skillPreview(read.fetched.content)
+						: { files: [], truncated: false };
+					return {
 						key: read.key,
 						location: client.location(read.ref),
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						description: read.skill?.description ?? read.fetched?.content.description ?? null,
 						skippedFiles: read.fetched?.skippedFiles ?? [],
+						previewFiles: preview.files,
+						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
 						error: read.error ?? null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
-					}),
-				),
+					};
+				}),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 			};
@@ -217,6 +220,42 @@ export class SkillSourceService {
 		}
 	}
 
+	/** Visible sources and pending update counts for the skills table. */
+	async list(user: User): Promise<SkillSourceListItem[]> {
+		await this.flagGate.assertEnabled(user);
+		const projectIds = await this.skillAccess.visibleSourceProjects(user);
+		const sources = await this.sourceRepository.findVisibleSources(projectIds);
+		const shown = sources.flatMap((source) => {
+			const client = this.clients.get(source.type);
+			return client ? [{ source, client }] : [];
+		});
+		const [counts, projects, canReview] = await Promise.all([
+			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
+			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
+			this.skillAccess.accessCheck(user, 'update'),
+		]);
+		return shown.map(({ source, client }) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
+			return {
+				id: source.id,
+				type: source.type,
+				...client.describe(source.locator),
+				webUrl: client.webUrl(source.locator),
+				projectId: source.projectId,
+				projectName: project?.name ?? null,
+				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
+				projectIcon: project?.icon ?? null,
+				skillCount: count.skills,
+				updatesAvailable: canReview(source) ? count.available : 0,
+				updatesBlocked: canReview(source) ? count.blocked : 0,
+				health: skillSourceHealth(source.lastErrorReason),
+				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				canReview: canReview(source),
+			};
+		});
+	}
+
 	// ---------------------------------------------------------------- steps
 
 	private async importSkills(
@@ -232,10 +271,12 @@ export class SkillSourceService {
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
 		let needsReview = 0;
+		const access = source.auth?.credentialId ? 'credential' : 'public';
 		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
+					access,
 					scope_type: scopeType,
 					first_or_more: 'first',
 					selected: keys.length,
@@ -294,6 +335,8 @@ export class SkillSourceService {
 							projectId: target.projectId,
 							credentialId: source.auth?.credentialId ?? null,
 							createdById: user.id,
+							// The check fetches nothing while the source stays at this revision.
+							probeCursor: discovered.revision ?? null,
 						},
 						ctx,
 					);
@@ -301,16 +344,23 @@ export class SkillSourceService {
 					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
 					throw error;
 				}
-				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
-				// adds its name, so two picked skills with one name do not both come in.
-				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				// Read in the transaction, so a skill created meanwhile is not shadowed. A name that
+				// the scope already had fails. A source can hold two skills with one name, so a name
+				// that this import took gets the first free number ("ponytail 2").
+				const existing = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				const names = [...existing];
 				for (const read of importable) {
-					const { skill, fetched } = read;
-					if (!skill || !fetched) continue;
-					if (isNameTaken(skill.name, names)) {
-						failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
+					const { skill: fetchedSkill, fetched } = read;
+					if (!fetchedSkill || !fetched) continue;
+					if (isNameTaken(fetchedSkill.name, existing)) {
+						failed.push({ key: read.key, name: fetchedSkill.name, reason: 'name_taken' });
 						continue;
 					}
+					const name = nextFreeName(
+						fetchedSkill.name,
+						new Set(names.map((taken) => skillNameKey(taken.name))),
+					);
+					const skill = { ...fetchedSkill, name };
 					const { frontmatter } = fetched.content;
 					const skillId = await this.skillService.createTrusted(
 						{
@@ -330,13 +380,14 @@ export class SkillSourceService {
 							sourceId,
 							remoteRef: read.ref,
 							baseRevision: fetched.revision,
-							baseContentHash: skillContentHash(toSkillContent(skill, frontmatter)),
+							// The source content, so the check does not take the new name for an update.
+							baseContentHash: skillContentHash(toSkillContent(fetchedSkill, frontmatter)),
 							skippedFiles: fetched.skippedFiles,
 						},
 						ctx,
 					);
-					names.push({ skillId, name: skill.name });
-					imported.push({ key: read.key, skillId, name: skill.name });
+					names.push({ skillId, name });
+					imported.push({ key: read.key, skillId, name });
 					skippedFiles += fetched.skippedFiles.length;
 					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
@@ -360,6 +411,7 @@ export class SkillSourceService {
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),
 			source.type,
 			'sync',
+			{ source_provider: source.type, source_access: access },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}

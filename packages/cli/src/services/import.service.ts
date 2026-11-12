@@ -23,13 +23,14 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
 import {
+	type DataTableColumn,
+	DataTableDDLService,
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
-} from '@/modules/data-table/utils/sql-utils';
+} from '@n8n/backend-module-data-table';
+
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -41,9 +42,28 @@ import {
 	sanitizeNodeGroupDescriptions,
 } from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
+import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+
+/**
+ * Archive file names of entity classes that were renamed while their table kept
+ * its name. The exporter names each file after the entity class, so an archive
+ * written before a rename still carries the old name, and an importer that only
+ * knows the new class would skip it silently. Keyed by the old lowercase name,
+ * the value is the current one. An entry applies only while no entity carries
+ * the old name itself.
+ */
+const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
+	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
+	agentfile: 'knowledgefile',
+};
+
+/** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
+function toArchiveBaseName(file: string): string {
+	return file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+}
 
 /**
  * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
@@ -320,86 +340,21 @@ export class ImportService {
 		return { violations };
 	}
 
-	/**
-	 * Sorts workflows to activate in dependency order so that subworkflows are activated
-	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
-	 */
 	private sortWorkflowsForActivation(
 		allImportedWorkflows: IWorkflowWithVersionMetadata[],
 		toActivate: Array<{ workflowId: string; versionId: string }>,
 	): Array<{ workflowId: string; versionId: string }> {
-		if (toActivate.length <= 1) return toActivate;
-
 		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
-		const activateIds = new Set(toActivate.map((w) => w.workflowId));
-
-		// Fast path: skip the full graph build if no workflow in the batch references
-		// another batch workflow via an active executeWorkflow node.
-		const hasCrossReference = toActivate.some(({ workflowId }) =>
-			(nodesByWorkflowId.get(workflowId) ?? []).some(
-				(node) =>
-					!node.disabled &&
-					node.type === 'n8n-nodes-base.executeWorkflow' &&
-					activateIds.has(this.extractSubworkflowId(node) ?? ''),
-			),
-		);
-		if (!hasCrossReference) return toActivate;
-
-		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
-		// callee id → set of caller ids that depend on it being activated first
-		const dependents = new Map<string, Set<string>>(
-			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
-		);
-		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
-		const unresolvedDepsCount = new Map<string, number>(
-			toActivate.map(({ workflowId }) => [workflowId, 0]),
-		);
-
-		for (const { workflowId } of toActivate) {
-			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
-				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
-				const calleeId = this.extractSubworkflowId(node);
-				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
-				dependents.get(calleeId)!.add(workflowId);
-				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
-			}
-		}
-
-		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
-		const result: Array<{ workflowId: string; versionId: string }> = [];
-
-		while (queue.length > 0) {
-			const item = queue.shift()!;
-			result.push(item);
-			for (const callerId of dependents.get(item.workflowId)!) {
-				const remaining = unresolvedDepsCount.get(callerId)! - 1;
-				unresolvedDepsCount.set(callerId, remaining);
-				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
-			}
-		}
-
-		if (result.length < toActivate.length) {
-			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
-			// sort — it's part of a cycle (its dependency also waits on it). Append these
-			// so they still get activated rather than being silently dropped.
-			const cycleWorkflows = toActivate.filter(
-				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
-			);
+		const { ordered, cyclic } = sortSubWorkflowsFirst(toActivate, ({ workflowId }) => ({
+			id: workflowId,
+			nodes: nodesByWorkflowId.get(workflowId) ?? [],
+		}));
+		if (cyclic.length > 0) {
 			this.logger.warn(
-				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+				`Detected circular subworkflow references among workflows: [${cyclic.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
 			);
-			result.push(...cycleWorkflows);
 		}
-
-		return result;
-	}
-
-	private extractSubworkflowId(node: INode): string | undefined {
-		const source = node.parameters?.['source'];
-		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
-		const wfId = node.parameters?.['workflowId'];
-		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
-		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+		return ordered;
 	}
 
 	private async activateWorkflow(
@@ -509,11 +464,14 @@ export class ImportService {
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
 		const dataTableFiles: Record<string, string[]> = {};
+		const presentBaseNames = new Set(
+			files.filter((file) => file.endsWith('.jsonl')).map(toArchiveBaseName),
+		);
 
 		for (const file of files) {
 			if (!file.endsWith('.jsonl')) continue;
 
-			const baseName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+			const baseName = toArchiveBaseName(file);
 
 			// Exclude migrations from regular entity import
 			if (baseName === 'migrations') {
@@ -528,7 +486,8 @@ export class ImportService {
 				continue;
 			}
 
-			const entityName = baseName;
+			const entityName = this.resolveArchiveEntityName(file, baseName, presentBaseNames);
+			if (entityName === null) continue;
 
 			// Build table names map (only need to do this once per entity)
 			if (!entityTableNamesMap[entityName]) {
@@ -556,6 +515,37 @@ export class ImportService {
 			entityFiles,
 			dataTableFiles,
 		};
+	}
+
+	/**
+	 * The entity an archive file belongs to. A file written under the old name of a
+	 * renamed entity maps to the current name, unless an entity carries the old name
+	 * again. It is skipped (null) when the directory also holds files under the
+	 * current name: one export never writes both, so the old files are leftovers of
+	 * an earlier run in the same directory.
+	 */
+	private resolveArchiveEntityName(
+		file: string,
+		baseName: string,
+		presentBaseNames: Set<string>,
+	): string | null {
+		const currentName = LEGACY_ENTITY_FILE_NAMES[baseName];
+		if (!currentName) return baseName;
+
+		const hasEntityWithOldName = this.dataSource.entityMetadatas.some(
+			(meta) => meta.name.toLowerCase() === baseName,
+		);
+		if (hasEntityWithOldName) return baseName;
+
+		if (presentBaseNames.has(currentName)) {
+			this.logger.warn(
+				`⚠️  Skipping ${file}: the directory also holds ${currentName} files, so it is a leftover of an earlier export`,
+			);
+			return null;
+		}
+
+		this.logger.info(`   ℹ️  Reading ${file} as ${currentName} (entity renamed since the export)`);
+		return currentName;
 	}
 
 	/**

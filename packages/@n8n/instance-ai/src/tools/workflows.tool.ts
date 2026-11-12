@@ -93,10 +93,10 @@ import {
 
 // `list` and `node-usage` share these fields, so each has to read correctly for both tools.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
+	'Project ID, obtainable from `list_projects`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
 
 const SETUP_PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Scope credential creation to that project.';
+	'Project ID, obtainable from `list_projects`. Scope credential creation to that project.';
 
 const SCOPE_FIELD_DESCRIPTION =
 	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
@@ -228,7 +228,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with workflow_builder_build_workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save by running workflow_builder_build_workflow through call_tool. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -592,7 +592,7 @@ async function handleNodeUsage(
 		note:
 			`Counts are how many workflows use each type, out of workflowsInScope. ${absence} ` +
 			'Node types only — for parameter-level convention (retry settings, naming, model ' +
-			'options), read one workflow with `get`.',
+			'options), run `get_workflow` through `call_tool` on one workflow.',
 	};
 }
 
@@ -615,7 +615,7 @@ function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
 		case 'unsupported':
 			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Tell the user and ask the user how to proceed.`;
 		case 'scope-too-wide':
-			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`list_projects\`) to narrow to one project, then retry.`;
 		default:
 			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
 	}
@@ -721,7 +721,8 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			error: message,
 			availableWorkflows: available,
 			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or call `list_workflows` for the current set. ' +
+				// The self-healing agent reads this too and has no `call_tool` or `list_workflows`.
+				'No workflow exists with that id. Pick one from `availableWorkflows`. ' +
 				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
 		};
 	}
@@ -757,13 +758,13 @@ async function getPinnedNodesReport(
 
 const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	written:
-		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then call workflow_builder_build_workflow with this filePath. Do not rewrite the whole file.',
+		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then run workflow_builder_build_workflow through call_tool with this filePath. Do not rewrite the whole file.',
 	refreshed:
-		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then workflow_builder_build_workflow.',
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then run workflow_builder_build_workflow through call_tool with this filePath.',
 	current:
-		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_builder_build_workflow with this filePath.',
+		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and run workflow_builder_build_workflow through call_tool with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get_workflow_as_code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it by running workflow_builder_build_workflow through call_tool to save them, or delete the file and run get_workflow_as_code through call_tool again to start from the saved workflow.',
 };
 
 /**
@@ -2385,7 +2386,7 @@ async function runWorkflowAction(
 		case 'get-as-code': {
 			const result = await handleGetAsCode(context, workflowInput);
 
-			if (!options.sourceGuidance) return result;
+			if (!options.sourceGuidance || !('filePath' in result)) return result;
 
 			const conflictNote =
 				'status' in result && result.status === 'conflict'

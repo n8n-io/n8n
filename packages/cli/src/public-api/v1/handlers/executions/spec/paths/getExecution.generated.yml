@@ -2,7 +2,10 @@ operationId: getExecution
 tags:
   - Executions
 summary: Retrieve an execution
-description: Retrieve an execution from your instance.
+description: |-
+  Retrieve an execution from your instance.
+
+  Requires the `execution:read` API key scope.
 x-required-scope: execution:read
 parameters:
   - schema:
@@ -216,3 +219,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

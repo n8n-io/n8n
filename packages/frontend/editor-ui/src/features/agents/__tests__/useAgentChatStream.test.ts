@@ -2247,6 +2247,59 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant[1].hostEvents).toBeUndefined();
 	});
 
+	it('keeps host events sent before the first step on the message of that step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', key: 'turn', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'reasoning-start', id: 'r-1' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Plan the reply.' },
+			{ type: 'reasoning-end', id: 'r-1' },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant).toHaveLength(1);
+		expect(assistant[0].content).toBe('hello');
+		expect(assistant[0].thinkingSegments).toEqual([
+			expect.objectContaining({ content: 'Plan the reply.' }),
+		]);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.prepared', payload: { step: 0 } }),
+		]);
+	});
+
+	it('starts a new message at the next step after a message with step output', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toHaveLength(1);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
 	it('keeps a message with only host events when the turn reports an error', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'host-event', name: 'test.notice', payload: 1 },
@@ -2590,6 +2643,139 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
+	});
+
+	it.each(['chat', 'n8n-chat'] as const)(
+		'shows the files of a respond on the assistant message in the %s channel',
+		async (channel) => {
+			const file = {
+				fileId: 'att-1',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				sizeBytes: 2048,
+			};
+			const events: AgentSseEvent[] = [
+				{ type: 'start-step' },
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					input: { action: 'respond', input: { message: { text: 'Report' }, fileIds: ['att-1'] } },
+				},
+				{ type: 'finish-step' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					output: { ok: true, files: [file] },
+				},
+				{ type: 'done' },
+			];
+			globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+			const hook = buildHook(undefined, { channel: ref(channel) });
+			await hook.sendMessage('send the report');
+			await flushPromises();
+			await nextTick();
+
+			expect(hook.messages.value[1].attachments).toEqual([file]);
+		},
+	);
+
+	describe('files with a card', () => {
+		const file = {
+			fileId: 'att-1',
+			fileName: 'report.pdf',
+			mimeType: 'application/pdf',
+			sizeBytes: 2048,
+		};
+		const cardCall = (components: unknown[]): AgentSseEvent => ({
+			type: 'tool-call',
+			toolCallId: 'tc-card',
+			toolName: N8N_CHAT_ACTION_TOOL_NAME,
+			input: {
+				action: 'respond',
+				input: { message: { card: { components } }, fileIds: ['att-1'] },
+			},
+		});
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'shows the files of a static card in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi.fn(async () =>
+					makeSseResponse([
+						cardCall([{ type: 'section', text: 'The report' }]),
+						{
+							type: 'tool-result',
+							toolCallId: 'tc-card',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							output: { ok: true, files: [file], messageContext: {} },
+						},
+						{ type: 'done' },
+					]),
+				) as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report');
+				await flushPromises();
+
+				expect(hook.messages.value[1].attachments).toEqual([file]);
+			},
+		);
+
+		it.each(['chat', 'n8n-chat'] as const)(
+			'keeps the files of an interactive card while suspended and after the answer in the %s channel',
+			async (channel) => {
+				globalThis.fetch = vi
+					.fn()
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							cardCall([{ type: 'button', label: 'Approve', value: 'approve' }]),
+							{
+								type: 'tool-call-suspended',
+								payload: {
+									toolCallId: 'tc-card',
+									runId: 'run-card',
+									toolName: N8N_CHAT_ACTION_TOOL_NAME,
+									input: { type: 'integration_action', action: 'respond', files: [file] },
+								},
+							},
+						]),
+					)
+					.mockResolvedValueOnce(
+						makeSseResponse([
+							{
+								type: 'tool-result',
+								toolCallId: 'tc-card',
+								toolName: N8N_CHAT_ACTION_TOOL_NAME,
+								output: { value: 'approve' },
+							},
+							{ type: 'text-delta', id: 't1', delta: 'Approved.' },
+							{ type: 'done' },
+						]),
+					) as unknown as typeof fetch;
+
+				const hook = buildHook(undefined, { channel: ref(channel) });
+				await hook.sendMessage('send the report for approval');
+				await flushPromises();
+
+				const card = hook.messages.value[1];
+				expect(card.status).toBe('awaitingUser');
+				expect(card.attachments).toEqual([file]);
+
+				await hook.resume({
+					runId: 'run-card',
+					toolCallId: 'tc-card',
+					resumeData: { value: 'approve' },
+				});
+				await flushPromises();
+
+				const cardAfterAnswer = hook.messages.value.find(({ id }) => id === card.id);
+				expect(cardAfterAnswer?.toolCalls?.[0].state).toBe('done');
+				expect(cardAfterAnswer?.attachments).toEqual([file]);
+				expect(hook.messages.value.flatMap(({ attachments }) => attachments ?? [])).toEqual([file]);
+			},
+		);
 	});
 
 	it('marks cancellation tool results as cancelled instead of done', async () => {

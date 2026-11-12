@@ -2,7 +2,10 @@ operationId: getExecutionTags
 tags:
   - Executions
 summary: Get execution tags
-description: Get annotation tags for an execution.
+description: |-
+  Get annotation tags for an execution.
+
+  Requires the `executionTags:list` API key scope.
 x-required-scope: executionTags:list
 parameters:
   - schema:
@@ -27,3 +30,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

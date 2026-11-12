@@ -18,11 +18,12 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CacheService } from '@n8n/backend-services';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type {
 	AgentExecutionAdmission,
@@ -63,8 +64,10 @@ import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
 	ReplyDeliveryError,
+	type EarlierToolResult,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
+import { AgentOutboundFiles } from './agent-outbound-files.service';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
@@ -176,6 +179,12 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 
 	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+
+	/** The agent thread and earlier tool results of a suspended run. */
+	getSuspendedRun?(config: {
+		agentId: string;
+		runId: string;
+	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
 }
 
 /** An open checkpoint prevents automatic session rotation. */
@@ -285,6 +294,13 @@ export class AgentChatBridge {
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
 			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
+				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
+					fileIds,
+					caption,
+					onPosted,
+					scope: { projectId: n8nProjectId, threadId: agentThreadId },
+				}),
 		});
 		this.hitlResumeHandler = new AgentChatHitlResumeHandler({
 			agentId,
@@ -392,6 +408,9 @@ export class AgentChatBridge {
 			},
 			async isResumable({ agentId: aid, runId }) {
 				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
+			},
+			async getSuspendedRun({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).getSuspendedRun(aid, runId);
 			},
 		};
 		return new AgentChatBridge(
@@ -589,6 +608,7 @@ export class AgentChatBridge {
 		threadId: string,
 		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
+		agentThreadId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(
 			(async function* () {
@@ -598,6 +618,7 @@ export class AgentChatBridge {
 			{
 				throwOnDeliveryError: true,
 				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+				...(agentThreadId ? { agentThreadId } : {}),
 			},
 		);
 	}
@@ -662,10 +683,13 @@ export class AgentChatBridge {
 		// (unset) — only fall back to the integration's default when the setting
 		// was never configured at all, not when it was deliberately disabled.
 		// Some integration types (see `AgentIntegrationConfig`) carry no
-		// `settings` field at all, hence the `in` check before reading it.
+		// `settings` field at all, or settings without an idle timeout, hence
+		// the `in` checks before reading it.
 		const configuredIdleTimeoutMinutes =
-			'settings' in this.integration
-				? this.integration.settings?.sessionIdleTimeoutMinutes
+			'settings' in this.integration &&
+			this.integration.settings &&
+			'sessionIdleTimeoutMinutes' in this.integration.settings
+				? this.integration.settings.sessionIdleTimeoutMinutes
 				: undefined;
 		const idleTimeoutMinutes =
 			configuredIdleTimeoutMinutes !== undefined
@@ -1161,6 +1185,7 @@ export class AgentChatBridge {
 				statusHandle,
 				actingUserId: payload.sender.userId,
 				quietErrors: replyOptional,
+				agentThreadId: threadId,
 			});
 		} catch (error) {
 			if (replyOptional) {
@@ -1296,7 +1321,9 @@ export class AgentChatBridge {
 				attachmentNotes.push(
 					error instanceof InboundAttachmentAccessError
 						? `[Attachment "${name}" could not be read: ${error.message}]`
-						: `[Attachment "${name}" could not be processed]`,
+						: error instanceof AgentFileLimitError
+							? `[Attachment "${name}" was skipped: ${error.message}]`
+							: `[Attachment "${name}" could not be processed]`,
 				);
 			}
 		}

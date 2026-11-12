@@ -14,7 +14,10 @@ import {
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from '../sources/github/github-archive';
-import { GitHubSkillSourceClient } from '../sources/github/github-skill-source-client';
+import {
+	GitHubSkillSourceClient,
+	retryAfterSeconds,
+} from '../sources/github/github-skill-source-client';
 import type { SkillContent } from '../utils/skill-content-hash';
 import { writeSkillFolder } from '../utils/skill-md';
 
@@ -184,8 +187,24 @@ describe('GitHubSkillSourceClient', () => {
 				ok: true,
 			},
 			{
-				case: 'OAuth2',
-				credential: { type: 'githubOAuth2Api', data: { accessToken: 't' } },
+				case: 'a connected OAuth2 account',
+				credential: { type: 'githubOAuth2Api', data: { oauthTokenData: { access_token: 't' } } },
+				ok: true,
+			},
+			{
+				case: 'an OAuth2 account that is not connected yet',
+				credential: { type: 'githubOAuth2Api', data: {} },
+				ok: false,
+			},
+			{
+				case: 'OAuth2 for another GitHub server',
+				credential: {
+					type: 'githubOAuth2Api',
+					data: {
+						server: 'https://git.acme.dev/api/v3',
+						oauthTokenData: { access_token: 't' },
+					},
+				},
 				ok: false,
 			},
 			{ case: 'no token', credential: { type: 'githubApi', data: {} }, ok: false },
@@ -539,5 +558,25 @@ describe('GitHubSkillSourceClient', () => {
 				reason: 'unreachable',
 			});
 		});
+	});
+});
+
+describe('retryAfterSeconds', () => {
+	const now = 1_000_000_000_000;
+
+	it.each([
+		{ headers: { 'retry-after': '120' }, seconds: 120 },
+		{ headers: { 'retry-after': '0' }, seconds: 0 },
+		// The reset time of the spent limit, in epoch seconds.
+		{ headers: { 'x-ratelimit-reset': String(now / 1000 + 300) }, seconds: 300 },
+		{ headers: { 'x-ratelimit-reset': String(now / 1000 - 10) }, seconds: 0 },
+		{
+			headers: { 'retry-after': '60', 'x-ratelimit-reset': String(now / 1000 + 300) },
+			seconds: 60,
+		},
+		{ headers: {}, seconds: undefined },
+		{ headers: { 'retry-after': 'soon' }, seconds: undefined },
+	])('reads $headers as $seconds', ({ headers, seconds }) => {
+		expect(retryAfterSeconds(headers, now)).toBe(seconds);
 	});
 });

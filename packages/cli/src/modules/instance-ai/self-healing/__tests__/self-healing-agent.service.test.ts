@@ -1,15 +1,16 @@
-import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
+import type { Workspace } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS, type WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
+import type { User, WorkflowDependencyRepository } from '@n8n/db';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
+	OutsideThreadProjectError,
 	streamAgentRun,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -37,6 +38,7 @@ import {
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
 import type { CandidateWorkflowResult } from '../candidate-workflow';
+import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -78,16 +80,29 @@ const baseline: WorkflowSuggestionBaseline = {
 		settings: { timezone: 'Europe/Prague' },
 	},
 };
+const subWorkflow: WorkflowSuggestionBaseline = {
+	...baseline,
+	workflowId: 'sub-workflow',
+	original: {
+		name: 'Captured sub-workflow',
+		nodes: [{ ...baseline.original.nodes[0], id: 'sub-node-id', name: 'Sub-workflow node' }],
+		connections: {},
+	},
+};
 const input: SelfHealingRunInput = {
 	user,
 	baseline,
+	configurationId: 1,
+	includeSubWorkflows: false,
 	executionId: '123',
 };
+const triggeringFile = 'src/workflows/captured-workflow.workflow.ts';
+const subWorkflowFile = 'src/workflows/captured-sub-workflow.workflow.ts';
 const validOutput = {
 	outcome: 'fix_ready',
 	summary: 'Updated the node.',
 	report: 'The check passed.',
-	candidateFilePath: 'self-healing/candidate.workflow.ts',
+	candidateWorkflowIds: [baseline.workflowId],
 };
 
 describe('SelfHealingAgentService', () => {
@@ -113,8 +128,9 @@ describe('SelfHealingAgentService', () => {
 	const credits = mock<InstanceAiCreditService>();
 	const events = mock<InProcessEventBus>();
 	const candidates = mock<SelfHealingCandidateService>();
-	const filesystem = mock<WorkspaceFilesystem>();
-	const workspace = mock<Workspace>({ filesystem });
+	const configurations = mock<SelfHealingConfigurationService>();
+	const dependencies = mock<WorkflowDependencyRepository>();
+	const workspace = mock<Workspace>();
 	const service = new SelfHealingAgentService(
 		config,
 		logger,
@@ -130,21 +146,42 @@ describe('SelfHealingAgentService', () => {
 		events,
 		candidates,
 		new InstanceAiErrorReporterService(logger, errorReporter),
+		configurations,
+		dependencies,
 	);
+	const subWorkflowInput = { ...input, includeSubWorkflows: true };
+	const verifyFirst = (...workflowIds: string[]) =>
+		vi
+			.mocked(createSelfHealingAgent)
+			.mockImplementationOnce(async ({ context, verifyCandidate }) => {
+				for (const workflowId of workflowIds) {
+					await context.workflowService.get(workflowId);
+					await verifyCandidate({
+						workflowId,
+						filePath: workflowId === subWorkflow.workflowId ? subWorkflowFile : triggeringFile,
+					});
+				}
+				return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
+			});
 	let controller: AbortController;
 	let options: SelfHealingRunOptions;
-	let files: Map<string, string | Buffer>;
 	let stream: StreamRunResult;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		configurations.hasReviewerWhoCanEditAll.mockResolvedValue(true);
+		configurations.canActOn.mockResolvedValue(true);
+		dependencies.isCalledBy.mockImplementation(
+			async (workflowId) => workflowId === subWorkflow.workflowId,
+		);
+		suggestions.captureBaseline.mockResolvedValue(subWorkflow);
+		suggestions.getPendingResultId.mockResolvedValue(undefined);
 		config.instanceAi.workflowSuggestionsEnabled = true;
 		controller = new AbortController();
-		files = new Map();
-		filesystem.writeFile.mockImplementation(async (path, content) => {
-			files.set(path, typeof content === 'string' ? content : Buffer.from(content));
-		});
-		filesystem.readFile.mockImplementation(async (path) => files.get(path) ?? '');
+		candidates.verify.mockResolvedValue({
+			filePath: triggeringFile,
+			validation: { success: true, warnings: [] },
+		} as never);
 		vi.mocked(getWorkspaceRoot).mockResolvedValue('/workspace');
 		options = {
 			threadId: 'internal-thread',
@@ -173,7 +210,9 @@ describe('SelfHealingAgentService', () => {
 		settings.getPermissions.mockReturnValue({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
 		models.getLabeledModelFetch.mockReturnValue(modelFetch);
-		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
+		adapter.createContext.mockReturnValue(
+			mock<InstanceAiContext>({ workflowService: mock<InstanceAiContext['workflowService']>() }),
+		);
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
 		credits.claimRunUsage.mockResolvedValue(0.25);
 		models.isProxyEnabled.mockReturnValue(true);
@@ -236,11 +275,8 @@ describe('SelfHealingAgentService', () => {
 		},
 	);
 
-	it('prepares the captured baseline and binds verification', async () => {
-		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
-			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });
-			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
-		});
+	it('names the triggering workflow and binds verification', async () => {
+		verifyFirst(baseline.workflowId);
 		const result = await service.execute(input, options);
 
 		expect(result).toMatchObject({
@@ -253,10 +289,10 @@ describe('SelfHealingAgentService', () => {
 			turns: null,
 			durationSeconds: expect.any(Number),
 		});
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('original value');
 		expect(candidates.verify).toHaveBeenCalledWith(
 			expect.objectContaining({
+				workflowId: baseline.workflowId,
+				filePath: triggeringFile,
 				user,
 				baseline,
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
@@ -305,7 +341,9 @@ describe('SelfHealingAgentService', () => {
 		);
 		expect(streamAgentRun).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.stringContaining(validOutput.candidateFilePath),
+			'Investigate the failed execution using the execution tools.\n\n' +
+				'Triggering workflow: "Captured workflow" (workflow)\nFailed execution: 123\n' +
+				'You can change only the triggering workflow.',
 			expect.objectContaining({
 				recoverUsageOnAbort: true,
 				maxIterations: 100,
@@ -318,13 +356,14 @@ describe('SelfHealingAgentService', () => {
 		);
 	});
 
-	it('applies parameter redaction to the captured candidate', async () => {
+	it('applies parameter redaction to reads of the captured baseline', async () => {
+		const context = mock<InstanceAiContext>();
+		adapter.createContext.mockReturnValueOnce(context);
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(false);
 		await service.execute(input, options);
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).not.toContain(
-			'original value',
-		);
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
+		const workflow = await context.workflowService.getAsWorkflowJSON(baseline.workflowId);
+		expect(JSON.stringify(workflow)).not.toContain('original value');
+		expect(workflow.nodes).toEqual([expect.objectContaining({ id: 'node-id' })]);
 	});
 
 	it('waits for result storage with final usage and the original candidate context', async () => {
@@ -344,10 +383,11 @@ describe('SelfHealingAgentService', () => {
 			},
 		};
 		candidates.compile.mockResolvedValue(candidate);
+		verifyFirst(baseline.workflowId);
 		options.onComplete = vi.fn(async (result) => {
 			expect(result.usage).toMatchObject({ credits: 0.25 });
 			suggestions.requireEditor.mockResolvedValueOnce(currentUser);
-			expect(await result.candidate?.compile()).toEqual(candidate);
+			expect(await result.candidates?.[0].compile()).toEqual(candidate);
 			entered.resolve();
 			await persisted.promise;
 		});
@@ -358,7 +398,7 @@ describe('SelfHealingAgentService', () => {
 		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				baseline,
-				filePath: validOutput.candidateFilePath,
+				filePath: triggeringFile,
 				context: expect.objectContaining({ workspace: expect.anything() }),
 			}),
 			currentUser,
@@ -425,7 +465,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: 0.25 },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(result.finishReason).toBeUndefined();
 		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', stream);
@@ -454,7 +494,7 @@ describe('SelfHealingAgentService', () => {
 		);
 		const finished = vi.mocked(options.onFinish).mock.calls[0][0];
 		expect(finished).not.toHaveProperty('output');
-		expect(finished).not.toHaveProperty('candidate');
+		expect(finished).not.toHaveProperty('candidates');
 		expect(finished.finishReason).toBeUndefined();
 	});
 
@@ -464,7 +504,7 @@ describe('SelfHealingAgentService', () => {
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);
 			expect(result.output).toBeUndefined();
-			expect(result.candidate).toBeUndefined();
+			expect(result.candidates).toBeUndefined();
 			expect(result.validationError).toBeTruthy();
 			expect(result.status).toBe('completed');
 			expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
@@ -478,28 +518,27 @@ describe('SelfHealingAgentService', () => {
 				outcome,
 				summary: 'The investigation needs follow-up.',
 				report: 'No candidate is ready.',
-				candidateFilePath: null,
+				candidateWorkflowIds: [],
 			};
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);
 
 			expect(result.output).toEqual(output);
-			expect(result.candidate).toBeUndefined();
+			expect(result.candidates).toBeUndefined();
 		},
 	);
 
 	it('returns the explicit partial candidate from needs_you output', async () => {
-		const filePath = 'self-healing/partial.workflow.ts';
-		stream.structuredOutput = {
-			...validOutput,
-			outcome: 'needs_you',
-			candidateFilePath: filePath,
-		};
+		stream.structuredOutput = { ...validOutput, outcome: 'needs_you' };
+		verifyFirst(baseline.workflowId);
 		const result = await service.execute(input, options);
 
-		expect(result.candidate?.filePath).toBe(filePath);
-		await result.candidate?.compile();
-		expect(candidates.compile).toHaveBeenCalledWith(expect.objectContaining({ filePath }), user);
+		expect(result.candidates).toHaveLength(1);
+		await result.candidates?.[0].compile();
+		expect(candidates.compile).toHaveBeenCalledWith(
+			expect.objectContaining({ filePath: triggeringFile }),
+			user,
+		);
 	});
 
 	it('preserves valid output when accounting throws', async () => {
@@ -627,7 +666,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: 0.25 },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(result.finishReason).toBeUndefined();
 		expect(result.validationError).toBeUndefined();
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
@@ -653,7 +692,7 @@ describe('SelfHealingAgentService', () => {
 		stream.structuredOutput = undefined;
 		const result = await service.execute(input, options);
 		expect(result).toMatchObject({ status: 'suspended', reason: 'unexpected_suspension' });
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ reason: 'unexpected_suspension' }),
 			'test/model',
@@ -721,7 +760,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: null, turns: null },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
@@ -821,6 +860,230 @@ describe('SelfHealingAgentService', () => {
 			await expect(context.workflowService[method]?.('another-workflow', 'v2')).rejects.toBe(error);
 		},
 	);
+
+	describe('sub-workflow admission', () => {
+		const subBaseline = (workflowId: string, projectId = baseline.projectId) => ({
+			...subWorkflow,
+			workflowId,
+			projectId,
+			original: { ...subWorkflow.original, name: workflowId },
+		});
+		const live = { name: 'Live workflow', versionId: 'v2', nodes: [] };
+		const run = async (runInput: SelfHealingRunInput) => {
+			const context = mock<InstanceAiContext>({
+				workflowService: {
+					get: vi.fn().mockResolvedValue(live),
+					getAsWorkflowJSON: vi.fn().mockResolvedValue(live),
+					getVersion: vi.fn().mockResolvedValue(live),
+				},
+			});
+			const original = context.workflowService;
+			adapter.createContext.mockReturnValueOnce(context);
+			await service.execute(runInput, options);
+			const assertWritable = async (id: string) =>
+				await context.assertInThreadProject?.({ kind: 'workflow', id });
+			return { workflows: context.workflowService, original, assertWritable };
+		};
+		const refusal = (reason: string) =>
+			expect.objectContaining({
+				message: expect.stringContaining(reason),
+				cause: expect.any(OutsideThreadProjectError),
+			});
+
+		it('admits a called sub-workflow on its first current read and serves its baseline', async () => {
+			const { workflows, assertWritable } = await run(subWorkflowInput);
+
+			const [detail, json] = await Promise.all([
+				workflows.get(subWorkflow.workflowId),
+				workflows.getAsWorkflowJSON(subWorkflow.workflowId),
+			]);
+
+			expect(detail).toMatchObject({ name: 'Captured sub-workflow', versionId: 'v1' });
+			expect(json).toMatchObject({
+				id: subWorkflow.workflowId,
+				nodes: [expect.objectContaining({ id: 'sub-node-id' })],
+			});
+			expect(await workflows.get(subWorkflow.workflowId)).toEqual(detail);
+			expect(dependencies.isCalledBy).toHaveBeenCalledExactlyOnceWith(subWorkflow.workflowId, [
+				'v1',
+			]);
+			expect(suggestions.getPendingResultId).toHaveBeenCalledWith(subWorkflow.workflowId);
+			expect(configurations.canActOn).toHaveBeenCalledWith(user, subWorkflow.workflowId);
+			expect(configurations.hasReviewerWhoCanEditAll).toHaveBeenCalledExactlyOnceWith(
+				{ id: input.configurationId, projectId: baseline.projectId },
+				[baseline.workflowId, subWorkflow.workflowId],
+			);
+			expect(suggestions.captureBaseline).toHaveBeenCalledExactlyOnceWith(
+				subWorkflow.workflowId,
+				user.id,
+			);
+			await expect(assertWritable(baseline.workflowId)).resolves.toBeUndefined();
+			await expect(assertWritable(subWorkflow.workflowId)).resolves.toBeUndefined();
+		});
+
+		it('does not admit sub-workflows when the setting is off', async () => {
+			const { workflows, assertWritable } = await run(input);
+
+			expect(await workflows.get(subWorkflow.workflowId)).toBe(live);
+			await expect(assertWritable(subWorkflow.workflowId)).rejects.toEqual(
+				refusal('only the triggering workflow'),
+			);
+			expect(dependencies.isCalledBy).not.toHaveBeenCalled();
+			expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		});
+
+		it('does not admit a workflow from a historical version read', async () => {
+			const { workflows, original } = await run(subWorkflowInput);
+
+			expect(await workflows.getAsWorkflowJSON(subWorkflow.workflowId, 'v1')).toBe(live);
+			expect(await workflows.getVersion?.(subWorkflow.workflowId, 'v1')).toBe(live);
+			expect(original.getAsWorkflowJSON).toHaveBeenCalledWith(subWorkflow.workflowId, 'v1');
+			expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[
+				'is not called by a target',
+				() => dependencies.isCalledBy.mockResolvedValue(false),
+				'No published version',
+			],
+			[
+				'has a pending suggestion',
+				() => suggestions.getPendingResultId.mockResolvedValue('pending-result'),
+				'pending suggestion',
+			],
+			[
+				'lacks actor access',
+				() => configurations.canActOn.mockResolvedValue(false),
+				'read its executions',
+			],
+			[
+				'has no reviewer for the group',
+				() => configurations.hasReviewerWhoCanEditAll.mockResolvedValue(false),
+				'No reviewer',
+			],
+			[
+				'has unpublished changes',
+				() => suggestions.captureBaseline.mockRejectedValue(new ConflictError('Unpublished')),
+				'Unpublished',
+			],
+			[
+				'is not editable',
+				() => suggestions.captureBaseline.mockRejectedValue(new ForbiddenError('No access')),
+				'No access',
+			],
+			[
+				'is in another project',
+				() => suggestions.captureBaseline.mockResolvedValue(subBaseline('sub-workflow', 'other')),
+				'different project',
+			],
+		])('keeps a workflow that %s read-only', async (_label, arrange, reason) => {
+			arrange();
+			const { workflows, assertWritable } = await run(subWorkflowInput);
+
+			expect(await workflows.get(subWorkflow.workflowId)).toBe(live);
+			await expect(assertWritable(subWorkflow.workflowId)).rejects.toEqual(refusal(reason));
+		});
+
+		it('admits a nested sub-workflow that was read before its caller', async () => {
+			dependencies.isCalledBy.mockImplementation(
+				async (workflowId, versionIds) => workflowId === 'child' || versionIds.length > 1,
+			);
+			suggestions.captureBaseline.mockImplementation(async (workflowId) => subBaseline(workflowId));
+			const { workflows } = await run(subWorkflowInput);
+
+			expect(await workflows.get('grandchild')).toBe(live);
+			expect(await workflows.get('child')).toMatchObject({ name: 'child' });
+			expect(await workflows.get('grandchild')).toMatchObject({ name: 'grandchild' });
+		});
+
+		it('limits the number of admitted sub-workflows under concurrent reads', async () => {
+			const ids = Array.from({ length: 11 }, (_, index) => `${index}`);
+			dependencies.isCalledBy.mockResolvedValue(true);
+			suggestions.captureBaseline.mockImplementation(async (workflowId) => subBaseline(workflowId));
+			const { workflows } = await run(subWorkflowInput);
+
+			const reads = await Promise.all(ids.map(async (id) => await workflows.get(id)));
+
+			expect(reads.filter(({ name }) => name === live.name)).toHaveLength(1);
+			expect(suggestions.captureBaseline).toHaveBeenCalledTimes(10);
+		});
+
+		it('stops admission after cancellation', async () => {
+			const { workflows } = await run(subWorkflowInput);
+			controller.abort();
+
+			await expect(workflows.get(subWorkflow.workflowId)).rejects.toThrow();
+			expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		});
+	});
+
+	it('verifies a candidate against the baseline of its workflow and rejects other workflows', async () => {
+		let unknown: unknown;
+		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async ({ verifyCandidate }) => {
+			unknown = await verifyCandidate({ workflowId: 'other-workflow', filePath: subWorkflowFile });
+			await verifyCandidate({ workflowId: subWorkflow.workflowId, filePath: subWorkflowFile });
+			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
+		});
+
+		await service.execute(subWorkflowInput, options);
+
+		expect(candidates.verify).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ filePath: subWorkflowFile, baseline: subWorkflow }),
+		);
+		expect(unknown).toMatchObject({
+			filePath: subWorkflowFile,
+			validation: {
+				success: false,
+				errors: [expect.stringContaining('cannot change this workflow. No published version')],
+			},
+			verification: { status: 'not_run' },
+		});
+	});
+
+	it('returns a candidate for each verified workflow', async () => {
+		stream.structuredOutput = {
+			...validOutput,
+			candidateWorkflowIds: [subWorkflow.workflowId, baseline.workflowId, subWorkflow.workflowId],
+		};
+		verifyFirst(baseline.workflowId, subWorkflow.workflowId);
+
+		const result = await service.execute(subWorkflowInput, options);
+
+		expect(result.candidates?.map(({ baseline }) => baseline)).toEqual([subWorkflow, baseline]);
+		await result.candidates?.[0].compile();
+		expect(candidates.compile).toHaveBeenCalledWith(
+			expect.objectContaining({ filePath: subWorkflowFile, baseline: subWorkflow }),
+			user,
+		);
+	});
+
+	it.each([
+		[['other-workflow']],
+		[[baseline.workflowId, 'other-workflow']],
+		[[subWorkflow.workflowId]],
+	])('returns no candidates when the output names %j', async (candidateWorkflowIds) => {
+		stream.structuredOutput = { ...validOutput, candidateWorkflowIds };
+		verifyFirst(baseline.workflowId);
+
+		const result = await service.execute(subWorkflowInput, options);
+
+		expect(result.output).toMatchObject({ candidateWorkflowIds });
+		expect(result.candidates).toBeUndefined();
+	});
+
+	it('does not return a candidate whose verification failed', async () => {
+		candidates.verify.mockResolvedValue({
+			filePath: triggeringFile,
+			validation: { success: false, reason: 'candidate_invalid', errors: ['Invalid'] },
+			verification: { status: 'not_run' },
+		} as never);
+		verifyFirst(baseline.workflowId);
+
+		const result = await service.execute(input, options);
+
+		expect(result.candidates).toBeUndefined();
+	});
 
 	it('rejects a disabled gate at admission', () => {
 		config.instanceAi.workflowSuggestionsEnabled = false;

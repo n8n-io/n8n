@@ -13,7 +13,8 @@ import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import { SkillSyncService } from '../services/skill-sync.service';
 
 /**
- * Skill Sync: connect a source, import its skills, and stop syncing one skill. The services check
+ * Skill Sync: connect a source, import its skills, check a source for updates, and stop syncing
+ * one skill. The services check
  * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
  * scope of the source decides who may change it.
  */
@@ -78,5 +79,20 @@ export class SkillSourceController {
 	async stopSyncing(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
 		await this.skillSyncService.stopSyncing(req.user, skillId);
 		return { ok: true };
+	}
+
+	/** The sources that the user can see, each with its counts, for its row in the skills table. */
+	@Get('/')
+	async list(req: AuthenticatedRequest) {
+		return await this.skillSourceService.list(req.user);
+	}
+
+	/**
+	 * Check for updates: checks the source, as the hourly check does. A source checked less
+	 * than a minute ago is not checked again.
+	 */
+	@Post('/:sourceId/check')
+	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.checkNow(req.user, sourceId);
 	}
 }
