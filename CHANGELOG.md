@@ -1,3 +1,12 @@
+## [2.47.5](https://github.com/n8n-io/n8n/compare/n8n@2.47.4...n8n@2.47.5) (2026-11-12)
+
+
+### Bug Fixes
+
+* **API:** Reject edits to read-only credential nodes in the Public API ([#43555](https://github.com/n8n-io/n8n/issues/43555)) ([404b3df](https://github.com/n8n-io/n8n/commit/404b3dfd1e427f918e1de50eb41cfbfa39f624af))
+* **editor:** Align animated node border corners ([#43549](https://github.com/n8n-io/n8n/issues/43549)) ([1fd6894](https://github.com/n8n-io/n8n/commit/1fd68944f11881dc4602784183ae3ae83e3af33e))
+
+
 ## [2.47.4](https://github.com/n8n-io/n8n/compare/n8n@2.47.3...n8n@2.47.4) (2026-11-11)
 
 
