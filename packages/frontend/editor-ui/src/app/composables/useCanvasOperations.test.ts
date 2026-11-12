@@ -1618,6 +1618,139 @@ describe('useCanvasOperations', () => {
 			expect(addNodeSpy).not.toHaveBeenCalled();
 			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
 		});
+
+		describe('Agent prompt defaults', () => {
+			beforeEach(() => {
+				useNodeTypesStore().nodeTypes = {
+					[AGENT_NODE_TYPE]: {
+						3.1: {
+							...mockNodeTypeDescription({ name: AGENT_NODE_TYPE, version: 3.1 }),
+							properties: [
+								createTestNodeProperties({
+									name: 'promptType',
+									type: 'options',
+									default: 'auto',
+									options: [
+										{ name: 'Connected Chat Trigger Node', value: 'auto' },
+										{ name: 'Define below', value: 'define' },
+									],
+								}),
+								createTestNodeProperties({
+									name: 'text',
+									type: 'string',
+									default: '={{ $json.chatInput }}',
+									displayOptions: { show: { promptType: ['auto'] } },
+								}),
+								createTestNodeProperties({
+									name: 'text',
+									type: 'string',
+									default: '',
+									displayOptions: { show: { promptType: ['define'] } },
+								}),
+							],
+						},
+					},
+				};
+				const addedNodes: INodeUi[] = [];
+				vi.mocked(workflowDocumentStoreInstance.addNode).mockImplementation((node) => {
+					addedNodes.push(node);
+				});
+				vi.mocked(workflowDocumentStoreInstance.getNodeById).mockImplementation((id) =>
+					addedNodes.find((node) => node.id === id),
+				);
+				vi.mocked(
+					workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+				).mockReturnValue(false);
+			});
+
+			afterEach(() => {
+				expect(useToast().showError).not.toHaveBeenCalled();
+			});
+
+			it('should initialize an editable prompt without the chat input expression when no chat trigger is connected', async () => {
+				await useCanvasOperations().addNodesAndConnections([{ type: AGENT_NODE_TYPE }], [], {});
+
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledWith({
+					name: expect.any(String),
+					value: { promptType: 'define', text: '' },
+				});
+				expect(useHistoryStore().pushCommandToUndo).toHaveBeenCalledWith(
+					expect.any(ReplaceNodeParametersCommand),
+				);
+			});
+
+			it('should keep the chat prompt default when a chat trigger is connected', async () => {
+				vi.mocked(
+					workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+				).mockReturnValue(true);
+
+				const { addedNodes } = await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE }],
+					[],
+					{},
+				);
+
+				expect(addedNodes[0].parameters).toEqual({
+					promptType: 'auto',
+					text: '={{ $json.chatInput }}',
+				});
+				expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+			});
+
+			it('should initialize the prompt before opening the node editor', async () => {
+				const openEditor = vi.spyOn(
+					useNDVStore(workflowDocumentStoreInstance.documentId),
+					'setActiveNodeName',
+				);
+
+				await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE, openDetail: true }],
+					[],
+					{},
+				);
+				await nextTick();
+
+				expect(openEditor).toHaveBeenCalled();
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledBefore(openEditor);
+			});
+
+			it.each(['auto', 'define'])(
+				'should keep an explicit %s prompt source',
+				async (promptType) => {
+					const { addedNodes } = await useCanvasOperations().addNodesAndConnections(
+						[{ type: AGENT_NODE_TYPE, parameters: { promptType, text: 'A saved prompt' } }],
+						[],
+						{},
+					);
+
+					expect(addedNodes[0].parameters).toEqual({ promptType, text: 'A saved prompt' });
+					expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should keep supplied prompt text when it changes the default source', async () => {
+				await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE, parameters: { text: 'A supplied prompt' } }],
+					[],
+					{},
+				);
+
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledWith({
+					name: expect.any(String),
+					value: { promptType: 'define', text: 'A supplied prompt' },
+				});
+			});
+
+			it('should keep imported Agent parameters', async () => {
+				const addedNodes = await useCanvasOperations().addNodes([{ type: AGENT_NODE_TYPE }]);
+
+				expect(addedNodes[0].parameters).toEqual({
+					promptType: 'auto',
+					text: '={{ $json.chatInput }}',
+				});
+				expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('addNodes', () => {

@@ -38,6 +38,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
+	AGENT_NODE_TYPE,
 	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
@@ -200,6 +201,7 @@ type AddNodesBaseOptions = {
 	keepPristine?: boolean;
 	telemetry?: boolean;
 	viewport?: ViewportBoundaries;
+	initializationDone?: Promise<void>;
 };
 
 type AddNodesOptions = AddNodesBaseOptions & {
@@ -1357,7 +1359,11 @@ export function useCanvasOperations() {
 			createConnectionToLastInteractedWithNode(nodeData, options);
 		}
 
-		void nextTick(() => {
+		void nextTick(async () => {
+			if (options.initializationDone) {
+				await options.initializationDone;
+			}
+
 			if (!options.keepPristine) {
 				uiStore.markStateDirty();
 			}
@@ -3957,6 +3963,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
+		const initialization = Promise.withResolvers<undefined>();
 		const addedNodesByInputIndex = new Map<number, INodeUi>();
 		const addedNodes = await addNodes(nodes, {
 			...options,
@@ -3964,6 +3971,7 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			telemetry: true,
 			addedNodesByInputIndex,
+			initializationDone: initialization.promise,
 		});
 
 		const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
@@ -4069,6 +4077,30 @@ export function useCanvasOperations() {
 				});
 			}
 		}
+
+		// Resolve the default after batch and replacement connections exist.
+		// Use the supplied parameters so the chat-only text default does not carry over.
+		for (const [index, node] of addedNodesByInputIndex) {
+			if (
+				node.type !== AGENT_NODE_TYPE ||
+				nodes[index].parameters?.promptType !== undefined ||
+				node.parameters.promptType !== 'auto' ||
+				workflowDocumentStore.value.checkIfNodeHasChatOrManualChatParent(node.name)
+			) {
+				continue;
+			}
+
+			const updatedNode = {
+				...node,
+				parameters: { ...nodes[index].parameters, promptType: 'define' },
+			};
+			resolveNodeParameters(updatedNode, requireNodeTypeDescription(node.type, node.typeVersion));
+			replaceNodeParameters(node.id, node.parameters, updatedNode.parameters, {
+				trackHistory,
+				trackBulk: false,
+			});
+		}
+		initialization.resolve(undefined);
 
 		uiStore.resetLastInteractedWith();
 
