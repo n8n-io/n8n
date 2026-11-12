@@ -459,18 +459,21 @@ describe('InstanceAiConversation', () => {
 	});
 
 	it('shows an error and stops the retries until the user scrolls away from the top', async () => {
-		const error = new Error('Network error');
 		Object.assign(thread, { hasOlderMessages: true });
 		thread.loadOlderMessages = vi.fn(async () => {
-			throw error;
+			throw new Error('Network error');
 		});
-		mountConversation();
+		const wrapper = mountConversation();
 		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
 		infiniteScroll.options?.onScroll?.(new Event('scroll'));
 
 		await infiniteScroll.load?.();
+		await nextTick();
 
-		expect(showErrorSpy).toHaveBeenCalledWith(error, "Couldn't load earlier messages");
+		expect(wrapper.find('[data-test-id="instance-ai-older-messages-error"]').text()).toContain(
+			"Couldn't load earlier messages",
+		);
+		expect(showErrorSpy).not.toHaveBeenCalled();
 		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
 
 		infiniteScroll.arrivedState!.top = false;

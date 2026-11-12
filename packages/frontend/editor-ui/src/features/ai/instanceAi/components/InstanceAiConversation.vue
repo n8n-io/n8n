@@ -463,9 +463,8 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 		const anchorTop = anchor ? contentTop(anchor) : 0;
 		try {
 			await thread.loadOlderMessages();
-		} catch (error) {
+		} catch {
 			loadOlderFailed.value = true;
-			toast.showError(error, i18n.baseText('instanceAi.thread.loadOlderError'));
 			return;
 		}
 		await nextTick();
