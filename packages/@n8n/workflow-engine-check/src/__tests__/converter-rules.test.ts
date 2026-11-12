@@ -1,4 +1,4 @@
-import type { IConnections, INode, INodeTypeDescription } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
 
@@ -10,8 +10,6 @@ const trigger: INode = {
 	position: [0, 0],
 	parameters: {},
 };
-
-const nodeTypes: INodeTypeDescription[] = [];
 
 function node(overrides: Partial<INode>): INode {
 	return {
@@ -33,17 +31,14 @@ const splitInBatches = (parameters: INode['parameters'], typeVersion = 3) =>
 
 /** Trigger -> node over `main`. */
 function check(target: INode, extraConnections: IConnections = {}) {
-	return checkEngineV2Eligibility(
-		{
-			nodes: [trigger, target],
-			connections: {
-				[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
-				...extraConnections,
-			},
-			settings: {},
+	return checkEngineV2Eligibility({
+		nodes: [trigger, target],
+		connections: {
+			[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
+			...extraConnections,
 		},
-		nodeTypes,
-	);
+		settings: {},
+	});
 }
 
 const toolConnection: IConnections = {
@@ -160,16 +155,13 @@ describe('converter rules', () => {
 		const subNode = node({ id: 'model-id', name: 'Model', type: 'n8n-nodes-base.noOp' });
 
 		expect(
-			checkEngineV2Eligibility(
-				{
-					nodes: [trigger, unreachable, subNode],
-					connections: {
-						Model: { ai_languageModel: [[{ node: 'Node', type: 'ai_languageModel', index: 0 }]] },
-					},
-					settings: {},
+			checkEngineV2Eligibility({
+				nodes: [trigger, unreachable, subNode],
+				connections: {
+					Model: { ai_languageModel: [[{ node: 'Node', type: 'ai_languageModel', index: 0 }]] },
 				},
-				nodeTypes,
-			),
+				settings: {},
+			}),
 		).toEqual({ eligible: true, reasons: [] });
 	});
 
@@ -177,8 +169,7 @@ describe('converter rules', () => {
 		const target = node({ onError: 'continueErrorOutput' });
 
 		expect(
-			checkEngineV2Eligibility({ nodes: [target], connections: {}, settings: {} }, nodeTypes)
-				.reasons,
+			checkEngineV2Eligibility({ nodes: [target], connections: {}, settings: {} }).reasons,
 		).toEqual([expect.objectContaining({ code: 'CONTINUE_ERROR_OUTPUT', nodeName: 'Node' })]);
 	});
 
@@ -213,10 +204,7 @@ describe('converter rules', () => {
 		const erroringTrigger: INode = { ...trigger, onError: 'continueErrorOutput' };
 
 		expect(
-			checkEngineV2Eligibility(
-				{ nodes: [erroringTrigger], connections: {}, settings: {} },
-				nodeTypes,
-			),
+			checkEngineV2Eligibility({ nodes: [erroringTrigger], connections: {}, settings: {} }),
 		).toEqual({ eligible: true, reasons: [] });
 	});
 
@@ -225,10 +213,11 @@ describe('converter rules', () => {
 
 		it('reports no reason, because the dispatcher names the trigger that fired', () => {
 			expect(
-				checkEngineV2Eligibility(
-					{ nodes: [trigger, secondTrigger], connections: {}, settings: {} },
-					nodeTypes,
-				),
+				checkEngineV2Eligibility({
+					nodes: [trigger, secondTrigger],
+					connections: {},
+					settings: {},
+				}),
 			).toEqual({ eligible: true, reasons: [] });
 		});
 
@@ -236,16 +225,13 @@ describe('converter rules', () => {
 			const target = node({ onError: 'continueErrorOutput' });
 
 			expect(
-				checkEngineV2Eligibility(
-					{
-						nodes: [trigger, secondTrigger, target],
-						connections: {
-							[secondTrigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
-						},
-						settings: {},
+				checkEngineV2Eligibility({
+					nodes: [trigger, secondTrigger, target],
+					connections: {
+						[secondTrigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
 					},
-					nodeTypes,
-				).reasons,
+					settings: {},
+				}).reasons,
 			).toEqual([expect.objectContaining({ code: 'CONTINUE_ERROR_OUTPUT', nodeName: 'Node' })]);
 		});
 	});
