@@ -149,9 +149,11 @@ export async function chaosRun(
 		scale: 6,
 		hooks: CHAOS_HOOKS,
 	});
+	let started: Workload | undefined;
 	try {
 		await rig.api.signIn();
 		const workload = await Workload.setup(rig);
+		started = workload;
 		workload.start(options.perSecond);
 		const applied = await runSchedule(schedule, rigExecutor(rig), { now: Date.now, sleep });
 		const remaining = options.durationMs - Math.max(0, ...applied.map((a) => a.endedMs));
@@ -180,6 +182,7 @@ export async function chaosRun(
 			violations: checkWorkload(record),
 		};
 	} finally {
+		await started?.stop();
 		await rig.stop();
 	}
 }
