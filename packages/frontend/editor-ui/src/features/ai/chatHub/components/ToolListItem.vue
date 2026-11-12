@@ -155,9 +155,10 @@ const toggleTooltip = computed(() => {
 				</N8nTooltip>
 
 				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
+					<!-- A restricted tool can still be turned off, so the chat works again, but not back on. -->
 					<ElSwitch
 						:model-value="enabled"
-						:disabled="!!restriction"
+						:disabled="!!restriction && !enabled"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
 					/>

@@ -679,20 +679,30 @@ describe('ToolsManagerModal', () => {
 			expect(getToggle(configured)).toBeTruthy();
 		});
 
-		it('disables the toggle of a restricted configured tool, whether it is on or off', async () => {
+		it('lets the user turn off a restricted tool that is on', async () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
-			chatStore.configuredTools = [
-				createMockToolDto({ id: 'tool-on' }, true),
-				createMockToolDto({ id: 'tool-off', name: 'Configured Tool A2' }, false),
-			];
+			chatStore.configuredTools = [createMockToolDto({ id: 'tool-on' }, true)];
 
 			const { container } = renderComponent({ props: defaultProps() });
 
-			for (const item of getConfiguredItems(container)) {
-				const toggle = getToggle(item);
-				expect(toggle).toBeDisabled();
-				await userEvent.click(toggle);
-			}
+			const toggle = getToggle(getConfiguredItems(container)[0]);
+			expect(toggle).not.toBeDisabled();
+			await fireEvent.click(toggle);
+
+			await waitFor(() => {
+				expect(chatStore.toggleToolEnabled).toHaveBeenCalledWith('tool-on', false);
+			});
+		});
+
+		it('does not let the user turn on a restricted tool that is off', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto({ id: 'tool-off' }, false)];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const toggle = getToggle(getConfiguredItems(container)[0]);
+			expect(toggle).toBeDisabled();
+			await fireEvent.click(toggle);
 
 			expect(chatStore.toggleToolEnabled).not.toHaveBeenCalled();
 		});
