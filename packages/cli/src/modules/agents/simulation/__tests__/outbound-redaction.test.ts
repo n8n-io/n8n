@@ -81,4 +81,17 @@ describe('OutboundRedactor', () => {
 
 		expect(wrapped.getParentTypes('x')).toEqual(['base']);
 	});
+
+	it('removes a short password from the URL path and a free-form body', async () => {
+		const { redactor } = await redactorWithCredential({ password: 'pw4567' });
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://example.com/login/pw4567/session',
+			body: 'user=alice&note=uses pw4567',
+		});
+
+		expect(JSON.stringify(request)).not.toContain('pw4567');
+	});
 });

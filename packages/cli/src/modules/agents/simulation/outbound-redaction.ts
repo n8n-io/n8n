@@ -6,7 +6,8 @@ import type { ICredentialsHelper } from 'n8n-workflow';
 import type { OutboundRequest } from './tool-simulation.contracts';
 
 const PLACEHOLDER = '[REDACTED]';
-const MIN_SECRET_LENGTH = 8;
+// Shorter values would match ordinary text; erring long only blurs the simulated reply.
+const MIN_SECRET_LENGTH = 4;
 const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
 
 /**
