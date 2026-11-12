@@ -192,8 +192,11 @@ These only run if specific files changed:
 A push to an open PR tests only the commits after the newest PR commit that
 passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
 `ci-filter` then uses the diff from that commit, not the whole PR, for the path
-filters, the test scoping and the E2E selection. Lint and typecheck still
-compare the whole PR with the base branch.
+filters, the test scoping and the E2E selection. On an incremental run, lint
+and typecheck compare the same commit with the PR head (`TURBO_SCM_BASE` and
+`TURBO_SCM_HEAD`), not with the merge commit, which also holds the base-branch
+changes since that commit. In all other runs, they compare the whole PR with
+the base branch, as before.
 
 `ci-filter` tests the whole PR when one of these is true:
 
