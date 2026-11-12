@@ -5,7 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -27,7 +27,7 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 /** Root-level (no `/rest` prefix) agent authenticated as `user` — `authAgentFor` always
  * prefixes `/rest`, which 404s against root-level routes like `/oauth/authorize`. */
-const rootAgentFor = (user: User) => {
+const rootAgentFor = (user: Person) => {
 	const agent = request.agent(testServer.app);
 	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled);
 	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -42,8 +42,8 @@ const testServer = setupTestServer({
 	endpointGroups: ['mcp'],
 });
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let webhookEndpoint: string;
 
 /** The path a chat trigger registers under: `{webhookId}/chat`. */

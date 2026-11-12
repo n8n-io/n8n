@@ -1814,13 +1814,13 @@ describe('AgentExecutionService', () => {
 					status: 'interrupted',
 					timeline: partial,
 					storedAt: 'db',
-					error: expect.stringContaining('interrupted'),
+					error: expect.stringContaining('n8n restarted'),
 					failureSummary: {
 						count: 1,
 						latest: {
 							kind: 'execution',
 							name: null,
-							message: expect.stringContaining('interrupted'),
+							message: expect.stringContaining('n8n restarted'),
 							occurredAt: expect.any(Number),
 						},
 					},

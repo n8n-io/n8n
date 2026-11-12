@@ -1,6 +1,5 @@
 import type { Response } from 'express';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
-import type { PostHogClient } from '@/posthog';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -27,7 +26,7 @@ import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, PostHogClient } from '@n8n/backend-services';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import type { EnterpriseCredentialsService } from '../credentials.service.ee';
@@ -75,6 +74,7 @@ describe('CredentialsController', () => {
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -152,7 +152,7 @@ describe('CredentialsController', () => {
 					.mockResolvedValue([fixed]);
 				const request = mock<CredentialRequest.ForWorkflow>({
 					user: req.user,
-					query: { projectId: 'project-1', forAgent },
+					query: { projectId: 'project-1', forAgent, forAssistant: undefined },
 				});
 
 				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([

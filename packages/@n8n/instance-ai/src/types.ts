@@ -10,6 +10,7 @@ import type {
 	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
@@ -43,7 +44,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	IDisplayOptions,
@@ -854,6 +855,14 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Why AI Gateway cannot serve a credential type it covers on this node, or
+	 *  undefined when it can or does not cover the type. Applies the rule the
+	 *  engine applies when the workflow runs: node type, type version, action
+	 *  (with node defaults applied) and hidden properties. */
+	getAiGatewayNodeRejection?(
+		node: Pick<NodeJSON, 'type' | 'typeVersion' | 'parameters'>,
+		credType: string,
+	): Promise<string | undefined>;
 	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
 	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
@@ -1996,9 +2005,20 @@ export interface InstanceAiMemoryConfig {
 	threadTtlDays?: number;
 	observationalMemory?: {
 		observerThresholdTokens: number;
-		reflectorThresholdTokens: number;
+		/** Fixed Reflector threshold. When unset, the SDK uses a share of the memory window. */
+		reflectorThresholdTokens?: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */
+		policy?: Pick<
+			ObservationalMemoryConfig,
+			| 'windowShares'
+			| 'logPlacement'
+			| 'failurePolicy'
+			| 'maxObserverBatchesAfterTurn'
+			| 'reflectionMode'
+			| 'historyRecall'
+		>;
 		/** Model for the Observer and Reflector. Defaults to the agent's model. */
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */

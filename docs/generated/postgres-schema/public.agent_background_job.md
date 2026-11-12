@@ -28,6 +28,7 @@
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
 | title | varchar(255) |  | false |  |  | Task name or workflow name, echoed in status-check listings |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| wakeAttemptId | uuid |  | true |  |  | Wake attempt that started with this result. Recovery marks the result consumed instead of running the wake again. |
 | workflowId | varchar(36) |  | true |  |  | Workflow jobs only; scopes cancellation |
 
 ## Constraints
@@ -99,6 +100,7 @@ erDiagram
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agents" {
@@ -107,6 +109,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
   integer publicationRevision

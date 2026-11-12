@@ -2,7 +2,10 @@ operationId: stopManyExecutions
 tags:
   - Executions
 summary: Stop multiple executions
-description: Stop multiple executions from your instance based on filter criteria.
+description: |-
+  Stop multiple executions from your instance based on filter criteria.
+
+  Requires the `execution:stop` API key scope.
 x-required-scope: execution:stop
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

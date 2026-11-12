@@ -12,7 +12,7 @@ import {
 test.describe(
 	'the main landmark structure check',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('fails a page with two <main> elements', async ({ page }) => {

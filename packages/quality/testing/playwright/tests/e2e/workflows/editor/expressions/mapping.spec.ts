@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Data Mapping',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test.describe
@@ -135,7 +135,7 @@ test.describe(
 			await n8n.interactions.precisionDragToTarget(
 				headerElement,
 				n8n.ndv.getInlineExpressionEditorInput(),
-				'top',
+				'leading',
 			);
 
 			await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText(
@@ -182,7 +182,7 @@ test.describe(
 			await n8n.interactions.precisionDragToTarget(
 				secondHeader,
 				n8n.ndv.getInlineExpressionEditorInput(),
-				'top',
+				'leading',
 			);
 
 			await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText(

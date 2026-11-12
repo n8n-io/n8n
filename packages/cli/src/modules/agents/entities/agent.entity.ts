@@ -74,6 +74,10 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ default: false })
 	availableInMCP: boolean;
 
+	/** An archived agent is unpublished, hidden from lists and read-only until a user restores it. */
+	@Column({ default: false })
+	isArchived: boolean;
+
 	/**
 	 * When this agent first reached a complete, publishable setup. Set once and
 	 * never cleared — it guards the one-off "Agent setup completed" telemetry.
