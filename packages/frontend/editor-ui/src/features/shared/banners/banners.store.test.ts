@@ -304,32 +304,34 @@ describe('Banners store', () => {
 		);
 	});
 
-	it.each([['invalid json'], ['{"a":1}'], ['[1,"dynamic-banner-1"]']])(
-		'should ignore unusable stored dismissals: %s',
-		async (stored) => {
-			vi.spyOn(dynamicBannersApi, 'getDynamicBanners').mockResolvedValue([
-				{
-					id: '1',
-					content: 'Test',
-					isDismissible: true,
-					dismissPermanently: true,
-					theme: 'info' as const,
-					priority: 1,
-				},
-			]);
-			settingsStore.settings.dynamicBanners.enabled = true;
-			usersStore.addUsers([{ id: 'user-6' } as never]);
-			usersStore.currentUserId = 'user-6';
-			localStorage.setItem('N8N_DISMISSED_DYNAMIC_BANNERS_user-6', stored);
+	it.each([
+		{ case: 'invalid JSON', stored: 'invalid json', stack: ['dynamic-banner-1'] },
+		{ case: 'truncated JSON', stored: '["dynamic-banner-1"', stack: ['dynamic-banner-1'] },
+		{ case: 'an object', stored: '{"a":1}', stack: ['dynamic-banner-1'] },
+		{ case: 'a plain string', stored: '"dynamic-banner-1"', stack: ['dynamic-banner-1'] },
+		{ case: 'a list without the banner ID', stored: '[1,"other"]', stack: ['dynamic-banner-1'] },
+		// Non-string entries are dropped. A string entry still hides its banner.
+		{ case: 'a list with a valid ID', stored: '[1,"dynamic-banner-1"]', stack: [] },
+	])('should read stored dismissals correctly for $case', async ({ stored, stack }) => {
+		vi.spyOn(dynamicBannersApi, 'getDynamicBanners').mockResolvedValue([
+			{
+				id: '1',
+				content: 'Test',
+				isDismissible: true,
+				dismissPermanently: true,
+				theme: 'info' as const,
+				priority: 1,
+			},
+		]);
+		settingsStore.settings.dynamicBanners.enabled = true;
+		usersStore.addUsers([{ id: 'user-6' } as never]);
+		usersStore.currentUserId = 'user-6';
+		localStorage.setItem('N8N_DISMISSED_DYNAMIC_BANNERS_user-6', stored);
 
-			await bannersStore.loadDynamicBanners();
+		await bannersStore.loadDynamicBanners();
 
-			// Only a valid string entry can hide a banner.
-			expect(bannersStore.bannerStack).toEqual(
-				stored.includes('dynamic-banner-1') ? [] : ['dynamic-banner-1'],
-			);
-		},
-	);
+		expect(bannersStore.bannerStack).toEqual(stack);
+	});
 
 	it('should not fetch dynamic banners when they are disabled', async () => {
 		const getDynamicBannersSpy = vi.spyOn(dynamicBannersApi, 'getDynamicBanners');
