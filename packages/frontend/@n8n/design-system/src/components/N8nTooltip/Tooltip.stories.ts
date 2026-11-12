@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { expect, waitFor } from 'storybook/test';
 import { ref } from 'vue';
 
 import Tooltip from './Tooltip.vue';
@@ -9,6 +10,7 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 const meta = {
 	title: 'Core/Tooltip',
 	component: Tooltip,
+	tags: ['visual'],
 	parameters: {
 		docs: {
 			description: { component: 'A small contextual overlay shown on hover or focus.' },
@@ -49,39 +51,39 @@ export const Placements = {
 		template: `
 		<div style="padding: 200px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
 			<div style="text-align: right;">
-				<Tooltip content="Top start" placement="top-start">
+				<Tooltip content="Top start" placement="top-start" :visible="args.visible">
 					<N8nButton label="top-start" />
 				</Tooltip>
 			</div>
 			<div style="text-align: center;">
-				<Tooltip content="Top" placement="top">
+				<Tooltip content="Top" placement="top" :visible="args.visible">
 					<N8nButton label="top" />
 				</Tooltip>
 			</div>
 			<div style="text-align: left;">
-				<Tooltip content="Top end" placement="top-end">
+				<Tooltip content="Top end" placement="top-end" :visible="args.visible">
 					<N8nButton label="top-end" />
 				</Tooltip>
 			</div>
 
 			<div style="text-align: right;">
-				<Tooltip content="Left start" placement="left-start">
+				<Tooltip content="Left start" placement="left-start" :visible="args.visible">
 					<N8nButton label="left-start" />
 				</Tooltip>
 			</div>
 			<div style="text-align: center;">
-				<Tooltip content="Center" placement="top">
+				<Tooltip content="Center" placement="top" :visible="args.visible">
 					<N8nButton label="center" />
 				</Tooltip>
 			</div>
 			<div style="text-align: left;">
-				<Tooltip content="Right start" placement="right-start">
+				<Tooltip content="Right start" placement="right-start" :visible="args.visible">
 					<N8nButton label="right-start" />
 				</Tooltip>
 			</div>
 
 			<div style="text-align: right;">
-				<Tooltip content="Left" placement="left">
+				<Tooltip content="Left" placement="left" :visible="args.visible">
 					<N8nButton label="left" />
 				</Tooltip>
 			</div>
@@ -89,13 +91,13 @@ export const Placements = {
 				<!-- Empty cell -->
 			</div>
 			<div style="text-align: left;">
-				<Tooltip content="Right" placement="right">
+				<Tooltip content="Right" placement="right" :visible="args.visible">
 					<N8nButton label="right" />
 				</Tooltip>
 			</div>
 
 			<div style="text-align: right;">
-				<Tooltip content="Left end" placement="left-end">
+				<Tooltip content="Left end" placement="left-end" :visible="args.visible">
 					<N8nButton label="left-end" />
 				</Tooltip>
 			</div>
@@ -103,23 +105,23 @@ export const Placements = {
 				<!-- Empty cell -->
 			</div>
 			<div style="text-align: left;">
-				<Tooltip content="Right end" placement="right-end">
+				<Tooltip content="Right end" placement="right-end" :visible="args.visible">
 					<N8nButton label="right-end" />
 				</Tooltip>
 			</div>
 
 			<div style="text-align: right;">
-				<Tooltip content="Bottom start" placement="bottom-start">
+				<Tooltip content="Bottom start" placement="bottom-start" :visible="args.visible">
 					<N8nButton label="bottom-start" />
 				</Tooltip>
 			</div>
 			<div style="text-align: center;">
-				<Tooltip content="Bottom" placement="bottom">
+				<Tooltip content="Bottom" placement="bottom" :visible="args.visible">
 					<N8nButton label="bottom" />
 				</Tooltip>
 			</div>
 			<div style="text-align: left;">
-				<Tooltip content="Bottom end" placement="bottom-end">
+				<Tooltip content="Bottom end" placement="bottom-end" :visible="args.visible">
 					<N8nButton label="bottom-end" />
 				</Tooltip>
 			</div>
@@ -375,4 +377,31 @@ export const WithContentClass = {
 		placement: 'top',
 		contentClass: 'custom-tooltip-style',
 	},
+} satisfies Story;
+
+/*
+ * Open states for the visual tests. They use the controlled `visible` prop, as
+ * `ProgrammaticControl` does. The content teleports to `body`, so the
+ * screenshot is of the full viewport.
+ */
+const waitForTooltips = (count: number) => async () => {
+	await waitFor(async () => {
+		const tooltips = document.querySelectorAll('[data-test-id="tooltip-content"]');
+		await expect(tooltips).toHaveLength(count);
+		for (const tooltip of tooltips) await expect(tooltip).toBeVisible();
+	});
+};
+
+export const DefaultOpen = {
+	...Default,
+	args: { ...Default.args, visible: true },
+	parameters: { visual: { target: 'viewport' } },
+	play: waitForTooltips(1),
+} satisfies Story;
+
+export const PlacementsOpen = {
+	...Placements,
+	args: { visible: true },
+	parameters: { visual: { target: 'viewport' } },
+	play: waitForTooltips(13),
 } satisfies Story;

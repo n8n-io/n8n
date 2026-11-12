@@ -8,7 +8,9 @@
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
     "build:unchecked": "pnpm run build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test:visual": "vitest run --config vitest.visual.config.ts",
+    "test:visual:accept": "node scripts/accept-visual-references.ts",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix"
   },

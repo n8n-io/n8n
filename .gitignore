@@ -43,6 +43,9 @@ tcr-dry.log
 .agent-setup/
 .agent-recordings/
 .vitest/
+# Visual test references: only CI makes the Linux images that are committed.
+**/__screenshots__/**/*-chromium-darwin.png
+**/__screenshots__/**/*-chromium-win32.png
 .vitest-profile/
 .pi-subagents/
 sbom-source.cdx.json

@@ -163,6 +163,116 @@ Run these commands from this directory.
 | `pnpm lint`      | It lints `src`. `pnpm lint:fix` applies the fixes.                     |
 | `pnpm clean`     | It removes `dist` and `.turbo`.                                        |
 
+### Visual tests
+
+The visual tests render stories in a real Chromium and compare a screenshot of each story
+with a reference image. Each story runs two times: once in the light theme and once in the
+dark theme. The tests live in `@n8n/storybook` (`vitest.visual.config.ts` and
+`.storybook/visual-setup.ts`). The jsdom unit tests do not change.
+
+#### Run the tests
+
+Install Chromium one time, from the repository root:
+
+```sh
+pnpm turbo run install-browsers --filter=n8n-playwright
+export PLAYWRIGHT_BROWSERS_PATH="$PWD/packages/quality/testing/playwright/.playwright-browsers"
+```
+
+Then run the tests. You do not have to build the package first.
+
+```sh
+pnpm --filter @n8n/storybook test:visual
+```
+
+A failed test writes the actual image and a diff image to
+`packages/frontend/@n8n/storybook/.vitest/visual/<story directory>/<story file>/`.
+
+#### Use a local baseline
+
+The reference images that Git keeps are Linux images (`*-chromium-linux.png`), and only CI
+makes them. On macOS or Windows, the tests make images for your platform, and `.gitignore`
+keeps them out of Git. To check a change on your computer:
+
+1. On `master`, run `pnpm --filter @n8n/storybook test:visual`. The first run fails and
+   writes your local reference images. Run it again. It must pass.
+2. Switch to your branch and run the tests again. Each failed test shows a change. Look at
+   the diff images.
+
+#### Add a component to the visual tests
+
+Add the `visual` tag to the meta of the stories file. Write the tag as the literal string
+`'visual'`, because the test config looks for it to find the files to load.
+
+```ts
+const meta = {
+	title: 'Core/Button',
+	component: N8nButton,
+	tags: ['visual'],
+} satisfies Meta<typeof N8nButton>;
+```
+
+Each story in the file then gets a screenshot. To keep one story out, give it the
+`'!visual'` tag, and write a comment that gives the reason:
+
+```ts
+export const Clock: Story = {
+	// The story shows the current time, so the screenshot changes on each run.
+	tags: ['!visual'],
+};
+```
+
+Make each story deterministic. Use fixed dates and fixed data, not `Date.now()` or random
+values. The tests turn off transitions, animations, and the text caret.
+
+#### Add states with `parameters.visual`
+
+`parameters.visual` on a story or a meta controls the screenshots:
+
+| Field    | Value                                                                                                                                                                                                                                                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target` | `'canvas'` (default) takes a screenshot of the story root. `'viewport'` takes a screenshot of the full 1200 × 900 page. Use `'viewport'` for overlays that render in `body`, such as dialogs, tooltips, and dropdowns.                                                                                                       |
+| `states` | One more screenshot for each entry: `{ name, action, selector }`. `action: 'hover'` moves the real pointer over the element. `action: 'focus'` moves the keyboard focus to the element with Tab, so `:focus-visible` applies. `selector` is a CSS selector in the story canvas. The screenshot name is `<story id>-<name>-<theme>`. |
+
+```ts
+export const Default: Story = {
+	args: { label: 'Button' },
+	parameters: {
+		visual: {
+			states: [
+				{ name: 'hover', action: 'hover', selector: 'button' },
+				{ name: 'focus', action: 'focus', selector: 'button' },
+			],
+		},
+	},
+};
+```
+
+For an open state, add a story that reuses an existing story. Give it a `play` function
+that opens the overlay and waits until it is visible. Set `target: 'viewport'`. The
+`…Open` stories in `N8nDialog/Dialog.stories.ts` are examples. The open stories also show
+in Storybook.
+
+#### Accept new reference images
+
+When you add or change a story, CI makes the new Linux images:
+
+1. Push your branch. The visual tests in CI fail and upload the `visual-test-diffs`
+   artifact.
+2. Download the artifact, and copy the images into the design system:
+
+   ```sh
+   gh run download <run-id> -R n8n-io/n8n -n visual-test-diffs -D /tmp/visual-test-diffs
+   pnpm --filter @n8n/storybook test:visual:accept /tmp/visual-test-diffs
+   ```
+
+   The script copies each new image (`*-reference-chromium-linux.png`) and each changed
+   image (`*-actual-chromium-linux.png`) to
+   `src/<story directory>/__screenshots__/<story file>/<name>-chromium-linux.png`. It
+   changes no other file.
+
+3. Look at the new images. Then commit them and push.
+
 ## Pack and publish
 
 **Pack with `pnpm pack`. Never `npm pack`.**
