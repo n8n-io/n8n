@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildMentionsList } from '../actions/update/update.execute';
+import { buildMentionsList } from '../actions/update/createUpdate.operation';
 
 describe('buildMentionsList', () => {
 	it('maps user and team IDs to typed mentions', () => {

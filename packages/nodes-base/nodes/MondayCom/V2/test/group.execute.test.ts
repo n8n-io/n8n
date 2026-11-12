@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	buildGroupPositionArgs,
-	buildUpdateGroupMutation,
-	findEdgeGroupId,
-} from '../actions/group/group.execute';
+import { buildGroupPositionArgs } from '../actions/group/createGroup.operation';
+import { buildUpdateGroupMutation } from '../actions/group/updateGroup.operation';
+import { findEdgeGroupId } from '../helpers/groupPosition';
 
 describe('buildGroupPositionArgs', () => {
 	it('sends no positioning arguments when the option is unset (API default = top)', () => {

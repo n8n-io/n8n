@@ -1,12 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
-import {
-	assertRollupFunctionAllowed,
-	buildCustomColumnIdArgs,
-	formatColumnSchemaRow,
-	isPlainJsonObject,
-} from '../actions/column/column.execute';
+import { buildCustomColumnIdArgs } from '../actions/column/createColumn.operation';
+import { formatColumnSchemaRow } from '../actions/column/getColumns.operation';
+import { assertRollupFunctionAllowed } from '../helpers/columnEdit';
+import { isPlainJsonObject } from '../helpers/json';
 
 function makeContext(rawValue: unknown): IExecuteFunctions {
 	return {
