@@ -1,7 +1,12 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
-import type { INode, INodeOutputConfiguration, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INode,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 
 import { NodeTypesProxy } from '@n8n/backend-services';
@@ -15,6 +20,8 @@ import type {
 	WorkflowDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
+
+type ExpressionOutputCandidate = { node: INode; description: INodeTypeDescription };
 
 @BreakingChangeRule({ version: 'v3' })
 export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowRule {
@@ -51,8 +58,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes: INode[] = [];
-		const nodesWithExpressionOutputs: Array<{ node: INode; description: INodeTypeDescription }> =
-			[];
+		const nodesWithExpressionOutputs: ExpressionOutputCandidate[] = [];
 		for (const nodes of nodesGroupedByType.values()) {
 			for (const node of nodes) {
 				if (node.alwaysOutputData !== true) continue;
@@ -95,9 +101,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 		}
 	}
 
-	private async findMultiOutputNodes(
-		candidates: Array<{ node: INode; description: INodeTypeDescription }>,
-	): Promise<INode[]> {
+	private async findMultiOutputNodes(candidates: ExpressionOutputCandidate[]): Promise<INode[]> {
 		const workflow = new Workflow({
 			nodes: candidates.map(({ node }) => ({ ...node })),
 			connections: {},
@@ -120,8 +124,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 	}
 }
 
-function countMainOutputs(outputs: Array<string | INodeOutputConfiguration>): number {
-	return outputs.filter(
-		(output) => (typeof output === 'string' ? output : output.type) === NodeConnectionTypes.Main,
-	).length;
+function countMainOutputs(outputs: Array<NodeConnectionType | INodeOutputConfiguration>): number {
+	return NodeHelpers.getConnectionTypes(outputs).filter((type) => type === NodeConnectionTypes.Main)
+		.length;
 }

@@ -18,7 +18,7 @@ const NODE_TYPE_OUTPUTS: Record<string, INodeTypeDescription['outputs']> = {
 		{ type: NodeConnectionTypes.Main, displayName: 'Different' },
 		{ type: NodeConnectionTypes.Main, displayName: 'In B only' },
 	],
-	'n8n-nodes-base.switch': '={{ ["main", "main"] }}',
+	'n8n-nodes-base.switch': '={{ Array($parameter.numberOutputs).fill("main") }}',
 	'@n8n/n8n-nodes-langchain.vectorStoreSupabase':
 		'={{ $parameter.mode === "insert" ? ["main"] : ["ai_vectorStore"] }}',
 	'n8n-nodes-awesome-package.broken': '={{ $parameter.missing.value }}',
@@ -26,11 +26,20 @@ const NODE_TYPE_OUTPUTS: Record<string, INodeTypeDescription['outputs']> = {
 	'n8n-nodes-awesome-package.router': [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 };
 
+const NODE_TYPE_PROPERTIES: Record<string, INodeTypeDescription['properties']> = {
+	'n8n-nodes-base.switch': [
+		{ displayName: 'Number of Outputs', name: 'numberOutputs', type: 'number', default: 2 },
+	],
+	'@n8n/n8n-nodes-langchain.vectorStoreSupabase': [
+		{ displayName: 'Mode', name: 'mode', type: 'string', default: 'retrieve' },
+	],
+};
+
 const nodeTypes = mock<NodeTypesProxy>();
 nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 	const outputs = NODE_TYPE_OUTPUTS[type];
 	if (outputs === undefined) throw new UnexpectedError('Unknown node type');
-	return { description: { outputs, properties: [] } } as unknown as INodeType;
+	return { description: { outputs, properties: NODE_TYPE_PROPERTIES[type] ?? [] } } as INodeType;
 });
 
 const withAlwaysOutputData = (name: string, type: string): INode => ({
@@ -87,6 +96,20 @@ describe('AlwaysOutputDataMultiOutputRule', () => {
 				{
 					...withAlwaysOutputData('Supabase', '@n8n/n8n-nodes-langchain.vectorStoreSupabase'),
 					parameters: { mode: 'insert' },
+				},
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(false);
+			expect(result.issues).toHaveLength(0);
+		});
+
+		it('should not flag a node whose outputs expression resolves to one main output', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				{
+					...withAlwaysOutputData('Switch', 'n8n-nodes-base.switch'),
+					parameters: { numberOutputs: 1 },
 				},
 			]);
 
