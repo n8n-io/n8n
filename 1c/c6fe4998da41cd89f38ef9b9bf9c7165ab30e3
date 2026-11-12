@@ -1,0 +1,42 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
+  s_fa60947423cda2::t_53e9dbd4fd8f9d 246-247
+  s_fa60947423cda2::t_d8c94124825bca 112-116
+  s_fa60947423cda2::t_789b9b873ace48 248
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_fa60947423cda2::t_ebbeaaa9b3e982 610,1028
+  s_fa60947423cda2::t_177e015832b6de 2,15
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_fa60947423cda2::t_471ba5bc268b50 2
+  s_fa60947423cda2::t_0d3dcaee178123 348-355,358-359,364-365,369-370,372,375-383,388-389,393-398,401,408-411,417,420,428-430,432,434
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fa60947423cda2::t_48942bc76f24ca 1658-1941,2022-2025
+  s_fa60947423cda2::t_da42fce3f55309 25-26,28,1136-1151,2000,2004,2006,2048-2052
+  s_fa60947423cda2::t_4a6f0ec57b0950 2007-2009
+  s_fa60947423cda2::t_ff54ef458f94aa 2021
+  s_fa60947423cda2::t_3637221e977214 2026-2028
+  s_fa60947423cda2::t_667d5489007283 2045-2047
+  s_fa60947423cda2::t_ce7bc70f4db70a 2053-2055
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_fa60947423cda2::t_53e9dbd4fd8f9d 1074
+  s_fa60947423cda2::t_c2f0a1a3157aaf 868,872-879,881-882,884-909,911,913,915-922,924-926,929-936,940,942,944,948-949,951-958,963,1031
+  s_fa60947423cda2::t_455b6998efcfc0 18,21,415-416,419-427,431-434,436-439,641,834
+  s_fa60947423cda2::t_96fe62bf5b3343 1071,1095,1097
+  s_fa60947423cda2::t_45942a374d12d7 1073
+  s_fa60947423cda2::t_1aa25cfebb00c0 964-1019,1021-1025,1027,1030
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cc6fe4998da41cd89f38ef9b9bf9c7165ab30e3",
+  "prompts": {},
+  "sessions": {
+    "s_fa60947423cda2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d022-1f8e-75f9-b82c-04e8ec9bf16c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
