@@ -79,9 +79,7 @@
 	function matches(hook, ctx) {
 		return (hook.where || []).every((rule) => {
 			const value = get(ctx, rule.path);
-			if ('equals' in rule) return value === rule.equals;
-			if ('truthy' in rule) return Boolean(value) === rule.truthy;
-			return true;
+			return 'equals' in rule ? value === rule.equals : Boolean(value) === rule.truthy;
 		});
 	}
 
