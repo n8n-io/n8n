@@ -7,7 +7,7 @@ const WORKFLOW_FILE = 'wait-webhook-last-node.json';
 
 test.describe(
 	'Wait node webhook resume',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test('should answer the resume request with the output of the last node @engine:v2-pending', async ({
 			api,

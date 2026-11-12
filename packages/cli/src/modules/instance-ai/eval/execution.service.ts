@@ -8,6 +8,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
+import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -39,13 +40,11 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
-	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	type IWorkflowIssues,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -54,9 +53,7 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { OwnershipService } from '@/services/ownership.service';
 import { executeAgent } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -141,7 +138,7 @@ interface CalledAgentRun {
 export class EvalExecutionService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
 		private readonly workflowRunner: WorkflowRunner,

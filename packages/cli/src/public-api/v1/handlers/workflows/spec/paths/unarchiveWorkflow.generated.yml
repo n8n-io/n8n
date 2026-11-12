@@ -2,7 +2,10 @@ operationId: unarchiveWorkflow
 tags:
   - Workflow
 summary: Unarchive a workflow
-description: Restores an archived workflow.
+description: |-
+  Restores an archived workflow.
+
+  Requires the `workflow:delete` API key scope.
 x-required-scope: workflow:delete
 parameters:
   - schema:
@@ -26,3 +29,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

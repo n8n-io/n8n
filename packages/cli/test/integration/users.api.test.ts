@@ -9,7 +9,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, PublicUser, User } from '@n8n/db';
+import type { Person, Project, PublicUser, User } from '@n8n/db';
 import {
 	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -19,6 +19,7 @@ import {
 	ProjectRepository,
 	RoleMappingRuleRepository,
 	RoleRepository,
+	ServiceAccountRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -56,9 +57,9 @@ const testServer = utils.setupTestServer({
 });
 
 describe('GET /users', () => {
-	let owner: User;
-	let member1: User;
-	let member2: User;
+	let owner: Person;
+	let member1: Person;
+	let member2: Person;
 	/** Team project where `member1` and `member2` are linked (for project-scoped listing as a member). */
 	let sharedListTeamProject: Project;
 	let ownerAgent: SuperAgentTest;
@@ -946,6 +947,54 @@ describe('GET /users/:id/password-reset-link', () => {
 	});
 });
 
+describe('POST /users/:id/invite-link', () => {
+	let owner: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		owner = await createOwner();
+	});
+
+	it('should return 404 for a service account', async () => {
+		const serviceAccount = await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.post(`/users/${serviceAccount.id}/invite-link`)
+			.expect(404);
+
+		expect(response.body.message).toBe('User to generate invite link for not found');
+	});
+});
+
+describe('PATCH /users/:id/settings', () => {
+	let owner: User;
+	let member: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		[owner, member] = await Promise.all([createOwner(), createMember()]);
+	});
+
+	it('should update the settings of another user and return them', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/users/${member.id}/settings`)
+			.send({ allowSSOManualLogin: true })
+			.expect(200);
+
+		expect(response.body.data.allowSSOManualLogin).toBe(true);
+
+		const storedMember = (await getUserById(member.id)) as Person;
+		expect(storedMember.settings?.allowSSOManualLogin).toBe(true);
+	});
+});
+
 describe('DELETE /users/:id', () => {
 	let owner: User;
 	let ownerAgent: SuperAgentTest;
@@ -1446,6 +1495,7 @@ describe('PATCH /users/:id/role', () => {
 		test.each([
 			['is missing', {}],
 			['is `owner`', { newRoleName: 'global:owner' }],
+			['is `agent`', { newRoleName: 'global:agent' }],
 			['is an array', { newRoleName: ['global:owner'] }],
 		])('%s', async (_, payload) => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);
@@ -1923,5 +1973,60 @@ describe('GET /users account status', () => {
 			.get('/users')
 			.query({ filter: JSON.stringify({ status: 'pending' }) })
 			.expect(400);
+	});
+});
+
+describe('GET /users with a service account', () => {
+	let owner: User;
+	let member: User;
+	let project: Project;
+
+	beforeAll(async () => {
+		await testDb.truncate([
+			'SharedWorkflow',
+			'SharedCredentials',
+			'WorkflowEntity',
+			'CredentialsEntity',
+			'Folder',
+			'ProjectRelation',
+			'Project',
+			'User',
+		]);
+
+		owner = await createOwner();
+		member = await createMember();
+		const serviceAccount = await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+		project = await createTeamProject('service-account-project', member);
+		await linkUserToProject(serviceAccount, project, 'project:editor');
+	});
+
+	const idsOf = (items: Array<{ id: string }>) => items.map(({ id }) => id).sort();
+
+	test('should list persons only, with matching status counts', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ includeStatusCounts: true })
+			.expect(200);
+
+		const { count, items, statusCounts } = response.body.data;
+		expect(count).toBe(2);
+		expect(idsOf(items)).toEqual([owner.id, member.id].sort());
+		expect(statusCounts).toEqual({ all: 2, active: 2, deactivated: 0 });
+	});
+
+	test('should list persons only when filtering by project', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ filter: JSON.stringify({ projectId: project.id }) })
+			.expect(200);
+
+		const { count, items } = response.body.data;
+		expect(count).toBe(1);
+		expect(idsOf(items)).toEqual([member.id]);
 	});
 });

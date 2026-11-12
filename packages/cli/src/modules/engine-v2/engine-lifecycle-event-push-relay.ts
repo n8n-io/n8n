@@ -67,6 +67,8 @@ export class EngineLifecycleEventPushRelay {
 				return this.onStepSettled(update, session, fromStepInputs(update.outputs));
 			case 'step:failed':
 				return this.onStepSettled(update, session, undefined);
+			case 'step:waiting':
+				return this.onStepWaiting(update, session);
 			case 'execution:completed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
@@ -97,12 +99,22 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(executionId, trigger.nodeName, run, session);
 		this.sendNodeExecuteAfter(executionId, trigger.nodeName, run, session, {
 			executionTime: 0,
+			executionStatus: 'success',
 			outputs: trigger.outputs,
 		});
 	}
 
 	private onStepStarted(update: StepUpdate, session: EngineV2PushSession): void {
-		if (session.steps.has(update.stepId)) return;
+		const known = session.steps.get(update.stepId);
+		if (known?.waiting && !known.settled) {
+			// A resumed wait. Keep the first start time: the editor's logs drop a
+			// start that matches an existing run, and would keep a newer one as a
+			// stale "running" row.
+			this.sendNodeExecuteBefore(update.executionId, update.nodeName, known, session);
+			known.waiting = false;
+			return;
+		}
+		if (known) return;
 
 		const run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
 		session.steps.set(update.stepId, run);
@@ -121,17 +133,46 @@ export class EngineLifecycleEventPushRelay {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
 
-		// A missing `step:started` must not lose the outcome too.
-		const run = started ?? new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
-		session.steps.set(update.stepId, run);
-
+		const run = this.runFor(update, session);
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
-			// Same clock, same process — the difference is safe to trust.
-			executionTime: Math.max(0, Date.parse(update.at) - run.startTime),
+			executionTime: this.executionTimeOf(update, run),
+			executionStatus: outputs ? 'success' : 'error',
 			outputs,
 		});
 
 		run.settled = true;
+	}
+
+	/**
+	 * Shows the node as waiting. The step's outcome comes later, with the same
+	 * `executionIndex`, and the editor replaces the waiting run with it.
+	 */
+	private onStepWaiting(update: StepUpdate, session: EngineV2PushSession): void {
+		const started = session.steps.get(update.stepId);
+		if (started?.settled || started?.waiting) return;
+
+		const run = this.runFor(update, session);
+		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
+			executionTime: this.executionTimeOf(update, run),
+			executionStatus: 'waiting',
+			outputs: undefined,
+		});
+
+		run.waiting = true;
+	}
+
+	/** The run `step:started` opened, or a new one so a lost start loses nothing else. */
+	private runFor(update: StepUpdate, session: EngineV2PushSession): EngineV2StepRun {
+		const run =
+			session.steps.get(update.stepId) ??
+			new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
+		session.steps.set(update.stepId, run);
+		return run;
+	}
+
+	private executionTimeOf(update: StepUpdate, run: EngineV2StepRun): number {
+		// Same clock, same process — the difference is safe to trust.
+		return Math.max(0, Date.parse(update.at) - run.startTime);
 	}
 
 	private onExecutionFinished(
@@ -175,9 +216,13 @@ export class EngineLifecycleEventPushRelay {
 		nodeName: string,
 		run: EngineV2StepRun,
 		session: EngineV2PushSession,
-		result: { executionTime: number; outputs: INodeExecutionData[][] | undefined },
+		result: {
+			executionTime: number;
+			executionStatus: Extract<ExecutionStatus, 'success' | 'error' | 'waiting'>;
+			outputs: INodeExecutionData[][] | undefined;
+		},
 	): void {
-		const { executionTime, outputs } = result;
+		const { executionTime, executionStatus, outputs } = result;
 		// Every output slot is `main`: no other connection type exists here.
 		const data = outputs ? { main: outputs } : undefined;
 
@@ -187,17 +232,17 @@ export class EngineLifecycleEventPushRelay {
 			// No input lineage to report, so `source` is empty. See CAT-4265.
 			source: [],
 			executionTime,
-			executionStatus: outputs ? 'success' : 'error',
+			executionStatus,
 			data,
-			...(outputs
-				? {}
-				: {
+			...(executionStatus === 'error'
+				? {
 						error: new WorkflowOperationError(
 							'Node execution failed',
 							undefined,
 							STEP_FAILURE_DESCRIPTION,
 						),
-					}),
+					}
+				: {}),
 		};
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data);
@@ -217,7 +262,7 @@ export class EngineLifecycleEventPushRelay {
 			session.pushRef,
 		);
 
-		// A failed step has no data, so there's no second message to send.
+		// A failed or waiting step has no data, so there's no second message to send.
 		if (!data) return;
 
 		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved

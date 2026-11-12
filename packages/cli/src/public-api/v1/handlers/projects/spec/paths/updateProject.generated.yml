@@ -2,7 +2,10 @@ operationId: updateProject
 tags:
   - Projects
 summary: Update a project
-description: Update a project on your instance.
+description: |-
+  Update a project on your instance.
+
+  Requires the `project:update` API key scope.
 x-required-scope: project:update
 parameters:
   - schema:
@@ -45,3 +48,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

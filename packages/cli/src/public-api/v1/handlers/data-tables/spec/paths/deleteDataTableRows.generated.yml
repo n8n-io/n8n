@@ -2,7 +2,10 @@ operationId: deleteDataTableRows
 tags:
   - DataTable
 summary: Delete rows from a data table
-description: Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.
+description: |-
+  Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.
+
+  Requires the `dataTableRow:delete` API key scope.
 x-required-scope: dataTableRow:delete
 parameters:
   - schema:
@@ -109,3 +112,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

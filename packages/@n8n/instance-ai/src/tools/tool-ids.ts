@@ -1,8 +1,11 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	DATA_TABLE_TOOL_NAMES,
+	EXECUTION_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
 export const DOMAIN_TOOL_IDS = {
@@ -20,14 +23,39 @@ export const DOMAIN_TOOL_IDS = {
 	RESTORE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
 	UPDATE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.UPDATE_WORKFLOW_VERSION,
 	EVAL_CONFIG: 'eval-config',
-	EXECUTIONS: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
+	LIST_EXECUTIONS: WORKFLOW_BUILDER_TOOL_NAMES.LIST_EXECUTIONS,
+	GET_EXECUTION: WORKFLOW_BUILDER_TOOL_NAMES.GET_EXECUTION,
+	RUN_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.RUN_WORKFLOW,
+	RUN_WORKFLOW_STEP: WORKFLOW_BUILDER_TOOL_NAMES.RUN_WORKFLOW_STEP,
+	DEBUG_EXECUTION: WORKFLOW_BUILDER_TOOL_NAMES.DEBUG_EXECUTION,
+	GET_EXECUTION_NODE_OUTPUT: WORKFLOW_BUILDER_TOOL_NAMES.GET_EXECUTION_NODE_OUTPUT,
+	GET_RESOLVED_NODE_PARAMETERS: WORKFLOW_BUILDER_TOOL_NAMES.GET_RESOLVED_NODE_PARAMETERS,
+	STOP_EXECUTION: WORKFLOW_BUILDER_TOOL_NAMES.STOP_EXECUTION,
 	LIST_CREDENTIALS: SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	SEARCH_CREDENTIAL_TYPES: SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES,
 	SETUP_CREDENTIALS: SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
 	TEST_CREDENTIAL: SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL,
 	DELETE_CREDENTIAL: SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL,
-	DATA_TABLES: SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
-	WORKSPACE: 'workspace',
+	UPDATE_CREDENTIAL_DESCRIPTION: SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION,
+	LIST_DATA_TABLES: SHARED_BUILDER_TOOL_NAMES.LIST_DATA_TABLES,
+	GET_DATA_TABLE_SCHEMA: SHARED_BUILDER_TOOL_NAMES.GET_DATA_TABLE_SCHEMA,
+	QUERY_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.QUERY_DATA_TABLE,
+	CREATE_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE,
+	DELETE_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE,
+	ADD_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN,
+	DELETE_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_COLUMN,
+	RENAME_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.RENAME_DATA_TABLE_COLUMN,
+	INSERT_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.INSERT_DATA_TABLE_ROWS,
+	UPDATE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.UPDATE_DATA_TABLE_ROWS,
+	DELETE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_ROWS,
+	LIST_PROJECTS: INSTANCE_TOOL_NAME_BY_ACTION['list-projects'],
+	LIST_TAGS: INSTANCE_TOOL_NAME_BY_ACTION['list-tags'],
+	TAG_WORKFLOW: INSTANCE_TOOL_NAME_BY_ACTION['tag-workflow'],
+	CLEANUP_TEST_EXECUTIONS: INSTANCE_TOOL_NAME_BY_ACTION['cleanup-test-executions'],
+	LIST_FOLDERS: INSTANCE_TOOL_NAME_BY_ACTION['list-folders'],
+	CREATE_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['create-folder'],
+	DELETE_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['delete-folder'],
+	MOVE_WORKFLOW_TO_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['move-workflow-to-folder'],
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
 	NODES: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
@@ -46,6 +74,7 @@ export const DOMAIN_TOOL_IDS = {
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
 	SKILLS: 'skills',
+	APPS: 'apps',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -71,7 +100,7 @@ export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
 } as const;
 
-export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
+export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
@@ -93,55 +122,107 @@ export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.v
 	AGENT_BUILDER_TOOL_NAMES,
 ).filter((name) => !RETIRED_AGENT_BUILDER_TOOL_NAMES.has(name));
 
+/**
+ * Harness tools: the tools of the chat agent itself. Only these are sent in full.
+ * Every n8n resource tool (workflows, executions, data tables, credentials,
+ * Agents, instance) is listed by name in the tool catalog and runs through `call_tool`.
+ */
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
-	// Deferring it would price the user's "let me out" at search_tools + load_tool.
+	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
-	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
-	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
-	DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
-	DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
-	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
-	...WORKFLOW_TOOL_NAMES,
-	DOMAIN_TOOL_IDS.EXECUTIONS,
-	DOMAIN_TOOL_IDS.DATA_TABLES,
 	DOMAIN_TOOL_IDS.PARSE_FILE,
-	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	DOMAIN_TOOL_IDS.SEARCH_NODES,
-	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
-	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
-	DOMAIN_TOOL_IDS.EXECUTE_NODE,
-	DOMAIN_TOOL_IDS.SEARCH_MODELS,
-	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
-	// n8n's own docs for n8n questions, but deferring n8n-docs priced that route at
-	// search_tools + load_tool while web search stayed one call away — so the agent
+	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind
+	// tool discovery while web search stayed one call away — so the agent
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
 	// Agent research, session diagnosis, and every Agent build read through this tool.
 	DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 	// Deferring this one defeats its purpose: it exists for the case where
-	// nothing is connected, which is exactly when `search_tools` has no MCP tool
+	// nothing is connected, which is exactly when `find_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	// The instance-context block hands the agent ids and tells it to expand them, so deferring
-	// this would price every expand at search_tools + load_tool. It is only registered when the
+	// this would route every expand through `call_tool`. It is only registered when the
 	// reader is enabled, so an instance without the feature pays nothing for the entry.
 	DOMAIN_TOOL_IDS.ACTIVITY,
 	// A user can state a preference at any point in a conversation. Deferring this
-	// behind search_tools would mean the model has to know the tool exists before it
+	// behind `find_tools` would mean the model has to know the tool exists before it
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// The orchestrator builds Agents with these tools directly. Deferring them would cost
-	// 2 LLM rounds (search_tools + load_tool) per tool and a prompt-cache rewrite on
-	// every agent build. Registered only when the host provides a builder delegate
-	// (Agents module active), so an instance without it pays nothing.
-	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
 	DOMAIN_TOOL_IDS.SKILLS,
 ]);
+
+const NODE_TOOL_NAMES: readonly string[] = [
+	DOMAIN_TOOL_IDS.SEARCH_NODES,
+	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+	DOMAIN_TOOL_IDS.EXECUTE_NODE,
+	DOMAIN_TOOL_IDS.SEARCH_MODELS,
+];
+
+const CREDENTIAL_TOOL_NAMES: readonly string[] = [
+	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+	DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+	DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+	DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+];
+
+/** Tool group of each deferred n8n tool. Unlisted tools go to the default tool group. */
+const TOOL_GROUP_BY_NAME = new Map<string, string>([
+	...[...WORKFLOW_TOOL_NAMES, ...Object.values(WORKFLOW_BUILDER_TOOL_NAMES)]
+		.filter((name) => !EXECUTION_TOOL_NAMES.includes(name))
+		.map((name): [string, string] => [name, 'workflows']),
+	...EXECUTION_TOOL_NAMES.map((name): [string, string] => [name, 'executions']),
+	...DATA_TABLE_TOOL_NAMES.map((name): [string, string] => [name, 'data_tables']),
+	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),
+	...NODE_TOOL_NAMES.map((name): [string, string] => [name, 'nodes']),
+	...Object.values(AGENT_BUILDER_TOOL_NAMES).map((name): [string, string] => [name, 'agents']),
+	...Object.values(INSTANCE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
+		name,
+		'instance',
+	]),
+]);
+
+/** One line on what each n8n tool group holds, shown next to its tool names. */
+const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
+	workflows: 'build, read, change, run and set up workflows',
+	executions: 'read and manage workflow executions',
+	data_tables: 'create, read and change data tables and their rows',
+	credentials: 'set up, test and manage credentials',
+	nodes: 'search node types and read their parameter definitions',
+	agents: 'build and configure standalone n8n Agents',
+	instance:
+		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+};
+
+/** Returns the description of a tool group, or undefined when it has none. */
+export function getToolGroupDescription(group: string): string | undefined {
+	// Own properties only, so a server named like `constructor` gets no inherited value.
+	return Object.hasOwn(TOOL_GROUP_DESCRIPTIONS, group) ? TOOL_GROUP_DESCRIPTIONS[group] : undefined;
+}
+
+/**
+ * Returns the tool group of an MCP server's tools. A server named like an n8n tool
+ * group, or like the SDK's default group `tools`, gets an `mcp_` prefix so its tools
+ * do not merge into that group.
+ */
+export function getMcpToolGroup(serverName: string): string {
+	return Object.hasOwn(TOOL_GROUP_DESCRIPTIONS, serverName) || serverName === 'tools'
+		? `mcp_${serverName}`
+		: serverName;
+}
+
+/** Returns the tool group of a deferred n8n tool, or undefined for the default one. */
+export function getToolGroup(toolName: string): string | undefined {
+	return TOOL_GROUP_BY_NAME.get(toolName);
+}

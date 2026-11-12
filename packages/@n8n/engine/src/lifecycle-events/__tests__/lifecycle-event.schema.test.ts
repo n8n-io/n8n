@@ -29,6 +29,7 @@ const every: LifecycleEvent[] = [
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
 	{ type: 'step:failed', ...stepEvent },
+	{ type: 'step:waiting', ...stepEvent },
 ];
 
 describe('lifecycleEventSchema', () => {
@@ -82,6 +83,19 @@ describe('lifecycleEventSchema', () => {
 			lifecycleEventSchema.safeParse({ type: 'step:started', ...stepEvent, at: 'yesterday' })
 				.success,
 		).toBe(false);
+	});
+
+	it('treats the contents of an output slot as opaque', () => {
+		// Not JSON, so a schema that walked the slot would refuse it.
+		const outputs = [[{ json: { when: new Date(0), gap: undefined } }]];
+
+		const parsed = lifecycleEventSchema.safeParse({
+			type: 'step:completed',
+			...stepEvent,
+			outputs,
+		});
+
+		expect(parsed.success).toBe(true);
 	});
 
 	it('rejects a completed step without outputs', () => {

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'path';
 
+import { WORKFLOW_ENGINE_TYPES } from '@/n8n-api-client/n8n-api-client.types';
 import type { Scenario, ScenarioManifest } from '@/types/scenario';
 
 export class ScenarioLoader {
@@ -64,6 +65,15 @@ export class ScenarioLoader {
 		}
 		if (!scenario.description) {
 			validationErrors.push(`Scenario at ${scenarioManifestPath} is missing a description`);
+		}
+		if (
+			!Array.isArray(scenario.supportedEngines) ||
+			scenario.supportedEngines.length === 0 ||
+			!scenario.supportedEngines.every((engine) => WORKFLOW_ENGINE_TYPES.includes(engine))
+		) {
+			validationErrors.push(
+				`Scenario at ${scenarioManifestPath} must list its supportedEngines (${WORKFLOW_ENGINE_TYPES.join(', ')})`,
+			);
 		}
 
 		return validationErrors.length === 0 ? [scenario, null] : [null, validationErrors];

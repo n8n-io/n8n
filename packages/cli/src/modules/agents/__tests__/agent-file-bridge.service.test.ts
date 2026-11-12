@@ -1,11 +1,14 @@
-import { MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import {
+	AgentFileLimitError,
+	type AgentChatAttachmentService,
+} from '../agent-chat-attachment.service';
 import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 // A real 1x1 PNG, so the magic-byte check keeps the declared type.
 const PNG = Buffer.from(
@@ -20,15 +23,26 @@ const pngBinary = {
 	fileName: 'cat.png',
 };
 
+const MAX_GENERATED_FILE_BYTES = 50 * 1024 * 1024;
+
 describe('AgentFileBridge', () => {
-	const scope = { agentId: 'agent-1', projectId: 'project-1', threadId: 'thread-1' };
+	const scope = {
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		threadId: 'thread-1',
+		resourceId: 'draft-chat:user-1',
+	};
 	const logger = mock<Logger>();
 	const binaryDataService = mock<BinaryDataService>();
-	const attachmentService = mock<AgentChatAttachmentService>();
-	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService);
+	const attachmentService = mock<AgentChatAttachmentService>({
+		maxGeneratedFileBytes: MAX_GENERATED_FILE_BYTES,
+	});
+	const sandboxFiles = mock<AgentSandboxFilesService>();
+	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService, sandboxFiles);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		sandboxFiles.resolveFileRefs.mockImplementation(async (refs) => refs);
 		binaryDataService.getAsBuffer.mockResolvedValue(PNG);
 		attachmentService.storeInbound.mockResolvedValue(
 			mock<AgentChatAttachment>({ id: 'aid-1', fileSizeBytes: PNG.byteLength }),
@@ -135,7 +149,7 @@ describe('AgentFileBridge', () => {
 	describe('size limit', () => {
 		it('reports a file over the limit as skipped and does not read it', async () => {
 			binaryDataService.getMetadata.mockResolvedValue({
-				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+				fileSize: MAX_GENERATED_FILE_BYTES + 1,
 			});
 
 			const result = await bridge.adoptFromItems(
@@ -155,7 +169,7 @@ describe('AgentFileBridge', () => {
 
 		it('lists a too-large binary that many items and calls pass on one time', async () => {
 			binaryDataService.getMetadata.mockResolvedValue({
-				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+				fileSize: MAX_GENERATED_FILE_BYTES + 1,
 			});
 			const items = [
 				{ json: {}, binary: { data: pngBinary } },
@@ -173,9 +187,25 @@ describe('AgentFileBridge', () => {
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 
+		it('reports a file over a storage cap of the conversation as skipped', async () => {
+			attachmentService.storeInbound.mockRejectedValue(
+				new AgentFileLimitError('File "cat.png" was not stored: cap'),
+			);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: pngBinary } }],
+				scope,
+			);
+
+			expect(result.files).toEqual([]);
+			expect(result.skippedFiles).toEqual([
+				{ fileName: 'cat.png', reason: 'File "cat.png" was not stored: cap' },
+			]);
+		});
+
 		it('stores a file at the limit', async () => {
 			const result = await bridge.adoptFromItems(
-				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } } }],
+				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_GENERATED_FILE_BYTES } } }],
 				scope,
 			);
 
@@ -233,6 +263,143 @@ describe('AgentFileBridge', () => {
 			const { id, fileName } = await storedName({ fileName: `${'a'.repeat(296)}.png` });
 
 			expect(fileName).toBe(`${id}.png`);
+		});
+	});
+
+	describe('toBinary', () => {
+		const readScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const inputFile = {
+			fileId: 'aid-1',
+			fileName: 'cat.png',
+			mimeType: 'image/png',
+			sizeBytes: 68,
+		};
+		const readable = () =>
+			attachmentService.getReadable.mockResolvedValue(
+				mock<AgentChatAttachment>({
+					binaryDataId: 'filesystem-v2:agents/a/attachments/aid-1',
+					mimeType: 'image/png',
+					fileName: 'cat.png',
+					fileSizeBytes: 68,
+				}),
+			);
+
+		it('resolves readable file IDs to binary entries that point to the stored bytes', async () => {
+			readable();
+
+			await expect(bridge.toBinary({ data: 'aid-1' }, readScope)).resolves.toEqual({
+				binary: {
+					data: {
+						id: 'filesystem-v2:agents/a/attachments/aid-1',
+						data: 'filesystem-v2',
+						mimeType: 'image/png',
+						fileName: 'cat.png',
+						fileExtension: 'png',
+						bytes: 68,
+					},
+				},
+				stored: new Map([['filesystem-v2:agents/a/attachments/aid-1', inputFile]]),
+			});
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('aid-1', readScope);
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+		});
+
+		it('resolves sandbox paths before the read check', async () => {
+			readable();
+			sandboxFiles.resolveFileRefs.mockResolvedValue(['aid-1']);
+
+			await bridge.toBinary({ data: 'sandbox:cat.png' }, readScope);
+
+			expect(sandboxFiles.resolveFileRefs).toHaveBeenCalledWith(['sandbox:cat.png'], readScope);
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('aid-1', readScope);
+		});
+
+		it('gives a node the base name of a sandbox file and keeps the path for the model', async () => {
+			attachmentService.getReadable.mockResolvedValue(
+				mock<AgentChatAttachment>({
+					binaryDataId: 'filesystem-v2:agents/a/attachments/aid-1',
+					mimeType: 'application/pdf',
+					fileName: 'reports/q1.pdf',
+					fileSizeBytes: 68,
+				}),
+			);
+
+			const result = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			expect(result?.binary.data).toMatchObject({ fileName: 'q1.pdf', fileExtension: 'pdf' });
+			expect([...result!.stored.values()][0].fileName).toBe('reports/q1.pdf');
+		});
+
+		it('keeps the file ID of an input file that the tool returns unchanged', async () => {
+			readable();
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: input!.binary }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				items: [{ json: {}, binary: { data: 'aid-1' } }],
+				files: [],
+				skippedFiles: [],
+			});
+		});
+
+		it('replaces the binary ID in the json of an unchanged input file', async () => {
+			readable();
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+			const binaryId = 'filesystem-v2:agents/a/attachments/aid-1';
+
+			const result = await bridge.adoptFromItems(
+				[{ json: { image: { id: binaryId } }, binary: input!.binary }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(result.items).toEqual([
+				{ json: { image: { id: 'aid-1' } }, binary: { data: 'aid-1' } },
+			]);
+		});
+
+		it('stores a changed binary as a new file', async () => {
+			readable();
+			attachmentService.storeInbound.mockResolvedValue(
+				mock<AgentChatAttachment>({ id: 'aid-2', fileSizeBytes: PNG.byteLength }),
+			);
+			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: pngBinary } }],
+				scope,
+				input!.stored,
+			);
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(1);
+			expect(result.items).toEqual([{ json: {}, binary: { data: 'aid-2' } }]);
+		});
+
+		it('fails for a file that the thread cannot read', async () => {
+			attachmentService.getReadable.mockResolvedValue(null);
+
+			await expect(bridge.toBinary({ data: 'other' }, readScope)).rejects.toThrow(
+				'File "other" not found in this conversation',
+			);
+		});
+
+		it('fails when the run has no thread', async () => {
+			await expect(bridge.toBinary({ data: 'aid-1' }, { projectId: 'project-1' })).rejects.toThrow(
+				'Files can only be passed to tools in a conversation',
+			);
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when no files are passed', async () => {
+			await expect(bridge.toBinary(undefined, readScope)).resolves.toBeUndefined();
+			await expect(bridge.toBinary({}, readScope)).resolves.toBeUndefined();
 		});
 	});
 });

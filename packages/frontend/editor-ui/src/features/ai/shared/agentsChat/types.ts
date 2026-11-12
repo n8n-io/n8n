@@ -160,6 +160,7 @@ export interface AgentsChatHostEvent {
 }
 
 export interface AgentsChatMessage {
+	stopReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: ChatMessageRole;
@@ -182,7 +183,7 @@ export interface AgentsChatMessage {
 	/** Live preview only. Budget stop or alert cards for this turn. */
 	budgetNotices?: Array<{
 		id: string;
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert';
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits';
 		agentId?: string;
 	}>;
 	/** Host events of this turn, in arrival order. Host extensions render them. */

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
-import { PROJECT_ROOT, UserError } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { FolderService } from '@/services/folder.service';
 
@@ -78,10 +79,9 @@ export class FolderImporter {
 				continue;
 			}
 
-			// Under `follow-package` a folder takes the parent and name of the package. A folder outside
-			// the selection stays as it is, with everything inside it.
+			// Under `follow-package` a folder takes the parent and name of the package.
 			const renamed = followsPackage && match.name !== folder.name;
-			if ((moved || renamed) && (context.movableFolderIds?.has(folder.sourceFolderId) ?? true)) {
+			if (moved || renamed) {
 				items.push({
 					action: 'update',
 					sourceFolderId: folder.sourceFolderId,

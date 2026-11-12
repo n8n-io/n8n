@@ -2,7 +2,10 @@ operationId: updateRole
 tags:
   - Role
 summary: Update a custom role
-description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
+description: |-
+  Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
+
+  Requires one of these API key scopes: `role:manage`, `role:manageProject`.
 x-required-scope: role:manage,role:manageProject
 parameters:
   - schema:
@@ -51,3 +54,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -83,7 +83,7 @@ tags:
   - name: Promotions
     x-displayName: Promotions
     x-parent: InstanceOperations
-    description: Operations about promotion providers, environments, and package operations
+    description: Beta — breaking changes may still occur without major version bump.
   - name: Role
     x-displayName: Roles
     x-parent: AccessAndOrganization
@@ -104,6 +104,10 @@ tags:
     x-displayName: Settings OTel
     x-parent: InstanceSettings
     description: Operations about OpenTelemetry settings
+  - name: SettingsRateLimits
+    x-displayName: Settings Rate Limits
+    x-parent: InstanceSettings
+    description: Operations about Public API rate-limit settings
   - name: SettingsSsoOidc
     x-displayName: Settings SSO OIDC
     x-parent: InstanceSettings

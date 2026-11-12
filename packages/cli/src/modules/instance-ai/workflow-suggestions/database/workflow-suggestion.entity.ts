@@ -13,6 +13,8 @@ import {
 } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
+import { SelfHealingResult } from '../../self-healing/database/self-healing-result.entity';
+
 @Entity('workflow_suggestion')
 @Index(['workflowId'], { unique: true, where: "state = 'pending'" })
 export class WorkflowSuggestion extends WithTimestampsAndStringId {
@@ -69,4 +71,12 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 
 	@JsonColumn()
 	payload: WorkflowSuggestionContent;
+
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	selfHealingResultId: string;
+
+	@ManyToOne(() => SelfHealingResult, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'selfHealingResultId' })
+	selfHealingResult: Relation<SelfHealingResult>;
 }

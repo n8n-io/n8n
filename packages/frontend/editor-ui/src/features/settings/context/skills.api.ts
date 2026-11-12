@@ -9,9 +9,15 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	SkillSourceCheckResponse,
+	SkillSourceListItem,
 	SkillSourceConnectResponse,
+	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourceRepositoryList,
 	SkillUserDto,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -29,6 +35,12 @@ export type SkillListQuery = {
 	agentId?: string;
 	createdById?: string;
 	sortBy?: SkillSortOption;
+	/** `source` groups the synced skills under their source. */
+	groupBy?: 'source';
+	page?: number;
+	focusSourceId?: string;
+	/** Comma-separated ids of the sources that the user folded. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -101,7 +113,35 @@ export async function deleteSkill(context: IRestApiContext, id: string): Promise
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
 }
 
-/** Reads a public link and lists the skills in it. Writes nothing. */
+/** The scope of a source, as the credential and repository lists take it. */
+
+/** The credentials that a source in the scope accepts and that the user can use. */
+export async function getSkillSourceCredentials(
+	context: IRestApiContext,
+	query: ListSkillSourceCredentialsQueryDto,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest<SkillSourceCredentialOption[]>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/credentials`,
+		{ ...query },
+	);
+}
+
+/** The repositories that a credential can read, for the owner and repository selects. */
+export async function getSkillSourceRepositories(
+	context: IRestApiContext,
+	query: ListSkillSourceRepositoriesQueryDto,
+): Promise<SkillSourceRepositoryList> {
+	return await makeRestApiRequest<SkillSourceRepositoryList>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/repositories`,
+		{ ...query },
+	);
+}
+
+/** Reads a link, with a credential for a private one, and lists the skills in it. Writes nothing. */
 export async function discoverSkillSource(
 	context: IRestApiContext,
 	payload: DiscoverSkillSourceDto,
@@ -124,6 +164,23 @@ export async function connectSkillSource(
 		'POST',
 		SOURCES_ENDPOINT,
 		payload,
+	);
+}
+
+/** The sources that the user can see, for their rows in the skills table. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+/** Check for updates on one source. */
+export async function checkSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceCheckResponse> {
+	return await makeRestApiRequest<SkillSourceCheckResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
 	);
 }
 

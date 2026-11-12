@@ -1,13 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
-import type { BinaryDataService } from 'n8n-core';
+import type { AgentsConfig } from '@n8n/config';
+import { EntityNotFoundError } from '@n8n/typeorm';
+import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 import type { AgentFileGrantRepository } from '../repositories/agent-file-grant.repository';
+
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
 
 describe('AgentChatAttachmentService', () => {
 	let binaryDataService = mock<BinaryDataService>();
@@ -15,6 +24,13 @@ describe('AgentChatAttachmentService', () => {
 	let service: AgentChatAttachmentService;
 	let threadRepository = mock<AgentExecutionThreadRepository>();
 	let grantRepository = mock<AgentFileGrantRepository>();
+	const agentsConfig = mock<AgentsConfig>({
+		maxGeneratedFileSizeMb: 1,
+		maxGeneratedFileCount: 2,
+		maxGeneratedTotalMb: 3,
+		maxTotalMb: 4,
+	});
+	const MB = 1024 * 1024;
 
 	/** Delegation tree: root (agent-1) → child (agent-2) → grandchild (agent-3). */
 	const chains: Record<string, Array<{ id: string; agentId: string | null }>> = {
@@ -45,7 +61,107 @@ describe('AgentChatAttachmentService', () => {
 			repository,
 			threadRepository,
 			grantRepository,
+			projectDeletion,
+			agentsConfig,
 		);
+		repository.sumUsageInThread.mockResolvedValue({
+			totalBytes: 0,
+			sourceCount: 0,
+			sourceBytes: 0,
+		});
+	});
+
+	describe('deleteByProject', () => {
+		it('deletes bounded batches of bytes before their rows', async () => {
+			const batch = Array.from({ length: 500 }, (_, id) =>
+				mock<AgentChatAttachment>({ id: `att-${id}`, binaryDataId: `binary-${id}` }),
+			);
+			repository.findProjectDeletionBatch.mockResolvedValueOnce(batch).mockResolvedValueOnce([]);
+			await service.deleteByProject('project-1');
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledTimes(2);
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledWith('project-1', 500, {});
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(
+				batch.map((item) => item.binaryDataId),
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(
+				batch.map((item) => item.id),
+				{},
+			);
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.deleteByIds.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the batch rows when storage deletion fails', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([
+				mock<AgentChatAttachment>({ id: 'att-1', binaryDataId: 'binary-1' }),
+			]);
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(
+				new Error('storage unavailable'),
+			);
+			await expect(service.deleteByProject('project-1')).rejects.toThrow('storage unavailable');
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledOnce();
+		});
+
+		it('does not access storage for an empty project', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([]);
+			await service.deleteByProject('project-1');
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+	});
+
+	it('removes new upload bytes when project deletion rejects the metadata write', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:x',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		projectDeletion.withWritableProject.mockRejectedValueOnce(
+			new Error('project is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				source: 'chat',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('test'),
+			}),
+		).rejects.toThrow('project is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+	});
+
+	it('removes upload bytes when account deletion rejects a private chat file', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:late-file',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		threadRepository.assertOwnerActive.mockRejectedValue(
+			new UserError('This user is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'root',
+				resourceId: 'system-chat:user-1',
+				source: 'system',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('content'),
+			}),
+		).rejects.toThrow('user is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+			'filesystem-v2:late-file',
+		]);
 	});
 
 	it('checks attachment access through the session and falls back to its persisted resource', async () => {
@@ -77,6 +193,34 @@ describe('AgentChatAttachmentService', () => {
 		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toEqual(attachment);
 	});
 
+	it('checks the read grants of a sub-agent session for a file of the root agent', async () => {
+		const scope = { agentId: 'agent-2', projectId: 'project-1', userId: 'user-1' };
+		const attachment = mock<AgentChatAttachment>({ id: 'att-1', createdByThreadId: 'root' });
+		repository.findByIdForAgent.mockResolvedValue(null);
+		repository.findByIdInThread.mockResolvedValue(attachment);
+		const session = mock<AgentExecutionThread>({
+			agentId: 'agent-2',
+			projectId: 'project-1',
+			accessScope: 'user',
+			ownerId: 'user-1',
+		});
+		threadRepository.findOneBy.mockResolvedValue(session);
+
+		expect(await service.getForAgent('att-1', scope)).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(false);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(true);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toEqual(attachment);
+		expect(repository.findByIdInThread).toHaveBeenCalledWith(
+			'att-1',
+			{ projectId: 'project-1', threadId: 'root' },
+			{},
+		);
+		expect(
+			await service.getForAgent('att-1', { ...scope, userId: 'user-2', threadId: 'child' }),
+		).toBeNull();
+	});
+
 	describe('storeInbound', () => {
 		it('stores bytes via BinaryDataService and persists a scoped row', async () => {
 			binaryDataService.store.mockResolvedValue({
@@ -84,8 +228,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-1',
@@ -108,12 +253,18 @@ describe('AgentChatAttachmentService', () => {
 				expect.anything(),
 			);
 
-			expect(repository.save).toHaveBeenCalledTimes(1);
+			expect(repository.saveInboundAttachment).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ binaryDataId: stored.binaryDataId, fileSizeBytes: 3 }),
+				{},
+			);
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
 			expect(stored.threadId).toBe('thread-1');
 			expect(stored.createdByThreadId).toBe('thread-1');
+			expect(stored.contentHash).toBe(
+				'039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81',
+			);
 		});
 
 		it('stores a file that a sub-agent makes under the root thread', async () => {
@@ -122,8 +273,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-3',
@@ -165,6 +317,87 @@ describe('AgentChatAttachmentService', () => {
 			).rejects.toThrow('persisted binary data storage mode');
 		});
 
+		describe('caps', () => {
+			const store = async (source: string, size: number) =>
+				await service.storeInbound({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					threadId: 'child',
+					source,
+					fileName: 'out.csv',
+					mimeType: 'text/csv',
+					data: Buffer.alloc(size),
+				});
+
+			beforeEach(() => {
+				binaryDataService.store.mockResolvedValue({
+					id: 'filesystem-v2:x',
+					data: 'filesystem-v2',
+					mimeType: 'text/csv',
+				});
+				repository.saveInboundAttachment.mockImplementation(
+					async (input) => input as AgentChatAttachment,
+				);
+			});
+
+			it('counts the usage of the whole tree', async () => {
+				await store('sandbox', 10);
+
+				expect(repository.sumUsageInThread).toHaveBeenCalledWith(
+					{ projectId: 'project-1', threadId: 'root' },
+					['tool', 'sandbox'],
+					{},
+				);
+			});
+
+			it('rejects a generated file over the file size cap before the usage query', async () => {
+				await expect(store('tool', MB + 1)).rejects.toThrow(AgentFileLimitError);
+				expect(repository.sumUsageInThread).not.toHaveBeenCalled();
+				expect(binaryDataService.store).not.toHaveBeenCalled();
+			});
+
+			it('does not apply the generated file caps to uploads', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 2,
+					sourceBytes: 3 * MB,
+				});
+
+				await expect(store('chat', 2 * MB)).resolves.toBeDefined();
+			});
+
+			it('rejects a file over the total cap for every source', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 4 * MB,
+					sourceCount: 0,
+					sourceBytes: 0,
+				});
+
+				await expect(store('chat', 1)).rejects.toThrow('up to 4 MB of files');
+			});
+
+			it('rejects a generated file over the count cap', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 2,
+					sourceBytes: 0,
+				});
+
+				await expect(store('sandbox', 1)).rejects.toThrow('up to 2 files');
+			});
+
+			it('rejects a generated file over the generated bytes cap', async () => {
+				repository.sumUsageInThread.mockResolvedValue({
+					totalBytes: 0,
+					sourceCount: 0,
+					sourceBytes: 3 * MB,
+				});
+
+				await expect(store('tool', 1)).rejects.toThrow('up to 3 MB of files');
+				expect(binaryDataService.store).not.toHaveBeenCalled();
+			});
+		});
+
 		it('cleans up stored bytes when the row insert fails', async () => {
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
 			binaryDataService.store.mockResolvedValue({
@@ -172,8 +405,7 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockRejectedValue(new Error('db down'));
+			repository.saveInboundAttachment.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.storeInbound({
@@ -187,6 +419,96 @@ describe('AgentChatAttachmentService', () => {
 				}),
 			).rejects.toThrow('db down');
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+		});
+	});
+
+	describe('listForSession', () => {
+		it('keeps the newest file for each name and hash and every file without a hash', async () => {
+			const row = (id: string, contentHash: string | null, minute: number, fileName = 'a.txt') =>
+				({
+					id,
+					contentHash,
+					fileName,
+					mimeType: 'text/plain',
+					fileSizeBytes: 1,
+					source: 'sandbox',
+					createdAt: new Date(Date.UTC(2026, 9, 29, 10, minute)),
+				}) as AgentChatAttachment;
+			repository.findInThreadNewestFirst.mockResolvedValue([
+				row('new', 'h1', 4),
+				row('other-name', 'h1', 3, 'a.csv'),
+				row('legacy-1', null, 2),
+				row('old', 'h1', 1),
+				row('legacy-2', null, 0),
+			]);
+
+			const files = await service.listForSession(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+			);
+
+			expect(files.map((file) => file.fileId)).toEqual([
+				'new',
+				'other-name',
+				'legacy-1',
+				'legacy-2',
+			]);
+			expect(files[0]).toEqual({
+				fileId: 'new',
+				fileName: 'a.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 1,
+				source: 'sandbox',
+				createdAt: '2026-10-29T10:04:00.000Z',
+			});
+			expect(repository.findInThreadNewestFirst).toHaveBeenCalledWith(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+				{},
+			);
+		});
+	});
+
+	describe('findReadableByHashes', () => {
+		const file = (id: string, contentHash: string, createdByThreadId: string) =>
+			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;
+
+		it('maps each hash to its files, newest first, for the root thread', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('new', 'h1', 'child'),
+				file('old', 'h1', 'root'),
+			]);
+
+			const result = await service.findReadableByHashes(['h1', 'h2'], {
+				projectId: 'project-1',
+				threadId: 'root',
+			});
+
+			expect([...result]).toEqual([
+				['h1', [expect.objectContaining({ id: 'new' }), expect.objectContaining({ id: 'old' })]],
+			]);
+			expect(repository.findByHashesInThread).toHaveBeenCalledWith(
+				['h1', 'h2'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
+		});
+
+		it('returns only files that a sub-agent made or got granted', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('parent-file', 'h1', 'root'),
+				file('granted', 'h2', 'root'),
+				file('own', 'h3', 'child'),
+			]);
+			grantRepository.findGrantedIds.mockResolvedValue(new Set(['granted']));
+
+			const result = await service.findReadableByHashes(['h1', 'h2', 'h3'], {
+				projectId: 'project-1',
+				threadId: 'child',
+			});
+
+			expect([...result.keys()]).toEqual(['h2', 'h3']);
 		});
 	});
 
@@ -206,10 +528,11 @@ describe('AgentChatAttachmentService', () => {
 				childThreadId: 'child',
 			});
 
-			expect(repository.findByIdsInThread).toHaveBeenCalledWith(['att-1'], {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdsInThread).toHaveBeenCalledWith(
+				['att-1'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
 			expect(grantRepository.grant).toHaveBeenCalledWith(['att-1'], 'child');
 		});
@@ -268,6 +591,57 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('returnToParent', () => {
+		const made = {
+			id: 'att-2',
+			fileName: 'out.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+		} as AgentChatAttachment;
+
+		it('lists the files that the child made and grants them to a parent that is not the root', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			const files = await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'child',
+				childThreadId: 'grandchild',
+			});
+
+			expect(repository.findCreatedByThread).toHaveBeenCalledWith(
+				'grandchild',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.grant).toHaveBeenCalledWith(['att-2'], 'child');
+			expect(files).toEqual([
+				{ fileId: 'att-2', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 },
+			]);
+		});
+
+		it('does not grant to the root, which reads every file', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'root',
+				childThreadId: 'child',
+			});
+
+			expect(grantRepository.grant).not.toHaveBeenCalled();
+		});
+
+		it('rejects a thread that is not the parent', async () => {
+			await expect(
+				service.returnToParent({
+					projectId: 'project-1',
+					parentThreadId: 'root',
+					childThreadId: 'grandchild',
+				}),
+			).rejects.toThrow('parent of a sub-agent');
+		});
+	});
+
 	describe('getFileStore', () => {
 		it('loads bytes for attachments in scope', async () => {
 			repository.findByIdForAgent.mockResolvedValue({
@@ -283,10 +657,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' });
 
-			expect(repository.findByIdForAgent).toHaveBeenCalledWith('att-1', {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			});
+			expect(repository.findByIdForAgent).toHaveBeenCalledWith(
+				'att-1',
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				{},
+			);
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
 
@@ -304,10 +679,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' }, { threadId: 'thread-1' });
 
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
-				projectId: 'project-1',
-				threadId: 'thread-1',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-1',
+				{ projectId: 'project-1', threadId: 'thread-1' },
+				{},
+			);
 			expect(repository.findByIdForAgent).not.toHaveBeenCalled();
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
@@ -336,10 +712,11 @@ describe('AgentChatAttachmentService', () => {
 			await store.load({ id: 'att-4' }, { threadId: 'grandchild' });
 
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(1);
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-4', {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-4',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 
 			await store.load({ id: 'att-1' }, { threadId: 'root' });
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(2);
@@ -403,6 +780,32 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('hasStoredData', () => {
+		const attachment = mock<AgentChatAttachment>({ binaryDataId: 'filesystem-v2:abc' });
+
+		it('returns true when the bytes are in storage', async () => {
+			binaryDataService.getMetadata.mockResolvedValue({ fileSize: 3, mimeType: 'image/png' });
+
+			expect(await service.hasStoredData(attachment)).toBe(true);
+			expect(binaryDataService.getMetadata).toHaveBeenCalledWith('filesystem-v2:abc');
+		});
+
+		it.each([
+			['filesystem, S3 or Azure', new FileNotFoundError('abc')],
+			['database', new EntityNotFoundError('BinaryDataFile', { fileId: 'abc' })],
+		])('returns false when the bytes are gone in %s mode', async (_mode, error) => {
+			binaryDataService.getMetadata.mockRejectedValue(error);
+
+			expect(await service.hasStoredData(attachment)).toBe(false);
+		});
+
+		it('throws other storage errors', async () => {
+			binaryDataService.getMetadata.mockRejectedValue(new Error('storage down'));
+
+			await expect(service.hasStoredData(attachment)).rejects.toThrow('storage down');
+		});
+	});
+
 	describe('deleteByThread', () => {
 		it('deletes rows and bytes for the thread within the given scope', async () => {
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
@@ -413,10 +816,12 @@ describe('AgentChatAttachmentService', () => {
 
 			await service.deleteByThread('thread-1', { projectId: 'project-1' });
 
-			expect(repository.findByThread).toHaveBeenCalledWith('thread-1', {
-				projectId: 'project-1',
-			});
-			expect(repository.delete).toHaveBeenCalledWith(['att-1', 'att-2']);
+			expect(repository.findByThread).toHaveBeenCalledWith(
+				'thread-1',
+				{ projectId: 'project-1' },
+				{},
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(['att-1', 'att-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
 				'filesystem-v2:a',
 				'filesystem-v2:b',
@@ -426,7 +831,7 @@ describe('AgentChatAttachmentService', () => {
 		it('is a no-op for threads without attachments', async () => {
 			repository.findByThread.mockResolvedValue([]);
 			await service.deleteByThread('thread-1', { agentId: 'agent-1' });
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -459,9 +864,10 @@ describe('AgentChatAttachmentService', () => {
 				scope,
 				before,
 				BATCH_SIZE,
+				{},
 			);
-			expect(repository.delete).toHaveBeenCalledTimes(3);
-			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(3);
+			expect(repository.deleteByIds).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
 				'filesystem-v2:c-0',
 				'filesystem-v2:c-1',
@@ -476,7 +882,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
-			expect(repository.delete).toHaveBeenCalledTimes(1);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns 0 and deletes nothing when no file is overdue', async () => {
@@ -484,7 +890,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
@@ -494,7 +900,7 @@ describe('AgentChatAttachmentService', () => {
 			await service.deleteFromSourceCreatedBefore(scope, before);
 
 			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
-				repository.delete.mock.invocationCallOrder[0],
+				repository.deleteByIds.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -505,7 +911,7 @@ describe('AgentChatAttachmentService', () => {
 			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
 				'storage down',
 			);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 
 		it('stops between batches when the signal aborts', async () => {

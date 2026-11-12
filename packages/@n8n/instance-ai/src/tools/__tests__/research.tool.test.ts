@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -48,6 +49,30 @@ describe('research tool', () => {
 		expect(tool.description).toContain('knowledge base');
 		expect(tool.description).toContain('n8n-docs');
 		expect(tool.description).toContain('prefer');
+	});
+
+	describe('input validation', () => {
+		// The runtime validates input against this schema before the handler runs.
+		function parseInput(input: unknown) {
+			const { inputSchema } = createResearchTool(createMockContext());
+			if (!(inputSchema instanceof z.ZodType)) throw new Error('Expected a Zod input schema');
+			return inputSchema.safeParse(input);
+		}
+
+		it.each([
+			[{ action: 'web-search' }, ['query'], '"query" is required when action is "web-search"'],
+			[{ action: 'fetch-url' }, ['url'], '"url" is required when action is "fetch-url"'],
+		])('should name the missing field of %o', (input, path, message) => {
+			const result = parseInput(input);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues).toEqual([expect.objectContaining({ path, message })]);
+		});
+
+		it('should accept each action with its own fields', () => {
+			expect(parseInput({ action: 'web-search', query: 'n8n' }).success).toBe(true);
+			expect(parseInput({ action: 'fetch-url', url: 'https://n8n.io' }).success).toBe(true);
+		});
 	});
 
 	// ── web-search ──────────────────────────────────────────────────────────

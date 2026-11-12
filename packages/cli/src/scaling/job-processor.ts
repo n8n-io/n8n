@@ -14,11 +14,11 @@ import {
 	NodeOperationError,
 	TimeoutExecutionCancelledError,
 	Workflow,
-	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	CancellationReason,
 	ExecutionStatus,
@@ -577,6 +577,7 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
+			...(run.data.resultData.failedBeforeStart && { failedBeforeStart: true }),
 			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run.data.resultData.runData),
 		};
 	}

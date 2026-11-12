@@ -14,7 +14,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironment } from './promotion-environment.entity';
-import { PromotionRun } from './promotion-run.entity';
+import type { PromotionRun } from './promotion-run.entity';
 
 /**
  * The gate on a promote. Several runs can point at one review. The host owns
@@ -86,9 +86,6 @@ export class PromotionReview extends WithCreatedAt {
 	@JoinColumn({ name: 'approvedById' })
 	approvedBy: Relation<User> | null;
 
-	@OneToMany(
-		() => PromotionRun,
-		(run) => run.review,
-	)
+	@OneToMany('PromotionRun', 'review')
 	runs: Relation<PromotionRun>[];
 }

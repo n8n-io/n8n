@@ -4,12 +4,17 @@ import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
+	isPerson,
+	Person,
 	Project,
 	User,
 	ProjectRelationRepository,
 	ProjectRepository,
 	UserRepository,
+	PersonRepository,
 	Role,
+	ServiceAccount,
+	ServiceAccountDetails,
 	SettingsRepository,
 	Scope,
 } from '@n8n/db';
@@ -31,6 +36,7 @@ export class OwnershipService {
 		private projectRepository: ProjectRepository,
 		private workflowProjectService: WorkflowProjectService,
 		private userRepository: UserRepository,
+		private personRepository: PersonRepository,
 		private settingsRepository: SettingsRepository,
 	) {}
 
@@ -58,13 +64,24 @@ export class OwnershipService {
 		};
 	}
 
+	/** Rebuilds the child class that `kind` names, so the account guards work on a cached copy. */
+	private reconstructAccount(cachedUser: Partial<User>): User {
+		if (cachedUser.kind !== 'service') return Object.assign(new Person(), cachedUser);
+
+		const serviceAccount = Object.assign(new ServiceAccount(), cachedUser);
+		if ('details' in cachedUser && cachedUser.details && typeof cachedUser.details === 'object') {
+			serviceAccount.details = Object.assign(new ServiceAccountDetails(), cachedUser.details);
+		}
+		return serviceAccount;
+	}
+
 	reconstructUser(cachedUser: Partial<User>): User | undefined {
 		if (typeof cachedUser !== 'object' || cachedUser === null) {
 			// performing runtime checks here, because the data is originating from
 			// an external system our cache
 			return undefined;
 		}
-		const user = Object.assign(new User(), cachedUser);
+		const user = this.reconstructAccount(cachedUser);
 		if ('role' in cachedUser && cachedUser.role && typeof cachedUser.role === 'object') {
 			user.role = Object.assign(new Role(), cachedUser.role);
 			if ('scopes' in cachedUser.role && Array.isArray(cachedUser.role.scopes)) {
@@ -217,7 +234,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.hasClaimedInstanceOwner();
+		return await this.personRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(
@@ -233,12 +250,13 @@ export class OwnershipService {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOne({
+		const shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		if (!shellUser) {
+		// The owner is always a person.
+		if (!shellUser || !isPerson(shellUser)) {
 			this.logger.error('Could not find shell user with global:owner role');
 			throw new BadRequestError('Instance owner shell user not found');
 		}
@@ -251,7 +269,8 @@ export class OwnershipService {
 			? password
 			: await this.passwordUtility.hash(password);
 
-		shellUser = await this.userRepository.save(shellUser, { transaction: false });
+		// `save` updates the instance in place.
+		await this.userRepository.save(shellUser, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 		this.eventService.emit('instance-owner-setup', { userId: shellUser.id });

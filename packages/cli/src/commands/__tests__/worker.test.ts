@@ -1,6 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import { type EventService, JwtService, RedisClientService } from '@n8n/backend-services';
+import {
+	type EventService,
+	JwtService,
+	NodeTypesProxy,
+	RedisClientService,
+	PostHogClient,
+	Subscriber,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -12,6 +19,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -28,10 +36,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
@@ -69,7 +75,7 @@ const activeExecutions = mockInstance(ActiveExecutions);
 
 // Mocks for services reached by the full `init()` path, as in start.test.ts
 mockInstance(ErrorReporter);
-mockInstance(NodeTypes);
+const nodeTypes = mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
@@ -207,6 +213,20 @@ describe('Worker', () => {
 			vi.unstubAllEnvs();
 		});
 
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
+		});
+
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
@@ -244,7 +264,7 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
-				mock<InstanceSettings>({ instanceType: 'worker' }),
+				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
 				mock<UnsavedManualExecutionService>(),
 			);
 

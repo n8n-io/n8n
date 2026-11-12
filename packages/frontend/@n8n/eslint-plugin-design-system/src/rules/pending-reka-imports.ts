@@ -12,10 +12,7 @@ export const pendingRekaPrefixes = [
 	'Collapsible',
 	'ContextMenu',
 	'DropdownMenu',
-	'FocusScope',
-	'HoverCard',
 	'Tabs',
-	'VisuallyHidden',
 ] as const;
 
 /**
@@ -29,7 +26,6 @@ export const pendingRekaExactNames = [
 	'DateValue',
 	'FlattenedItem',
 	'FocusOutsideEvent',
-	'injectRadioGroupRootContext',
 	'Label',
 	'PointerDownOutsideEvent',
 	'Primitive',

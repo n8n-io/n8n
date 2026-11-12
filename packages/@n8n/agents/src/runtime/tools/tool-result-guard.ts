@@ -13,11 +13,13 @@ import { isContentToolResultOutput, type ContentToolResultOutput } from '../mode
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export {
-	EXPIRED_OFFLOADED_TOOL_RESULT,
+	RUN_SCOPED_OFFLOADED_TOOL_RESULT,
 	sanitizeOffloadedToolResultsForMemory,
 } from '../memory/tool-result-memory';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
+// Limit exact counts because encoding large uninterrupted text can be slow.
+export const MAX_EXACT_TOKENIZATION_BYTES = 200_000;
 // BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.
 const SMALL_PAYLOAD_OVERHEAD_BYTES = 1_024;
 
@@ -38,7 +40,8 @@ interface OffloadedToolResult extends JSONObject {
 		toolName: 'workspace_read_tool_result';
 		input: {
 			path: string;
-			view: 'describe';
+			view: 'json';
+			pointer: '';
 		};
 	};
 	message: string;
@@ -99,9 +102,11 @@ async function guardSerialized(
 	storage: ToolResultGuardStorage | undefined,
 	kind: ToolResultKind,
 ): Promise<GuardedToolResult> {
-	if (isClearlyWithinTokenLimit(serialized)) return unchanged;
+	const byteLength = Buffer.byteLength(serialized, 'utf8');
+	if (byteLength + SMALL_PAYLOAD_OVERHEAD_BYTES <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
-	const tokenCount = await tokenCounter(serialized);
+	const countTokens = byteLength > MAX_EXACT_TOKENIZATION_BYTES ? countTokensByBytes : tokenCounter;
+	const tokenCount = await countTokens(serialized);
 	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
 	const offloaded = await tryOffloadResult(serialized, tokenCount, kind, storage);
@@ -114,7 +119,7 @@ async function guardSerialized(
 		};
 	}
 
-	const truncated = await buildTruncationEnvelope(serialized, tokenCount, tokenCounter);
+	const truncated = await buildTruncationEnvelope(serialized, tokenCount, countTokens);
 	return {
 		historyOutput: truncated,
 		wireOutput: truncated,
@@ -209,21 +214,19 @@ async function tryOffloadResult(
 			estimatedTokenCount: tokenCount,
 			requiredAction: {
 				toolName: 'workspace_read_tool_result',
-				input: { path, view: 'describe' },
+				// Start with the root children so the model copies exact pointers instead of guessing them.
+				input: { path, view: 'json', pointer: '' },
 			},
 			message:
-				'The complete tool result was stored in the workspace. Follow requiredAction before answering, then keep using workspace_read_tool_result with relevant JSON Pointers and nextOffset pages until you have enough evidence. Do not assume the first page is complete when hasMore is true.',
+				'The complete tool result was stored in the workspace. Follow requiredAction before answering, then keep using workspace_read_tool_result with the child pointer values it returns and nextOffset pages until you have enough evidence. The root pointer is an empty string, not "/". Do not assume the first page is complete when hasMore is true.',
 		};
 	} catch {
 		return undefined;
 	}
 }
 
-function isClearlyWithinTokenLimit(serialized: string): boolean {
-	return (
-		Buffer.byteLength(serialized, 'utf8') + SMALL_PAYLOAD_OVERHEAD_BYTES <=
-		MAX_MODEL_TOOL_RESULT_TOKENS
-	);
+function countTokensByBytes(serialized: string): number {
+	return Buffer.byteLength(serialized, 'utf8') + SMALL_PAYLOAD_OVERHEAD_BYTES;
 }
 
 async function buildTruncationEnvelope(
@@ -258,8 +261,9 @@ async function buildTruncationEnvelope(
 function splitHeadAndTail(value: string, excerptLength: number): { head: string; tail: string } {
 	const headLength = Math.ceil(excerptLength / 2);
 	const tailLength = Math.floor(excerptLength / 2);
+	// Drop a partial surrogate pair at either excerpt boundary.
 	return {
-		head: value.slice(0, headLength),
-		tail: tailLength === 0 ? '' : value.slice(-tailLength),
+		head: value.slice(0, headLength).replace(/[\uD800-\uDBFF]$/u, ''),
+		tail: tailLength === 0 ? '' : value.slice(-tailLength).replace(/^[\uDC00-\uDFFF]/u, ''),
 	};
 }

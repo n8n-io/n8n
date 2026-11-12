@@ -13,6 +13,15 @@
  * a marker from user data that looks like one.
  */
 
+import {
+	defineProperty,
+	getPrototypeOf,
+	isArray,
+	isArrayBufferView,
+	objectKeys,
+	reflectGet,
+} from './intrinsics';
+
 /** Names the type a marker carries, and marks the object as one of ours. */
 export const TRANSFER_TYPE_KEY = '__n8nType';
 
@@ -56,19 +65,23 @@ export interface EscapedTransferValue {
 }
 
 /**
- * Rebuild a real instance from a marker.
+ * Rebuild a real instance from a marker. Use `decodeChild` to keep its contents
+ * in the same walk and reuse objects that the walk has already decoded.
  *
  * Only the guest walk writes the type key, and it escapes any user object that
  * carries one, so a decoder only ever sees a type its own encoder wrote.
  */
-export type SentinelDecoder = (sentinel: TransferSentinel) => unknown;
+export type SentinelDecoder = (
+	sentinel: TransferSentinel,
+	decodeChild: (value: unknown) => unknown,
+) => unknown;
 
 /** Give back a sentinel for a value the decoder owns, or nothing for any other. */
 export type SentinelEncoder = (value: object) => TransferSentinel | undefined;
 
 function readKey(value: unknown, key: string): unknown {
 	if (typeof value !== 'object' || value === null) return undefined;
-	return Reflect.get(value, key);
+	return reflectGet(value, key);
 }
 
 /** The type a marker names, or nothing when the value is not a marker. */
@@ -93,9 +106,49 @@ export function isOpaqueTransferValue(value: unknown): boolean {
 	return readKey(value, TRANSFER_OPAQUE_KEY) === true;
 }
 
+/** Define an own data key. Unlike assignment, a `__proto__` key stays an own key. */
+export function defineOwnValue(
+	target: object,
+	key: string,
+	value: unknown,
+	enumerable = true,
+): void {
+	defineProperty(target, key, { value, writable: true, enumerable, configurable: true });
+}
+
+/** The objects a walk has finished, and the ones it is inside. */
+export interface ObjectWalk {
+	done: Map<object, unknown>;
+	open: Set<object>;
+}
+
+export function newObjectWalk(): ObjectWalk {
+	return { done: new Map(), open: new Set() };
+}
+
+/**
+ * Encode each object once in a walk, so a shared object stays shared. A
+ * reference back to an object the walk is inside gives undefined.
+ */
+export function encodeOnce(
+	value: object,
+	walk: ObjectWalk,
+	encodeObject: (value: object) => unknown,
+): unknown {
+	if (walk.open.has(value)) {
+		return undefined;
+	}
+	if (!walk.done.has(value)) {
+		walk.open.add(value);
+		walk.done.set(value, encodeObject(value));
+		walk.open.delete(value);
+	}
+	return walk.done.get(value);
+}
+
 /** Type guard: plain object with Object.prototype or null prototype. */
 export function isPlainObject(value: object): value is Record<string, unknown> {
-	const proto = Object.getPrototypeOf(value);
+	const proto = getPrototypeOf(value);
 	return proto === Object.prototype || proto === null;
 }
 
@@ -109,7 +162,7 @@ export function isStructuredCloneBuiltin(value: object): boolean {
 		value instanceof Error ||
 		value instanceof Promise ||
 		value instanceof ArrayBuffer ||
-		ArrayBuffer.isView(value)
+		isArrayBufferView(value)
 	);
 }
 
@@ -122,8 +175,8 @@ function unwrapPlainObject(
 	// Record the result before the walk. A value that refers to itself then
 	// resolves to the same object.
 	seen.set(value, result);
-	for (const key of Object.keys(value)) {
-		result[key] = unwrapValue(value[key], decode, seen);
+	for (const key of objectKeys(value)) {
+		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;
 }
@@ -132,7 +185,7 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	if (seen.has(value)) return seen.get(value);
-	if (Array.isArray(value)) {
+	if (isArray(value)) {
 		const result: unknown[] = new Array<unknown>(value.length);
 		seen.set(value, result);
 		// `forEach` steps over the holes of a sparse array, which keeps it sparse.
@@ -142,7 +195,11 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		return result;
 	}
 	if (!isPlainObject(value)) return value;
-	if (isTransferSentinel(value)) return decode(value);
+	if (isTransferSentinel(value)) {
+		const result = decode(value, (child) => unwrapValue(child, decode, seen));
+		seen.set(value, result);
+		return result;
+	}
 	if (isEscapedTransferValue(value)) {
 		const inner: unknown = value[TRANSFER_VALUE_KEY];
 		// An opaque payload is a value the guest could not walk, so nothing in it
@@ -150,9 +207,10 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		// keys collide, so the walk goes on below and rebuilds markers deeper in.
 		if (isOpaqueTransferValue(value)) return inner;
 		if (typeof inner !== 'object' || inner === null) return inner;
+		if (seen.has(inner)) return seen.get(inner);
 		// An array payload is walked as an array. Its own entries carry no framing,
 		// so reading it as a marker is never right.
-		if (Array.isArray(inner)) return unwrapValue(inner, decode, seen);
+		if (isArray(inner)) return unwrapValue(inner, decode, seen);
 		if (!isPlainObject(inner)) return inner;
 		return unwrapPlainObject(inner, decode, seen);
 	}
@@ -170,7 +228,7 @@ function holdsSentinel(value: unknown, seen: Set<object>): boolean {
 	if (value === null || typeof value !== 'object') return false;
 	if (seen.has(value)) return false;
 	seen.add(value);
-	if (Array.isArray(value)) {
+	if (isArray(value)) {
 		for (let index = 0; index < value.length; index++) {
 			if (holdsSentinel(value[index], seen)) return true;
 		}

@@ -1,3 +1,4 @@
+import type { SkillScope } from '@n8n/api-types';
 import {
 	BaseRepository,
 	LIKE_ESCAPE_CLAUSE,
@@ -9,7 +10,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, In, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -23,46 +24,46 @@ import type {
 	SkillTarget,
 } from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
+import { SkillSourceConnection } from '../entities/skill-source-connection.entity';
+import { SkillSourceLink } from '../entities/skill-source-link.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';
 
 /** The scope fields checked by Assistant reads. */
-export type AssistantSkillAccess = Pick<
-	Skill,
-	'id' | 'projectId' | 'agentId' | 'availableToAssistant'
->;
+export type AssistantSkillAccess = Pick<Skill, 'id' | 'projectId' | 'availableToAssistant'>;
 
 type AssistantSkillAccessRow = {
 	assistantProjectId: string | null;
-	assistantAgentId: string | null;
 	assistantAvailableToAssistant: boolean | number;
 };
 
-/**
- * Which skills one user may list: instance skills always, plus the skills of these
- * projects and of `agentIds`, the agents in these projects.
- */
+/** Which skills one user may list: instance skills always, plus the skills of these projects. */
 export type SkillVisibility = {
 	projectIds: string[] | 'all';
-	agentIds: string[] | 'all';
 };
 
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
-	scope?: 'project' | 'agent' | 'instance';
-	/** The skills of this project and of its agents. */
-	project?: { id: string; agentIds: string[] };
-	/** What this agent may attach: instance skills, its project's skills and its own. */
-	attachableTo?: { agentId: string; projectId: string };
-	/** The skills this agent uses (`skillIds`) and its own agent skills. */
-	usedBy?: { agentId: string; skillIds: string[] };
+	/** Only the skills that no source syncs. */
+	withoutSource?: boolean;
+	scope?: SkillScope;
+	/** The skills of this project. */
+	projectId?: string;
+	/** What an agent of this project may attach: instance skills and the project's skills. */
+	attachableToProjectId?: string;
+	/** The skills an agent uses. */
+	usedBySkillIds?: string[];
 	createdById?: string;
 	search?: string;
+	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
 	sort?: SkillListSort;
 	skip: number;
 	take?: number;
 };
+
+/** The part of `SkillListFilter` that decides which skills match, without the page. */
+export type SkillMatchFilter = Omit<SkillListFilter, 'skip' | 'take'>;
 
 /** Name sorts by the latest version, without case. */
 export type SkillListSort = { by: 'name' | 'updatedAt'; order: 'ASC' | 'DESC' };
@@ -97,33 +98,118 @@ export class SkillRepository {
 		filter: SkillListFilter,
 		ctx: OperationContext = {},
 	): Promise<{ skills: Skill[]; count: number }> {
-		const query = this.visibleQuery(visibility, filter, ctx);
+		const query = this.filteredQuery(visibility, filter, ctx);
 		if (!query) return { skills: [], count: 0 };
-		if (filter.project) {
-			const { id, agentIds: projectAgentIds } = filter.project;
-			query.andWhere(
-				new Brackets((qb) => {
-					qb.where('skill.projectId = :projectId');
-					if (projectAgentIds.length > 0) qb.orWhere('skill.agentId IN (:...projectAgentIds)');
-				}),
-				{ projectId: id, projectAgentIds },
+		const order = filter.sort?.order ?? 'DESC';
+		query.orderBy(filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
+		// The id breaks ties, so a skill never shows on two pages or on none.
+		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		const [skills, count] = await query.getManyAndCount();
+		return { skills, count };
+	}
+
+	/**
+	 * One slice of the visible skills that match the filter, in the order of `findVisiblePage`,
+	 * without the count. Used for local skills after the source groups.
+	 */
+	async findVisibleSlice(
+		visibility: SkillVisibility,
+		filter: SkillListFilter,
+		ctx: OperationContext = {},
+	): Promise<Skill[]> {
+		const query = this.filteredQuery(visibility, filter, ctx);
+		if (!query) return [];
+		const order = filter.sort?.order ?? 'DESC';
+		query.orderBy(filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
+		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		return await query.getMany();
+	}
+
+	/** Read all open source groups on one page in one query. */
+	async findVisibleSourceSkills(
+		visibility: SkillVisibility,
+		filter: SkillMatchFilter,
+		sourceIds: string[],
+	): Promise<Skill[]> {
+		const skills: Skill[] = [];
+		for (const ids of chunkIds(sourceIds)) {
+			const query = this.filteredQuery(visibility, filter, {});
+			if (!query) return [];
+			const sourceOrder = ids.map(
+				(_, index) => `WHEN pageLink.sourceId = :source${index} THEN ${index}`,
 			);
+			const rows = await query
+				.innerJoin(SkillSourceLink, 'pageLink', 'pageLink.skillId = skill.id')
+				.andWhere('pageLink.sourceId IN (:...sourceIds)', { sourceIds: ids })
+				.orderBy(`CASE ${sourceOrder.join(' ')} END`, 'ASC')
+				.setParameters(Object.fromEntries(ids.map((id, index) => [`source${index}`, id])))
+				.addOrderBy(
+					filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt',
+					filter.sort?.order ?? 'DESC',
+				)
+				.addOrderBy('skill.id', 'ASC')
+				.getMany();
+			skills.push(...rows);
 		}
-		if (filter.usedBy) {
-			const { agentId, skillIds } = filter.usedBy;
-			query.andWhere(
-				new Brackets((qb) => {
-					qb.where('skill.agentId = :usedByAgentId');
-					if (skillIds.length > 0) qb.orWhere('skill.id IN (:...usedSkillIds)');
-				}),
-				{ usedByAgentId: agentId, usedSkillIds: skillIds },
-			);
+		return skills;
+	}
+
+	/** Matching group sizes in table order. Local skills have `sourceId` null and come last. */
+	async findSourceGroupSizes(
+		visibility: SkillVisibility,
+		filter: SkillMatchFilter,
+		ctx: OperationContext = {},
+	): Promise<Array<{ sourceId: string | null; count: number }>> {
+		const query = this.filteredQuery(visibility, filter, ctx);
+		if (!query) return [];
+		const rows = await query
+			.leftJoin(SkillSourceLink, 'groupLink', 'groupLink.skillId = skill.id')
+			.leftJoin(SkillSourceConnection, 'groupSource', 'groupSource.id = groupLink.sourceId')
+			.select('groupLink.sourceId', 'sourceId')
+			.addSelect('COUNT(*)', 'count')
+			.groupBy('groupLink.sourceId')
+			.addGroupBy('groupSource.identityKey')
+			.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 1 ELSE 0 END', 'ASC')
+			.addOrderBy('groupSource.identityKey', 'ASC')
+			// Two sources of one repository in two scopes stay apart.
+			.addOrderBy('groupLink.sourceId', 'ASC')
+			.getRawMany<{ sourceId: string | null; count: string | number }>();
+		return rows.map((row) => ({ sourceId: row.sourceId ?? null, count: Number(row.count) }));
+	}
+
+	/** The visible skills that match the filter, without an order or a page cut. */
+	private filteredQuery(
+		visibility: SkillVisibility,
+		filter: SkillMatchFilter,
+		ctx: OperationContext,
+	) {
+		const query = this.visibleQuery(visibility, filter, ctx);
+		if (!query) return null;
+		if (filter.projectId !== undefined) {
+			query.andWhere('skill.projectId = :filterProjectId', { filterProjectId: filter.projectId });
+		}
+		if (filter.usedBySkillIds) {
+			// An agent that uses no skill matches none.
+			if (filter.usedBySkillIds.length === 0) return null;
+			query.andWhere('skill.id IN (:...usedSkillIds)', { usedSkillIds: filter.usedBySkillIds });
+		}
+
+		if (filter.withoutSource) {
+			query
+				.leftJoin(SkillSourceLink, 'noSourceLink', 'noSourceLink.skillId = skill.id')
+				.andWhere('noSourceLink.skillId IS NULL');
 		}
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
 		}
-		const sortByName = filter.sort?.by === 'name';
-		if (filter.search || sortByName) {
+		if (filter.availableToMCP !== undefined) {
+			query.andWhere('skill.availableToMCP = :availableToMCP', {
+				availableToMCP: filter.availableToMCP,
+			});
+		}
+		if (filter.search || filter.sort?.by === 'name') {
 			query.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id').andWhere((qb) => {
 				const highest = qb
 					.subQuery()
@@ -144,13 +230,7 @@ export class SkillRepository {
 				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 			);
 		}
-		const order = filter.sort?.order ?? 'DESC';
-		query.orderBy(sortByName ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
-		// The id breaks ties, so a skill never shows on two pages or on none.
-		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
-		if (filter.take !== undefined) query.limit(filter.take);
-		const [skills, count] = await query.getManyAndCount();
-		return { skills, count };
+		return query;
 	}
 
 	/** The distinct creators of the skills the user may see, for the creator filter. */
@@ -171,29 +251,23 @@ export class SkillRepository {
 	/** The skills `visibility` allows, narrowed by scope or by the agent that attaches them. */
 	private visibleQuery(
 		visibility: SkillVisibility,
-		filter: Pick<SkillListFilter, 'scope' | 'attachableTo'>,
+		filter: Pick<SkillListFilter, 'scope' | 'attachableToProjectId'>,
 		ctx: OperationContext,
 	) {
 		const manager = this.table.managerFor(ctx);
-		// An agent skill has no projectId: it is visible through its agent, one of `agentIds`.
-		const { projectIds, agentIds } = visibility;
+		const { projectIds } = visibility;
 		const branches: string[] = [];
 		if (!filter.scope || filter.scope === 'instance') {
-			branches.push('skill.projectId IS NULL AND skill.agentId IS NULL');
+			branches.push('skill.projectId IS NULL');
 		}
-		if (filter.attachableTo !== undefined) {
-			if (projectIds === 'all' || projectIds.includes(filter.attachableTo.projectId)) {
-				branches.push('skill.projectId = :attachProjectId', 'skill.agentId = :attachAgentId');
+		const { attachableToProjectId } = filter;
+		if (attachableToProjectId !== undefined) {
+			if (projectIds === 'all' || projectIds.includes(attachableToProjectId)) {
+				branches.push('skill.projectId = :attachProjectId');
 			}
-		} else {
-			if (!filter.scope || filter.scope === 'project') {
-				if (projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
-				else if (projectIds.length > 0) branches.push('skill.projectId IN (:...projectIds)');
-			}
-			if (!filter.scope || filter.scope === 'agent') {
-				if (agentIds === 'all') branches.push('skill.agentId IS NOT NULL');
-				else if (agentIds.length > 0) branches.push('skill.agentId IN (:...agentIds)');
-			}
+		} else if (!filter.scope || filter.scope === 'project') {
+			if (projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
+			else if (projectIds.length > 0) branches.push('skill.projectId IN (:...projectIds)');
 		}
 		if (branches.length === 0) return null;
 
@@ -202,11 +276,7 @@ export class SkillRepository {
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
 			.setParameters({
 				projectIds,
-				agentIds,
-				...(filter.attachableTo !== undefined && {
-					attachProjectId: filter.attachableTo.projectId,
-					attachAgentId: filter.attachableTo.agentId,
-				}),
+				...(attachableToProjectId !== undefined && { attachProjectId: attachableToProjectId }),
 			});
 	}
 
@@ -238,14 +308,12 @@ export class SkillRepository {
 		} = await assistantVersionsQuery(this.table.manager, projectId, versionId)
 			.andWhere('skill.id = :skillId', { skillId })
 			.addSelect('skill.projectId', 'assistantProjectId')
-			.addSelect('skill.agentId', 'assistantAgentId')
 			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
 			.getRawAndEntities<AssistantSkillAccessRow>();
 		if (!version || !scope) return null;
 		const skill: AssistantSkillAccess = {
 			id: skillId,
 			projectId: scope.assistantProjectId,
-			agentId: scope.assistantAgentId,
 			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 		};
 		const files = await this.table.manager.find(SkillFile, {
@@ -272,10 +340,8 @@ export class SkillRepository {
 			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
 			.andWhere('file.path = :path', { path })
 			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
-			.andWhere('skill.agentId IS NULL')
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.addSelect('skill.projectId', 'assistantProjectId')
-			.addSelect('skill.agentId', 'assistantAgentId')
 			.addSelect('skill.availableToAssistant', 'assistantAvailableToAssistant')
 			.getRawAndEntities<AssistantSkillAccessRow>();
 		if (!file || !scope) return null;
@@ -283,7 +349,6 @@ export class SkillRepository {
 			skill: {
 				id: skillId,
 				projectId: scope.assistantProjectId,
-				agentId: scope.assistantAgentId,
 				availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 			},
 			file,
@@ -357,8 +422,8 @@ export class SkillRepository {
 	}
 
 	/**
-	 * The name of the latest version of every skill in one target: the same agent, the
-	 * same project (its agent skills not included) or the instance. For the name check.
+	 * The name of the latest version of every skill in one target: the same project or the
+	 * instance. For the name check.
 	 */
 	async findLatestNamesInTarget(
 		target: SkillTarget,
@@ -367,14 +432,10 @@ export class SkillRepository {
 		const query = highestVersionsQuery(this.table.managerFor(ctx))
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 			.select(['version.skillId', 'version.name']);
-		if (target.agentId) {
-			query.andWhere('skill.agentId = :agentId', { agentId: target.agentId });
-		} else if (target.projectId) {
-			query
-				.andWhere('skill.projectId = :projectId', { projectId: target.projectId })
-				.andWhere('skill.agentId IS NULL');
+		if (target.projectId) {
+			query.andWhere('skill.projectId = :projectId', { projectId: target.projectId });
 		} else {
-			query.andWhere('skill.projectId IS NULL').andWhere('skill.agentId IS NULL');
+			query.andWhere('skill.projectId IS NULL');
 		}
 		const versions = await query.getMany();
 		return versions.map(({ skillId, name }) => ({ skillId, name }));
@@ -420,7 +481,6 @@ export class SkillRepository {
 			await manager.insert(Skill, {
 				id: skill.id,
 				projectId: skill.target.projectId,
-				agentId: skill.target.agentId,
 				source: skill.source,
 				createdById: skill.createdById,
 			});
@@ -487,36 +547,45 @@ export class SkillRepository {
 		return resolved;
 	}
 
-	/** Moves a skill to a project, one agent or the instance. */
+	/** Moves a skill to a project or the instance. */
 	async updateTarget(skillId: string, target: SkillTarget, ctx: OperationContext = {}) {
 		await this.table.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
 			{
 				projectId: target.projectId,
-				agentId: target.agentId,
-				...(target.agentId !== null ? { availableToAssistant: false } : {}),
 				updatedAt: new Date(),
 			},
 		);
+	}
+
+	async updateAvailableToMCP(
+		skillId: string,
+		availableToMCP: boolean,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.table.managerFor(ctx).update(Skill, { id: skillId }, { availableToMCP });
 	}
 
 	/** Name and type of each project, keyed by project id. A missing project is absent. */
 	async findProjects(
 		projectIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, Pick<Project, 'name' | 'type'>>> {
+	): Promise<Map<string, Pick<Project, 'name' | 'type' | 'icon'>>> {
 		const manager = this.table.managerFor(ctx);
 		const projects = await inChunks(
 			projectIds,
 			async (chunk) =>
 				await manager.find(Project, {
 					where: { id: In(chunk) },
-					select: ['id', 'name', 'type'],
+					select: ['id', 'name', 'type', 'icon'],
 				}),
 		);
 		return new Map(
-			projects.map((project) => [project.id, { name: project.name, type: project.type }]),
+			projects.map((project) => [
+				project.id,
+				{ name: project.name, type: project.type, icon: project.icon },
+			]),
 		);
 	}
 
@@ -660,7 +729,6 @@ function assistantVersionsQuery(
 	return versions
 		.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 		.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
-		.andWhere('skill.agentId IS NULL')
 		.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId });
 }
 

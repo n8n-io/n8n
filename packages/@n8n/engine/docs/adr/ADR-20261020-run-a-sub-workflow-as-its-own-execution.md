@@ -39,8 +39,10 @@ the credential checks read control-plane state.
 1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the sub-execution
    request in the shim and return a `subExecution` declaration, similar to `wait`. For an awaited
    sub-execution, the engine suspends the parent step, runs the sub-execution, and resumes the
-   parent step when the sub-execution is complete. For a fire-and-forget sub-execution, the parent
-   step completes with its outputs, and the engine then starts the sub-execution.
+   parent step when the sub-execution is complete. For a fire-and-forget sub-execution, the engine
+   admits and queues the sub-execution before the parent step completes with its outputs. The
+   sub-execution can run before the parent step completes. When the engine cannot queue the
+   sub-execution, the parent step fails.
 2. **We re-invoke the execute method when the parent step is resumed.** On the second invocation,
    the shim answers the `executeWorkflow` call with the output of the sub-execution. Then all of the
    existing post-processing is automatically applied. This decision supersedes the decision in
@@ -97,7 +99,8 @@ the credential checks read control-plane state.
 - The sub-execution row carries a parent link that the engine alone sets. The read path can show
   parent execution and sub-execution links.
 - A parent execution that awaits a sub-execution reports `waiting`. Engine v1 reports `running`.
-- Fire-and-forget sub-executions stop with the parent execution. Engine v1 lets them run on.
+- Fire-and-forget sub-executions stop when the parent execution is cancelled. Engine v1 lets them
+  run on.
 - Reconciliation repairs a waiting step whose sub-execution never started, and an ended
   sub-execution whose parent step still waits.
 - Engine v2 has no timeout yet, so a sub-execution outlives a parent execution that v1 would have

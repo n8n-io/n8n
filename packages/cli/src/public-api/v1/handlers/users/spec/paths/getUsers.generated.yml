@@ -2,7 +2,10 @@ operationId: getUsers
 tags:
   - User
 summary: Retrieve all users
-description: Retrieve all users from your instance. Only available for the instance owner.
+description: |-
+  Retrieve all users from your instance. Only available for the instance owner.
+
+  Requires the `user:list` API key scope.
 x-required-scope: user:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -99,3 +102,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     description: The given `projectId` does not exist.
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

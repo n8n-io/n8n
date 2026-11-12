@@ -1,7 +1,7 @@
 import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	type AssistantSkillContent,
@@ -28,6 +28,8 @@ export const SKILLS = {
 	agentBuilder: 'agent-builder',
 	intentRecognition: 'intent-recognition',
 	suggestAutomations: 'suggest-automations',
+	v3Migration: 'v3-migration',
+	appBuilder: 'app-builder',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -41,6 +43,7 @@ export interface InstanceAiSkillScope {
 	 * agents. This needs the Agents module and the Settings > Agents switch.
 	 */
 	agentBuildingEnabled: boolean;
+	appBuildingEnabled: boolean;
 }
 
 export interface InstanceAiRunSkills extends HubRunSkills {
@@ -67,6 +70,10 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.agentBuilder, SKILLS.intentRecognition],
 		isOpen: ({ agentBuildingEnabled }) => agentBuildingEnabled,
+	},
+	{
+		skills: [SKILLS.appBuilder],
+		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
 	},
 ];
 

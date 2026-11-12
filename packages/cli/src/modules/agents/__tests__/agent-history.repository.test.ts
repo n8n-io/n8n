@@ -1,32 +1,40 @@
-import type { User } from '@n8n/db';
+import { Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
 
 import { renderAuthor } from '../repositories/agent-history.repository';
 
-const userWith = (firstName: string | null, lastName: string | null): User =>
-	({ firstName, lastName }) as User;
+const personWith = (firstName: string | null, lastName: string | null): Person =>
+	Object.assign(new Person(), { firstName, lastName });
 
 describe('renderAuthor', () => {
 	it('joins firstName and lastName with a space', () => {
-		expect(renderAuthor(userWith('Eugene', 'Molodkin'))).toBe('Eugene Molodkin');
+		expect(renderAuthor(personWith('Eugene', 'Molodkin'))).toBe('Eugene Molodkin');
 	});
 
 	it('returns firstName alone when lastName is null', () => {
-		expect(renderAuthor(userWith('Solo', null))).toBe('Solo');
+		expect(renderAuthor(personWith('Solo', null))).toBe('Solo');
 	});
 
 	it('returns lastName alone when firstName is null', () => {
-		expect(renderAuthor(userWith(null, 'Onlylast'))).toBe('Onlylast');
+		expect(renderAuthor(personWith(null, 'Onlylast'))).toBe('Onlylast');
 	});
 
 	it('falls back to "Unknown" when both parts are missing', () => {
-		expect(renderAuthor(userWith(null, null))).toBe('Unknown');
+		expect(renderAuthor(personWith(null, null))).toBe('Unknown');
 	});
 
 	it('falls back to "Unknown" when both parts are empty strings', () => {
-		expect(renderAuthor(userWith('', ''))).toBe('Unknown');
+		expect(renderAuthor(personWith('', ''))).toBe('Unknown');
 	});
 
 	it('trims whitespace-only parts to "Unknown"', () => {
-		expect(renderAuthor(userWith('   ', null))).toBe('Unknown');
+		expect(renderAuthor(personWith('   ', null))).toBe('Unknown');
+	});
+
+	it('renders a service account as its name', () => {
+		const serviceAccount = Object.assign(new ServiceAccount(), {
+			id: 'sa-1',
+			details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+		});
+		expect(renderAuthor(serviceAccount)).toBe('Deploy bot');
 	});
 });

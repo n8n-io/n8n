@@ -120,6 +120,8 @@ export function createAgentSkillRefsService(
 		versionPins.set(agentVersionId, Object.fromEntries(pins));
 	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
+	service.findSkillVersionsForAgents.mockResolvedValue(new Map());
+	service.matchesVersion.mockResolvedValue(true);
 	return service;
 }
 

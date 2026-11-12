@@ -3,6 +3,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -25,7 +26,6 @@ import { GitHubSkillSourceClient } from '../../sources/github/github-skill-sourc
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -40,7 +40,7 @@ const FILES = {
 	'README.md': '# Skills\n',
 	'skills/pdf/SKILL.md': skillMd('pdf'),
 	'skills/pdf/references/pages.md': '# Pages\n',
-	'skills/pdf/scripts/split.py': 'print(1)\n',
+	'skills/pdf/assets/form.pdf': '%PDF-1.4\n',
 	'skills/docx/SKILL.md': skillMd('docx'),
 	'skills/broken/SKILL.md': 'no frontmatter here\n',
 };
@@ -102,7 +102,7 @@ describe('SkillSourceController', () => {
 	});
 
 	/** The response body: `data` on success, `meta` with the reason code on a failure. */
-	type Body<T> = { data: T; meta?: { reason: string } };
+	type Body<T> = { data: T; message?: string; meta?: { reason: string } };
 
 	const discover = async (agent: SuperAgentTest, body: Record<string, unknown>, status = 200) =>
 		(await agent.post('/skill-sources/discover').send(body).expect(status))
@@ -152,12 +152,69 @@ describe('SkillSourceController', () => {
 					location: 'skills/pdf',
 					name: 'pdf',
 					description: 'pdf description',
-					skippedFiles: ['scripts/split.py'],
+					skippedFiles: ['assets/form.pdf'],
 					nameTaken: false,
 					error: null,
 					webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
 				}),
 			]);
+		});
+
+		it('gives each skill the verdict and the findings of the security check', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'huge/SKILL.md': skillMd('huge', 'x'.repeat(2000)),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+
+			const { data } = await discover(owner, {
+				url: 'https://github.com/acme/checked',
+				scope: 'instance',
+			});
+
+			const checkOf = (location: string) =>
+				data.skills.find((skill) => skill.location === location)?.check;
+			expect(checkOf('clean')).toEqual({ verdict: 'pass', findings: [] });
+			expect(checkOf('hidden')).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					{
+						rule: 'hidden_unicode',
+						severity: 'needs_review',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+						// "Follow⟦U+200B⟧ this." is the first line of the instructions, after the
+						// license line.
+						location: { line: 7, start: 6, end: 14 },
+					},
+				],
+			});
+			const hidden = data.skills.find((skill) => skill.location === 'hidden');
+			expect(hidden?.previewFiles).toEqual([
+				{
+					path: 'SKILL.md',
+					text: '---\nname: hidden\ndescription: Hidden text\nlicense: "MIT"\n---\n\nFollow⟦U+200B⟧ this.',
+				},
+			]);
+			expect(hidden?.previewTruncated).toBe(false);
+			expect(checkOf('huge')).toEqual({
+				verdict: 'blocked',
+				findings: [
+					{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: expect.any(String) },
+				],
+			});
+			expect(checkOf('broken')).toEqual({
+				verdict: 'blocked',
+				findings: [
+					{
+						rule: 'invalid_skill',
+						severity: 'blocked',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+					},
+				],
+			});
 		});
 
 		it('marks a skill whose name the scope already has', async () => {
@@ -202,7 +259,7 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('connect', () => {
-		it('refuses a skill whose name is only spaces as a parse error', async () => {
+		it('refuses a skill whose name is only spaces as blocked by the security check', async () => {
 			github.push('acme/blank', { '  /SKILL.md': '---\ndescription: Blank\n---\n\nBody.\n' });
 			const url = 'https://github.com/acme/blank';
 			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
@@ -210,13 +267,16 @@ describe('SkillSourceController', () => {
 			const body = await connect(
 				owner,
 				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
-				400,
+				422,
 			);
 
 			expect(discovery.skills).toEqual([
-				expect.objectContaining({ error: expect.objectContaining({ reason: 'parse_error' }) }),
+				expect.objectContaining({
+					error: null,
+					check: expect.objectContaining({ verdict: 'blocked' }),
+				}),
 			]);
-			expect(body.meta).toEqual({ reason: 'parse_error' });
+			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
 		});
 
 		it('imports the picked skills as read-only synced skills of a new source', async () => {
@@ -279,6 +339,187 @@ describe('SkillSourceController', () => {
 			expect(data.failed).toEqual([
 				{ key: expect.any(String), name: 'docx', reason: 'name_taken' },
 			]);
+		});
+
+		it('leaves out a skill that the security check blocks, and imports the others', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const bigFrontmatter = `metadata: ${'x'.repeat(17_000)}\n`;
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'big/SKILL.md': `---\nname: big\ndescription: Big\n${bigFrontmatter}---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden', 'big']),
+				reviewedSkillKeys: keysOf(discovery, ['hidden']),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					access: 'public',
+					selected: 3,
+					imported: 2,
+					blocked: 1,
+					needs_review: 1,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
+			expect(discovery.skills.find((skill) => skill.name === 'big')?.check?.verdict).toBe(
+				'blocked',
+			);
+			expect(data.imported.map((skill) => skill.name).sort()).toEqual(['clean', 'hidden']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: 'big', reason: 'blocked_by_check' },
+			]);
+		});
+
+		it('reports a skill that n8n cannot read as blocked by the security check', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({ selected: 2, imported: 1, blocked: 1, status: 'success' }),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: null, reason: 'blocked_by_check' },
+			]);
+		});
+
+		it('leaves out a skill that needs review when the user did not review the warnings', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: 'hidden', reason: 'review_required' },
+			]);
+		});
+
+		it('checks each skill again at connect, after a new commit changed it', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden'),
+				'long/SKILL.md': skillMd('long'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			expect(discovery.skills.map((skill) => skill.check?.verdict)).toEqual([
+				'pass',
+				'pass',
+				'pass',
+			]);
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow​ this.'),
+				'long/SKILL.md': skillMd('long', 'x'.repeat(2000)),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden', 'long']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual(
+				expect.arrayContaining([
+					{ key: keysOf(discovery, ['hidden'])[0], name: 'hidden', reason: 'review_required' },
+					{ key: keysOf(discovery, ['long'])[0], name: 'long', reason: 'blocked_by_check' },
+				]),
+			);
+			expect(data.failed).toHaveLength(2);
+		});
+
+		it('imports a skill that needs review only when the user reviewed the warnings of that skill', async () => {
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed', 'Hidden text', 'Follow​ this.'),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['flagged', 'changed']),
+				reviewedSkillKeys: keysOf(discovery, ['flagged']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['flagged']);
+			expect(data.failed).toEqual([
+				{ key: keysOf(discovery, ['changed'])[0], name: 'changed', reason: 'review_required' },
+			]);
+		});
+
+		it('stores nothing when every picked skill is blocked by the security check', async () => {
+			github.push('acme/checked', {
+				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				422,
+			);
+
+			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
+			expect(body.message).toBe('The security check blocked every picked skill.');
+			expect(await countSources()).toBe(0);
+		});
+
+		it('names no single cause when the picked skills fail for different reasons', async () => {
+			github.push('acme/checked', {
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				422,
+			);
+
+			expect(body.message).toBe('n8n could not import any of the picked skills.');
+			expect(await countSources()).toBe(0);
 		});
 
 		it('stores nothing when no picked skill can come in, and reports the failed import', async () => {
@@ -383,7 +624,48 @@ describe('SkillSourceController', () => {
 			expect(await countSources()).toBe(0);
 		});
 
-		it('imports one of two picked skills with the same name, and reports the other', async () => {
+		// Postgres stores no NUL character, so such content must never reach the import write.
+		it('leaves out a reference that n8n cannot store, and blocks a SKILL.md it cannot store', async () => {
+			github.push('acme/binary', {
+				'binary/SKILL.md': skillMd('binary'),
+				'binary/references/data.md': 'PNG\0data',
+				'binary/references/notes.md': '# Notes\n',
+				'broken/SKILL.md': skillMd('broken', 'Broken', 'Use\0 this.'),
+			});
+			const url = 'https://github.com/acme/binary';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const binary = discovery.skills.find((skill) => skill.location === 'binary');
+			expect(binary?.skippedFiles).toEqual(['references/data.md']);
+			expect(binary?.check?.findings).toEqual([
+				expect.objectContaining({ rule: 'file_unstorable', file: 'references/data.md' }),
+			]);
+			const broken = discovery.skills.find((skill) => skill.location === 'broken');
+			expect(broken?.check).toEqual({
+				verdict: 'blocked',
+				findings: [
+					expect.objectContaining({
+						rule: 'invalid_skill',
+						detail: 'SKILL.md has a NUL character, which n8n cannot store.',
+					}),
+				],
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'binary' })]);
+			expect(data.failed).toEqual([{ key: broken?.key, name: null, reason: 'blocked_by_check' }]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[0].skillId}`).expect(200);
+			expect(detail.data.skill.references).toEqual([
+				{ path: 'references/notes.md', content: '# Notes\n' },
+			]);
+		});
+
+		it('imports two picked skills with the same name, and numbers the second', async () => {
 			github.push('acme/twins', {
 				'one/SKILL.md': skillMd('twin', 'The first'),
 				'two/SKILL.md': skillMd('twin', 'The second'),
@@ -397,10 +679,10 @@ describe('SkillSourceController', () => {
 				skillKeys: discovery.skills.map((skill) => skill.key),
 			});
 
-			expect(data.imported).toEqual([expect.objectContaining({ name: 'twin' })]);
-			expect(data.failed).toEqual([
-				{ key: expect.any(String), name: 'twin', reason: 'name_taken' },
-			]);
+			expect(data.imported.map((skill) => skill.name)).toEqual(['twin', 'twin 2']);
+			expect(data.failed).toEqual([]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[1].skillId}`).expect(200);
+			expect(detail.data.skill.name).toBe('twin 2');
 		});
 	});
 
@@ -504,9 +786,10 @@ describe('SkillSourceController', () => {
 			]);
 			expect(created).toHaveBeenCalledWith(
 				ownerUser.id,
-				[{ id: data.imported[0].skillId, projectId: null, agentId: null }],
+				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 
@@ -522,6 +805,7 @@ describe('SkillSourceController', () => {
 				[expect.objectContaining({ projectId: personal.id })],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 
@@ -631,6 +915,63 @@ describe('SkillSourceController', () => {
 			await discover(owner, { url: REPO, scope: 'instance' });
 
 			expect(connectedSource).not.toHaveBeenCalled();
+		});
+
+		it('reports each skill that the security check flags at discover, with its rule codes', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.\u202e'),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+
+			await discover(owner, { url: 'https://github.com/acme/checked', scope: 'instance' });
+
+			expect(flaggedSkill.mock.calls).toEqual(
+				expect.arrayContaining([
+					[
+						{
+							provider: 'github',
+							stage: 'import',
+							verdict: 'blocked',
+							rule_codes: ['invalid_skill'],
+						},
+						ownerUser.id,
+					],
+					[
+						{
+							provider: 'github',
+							stage: 'import',
+							verdict: 'needs_review',
+							rule_codes: ['hidden_unicode'],
+						},
+						ownerUser.id,
+					],
+				]),
+			);
+			expect(flaggedSkill).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports no flagged skill for a picker that does not show its verdict', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			github.push('acme/checked', {
+				'pdf/SKILL.md': skillMd('pdf', 'Hidden text', 'Follow\u200b this.'),
+			});
+			const url = 'https://github.com/acme/checked';
+			await connectPdf(owner, { scope: 'instance' });
+			flaggedSkill.mockClear();
+
+			// The name of the flagged skill is taken, so its row shows "Name taken".
+			await discover(owner, { url, scope: 'instance' });
+			// Global has the source, so the picker does not open.
+			github.push('acme/skills', {
+				...FILES,
+				'skills/hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+			});
+			await discover(editor, { url: REPO, scope: 'project', projectId: team.id });
+
+			expect(flaggedSkill).not.toHaveBeenCalled();
+			flaggedSkill.mockRestore();
 		});
 
 		it.each([

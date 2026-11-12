@@ -101,6 +101,17 @@ export function agentToolReferenceWhere(
 	return where;
 }
 
+/** The fields the migration report scan rules and the report read. */
+const MIGRATION_SCAN_FIELDS: Array<keyof WorkflowEntity> = [
+	'id',
+	'name',
+	'active',
+	'activeVersionId',
+	'versionId',
+	'nodes',
+	'updatedAt',
+];
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -711,6 +722,38 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
+	/**
+	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
+	 * It returns only the fields the scan rules and the report read.
+	 */
+	async findMigrationScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: MIGRATION_SCAN_FIELDS,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/** One workflow with the fields of `findMigrationScanPage`, for a re-check after a save. */
+	async findMigrationScanWorkflow(workflowId: string): Promise<WorkflowEntity | null> {
+		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
+	}
+
+	/** `workflowIds` limits the count to those workflows; `undefined` counts all. */
+	async countUnarchived(workflowIds?: string[]): Promise<number> {
+		if (workflowIds === undefined) return await this.count({ where: { isArchived: false } });
+
+		let total = 0;
+		for (const chunk of chunkIds(workflowIds)) {
+			total += await this.count({ where: { id: In(chunk), isArchived: false } });
+		}
+		return total;
+	}
+
 	/** The subset of `workflowIds` that still exists, in no particular order. */
 	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
 		if (workflowIds.length === 0) return [];
@@ -972,27 +1015,42 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return Number(response?.count) || 0;
 	}
 
+	/**
+	 * A folder view lists only the folder's direct children. A search, and a filter on a set of
+	 * workflow IDs, must reach the whole subtree, or a match in a nested folder stays hidden.
+	 */
+	private async expandParentFolderToSubtree(
+		options: WorkflowListQueryOptions,
+		{ onSearch }: { onSearch: boolean },
+	) {
+		if (
+			!options.filter?.parentFolderId ||
+			typeof options.filter.parentFolderId !== 'string' ||
+			options.filter.parentFolderId === PROJECT_ROOT ||
+			typeof options.filter.projectId !== 'string'
+		)
+			return;
+
+		const reachesSubtree =
+			(onSearch && !!options.filter.query) || options.workflowIdsIn !== undefined;
+		if (!reachesSubtree) return;
+
+		const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+			options.filter.parentFolderId,
+			options.filter.projectId,
+		);
+
+		options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
+		options.filter.folderIds = folderIds;
+		delete options.filter.parentFolderId;
+	}
+
 	async getWorkflowsAndFoldersWithCount(
 		workflowIds: string[],
 		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
-		if (
-			options.filter?.parentFolderId &&
-			typeof options.filter?.parentFolderId === 'string' &&
-			options.filter.parentFolderId !== PROJECT_ROOT &&
-			typeof options.filter?.projectId === 'string' &&
-			options.filter.query
-		) {
-			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
-				options.filter.parentFolderId,
-				options.filter.projectId,
-			);
-
-			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
-			options.filter.folderIds = folderIds;
-			delete options.filter.parentFolderId;
-		}
+		await this.expandParentFolderToSubtree(options, { onSearch: true });
 
 		const [workflowsAndFolders, count] = await Promise.all([
 			this.getWorkflowsAndFoldersUnion(workflowIds, options, accessibleProjectIds),
@@ -1027,27 +1085,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
-		if (
-			options.filter?.parentFolderId &&
-			typeof options.filter?.parentFolderId === 'string' &&
-			options.filter.parentFolderId !== PROJECT_ROOT &&
-			typeof options.filter?.projectId === 'string' &&
-			options.filter.query
-		) {
-			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
-				options.filter.parentFolderId,
-				options.filter.projectId,
-			);
-
-			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
-			options.filter.folderIds = folderIds;
-			delete options.filter.parentFolderId;
-		}
+		await this.expandParentFolderToSubtree(options, { onSearch: true });
 
 		const [workflowsAndFolders, count] = await Promise.all([
-			this.getWorkflowsAndFoldersUnionWithSharingSubquery(user, sharingOptions, options),
-			this.getWorkflowsAndFoldersCountWithSharingSubquery(user, sharingOptions, options),
+			this.getWorkflowsAndFoldersUnionWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
+			this.getWorkflowsAndFoldersCountWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
 		]);
 
 		const isArchived =
@@ -1074,9 +1128,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
-			this.buildBaseUnionQueryWithSharingSubquery(user, sharingOptions, options);
+			this.buildBaseUnionQueryWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			);
 
 		const query = this.buildUnionQuery(baseQuery, {
 			sortByColumn,
@@ -1102,6 +1162,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
@@ -1109,6 +1170,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			user,
 			sharingOptions,
 			baseQueryParameters,
+			accessibleProjectIds,
 		);
 
 		const response = await baseQuery
@@ -1130,6 +1192,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
@@ -1174,6 +1237,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.getManyQuery(folderQueryParameters)
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
+
+		// Restrict folders to projects in which the user can list folders.
+		// When undefined (global access), no filtering is applied.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
+		}
 
 		const workflowsQuery = this.getManyQueryWithSharingSubquery(
 			user,
@@ -1277,6 +1352,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return { workflows: [], count: 0 };
 		}
 
+		await this.expandParentFolderToSubtree(options, { onSearch: false });
 		const query = this.getManyQuery(sharedWorkflowIds, options);
 		const [workflows, count] = await query.getManyAndCount();
 		return { workflows, count };
@@ -1298,6 +1374,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		},
 		options: WorkflowListQueryOptions = {},
 	): Promise<WorkflowListResult> {
+		await this.expandParentFolderToSubtree(options, { onSearch: false });
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
 		const [workflows, count] = await query.getManyAndCount();
@@ -2041,11 +2118,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// `settings` holds the error workflow, which the indexer records.
 		qb.select([
 			'workflow.id',
 			'workflow.versionCounter',
 			'workflow.activeVersionId',
 			'workflow.nodes',
+			'workflow.settings',
 		]);
 
 		qb.leftJoin(
@@ -2101,8 +2180,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
 		// For published version indexing we need the published version's nodes
-		// (from activeVersion), not the draft nodes.
-		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+		// (from activeVersion), not the draft nodes. `settings` holds the error workflow.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.settings',
+		]);
 
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
