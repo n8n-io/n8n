@@ -37,7 +37,7 @@ function check(connectionList: Connection[], disabled: string[] = []) {
 		slots[outputIndex]!.push({ node: to, type: 'main', index: inputIndex });
 	}
 	const nodes = names.map((name, index) => nodeNamed(name, index, disabled.includes(name)));
-	return checkEngineV2Eligibility({ nodes, connections, settings: {} }, []);
+	return checkEngineV2Eligibility({ nodes, connections, settings: {} });
 }
 
 const simpleLoop: Connection[] = [
