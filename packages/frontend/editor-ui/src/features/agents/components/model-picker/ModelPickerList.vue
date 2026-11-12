@@ -116,6 +116,13 @@ function onSelect(modelId: string | undefined) {
 				:value="row.model.id"
 				data-testid="agent-model-picker-row"
 			>
+				<!-- The option owns the selected state. This mark only shows it. -->
+				<template v-if="props.variant === 'presets'" #leading>
+					<span
+						:class="[$style.radio, row.model.id === props.selectedModelId && $style.radioChecked]"
+						aria-hidden="true"
+					/>
+				</template>
 				<div :class="$style.grid">
 					<div :class="$style.identity">
 						<N8nText
@@ -176,7 +183,7 @@ function onSelect(modelId: string | undefined) {
 						</template>
 					</div>
 
-					<div :class="$style.status">
+					<div v-if="props.variant === 'all'" :class="$style.status">
 						<template v-if="row.model.id === props.selectedModelId">
 							<N8nIcon icon="check" size="small" color="success" />
 							<N8nText size="xsmall" color="text-light" :class="$style.statusText">
@@ -194,8 +201,7 @@ function onSelect(modelId: string | undefined) {
 .list {
 	--model-picker--metric-width: calc(var(--spacing--2xl) * 2);
 	--model-picker--status-width: calc(var(--spacing--2xl) * 2);
-	--model-picker--columns: minmax(0, 1fr) repeat(3, var(--model-picker--metric-width))
-		var(--model-picker--status-width);
+	--model-picker--columns: minmax(0, 1fr) repeat(3, var(--model-picker--metric-width));
 }
 
 .all {
@@ -244,6 +250,33 @@ function onSelect(modelId: string | undefined) {
 	flex-shrink: 0;
 	justify-content: center;
 	width: var(--spacing--md);
+}
+
+/* Same look as the Design System radio. A real radio cannot go inside a list option. */
+.radio {
+	position: relative;
+	display: block;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	background-color: var(--background--surface);
+}
+
+.radioChecked {
+	border-color: var(--background--brand--hover);
+	background-color: var(--background--brand);
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		width: var(--spacing--3xs);
+		height: var(--spacing--3xs);
+		margin: auto;
+		border-radius: var(--radius--full);
+		background-color: var(--background--surface);
+	}
 }
 
 .presetLabel,

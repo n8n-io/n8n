@@ -115,6 +115,19 @@ describe('AgentModelPicker', () => {
 			'Anthropic account',
 		);
 		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+		// The suggested list marks the selected model. Only the full list says "Connected".
+		await user.click(trigger);
+		const reopened = await screen.findByRole('dialog');
+		const selected = within(reopened).getByRole('option', { name: /Recommended/ });
+		expect(selected).toHaveAttribute('aria-selected', 'true');
+		expect(selected).not.toHaveTextContent('Connected');
+
+		await user.click(within(reopened).getByTestId('agent-model-picker-show-all'));
+		const all = within(reopened).getByRole('listbox', { name: 'All models' });
+		expect(within(all).getByRole('option', { name: /Claude Sonnet 5\.5/ })).toHaveTextContent(
+			'Connected',
+		);
 	});
 
 	it('should list all models and filter them by search text', async () => {
