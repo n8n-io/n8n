@@ -1738,7 +1738,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
-		includeArchivedWorkflows,
+		includeArchived,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1750,7 +1750,8 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
-			include_archived_workflows: includeArchivedWorkflows,
+			// The property keeps its first name. It now also covers archived agents.
+			include_archived_workflows: includeArchived,
 		});
 	}
 

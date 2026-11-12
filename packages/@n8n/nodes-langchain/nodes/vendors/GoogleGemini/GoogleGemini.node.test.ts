@@ -2,6 +2,7 @@ import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import * as helpers from '@utils/helpers';
 
@@ -117,6 +118,85 @@ describe('GoogleGemini Node', () => {
 					},
 				}),
 			);
+		});
+
+		it('should send tool results in a user turn and return the follow-up response', async () => {
+			const tool = {
+				name: 'calculator',
+				description: 'Performs calculations',
+				schema: z.object({ expression: z.string() }),
+				invoke: vi.fn().mockResolvedValue({ answer: 42 }),
+			};
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-flash-latest';
+					case 'messages.values':
+						return [{ role: 'user', content: 'What is 6 * 7?' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {};
+					case 'options.maxToolsIterations':
+						return 15;
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
+			getConnectedToolsMock.mockResolvedValue([tool]);
+			const toolCallContent = {
+				role: 'model',
+				parts: [
+					{
+						functionCall: {
+							id: 'call-1',
+							name: 'calculator',
+							args: { expression: '6 * 7' },
+						},
+					},
+				],
+			};
+			const finalContent = {
+				role: 'model',
+				parts: [{ text: 'The answer is 42.' }],
+			};
+			apiRequestMock
+				.mockResolvedValueOnce({ candidates: [{ content: toolCallContent }] })
+				.mockResolvedValueOnce({ candidates: [{ content: finalContent }] });
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(tool.invoke).toHaveBeenCalledExactlyOnceWith({ expression: '6 * 7' });
+			expect(apiRequestMock).toHaveBeenCalledTimes(2);
+			expect(apiRequestMock).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'/v1beta/models/gemini-flash-latest:generateContent',
+				expect.objectContaining({
+					body: expect.objectContaining({
+						contents: [
+							{ role: 'user', parts: [{ text: 'What is 6 * 7?' }] },
+							toolCallContent,
+							{
+								role: 'user',
+								parts: [
+									{
+										functionResponse: {
+											id: 'call-1',
+											name: 'calculator',
+											response: { result: { answer: 42 } },
+										},
+									},
+								],
+							},
+						],
+					}),
+				}),
+			);
+			expect(result).toEqual([{ json: { content: finalContent }, pairedItem: { item: 0 } }]);
 		});
 
 		it('should include thinking options when the thinking budget is specified', async () => {

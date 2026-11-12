@@ -18,6 +18,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowEditorLockedError,
 		FolderResolutionError,
 		formatRedactedError,
+		resolveSampleFileMarkers: (item: unknown) => ({ json: item }),
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s

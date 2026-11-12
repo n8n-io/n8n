@@ -144,9 +144,10 @@ describe('getAllowedToolNames', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
 
-	it('allows integration updates and publishing with agent:write', () => {
+	it('allows integration updates, publishing and archiving with agent:write', () => {
 		const allowed = getAllowedToolNames(['agent:write']);
 
+		expect(allowed).toContain('archive_agent');
 		expect(allowed).toContain('update_agent_integration');
 		expect(allowed).toContain('publish_agent');
 		expect(allowed).toContain('unpublish_agent');
