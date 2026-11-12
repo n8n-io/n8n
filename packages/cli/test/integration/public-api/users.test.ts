@@ -1,5 +1,7 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	mockInstance,
 	testDb,
@@ -285,10 +287,16 @@ describe('Users in Public API', () => {
 			testServer.license.enable('feat:advancedPermissions');
 			const owner = await createOwnerWithApiKey();
 			const payload = [{ email: 'test@test.com', role: 'global:admin' }];
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 			const response = await testServer.publicApiAgentFor(owner).post('/users').send(payload);
 
 			expect(response.status).toBe(201);
+			expect(emit).toHaveBeenCalledWith(
+				'user-invited',
+				expect.objectContaining({ publicApi: 'other' }),
+			);
+			emit.mockRestore();
 
 			expect(response.body).toHaveLength(1);
 
@@ -347,10 +355,21 @@ describe('Users in Public API', () => {
 			testServer.license.enable('feat:advancedPermissions');
 			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
+			const workflow = await createWorkflow({}, member);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 			const response = await testServer.publicApiAgentFor(owner).delete(`/users/${member.id}`);
 
 			expect(response.status).toBe(204);
+			expect(emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({ targetUserId: member.id, publicApi: 'other' }),
+			);
+			expect(emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+			);
+			emit.mockRestore();
 			await expect(getUserById(member.id)).rejects.toThrow();
 		});
 
@@ -463,6 +482,7 @@ describe('Users in Public API', () => {
 			const customRole = 'custom:role';
 			await createRole({ slug: customRole, displayName: 'Custom role', roleType: 'global' });
 			const payload = { newRoleName: customRole };
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -470,6 +490,11 @@ describe('Users in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(204);
+			expect(emit).toHaveBeenCalledWith(
+				'user-changed-role',
+				expect.objectContaining({ targetUserId: member.id, publicApi: 'other' }),
+			);
+			emit.mockRestore();
 			const storedUser = await getUserById(member.id);
 			expect(storedUser.role.slug).toBe(payload.newRoleName);
 		});

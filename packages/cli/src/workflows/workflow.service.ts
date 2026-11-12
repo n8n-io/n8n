@@ -94,6 +94,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -130,7 +131,7 @@ type WorkflowUpdateOptions = {
 	tagIds?: string[];
 	parentFolderId?: string;
 	forceSave?: boolean;
-	publicApi?: boolean;
+	publicApi?: PublicApiCaller;
 	publishIfActive?: boolean;
 	/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
 	apiKeyScopes?: readonly string[];
@@ -1009,6 +1010,7 @@ export class WorkflowService {
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
+				publicApi,
 			});
 			// oxlint-disable-next-line typescript/no-deprecated
 			updatedWorkflow.active = publishedWorkflow.active;
@@ -1018,6 +1020,7 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				publicApi,
 				publishHistory: 'none',
 			});
 		}
@@ -1064,7 +1067,7 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		options: { source: WorkflowActionSource } = { source: 'ui' },
+		options: { source: WorkflowActionSource; publicApi?: PublicApiCaller } = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -1127,7 +1130,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: options.source === 'api',
+					publicApi: options.publicApi ?? false,
 					source: options.source,
 				});
 			}
@@ -1182,7 +1185,6 @@ export class WorkflowService {
 	 * @param user - The user activating the workflow
 	 * @param workflowId - The ID of the workflow to activate
 	 * @param options - Optional versionId, name and description updates
-	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
 	// eslint-disable-next-line complexity
@@ -1195,11 +1197,12 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publicApi?: PublicApiCaller;
 			publishHistory?: PublishHistoryScope;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source === 'api';
+		const publicApi = options?.publicApi ?? false;
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -1408,7 +1411,7 @@ export class WorkflowService {
 				workflowId,
 				workflowForActivation,
 				activationMode,
-				{ source },
+				{ source, publicApi },
 			);
 		}
 
@@ -1460,7 +1463,7 @@ export class WorkflowService {
 	 * Deactivates a workflow by removing it from the active workflow manager and setting activeVersionId to null.
 	 * @param user - The user deactivating the workflow
 	 * @param workflowId - The ID of the workflow to deactivate
-	 * @param options - Optional settings including expectedChecksum for conflict detection and publicApi flag
+	 * @param options - Optional settings including expectedChecksum for conflict detection and the public API caller
 	 * @returns The deactivated workflow
 	 */
 	async deactivateWorkflow(
@@ -1469,10 +1472,11 @@ export class WorkflowService {
 		options?: {
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publicApi?: PublicApiCaller;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source === 'api';
+		const publicApi = options?.publicApi ?? false;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -1738,7 +1742,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		force = false,
-		options?: { publicApi?: boolean },
+		options?: { publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
@@ -1847,7 +1851,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1908,7 +1912,7 @@ export class WorkflowService {
 	async unarchive(
 		user: User,
 		workflowId: string,
-		options?: { publicApi?: boolean },
+		options?: { publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1943,17 +1947,29 @@ export class WorkflowService {
 		return workflow;
 	}
 
-	async archiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		return await this.archive(user, workflowId, { skipArchived: true, publicApi: true });
+	async archiveForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client });
 	}
 
-	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		return await this.unarchive(user, workflowId, { publicApi: true });
+	async unarchiveForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
+		return await this.unarchive(user, workflowId, { publicApi: client });
 	}
 
-	async deleteForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async deleteForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
 		// The public API deletes without requiring the workflow to be archived first.
-		return await this.delete(user, workflowId, true, { publicApi: true });
+		return await this.delete(user, workflowId, true, { publicApi: client });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
