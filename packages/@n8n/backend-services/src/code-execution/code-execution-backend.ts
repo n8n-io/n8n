@@ -1,4 +1,3 @@
-import { Service } from '@n8n/di';
 import type { Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
@@ -43,7 +42,6 @@ export type CodeExecutionBackendStatus =
  * Runs code tasks, for example for the Code node. Task runners are the default
  * implementation. An implementation sets itself as the instance of this class.
  */
-@Service()
 export abstract class CodeExecutionBackend {
 	abstract runTask<T, E = unknown>(request: CodeTaskRequest): Promise<Result<T, E>>;
 
