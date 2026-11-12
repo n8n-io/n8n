@@ -1,7 +1,6 @@
 import { computed } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -587,7 +586,6 @@ export function setRunExecutionData(
 	documentId: WorkflowDocumentId,
 ) {
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
-	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution, documentId);
 
 	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
@@ -607,10 +605,6 @@ export function setRunExecutionData(
 	});
 	executionDataStore.setExecutionRunData(runExecutionData);
 	workflowExecutionStateStore.setDisplayedExecutionId(execution.id);
-
-	// Set the node execution issues on all the nodes which produced an error so that
-	// it can be displayed in the node-view
-	nodeHelpers.updateNodesExecutionIssues();
 
 	const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
 	let itemsCount = 0;

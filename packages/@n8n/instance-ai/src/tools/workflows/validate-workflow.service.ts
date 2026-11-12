@@ -450,9 +450,7 @@ async function computeInputIssues(
 
 /**
  * Returns the first error message in a node's most recent task data, or `null`
- * if none had an error. Mirrors `hasNodeExecutionIssues` (useNodeHelpers.ts:242)
- * but additionally surfaces the error text so the summary can include it — the
- * `INodeIssues.execution` boolean stays in canvas-parity.
+ * if none had an error.
  *
  * Unlike the canvas, it also counts an error that n8n redacted for the user:
  * the run still failed, only the details are hidden.
@@ -634,9 +632,8 @@ function formatSummaryLines(
 		}
 	}
 	if (issues.execution === true) {
-		// Canvas parity keeps the structured signal as a boolean; the summary
-		// gets the actual error message so the LLM doesn't need a separate call
-		// to figure out what went wrong.
+		// The summary gets the actual error message so the LLM doesn't need a
+		// separate call to figure out what went wrong.
 		const detail = executionErrors[nodeName];
 		pushTo.push(
 			detail
