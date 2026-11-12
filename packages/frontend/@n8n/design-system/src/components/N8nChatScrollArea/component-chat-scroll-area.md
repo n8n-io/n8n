@@ -25,6 +25,8 @@ interface ChatScrollAreaEmits {
 	/**
 	 * Emitted when the top of the list becomes visible. The parent loads the
 	 * next page of older messages and sets `loadingOlder` during the load.
+	 * Emitted again after the load when the top is still visible. The parent
+	 * must stop when there are no more pages or when a load fails.
 	 */
 	'load-older': [];
 	/** Emitted when the user arrives at the bottom or leaves it. */
@@ -45,7 +47,7 @@ interface ChatScrollAreaSlots {
 }
 
 interface ChatScrollAreaExposed {
-	/** Scrolls smoothly to the bottom and starts following again. */
+	/** Jumps to the bottom without animation and starts following again. */
 	scrollToBottom(): void;
 }
 ```
@@ -133,10 +135,11 @@ N8nChatScrollArea                # position: relative; height: 100%
 - **User scrolled up and sends a message:** do not move the view. Show the scroll button.
 - **User scrolls back to the bottom:** hide the button. Follow content again.
 - **User clicks the scroll button:** scroll smoothly to the bottom. Follow content again.
-- **Older messages load at the top:** keep the visible message in the same position.
+- **Older messages load at the top:** keep the visible message in the same position. Use the element at the top of the view as the anchor, so content that grows below the view during the load does not move it. Do not rely on `overflow-anchor`, because Safari supports it only from version 27.
+- **Before the first jump to the bottom:** do not emit `load-older`. The view starts at the top for one frame.
 - **User presses `End` or `Ctrl+End` while the message list has focus:** go to the bottom. Follow content again.
-- **Host calls `scrollToBottom()`** (for example, from an app-wide shortcut): same as a click on the scroll button.
-- **Thread is too short to scroll:** emit `load-older` one time if more history exists. Hide the button.
+- **Host calls `scrollToBottom()`** (for example, from an app-wide shortcut): jump to the bottom with no animation. Follow content again.
+- **Thread is too short to scroll:** emit `load-older` after the first render. Emit it again after each load while the top stays visible. Hide the button.
 
 The user's scroll position is the only signal that pauses or resumes following. 
 Only the user moves the view, with the exception of the first render.
