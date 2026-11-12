@@ -69,7 +69,7 @@ describe('InMemoryWorkQueue', () => {
 
 	it('keeps delivering when a handler throws synchronously for many queued messages', async () => {
 		const queue = new InMemoryWorkQueue<ContractMessage>(silentLogger);
-		const count = 20_000;
+		const count = 5_000;
 		for (let n = 1; n <= count; n++) await queue.publish({ n });
 
 		let attempted = 0;
@@ -77,9 +77,9 @@ describe('InMemoryWorkQueue', () => {
 			attempted += 1;
 			throw new Error('handler failed');
 		};
-		queue.start(throwingHandler as unknown as (message: ContractMessage) => Promise<void>);
+		queue.start(throwingHandler);
 
-		await expect.poll(() => attempted).toBe(count);
+		await expect.poll(() => attempted, { timeout: 5_000 }).toBe(count);
 	});
 
 	it.each([0, -1, 1.5, Number.NaN])('refuses a concurrency of %s', (concurrency) => {

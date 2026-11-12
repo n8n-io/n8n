@@ -129,12 +129,14 @@ describe('createEngineRuntime', () => {
 			.mockResolvedValue([]);
 		let inFlight = 0;
 		let maxInFlight = 0;
-		let stopping = false;
-		const gates: Array<() => void> = [];
+		let openGate = () => {};
+		const gate = new Promise<void>((resolve) => {
+			openGate = resolve;
+		});
 		vi.spyOn(TypeOrmStepStore.prototype, 'claimStep').mockImplementation(async () => {
 			inFlight += 1;
 			maxInFlight = Math.max(maxInFlight, inFlight);
-			if (!stopping) await new Promise<void>((resolve) => gates.push(resolve));
+			await gate;
 			inFlight -= 1;
 			// Nothing to claim, so the handler ends here.
 			return null;
@@ -154,21 +156,19 @@ describe('createEngineRuntime', () => {
 			await new Promise((resolve) => setTimeout(resolve, 50));
 			expect(maxInFlight).toBe(3);
 
-			for (const release of gates.splice(0)) release();
+			openGate();
 			await vi.waitFor(() => {
-				for (const release of gates.splice(0)) release();
 				expect(TypeOrmStepStore.prototype.claimStep).toHaveBeenCalledTimes(6);
 				expect(inFlight).toBe(0);
 			});
 			expect(maxInFlight).toBe(3);
 		} finally {
-			stopping = true;
-			for (const release of gates.splice(0)) release();
+			openGate();
 			await engine.stop();
 		}
 	});
 
-	it('gives the orchestration queue its own concurrency', () => {
+	it('passes each queue its configured concurrency', () => {
 		vi.mocked(InMemoryWorkQueue).mockClear();
 
 		createEngineRuntime({
