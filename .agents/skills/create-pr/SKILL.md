@@ -87,7 +87,7 @@ comma and a space: `fix(core, editor): ...`.
 7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
-   - **Summary**: describe what the PR does and why (see Summary below)
+   - **Summary**: describe what the PR does and why (see PR Body Guidelines below)
    - **How to test**: write the steps that a person follows in the product to see the change work. Include an example workflow if appropriate
    - **Test command**: give the command that runs the tests for the change (see How to test below)
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
@@ -145,40 +145,37 @@ environment from a webhook sections in `.github/WORKFLOWS.md`.
 
 ## PR Body Guidelines
 
-Based on `.github/pull_request_template.md`:
+Based on `.github/pull_request_template.md`.
 
-Write for a reviewer who does not know this area of the code. The reviewer
-must understand the change before they open the diff. Use ASD-STE100
+Write a concise Summary that says what the PR does and why. Keep its length
+in proportion to the complexity of the problem that the PR solves. A small
+fix needs one or two sentences. A large PR rarely needs more than about 200
+words. Write for a reviewer who does not know this area of the code: the
+reviewer must understand the change before they open the diff. Use ASD-STE100
 Simplified Technical English: short sentences, active voice.
-1. Keep the length of the Summary in proportion to the complexity of the
-   problem that the PR solves. A small fix needs one or two sentences. A
-   large PR rarely needs more than about 200 words.
-2. Define each domain term in plain words where it first appears. Do not use
+
+### Summary Section
+1. If the reader needs background, start with one to three sentences of it.
+2. State what the PR does. Write **prose** about behaviour, not a list of code
+   edits. Name a class or a function when it represents a core concept and it
+   helps the reader to navigate the change.
+3. State why the change is needed: the problem or the constraint that makes
+   the pre-existing code unfit.
+4. If the PR changes no product code, say so in the first sentence
+   (for example: "This PR only adds tests.").
+5. Define each domain term in plain words where it first appears. Do not use
    a ticket ID or an internal name as an explanation.
-3. Leave out details that the reviewer reads in the diff: error cases, status
+6. Leave out details that the reviewer reads in the diff: error cases, status
    codes, renamed fields, the order of calls, file lists, test names. Mention
    one only when it changes behaviour that a reviewer could miss. Also leave
    out what reviewers already know (framework behaviour).
-4. Use plain technical verbs, not metaphors ("passes the value", not
+7. Use plain technical verbs, not metaphors ("passes the value", not
    "hands the value" or "lets the value through").
-
-### Summary: what the PR does and why
-1. If the reader needs background, start with one to three sentences of it.
-   Then state what the PR does.
-2. Write **prose** about behaviour, not a list of code edits. Name a class or
-   a function when it represents an essential/core concept and it helps
-   the reader to navigate the change.
-3. If the PR changes no product code, say so in the first sentence
-   (for example: "This PR only adds tests.").
-4. State why the change is needed: the problem or the constraint that makes
-   the pre-existing code unfit.
-5. If there are accepted gaps, or changes for existing code paths, state them
+8. If there are accepted gaps, or changes for existing code paths, state them
    in a separate short paragraph.
-6. Include screenshots or videos for UI changes.
-
-Add rejected alternatives only when a reviewer would otherwise ask about them.
-Use one or two sentences for each alternative: state the concrete reason it
-fails. Write an alternative that was never built in the conditional.
+9. Add a rejected alternative only when a reviewer would otherwise ask about
+   it. Use one or two sentences: state the concrete reason it fails.
+10. Include screenshots or videos for UI changes.
 
 ### How to test Section
 - Write steps for a person who tests the product change by hand: what to set
