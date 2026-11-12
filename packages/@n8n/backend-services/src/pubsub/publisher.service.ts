@@ -61,9 +61,16 @@ export class Publisher {
 	async shutdown() {
 		let timeout: NodeJS.Timeout | undefined;
 		await Promise.race([
-			this.client.quit().catch(() => {}),
+			this.client.quit().catch((error: unknown) => {
+				this.logger.warn('Failed to quit the pubsub publisher cleanly', { error });
+			}),
 			new Promise<void>((resolve) => {
-				timeout = setTimeout(resolve, PUBLISHER_SHUTDOWN_TIMEOUT_MS);
+				timeout = setTimeout(() => {
+					this.logger.warn(
+						`Pubsub publisher did not finish its pending commands within ${PUBLISHER_SHUTDOWN_TIMEOUT_MS}ms, disconnecting`,
+					);
+					resolve();
+				}, PUBLISHER_SHUTDOWN_TIMEOUT_MS);
 			}),
 		]);
 		clearTimeout(timeout);
