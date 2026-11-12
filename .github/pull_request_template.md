@@ -2,7 +2,7 @@
 The PR title goes into the changelog. Follow the title conventions:
 https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md
 To keep the PR out of the changelog, add "(no-changelog)" to the end of the title.
-To backport an urgent fix, follow the backport conventions:
+To backport a fix for an urgent or high priority bug, a security fix, or a fix for a regression, follow the backport conventions:
 https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 -->
 

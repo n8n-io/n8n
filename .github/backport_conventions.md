@@ -4,7 +4,13 @@ A backport copies a change from `master` to an older release line. A GitHub work
 
 ## When to backport
 
-Backport only urgent fixes that users of a released version need before the next minor release.
+Backport these fixes:
+
+- Fixes for bugs with urgent or high priority.
+- Security fixes.
+- Fixes for regressions.
+
+Do not backport other changes.
 
 ## Labels
 
