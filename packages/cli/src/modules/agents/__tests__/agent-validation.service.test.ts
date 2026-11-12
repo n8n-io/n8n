@@ -2041,6 +2041,34 @@ describe('AgentValidationService — restricted node types', () => {
 });
 
 describe('human review validation', () => {
+	it.each([undefined, []])(
+		'reports an incomplete review assignment without throwing: %s',
+		async (configurationIds) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					tools: [
+						{
+							type: 'custom',
+							id: 'missing-tool',
+							approvalRoute: { type: 'configuration', configurationIds },
+						},
+					],
+				} as unknown as AgentJsonConfig),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'runtime',
+			);
+			expect(result.issues).toContainEqual(
+				expect.objectContaining({ code: 'missing_reference', path: 'tools.0.approvalRoute' }),
+			);
+		},
+	);
+
 	it('reports an assignment whose configuration is missing', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

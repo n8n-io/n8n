@@ -1,4 +1,8 @@
-import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	type AgentJsonConfig,
+	type StoredAgentConfig,
+} from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 import type { Agent } from '../entities/agent.entity';
@@ -29,6 +33,38 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(config).not.toHaveProperty('skills');
 		expect(skillRefs).toEqual(document.skills);
 		expect(toAgentDocument(config, skillRefs)).toEqual(document);
+	});
+
+	it('normalizes saved single-review tool and MCP routes without changing the stored document', () => {
+		const oldRoute = { type: 'configuration', configurationId: 'review' };
+		const config = {
+			name: 'Reviewer',
+			model: 'test',
+			hitlConfigurations: [
+				{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'workflow' },
+			],
+			tools: [{ type: 'custom', id: 'lookup', requireApproval: true, approvalRoute: oldRoute }],
+			mcpServers: [
+				{
+					name: 'Server',
+					url: 'https://example.com',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					approvalRoute: oldRoute,
+				},
+			],
+		} as unknown as StoredAgentConfig;
+		const loaded = toAgentDocument(config, []);
+		expect(loaded.tools?.[0].approvalRoute).toEqual({
+			type: 'configuration',
+			configurationIds: ['review'],
+		});
+		expect(loaded.mcpServers?.[0].approvalRoute).toEqual(loaded.tools?.[0].approvalRoute);
+		expect(loaded.hitlConfigurations).toEqual(config.hitlConfigurations);
+		expect(config.tools?.[0].approvalRoute).toEqual(oldRoute);
+		expect(composeJsonConfig({ schema: config, integrations: [] }, [])?.tools).toEqual(
+			loaded.tools,
+		);
 	});
 
 	it('keeps human review and tool routes in the stored JSON and exported document', () => {
