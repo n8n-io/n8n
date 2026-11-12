@@ -12,6 +12,8 @@ import {
 	formatLockfileImpact,
 	parseLockfileImpact,
 	readLockfileImpact,
+	readRuntimeLockfileImpactDirs,
+	selectLockfileImpactedDirs,
 } from './read-lockfile-impact.js';
 
 const lock = (zod: string, rootTurbo = '2.0.0', turboDep = '1.0.0') => `---
@@ -83,6 +85,36 @@ describe('readLockfileImpact', () => {
 	it('ignores a transitive change below the root package dependencies', () => {
 		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.0.0', '2.0.0', '1.0.1'));
 		expect(readLockfileImpact('HEAD')).toEqual([]);
+	});
+
+	it('lists the dirs whose resolved runtime dependencies changed, not devDependencies', () => {
+		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.1.0', '2.1.0'));
+		expect(readRuntimeLockfileImpactDirs('HEAD')).toEqual(['packages/a']);
+	});
+});
+
+describe('selectLockfileImpactedDirs', () => {
+	const read = vi.fn<(base: string) => string[] | null>();
+	beforeEach(() => read.mockReset());
+
+	it('reads the impact against the lockfile base when the lockfile changed', () => {
+		read.mockReturnValue(['packages/a']);
+		expect(selectLockfileImpactedDirs(['pnpm-lock.yaml'], 'parent', read)).toEqual(['packages/a']);
+		expect(read).toHaveBeenCalledWith('parent');
+	});
+
+	it('keeps a failed read unknown', () => {
+		read.mockReturnValue(null);
+		expect(selectLockfileImpactedDirs(['pnpm-lock.yaml'], 'parent', read)).toBeNull();
+	});
+
+	it('reports no impacted dirs when the lockfile did not change', () => {
+		expect(selectLockfileImpactedDirs(['packages/a/package.json'], 'parent', read)).toEqual([]);
+		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('is unknown without a base commit', () => {
+		expect(selectLockfileImpactedDirs(['pnpm-lock.yaml'], undefined, read)).toBeUndefined();
 	});
 });
 

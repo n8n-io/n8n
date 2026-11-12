@@ -5,12 +5,9 @@ description: >-
   questions from current n8n docs. Use when the user asks how to configure,
   set up, troubleshoot, or understand n8n behavior, especially credential setup
   questions — including which OAuth scopes or permissions a provider app needs.
-recommended_tools:
-  - n8n-docs
-  - list_credentials
-  - search_credential_types
-  - search_nodes
-  - get_node_types
+recommended_tool_groups:
+  - credentials
+  - nodes
 ---
 
 # n8n Docs Assistant

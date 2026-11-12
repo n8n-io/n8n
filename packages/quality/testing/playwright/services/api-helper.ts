@@ -29,6 +29,7 @@ import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
 import { NodeParameterApiHelper } from './node-parameter-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PromotionsApiHelper } from './promotions-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SecuritySettingsApiHelper } from './security-settings-api-helper';
@@ -108,6 +109,7 @@ export class ApiHelpers {
 	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
 	nodeParameters: NodeParameterApiHelper;
 	communityPackages: CommunityPackagesApiHelper;
+	promotions: PromotionsApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -140,6 +142,7 @@ export class ApiHelpers {
 		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
 		this.nodeParameters = new NodeParameterApiHelper(this);
 		this.communityPackages = new CommunityPackagesApiHelper(this);
+		this.promotions = new PromotionsApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -844,7 +847,24 @@ export class ApiHelpers {
 			throw new TestError('Login did not return expected user data (missing user ID)');
 		}
 
+		await this.dismissMcpJsonNudge();
+
 		return loginData;
+	}
+
+	/**
+	 * The MCP JSON nudge modal opens on the first two exports, imports, copies and
+	 * pastes of workflow JSON while MCP access is off. It would block every test
+	 * that pastes a workflow, so each signed-in user starts with it dismissed.
+	 */
+	private async dismissMcpJsonNudge(): Promise<void> {
+		const response = await this.request.patch('/rest/me/settings', {
+			data: { dismissedCallouts: { MCP_JSON_NUDGE: true } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Could not dismiss the MCP JSON nudge: ${await response.text()}`);
+		}
 	}
 
 	private getCredentials(role: UserRole, memberIndex: number = 0): UserCredentials {

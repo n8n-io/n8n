@@ -471,7 +471,7 @@ export class EvalThreadRestoreService {
 	async unpublishWorkflows(workflowIds: string[]): Promise<void> {
 		for (const id of workflowIds) {
 			try {
-				await this.workflowService.deactivateWorkflowAsSystem(id);
+				await this.workflowService.deactivateWorkflowAsSystem(id, 'instance-ai-eval-rollback');
 			} catch {
 				// best-effort, like deleteWorkflows
 			}
@@ -485,7 +485,7 @@ export class EvalThreadRestoreService {
 		const deadline = Date.now() + 10_000;
 		for (const id of workflowIds) {
 			try {
-				await this.workflowService.deactivateWorkflowAsSystem(id);
+				await this.workflowService.deactivateWorkflowAsSystem(id, 'instance-ai-eval-rollback');
 			} catch {
 				// best-effort
 			}

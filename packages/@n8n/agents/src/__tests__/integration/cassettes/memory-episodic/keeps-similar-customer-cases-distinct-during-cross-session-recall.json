@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -42,6 +42,34 @@
 							}
 						},
 						"required": ["content", "evidence"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -92,7 +120,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -193,6 +221,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -279,7 +335,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -337,6 +393,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -384,7 +468,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -500,6 +584,34 @@
 							}
 						},
 						"required": ["content", "evidence"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -764,7 +876,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -819,6 +931,34 @@
 							}
 						},
 						"required": ["content", "evidence"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -906,7 +1046,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled.\nWhen to search: when the user refers to earlier work (\"the renewal\", \"like last time\"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.\nHow to search: use 2-5 content words per query, not words like \"discussed\" or \"previous\". In one recall_memory call, pass one query for the subject (\"Acme renewal\") and one for the user's preferences for that kind of output (\"email style length sign-off\"). Add a query for an earlier decision only when the task depends on one.\nUsing results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -989,6 +1129,34 @@
 							}
 						},
 						"required": ["content", "evidence"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}

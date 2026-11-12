@@ -2,9 +2,11 @@ import {
 	activeLifecycleState,
 	droppedLifecycleState,
 	estimateObservationTokens,
+	fromObservationResumeColumns,
 	normalizeObservationLogReflection,
 	rankEpisodicMemoryEntries,
 	supersededLifecycleState,
+	toObservationResumeColumns,
 	uniqueStrings,
 	type AgentDbMessage,
 	type BuiltEpisodicMemoryCaptureStore,
@@ -12,6 +14,7 @@ import {
 	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type EpisodicMemoryCaptureCandidate,
 	type EpisodicMemoryEntry,
 	type EpisodicMemoryEntrySource,
@@ -36,6 +39,7 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
 } from '@n8n/agents';
@@ -150,6 +154,7 @@ export class N8nMemoryImpl
 		BuiltMemory,
 		BuiltObservationLogStore,
 		BuiltObservationLogTaskLockStore,
+		BuiltObservationResumeStore,
 		BuiltEpisodicMemoryStore,
 		BuiltEpisodicMemoryCaptureStore
 {
@@ -558,6 +563,28 @@ export class N8nMemoryImpl
 				conflictPaths: ['agentId', 'observationScopeId'],
 				skipUpdateIfNoValuesChanged: false,
 			},
+		);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		const entity = await this.observationCursorRepository.findOneBy({
+			agentId: this.agentId,
+			observationScopeId,
+		});
+		return entity ? fromObservationResumeColumns(observationScopeId, entity) : null;
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		const { observationScopeId } = state;
+		const entity = await this.observationCursorRepository.findOneBy({
+			agentId: this.agentId,
+			observationScopeId,
+		});
+		if (!entity) return;
+		// Keep updatedAt: the Observer commit matches the cursor row on it.
+		await this.observationCursorRepository.update(
+			{ agentId: this.agentId, observationScopeId, updatedAt: entity.updatedAt },
+			{ ...toObservationResumeColumns(state), updatedAt: entity.updatedAt },
 		);
 	}
 

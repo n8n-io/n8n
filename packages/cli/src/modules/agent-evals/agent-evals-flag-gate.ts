@@ -1,9 +1,9 @@
 import { AGENT_EVALS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { NotFoundError } from '@n8n/errors';
-import { PostHogClient } from '@/posthog';
 
 /**
  * Per-user rollout gate for every agent-eval surface, shared by the controller

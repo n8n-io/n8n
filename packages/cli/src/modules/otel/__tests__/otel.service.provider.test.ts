@@ -30,7 +30,7 @@ import { OtelService } from '../otel.service';
 import { N8N_VERSION } from '@/constants';
 import type { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 const {
 	exportedSpans,
@@ -116,10 +116,7 @@ function startWorkflowSpan() {
 }
 
 describe('OtelService on the startup OTel setup', () => {
-	const fetchMock = vi.fn();
-	const outboundHttp = {
-		transport: () => ({ asCustomFetch: () => fetchMock }),
-	} as unknown as OutboundHttp;
+	const outboundHttp = mock<OutboundHttp>();
 	let otelSettingsService: ReturnType<typeof mock<OtelSettingsService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let service: OtelService;
@@ -137,7 +134,6 @@ describe('OtelService on the startup OTel setup', () => {
 		urlsWithHeldExports.clear();
 		heldExports.length = 0;
 		logger = mock<Logger>();
-		fetchMock.mockResolvedValue({ ok: true });
 		otelSettingsService = mock<OtelSettingsService>();
 		otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 
@@ -154,11 +150,13 @@ describe('OtelService on the startup OTel setup', () => {
 		publisher.publishCommand.mockResolvedValue();
 		externalHooks = mock<ExternalHooks>();
 		configureHook = new OtelConfigureHook(logger);
+		const exporterFactory = new OtelExporterFactory(logger, outboundHttp);
+		vi.spyOn(exporterFactory, 'probeEndpoint').mockResolvedValue();
 		service = new OtelService(
 			otelSettingsService,
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
 			logger,
-			new OtelExporterFactory(logger, outboundHttp),
+			exporterFactory,
 			otelSdk,
 			mock<ModuleRegistry>(),
 			publisher,

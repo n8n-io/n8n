@@ -7,7 +7,7 @@ import { test, expect } from '../../../../fixtures/base';
 test.describe(
 	'Routing',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {

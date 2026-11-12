@@ -67,6 +67,18 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['FocusScope'],
+		allowedFolders: ['components/FocusScope'],
+		replacement: 'FocusScope',
+	},
+	{
+		library: 'reka-ui',
+		prefixes: ['HoverCard'],
+		allowedFolders: ['components/N8nHoverCard'],
+		replacement: 'N8nHoverCard',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['Listbox'],
 		allowedFolders: ['components/N8nListbox'],
 		replacement: ['N8nListbox', 'N8nListboxItem'],
@@ -152,6 +164,14 @@ export const wrappedComponentBans = [
 		templateNames: ['el-menu', 'ElMenu', 'el-sub-menu', 'ElSubMenu', 'el-menu-item', 'ElMenuItem'],
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',
+	},
+	{
+		library: 'element-plus',
+		names: ['ElSwitch'],
+		componentPaths: ['switch'],
+		templateNames: ['el-switch', 'ElSwitch'],
+		allowedFolders: ['components/N8nSwitch'],
+		replacement: 'N8nSwitch',
 	},
 ] as const satisfies readonly WrappedComponentBan[];
 

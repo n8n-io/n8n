@@ -8,6 +8,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
+import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -53,8 +54,6 @@ import type {
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { DataTableService } from '@n8n/backend-module-data-table';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { executeAgent } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -139,7 +138,7 @@ interface CalledAgentRun {
 export class EvalExecutionService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
 		private readonly workflowRunner: WorkflowRunner,

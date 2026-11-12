@@ -266,6 +266,7 @@ const preview = useCanvasPreview({
 		},
 	},
 });
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
 	[requestedAppId, () => preview.tabsLoaded.value],
 	([appId, tabsLoaded]) => {
@@ -344,6 +345,7 @@ const activeAgentPreviewSessionId = computed(() => {
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -750,7 +752,10 @@ function handleNewThreadClick() {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 				data-test-id="instance-ai-builder-chat-header"
 			>
-				<InstanceAiViewHeader :title="currentThreadTitle">
+				<InstanceAiViewHeader
+					:title="currentThreadTitle"
+					:thread-credits-used="store.threadCreditsUsed(props.threadId)"
+				>
 					<template #status>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"
@@ -1041,12 +1046,15 @@ function handleNewThreadClick() {
 								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
-							<InstanceAiSkillPreview
-								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value"
-								:class="$style.previewSlot"
-								:skill-id="preview.activeSkillId.value"
-								:refresh-key="preview.skillRefreshKey.value"
-							/>
+							<!-- Retain each open skill's draft while another artifact is visible. -->
+							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+								<InstanceAiSkillPreview
+									v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+									:class="$style.previewSlot"
+									:skill-id="tab.id"
+									:refresh-key="preview.skillRefreshKey.value"
+								/>
+							</KeepAlive>
 							<InstanceAiAppPreview
 								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
 								:class="$style.previewSlot"

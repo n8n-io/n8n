@@ -24,6 +24,7 @@ describe('useAgentVersionMetadataModal', () => {
 		const onSubmit = vi.fn().mockResolvedValue(true);
 		const pending = openVersionMetadata({
 			mode: 'publish',
+			versionId: 'v1',
 			onSubmit,
 			isCurrent: () => agentId.value === 'a1',
 		});
@@ -38,7 +39,7 @@ describe('useAgentVersionMetadataModal', () => {
 
 	it('cancels on unmount and does not open a dialog after a late response', async () => {
 		const { scope, openVersionMetadata } = setup();
-		const options = { mode: 'edit' as const, onSubmit: vi.fn() };
+		const options = { mode: 'edit' as const, versionId: 'v1', onSubmit: vi.fn() };
 		const pending = openVersionMetadata(options);
 		scope.stop();
 		expect(await pending).toBe(false);
@@ -49,9 +50,13 @@ describe('useAgentVersionMetadataModal', () => {
 	it('does not close a new dialog when a cancelled submission completes', async () => {
 		const { scope, openVersionMetadata, data } = setup();
 		const save = Promise.withResolvers<boolean>();
-		const old = openVersionMetadata({ mode: 'edit', onSubmit: async () => await save.promise });
+		const old = openVersionMetadata({
+			mode: 'edit',
+			versionId: 'v1',
+			onSubmit: async () => await save.promise,
+		});
 		const submission = data().onSubmit({ name: 'Old release' });
-		const current = openVersionMetadata({ mode: 'edit', onSubmit: vi.fn() });
+		const current = openVersionMetadata({ mode: 'edit', versionId: 'v1', onSubmit: vi.fn() });
 		expect(await old).toBe(false);
 		save.resolve(true);
 		expect(await submission).toBe(false);
