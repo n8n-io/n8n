@@ -7,6 +7,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
 
 import type {
 	ColumnInfo,
@@ -19,6 +20,8 @@ import type {
 	QueryValues,
 	QueryWithValues,
 	SortRule,
+	StartAfter,
+	StartAfterColumnInfo,
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
@@ -141,28 +144,19 @@ export function parseParameterLoadingError(node: INode, error: unknown): NodeOpe
 	return new NodeOperationError(node, message);
 }
 
-export function addWhereClauses(
-	_node: INode,
-	_itemIndex: number,
-	query: string,
+function buildWhereConditions(
 	clauses: WhereClause[],
 	replacements: QueryValues,
 	combineConditions: string,
 ): [string, QueryValues] {
-	if (clauses.length === 0) return [query, replacements];
-
-	let combineWith = 'AND';
-
-	if (combineConditions === 'OR') {
-		combineWith = 'OR';
-	}
+	const combineWith = combineConditions === 'OR' ? 'OR' : 'AND';
 
 	let replacementIndex = replacements.length + 1;
 
-	let whereQuery = ' WHERE';
+	const conditions: string[] = [];
 	const values: QueryValues = [];
 
-	clauses.forEach((clause, index) => {
+	clauses.forEach((clause) => {
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
 		}
@@ -183,12 +177,260 @@ export function addWhereClauses(
 			replacementIndex = replacementIndex + 1;
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
-
-		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
+		conditions.push(`${columnReplacement} ${clause.condition}${valueReplacement}`);
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [conditions.join(` ${combineWith} `), replacements.concat(...values)];
+}
+
+export function addWhereClauses(
+	_node: INode,
+	_itemIndex: number,
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+): [string, QueryValues] {
+	if (clauses.length === 0) return [query, replacements];
+
+	const [conditions, values] = buildWhereConditions(clauses, replacements, combineConditions);
+
+	return [`${query} WHERE ${conditions}`, values];
+}
+
+/**
+ * Adds the Start After condition after the user's conditions. The brackets keep
+ * an OR in the user's conditions from also matching rows before the cursor.
+ * The value stays text, so Postgres casts it to the type of the column.
+ */
+export function addStartAfterClause(
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+	startAfter: StartAfter,
+	descending: boolean,
+): [string, QueryValues] {
+	const [conditions, values]: [string, QueryValues] =
+		clauses.length === 0
+			? ['', replacements]
+			: buildWhereConditions(clauses, replacements, combineConditions);
+
+	if (startAfter.value === undefined) {
+		return [conditions ? `${query} WHERE ${conditions}` : query, values];
+	}
+
+	const withCursor = [...values, startAfter.column, startAfter.value];
+	const cursorCondition = `$${withCursor.length - 1}:name ${descending ? '<' : '>'} $${withCursor.length}`;
+
+	return [
+		`${query} WHERE ${conditions ? `(${conditions}) AND ` : ''}${cursorCondition}`,
+		withCursor,
+	];
+}
+
+export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
+	const startAfter = ctx.getNodeParameter('startAfter.values', itemIndex, null);
+	if (typeof startAfter !== 'object' || startAfter === null || Array.isArray(startAfter)) {
+		return undefined;
+	}
+
+	const column = 'column' in startAfter ? startAfter.column : undefined;
+	if (typeof column !== 'string' || column === '') {
+		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
+			itemIndex,
+			description: 'Start After needs a unique column, for example the primary key.',
+		});
+	}
+
+	const value = 'value' in startAfter ? startAfter.value : undefined;
+	if (value === undefined || value === null || value === '') return { column };
+	if (typeof value === 'object') {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
+			itemIndex,
+			description: `Use the value of "${column}" in the last row of the page before.`,
+		});
+	}
+	if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
+			itemIndex,
+			description:
+				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows. In Options, set Output Large-Format Numbers As to Text.',
+		});
+	}
+
+	return { column, value: String(value) };
+}
+
+/**
+ * The cursor column must be the first sort key. A key before it changes the
+ * order of the rows, so "after the last value" skips rows.
+ */
+export function getStartAfterSortRules(
+	node: INode,
+	itemIndex: number,
+	sortRules: SortRule[],
+	column: string,
+): SortRule[] {
+	if (sortRules.length === 0) return [{ column, direction: 'ASC' }];
+	if (sortRules[0].column === column) return sortRules;
+
+	const fix = sortRules.some((rule) => rule.column === column)
+		? `Move "${column}" to the top of Sort.`
+		: `Add "${column}" as the first sort rule, or remove the other sort rules.`;
+
+	throw new NodeOperationError(node, `Sort by "${column}" first`, {
+		itemIndex,
+		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
+	});
+}
+
+// Each function and table is schema-qualified, and each operator compares two values of one type,
+// so objects in other schemas cannot take their place.
+// indnkeyatts exists from PostgreSQL 11. Before 11, an index has no INCLUDE columns.
+// From PostgreSQL 18, a NOT NULL constraint can be NOT VALID, and then the column can hold nulls.
+// A domain has the output function of its base type, at every level.
+const START_AFTER_COLUMN_QUERY = `
+SELECT
+	c.relkind,
+	a.attnum IS NOT NULL AS column_exists,
+	a.attnotnull AND NOT EXISTS (
+		SELECT 1
+		FROM pg_catalog.pg_constraint k
+		WHERE k.conrelid = c.oid AND k.contype = 'n' AND k.conkey[1] = a.attnum AND NOT k.convalidated
+	) AS not_null,
+	pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+	t.typoutput::pg_catalog.oid IN (
+		'pg_catalog.timestamp_out'::pg_catalog.regproc::pg_catalog.oid,
+		'pg_catalog.timestamptz_out'::pg_catalog.regproc::pg_catalog.oid
+	) AS is_timestamp,
+	t.typoutput::pg_catalog.oid IN (
+		'pg_catalog.byteaout'::pg_catalog.regproc::pg_catalog.oid,
+		'pg_catalog.interval_out'::pg_catalog.regproc::pg_catalog.oid,
+		'pg_catalog.jsonb_out'::pg_catalog.regproc::pg_catalog.oid,
+		'pg_catalog.array_out'::pg_catalog.regproc::pg_catalog.oid,
+		'pg_catalog.record_out'::pg_catalog.regproc::pg_catalog.oid
+	) AS outputs_object,
+	EXISTS (
+		SELECT 1
+		FROM pg_catalog.pg_index i
+		WHERE i.indrelid = c.oid
+			AND (i.indisprimary OR i.indisunique)
+			AND i.indisvalid
+			AND i.indpred IS NULL
+			AND i.indkey[0] = a.attnum
+			AND i.indcollation[0] = a.attcollation
+			AND COALESCE(
+				(pg_catalog.to_jsonb(i) ->> 'indnkeyatts'::pg_catalog.text)::pg_catalog.int4,
+				i.indnatts
+			) = 1
+	) AS is_unique,
+	c.relkind = 'r' AND EXISTS (
+		SELECT 1 FROM pg_catalog.pg_inherits h WHERE h.inhparent = c.oid
+	) AS has_child_tables
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_catalog.pg_attribute a
+	ON a.attrelid = c.oid AND a.attname = $3 AND a.attnum > 0 AND NOT a.attisdropped
+LEFT JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
+WHERE n.nspname = $1 AND c.relname = $2`;
+
+/** Returns why the column cannot be a Start After column, or undefined if it can. */
+export function getStartAfterColumnProblem(
+	info: StartAfterColumnInfo | null,
+	schema: string,
+	table: string,
+	column: string,
+): { message: string; description: string } | undefined {
+	const tableName = `${schema}.${table}`;
+
+	if (info === null) {
+		return {
+			message: `Table "${tableName}" does not exist`,
+			description: 'Check the schema and the table name.',
+		};
+	}
+	if (info.relkind === 'v') {
+		return {
+			message: `Start After cannot page the view "${tableName}"`,
+			description: `A view has no indexes, so the node cannot check that "${column}" is unique. Page the table that the view reads, or use the Execute Query operation.`,
+		};
+	}
+	if (info.relkind === 'm') {
+		return {
+			message: `Start After cannot page the materialized view "${tableName}"`,
+			description: `A column of a materialized view can always be null, so the node cannot check that "${column}" is never null. Page the table that the view reads, or use the Execute Query operation.`,
+		};
+	}
+	if (info.relkind === 'f') {
+		return {
+			message: `Start After cannot page the foreign table "${tableName}"`,
+			description: `A foreign table has no indexes, so the node cannot check that "${column}" is unique. Use the Execute Query operation.`,
+		};
+	}
+	if (!info.column_exists) {
+		return {
+			message: `Column "${column}" does not exist in "${tableName}"`,
+			description: 'Choose a column of the table in Start After.',
+		};
+	}
+	if (info.is_timestamp) {
+		return {
+			message: `Start After does not support the timestamp column "${column}"`,
+			description: `"${column}" has the type ${info.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
+		};
+	}
+	if (info.outputs_object) {
+		return {
+			message: `Start After does not support the column "${column}" of type ${info.data_type}`,
+			description:
+				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
+		};
+	}
+	if (!info.is_unique) {
+		return {
+			message: `Column "${column}" has no unique index that Start After can use`,
+			description:
+				'Start After needs a primary key or a valid unique index on this column alone. A unique index on more than one column, with a WHERE condition, on an expression or with another collation does not count. If values repeat, a page skips the rows that share the last value.',
+		};
+	}
+	if (info.has_child_tables) {
+		return {
+			message: `Values of "${column}" can repeat in the child tables of "${tableName}"`,
+			description: `The unique index of "${tableName}" does not include the rows of its child tables. Page each table on its own, or use the Execute Query operation.`,
+		};
+	}
+	if (!info.not_null) {
+		return {
+			message: `Column "${column}" can be null`,
+			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		};
+	}
+
+	return undefined;
+}
+
+export async function checkStartAfterColumn(
+	db: PgpDatabase,
+	node: INode,
+	itemIndex: number,
+	schema: string,
+	table: string,
+	column: string,
+) {
+	const info = await db.oneOrNone<StartAfterColumnInfo>(
+		new pgPromise.ParameterizedQuery({
+			text: START_AFTER_COLUMN_QUERY,
+			values: [schema, table, column],
+		}),
+	);
+	const problem = getStartAfterColumnProblem(info, schema, table, column);
+	if (problem) {
+		throw new NodeOperationError(node, problem.message, {
+			itemIndex,
+			description: problem.description,
+		});
+	}
 }
 
 export function addSortRules(

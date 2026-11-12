@@ -1,4 +1,5 @@
 import {
+	NodeOperationError,
 	tryToParseNumber,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -18,7 +19,11 @@ import type {
 } from '../../helpers/interfaces';
 import {
 	addSortRules,
+	addStartAfterClause,
 	addWhereClauses,
+	checkStartAfterColumn,
+	getStartAfter,
+	getStartAfterSortRules,
 	getWhereClauses,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -26,6 +31,7 @@ import {
 	combineConditionsCollection,
 	optionsCollection,
 	sortFixedCollection,
+	startAfterFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
 
@@ -58,6 +64,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	whereFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -81,11 +88,12 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: PostgresNodeOptions,
-	_db?: PgpDatabase,
+	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
+	const checkedStartAfterColumns = new Set<string>();
 
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
@@ -113,17 +121,44 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
-		[query, values] = addWhereClauses(
-			this.getNode(),
-			i,
-			query,
-			whereClauses,
-			values,
-			combineConditions,
-		);
-
-		const sortRules =
+		let sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
+
+		const startAfter = getStartAfter(this, i);
+
+		if (startAfter) {
+			const { column } = startAfter;
+			// An expression can give Output Columns as one string.
+			const selectedColumns: unknown[] = Array.isArray(outputColumns)
+				? outputColumns
+				: [outputColumns];
+
+			if (!selectedColumns.includes('*') && !selectedColumns.includes(column)) {
+				throw new NodeOperationError(this.getNode(), `Add "${column}" to Output Columns`, {
+					itemIndex: i,
+					description: `Start After needs "${column}" in the output to get the next page.`,
+				});
+			}
+
+			sortRules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
+
+			const columnKey = JSON.stringify([schema, table, column]);
+			if (!checkedStartAfterColumns.has(columnKey)) {
+				await checkStartAfterColumn(db, this.getNode(), i, schema, table, column);
+				checkedStartAfterColumns.add(columnKey);
+			}
+		}
+
+		[query, values] = startAfter
+			? addStartAfterClause(
+					query,
+					whereClauses,
+					values,
+					combineConditions,
+					startAfter,
+					sortRules[0].direction === 'DESC',
+				)
+			: addWhereClauses(this.getNode(), i, query, whereClauses, values, combineConditions);
 
 		[query, values] = addSortRules(query, sortRules, values);
 
