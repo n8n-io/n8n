@@ -806,6 +806,7 @@ describe('processRunExecutionData', () => {
 				for (const response of responses.slice(1)) {
 					expect(response).toEqual(responses[1]);
 				}
+				expect(responses).toHaveLength(maxIterations === 1 && retryOnFail ? maxTries + 1 : 2);
 				expect(toolRequests).toBe(1);
 				const runData = result.data.resultData.runData;
 				expect(runData[toolNode.name]).toHaveLength(1);
