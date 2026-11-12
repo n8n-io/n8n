@@ -267,21 +267,37 @@ describe('components/N8nMarkdownEditor', () => {
 
 	it.each([
 		'Use \\*literal\\* and \\`ticks\\` with identifier_a',
+		'\\* item with identifier_a',
+		'Before\n\\* item with identifier_a',
+		'Before\n  \\* item with identifier_a',
+		'\\* **item** with identifier_a',
 		'**github_\\*** and identifier_a',
 		'**github_\\*\\*** and identifier_a',
 		'Use [run_bigquery](https://example.com/run_bigquery) with identifier_a',
+		'Use [a\\]b](https://example.com) with identifier_a',
+		'[a\\]b identifier_a](https://example.com)',
+		'[a\\]b\\]](https://example.com) with identifier_a',
+		'[\\]a](https://example.com) with identifier_a',
+		'[**a\\]b**](https://example.com) with identifier_a',
+		'[<metric_id> a\\]b](https://example.com) with identifier_a',
+		'[a\\\\\\]b](https://example.com) with identifier_a',
 		'\\> literal quote with identifier_a',
 		'Use <metric>**literal**</metric> with identifier_a',
 		'| Key | Value |\n| --- | --- |\n| metric_id | A & <metric_id> |\n\nFinish identifier_a',
 	])('keeps Markdown structure after saving and loading: %s', async (instructions) => {
 		const { editor } = await renderEditor(instructions);
-		editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
-		const document = editor.getJSON();
 
-		editor.commands.setContent(editor.getMarkdown(), { contentType: 'markdown' });
+		for (let edit = 0; edit < 2; edit++) {
+			editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
+			const document = editor.getJSON();
+			const markdown = editor.getMarkdown();
 
-		expect(editor.getJSON()).toEqual(document);
-		expect(editor.getMarkdown()).toContain('identifier_a.');
+			editor.commands.setContent(markdown, { contentType: 'markdown' });
+
+			expect(editor.getJSON()).toEqual(document);
+			expect(editor.getMarkdown()).toBe(markdown);
+			expect(markdown).toContain('identifier_a.');
+		}
 	});
 
 	it('does not show the collapse control by default', async () => {

@@ -22,7 +22,15 @@ function escapeText(
 	manager: MarkdownManager,
 	escapeStart = false,
 	escapeEnd = false,
+	escapeLinkBrackets = false,
 ): string {
+	if (escapeLinkBrackets) {
+		// Keep existing escapes and protect the closing delimiter of a link label.
+		return escapeText(text, manager, escapeStart, escapeEnd).replace(/\\[\s\S]|]/g, (token) =>
+			token === ']' ? '\\]' : token,
+		);
+	}
+
 	// Literal delimiters must not join the markup of an adjacent mark.
 	if (escapeStart && /^[\\`*_[\]~]/.test(text)) {
 		return `\\${text.charAt(0)}${escapeText(text.slice(1), manager, false, escapeEnd)}`;
@@ -49,6 +57,7 @@ function escapeText(
 			return encodeHtmlEntities(token.raw).replace(/([\\`*_[\]~])/g, '\\$1');
 		})
 		.join('')
+		.replace(/(^|\n)([ \t]{0,3})\*(?=\s|$)/g, '$1$2\\*')
 		.replace(/(^|\n)>/g, '$1\\>');
 }
 
@@ -69,7 +78,13 @@ export const MarkdownWithMinimalEscapes = Markdown.extend({
 		const renderNode = manager.renderNodeToMarkdown.bind(manager);
 		manager.renderNodeToMarkdown = (node, parent, ...args) =>
 			node.type === 'text' && !isCode(node, parent)
-				? escapeText(node.text ?? '', manager, !!node.marks?.length, !!node.marks?.length)
+				? escapeText(
+						node.text ?? '',
+						manager,
+						!!node.marks?.length,
+						!!node.marks?.length,
+						node.marks?.some((mark) => mark.type === 'link'),
+					)
 				: renderNode(node, parent, ...args);
 		const renderNodes = manager.renderNodes.bind(manager);
 
@@ -102,6 +117,7 @@ export const MarkdownWithMinimalEscapes = Markdown.extend({
 										(!!nodes[index - 1]?.marks?.length && node.text?.startsWith(text)),
 									!!node.marks?.length ||
 										(!!nodes[index + 1]?.marks?.length && node.text?.endsWith(text)),
+									node.marks?.some((mark) => mark.type === 'link'),
 								),
 							);
 							return placeholder;
