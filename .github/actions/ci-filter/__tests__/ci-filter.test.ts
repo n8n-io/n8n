@@ -13,6 +13,7 @@ import {
 	getChangedFiles,
 	getAddedFiles,
 	getMergeBase,
+	getIncrementalChanges,
 	resolveHeadRef,
 } from '../ci-filter.mjs';
 
@@ -676,6 +677,93 @@ describe('getChangedFiles (unrelated histories)', () => {
 
 	it('throws once history is exhausted with no common ancestor', () => {
 		assert.throws(() => getChangedFiles('main'), /unrelated histories/);
+	});
+});
+
+// --- runValidate ---
+
+// --- getIncrementalChanges ---
+
+describe('getIncrementalChanges', () => {
+	const repoDir = mkdtempSync(join(tmpdir(), 'ci-filter-incremental-'));
+	const remoteDir = mkdtempSync(join(tmpdir(), 'ci-filter-remote-incremental-'));
+	const originalCwd = process.cwd();
+	const git = (args: string[]) =>
+		execFileSync('git', args, { cwd: repoDir, stdio: 'pipe' }).toString().trim();
+	const commitFile = (file: string, content: string, message: string) => {
+		writeFileSync(join(repoDir, file), content);
+		git(['add', '.']);
+		git(['commit', '-m', message]);
+		return git(['rev-parse', 'HEAD']);
+	};
+	let green: string;
+	let head: string;
+
+	before(() => {
+		execFileSync('git', ['init', '--bare', '-b', 'main', remoteDir], { stdio: 'pipe' });
+		git(['init', '-b', 'main']);
+		git(['config', 'user.email', 'test@test.local']);
+		git(['config', 'user.name', 'test']);
+		git(['remote', 'add', 'origin', remoteDir]);
+		commitFile('shared.ts', 'shared\n', 'root');
+		git(['push', 'origin', 'main']);
+
+		git(['checkout', '-b', 'pr-branch']);
+		commitFile('src.ts', 'src\n', 'PR source change');
+		green = commitFile('src.test.ts', 'test\n', 'PR test');
+		commitFile('src.test.ts', 'test\nfix\n', 'Fix the test');
+		head = commitFile('new.test.ts', 'new\n', 'Add a test');
+		process.chdir(repoDir);
+		getChangedFiles('main');
+	});
+
+	after(() => {
+		process.chdir(originalCwd);
+		rmSync(repoDir, { recursive: true, force: true });
+		rmSync(remoteDir, { recursive: true, force: true });
+	});
+
+	it('returns only the files changed after the green commit', () => {
+		const result = getIncrementalChanges(green);
+		assert.deepEqual(result.changedFiles?.sort(), ['new.test.ts', 'src.test.ts']);
+		assert.deepEqual(result.addedFiles, ['new.test.ts']);
+	});
+
+	it('returns no files when the head is the green commit', () => {
+		assert.deepEqual(getIncrementalChanges(head).changedFiles, []);
+	});
+
+	it('rejects a value that is not a full SHA', () => {
+		assert.match(getIncrementalChanges('HEAD~1; rm -rf /').reason ?? '', /not a full commit SHA/);
+	});
+
+	it('rejects a commit that is not in the checkout', () => {
+		assert.match(getIncrementalChanges('0'.repeat(40)).reason ?? '', /not in the checkout/);
+	});
+
+	it('rejects a commit that a force push removed', () => {
+		git(['checkout', '-b', 'rewritten', green + '~1']);
+		const orphan = commitFile('other.ts', 'other\n', 'Rewritten history');
+		git(['checkout', 'pr-branch']);
+		assert.match(getIncrementalChanges(orphan).reason ?? '', /not an ancestor/);
+	});
+
+	it('rejects new commits that include a merge', () => {
+		git(['checkout', '-b', 'with-merge', head]);
+		git(['checkout', '-b', 'side', green]);
+		commitFile('side.ts', 'side\n', 'Side change');
+		git(['checkout', 'with-merge']);
+		git(['merge', '--no-ff', '-m', 'Merge side', 'side']);
+		getChangedFiles('main');
+		assert.match(getIncrementalChanges(green).reason ?? '', /include a merge/);
+		git(['checkout', 'pr-branch']);
+	});
+
+	it('rejects a green commit when the merge base changed', () => {
+		// The base branch now holds a PR commit after the green commit.
+		git(['push', '--force', 'origin', `${head}~1:refs/heads/main`]);
+		getChangedFiles('main');
+		assert.match(getIncrementalChanges(green).reason ?? '', /merge base changed/);
 	});
 });
 

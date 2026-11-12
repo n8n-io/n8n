@@ -19,6 +19,11 @@ inputs:
   job-results:
     description: 'Job results from needs context as JSON (mode=validate)'
     required: false
+  incremental-base:
+    description: |
+      A PR commit that already passed CI (mode=filter). When it is safe, the
+      filter uses only the changes after this commit. Otherwise it uses the whole PR.
+    required: false
 
 outputs:
   results:
@@ -36,6 +41,12 @@ outputs:
   merge-base:
     description: 'Merge-base SHA between the base ref and the PR head (filter mode only)'
     value: ${{ steps.run.outputs.merge-base }}
+  diff-base:
+    description: 'Commit that changed-files is relative to: incremental-base when used, else merge-base (filter mode only)'
+    value: ${{ steps.run.outputs.diff-base }}
+  incremental:
+    description: "'true' when changed-files holds only the changes after incremental-base (filter mode only)"
+    value: ${{ steps.run.outputs.incremental }}
 
 runs:
   using: 'composite'
@@ -48,4 +59,5 @@ runs:
         INPUT_FILTERS: ${{ inputs.filters }}
         INPUT_BASE_REF: ${{ inputs.base-ref || github.event.pull_request.base.ref || github.event.merge_group.base_ref || 'master' }}
         INPUT_JOB_RESULTS: ${{ inputs.job-results }}
+        INPUT_INCREMENTAL_BASE: ${{ inputs.incremental-base }}
       run: node ${{ github.action_path }}/ci-filter.mjs
