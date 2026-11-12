@@ -68,11 +68,37 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 
+	async isCalledBy(workflowId: string, publishedVersionIds: string[]) {
+		return await this.existsBy({
+			publishedVersionId: In(publishedVersionIds),
+			dependencyType: 'workflowCall',
+			dependencyKey: workflowId,
+		});
+	}
+
+	async findWorkflowCalls(callerWorkflowIds: string[]) {
+		const rows = await this.find({
+			where: { workflowId: In(callerWorkflowIds), dependencyType: 'workflowCall' },
+			select: ['workflowId', 'dependencyKey'],
+		});
+		return rows.map(({ workflowId, dependencyKey }) => ({
+			callerWorkflowId: workflowId,
+			calledWorkflowId: dependencyKey,
+		}));
+	}
+
 	async findDependenciesForResources(
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,
 		includeOutgoing: boolean,
-	): Promise<Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>> {
+	): Promise<
+		Array<
+			Pick<
+				WorkflowDependency,
+				'workflowId' | 'dependencyType' | 'dependencyKey' | 'publishedVersionId'
+			>
+		>
+	> {
 		return await this.find({
 			where: [
 				...(includeOutgoing
@@ -93,7 +119,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 					dependencyType: In(incomingTypes),
 				},
 			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+			select: ['workflowId', 'dependencyType', 'dependencyKey', 'publishedVersionId'],
 		});
 	}
 

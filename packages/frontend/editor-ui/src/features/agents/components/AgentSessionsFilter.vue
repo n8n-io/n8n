@@ -46,6 +46,7 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'discord', name: i18n.baseText('agentSessions.origin.discord') },
 	{ id: 'whatsapp', name: i18n.baseText('agentSessions.origin.whatsapp') },
 	{ id: 'teams', name: i18n.baseText('agentSessions.origin.teams') },
+	{ id: 'webhook', name: i18n.baseText('agentSessions.origin.webhook') },
 ];
 
 const activeFilterCount = computed(
