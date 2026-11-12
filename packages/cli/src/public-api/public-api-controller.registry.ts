@@ -43,12 +43,12 @@ import {
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
-import { toPublicApiResult } from '@/public-api/public-api-result';
 import {
 	matchesPathTemplate,
 	parsePathParam,
 	toRequestPath,
 	toEndpointPath,
+	toPublicApiResult,
 	toRouteName,
 } from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
