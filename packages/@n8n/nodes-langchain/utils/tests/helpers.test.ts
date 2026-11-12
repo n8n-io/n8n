@@ -3,11 +3,13 @@ import { StructuredToolkit } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
+	getRequiredApiKey,
 	mergeCustomHeaders,
 	parseJsonParameter,
 	unwrapNestedOutput,
@@ -997,5 +999,17 @@ describe('mergeCustomHeaders', () => {
 		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
 		expect(result).toEqual({ Authorization: 'Bearer new-token' });
+	});
+});
+
+describe('getRequiredApiKey', () => {
+	const node = mock<INode>();
+
+	it('should return the API key', () => {
+		expect(getRequiredApiKey(node, 'key')).toBe('key');
+	});
+
+	it.each([[''], ['   '], [undefined], [null], [123]])('should throw for %j', (apiKey) => {
+		expect(() => getRequiredApiKey(node, apiKey)).toThrow(NodeOperationError);
 	});
 });

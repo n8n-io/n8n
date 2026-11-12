@@ -51,6 +51,8 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		outputs: z.array(z.custom<JsonValue>()),
 	}),
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
+	/** The step paused until a deadline or a resume request. It has no outcome yet. */
+	z.object({ type: z.literal('step:waiting'), ...stepFields }),
 ]);
 
 /** Body of the host's lifecycle event endpoint. */

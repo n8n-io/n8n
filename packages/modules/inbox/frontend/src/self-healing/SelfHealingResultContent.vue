@@ -45,7 +45,8 @@ const reportOptions = {
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
 const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
-const hasSuggestion = computed(() => props.detail.suggestion !== null);
+const suggestion = computed(() => props.detail.suggestions[0] ?? null);
+const hasSuggestion = computed(() => suggestion.value !== null);
 const activeTab = computed(() =>
 	props.tab === 'changes' && hasSuggestion.value ? 'changes' : 'activity',
 );
@@ -231,11 +232,11 @@ function onTabChange(tab: string) {
 					</N8nCallout>
 				</div>
 				<div v-else :class="$style.changesPanel" data-test-id="self-healing-changes-panel">
-					<div v-if="WorkflowDiffView && detail.suggestion" :class="$style.diff">
+					<div v-if="WorkflowDiffView && suggestion" :class="$style.diff">
 						<component
 							:is="WorkflowDiffView"
-							:source-snapshot="detail.suggestion.payload.original"
-							:target-snapshot="detail.suggestion.payload.proposed"
+							:source-snapshot="suggestion.payload.original"
+							:target-snapshot="suggestion.payload.proposed"
 							:workflow-id="detail.workflowId"
 							:workflow-name="workflowName"
 							:source-label="i18n.baseText('inbox.selfHealing.changes.original')"
@@ -364,7 +365,7 @@ function onTabChange(tab: string) {
 /* The global Markdown rules size paragraphs from this root. */
 .report:global(.n8n-markdown) {
 	--markdown--spacing: var(--spacing--4xs);
-	--n8n-markdown--base-font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--font-size--sm);
 
 	overflow-wrap: anywhere;
 	min-width: 0;

@@ -4,7 +4,7 @@ import { getNonWorkflowAdditionalKeys } from 'n8n-core';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { isNodeParameters, Workflow } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /**
@@ -13,7 +13,7 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 @Service()
 export class ResolverConfigExpressionService {
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	constructor(private readonly nodeTypes: NodeTypesProxy) {}
 
 	/**
 	 * Resolves expressions in config using global data only (secrets, variables).

@@ -9,8 +9,6 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -26,8 +24,6 @@ import {
 	type FakeAgentSkillRefsService,
 	createAgentSkillRefsService,
 } from './test-utils/stored-agent-config';
-
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -96,10 +92,6 @@ describe('AgentSkillsService', () => {
 
 		agentRepository = mock<AgentRepository>();
 		skillService = mock<SkillService>();
-		skillAccess = mock<SkillAccessService>();
-		// The real rule, on top of the mocked permission checks below.
-		skillAccess.canCreate.mockImplementation(SkillAccessService.prototype.canCreate);
-		skillAccess.assertCanCreate.mockImplementation(SkillAccessService.prototype.assertCanCreate);
 		skillRefs = createAgentSkillRefsService();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
@@ -108,9 +100,18 @@ describe('AgentSkillsService', () => {
 		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
-		vi.mocked(userHasScopes).mockResolvedValue(true);
 		projectScopeService = mock<ProjectScopeService>();
+		projectScopeService.hasScopes.mockResolvedValue(true);
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
+		skillAccess = mock<SkillAccessService>();
+		// The real rule, on top of the mocked permission checks.
+		const realAccess = new SkillAccessService(mock(), projectScopeService);
+		skillAccess.canCreate.mockImplementation(
+			async (...args) => await realAccess.canCreate(...args),
+		);
+		skillAccess.assertCanCreate.mockImplementation(
+			async (...args) => await realAccess.assertCanCreate(...args),
+		);
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -162,9 +163,9 @@ describe('AgentSkillsService', () => {
 				'agent',
 				{},
 			);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId,
-			});
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, projectId, [
+				'projectSkill:create',
+			]);
 			const refs: AgentJsonSkillConfig[] = [
 				{ type: 'skill', id: 'existing' },
 				{ type: 'skill', id: 'skill_new1' },
@@ -280,7 +281,7 @@ describe('AgentSkillsService', () => {
 
 		it('rejects a user who may not create skills in the project', async () => {
 			givenAgent({ schema: baseConfig });
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
@@ -348,6 +349,19 @@ describe('AgentSkillsService', () => {
 		beforeEach(() => {
 			skillRefs.bodies.skill_a = skill;
 			skillService.saveTrusted.mockResolvedValue(saveResult());
+		});
+
+		it('rejects the update of an unpinned skill through an archived agent', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+				isArchived: true,
+			});
+
+			await expect(
+				service.updateSkill(agentId, projectId, 'skill_a', { name: 'Renamed' }, context),
+			).rejects.toThrow('Cannot update an archived agent');
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
 		it('changes where the skill can be added without saving a new version', async () => {
@@ -528,7 +542,9 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+				allowArchivedUpdate: false,
+			});
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
@@ -678,7 +694,9 @@ describe('AgentSkillsService', () => {
 				[{ type: 'skill', id: 'skill_b' }],
 				{},
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined, {
+				allowArchivedUpdate: false,
+			});
 			expect(skillService.delete).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});

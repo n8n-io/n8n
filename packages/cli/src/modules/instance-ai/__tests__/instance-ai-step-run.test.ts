@@ -7,7 +7,14 @@ import {
 	handleCycles,
 	rewireGraph,
 } from 'n8n-core';
-import type { IConnections, INode, IRunData, ITaskData, NodeConnectionType } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IPinData,
+	IRunData,
+	ITaskData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
@@ -376,7 +383,7 @@ describe('planStepRun', () => {
 				connections,
 				targetName: 'Target',
 				priorRunData,
-				pinnedNodeNames: ['Trigger'],
+				pinData: { Trigger: [{ json: {} }] },
 			});
 
 			expect(plan.inputMode).toBe('reused-execution');
@@ -390,6 +397,7 @@ describe('planStepRun', () => {
 			graphNodes: INode[],
 			graphConnections: IConnections,
 			runData: IRunData,
+			pinData: IPinData = {},
 		) {
 			const graph = DirectedGraph.fromNodesAndConnections(graphNodes, graphConnections);
 			const byName = graph.getNodes();
@@ -403,7 +411,7 @@ describe('planStepRun', () => {
 				trigger,
 				destination,
 				runData: cleaned,
-				pinData: {},
+				pinData,
 			});
 			return [...handleCycles(subgraph, startNodes, trigger)].map((startNode) => startNode.name);
 		}
@@ -437,10 +445,53 @@ describe('planStepRun', () => {
 				connections,
 				targetName: 'Target',
 				priorRunData,
-				pinnedNodeNames: ['Fetch'],
+				pinData: { Fetch: [{ json: {} }] },
 			});
 
 			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
+		});
+
+		it('follows only the first output of a pinned node, because the engine sends pinned data only there', () => {
+			const branching = [node('Trigger'), node('IF'), node('Side'), node('Target')];
+			const branchConnections = connect(
+				['Trigger', 'IF'],
+				['IF:0', 'Target'],
+				['IF:1', 'Side'],
+				['Side', 'Target'],
+			);
+			const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+
+			const plan = planStepRun({
+				nodes: branching,
+				connections: branchConnections,
+				targetName: 'Target',
+				priorRunData,
+				pinData: { IF: [{ json: {} }] },
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+			expect(
+				engineStartNodes(branching, branchConnections, priorRunData, { IF: [{ json: {} }] }),
+			).toEqual(['Target']);
+		});
+
+		it('does not follow a node pinned with no items, because the engine sends nothing on', () => {
+			const chain = [node('Trigger'), node('Empty'), node('Next'), node('Target')];
+			const chainConnections = connect(['Trigger', 'Empty'], ['Empty', 'Next'], ['Next', 'Target']);
+			const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+			const pinData: IPinData = { Empty: [] };
+
+			const plan = planStepRun({
+				nodes: chain,
+				connections: chainConnections,
+				targetName: 'Target',
+				priorRunData,
+				pinData,
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+			expect(plan.unhonoredInput).toBeUndefined();
+			expect(engineStartNodes(chain, chainConnections, priorRunData, pinData)).toEqual([]);
 		});
 
 		describe('a Loop Over Items node above the target', () => {

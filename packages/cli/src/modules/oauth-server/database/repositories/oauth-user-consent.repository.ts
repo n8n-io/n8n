@@ -81,7 +81,10 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 			// triggers), not user-manageable OAuth clients — keep them out of the list.
 			.andWhere('client.isFirstParty = :isFirstParty', { isFirstParty: false });
 
-		if (options.withOwner) qb.leftJoinAndSelect('consent.user', 'user');
+		if (options.withOwner) {
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			qb.leftJoinAndSelect('consent.user', 'user').leftJoinAndSelect('user.details', 'userDetails');
+		}
 		if (options.userId) qb.andWhere('consent.userId = :userId', { userId: options.userId });
 		if (options.ownerId) qb.andWhere('consent.userId = :ownerId', { ownerId: options.ownerId });
 		if (options.clientIds) {

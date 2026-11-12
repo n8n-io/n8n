@@ -19,6 +19,12 @@ const UNIT_SECTIONS = {
 	linkedSections: ['dependencies', 'optionalDependencies'],
 } as const;
 
+/** A deployed package loads only runtime dependencies. */
+const RUNTIME_SECTIONS = {
+	ownSections: ['dependencies', 'optionalDependencies'],
+	linkedSections: ['dependencies', 'optionalDependencies'],
+} as const;
+
 function parseDocuments(text: string): unknown[] | null {
 	const documents = parseAllDocuments(text);
 	if (documents.length === 0 || documents.some((doc) => doc.errors.length > 0)) return null;
@@ -35,6 +41,25 @@ function packageName(root: string, dir: string): string | undefined {
 	}
 }
 
+/** The lockfile at `baseRef` and in the working tree, or null when either is unreadable. */
+function readLockfiles(
+	root: string,
+	baseRef: string,
+): { before: unknown[]; after: unknown[] } | null {
+	const lockPath = join(root, LOCKFILE);
+	if (!existsSync(lockPath)) return null;
+	const before = parseDocuments(
+		execFileSync('git', ['show', `${baseRef}:${LOCKFILE}`], {
+			cwd: root,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+			maxBuffer: 512 * 1024 * 1024,
+		}),
+	);
+	const after = parseDocuments(readFileSync(lockPath, 'utf8'));
+	return before && after ? { before, after } : null;
+}
+
 /**
  * Names of the workspace packages whose resolved dependencies differ between
  * the lockfile at `baseRef` and the working tree. Null when the change cannot be
@@ -47,18 +72,9 @@ function packageName(root: string, dir: string): string | undefined {
 export function readLockfileImpact(baseRef: string): string[] | null {
 	try {
 		const root = getGitRoot(process.cwd());
-		const lockPath = join(root, LOCKFILE);
-		if (!existsSync(lockPath)) return null;
-		const before = parseDocuments(
-			execFileSync('git', ['show', `${baseRef}:${LOCKFILE}`], {
-				cwd: root,
-				encoding: 'utf8',
-				stdio: ['ignore', 'pipe', 'ignore'],
-				maxBuffer: 512 * 1024 * 1024,
-			}),
-		);
-		const after = parseDocuments(readFileSync(lockPath, 'utf8'));
-		if (!before || !after) return null;
+		const lockfiles = readLockfiles(root, baseRef);
+		if (!lockfiles) return null;
+		const { before, after } = lockfiles;
 		const dirs = lockfileImpact(before, after, UNIT_SECTIONS);
 		if (!dirs) return null;
 		if (
@@ -74,6 +90,36 @@ export function readLockfileImpact(baseRef: string): string[] | null {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * Workspace package dirs whose resolved runtime dependencies (their own and
+ * their linked packages') differ between the lockfile at `baseRef` and the
+ * working tree. The E2E suite runs the deployed packages, so devDependencies do
+ * not count. Null when the change cannot be attributed to packages.
+ */
+export function readRuntimeLockfileImpactDirs(baseRef: string): string[] | null {
+	try {
+		const lockfiles = readLockfiles(getGitRoot(process.cwd()), baseRef);
+		return lockfiles ? lockfileImpact(lockfiles.before, lockfiles.after, RUNTIME_SECTIONS) : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The `lockfileImpactedDirs` input of `select`. A PR that did not change the
+ * lockfile changed no resolved version. Without a base commit the impact is
+ * unknown (undefined), and a failed read is unknown too (null).
+ */
+export function selectLockfileImpactedDirs(
+	changedFiles: string[],
+	lockfileBase: string | undefined,
+	read: (base: string) => string[] | null = readRuntimeLockfileImpactDirs,
+): string[] | null | undefined {
+	if (!lockfileBase) return undefined;
+	if (!changedFiles.includes(LOCKFILE)) return [];
+	return read(lockfileBase);
 }
 
 /**

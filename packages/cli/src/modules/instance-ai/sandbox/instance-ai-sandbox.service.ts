@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import { getN8nVersion } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -19,11 +20,11 @@ import {
 	type VerifiedWorkspaceBundles,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
+import { lowercaseUuidSchema } from '@n8n/api-types';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
@@ -69,28 +70,71 @@ function slugifySandboxLabel(value: string, maxLen: number): string {
 		.replace(/[-.]+$/, '');
 }
 
-function getThreadScopedSandboxName(threadId: string): string {
+/**
+ * How a thread id becomes a sandbox identity. Each scheme has its own base
+ * name, so two runtimes that receive the same thread id never share a sandbox.
+ * - `instance-ai`: the Assistant v1 runtime. Never change it: existing
+ *   sandboxes are found again by this name.
+ * - `assistant`: the Assistant agent on the Agents runtime. The thread id must
+ *   be a lowercase UUID, and the name always keeps the full thread id.
+ */
+export type SandboxIdentityScheme = 'instance-ai' | 'assistant';
+
+function getThreadScopedSandboxName(threadId: string, scheme: SandboxIdentityScheme): string {
+	if (scheme === 'assistant') {
+		// Daytona names are lowercase, so a thread id that is not canonical could
+		// give the same name as another thread id.
+		if (!lowercaseUuidSchema.safeParse(threadId).success) {
+			throw new UnexpectedError('The Assistant sandbox identity needs a lowercase UUID thread ID');
+		}
+		return `assistant-${threadId}`;
+	}
 	return `instance-ai-thread-${threadId}`;
 }
 
-function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
+function buildThreadScopedSandboxName(
+	threadId: string,
+	namePrefix: string | undefined,
+	scheme: SandboxIdentityScheme,
+): string {
+	if (scheme === 'assistant') return buildAssistantSandboxName(threadId, namePrefix);
+
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
 	}
-	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
+	const threadSlug = slugifySandboxName(
+		getThreadScopedSandboxName(threadId, 'instance-ai'),
+		SANDBOX_NAME_MAX_LEN,
+	);
 	if (threadSlug) parts.push(threadSlug);
 	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
 	if (!name) throw new UnexpectedError('Failed to build thread-scoped sandbox name');
 	return name;
 }
 
+/**
+ * The base name is already a valid name, and it stays complete. When the name
+ * is too long, shorten the prefix: it is the same for all threads of the
+ * instance, so a shorter prefix cannot make two threads share a name.
+ */
+function buildAssistantSandboxName(threadId: string, namePrefix: string | undefined): string {
+	const baseName = getThreadScopedSandboxName(threadId, 'assistant');
+	const prefixBudget = Math.min(
+		NAME_PREFIX_SLUG_MAX_LEN,
+		SANDBOX_NAME_MAX_LEN - baseName.length - 1,
+	);
+	const prefixSlug = namePrefix ? slugifySandboxName(namePrefix, prefixBudget) : '';
+	return prefixSlug ? `${prefixSlug}-${baseName}` : baseName;
+}
+
 function buildThreadScopedSandboxLabels(
 	threadId: string,
 	namePrefix: string | undefined,
+	scheme: SandboxIdentityScheme,
 ): Record<string, string> {
-	const baseName = getThreadScopedSandboxName(threadId);
+	const baseName = getThreadScopedSandboxName(threadId, scheme);
 	const labels: Record<string, string> = {
 		'n8n-builder': slugifySandboxLabel(baseName, SANDBOX_LABEL_MAX_LEN),
 		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
@@ -107,8 +151,8 @@ function buildThreadScopedSandboxLabels(
 const N8N_SANDBOX_THREAD_ID_NAMESPACE = '5e6c2f7a-93a1-4b0e-8f27-c1d6a3b9e514';
 
 /** The n8n sandbox service only accepts lowercase UUID ids, so hash the thread-scoped name into a stable UUIDv5. */
-function buildThreadScopedSandboxUuid(threadId: string): string {
-	return uuidv5(getThreadScopedSandboxName(threadId), N8N_SANDBOX_THREAD_ID_NAMESPACE);
+function buildThreadScopedSandboxUuid(threadId: string, scheme: SandboxIdentityScheme): string {
+	return uuidv5(getThreadScopedSandboxName(threadId, scheme), N8N_SANDBOX_THREAD_ID_NAMESPACE);
 }
 
 /**
@@ -116,20 +160,24 @@ function buildThreadScopedSandboxUuid(threadId: string): string {
  * after a restart, a cache eviction, or on another main — resolves the same
  * remote sandbox instead of creating a duplicate and orphaning the old one.
  */
-function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
+function withThreadScopedSandboxIdentity(
+	config: SandboxConfig,
+	threadId: string,
+	scheme: SandboxIdentityScheme,
+): SandboxConfig {
 	if (!config.enabled) return config;
 
 	if (config.provider === 'n8n-sandbox') {
-		return { ...config, id: buildThreadScopedSandboxUuid(threadId) };
+		return { ...config, id: buildThreadScopedSandboxUuid(threadId, scheme) };
 	}
 
-	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, scheme);
 	return {
 		...config,
 		id: name,
 		name,
 		labels: {
-			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, scheme),
 			...config.labels,
 		},
 	};
@@ -174,6 +222,8 @@ export type InstanceAiSandboxServiceOptions = {
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
 	getTemplatesService: () => BuilderTemplatesService;
+	/** How thread ids become sandbox identities. Defaults to `instance-ai`. */
+	identityScheme?: SandboxIdentityScheme;
 	resolveTracingConfig?: (
 		threadId: string,
 		userId?: string,
@@ -204,7 +254,7 @@ export class InstanceAiSandboxService {
 	/** In-flight runtime workspace creations keyed by thread ID. */
 	private readonly sandboxCreations = new Map<
 		string,
-		{ fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
+		{ userId: string; fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
 	>();
 
 	private cacheGeneration = 0;
@@ -217,6 +267,10 @@ export class InstanceAiSandboxService {
 
 	private get instanceAiConfig(): InstanceAiConfig {
 		return this.options.config;
+	}
+
+	private get identityScheme(): SandboxIdentityScheme {
+		return this.options.identityScheme ?? 'instance-ai';
 	}
 
 	getSandboxConfigFromEnv(): SandboxConfig {
@@ -254,7 +308,7 @@ export class InstanceAiSandboxService {
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
 				snapshot: sandboxSnapshot || undefined,
-				n8nVersion: N8N_VERSION || undefined,
+				n8nVersion: getN8nVersion() || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,
@@ -363,6 +417,7 @@ export class InstanceAiSandboxService {
 				}
 				const existing = this.sandboxes.get(threadId);
 				if (existing) {
+					this.assertSandboxOwner(threadId, existing.userId, user);
 					if (
 						existing.configFingerprint !== cacheState.fingerprint ||
 						(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
@@ -380,13 +435,18 @@ export class InstanceAiSandboxService {
 				}
 
 				const pending = this.sandboxCreations.get(threadId);
+				if (pending) this.assertSandboxOwner(threadId, pending.userId, user);
 				if (pending?.fingerprint === cacheState.fingerprint) {
 					outcome = 'shared_acquisition';
 					return await pending.promise;
 				}
 
 				const creation = this.createWorkspaceEntry(threadId, user, cacheState);
-				const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
+				const pendingCreation = {
+					userId: user.id,
+					fingerprint: cacheState.fingerprint,
+					promise: creation,
+				};
 				this.sandboxCreations.set(threadId, pendingCreation);
 				try {
 					const entry = await creation;
@@ -406,6 +466,17 @@ export class InstanceAiSandboxService {
 				}
 			},
 		);
+	}
+
+	/**
+	 * A thread has one owner, so its cached sandbox must belong to the caller.
+	 * The entry also holds credentials of the user who created it.
+	 */
+	private assertSandboxOwner(threadId: string, ownerId: string, user: User): void {
+		if (ownerId === user.id) return;
+		throw new UnexpectedError('The cached sandbox of the thread belongs to a different user', {
+			extra: { threadId },
+		});
 	}
 
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
@@ -458,6 +529,7 @@ export class InstanceAiSandboxService {
 		const config = withThreadScopedSandboxIdentity(
 			cacheState.config ?? (await this.resolveSandboxConfig(user)),
 			threadId,
+			this.identityScheme,
 		);
 		if (!config.enabled) return undefined;
 
@@ -627,6 +699,7 @@ export class InstanceAiSandboxService {
 							apiKey: settings.apiKey ?? base.apiKey,
 						},
 						threadId,
+						this.identityScheme,
 					);
 					// Constructing the adapter makes no remote calls; destroy() issues the delete.
 					const sandbox = await createSandbox(config, {
