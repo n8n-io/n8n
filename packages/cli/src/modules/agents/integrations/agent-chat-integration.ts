@@ -286,6 +286,15 @@ export abstract class AgentChatIntegration {
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
 
+	/**
+	 * Credential types that this channel entry accepts. Connect and publish
+	 * validation check the credential against them. Override it when the
+	 * channel settings decide the type.
+	 */
+	acceptedCredentialTypes(_integration: AgentIntegrationConfig): string[] {
+		return this.credentialTypes;
+	}
+
 	// ---------------------------------------------------------------------------
 	// FE display metadata — shown in the trigger-picker and integration cards.
 	// Localizable copy (help text, connected confirmation) lives in the FE i18n

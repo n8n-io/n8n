@@ -56,6 +56,7 @@ import {
 	type SkillMoveTarget,
 } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
+import AgentSkillInlineShell from './AgentSkillInlineShell.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -166,10 +167,15 @@ export type AgentSkillModalData = {
 	onRemove?: (id: string) => void;
 };
 
-const props = defineProps<{
-	modalName: string;
-	data: AgentSkillModalData;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modalName?: string;
+		data: AgentSkillModalData;
+		/** Embeds the editor without modal controls or version history. */
+		inline?: boolean;
+	}>(),
+	{ modalName: '', inline: false },
+);
 
 const i18n = useI18n();
 const $style = useCssModule();
@@ -179,7 +185,9 @@ const router = useRouter();
 const rootStore = useRootStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
-const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const modalOpen = computed(
+	() => props.inline || uiStore.modalsById[props.modalName]?.open === true,
+);
 
 const existingNameKeys = computed(() => {
 	const names = props.data.getAttachedSkills
@@ -820,7 +828,7 @@ const showMcpToggle = computed(
 	() => showScope.value && showAvailableToMCP.value && !cannotEdit.value,
 );
 
-const versionsOpen = ref(!!props.data.initialVersionsOpen);
+const versionsOpen = ref(!props.inline && !!props.data.initialVersionsOpen);
 const {
 	versions,
 	viewedVersion,
@@ -1091,7 +1099,10 @@ async function onSave() {
 		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
-	if (saved) closeModal();
+	if (saved) {
+		if (props.inline) showSavedSkill(payload);
+		else closeModal();
+	}
 }
 
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
@@ -1156,7 +1167,7 @@ watch(
 	(next) => {
 		if (!next || !isEditing.value) return;
 		showSavedSkill(next);
-		if (props.data.initialVersionsOpen) versionsOpen.value = true;
+		if (!props.inline && props.data.initialVersionsOpen) versionsOpen.value = true;
 	},
 );
 
@@ -1173,7 +1184,8 @@ function onRemove() {
 </script>
 
 <template>
-	<AgentModalMultiStep
+	<component
+		:is="inline ? AgentSkillInlineShell : AgentModalMultiStep"
 		:open="modalOpen"
 		:step="step"
 		:title="modalTitle"
@@ -1472,7 +1484,9 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div :class="[$style.content, isFormStep && $style.contentFlush]">
+			<div
+				:class="[$style.content, isFormStep && $style.contentFlush, inline && $style.inlineContent]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1669,7 +1683,7 @@ function onRemove() {
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
-	</AgentModalMultiStep>
+	</component>
 </template>
 
 <style module>
@@ -1791,6 +1805,18 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
+}
+
+@container skill-editor (max-width: 480px) {
+	.inlineContent {
+		flex-direction: column;
+	}
+
+	.inlineContent .fileColumn {
+		width: 100%;
+		border-right: none;
+		border-bottom: var(--border);
+	}
 }
 
 /* Geist sits high in its line box, as in the Settings scope badge. */

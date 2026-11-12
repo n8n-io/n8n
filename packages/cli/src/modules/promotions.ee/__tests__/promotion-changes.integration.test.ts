@@ -610,8 +610,17 @@ it('lists nothing after apply, although the destination mints its own version', 
 	const agent = server.publicApiAgentWithCookie(owner);
 	const endpoint = `/promotions/projects/${project.id}/changes/apply`;
 	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
-	expect(await changed()).toEqual([
+	const summary = (await agent.get(endpoint).expect(200)).body;
+	expect(changedResources(summary)).toEqual([
 		expect.objectContaining({ id: workflow.id, change: 'modified' }),
+	]);
+	const { body } = await agent
+		.post(`${endpoint}/details`)
+		.send({ commitSha: summary.commitSha, keys: [`workflow:${workflow.id}`] })
+		.expect(200);
+	// The card has the revision of the summary, so it is not stale.
+	expect(body.details).toEqual([
+		expect.objectContaining({ revision: changedResources(summary)[0].revision }),
 	]);
 
 	expect((await service.apply(environments.apply.id, owner)).status).toBe('applied');

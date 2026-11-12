@@ -191,7 +191,11 @@ import {
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
-import { type CredentialRefusal, findCredentialRefusal } from '@/executions/pre-execution-checks';
+import {
+	type CredentialRefusal,
+	findCredentialRefusal,
+	findOwnAccessCredentialRefusal,
+} from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
@@ -2483,6 +2487,12 @@ export class InstanceAiAdapterService {
 					});
 				};
 
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackBuilderExecutedWorkflow('error', refused.telemetryError);
+					return refused.result;
+				}
+
 				try {
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
@@ -2843,6 +2853,11 @@ export class InstanceAiAdapterService {
 				};
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackStepRun('error', refused.telemetryError);
+					return describe(refused.result);
+				}
 
 				try {
 					const executionId = await workflowRunner.run(runData);
@@ -3001,11 +3016,11 @@ export class InstanceAiAdapterService {
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
-				// project's usable set (project-shared + global) — the same intersection
-				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// project's usable set, narrowed to the user's own access. `preventTampering`
+				// (workflow.service.ee.ts) accepts all of it. A caller-supplied
 				// workflowId/projectId must not broaden it.
 				if (boundProjectId) {
-					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+					const scoped = await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
@@ -3024,10 +3039,10 @@ export class InstanceAiAdapterService {
 				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
-						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						? await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								workflowId: options.workflowId,
 							})
-						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						: await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								projectId: options.projectId!,
 							});
 
@@ -5098,7 +5113,7 @@ function withCredentialRefusal<T extends ExecutionResult>(
 ): { result: T; telemetryError?: string } {
 	const { result } = outcome;
 	if (!refusal || result.status !== 'error') return outcome;
-	const message = [refusal.message, refusal.description].filter(Boolean).join('. ');
+	const message = refusalMessage(refusal);
 	return {
 		result: {
 			...result,
@@ -5109,6 +5124,30 @@ function withCredentialRefusal<T extends ExecutionResult>(
 		},
 		telemetryError: refusal.message,
 	};
+}
+
+function refusalMessage(refusal: CredentialRefusal) {
+	return [refusal.message, refusal.description].filter(Boolean).join('. ');
+}
+
+/**
+ * The project check lets an Owner or Admin use any personal credential in their
+ * personal project, but redaction would hide the result of such a run. So a run
+ * that needs a credential the user cannot use through their own access never
+ * starts, and has no execution. Telemetry gets the message only, because the
+ * description can name a project.
+ */
+async function refuseWithoutOwnAccess(
+	nodes: INode[],
+	userId: string,
+): Promise<{ result: ExecutionResult; telemetryError: string } | undefined> {
+	const refusal = await findOwnAccessCredentialRefusal(nodes, userId);
+	return (
+		refusal && {
+			result: { executionId: '', status: 'error', error: refusalMessage(refusal) },
+			telemetryError: refusal.message,
+		}
+	);
 }
 
 /** Output branches of a run that a non-main connection carried. */

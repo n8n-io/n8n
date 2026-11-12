@@ -16,17 +16,15 @@ const CANONICAL_OWNERS = new Set([
 	'Identity & Access',
 	'Lifecycle & Governance',
 	'Docs',
-	'Catalysts',
+	'Core Application',
+	'Core Execution',
 	'Developer Platform',
 	'NODES',
-	'Payday',
 	'Context',
 	'Knowledge',
-	'AI',
 	'Cloud Growth',
 	'Cloud Platform',
 	'Cloud Experience',
-	'Chat',
 	'Agent',
 	'instanceAI',
 	'AI Trust',
@@ -44,9 +42,9 @@ const CANONICAL_OWNERS = new Set([
  * to a team that doesn't exist.
  *
  * Owner is recognised in two shapes:
- * - the annotation literal: `{ type: 'owner', description: 'Catalysts' }`
+ * - the annotation literal: `{ type: 'owner', description: 'Core Execution' }`
  * - the `owner` config property of an owner-bearing helper call, e.g.
- *   `runMemoryBaseline({ name, owner: 'Catalysts' })`
+ *   `runMemoryBaseline({ name, owner: 'Core Execution' })`
  *
  * Violations:
  * - a spec with no owner declaration
@@ -100,7 +98,7 @@ export class ValidOwnerAnnotationRule extends AstRule<{ rootDir: string }> {
 					1,
 					0,
 					'Spec has no owner annotation',
-					"Tag the suite with an owner, e.g. test.describe('…', { annotation: [{ type: 'owner', description: 'Catalysts' }] }, …)",
+					"Tag the suite with an owner, e.g. test.describe('…', { annotation: [{ type: 'owner', description: 'Core Execution' }] }, …)",
 				),
 			];
 		}

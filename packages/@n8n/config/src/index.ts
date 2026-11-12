@@ -290,6 +290,16 @@ export class GlobalConfig {
 	@Env('N8N_WEBHOOK_URL')
 	webhookUrl: string = '';
 
+	/**
+	 * Public base URL that external apps use to send messages to agents through
+	 * the webhook channel. Only main instances serve these requests, so point it
+	 * at your main instances, not at webhook processes. When unset, n8n uses the
+	 * editor base URL, then the webhook URL. Set it when your webhook URL points
+	 * at webhook processes and the editor base URL is unset.
+	 */
+	@Env('N8N_AGENT_WEBHOOK_URL')
+	agentWebhookUrl: string = '';
+
 	/** URLs to external frontend hooks files, separated by semicolons. */
 	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
 	externalFrontendHooksUrls: string = '';

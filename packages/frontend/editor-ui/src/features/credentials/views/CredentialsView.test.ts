@@ -19,6 +19,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn(() => true);
@@ -175,6 +176,15 @@ describe('CredentialsView', () => {
 				name: CREDENTIAL_SELECT_MODAL_KEY,
 				data: {},
 			});
+		});
+
+		it('loads the policy of the project that a new credential goes to', async () => {
+			await router.push('/team-1/credentials');
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+			renderComponent();
+
+			expect(policies.fetchForProject).toHaveBeenCalledWith('team-1');
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {

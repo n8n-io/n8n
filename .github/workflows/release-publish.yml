@@ -54,11 +54,25 @@ jobs:
           PRERELEASE: ${{ contains(github.event.pull_request.body, '<!-- release-prerelease -->') }}
         run: node .github/scripts/determine-version-info.mjs
 
+  setup-trusted-publishing:
+    name: Setup trusted publishing for new packages
+    needs: [determine-version-info]
+    if: |
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.outputs.bump == 'minor'
+    uses: ./.github/workflows/release-setup-trusted-publishing.yml
+    secrets: inherit
+
   publish-to-npm:
     name: Publish to NPM
-    needs: [determine-version-info]
+    needs: [determine-version-info, setup-trusted-publishing]
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: |
+      always() &&
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.result == 'success' &&
+      needs.setup-trusted-publishing.result != 'failure' &&
+      needs.setup-trusted-publishing.result != 'cancelled'
     timeout-minutes: 30
     environment: npm
     permissions:

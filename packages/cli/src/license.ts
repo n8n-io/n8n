@@ -476,6 +476,14 @@ export class License implements LicenseProvider {
 		return this.manager?.getConsumerId() ?? 'unknown';
 	}
 
+	isEphemeral() {
+		return this.manager?.isEphemeral() ?? false;
+	}
+
+	getDeviceFingerprint() {
+		return this.manager?.getDeviceFingerprint();
+	}
+
 	// Helper functions for computed data
 
 	/** @deprecated Use `LicenseState` instead. */
