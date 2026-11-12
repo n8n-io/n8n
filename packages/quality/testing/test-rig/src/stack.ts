@@ -34,9 +34,9 @@ const starting = new Set<Promise<unknown>>();
 export async function stopAllStacks() {
 	await Promise.allSettled([...starting]);
 	const results = await Promise.allSettled([...running].map(async (rig) => await rig.stop()));
-	const errors = results
-		.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-		.map((result) => result.reason as unknown);
+	const errors = results.flatMap((result) =>
+		result.status === 'rejected' ? [result.reason as unknown] : [],
+	);
 	if (errors.length > 0) throw new AggregateError(errors, 'failed to stop every stack');
 }
 
@@ -134,10 +134,10 @@ export class RigStack {
 	}
 
 	/** Fails when a declared hook did not install in the containers of its roles. */
-	async assertHooksInstalled(timeoutMs = 20_000) {
+	async assertHooksInstalled() {
 		const expected = this.hooks.filter((hook) => !hook.lazy);
 		if (expected.length === 0) return;
-		const deadline = Date.now() + timeoutMs;
+		const deadline = Date.now() + 20_000;
 		for (;;) {
 			const missing: string[] = [];
 			for (const hook of expected) {

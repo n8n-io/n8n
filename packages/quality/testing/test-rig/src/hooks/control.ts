@@ -4,17 +4,16 @@ import { join } from 'node:path';
 import type { Container } from '../process';
 import { waitForLog } from '../process';
 
-export const PRELOAD_PATH = join(__dirname, 'preload.js');
 export const HOOK_DIR = '/tmp/test-rig-hooks';
-export const LOG_TAG = '[test-rig]';
+const LOG_TAG = '[test-rig]';
 
 /** NODE_OPTIONS that loads the hook preload without a file mount, as a base64 data URL. */
 export function preloadNodeOptions(): string {
-	const source = readFileSync(PRELOAD_PATH).toString('base64');
+	const source = readFileSync(join(__dirname, 'preload.js')).toString('base64');
 	return `--expose-gc --import=data:text/javascript;base64,${source}`;
 }
 
-export interface HookLogLine {
+interface HookLogLine {
 	/** Time the preload logged the line, in ms since the epoch. */
 	at: number;
 	event: string;
@@ -32,13 +31,9 @@ export function parseHookLine(line: string): HookLogLine | undefined {
 	if (!match) return undefined;
 	const [, iso, event, point, json] = match;
 	let detail: Record<string, unknown> = {};
-	if (json) {
-		try {
-			detail = JSON.parse(json) as Record<string, unknown>;
-		} catch {
-			detail = {};
-		}
-	}
+	try {
+		if (json) detail = JSON.parse(json) as Record<string, unknown>;
+	} catch {}
 	return { at: Date.parse(iso), event, point, detail };
 }
 

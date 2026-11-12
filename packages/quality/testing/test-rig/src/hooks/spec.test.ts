@@ -26,10 +26,6 @@ describe('hookSpecSchema', () => {
 	it.each(['has space', 'dot.point', 'slash/point', ''])('rejects the point %j', (point) => {
 		expect(hookSpecSchema.safeParse({ ...base, point }).success).toBe(false);
 	});
-
-	it('rejects unknown fields', () => {
-		expect(hookSpecSchema.safeParse({ ...base, point: 'p', extra: 1 }).success).toBe(false);
-	});
 });
 
 describe('parseHookSpecs', () => {

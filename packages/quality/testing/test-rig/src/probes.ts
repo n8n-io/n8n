@@ -1,7 +1,7 @@
 import { sleep } from '@n8n/utils/sleep';
 
 /** Runs one command in a container and returns its trimmed output. */
-export type Exec = (command: string[]) => Promise<string>;
+type Exec = (command: string[]) => Promise<string>;
 
 const PENDING_STATUSES = ['', 'new', 'running', 'waiting'];
 
@@ -11,19 +11,13 @@ export interface ExecutionState {
 	stalledError: boolean;
 }
 
-export const quote = (text: string) => `'${text.replace(/'/g, "''")}'`;
+const quote = (text: string) => `'${text.replace(/'/g, "''")}'`;
 
 /** Splits `psql -tA` or `redis-cli --raw` output into non-empty lines. */
 export const lines = (output: string) => output.split('\n').filter(Boolean);
 
-/** Parses a `status|finished` row from `psql -tA`. */
-export function parseStatusRow(row: string): Pick<ExecutionState, 'status' | 'finished'> {
-	const [status = '', finished = ''] = row.split('|');
-	return { status, finished: finished === 't' };
-}
-
 /** Parses `HGETALL` output into a record, leaving out the bulky `data` and `opts` fields. */
-export function parseHash(output: string): Record<string, string> {
+function parseHash(output: string): Record<string, string> {
 	const flat = output.split('\n');
 	const hash: Record<string, string> = {};
 	for (let i = 0; i + 1 < flat.length; i += 2) {
@@ -44,11 +38,12 @@ export class PostgresProbe {
 		const row = await this.sql(
 			`select status, finished from execution_entity where id = ${Number(id)}`,
 		);
-		const stalledError = await this.executionDataContains(
-			id,
-			'failed to be processed too many times',
-		);
-		return { ...parseStatusRow(row), stalledError };
+		const [status = '', finished] = row.split('|');
+		return {
+			status,
+			finished: finished === 't',
+			stalledError: await this.executionDataContains(id, 'failed to be processed too many times'),
+		};
 	}
 
 	async executionDataContains(id: string, text: string): Promise<boolean> {

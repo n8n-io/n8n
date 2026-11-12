@@ -2,14 +2,6 @@ import { sleep } from '@n8n/utils/sleep';
 
 const OWNER = { email: 'owner@example.com', password: 'SuperSecret123' };
 
-export interface Response {
-	status: number;
-	body: string;
-}
-
-const isUnregistered = (status: number, body: string) =>
-	status === 404 && body.includes('is not registered');
-
 /** REST and webhook calls against the stack's main instance or load balancer. */
 export class N8nClient {
 	private cookie = '';
@@ -73,12 +65,8 @@ export class N8nClient {
 	}
 
 	/** Calls a production webhook; retries while the webhook is not registered yet, since activation can finish after its response. */
-	async webhook(
-		path: string,
-		payload: unknown = {},
-		registerTimeoutMs = 15_000,
-	): Promise<Response> {
-		const deadline = Date.now() + registerTimeoutMs;
+	async webhook(path: string, payload: unknown = {}) {
+		const deadline = Date.now() + 15_000;
 		for (;;) {
 			const res = await fetch(`${this.baseUrl}/webhook/${path}`, {
 				method: 'POST',
@@ -86,7 +74,7 @@ export class N8nClient {
 				body: JSON.stringify(payload),
 			});
 			const body = await res.text();
-			if (!isUnregistered(res.status, body) || Date.now() > deadline)
+			if (res.status !== 404 || !body.includes('is not registered') || Date.now() > deadline)
 				return { status: res.status, body };
 			await sleep(250);
 		}
