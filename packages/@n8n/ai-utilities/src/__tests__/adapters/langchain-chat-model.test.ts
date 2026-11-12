@@ -1,9 +1,13 @@
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
+import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as toolConverter from 'src/converters/tool';
+import type { ChatModelConfig } from 'src/types/chat-model';
 import type { GenerateResult, StreamChunk } from 'src/types/output';
 import * as failedAttemptHandler from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import * as n8nLlmTracing from 'src/utils/n8n-llm-tracing';
@@ -58,6 +62,12 @@ function createMockChatModel(
 	};
 }
 
+type LangchainCallOptions = ChatModelConfig & BaseChatModelCallOptions;
+
+const response: GenerateResult = {
+	message: { role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+};
+
 describe('LangchainAdapter', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -75,6 +85,24 @@ describe('LangchainAdapter', () => {
 
 			expect(N8nLlmTracing).toHaveBeenCalledWith(ctx, expect.any(Object));
 			expect(makeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(ctx);
+		});
+
+		it('reads token usage from the LangChain result', () => {
+			const ctx = mock<ISupplyDataFunctions>();
+			new LangchainChatModelAdapter(createMockChatModel(), ctx);
+			const { tokensUsageParser } = N8nLlmTracing.mock.calls[0][1] ?? {};
+
+			expect(
+				tokensUsageParser?.({
+					generations: [],
+					llmOutput: { tokenUsage: { input_tokens: 3, output_tokens: 5, total_tokens: 8 } },
+				}),
+			).toEqual({ completionTokens: 5, promptTokens: 3, totalTokens: 8 });
+			expect(tokensUsageParser?.({ generations: [] })).toEqual({
+				completionTokens: 0,
+				promptTokens: 0,
+				totalTokens: 0,
+			});
 		});
 
 		it('does not pass callbacks or onFailedAttempt when ctx is omitted', () => {
@@ -263,6 +291,54 @@ describe('LangchainAdapter', () => {
 			]);
 		});
 
+		describe('parallel tool calls', () => {
+			async function streamToolCalls(deltas: StreamChunk[]) {
+				async function* stream() {
+					yield* deltas;
+				}
+				const chatModel = createMockChatModel({
+					stream: vi.fn().mockImplementation(() => stream()),
+				});
+				const adapter = new LangchainChatModelAdapter(chatModel);
+
+				let merged: AIMessageChunk | undefined;
+				for await (const chunk of await adapter.stream([new HumanMessage('hi')])) {
+					merged = merged ? merged.concat(chunk) : chunk;
+				}
+				return merged?.tool_calls;
+			}
+
+			it('keeps calls apart when continuation deltas have no id', async () => {
+				const toolCalls = await streamToolCalls([
+					{ type: 'tool-call-delta', id: 'tc-1', name: 'search', argumentsDelta: '' },
+					{ type: 'tool-call-delta', argumentsDelta: '{"q":' },
+					{ type: 'tool-call-delta', argumentsDelta: '"cats"}' },
+					{ type: 'tool-call-delta', id: 'tc-2', name: 'weather', argumentsDelta: '' },
+					{ type: 'tool-call-delta', argumentsDelta: '{"city":' },
+					{ type: 'tool-call-delta', argumentsDelta: '"Berlin"}' },
+				]);
+
+				expect(toolCalls).toEqual([
+					expect.objectContaining({ id: 'tc-1', name: 'search', args: { q: 'cats' } }),
+					expect.objectContaining({ id: 'tc-2', name: 'weather', args: { city: 'Berlin' } }),
+				]);
+			});
+
+			it('keeps interleaved calls apart when every delta has an id', async () => {
+				const toolCalls = await streamToolCalls([
+					{ type: 'tool-call-delta', id: 'tc-1', name: 'search', argumentsDelta: '{"q":' },
+					{ type: 'tool-call-delta', id: 'tc-2', name: 'weather', argumentsDelta: '{"city":' },
+					{ type: 'tool-call-delta', id: 'tc-1', argumentsDelta: '"cats"}' },
+					{ type: 'tool-call-delta', id: 'tc-2', argumentsDelta: '"Berlin"}' },
+				]);
+
+				expect(toolCalls).toEqual([
+					expect.objectContaining({ id: 'tc-1', name: 'search', args: { q: 'cats' } }),
+					expect.objectContaining({ id: 'tc-2', name: 'weather', args: { city: 'Berlin' } }),
+				]);
+			});
+		});
+
 		it('yields ChatGenerationChunk for finish chunks with usage_metadata', async () => {
 			async function* stream() {
 				yield {
@@ -296,7 +372,7 @@ describe('LangchainAdapter', () => {
 	});
 
 	describe('bindTools', () => {
-		it('converts tools via fromLcTool, calls chatModel.withTools, and returns new LangchainAdapter', () => {
+		it('converts tools via fromLcTool and calls chatModel.withTools', () => {
 			const chatModel = createMockChatModel();
 			const adapter = new LangchainChatModelAdapter(chatModel, undefined);
 			const lcTools = [{ name: 'my_tool', schema: {}, invoke: vi.fn() }];
@@ -307,8 +383,114 @@ describe('LangchainAdapter', () => {
 			expect(chatModel.withTools).toHaveBeenCalledWith([
 				{ type: 'function', name: 'my_tool', description: '', inputSchema: { type: 'object' } },
 			]);
-			expect(bound).toBeInstanceOf(LangchainChatModelAdapter);
 			expect(bound).not.toBe(adapter);
+		});
+
+		it('passes the bound call options to generate', async () => {
+			const chatModel = createMockChatModel();
+			chatModel.generate.mockResolvedValue(response);
+			const adapter = new LangchainChatModelAdapter<LangchainCallOptions>(chatModel);
+
+			const bound = adapter.bindTools([{ name: 'my_tool', schema: {}, invoke: vi.fn() }], {
+				tool_choice: 'any',
+				stop: ['END'],
+			});
+			await bound.invoke([new HumanMessage('hi')]);
+
+			expect(chatModel.generate).toHaveBeenCalledWith(
+				expect.any(Array),
+				expect.objectContaining({ tool_choice: 'any', stopSequences: ['END'] }),
+			);
+		});
+
+		it('passes the bound call options to stream', async () => {
+			async function* stream(): AsyncGenerator<StreamChunk> {
+				yield { type: 'text-delta', delta: 'ok' };
+			}
+			const chatModel = createMockChatModel({
+				stream: vi.fn().mockImplementation(() => stream()),
+			});
+			const adapter = new LangchainChatModelAdapter<LangchainCallOptions>(chatModel);
+
+			const bound = adapter.bindTools([{ name: 'my_tool', schema: {}, invoke: vi.fn() }], {
+				tool_choice: 'any',
+			});
+			for await (const _ of await bound.stream([new HumanMessage('hi')])) {
+				// drain
+			}
+
+			expect(chatModel.stream).toHaveBeenCalledWith(
+				expect.any(Array),
+				expect.objectContaining({ tool_choice: 'any' }),
+			);
+		});
+	});
+
+	describe('call options', () => {
+		it('passes the LangChain signal and stop sequences to generate under their documented names', async () => {
+			const chatModel = createMockChatModel();
+			chatModel.generate.mockResolvedValue(response);
+			const adapter = new LangchainChatModelAdapter<LangchainCallOptions>(chatModel);
+			const { signal } = new AbortController();
+
+			await adapter.invoke([new HumanMessage('hi')], { signal, stop: ['END'] });
+
+			expect(chatModel.generate).toHaveBeenCalledWith(
+				expect.any(Array),
+				expect.objectContaining({
+					abortSignal: signal,
+					stopSequences: ['END'],
+					signal,
+					stop: ['END'],
+				}),
+			);
+		});
+
+		it('passes the LangChain signal and stop sequences to stream under their documented names', async () => {
+			async function* stream(): AsyncGenerator<StreamChunk> {
+				yield { type: 'text-delta', delta: 'ok' };
+			}
+			const chatModel = createMockChatModel({
+				stream: vi.fn().mockImplementation(() => stream()),
+			});
+			const adapter = new LangchainChatModelAdapter<LangchainCallOptions>(chatModel);
+			const { signal } = new AbortController();
+
+			for await (const _ of await adapter.stream([new HumanMessage('hi')], {
+				signal,
+				stop: ['END'],
+			})) {
+				// drain
+			}
+
+			expect(chatModel.stream).toHaveBeenCalledWith(
+				expect.any(Array),
+				expect.objectContaining({
+					abortSignal: signal,
+					stopSequences: ['END'],
+					signal,
+					stop: ['END'],
+				}),
+			);
+		});
+
+		it('keeps abortSignal and stopSequences when the caller sets them', async () => {
+			const chatModel = createMockChatModel();
+			chatModel.generate.mockResolvedValue(response);
+			const adapter = new LangchainChatModelAdapter<LangchainCallOptions>(chatModel);
+			const abortSignal = new AbortController().signal;
+
+			await adapter._generate([new HumanMessage('hi')], {
+				abortSignal,
+				stopSequences: ['STOP'],
+				signal: new AbortController().signal,
+				stop: ['END'],
+			});
+
+			expect(chatModel.generate).toHaveBeenCalledWith(
+				expect.any(Array),
+				expect.objectContaining({ abortSignal, stopSequences: ['STOP'] }),
+			);
 		});
 	});
 });

@@ -1,12 +1,16 @@
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
-import type { BindToolsInput } from '@langchain/core/language_models/chat_models';
+import type {
+	BaseChatModelCallOptions,
+	BindToolsInput,
+} from '@langchain/core/language_models/chat_models';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, ContentBlock } from '@langchain/core/messages';
 import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
 import type { Runnable } from '@langchain/core/runnables';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { fromLcMessage, toLcMessage } from '../converters/message';
@@ -14,6 +18,50 @@ import { fromLcTool } from '../converters/tool';
 import type { ChatModel, ChatModelConfig } from '../types/chat-model';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
+
+/**
+ * LangChain merges streamed tool call chunks by index. A delta with a new id
+ * starts a new call; a delta without an id continues the most recent call.
+ */
+function createToolCallIndexer() {
+	const indexById = new Map<string, number>();
+	let currentIndex = 0;
+
+	return (id?: string): number => {
+		if (!id) return currentIndex;
+
+		let index = indexById.get(id);
+		if (index === undefined) {
+			index = indexById.size;
+			indexById.set(id, index);
+		}
+		currentIndex = index;
+		return index;
+	};
+}
+
+/**
+ * LangChain names the abort signal and stop sequences `signal` and `stop`.
+ * Community models can read either name, so keep both.
+ */
+function toChatModelConfig(
+	options: ChatModelConfig & Pick<BaseChatModelCallOptions, 'signal' | 'stop'>,
+): ChatModelConfig {
+	const config: ChatModelConfig = { ...options };
+	if (config.abortSignal === undefined && options.signal !== undefined) {
+		config.abortSignal = options.signal;
+	}
+	if (config.stopSequences === undefined && options.stop !== undefined) {
+		config.stopSequences = options.stop;
+	}
+	return config;
+}
+
+function readTokenCount(usage: unknown, key: 'input_tokens' | 'output_tokens'): number {
+	if (!isRecord(usage)) return 0;
+	const count = usage[key];
+	return typeof count === 'number' ? count : 0;
+}
 
 export class LangchainChatModelAdapter<
 	CallOptions extends ChatModelConfig = ChatModelConfig,
@@ -28,11 +76,9 @@ export class LangchainChatModelAdapter<
 						callbacks: [
 							new N8nLlmTracing(ctx, {
 								tokensUsageParser: (result: LLMResult) => {
-									const tokenUsage = result?.llmOutput?.tokenUsage as
-										| AIMessage['usage_metadata']
-										| undefined;
-									const completionTokens = (tokenUsage?.output_tokens as number) ?? 0;
-									const promptTokens = (tokenUsage?.input_tokens as number) ?? 0;
+									const tokenUsage: unknown = result?.llmOutput?.tokenUsage;
+									const completionTokens = readTokenCount(tokenUsage, 'output_tokens');
+									const promptTokens = readTokenCount(tokenUsage, 'input_tokens');
 
 									return {
 										completionTokens,
@@ -58,7 +104,7 @@ export class LangchainChatModelAdapter<
 		options: this['ParsedCallOptions'],
 	): Promise<ChatResult> {
 		const transformedMessages = messages.map(fromLcMessage);
-		const result = await this.chatModel.generate(transformedMessages, options);
+		const result = await this.chatModel.generate(transformedMessages, toChatModelConfig(options));
 		// Build content blocks for the message
 		const lcMessage = toLcMessage(result.message);
 
@@ -111,7 +157,8 @@ export class LangchainChatModelAdapter<
 		runManager?: CallbackManagerForLLMRun,
 	): AsyncGenerator<ChatGenerationChunk> {
 		const genericMessages = messages.map(fromLcMessage);
-		const stream = this.chatModel.stream(genericMessages, options);
+		const stream = this.chatModel.stream(genericMessages, toChatModelConfig(options));
+		const toolCallIndex = createToolCallIndexer();
 
 		for await (const chunk of stream) {
 			let lcChunk: ChatGenerationChunk | undefined = undefined;
@@ -136,7 +183,7 @@ export class LangchainChatModelAdapter<
 						id: chunk.id,
 						name: chunk.name,
 						args: chunk.argumentsDelta,
-						index: 0,
+						index: toolCallIndex(chunk.id),
 					},
 				];
 
@@ -220,11 +267,14 @@ export class LangchainChatModelAdapter<
 
 	bindTools(
 		tools: BindToolsInput[],
+		kwargs?: Partial<CallOptions>,
 	): Runnable<BaseLanguageModelInput, AIMessageChunk, CallOptions> {
 		const genericTools = tools.map(fromLcTool);
 		const newModel = this.chatModel.withTools(genericTools);
-		const newAdapter = new LangchainChatModelAdapter(newModel, this.ctx);
+		const newAdapter = new LangchainChatModelAdapter<CallOptions>(newModel, this.ctx);
 
-		return newAdapter as any;
+		// Same as LangChain's own models. LangChain agents use a bound runnable as is
+		// and do not bind the tools again without the kwargs.
+		return newAdapter.withConfig(kwargs ?? {});
 	}
 }
