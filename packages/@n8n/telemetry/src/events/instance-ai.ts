@@ -907,6 +907,44 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING: {
+		name: 'User left AI Assistant thread while it was running',
+		description:
+			'The user left an n8n Assistant thread, for another thread or another page in n8n, while the Assistant was still running in it.',
+		properties: z.object({ thread_id: z.string() }),
+	},
+	USER_RETURNED_TO_AI_ASSISTANT_THREAD: {
+		name: 'User returned to AI Assistant thread',
+		description:
+			'The user came back to an n8n Assistant thread that they left while the Assistant was still running in it.',
+		properties: z.object({
+			thread_id: z.string(),
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between leaving the thread and returning to it'),
+		}),
+	},
+	USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING: {
+		name: 'User left n8n while AI Assistant was running',
+		description:
+			'The browser tab with n8n became hidden while the Assistant was still running. This happens when the user switches to another browser tab or app, or closes the tab.',
+		properties: z.object({ thread_id: z.string() }),
+	},
+	USER_RETURNED_TO_N8N_WHILE_AI_ASSISTANT_RUNNING: {
+		name: 'User returned to n8n after leaving while AI Assistant was running',
+		description:
+			'The browser tab with n8n became visible again after a "User left n8n while AI Assistant was running" event.',
+		properties: z.object({
+			thread_id: z.string(),
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between the tab becoming hidden and visible'),
+		}),
+	},
 	INSTANCE_CONTEXT_TURN: {
 		name: 'Instance AI instance-context turn completed',
 		description:

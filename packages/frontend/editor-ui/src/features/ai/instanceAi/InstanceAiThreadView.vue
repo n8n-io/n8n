@@ -29,6 +29,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -77,6 +78,11 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	// Waiting on the user is not running.
+	isRunning: () => thread.isStreaming || thread.isSendingMessage,
+});
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();

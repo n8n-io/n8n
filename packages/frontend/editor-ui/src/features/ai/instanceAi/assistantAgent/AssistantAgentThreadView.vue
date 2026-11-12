@@ -8,6 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTelemetry';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -99,6 +100,10 @@ import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	isRunning: () => panel.value?.isStreaming ?? false,
+});
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
