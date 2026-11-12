@@ -156,10 +156,16 @@ async function persistDraftThread(threadId: string): Promise<void> {
 			: undefined;
 	const provisioning = (async () => {
 		await provisionSubjectThread(subjectAtStart, props.launch, extraMetadata, threadId);
-		if (!mounted || props.subject.id !== subjectAtStart.id || props.threadId !== threadId) {
+		if (
+			!mounted ||
+			props.subject.id !== subjectAtStart.id ||
+			props.subject.projectId !== subjectAtStart.projectId ||
+			props.subject.type !== subjectAtStart.type ||
+			props.threadId !== threadId
+		) {
 			clearPendingThreadHandoff(threadId);
 			void store.deleteThread(threadId, { silent: true });
-			return;
+			throw new DOMException('Chat selection changed', 'AbortError');
 		}
 		draftThreadIds.delete(threadId);
 	})();
@@ -172,11 +178,21 @@ async function persistDraftThread(threadId: string): Promise<void> {
 }
 
 async function beforeConversationSend(threadId: string): Promise<void> {
+	const subjectAtStart = props.subject;
 	await props.beforeSend?.();
-	if (!mounted || props.threadId !== threadId) return;
+	if (
+		!mounted ||
+		props.threadId !== threadId ||
+		props.subject.id !== subjectAtStart.id ||
+		props.subject.projectId !== subjectAtStart.projectId ||
+		props.subject.type !== subjectAtStart.type
+	) {
+		throw new DOMException('Chat selection changed', 'AbortError');
+	}
 	try {
 		await persistDraftThread(threadId);
 	} catch (error) {
+		if (error instanceof DOMException && error.name === 'AbortError') throw error;
 		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
 		throw error;
 	}
@@ -628,6 +644,7 @@ async function openFullAssistant() {
 	try {
 		await persistDraftThread(threadId);
 	} catch (error) {
+		if (error instanceof DOMException && error.name === 'AbortError') return;
 		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
 		return;
 	}

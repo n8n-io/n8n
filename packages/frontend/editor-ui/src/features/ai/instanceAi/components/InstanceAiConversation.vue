@@ -590,7 +590,11 @@ async function syncThread() {
 	// Apply editor hand-off attachments before any await so a first submit
 	// cannot race past them, including when SSE is already connected.
 	restorePendingHandoffAttachments();
-	if (props.newThread) return;
+	if (props.newThread) {
+		// A local draft has no server history to load.
+		thread.hydrationStatus = 'ready';
+		return;
+	}
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {

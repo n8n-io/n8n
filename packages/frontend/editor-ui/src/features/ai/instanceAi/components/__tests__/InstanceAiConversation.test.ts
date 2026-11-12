@@ -539,6 +539,7 @@ describe('InstanceAiConversation', () => {
 
 	it('does not fetch or connect a local draft, and waits for persistence before sending', async () => {
 		store.threads = [];
+		thread.hydrationStatus = 'idle';
 		stashPendingAgentAttachment(thread.id, {
 			type: 'agent',
 			id: 'agent-1',
@@ -561,12 +562,15 @@ describe('InstanceAiConversation', () => {
 		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
 		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
 		expect(thread.connectSSE).not.toHaveBeenCalled();
+		expect(thread.hydrationStatus).toBe('ready');
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
 
 		await fireEvent.click(getByTestId('instance-ai-input-submit'));
 		expect(beforeSend).toHaveBeenCalledOnce();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		gate.resolve();
 		await flushPromises();
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'Normal message',
 			expect.objectContaining({

@@ -294,12 +294,60 @@ describe('InstanceAiChatPanel', () => {
 		const beforeSend = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend');
 		const first = beforeSend();
 		const second = beforeSend();
+		const settled = Promise.allSettled([first, second]);
 		await flushPromises();
 		expect(store.syncThread).toHaveBeenCalledOnce();
 		wrapper.unmount();
 		gate.resolve();
-		await Promise.all([first, second]);
+		expect(await settled).toEqual([
+			{ status: 'rejected', reason: expect.objectContaining({ name: 'AbortError' }) },
+			{ status: 'rejected', reason: expect.objectContaining({ name: 'AbortError' }) },
+		]);
 		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ ...subject, id: 'agent-2' },
+		{ ...subject, projectId: 'p2' },
+	])(
+		'rejects a pending send if the subject changes without a new thread id: %j',
+		async (nextSubject) => {
+			const gate = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(gate.promise);
+			const wrapper = mountPanel({ subject, launch });
+			await flushPromises();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			const beforeSend = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend');
+			const send = beforeSend();
+			const rejected = expect(send).rejects.toMatchObject({ name: 'AbortError' });
+			await flushPromises();
+			await wrapper.setProps({ subject: nextSubject });
+			gate.resolve();
+			await rejected;
+			expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+			expect(getPendingAgentAttachment('thread-2')).toBeNull();
+			expect(showError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('rejects a send if the subject changes while the host prepares it', async () => {
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const wrapper = mountPanel({ subject, launch, beforeSend });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const send = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+		const rejected = expect(send).rejects.toMatchObject({ name: 'AbortError' });
+		await wrapper.setProps({ subject: { ...subject, id: 'agent-2' } });
+		gate.resolve();
+		await rejected;
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
 
 	it('discards an unused chat without saving it when the panel closes', async () => {
@@ -699,6 +747,45 @@ describe('InstanceAiChatPanel', () => {
 			}),
 		);
 	});
+
+	it('saves a local draft before opening the full Assistant', async () => {
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+		await flushPromises();
+		expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-2' },
+		});
+		wrapper.unmount();
+	});
+
+	it.each(['failure', 'subject-change'])(
+		'does not open the full Assistant if draft provisioning ends with %s',
+		async (outcome) => {
+			const gate = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(gate.promise);
+			const wrapper = mountPanel({ subject, launch });
+			await flushPromises();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await flushPromises();
+			if (outcome === 'failure') gate.reject(new Error('Save failed'));
+			else {
+				await wrapper.setProps({ subject: { ...subject, id: 'agent-2' } });
+				gate.resolve();
+			}
+			await flushPromises();
+			expect(routerPush).not.toHaveBeenCalled();
+			if (outcome === 'failure') expect(showError).toHaveBeenCalledOnce();
+			else expect(showError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
 
 	it('awaits beforeSend before opening the full assistant view', async () => {
 		const order: string[] = [];
