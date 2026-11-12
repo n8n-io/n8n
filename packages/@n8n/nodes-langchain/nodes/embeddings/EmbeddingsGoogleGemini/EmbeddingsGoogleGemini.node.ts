@@ -9,6 +9,8 @@ import {
 
 import { logWrapper, getConnectionHintNoticeField, proxyFetch } from '@n8n/ai-utilities';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 export class EmbeddingsGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Google Gemini',
@@ -124,7 +126,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 		const credentials = await this.getCredentials('googlePalmApi');
 		const egressFilter = this.helpers.getSecureEgressFilter();
 		const embeddings = new GoogleGenerativeAIEmbeddings({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			baseUrl: credentials.host as string,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
 				await proxyFetch({ input, init, egressFilter }),

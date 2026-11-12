@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
-import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { parseExtraBody } from '../shared/extra-body';
@@ -844,7 +844,7 @@ export class LmChatOpenAi implements INodeType {
 		]);
 
 		const fields: ChatOpenAIFields = {
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...includedOptions,
 			timeout,
