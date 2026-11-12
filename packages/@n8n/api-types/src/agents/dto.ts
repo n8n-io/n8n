@@ -1,6 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import '../openapi-extend';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
@@ -212,16 +213,17 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
  */
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
+const createAgentToolEntrySchema = z.object({
+	code: z.string(),
+	descriptor: z.object({ name: z.string() }).passthrough(),
+});
+
 const createAgentShape = {
 	name: z.string().min(1),
 	id: clientMintedAgentIdSchema.optional(),
-	config: z.record(z.unknown()).optional(),
+	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
-	tools: z
-		.record(
-			z.object({ code: z.string(), descriptor: z.object({ name: z.string() }).passthrough() }),
-		)
-		.optional(),
+	tools: z.record(createAgentToolEntrySchema).optional(),
 	skills: z.record(agentSkillSchema).optional(),
 	/** Tag ids assigned to the new agent, as the workflow create endpoint takes them. */
 	tags: z.array(z.string().min(1)).max(50).optional(),
@@ -265,6 +267,33 @@ export class CreateAgentDto implements CreateAgent {
 	}
 }
 
+/**
+ * Body of the Public API `POST /agents`. Internal-only fields (client-minted
+ * `id`, duplication `schema`/`skills`, builder `tags`) stay off this contract.
+ */
+export class CreateAgentPublicDto extends Z.class(
+	{
+		name: z.string().min(1),
+		/** Target project; the caller's personal project when omitted. */
+		projectId: z.string().min(1).optional(),
+		// An opaque object in the spec: the recursive config schema holds a
+		// `z.lazy` JSON value the OpenAPI generator cannot inspect.
+		config: AgentJsonConfigSchema.openapi({
+			type: 'object',
+			description:
+				'Agent configuration. Set name, model, and instructions. An empty model creates an unconfigured draft.',
+			example: {
+				name: 'Support',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help customers.',
+			},
+		}).optional(),
+		tools: z.record(createAgentToolEntrySchema).optional(),
+		availableInMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 	/** Hash of the config the edit was made against (`null` when the agent had none). */
@@ -284,7 +313,9 @@ function isPlainObject(value: unknown): boolean {
  * Stored configs predate the current write schema. A response check that
  * reused that schema would reject a saved row and turn GET into a 500.
  */
-const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>();
+const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>().openapi({
+	type: 'object',
+});
 
 const agentProjectResponseSchema = z
 	.object({
@@ -297,13 +328,15 @@ const agentProjectResponseSchema = z
 const agentActiveVersionResponseSchema = z
 	.object({
 		versionId: z.string(),
-		integrations: z.array(z.custom<AgentIntegrationConfig>(isPlainObject)),
+		integrations: z.array(
+			z.custom<AgentIntegrationConfig>(isPlainObject).openapi({ type: 'object' }),
+		),
 	})
 	.nullable();
 
-const agentToolEntrySchema = z.custom<{ code: string; descriptor: { name: string } }>(
-	isPlainObject,
-);
+const agentToolEntrySchema = z
+	.custom<{ code: string; descriptor: { name: string } }>(isPlainObject)
+	.openapi({ type: 'object' });
 
 const agentPublicShape = {
 	id: z.string(),
@@ -357,6 +390,9 @@ export const deletedAgentPublicSchema = z.object(agentPublicShape).pick({
 });
 
 export class DeletedAgentPublicDto extends Z.class(deletedAgentPublicSchema.shape) {}
+
+/** Response of the Public API `POST /agents`. Builder-only state stays off this shape. */
+export class CreatedAgentPublicDto extends AgentPublicDto {}
 
 const agentListItemShape = {
 	id: z.string(),
