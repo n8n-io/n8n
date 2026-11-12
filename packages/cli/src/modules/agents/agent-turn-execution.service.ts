@@ -1,4 +1,6 @@
 import type {
+	AgentDbMessage,
+	AgentInputBoundary,
 	Agent as RuntimeAgent,
 	ExecutionOptions,
 	ResumeOptions,
@@ -10,6 +12,7 @@ import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
@@ -20,6 +23,11 @@ import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import {
+	toHostInstructionMessage,
+	type AgentCompletingBoundaryHook,
+	type AgentHostInstruction,
+} from './types/agent-host-instruction';
 import type { AgentTurnFinalizeOutcome, FormattedTurnError } from './types/agent-turn-outcome';
 import { AgentSandboxFilesService, usedWorkspace } from './agent-sandbox-files.service';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
@@ -66,6 +74,8 @@ interface ExecuteTurnConfig {
 	chatSurface?: AgentChatSurface;
 	/** Set false to keep additional input queued without cancelling the turn. */
 	acceptsSteering?: boolean;
+	/** Adds one host instruction when the agent tries to stop. See `AgentCompletingBoundaryHook`. */
+	onCompletingBoundary?: AgentCompletingBoundaryHook;
 	/**
 	 * The controller of the chat turn. Defaults to a new controller. A cancel
 	 * aborts it, and the caller can abort it to stop the turn at any time. The
@@ -663,6 +673,44 @@ export class AgentTurnExecutionService {
 		return admission;
 	}
 
+	/**
+	 * Lets the host add one instruction when the agent tries to stop. Input that
+	 * the user steered into the turn goes first: the hook runs again at the next
+	 * stop. Steering stays open while the instruction continues the turn, so a
+	 * message that the user types during that step still joins this turn.
+	 */
+	private withHostInstruction(
+		onCompletingBoundary: AgentCompletingBoundaryHook,
+		steer: ((boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>) | undefined,
+		abortSignal: AbortSignal | undefined,
+		executionId: string,
+	): (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]> {
+		let instructionAdded = false;
+		return async (boundary) => {
+			if (instructionAdded || !boundary.completing || !boundary.canContinue) {
+				return steer ? await steer(boundary) : [];
+			}
+			if (steer) {
+				const steered = await steer({ ...boundary, completing: false });
+				if (steered.length > 0 || abortSignal?.aborted) return steered;
+			}
+			let instruction: AgentHostInstruction | undefined;
+			try {
+				instruction = await onCompletingBoundary();
+			} catch (error) {
+				this.logger.warn('The completing boundary hook failed; the turn ends without it', {
+					executionId,
+					error: getErrorMessage(error),
+				});
+			}
+			if (instruction) {
+				instructionAdded = true;
+				return [toHostInstructionMessage(instruction, boundary.lastCreatedAt)];
+			}
+			return steer ? await steer(boundary) : [];
+		};
+	}
+
 	private async startAcceptedTurn(
 		admission: AgentExecutionAdmission,
 		turn: AgentTurnRequest,
@@ -690,18 +738,29 @@ export class AgentTurnExecutionService {
 			};
 		}
 
-		if (chatControl && config.acceptsSteering !== false) {
-			turn.options.onInputBoundary = async (boundary) => {
-				const result = await this.steering.consume(
-					{ ...config.context, executionId, resourceId: turn.recording.resourceId },
-					boundary,
-					recorder,
-					turn.options.abortSignal!,
-				);
-				if (result.stopped) chatControl.controller.abort();
-				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
-				return result.messages;
-			};
+		const steer =
+			chatControl && config.acceptsSteering !== false
+				? async (boundary: AgentInputBoundary) => {
+						const result = await this.steering.consume(
+							{ ...config.context, executionId, resourceId: turn.recording.resourceId },
+							boundary,
+							recorder,
+							turn.options.abortSignal!,
+						);
+						if (result.stopped) chatControl.controller.abort();
+						for (const event of result.events) state.steeredMessages.set(event.message.id, event);
+						return result.messages;
+					}
+				: undefined;
+		if (config.onCompletingBoundary) {
+			turn.options.onInputBoundary = this.withHostInstruction(
+				config.onCompletingBoundary,
+				steer,
+				turn.options.abortSignal,
+				executionId,
+			);
+		} else if (steer) {
+			turn.options.onInputBoundary = steer;
 		}
 
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);

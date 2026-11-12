@@ -1,5 +1,7 @@
 import type {
+	AgentDbMessage,
 	Agent as RuntimeAgent,
+	ExecutionOptions,
 	SideCallUsageReport,
 	StreamChunk,
 	Workspace,
@@ -582,6 +584,162 @@ describe('admitted start turns', () => {
 					hostMetadata: expect.objectContaining({ [EXECUTION_METADATA_KEY]: 'exec-1' }),
 				}),
 			}),
+		);
+	});
+});
+
+describe('host instructions at the completing boundary', () => {
+	type Boundary = Parameters<NonNullable<ExecutionOptions['onInputBoundary']>>[0];
+
+	const instruction = { reason: 'workflow_setup', content: 'Open the setup card.' };
+
+	async function captureBoundaryHandler(options: {
+		onCompletingBoundary?: () => Promise<typeof instruction | undefined>;
+		steered?: (boundary: Boundary) => AgentDbMessage[];
+	}) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const chatExecutions = mock<AgentChatExecutionService>();
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(new AbortController().signal),
+		);
+		const steering = mock<AgentMessageSteeringService>();
+		steering.consume.mockImplementation(async (_context, boundary) => ({
+			messages: options.steered?.(boundary) ?? [],
+			events: [],
+			stopped: false,
+		}));
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			chatExecutions,
+			mock<AgentMessageQueueService>(),
+			steering,
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		let handler: ExecutionOptions['onInputBoundary'];
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockImplementation(async (_input, runOptions) => {
+			handler = runOptions?.onInputBoundary;
+			return {
+				stream: new ReadableStream<StreamChunk>({
+					start(controller) {
+						controller.enqueue({ type: 'finish', finishReason: 'stop' });
+						controller.close();
+					},
+				}),
+			} as never;
+		});
+		const recording = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			userMessage: 'hello',
+			source: 'chat',
+			access: { accessScope: 'user' as const, ownerId: 'user-1' },
+		};
+		const turn: AgentTurnRequest = {
+			type: 'start',
+			input: 'hello',
+			options: { abortSignal: new AbortController().signal },
+			recording,
+		};
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			chatSurface: 'system',
+			...(options.onCompletingBoundary
+				? { onCompletingBoundary: options.onCompletingBoundary }
+				: {}),
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		if (!handler) throw new Error('The turn has no input boundary handler');
+		return { handler, steering };
+	}
+
+	const boundary = (overrides: Partial<Boundary> = {}): Boundary => ({
+		messages: [],
+		lastCreatedAt: 1_000,
+		completing: true,
+		canContinue: true,
+		...overrides,
+	});
+
+	it('adds the instruction once per turn and closes steering at the next stop', async () => {
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler, steering } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		const first = await handler(boundary());
+		const second = await handler(boundary({ lastCreatedAt: 2_000 }));
+
+		expect(first).toEqual([
+			expect.objectContaining({
+				type: 'custom',
+				data: { type: 'n8n:host-instruction', ...instruction },
+			}),
+		]);
+		expect(first[0].createdAt.getTime()).toBeGreaterThan(1_000);
+		expect(second).toEqual([]);
+		expect(hook).toHaveBeenCalledTimes(1);
+		// The first stop keeps steering open; only the real end of the turn closes it.
+		expect(steering.consume.mock.calls.map(([, b]) => b.completing)).toEqual([false, true]);
+	});
+
+	it('lets steered input go first and asks the hook again at the next stop', async () => {
+		const steeredMessage: AgentDbMessage = {
+			id: 'steered-1',
+			createdAt: new Date(),
+			role: 'user',
+			content: [{ type: 'text', text: 'Also add Slack' }],
+		};
+		let steeredOnce = false;
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler } = await captureBoundaryHandler({
+			onCompletingBoundary: hook,
+			steered: () => {
+				if (steeredOnce) return [];
+				steeredOnce = true;
+				return [steeredMessage];
+			},
+		});
+
+		expect(await handler(boundary())).toEqual([steeredMessage]);
+		expect(hook).not.toHaveBeenCalled();
+		expect(await handler(boundary())).toHaveLength(1);
+		expect(hook).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['the stop is not a completing one', { completing: false }],
+		['the turn cannot continue', { canContinue: false }],
+	])('does not ask the hook when %s', async (_name, overrides) => {
+		const hook = vi.fn().mockResolvedValue(instruction);
+		const { handler } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		expect(await handler(boundary(overrides))).toEqual([]);
+		expect(hook).not.toHaveBeenCalled();
+	});
+
+	it('ends the turn when the hook fails', async () => {
+		const hook = vi.fn().mockRejectedValue(new Error('storage down'));
+		const { handler, steering } = await captureBoundaryHandler({ onCompletingBoundary: hook });
+
+		expect(await handler(boundary())).toEqual([]);
+		expect(steering.consume).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.objectContaining({ completing: true }),
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 });

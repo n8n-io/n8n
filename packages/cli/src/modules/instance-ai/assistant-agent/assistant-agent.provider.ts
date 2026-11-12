@@ -72,6 +72,7 @@ import {
 	serializeAssistantTurnOptions,
 	type AssistantTurnOptions,
 } from './assistant-turn-options';
+import { AssistantWorkflowSetupRoute } from './assistant-workflow-setup-route';
 import {
 	AssistantSandboxWorkspaceSource,
 	type AssistantSandboxLease,
@@ -293,6 +294,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		});
 		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
+		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger);
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
 		// The model stream reports these errors. Other errors of the turn were thrown.
@@ -325,9 +327,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(trace
 				? { withTurnContext: async <T>(run: () => Promise<T>) => await trace.withContext(run) }
 				: {}),
+			// Routes a build to setup when the agent ends the turn without it.
+			onCompletingBoundary: async () => {
+				const instruction = await setupRoute.nextInstruction();
+				if (instruction) trace?.recordHostInstruction(instruction);
+				return instruction;
+			},
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
+				if (chunk.type === 'tool-call-suspended') {
+					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
+				}
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
 					inputAccepted = this.turnInput
@@ -351,6 +362,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					// Before the card resumes, so that the resumed turn does not route setup again.
+					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
 					if (outcome.status !== 'suspended') {
 						const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);

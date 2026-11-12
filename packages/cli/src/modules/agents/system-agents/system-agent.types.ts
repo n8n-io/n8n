@@ -15,6 +15,7 @@ import type { AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentCompletingBoundaryHook } from '../types/agent-host-instruction';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type {
 	AgentTurnFinalizeOutcome,
@@ -22,6 +23,8 @@ import type {
 	FormattedTurnError,
 } from '../types/agent-turn-outcome';
 import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
+
+export type { AgentHostInstruction as SystemAgentHostInstruction } from '../types/agent-host-instruction';
 
 /** The stream chunks that a system-agent provider sees through `onChunk`. */
 export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
@@ -145,6 +148,18 @@ export interface SystemAgentTurnHandle {
 	 * call `run` exactly once and return or throw its result.
 	 */
 	withTurnContext?: <T>(run: () => Promise<T>) => Promise<T>;
+	/**
+	 * Called when the agent tries to end the turn and the turn can continue.
+	 * Return an instruction to give the model one more step in the same turn,
+	 * for example to finish a step that the agent skipped. Input that the user
+	 * steered into the turn goes first; the hook runs again at the next stop.
+	 *
+	 * The runtime adds at most one instruction for each turn. The provider
+	 * must still make sure that a later turn does not add the same instruction
+	 * again, for example with a stored marker. A failing hook only logs a
+	 * warning, and the turn ends.
+	 */
+	onCompletingBoundary?: AgentCompletingBoundaryHook;
 	/**
 	 * Called once for each model call that runs beside the turn: title
 	 * generation, the observation-log observer and reflector, and episodic

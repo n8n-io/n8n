@@ -1014,6 +1014,39 @@ describe('AgentRuntime — additional input', () => {
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
 	});
 
+	it('makes one more model call for a host instruction at the completing boundary', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+		const instruction: AgentDbMessage = {
+			id: crypto.randomUUID(),
+			createdAt: new Date(Date.now() + 100),
+			type: 'custom',
+			data: { type: 'n8n:host-instruction', reason: 'test', content: 'Open the setup card.' },
+		};
+		let sent = false;
+		const onInputBoundary = vi.fn(async ({ completing }: { completing: boolean }) => {
+			if (!completing || sent) return [];
+			sent = true;
+			return [instruction];
+		});
+		const { runtime } = createRuntime();
+
+		const chunks = await collectChunks((await runtime.stream('A', { onInputBoundary })).stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const messages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; text?: string }>;
+		}>;
+		expect(messages.at(-1)).toMatchObject({
+			role: 'user',
+			content: [
+				{ type: 'text', text: expect.stringContaining('It is not a message from the user.') },
+			],
+		});
+		expect(messages.at(-1)?.content[0].text).toContain('Open the setup card.');
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
 	it.each([
 		{ maxIterations: 1, finishReason: 'stop' },
 		{ maxIterations: 2, finishReason: 'stop' },

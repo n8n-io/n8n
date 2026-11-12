@@ -84,11 +84,6 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 			appliesWhen:
 				'About to test a workflow with a form, webhook, chat or other event trigger that is not published.',
 		},
-		{
-			id: 'verification-follow-up-no-ack',
-			text: 'On `<workflow-verification-follow-up>`, verify at once from the `obligation`, with no acknowledgement first and no `setup_workflow` call in this turn. Setup comes as a separate `<workflow-setup-required>` step.',
-			appliesWhen: 'The current message contains a workflow-verification-follow-up block.',
-		},
 		// Setup
 		{
 			id: 'setup-required-first-action',

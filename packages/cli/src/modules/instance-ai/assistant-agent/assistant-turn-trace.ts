@@ -29,6 +29,7 @@ import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
 	SteeredMessageEvent,
+	SystemAgentHostInstruction,
 	SystemAgentResumeTurn,
 	SystemAgentTurn,
 	SystemAgentTurnOutcome,
@@ -187,6 +188,8 @@ export class AssistantTurnTrace {
 	private firstResponseRecorded = false;
 
 	private steeredMessageCount = 0;
+
+	private readonly hostInstructionReasons: string[] = [];
 
 	constructor(
 		readonly context: InstanceAiTraceContext,
@@ -353,6 +356,35 @@ export class AssistantTurnTrace {
 	}
 
 	/**
+	 * Records an instruction that the host added when the agent tried to stop.
+	 * The model gets one more step in this turn, so it is not a new turn.
+	 */
+	recordHostInstruction(instruction: SystemAgentHostInstruction): void {
+		this.hostInstructionReasons.push(instruction.reason);
+		const { context } = this;
+		const recorded = { reason: instruction.reason, content: instruction.content };
+		const record = async () => {
+			const run = await context.startChildRun(context.actorRun, {
+				name: `host: ${instruction.reason.replace(/_/g, ' ')}`,
+				canonicalName: 'instance-ai.host_instruction',
+				runType: 'chain',
+				tags: ['host-instruction'],
+				metadata: { reason: instruction.reason },
+				inputs: recorded,
+			});
+			await context.finishRun(run, { outputs: recorded });
+		};
+		const recording = record().catch((error: unknown) => {
+			this.logger.warn('Failed to trace an Assistant host instruction', {
+				runId: this.runId,
+				error: getErrorMessage(error),
+			});
+		});
+		// The turn can finish before the span exports, so keep the trace open for it.
+		context.keepOpenUntilSettled?.(recording);
+	}
+
+	/**
 	 * Records the `first_response` builder metric on the first chunk that the
 	 * user sees, like the stream runner of the current Assistant runtime.
 	 */
@@ -417,6 +449,9 @@ export class AssistantTurnTrace {
 		}
 		if (this.steeredMessageCount > 0) {
 			rootMetadata = { ...rootMetadata, steered_message_count: this.steeredMessageCount };
+		}
+		if (this.hostInstructionReasons.length > 0) {
+			rootMetadata = { ...rootMetadata, host_instructions: this.hostInstructionReasons };
 		}
 
 		try {
