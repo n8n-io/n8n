@@ -1,8 +1,6 @@
-import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility } from '../index';
-
-const nodeTypes: INodeTypeDescription[] = [];
 
 function trigger(type: string, typeVersion: number, parameters: INodeParameters = {}): INode {
 	return {
@@ -16,7 +14,7 @@ function trigger(type: string, typeVersion: number, parameters: INodeParameters 
 }
 
 function check(node: INode) {
-	return checkEngineV2Eligibility({ nodes: [node], connections: {}, settings: {} }, nodeTypes);
+	return checkEngineV2Eligibility({ nodes: [node], connections: {}, settings: {} });
 }
 
 describe('trigger wait rule', () => {

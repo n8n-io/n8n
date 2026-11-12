@@ -1,4 +1,4 @@
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility, type EngineV2Reason } from '../index';
 import { NODE_TYPE_DENYLIST } from '../node-type-denylist';
@@ -24,13 +24,12 @@ function node(type: string, typeVersion = 1, extra: Partial<INode> = {}): INode 
 	};
 }
 
-const nodeTypes: INodeTypeDescription[] = [];
-
 function check(nodes: INode[]) {
-	return checkEngineV2Eligibility(
-		{ nodes: [manualTrigger, ...nodes], connections: {}, settings: {} },
-		nodeTypes,
-	);
+	return checkEngineV2Eligibility({
+		nodes: [manualTrigger, ...nodes],
+		connections: {},
+		settings: {},
+	});
 }
 
 describe('node type rule', () => {
