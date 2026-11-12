@@ -136,8 +136,10 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	};
 
 	const loadDynamicBanners = async () => {
+		const userId = usersStore.currentUserId;
 		const banners = await fetchDynamicBanners();
-		if (!banners) return;
+		// Ignore a response that arrives after another user signed in.
+		if (!banners || usersStore.currentUserId !== userId) return;
 
 		// Drop stored dismissals of banners that Strapi no longer returns.
 		const dismissed = getDismissedDynamicBanners();
@@ -145,7 +147,12 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 		if (stillActive.length !== dismissed.length) setDismissedDynamicBanners(stillActive);
 
 		banners
-			.filter((banner) => !stillActive.includes(banner.id))
+			// The instance-wide list still hides banners that an owner closed before this change.
+			.filter(
+				(banner) =>
+					!stillActive.includes(banner.id) &&
+					!settingsStore.permanentlyDismissedBanners.includes(banner.id),
+			)
 			.forEach((banner) => pushBannerToStack(banner.id));
 	};
 

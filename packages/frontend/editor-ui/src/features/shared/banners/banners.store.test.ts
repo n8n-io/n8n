@@ -255,4 +255,51 @@ describe('Banners store', () => {
 
 		expect(bannersStore.bannerStack).toContain('dynamic-banner-1');
 	});
+
+	it('should keep hiding dynamic banners that were dismissed instance-wide before', async () => {
+		vi.spyOn(dynamicBannersApi, 'getDynamicBanners').mockResolvedValue([
+			{
+				id: '1',
+				content: 'Test',
+				isDismissible: true,
+				dismissPermanently: true,
+				theme: 'info' as const,
+				priority: 1,
+			},
+		]);
+		settingsStore.settings.dynamicBanners.enabled = true;
+		settingsStore.settings.banners.dismissed = ['dynamic-banner-1'];
+		usersStore.addUsers([{ id: 'user-5' } as never]);
+		usersStore.currentUserId = 'user-5';
+
+		await bannersStore.loadDynamicBanners();
+
+		expect(bannersStore.bannerStack).not.toContain('dynamic-banner-1');
+	});
+
+	it('should ignore a banner response that arrives after another user signed in', async () => {
+		let resolveFetch: (banners: dynamicBannersApi.DynamicBanner[]) => void = () => {};
+		vi.spyOn(dynamicBannersApi, 'getDynamicBanners').mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		settingsStore.settings.dynamicBanners.enabled = true;
+		usersStore.addUsers([{ id: 'user-c' } as never, { id: 'user-d' } as never]);
+		usersStore.currentUserId = 'user-c';
+		localStorage.setItem(
+			'N8N_DISMISSED_DYNAMIC_BANNERS_user-d',
+			JSON.stringify(['dynamic-banner-1']),
+		);
+
+		const pending = bannersStore.loadDynamicBanners();
+		usersStore.currentUserId = 'user-d';
+		resolveFetch([]);
+		await pending;
+
+		expect(bannersStore.bannerStack).toEqual([]);
+		expect(localStorage.getItem('N8N_DISMISSED_DYNAMIC_BANNERS_user-d')).toBe(
+			JSON.stringify(['dynamic-banner-1']),
+		);
+	});
 });
