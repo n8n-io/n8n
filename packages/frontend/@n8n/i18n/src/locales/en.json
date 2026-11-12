@@ -9742,6 +9742,7 @@
 	"agents.builder.advanced.reasoning.unsupportedHint": "This model does not support reasoning",
 	"agents.builder.advanced.reasoning.noModelHint": "No model selected",
 	"agents.builder.advanced.reasoningEffort.label": "Reasoning effort",
+	"agents.builder.advanced.promptCaching.label": "Prompt caching",
 	"agents.builder.advanced.promptCaching.hint": "Cache repeated parts of the prompt to reduce latency and cost",
 	"agents.builder.advanced.promptCachingTtl.label": "Cache duration",
 	"agents.builder.advanced.concurrency.label": "Tool call concurrency",
