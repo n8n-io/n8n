@@ -73,7 +73,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'create_agent',
 		'mutate_agent',
 		'revert_agent',
-		'delete_agent',
+		'archive_agent',
 		'verify_agent_mcp_server',
 		'search_agents',
 		'get_agent',

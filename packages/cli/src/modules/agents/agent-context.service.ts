@@ -209,12 +209,14 @@ export class AgentContextService {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
-				agents: agents.map((agent) => ({
-					agentId: agent.id,
-					name: agent.name,
-					published: agent.activeVersionId !== null,
-					updatedAt: agent.updatedAt.toISOString(),
-				})),
+				agents: agents
+					.filter((agent) => !agent.isArchived)
+					.map((agent) => ({
+						agentId: agent.id,
+						name: agent.name,
+						published: agent.activeVersionId !== null,
+						updatedAt: agent.updatedAt.toISOString(),
+					})),
 			};
 		}
 

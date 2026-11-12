@@ -7,6 +7,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
+import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 
 const user = { id: 'user-1' } as never;
 
@@ -53,12 +54,21 @@ describe('AgentDefaultModelResolverService', () => {
 		const own = { id: 'own', name: 'My OpenAI', type: 'openAiApi' };
 		const colleague = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
 		const { service, modelLookupService } = makeService([own, colleague], [colleague.id]);
-		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+		// Keep this access check independent of model updates.
+		const defaultModel = LLM_PROVIDER_DEFAULTS.openAiApi.defaultModel as string;
+		modelLookupService.list.mockResolvedValue([{ name: defaultModel, value: defaultModel }]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'openai/gpt-5.6-terra',
+			model: `openai/${defaultModel}`,
 			credential: 'own',
 		});
+		expect(modelLookupService.list).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'project-1',
+			own.id,
+			own.type,
+			'openai',
+		);
 	});
 
 	it('resolves creation to the dated snapshot when the live list has only that form', async () => {
