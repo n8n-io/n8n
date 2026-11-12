@@ -5,7 +5,9 @@ maintainer backports them, and this one has no backport yet.
 Dropped from the upstream change: the hunks of src/objects/string-table.cc and
 src/strings/string-hasher-inl.h. They set a one_byte_content flag during
 string internalization. V8 14.6 has no such flag, so the hunks do not apply,
-and the parser-side normalization below covers the case on its own.
+and the parser-side normalization below covers the case on its own. Also
+dropped: test/unittests/parser/ast-value-unittest.cc, because the Node
+release tarball does not ship deps/v8/test/unittests.
 
 Apply from deps/v8 with patch -p1. Remove this file when NODE_VERSION moves
 to a Node release whose V8 contains the upstream commit.
@@ -55,8 +57,7 @@ Cr-Commit-Position: refs/heads/main@{#109931}
  src/ast/ast-value-factory.cc                | 19 +++--
  src/ast/ast-value-factory.h                 |  6 +-
  test/mjsunit/regress/regress-559266116.js   | 20 +++++
- test/unittests/parser/ast-value-unittest.cc | 88 +++++++++++++++++++++
- 4 files changed, 124 insertions(+), 9 deletions(-)
+ 3 files changed, 36 insertions(+), 9 deletions(-)
  create mode 100644 test/mjsunit/regress/regress-559266116.js
 
 diff --git a/src/ast/ast-value-factory.cc b/src/ast/ast-value-factory.cc
@@ -164,106 +165,3 @@ index 000000000000..14bc7bcc5b6a
 +const object2 =
 +    (0, eval)(`({${key2}(v){return Object.values({"${key2}":v})[1]}})`);
 +assertEquals(undefined, object2[key2](1));
-diff --git a/test/unittests/parser/ast-value-unittest.cc b/test/unittests/parser/ast-value-unittest.cc
-index 91efc9e42a99..57441b4179dc 100644
---- a/test/unittests/parser/ast-value-unittest.cc
-+++ b/test/unittests/parser/ast-value-unittest.cc
-@@ -26,10 +26,98 @@ class AstValueTest : public TestWithIsolateAndZone {
-                                               kNoSourcePosition);
-   }
- 
-+  const AstRawString* GetOneByteString(const char* str) {
-+    return ast_value_factory_.GetOneByteString(str);
-+  }
-+
-+  DirectHandle<String> CreateTwoByteString(const char* str) {
-+    int length = static_cast<int>(strlen(str));
-+    DirectHandle<SeqTwoByteString> result =
-+        i_isolate()->factory()->NewRawTwoByteString(length).ToHandleChecked();
-+    DisallowGarbageCollection no_gc;
-+    CopyChars(result->GetChars(no_gc), str, length);
-+    return result;
-+  }
-+
-+  DirectHandle<String> CreateTwoByteStringWithNonOneByte() {
-+    DirectHandle<SeqTwoByteString> result =
-+        i_isolate()->factory()->NewRawTwoByteString(1).ToHandleChecked();
-+    DisallowGarbageCollection no_gc;
-+    result->GetChars(no_gc)[0] = 0x1234;
-+    return result;
-+  }
-+
-   AstValueFactory ast_value_factory_;
-   AstNodeFactory ast_node_factory_;
- };
- 
-+TEST_F(AstValueTest, AstRawStringAsArrayIndex) {
-+  auto test_as_array_index = [&](const char* str, bool expected_success,
-+                                 uint32_t expected_index) {
-+    const AstRawString* one_byte = GetOneByteString(str);
-+    EXPECT_TRUE(one_byte->is_one_byte());
-+    uint32_t index = 0;
-+    EXPECT_EQ(one_byte->AsArrayIndex(&index), expected_success);
-+    if (expected_success) {
-+      EXPECT_EQ(index, expected_index);
-+    }
-+  };
-+
-+  // Cached array index (length <= Name::kMaxCachedArrayIndexLength).
-+  test_as_array_index("0", true, 0);
-+  test_as_array_index("1", true, 1);
-+  test_as_array_index("1234567", true, 1234567);
-+
-+  // Uncached array index (length > 7 and <= Name::kMaxArrayIndexSize).
-+  test_as_array_index("12345678", true, 12345678);
-+  test_as_array_index("1000000000", true, 1000000000);
-+
-+  // Max valid array index (4294967294).
-+  test_as_array_index("4294967294", true, 4294967294u);
-+
-+  // Overflow (length 10, > 4294967294).
-+  test_as_array_index("4294967295", false, 0);
-+  test_as_array_index("5000000000", false, 0);
-+
-+  // Overflow (length > 10, > Name::kMaxArrayIndexSize).
-+  test_as_array_index("10000000000", false, 0);
-+
-+  // Non-index strings.
-+  test_as_array_index("01", false, 0);
-+  test_as_array_index("foo", false, 0);
-+}
-+
-+TEST_F(AstValueTest, GetStringNormalizesOneByteContent) {
-+  DirectHandle<String> two_byte_str = CreateTwoByteString("1000000000");
-+  EXPECT_TRUE(two_byte_str->IsTwoByteRepresentation());
-+  const AstRawString* raw = ast_value_factory_.GetString(
-+      *two_byte_str, SharedStringAccessGuardIfNeeded::NotNeeded());
-+  EXPECT_TRUE(raw->is_one_byte());
-+  uint32_t index = 0;
-+  EXPECT_TRUE(raw->AsArrayIndex(&index));
-+  EXPECT_EQ(index, 1000000000u);
-+
-+  // Also check that internalizing a two-byte integer-index string (unhashed or
-+  // pre-hashed) canonicalizes it to one-byte in the StringTable.
-+  DirectHandle<String> internalized_unhashed =
-+      i_isolate()->factory()->InternalizeString(two_byte_str);
-+  EXPECT_TRUE(internalized_unhashed->IsOneByteRepresentation());
-+
-+  DirectHandle<String> prehashed_two_byte_str =
-+      CreateTwoByteString("1000000001");
-+  prehashed_two_byte_str->EnsureRawHash();
-+  DirectHandle<String> internalized_prehashed =
-+      i_isolate()->factory()->InternalizeString(prehashed_two_byte_str);
-+  EXPECT_TRUE(internalized_prehashed->IsOneByteRepresentation());
-+
-+  DirectHandle<String> non_one_byte_str = CreateTwoByteStringWithNonOneByte();
-+  EXPECT_TRUE(non_one_byte_str->IsTwoByteRepresentation());
-+  const AstRawString* raw_non_one_byte = ast_value_factory_.GetString(
-+      *non_one_byte_str, SharedStringAccessGuardIfNeeded::NotNeeded());
-+  EXPECT_FALSE(raw_non_one_byte->is_one_byte());
-+  EXPECT_FALSE(raw_non_one_byte->AsArrayIndex(&index));
-+}
-+
- TEST_F(AstValueTest, BigIntToBooleanIsTrue) {
-   EXPECT_FALSE(NewBigInt("0")->ToBooleanIsTrue());
-   EXPECT_FALSE(NewBigInt("0b0")->ToBooleanIsTrue());
