@@ -5,6 +5,7 @@ import { agentBuilderTargetMetadata, readAgentTargetsMetadata } from '@n8n/insta
 import { randomUUID } from 'node:crypto';
 
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
@@ -168,6 +169,54 @@ describe('Assistant agent eval routes', () => {
 		});
 
 		await ownerAgent.delete(`/assistant/eval/threads/${threadId}`).expect(200);
+		await expect(memory.getMessages(threadId, { resourceId })).resolves.toEqual([]);
+	});
+
+	it('undoes the binding and rolls back the artifacts when the message write fails', async () => {
+		const threadId = randomUUID();
+		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
+		const memory = Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
+		const resourceId = Container.get(SystemAgentExecutionService).resourceIdFor(owner);
+		// Metadata that the thread already has. The undo must keep it.
+		await memory.saveThread({ id: threadId, resourceId, metadata: { openTabs: ['wf-1'] } });
+		const rollback = vi.fn(async () => {});
+		evalThreadRestore.restoreSeedArtifacts.mockResolvedValueOnce({
+			folderIds: [],
+			dataTableIds: [],
+			workflowIds: [],
+			createdWorkflowIds: [],
+			publishedWorkflowIds: [],
+			agentIds: ['agent-seed-1'],
+			agentBuilderBinding: agentBuilderTargetMetadata([
+				{ agentId: 'agent-seed-1', projectId, name: 'Slack bot', ref: 'Slack bot' },
+			]),
+			rollback,
+		});
+		// The real binding write runs. The message write after it fails.
+		const saveMessages = vi
+			.spyOn(Container.get(SystemAgentEvalService), 'saveMessages')
+			.mockRejectedValueOnce(new Error('The message write failed'));
+
+		await ownerAgent
+			.post('/assistant/eval/restore-thread')
+			.send({
+				threadId,
+				messages: [
+					{
+						id: `${threadId}-1`,
+						createdAt: '2026-01-01T00:00:00.000Z',
+						role: 'user',
+						content: [{ type: 'text', text: 'Hi' }],
+					},
+				],
+			})
+			.expect(500);
+
+		expect(saveMessages).toHaveBeenCalledTimes(1);
+		expect(rollback).toHaveBeenCalledTimes(1);
+		const thread = await memory.getThread(threadId);
+		expect(readAgentTargetsMetadata(thread?.metadata).bound).toBeUndefined();
+		expect(thread?.metadata).toMatchObject({ openTabs: ['wf-1'] });
 		await expect(memory.getMessages(threadId, { resourceId })).resolves.toEqual([]);
 	});
 
