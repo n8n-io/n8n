@@ -59,7 +59,7 @@ describe('useAssistantAgentMessageTelemetry', () => {
 		});
 	});
 
-	it('reports a pre-fill, and whether the user edited it, until a send is accepted', () => {
+	it('reports a pre-fill, and whether the user edited it, until a composer send is accepted', () => {
 		const telemetry = useAssistantAgentMessageTelemetry('thread-1');
 		telemetry.setPrefill({
 			text: 'Fix the reply tone',
@@ -67,8 +67,10 @@ describe('useAssistantAgentMessageTelemetry', () => {
 		});
 
 		telemetry.trackSend(sending('Fix the reply tone'));
+		// A host send leaves the pre-filled composer as it was.
+		telemetry.onMessageAccepted(false);
 		telemetry.trackSend(sending('Fix the reply tone, please'));
-		telemetry.onMessageAccepted();
+		telemetry.onMessageAccepted(true);
 		telemetry.trackSend(sending('Thanks'));
 
 		expect(telemetryTrack.mock.calls.map(([, props]) => props)).toMatchObject([

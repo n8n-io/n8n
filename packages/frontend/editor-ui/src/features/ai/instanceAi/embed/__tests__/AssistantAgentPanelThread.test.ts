@@ -68,7 +68,10 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 
 vi.mock('../../composables/useAgentMutationRefresh', () => ({ useAgentMutationRefresh: vi.fn() }));
 
-type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
+type AcceptMessage = (payload: {
+	clientContext?: Record<string, unknown>;
+	fromComposer: boolean;
+}) => void;
 
 const subject: InstanceAiAgentAttachment = {
 	type: 'agent',
@@ -88,7 +91,10 @@ function clientContext(): Record<string, unknown> {
 }
 
 function acceptMessage(context: Record<string, unknown>): void {
-	(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext: context });
+	(panelProps.current.onMessageAccepted as AcceptMessage)({
+		clientContext: context,
+		fromComposer: true,
+	});
 }
 
 /** The chat reports a send, and the test reads the message telemetry it caused. */

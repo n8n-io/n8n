@@ -133,9 +133,15 @@ function dismissHandoff(): void {
 	clearHandoff();
 }
 
-function onMessageAccepted({ clientContext }: { clientContext?: Record<string, unknown> }): void {
+function onMessageAccepted({
+	clientContext,
+	fromComposer,
+}: {
+	clientContext?: Record<string, unknown>;
+	fromComposer: boolean;
+}): void {
 	starterReferences = [];
-	messageTelemetry.onMessageAccepted();
+	messageTelemetry.onMessageAccepted(fromComposer);
 	// A newer hand-off that arrived during the send stays for the next message.
 	if (handoffContext.value && clientContext?.context === handoffContext.value) clearHandoff();
 }

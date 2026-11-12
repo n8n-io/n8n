@@ -208,10 +208,16 @@ const emit = defineEmits<{
 	/**
 	 * The server accepted a new message. Answers to an open card do not emit this.
 	 * `clientContext` is the context sent with it: the `clientContext` prop, then
-	 * the patches of the composer chips.
+	 * the patches of the composer chips. `fromComposer` is false for a host send,
+	 * which leaves the composer as it was.
 	 */
 	'message-accepted': [
-		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			fromComposer: boolean;
+		},
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
@@ -1333,7 +1339,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			// The retry is the wallet re-check: drop the stale credits stop. A
 			// wallet still empty stops this run with a fresh notice.
 			clearBudgetNotices(new Set(['budget.credits']));
-			emit('message-accepted', { text, files, clientContext });
+			emit('message-accepted', { text, files, clientContext, fromComposer });
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
 				previewQueueId.value = queueId;
 			}

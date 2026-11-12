@@ -84,9 +84,9 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		expectHostSend(send: AssistantAgentHostSend) {
 			hostSend = send;
 		},
-		/** The composer is empty after an accepted send. */
-		onMessageAccepted() {
-			prefill = null;
+		/** Only a composer send empties the composer. A host send leaves the pre-fill there. */
+		onMessageAccepted(fromComposer: boolean) {
+			if (fromComposer) prefill = null;
 		},
 		trackSend,
 	};

@@ -4786,7 +4786,9 @@ describe('AgentChatPanel', () => {
 				input.vm.$emit('submit');
 				await flushPromises();
 
-				expect(wrapper.emitted('message-accepted')).toEqual([[{ text: 'hello', files: [file] }]]);
+				expect(wrapper.emitted('message-accepted')).toEqual([
+					[{ text: 'hello', files: [file], fromComposer: true }],
+				]);
 			});
 
 			it('does not emit when the server does not accept the message', async () => {
@@ -5045,7 +5047,7 @@ describe('AgentChatPanel', () => {
 				clientContext,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
-				[{ text: 'use these', files: [], clientContext }],
+				[{ text: 'use these', files: [], clientContext, fromComposer: true }],
 			]);
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
 
@@ -5099,7 +5101,7 @@ describe('AgentChatPanel', () => {
 				clientContext,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
-				[{ text: 'use these', files: [], clientContext }],
+				[{ text: 'use these', files: [], clientContext, fromComposer: true }],
 			]);
 		});
 
@@ -5124,7 +5126,7 @@ describe('AgentChatPanel', () => {
 					clientContext,
 				);
 				expect(wrapper.emitted('message-accepted')).toEqual([
-					[{ text: 'fix it', files: [], clientContext }],
+					[{ text: 'fix it', files: [], clientContext, fromComposer: false }],
 				]);
 				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
 				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);

@@ -336,7 +336,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
 
-type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
+type AcceptMessage = (payload: {
+	clientContext?: Record<string, unknown>;
+	fromComposer: boolean;
+}) => void;
 
 function nodeSet(...names: string[]): InstanceAiNodesAttachment['sets'][number] {
 	return { nodes: names.map((name) => ({ id: `id-${name}`, name })) };
@@ -497,7 +500,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(clientContext()).toMatchObject({ attachments: [reference] });
 
 		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-		onMessageAccepted({ clientContext: clientContext() });
+		onMessageAccepted({ clientContext: clientContext(), fromComposer: true });
 		expect(clientContext()).not.toHaveProperty('attachments');
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
@@ -575,8 +578,8 @@ describe('AssistantAgentThreadView', () => {
 
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-		onMessageAccepted({ clientContext: clientContext() });
-		onMessageAccepted({ clientContext: clientContext() });
+		onMessageAccepted({ clientContext: clientContext(), fromComposer: true });
+		onMessageAccepted({ clientContext: clientContext(), fromComposer: true });
 
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
@@ -1156,6 +1159,7 @@ describe('AssistantAgentThreadView', () => {
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 
 			onMessageAccepted({
+				fromComposer: true,
 				clientContext: {
 					attachments: [
 						{ type: 'workflow', id: 'wf-2', name: 'Digest' },
@@ -1327,7 +1331,7 @@ describe('AssistantAgentThreadView', () => {
 			);
 
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-			onMessageAccepted({ clientContext: clientContext() });
+			onMessageAccepted({ clientContext: clientContext(), fromComposer: true });
 			expect(clientContext()).not.toHaveProperty('attachments');
 			expect(clientContext()).not.toHaveProperty('context');
 		});
