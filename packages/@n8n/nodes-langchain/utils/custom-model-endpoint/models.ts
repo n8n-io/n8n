@@ -1,9 +1,10 @@
 import { isRecord } from '@n8n/utils/is-record';
 import {
-	NodeOperationError,
-	UserError,
+	NodeApiError,
 	type ILoadOptionsFunctions,
+	type INode,
 	type INodeListSearchResult,
+	type JsonObject,
 } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
@@ -35,30 +36,49 @@ function modelIdsIn(body: unknown): string[] {
 }
 
 export async function listGatewayModels(
+	node: INode,
 	endpoint: EndpointCredential,
 	fetchModels: typeof fetch,
 ): Promise<string[]> {
 	const response = await fetchModels(`${endpoint.baseUrl}/models`, { method: 'GET' });
 	const text = await response.text();
+	const httpCode = String(response.status);
 
 	if (response.status === 404) {
-		throw new UserError('This gateway does not publish a model list', {
-			description: NO_LIST_HINT,
-		});
+		throw new NodeApiError(
+			node,
+			{},
+			{
+				message: 'This gateway does not publish a model list',
+				description: NO_LIST_HINT,
+				httpCode,
+			},
+		);
 	}
 	if (!response.ok) {
 		const reason = clientErrorMessage(text) ?? `it answered ${response.status}`;
-		throw new UserError(`The gateway could not list its models: ${reason}`, {
-			description: NO_LIST_HINT,
-		});
+		throw new NodeApiError(
+			node,
+			{},
+			{
+				message: `The gateway could not list its models: ${reason}`,
+				description: NO_LIST_HINT,
+				httpCode,
+			},
+		);
 	}
 
 	try {
 		return modelIdsIn(JSON.parse(text));
 	} catch {
-		throw new UserError('The gateway answered the model list with something that is not JSON', {
-			description: NO_LIST_HINT,
-		});
+		throw new NodeApiError(
+			node,
+			{},
+			{
+				message: 'The gateway answered the model list with something that is not JSON',
+				description: NO_LIST_HINT,
+			},
+		);
 	}
 }
 
@@ -81,12 +101,12 @@ export async function searchModels(
 	});
 
 	try {
-		const ids = await listGatewayModels(endpoint, transport.fetch);
+		const ids = await listGatewayModels(this.getNode(), endpoint, transport.fetch);
 		const wanted = filter
 			? ids.filter((id) => id.toLowerCase().includes(filter.toLowerCase()))
 			: ids;
 		return { results: wanted.map((id) => ({ name: id, value: id })) };
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error as Error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

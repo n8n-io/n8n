@@ -1,4 +1,9 @@
-import type { ILoadOptionsFunctions, INode, NodeEgressFilter } from 'n8n-workflow';
+import {
+	NodeApiError,
+	type ILoadOptionsFunctions,
+	type INode,
+	type NodeEgressFilter,
+} from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
@@ -14,6 +19,17 @@ vi.mock('./auth-fetch', async (importOriginal) => ({
 }));
 
 const BASE_URL = 'https://gateway.example.com/v1';
+const BY_ID_HINT = 'Switch Model to "By ID" and type the model ID that your gateway expects.';
+
+const node = {
+	id: '1',
+	name: 'Custom Model Endpoint',
+	type: 'test',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+	credentials: { customModelEndpointApi: { id: '1', name: 'c' } },
+} as unknown as INode;
 
 const endpointWith = (
 	login: LoginMethod = { type: 'none' },
@@ -33,6 +49,12 @@ function answering(body: string, status = 200) {
 	return { calls, fetchImpl: fetchImpl as unknown as typeof fetch };
 }
 
+const rejection = async (run: Promise<unknown>): Promise<NodeApiError | undefined> =>
+	await run.then(
+		() => undefined,
+		(reason: NodeApiError) => reason,
+	);
+
 const openAiStyle = JSON.stringify({
 	object: 'list',
 	data: [{ id: 'gpt-4o', object: 'model' }, { id: 'claude-sonnet' }],
@@ -42,7 +64,7 @@ describe('listGatewayModels', () => {
 	it('asks the gateway for /models below the base URL', async () => {
 		const { calls, fetchImpl } = answering(openAiStyle);
 
-		await listGatewayModels(endpointWith(), fetchImpl);
+		await listGatewayModels(node, endpointWith(), fetchImpl);
 
 		expect(calls[0].url).toBe('https://gateway.example.com/v1/models');
 		expect(calls[0].method).toBe('GET');
@@ -61,49 +83,55 @@ describe('listGatewayModels', () => {
 	])('reads every model id out of %s', async (_name, body, expected) => {
 		const { fetchImpl } = answering(body);
 
-		expect(await listGatewayModels(endpointWith(), fetchImpl)).toEqual(expected);
+		expect(await listGatewayModels(node, endpointWith(), fetchImpl)).toEqual(expected);
 	});
 
 	describe('when the gateway cannot list models', () => {
-		it('says so plainly on a 404, and points at By ID', async () => {
-			const { fetchImpl } = answering('Not Found', 404);
-
-			await expect(listGatewayModels(endpointWith(), fetchImpl)).rejects.toThrow(
-				'does not publish a model list',
-			);
-		});
-
-		it("passes on the gateway's own reason for any other failure", async () => {
-			const { fetchImpl } = answering(
-				JSON.stringify({ error: { message: 'Quota exhausted' } }),
+		it.each<[string, number, string, string, string | null]>([
+			[
+				'it publishes no list',
+				404,
+				'Not Found',
+				'This gateway does not publish a model list',
+				'404',
+			],
+			[
+				'it states a reason of its own',
 				429,
-			);
+				'{"error":{"message":"Quota exhausted"}}',
+				'The gateway could not list its models: Quota exhausted',
+				'429',
+			],
+			[
+				'it states no reason',
+				500,
+				'',
+				'The gateway could not list its models: it answered 500',
+				'500',
+			],
+			[
+				'the answer is not JSON',
+				200,
+				'<html>oops</html>',
+				'The gateway answered the model list with something that is not JSON',
+				null,
+			],
+		])(
+			'gives the editor the code and the way out when %s',
+			async (_name, status, body, message, httpCode) => {
+				const { fetchImpl } = answering(body, status);
 
-			await expect(listGatewayModels(endpointWith(), fetchImpl)).rejects.toThrow('Quota exhausted');
-		});
+				const error = await rejection(listGatewayModels(node, endpointWith(), fetchImpl));
 
-		it('falls back to the status when the body carries no reason', async () => {
-			const { fetchImpl } = answering('', 500);
-
-			await expect(listGatewayModels(endpointWith(), fetchImpl)).rejects.toThrow('answered 500');
-		});
-
-		it('says so when the answer is not JSON', async () => {
-			const { fetchImpl } = answering('<html>oops</html>');
-
-			await expect(listGatewayModels(endpointWith(), fetchImpl)).rejects.toThrow('not JSON');
-		});
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error?.message).toBe(message);
+				expect(error?.httpCode).toBe(httpCode);
+				expect(error?.description).toBe(BY_ID_HINT);
+			},
+		);
 	});
 
 	it('carries the login and the gateway headers, as every other request does', async () => {
-		const node = {
-			id: '1',
-			name: 'Custom Model Endpoint',
-			type: 'test',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		} as INode;
 		const ctx = { getNode: () => node } as unknown as CustomModelEndpointFetchContext;
 		const allowAll = { validateUrl: async () => ({ ok: true }) } as unknown as NodeEgressFilter;
 		const endpoint = endpointWith(
@@ -121,7 +149,7 @@ describe('listGatewayModels', () => {
 				baseFetch: fetchImpl,
 			},
 		);
-		await listGatewayModels(endpoint, transport.fetch);
+		await listGatewayModels(node, endpoint, transport.fetch);
 
 		expect(Object.fromEntries(calls[0].headers)).toMatchObject({
 			'x-api-key': 'secret-9f2a71c4',
@@ -131,16 +159,6 @@ describe('listGatewayModels', () => {
 });
 
 describe('searchModels', () => {
-	const node = {
-		id: '1',
-		name: 'n',
-		type: 't',
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: {},
-		credentials: { customModelEndpointApi: { id: '1', name: 'c' } },
-	} as unknown as INode;
-
 	const searching = (body: string, status = 200) => {
 		const { fetchImpl } = answering(body, status);
 		stubbed.baseFetch = fetchImpl;
@@ -173,11 +191,15 @@ describe('searchModels', () => {
 		expect(result.results.map((entry) => entry.value)).toEqual(expected);
 	});
 
-	it.each([
-		['the gateway publishes no list', '', 404, 'does not publish a model list'],
-		['the gateway refuses', '{"error":{"message":"nope"}}', 403, 'could not list its models'],
-		['the answer is not JSON', '<html></html>', 200, 'not JSON'],
-	])('raises against the node when %s', async (_name, body, status, expected) => {
-		await expect(searchModels.call(searching(body, status))).rejects.toThrow(expected);
+	it.each<[string, string, number, string | null]>([
+		['the gateway publishes no list', '', 404, '404'],
+		['the gateway refuses', '{"error":{"message":"nope"}}', 403, '403'],
+		['the answer is not JSON', '<html></html>', 200, null],
+	])('passes the failure to the editor when %s', async (_name, body, status, httpCode) => {
+		const error = await rejection(searchModels.call(searching(body, status)));
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe(httpCode);
+		expect(error?.description).toBe(BY_ID_HINT);
 	});
 });
