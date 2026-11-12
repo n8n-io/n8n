@@ -12,12 +12,11 @@ async function main(): Promise<number> {
 	}
 	if (!process.env.TEST_IMAGE_N8N) throw new Error(`set TEST_IMAGE_N8N\n${USAGE}`);
 
-	const options = { ...args };
-	const schedule = chaosSchedule(options);
+	const schedule = chaosSchedule(args);
 	console.log(`seed ${args.seed}: ${schedule.length} faults over ${args.durationMs / 1000} s`);
 	for (const { atMs, fault } of schedule) console.log(`  +${atMs} ms ${describeFault(fault)}`);
 
-	const result = await chaosRun(options, schedule);
+	const result = await chaosRun(args, schedule);
 	console.log(
 		`\n${result.requests} requests, ${result.accepted} accepted, ${result.executions} executions, ${result.violations.length} violations`,
 	);
@@ -36,7 +35,7 @@ async function main(): Promise<number> {
 		const shrunk = await shrink(
 			schedule,
 			async (candidate) =>
-				(await chaosRun({ ...options, outDir: undefined }, candidate)).violations.some((v) =>
+				(await chaosRun({ ...args, outDir: undefined }, candidate)).violations.some((v) =>
 					violated.has(v.invariant),
 				),
 			{

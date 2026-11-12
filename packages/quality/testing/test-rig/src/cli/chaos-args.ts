@@ -2,6 +2,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
+import type { ChaosOptions } from '../chaos/run';
 import type { FaultKind } from '../chaos/schedule';
 
 export const USAGE = `Usage: TEST_IMAGE_N8N=n8nio/n8n:<tag> pnpm chaos [--seed N] [--faults N] [--duration S]
@@ -10,14 +11,7 @@ export const USAGE = `Usage: TEST_IMAGE_N8N=n8nio/n8n:<tag> pnpm chaos [--seed N
 
 const KINDS: FaultKind[] = ['kill', 'stop', 'freeze', 'delay', 'cut', 'hook'];
 
-export interface ChaosArgs {
-	seed: number;
-	faults: number;
-	durationMs: number;
-	perSecond: number;
-	workers: number;
-	kinds: FaultKind[];
-	settleMs: number;
+export interface ChaosArgs extends ChaosOptions {
 	shrink: boolean;
 	repeats: number;
 	minFailures: number;

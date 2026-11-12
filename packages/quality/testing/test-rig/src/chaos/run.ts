@@ -5,7 +5,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { AppliedFault } from './execute';
 import { runSchedule } from './execute';
-import type { Fault, FaultKind, ScheduledFault } from './schedule';
+import type { Fault, FaultKind, ScheduledFault, Upstream } from './schedule';
 import { generateSchedule } from './schedule';
 import { HOOK_DIR, hitBetween, hook } from '../hooks/control';
 import type { HookSpec } from '../hooks/spec';
@@ -13,7 +13,6 @@ import { FILES } from '../hooks/spec';
 import type { Violation } from '../invariants';
 import { checkWorkload } from '../invariants';
 import { network } from '../network';
-import type { Container } from '../process';
 import { docker, freeze, logs, signal, startAgain, waitForExit } from '../process';
 import { RigStack } from '../stack';
 import { Workload } from '../workload';
@@ -76,18 +75,14 @@ export function chaosSchedule(options: ChaosOptions): ScheduledFault[] {
 	);
 }
 
-const running = async (container: Container) =>
-	(await docker('inspect', '--format', '{{.State.Status}}', container.getId())).trim();
-
 /** Applies chaos faults to a rig stack; each fault heals itself when its time is up. */
-export function rigExecutor(rig: RigStack) {
+function rigExecutor(rig: RigStack) {
 	const byName = (name: string) => {
 		const found = rig.n8nContainers().find((c) => c.name === name);
 		if (!found) throw new Error(`no container ${name}`);
 		return found.container;
 	};
-	const upstream = (to: 'postgres' | 'redis') =>
-		rig.container(to === 'postgres' ? /-postgres$/ : /-redis$/);
+	const upstream = (to: Upstream) => rig.container(to === 'postgres' ? /-postgres$/ : /-redis$/);
 
 	return async (fault: Fault): Promise<Pick<AppliedFault, 'hit'> | undefined> => {
 		const container = byName(fault.target);
@@ -128,7 +123,9 @@ export function rigExecutor(rig: RigStack) {
 /** Brings every n8n container back to running, unfrozen, with a clean network and no armed hooks. */
 async function heal(rig: RigStack) {
 	for (const { container } of rig.n8nContainers()) {
-		const status = await running(container);
+		const status = (
+			await docker('inspect', '--format', '{{.State.Status}}', container.getId())
+		).trim();
 		if (status === 'paused') await freeze(container, false);
 		if (status === 'exited') await startAgain(container);
 		if (status !== 'exited') await network.restore(container).catch(() => undefined);

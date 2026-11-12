@@ -42,7 +42,6 @@ export interface MenuOptions {
 	kinds: FaultKind[];
 	/** Hook points declared for the stack that a `hook` fault may arm. */
 	hookPoints?: string[];
-	/** Longest time a fault lasts. */
 	maxFaultMs?: number;
 }
 
@@ -56,10 +55,9 @@ const maxFaultMs = (menu: MenuOptions) => menu.maxFaultMs ?? 8_000;
 function faultFrom(rng: ReturnType<typeof random>, menu: MenuOptions): Fault {
 	const maxMs = maxFaultMs(menu);
 	const kind = rng.pick(usableKinds(menu));
-	const restartable = menu.restartTargets ?? menu.targets;
 	const pool =
 		kind === 'kill' || kind === 'stop'
-			? restartable
+			? (menu.restartTargets ?? menu.targets)
 			: kind === 'hook'
 				? (menu.hookTargets ?? menu.targets)
 				: menu.targets;
