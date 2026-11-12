@@ -3,9 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-
-import { Push } from '@/push';
-import { Publisher } from '@n8n/backend-services';
+import { Publisher, PushProxy } from '@n8n/backend-services';
 
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
@@ -19,7 +17,7 @@ export class AgentExecutionUpdateBroadcaster {
 	constructor(
 		private readonly logger: Logger,
 		private readonly recipients: AgentPushRecipientsService,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly threadRepository: AgentExecutionThreadRepository,

@@ -3,8 +3,7 @@ import type { UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Push } from '@/push';
-import type { RoleService, Publisher } from '@n8n/backend-services';
+import type { Publisher, PushProxy, RoleService } from '@n8n/backend-services';
 
 import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -22,7 +21,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 	const logger = mock<Logger>();
 	const userRepository = mock<UserRepository>();
 	const roleService = mock<RoleService>();
-	const push = mock<Push>();
+	const push = mock<PushProxy>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>();
 	const threadRepository = mock<AgentExecutionThreadRepository>();

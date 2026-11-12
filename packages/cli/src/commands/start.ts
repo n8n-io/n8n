@@ -6,6 +6,7 @@ import {
 	RoleCacheService,
 	JwtService,
 	Publisher,
+	PushProxy,
 	Subscriber,
 } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
@@ -38,6 +39,7 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
@@ -303,6 +305,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.generateStaticAssets();
 		}
 
+		Container.get(PushProxy).registerProvider(Container.get(Push));
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// The skills module reads the credentials of its sources through cli.
