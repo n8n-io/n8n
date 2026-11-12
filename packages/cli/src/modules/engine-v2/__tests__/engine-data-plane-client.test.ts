@@ -1,8 +1,4 @@
-import type {
-	HttpRequestClient,
-	HttpRequestClientOptions,
-	OutboundHttp,
-} from '@n8n/backend-network';
+import type { HttpRequestClient, HttpRequestClientOptions } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
 import { mintApprovalCallback, SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
@@ -18,6 +14,7 @@ import {
 } from '@/services/engine-data-plane-proxy.service';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import type { EngineMtls } from '../engine-mtls';
 
 const authSecret = 'a'.repeat(32);
 const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
@@ -49,7 +46,7 @@ describe('EngineDataPlaneClient', () => {
 	/** Rebuilds the client so each test can vary the engine config. */
 	const newClient = (config: Partial<EngineConfig> = {}) => {
 		http = mock<HttpRequestClient>();
-		const outboundHttp = mock<OutboundHttp>({
+		const mtls = mock<EngineMtls>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
 				clientOptions = options;
 				return http;
@@ -58,8 +55,8 @@ describe('EngineDataPlaneClient', () => {
 
 		return new EngineDataPlaneClient(
 			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
-			outboundHttp,
 			mock<InstanceSettings>({ instanceId: 'instance-1' }),
+			mtls,
 		);
 	};
 

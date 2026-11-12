@@ -3,6 +3,9 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
+export { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles, EngineTlsSource } from './tls';
+
 export {
 	ACTION_TOKEN_SPEC,
 	IDENTITY_TOKEN_SPEC,

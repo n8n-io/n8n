@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Creates a provider and its authentication material. A Git host provider validates authenticated API access before it saves. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. An SSH provider returns the generated public key; add it to the remote as a deploy key.
+
+  Requires the `promotions:create` API key scope.
 x-required-scope: promotions:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

@@ -105,7 +105,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
@@ -128,7 +128,7 @@ describe('ProjectExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: true,
+			includeArchived: true,
 		});
 
 		expect(workflowFinder.findRootWorkflowIdsInProject).toHaveBeenCalledWith(project.id, {
@@ -148,7 +148,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
@@ -165,7 +165,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -182,7 +182,7 @@ describe('ProjectExporter', () => {
 				writer,
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -198,7 +198,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([
@@ -239,7 +239,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([
@@ -303,7 +303,7 @@ describe('ProjectExporter', () => {
 				writer: new CapturingWriter(),
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			});
 
 			const selected = new Set(['w-root', 'w-in-f1']);
@@ -338,7 +338,7 @@ describe('ProjectExporter', () => {
 					writer: new CapturingWriter(),
 					includeTags: true,
 					versionPolicy: 'latest',
-					includeArchivedWorkflows: false,
+					includeArchived: false,
 				}),
 			).rejects.toMatchObject({
 				constructor: PackageEntityNotFoundError,
@@ -377,7 +377,7 @@ describe('ProjectExporter', () => {
 				writer: new CapturingWriter(),
 				includeTags: true,
 				versionPolicy: 'ignore-unpublished',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			});
 
 			expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-published']);
@@ -401,7 +401,7 @@ describe('ProjectExporter', () => {
 					writer,
 					includeTags: true,
 					versionPolicy: 'latest',
-					includeArchivedWorkflows: false,
+					includeArchived: false,
 				});
 
 				expect(workflowExporter.export).not.toHaveBeenCalled();
@@ -427,7 +427,7 @@ describe('ProjectExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(entries).toEqual([

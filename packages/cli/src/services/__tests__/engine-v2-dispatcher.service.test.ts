@@ -295,6 +295,36 @@ describe('EngineV2Dispatcher', () => {
 			});
 		});
 
+		it('stores the pin data of a manual run beside the workflow', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ pinData }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('falls back to the pin data saved on the workflow for a manual run', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ workflowData: workflow({ pinData }) }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('stores no pin data for a production run, as v1 ignores it there', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			const data = webhookRunData();
+			data.workflowData.pinData = pinData;
+
+			await dispatcher.start(data);
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document).not.toHaveProperty('pinData');
+		});
+
 		it('passes the v1 mode and the caller to the data plane', async () => {
 			await dispatcher.start(runData({ userId: 'user-1', projectId: 'project-1' }));
 
