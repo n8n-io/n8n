@@ -256,6 +256,8 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'integrated',
+			// End-user credentials resolve as the visitor, not as the app project.
+			encryptedRunnerIdentity: ctx.runnerIdentity,
 			workflowData: {
 				...workflow,
 				// `getRun` reads the result from the execution row, so it must outlive pruning-on-finish.

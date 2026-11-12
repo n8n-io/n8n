@@ -3,6 +3,7 @@ import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { ResourceAdmission, type ProtectedResource } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
+import type { ExecutionContextService } from 'n8n-core';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,6 +17,7 @@ const issuer = 'https://n8n.example.net';
 const state = 'opaque.State_~-1';
 const flowCookieName = `__Host-n8n-app-flow-${createHash('sha256').update(state).digest('hex')}`;
 const appId = '11111111-1111-4111-8111-111111111111';
+const callbackUrl = `https://sales.apps.example.com/_n8n/auth/${appId}/callback`;
 
 function setup(visibility: App['visibility'] = 'project') {
 	const app = mock<App>({
@@ -29,10 +31,13 @@ function setup(visibility: App['visibility'] = 'project') {
 	const hosts = mock<AppHostService>({
 		baseUrl: new URL('https://apps.example.com'),
 		namespace: () => 'sales',
-		callbackUrl: () => `https://sales.apps.example.com/_n8n/auth/${appId}/callback`,
+		callbackUrl: () => callbackUrl,
 	});
 	const resources = mock<AppProtectedResource>();
 	resources.forApp.mockReturnValue(mock<ProtectedResource>());
+	resources.grantFor.mockReturnValue({ audiences: [callbackUrl] });
+	const executionContext = mock<ExecutionContextService>();
+	executionContext.buildTriggerIdentityCredentials.mockResolvedValue('sealed-identity');
 	const flow = mock<OAuth2FlowProxy>();
 	flow.begin.mockResolvedValue(`${issuer}/oauth/authorize?state=${state}`);
 	flow.complete.mockImplementation(async () => ({
@@ -51,6 +56,7 @@ function setup(visibility: App['visibility'] = 'project') {
 		flow,
 		admission,
 		mock<UrlService>({ getInstanceBaseUrl: () => issuer }),
+		executionContext,
 	);
 	const req = mock<AppRequest>({
 		method: 'GET',
@@ -62,7 +68,7 @@ function setup(visibility: App['visibility'] = 'project') {
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, admission, flow, req, res };
+	return { service, app, apps, admission, flow, executionContext, req, res };
 }
 
 describe('AppAuthService', () => {
@@ -83,6 +89,26 @@ describe('AppAuthService', () => {
 			'app-token',
 		);
 		expect(next).toHaveBeenCalledOnce();
+	});
+
+	it('returns the session token with an admitted visitor', async () => {
+		const { service, req } = setup();
+		req.cookies = { '__Host-n8n-app-session': 'app-token' };
+
+		await expect(service.admit(req)).resolves.toMatchObject({ ok: true, token: 'app-token' });
+	});
+
+	it('seals the visitor with the app grant and the user ID', async () => {
+		const { service, app, executionContext } = setup();
+
+		await expect(service.sealVisitor(app, 'app-token', 'user')).resolves.toBe('sealed-identity');
+
+		expect(executionContext.buildTriggerIdentityCredentials).toHaveBeenCalledExactlyOnceWith(
+			'app-token',
+			callbackUrl,
+			{ audiences: [callbackUrl] },
+			'user',
+		);
 	});
 
 	it('authenticates app requests with the session cookie', async () => {

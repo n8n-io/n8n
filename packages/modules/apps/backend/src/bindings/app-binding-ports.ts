@@ -32,6 +32,11 @@ export interface AppCallContext {
 	bindingKey: string;
 	/** The signed-in visitor. */
 	userId: string;
+	/**
+	 * The visitor's sealed identity, encrypted. A workflow run uses it to resolve
+	 * end-user credentials. Absent on preview hosts and for other binding kinds.
+	 */
+	runnerIdentity?: string;
 }
 
 export type AppRow = Record<string, unknown>;

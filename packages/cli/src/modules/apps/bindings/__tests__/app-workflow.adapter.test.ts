@@ -256,6 +256,26 @@ describe('AppWorkflowAdapter', () => {
 			});
 		});
 
+		it('runs with the sealed identity of the visitor', async () => {
+			const { adapter, loader, runner } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockResolvedValue('12');
+
+			await adapter.run({ ...ctx, runnerIdentity: 'sealed-identity' }, 'workflow-1', {});
+
+			expect(runner.run.mock.calls[0][0].encryptedRunnerIdentity).toBe('sealed-identity');
+		});
+
+		it('runs without an identity when the visitor has no sealed identity', async () => {
+			const { adapter, loader, runner } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockResolvedValue('12');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(runner.run.mock.calls[0][0].encryptedRunnerIdentity).toBeUndefined();
+		});
+
 		it('returns the items of the last node when the run succeeds', async () => {
 			const { adapter, loader, runner, executions } = setup();
 			loader.loadWorkflow.mockResolvedValue(workflow());
