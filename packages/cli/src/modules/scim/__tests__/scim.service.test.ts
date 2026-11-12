@@ -109,7 +109,7 @@ describe('ScimService', () => {
 		});
 
 		it('should omit the formatted name and show the email when the user has no name', async () => {
-			userRepository.findOne.mockResolvedValue(createTestUser({ firstName: '', lastName: '' }));
+			userRepository.findOne.mockResolvedValue(createTestPerson({ firstName: '', lastName: '' }));
 
 			const result = await service.getUserById('user-1');
 
@@ -447,7 +447,7 @@ describe('ScimService', () => {
 			['"false" in an object value', [{ op: 'replace', value: { active: 'false' } }], true],
 			['"True" with a path', [{ op: 'replace', path: 'active', value: 'True' }], false],
 		])('should read active %s as sent by Entra ID', async (_, operations, disabled) => {
-			const user = createTestUser({ disabled: !disabled });
+			const user = createTestPerson({ disabled: !disabled });
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser('user-1', patchRequest(operations));
@@ -458,7 +458,7 @@ describe('ScimService', () => {
 		it.each(['no', 0, null, ' false'])(
 			'should reject an active value that is not a boolean (%j)',
 			async (value) => {
-				const user = createTestUser();
+				const user = createTestPerson();
 				userRepository.findOne.mockResolvedValue(user);
 
 				await expect(
@@ -471,7 +471,7 @@ describe('ScimService', () => {
 		);
 
 		it('should take the email whose primary flag is true, also as a string', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
