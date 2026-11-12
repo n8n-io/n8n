@@ -549,17 +549,8 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			{ executionId: execution.id, expectedStatus: 'new' },
 		);
-		const claim = vi
-			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
-			.mockResolvedValue([
-				{
-					id: execution.id,
-					workflowId: workflow.id,
-					mode: 'webhook',
-					startedAt: null,
-					stoppedAt: new Date(),
-				},
-			]);
+		const executionRepository = Container.get(ExecutionRepository);
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -570,7 +561,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -582,16 +573,45 @@ describe('processError', () => {
 				}),
 			}),
 		);
+
+		// the guarded write transitioned and persisted the execution atomically
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
-	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+	test('processError still finalizes and runs hooks when the crash announcement fails', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
 		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-		vi.spyOn(
-			Container.get(ExecutionCrashService),
-			'markAsCrashedWithoutCounting',
-		).mockResolvedValue([]);
+		vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution').mockRejectedValue(
+			new Error('database connection reset'),
+		);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'crashed' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError finalizes without hooks when the stalled-count claim cannot persist', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
+		vi.spyOn(Container.get(ExecutionPersistence), 'updateExistingExecution').mockRejectedValue(
+			new Error('stored data bundle is unreadable'),
+		);
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -604,6 +624,32 @@ describe('processError', () => {
 
 		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
 		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+		expect(announce).not.toHaveBeenCalled();
+
+		// the claim rolled back, so the row stays claimable for crash recovery
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('running');
+	});
+
+	test('processError claims an execution that is still new on a stalled-count error', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+
+		// `new` is crashable, so the guarded write claims it without a running transition
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
 	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
@@ -689,16 +735,12 @@ describe('processError', () => {
 	});
 
 	test.each(['error', 'crashed'] as const)(
-		'processError fails a stalled-count error without rechecking when the execution is already %s',
+		'processError does not overwrite an execution already %s on a stalled-count error',
 		async (status) => {
 			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ status: 'running', finished: false }, workflow);
+			const execution = await createExecution({ status, finished: false }, workflow);
 			const executionRepository = Container.get(ExecutionRepository);
 			const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-
-			const findSingleExecution = vi
-				.spyOn(executionRepository, 'findSingleExecution')
-				.mockResolvedValue(mock<IExecutionBase>({ status }));
 
 			globalConfig.executions.mode = 'queue';
 			vi.useFakeTimers();
@@ -716,12 +758,11 @@ describe('processError', () => {
 				vi.useRealTimers();
 			}
 
-			expect(findSingleExecution).toHaveBeenCalledTimes(1);
-			expect(finalizeExecution).toHaveBeenCalledWith(
-				execution.id,
-				expect.objectContaining({ status: 'crashed' }),
-			);
-			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+			// the guarded write loses to the terminal row, so nothing is persisted
+			expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+			expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+			const stored = await executionRepository.findSingleExecution(execution.id, {});
+			expect(stored?.status).toBe(status);
 		},
 	);
 
@@ -800,7 +841,9 @@ describe('run', () => {
 		try {
 			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
 			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
 			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
 
@@ -824,13 +867,74 @@ describe('run', () => {
 		}
 	});
 
+	it('carries the personal credentials count from the credential check to telemetry', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 2,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'trigger',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				telemetryMetadata: { mockDataSources: ['trigger_input'] },
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({
+				mockDataSources: ['trigger_input'],
+				personalCredentialsCount: 2,
+			});
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
+	it('replaces the personal credentials count of an earlier run', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'trigger',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({ personalCredentialsCount: 0 });
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
@@ -870,7 +974,7 @@ describe('run', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => {
@@ -907,7 +1011,7 @@ describe('run', () => {
 		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => mock<IRun>()),
 		);
@@ -933,7 +1037,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
@@ -1036,7 +1142,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 				new PCancelable(() => mock<IRun>()),
 			);
@@ -1066,7 +1174,7 @@ describe('run', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
@@ -1123,7 +1231,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 				new PCancelable(() => mock<IRun>()),
 			);
@@ -1184,7 +1294,9 @@ describe('run', () => {
 			const error = new Error('boom');
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
 				throw error;
 			});
@@ -1606,7 +1718,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1661,7 +1773,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1707,7 +1819,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1752,7 +1864,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1885,7 +1997,7 @@ describe('pre-persist context establishment', () => {
 		capturedAddData = undefined;
 
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValue();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValue({ personalCredentialsCount: 0 });
 
 		establishSpy = vi
 			.spyOn(core, 'establishExecutionContext')
@@ -2180,7 +2292,7 @@ describe('streaming functionality', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockResponse = mock<StreamingResponse>({ writableEnded: false });
 		const mockSetInterval = vi.spyOn(global, 'setInterval');

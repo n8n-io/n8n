@@ -332,22 +332,25 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded when registered, as selected by
-  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask_user`, the workflow tools,
-  `workflow_builder_executions`, the credential tools, the data table tools, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
-  `search_models`, `research`, `n8n-docs`, and `parse-file`. `workflow_builder_verify_built_workflow`, `agents`,
-  `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
-  context or feature is available.
-- **Deferred tools** (behind ToolSearchProcessor): everything else, including
-  the rest of the orchestration surface — discovered
-  on-demand via `search_tools` and activated via `load_tool`
+- **Harness tools** (always loaded when registered, as selected by
+  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask_user`, `leave-onboarding`,
+  `parse-file`, `research`, `n8n-docs`, `web-search`, `fetch-url`, `agent-context`,
+  `mcp-servers`, `conversation-history`, `activity`, `save_user_preference`, and
+  `skills`. The `@n8n/agents` SDK adds its own tools (skills, memory, workspace
+  files, `find_tools`, `call_tool`).
+- **Deferred tools** (behind the `@n8n/agents` tool catalog): every n8n resource
+  tool. The prompt lists their names by tool group: `workflows`, `executions`,
+  `data_tables`, `credentials`, `nodes`, `agents`, `instance` (see
+  `getToolGroup`), and one tool group for each MCP server. The model reads
+  schemas with `find_tools` and runs a tool with `call_tool`, with no load step.
+  Skill tool dependencies stay in the tool catalog too
 
 Two entries in the always-loaded set are pinned for reasons worth knowing before
 changing the list. `n8n-docs` sits next to `research` because the research tool
-directs the model to n8n's own docs for n8n questions; deferring docs priced that
-route at `search_tools` + `load_tool` while web search stayed one call away.
+directs the model to n8n's own docs for n8n questions; deferring docs put that
+route behind tool discovery while web search stayed one call away.
 `mcp-servers` is pinned because it exists for the case where nothing is
-connected, which is exactly when `search_tools` surfaces no MCP tool and the
+connected, which is exactly when the tool catalog lists no MCP tool and the
 model concludes the integration is unavailable.
 
 This follows Anthropic's guidance on tool search for agents with large tool sets.

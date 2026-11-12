@@ -1,3 +1,4 @@
+import { APPROVAL_CALLBACK_PREFIX, decodeStepId } from '@n8n/utils/approval-callback';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -59,11 +60,8 @@ export function isTelegramInteractionRequest(req: object): boolean {
 	return (req as Record<PropertyKey, unknown>)[TELEGRAM_INTERACTION_REQUEST] === true;
 }
 
-/**
- * Prefix of an engine v2 approval callback. It names a step. Duplicates
- * `APPROVAL_CALLBACK_PREFIX` in `@n8n/engine`: neither package depends on the other.
- */
-export const HITL_CALLBACK_PREFIX_V2 = 'nhitl2|';
+/** Prefix of an engine v2 approval callback. It names a step. */
+export const HITL_CALLBACK_PREFIX_V2 = APPROVAL_CALLBACK_PREFIX;
 
 export type HitlCallbackDecision = 'a' | 'd';
 
@@ -86,14 +84,6 @@ export interface StepBoundHitlCallbackReference {
 export type ParsedHitlCallbackReference =
 	| ExecutionBoundHitlCallbackReference
 	| StepBoundHitlCallbackReference;
-
-/** The 16 bytes of a UUID in 22 base64url characters, as the engine encodes a step id. */
-function decodeStepId(encoded: string): string | undefined {
-	if (!/^[A-Za-z0-9_-]{22}$/.test(encoded)) return undefined;
-	const hex = Buffer.from(encoded, 'base64url').toString('hex');
-	if (hex.length !== 32) return undefined;
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 function buildHmacInput(executionId: string, decision: HitlCallbackDecision): string {
 	return `n8n-hitl-callback:v1:${executionId}:${decision}`;

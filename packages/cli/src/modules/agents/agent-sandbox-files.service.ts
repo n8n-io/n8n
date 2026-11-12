@@ -4,6 +4,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
@@ -11,8 +12,6 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { extension, lookup } from 'mime-types';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { posix } from 'node:path';
-
-import { PostHogClient } from '@/posthog';
 
 import {
 	AgentChatAttachmentService,

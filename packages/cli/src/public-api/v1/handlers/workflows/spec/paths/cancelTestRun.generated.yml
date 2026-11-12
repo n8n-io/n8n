@@ -2,7 +2,10 @@ operationId: cancelTestRun
 tags:
   - Evaluation
 summary: Cancel a test run
-description: Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project scope in addition to the `testRun:cancel` API key scope.
+description: |-
+  Cancel a running evaluation test run of a workflow. The user must also have the `workflow:execute` project scope.
+
+  Requires the `testRun:cancel` API key scope.
 x-required-scope: testRun:cancel
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

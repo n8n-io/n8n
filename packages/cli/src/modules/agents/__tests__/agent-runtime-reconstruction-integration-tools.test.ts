@@ -2,6 +2,7 @@ import type { AgentPublishHistoryRepository } from '../repositories/agent-publis
 import type {
 	CredentialsFinderService,
 	EventService,
+	NodeTypesProxy,
 	ProjectScopeService,
 	Publisher,
 } from '@n8n/backend-services';
@@ -14,7 +15,8 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
-	User,
+	Person,
+	UserRepository,
 	CredentialsEntity,
 	ProjectRelationRepository,
 	WorkflowRepository,
@@ -29,7 +31,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
@@ -97,8 +98,8 @@ const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
-const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
-const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
+const testPerson = { id: userId, firstName: 'Test', lastName: 'User' } as Person;
+const testUserAuthor = `${testPerson.firstName} ${testPerson.lastName}`;
 let credentialsService: Mocked<CredentialsService>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -334,6 +335,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
 			skillRefs,
+			mock<UserRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -351,7 +353,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentValidationService = new AgentValidationService(
 			agentRepository,
 			definitionService,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
@@ -519,6 +521,48 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
+		});
+
+		it('injects no channel tools for the webhook channel', async () => {
+			Container.set(ChatIntegrationRegistry, new ChatIntegrationRegistry());
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
+			);
+			const runtimeAgent = {
+				nativeToolDeferral: vi.fn(),
+				tool: vi.fn(),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
+				fileStore: vi.fn(),
+			};
+
+			await (
+				makeRuntimeReconstructionService() as unknown as {
+					injectRuntimeDependencies(params: Record<string, unknown>): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				runtimeProfile: 'top-level',
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
+				credentialIntegrations: [
+					{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+				],
+			});
+
+			// Each call passes one tool or an array of tools.
+			const toolNames = runtimeAgent.tool.mock.calls
+				.flat(2)
+				.map((tool: { name?: string }) => tool.name);
+			expect(toolNames.filter((name) => name?.startsWith('webhook'))).toEqual([]);
 		});
 	});
 });

@@ -1,7 +1,24 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
+import { WorkflowExecute } from 'n8n-core/dist/execution-engine/workflow-execute';
+import { NodeConnectionTypes, type EngineResponse, type WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 import path from 'node:path';
+
+const restoreUserFolder = vi.hoisted(() => {
+	const { mkdtempSync, rmSync } = process.getBuiltinModule('fs');
+	const { tmpdir } = process.getBuiltinModule('os');
+	const { join } = process.getBuiltinModule('path');
+	const originalUserFolder = process.env.N8N_USER_FOLDER;
+	const testUserFolder = mkdtempSync(join(tmpdir(), 'n8n-agent-v3-test-'));
+	process.env.N8N_USER_FOLDER = testUserFolder;
+	return () => {
+		if (originalUserFolder === undefined) delete process.env.N8N_USER_FOLDER;
+		else process.env.N8N_USER_FOLDER = originalUserFolder;
+		rmSync(testUserFolder, { recursive: true, force: true });
+	};
+});
+
+afterAll(restoreUserFolder);
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
 vi.setConfig({
@@ -315,6 +332,129 @@ describe('Agent V3 Integration', () => {
 
 		testHarness.setupTest(testData, { credentials });
 	});
+
+	for (const { maxIterations, maxTries } of [
+		{ maxIterations: 1, maxTries: 2 },
+		{ maxIterations: undefined, maxTries: 5 },
+	]) {
+		describe.each(['continueErrorOutput', 'stopWorkflow'] as const)(
+			`Iteration limit ${maxIterations ?? 'default'}, onError=%s`,
+			(onError) => {
+				const iterationLimit = maxIterations ?? 10;
+				const errorMessage = `Max iterations (${iterationLimit}) reached. The agent could not complete the task within the allowed number of iterations.`;
+				const workflow = testHarness.readWorkflowJSON('workflows/agent-v3-with-tool.json');
+				const agent = workflow.nodes.find((node) => node.name === 'AI Agent')!;
+				agent.typeVersion = 3;
+				agent.retryOnFail = true;
+				agent.maxTries = maxTries;
+				agent.waitBetweenTries = 1;
+				agent.onError = onError;
+				agent.parameters.options = maxIterations === undefined ? {} : { maxIterations };
+				workflow.settings = { ...workflow.settings, executionOrder: 'v1' };
+				delete workflow.pinData;
+				workflow.nodes.push({
+					id: 'error-output',
+					name: 'Error Output',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [440, 0],
+					parameters: {},
+				});
+				workflow.connections['AI Agent'] = {
+					main: [[], [{ node: 'Error Output', type: NodeConnectionTypes.Main, index: 0 }]],
+				};
+
+				const modelRequests: unknown[] = [];
+				const agentResponses: Array<EngineResponse | undefined> = [];
+				let toolRuns = 0;
+				const runNode = WorkflowExecute.prototype.runNode;
+				beforeEach(() => {
+					modelRequests.length = 0;
+					agentResponses.length = 0;
+					toolRuns = 0;
+					nock(baseUrl)
+						.persist()
+						.post('/v1/chat/completions')
+						.reply(200, (_uri, body) => {
+							modelRequests.push(body);
+							const callIndex = modelRequests.length;
+							// Stop a context reset from starting an unbounded tool loop in the test.
+							if (callIndex > iterationLimit) return chatCompletionResponse('Unexpected restart');
+							return toolCallResponse([
+								{
+									id: `call_${callIndex}`,
+									name: 'Calculator',
+									arguments: JSON.stringify({ input: `${callIndex}*${callIndex}` }),
+								},
+							]);
+						});
+					vi.spyOn(WorkflowExecute.prototype, 'runNode').mockImplementation(async function (
+						this: WorkflowExecute,
+						...args
+					) {
+						if (args[1].node.name === 'AI Agent') agentResponses.push(args[7]);
+						if (args[1].node.name === 'Calculator') toolRuns++;
+						return await runNode.apply(this, args);
+					});
+				});
+				afterEach(() => {
+					vi.restoreAllMocks();
+					nock.cleanAll();
+				});
+
+				testHarness.setupTest(
+					{
+						description: 'keeps tool history and stops at the iteration limit with retries enabled',
+						input: { workflowData: workflow },
+						output:
+							onError === 'stopWorkflow'
+								? { nodeData: {}, error: errorMessage }
+								: {
+										nodeData: {
+											'AI Agent': [[]],
+											'Error Output': [[{ json: { error: errorMessage } }]],
+										},
+									},
+					},
+					{
+						credentials,
+						customAssertions: () => {
+							expect(modelRequests).toHaveLength(iterationLimit);
+							expect(toolRuns).toBe(iterationLimit);
+							expect(agentResponses).toHaveLength(iterationLimit + maxTries);
+							for (const [index, body] of modelRequests.entries()) {
+								for (let previousCall = 1; previousCall <= index; previousCall++) {
+									expect(body).toMatchObject({
+										messages: expect.arrayContaining([
+											expect.objectContaining({
+												role: 'tool',
+												tool_call_id: `call_${previousCall}`,
+												content: JSON.stringify([
+													{ response: String(previousCall * previousCall) },
+												]),
+											}),
+										]),
+									});
+								}
+							}
+							for (const response of agentResponses.slice(iterationLimit)) {
+								expect(response?.metadata).toMatchObject({
+									iterationCount: iterationLimit,
+									previousRequests: Array.from({ length: iterationLimit - 1 }, (_, index) => ({
+										action: { toolCallId: `call_${index + 1}` },
+									})),
+								});
+								expect(response?.actionResponses[0]?.action.id).toBe(`call_${iterationLimit}`);
+								if (onError === 'continueErrorOutput') {
+									expect(response?.actionResponses).toHaveLength(1);
+								}
+							}
+						},
+					},
+				);
+			},
+		);
+	}
 
 	describe('Tool Calling Flow', () => {
 		const testData: WorkflowTestData = {

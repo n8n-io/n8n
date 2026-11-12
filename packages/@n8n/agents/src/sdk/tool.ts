@@ -21,6 +21,8 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 	scope: z.enum(['once', 'session']).optional(),
+	/** Why the action was declined. The agent reads it, so it can explain the decline. */
+	reason: z.string().optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -165,7 +167,11 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			await approvalContext?.onDecision(grantKey, decision);
 			interruptCtx.abortSignal?.throwIfAborted();
 			if (!decision.approved) {
-				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
+				const message = `Tool "${currentTool.name}" was not approved`;
+				return {
+					declined: true,
+					message: decision.reason ? `${message}: ${decision.reason}` : message,
+				};
 			}
 			if (tool.suspendSchema === undefined) {
 				return await originalHandler(input, interruptCtx);
