@@ -448,10 +448,20 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
-/** Enable caching for supported models and preserve an explicit cache TTL. */
-function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+/**
+ * Enable caching for supported models and preserve an explicit setting. A
+ * write replaces the whole config, so a write that omits `promptCaching` keeps
+ * the stored setting instead of turning caching back on.
+ */
+function applyPromptCachingBuilderDefaults(
+	config: AgentJsonConfig,
+	currentConfig: AgentJsonConfig | null,
+): AgentJsonConfig {
 	const capability = getModelPromptCachingCapability(config.model);
-	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+	const resolved = resolvePromptCaching(
+		config.config?.promptCaching ?? currentConfig?.config?.promptCaching,
+		capability,
+	);
 
 	if (!resolved) {
 		if (!config.config || !('promptCaching' in config.config)) return config;
@@ -1449,6 +1459,7 @@ export class AgentsBuilderToolsService {
 
 		const configWithDefaults = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(zodResult.data),
+			snapshot.config,
 		);
 
 		const saved = await this.agentConfigService.updateConfig(
@@ -1583,6 +1594,7 @@ export class AgentsBuilderToolsService {
 		// Save defaults explicitly so the write and read paths agree.
 		const config = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(applyFreshAgentMemoryDefault(parsed.data, currentConfig)),
+			currentConfig,
 		);
 		return { ok: true, config };
 	}
