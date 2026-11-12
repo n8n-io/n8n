@@ -81,7 +81,7 @@ export class InstanceAiPage extends BasePage {
 	async mockSearchVerification(
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
-		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+		await this.page.route('**/rest/assistant/settings/verify/search', async (route) => {
 			await route.fulfill({ json: { data: response } });
 		});
 	}
@@ -290,8 +290,9 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput().press('ArrowRight');
 	}
 
+	// Scoped to the composer: a sent message renders the same chips for its attachments.
 	getComposerWorkflowChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('attachment-preview-resource').filter({ hasText: name });
+		return this.getComposer().getByTestId('attachment-preview-resource').filter({ hasText: name });
 	}
 
 	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
@@ -301,11 +302,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getComposerNodeChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-node').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-node').filter({ hasText: name });
 	}
 
 	getComposerGroupChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-group').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-group').filter({ hasText: name });
 	}
 
 	getUserMessageByText(text: string | RegExp): Locator {

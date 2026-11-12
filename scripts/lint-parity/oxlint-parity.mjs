@@ -11,6 +11,11 @@
  * ESLint enforced that is missing from oxlint and from `oxlint-gap.json`. A gap
  * entry is how a drop gets reviewed instead of discovered later.
  *
+ * A package that lints its Vue templates with `vize lint` passes its Vize config
+ * with `--vize <file>`. The rules that config turns on count as enforced, under
+ * their ESLint ids, on both sides of the comparison: a Vize rule with no ESLint
+ * source is as much a break as a lost one.
+ *
  * Two oxlint limits shape this:
  *
  * - `--print-config` lists native rules only, never jsPlugin ones, so the 14
@@ -35,9 +40,11 @@ function arg(name) {
 
 const pkgDir = arg('--pkg');
 const eslintFile = arg('--eslint');
+const vizeFile = arg('--vize');
+const includeResidualEslint = process.argv.includes('--residual-eslint');
 if (!pkgDir || !eslintFile) {
 	console.error(
-		'usage: oxlint-parity.mjs --pkg <pkgDir> --eslint <snapshot.json> [--gap <gap.json>]',
+		'usage: oxlint-parity.mjs --pkg <pkgDir> --eslint <snapshot.json> [--vize <vize config>] [--gap <gap.json>] [--residual-eslint]',
 	);
 	process.exit(2);
 }
@@ -64,9 +71,24 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'lodash',
 	'unused-imports',
 	'n8n-local-rules',
+	'n8n-nodes-base',
+	'@n8n/design-system',
 	'playwright',
 	'@n8n/community-nodes',
+	'storybook',
 ]);
+
+/** ESLint rules that n8n ported to its own plugins, because oxlint has no native twin. */
+const PORTED_RULES = {
+	'import-x/no-extraneous-dependencies': 'import-x-alias/no-extraneous-dependencies',
+	'vue/require-macro-variable-name': 'n8n-local-rules/require-macro-variable-name',
+};
+
+/** Vize rule ids that differ from the eslint-plugin-vue rule they replace. */
+const VIZE_TO_ESLINT = {
+	'vue/require-component-registration': 'vue/no-undef-components',
+	'vue/sfc-element-order': 'vue/block-order',
+};
 
 function splitId(id) {
 	const i = id.lastIndexOf('/');
@@ -87,9 +109,7 @@ function oxlintRuleIds() {
 
 /** ESLint id -> the oxlint id we would write in a config, or null if oxlint has no such rule. */
 function toOxlintId(eslintId, native) {
-	if (eslintId === 'import-x/no-extraneous-dependencies') {
-		return 'import-x-alias/no-extraneous-dependencies';
-	}
+	if (PORTED_RULES[eslintId]) return PORTED_RULES[eslintId];
 	const [ns, name] = splitId(eslintId);
 	if (JS_PLUGIN_NAMESPACES.has(ns)) return eslintId;
 	if (ns === '') return native.has(`eslint/${name}`) ? name : null;
@@ -185,26 +205,98 @@ async function declaredJsPluginRules() {
 	return { ids, overrideOnly, plugins: [...plugins] };
 }
 
+/**
+ * Rules the package's Vize config enforces, under their ESLint ids. Vize keeps
+ * the script-side rules it runs on templates under `script/`.
+ */
+async function vizeEnforcedRules() {
+	const rules = new Set();
+	if (!vizeFile) return rules;
+
+	const mod = await import(pathToFileURL(resolve(vizeFile)).href);
+	const linter = mod.default?.vue?.linter;
+	// Any other preset turns on rules that the config does not list.
+	if (linter?.preset !== 'incremental') {
+		throw new Error(`${vizeFile}: expected vue.linter.preset to be 'incremental'`);
+	}
+	for (const [id, severity] of Object.entries(linter.rules ?? {})) {
+		if (isEnabled(severity)) rules.add(VIZE_TO_ESLINT[id] ?? id.replace(/^script\//, 'vue/'));
+	}
+	// Native `vize lint` always reports template parse errors.
+	rules.add('vue/no-parsing-error');
+	return rules;
+}
+
+/**
+ * eslint-plugin-vue rules that check only a template or the SFC structure, so
+ * they cannot report on a file that is not `.vue`. ESLint turns them on for
+ * every file. These are the `vue/` rules of the shared Vize config, plus the
+ * template rules that no tool runs now. Vize's `script/` rules check scripts too.
+ */
+async function templateOnlyRules() {
+	const shared = join(root, 'packages/@n8n/oxlint-config/dist/configs/vize.js');
+	const { vizeRules: rules } = await import(pathToFileURL(shared).href).catch(() => {
+		throw new Error(`cannot load ${shared}: build @n8n/oxlint-config first`);
+	});
+	return new Set([
+		...Object.keys(rules)
+			.filter((id) => id.startsWith('vue/'))
+			.map((id) => VIZE_TO_ESLINT[id] ?? id),
+		'vue/no-parsing-error',
+		'vue/valid-attribute-name',
+		'vue/valid-template-root',
+	]);
+}
+
 const native = oxlintRuleIds();
 const gap = JSON.parse(readFileSync(gapFile, 'utf8'));
 
 // ESLint's enforced set, unioned across the package's sample files.
 const snapshot = JSON.parse(readFileSync(resolve(eslintFile), 'utf8'));
+const templateOnly = await templateOnlyRules();
 const eslintRules = new Set();
 let sampled = 0;
 const sampledFiles = [];
 for (const [key, entry] of Object.entries(snapshot)) {
 	if (!key.startsWith(`${pkgDir}|`) || !entry.rules) continue;
 	sampled++;
-	sampledFiles.push(key.split('|')[1]);
-	for (const id of Object.keys(entry.rules)) eslintRules.add(id);
+	const file = key.split('|')[1];
+	sampledFiles.push(file);
+	for (const id of Object.keys(entry.rules)) {
+		if (file.endsWith('.vue') || !templateOnly.has(id)) eslintRules.add(id);
+	}
 }
 if (sampled === 0) {
 	console.error(`no ESLint snapshot entries for ${pkgDir} in ${eslintFile}`);
 	process.exit(2);
 }
 
+function resolvedResidualEslintRules() {
+	const rules = new Set();
+	if (!includeResidualEslint) return rules;
+
+	for (const file of sampledFiles) {
+		const out = spawnSync('pnpm', ['exec', 'eslint', '--print-config', file], {
+			cwd: join(root, pkgDir),
+			encoding: 'utf8',
+			maxBuffer: 32 * 1024 * 1024,
+		});
+		const start = out.stdout.indexOf('{');
+		if (start === -1) {
+			throw new Error(`eslint --print-config failed: ${(out.stderr || out.stdout).trim()}`);
+		}
+		const parsed = JSON.parse(out.stdout.slice(start));
+		for (const [id, severity] of Object.entries(parsed.rules ?? {})) {
+			if (isEnabled(severity)) rules.add(id);
+		}
+	}
+
+	return rules;
+}
+
 const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules();
+const residualEslintRules = resolvedResidualEslintRules();
+const vizeRules = await vizeEnforcedRules();
 
 const comparable = (id) => {
 	const overrides = overrideOnly.get(id);
@@ -218,6 +310,10 @@ const oxlintRules = new Set(
 const matched = [];
 const missing = [];
 for (const id of [...eslintRules].sort()) {
+	if (residualEslintRules.has(id) || vizeRules.has(id)) {
+		matched.push(id);
+		continue;
+	}
 	const target = toOxlintId(id, native);
 	if (target && oxlintRules.has(canonical(target, native))) {
 		matched.push(id);
@@ -233,7 +329,10 @@ for (const id of eslintRules) {
 	const target = toOxlintId(id, native);
 	if (target) expected.add(canonical(target, native));
 }
-const extra = [...oxlintRules].filter((id) => !expected.has(id)).sort();
+const extra = [
+	...[...oxlintRules].filter((id) => !expected.has(id)),
+	...[...vizeRules].filter((id) => !eslintRules.has(id)).map((id) => `${id} (vize)`),
+].sort();
 
 const hasApplicableGap = (id) => {
 	const entry = gap[id];
@@ -245,6 +344,8 @@ const undocumented = missing.filter((entry) => !isDocumented(entry));
 
 console.log(`${pkgDir}: ${sampled} sample files, ${eslintRules.size} ESLint rules at error`);
 console.log(`  jsPlugins declared: ${plugins.join(', ') || 'none'}`);
+if (includeResidualEslint) console.log(`  residual ESLint:    ${residualEslintRules.size} rules`);
+if (vizeFile) console.log(`  vize:               ${vizeRules.size} rules`);
 console.log(`  matched:            ${matched.length}`);
 console.log(
 	`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`,

@@ -1,6 +1,7 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
-import { OperationalError, randomString } from 'n8n-workflow';
+import { randomString } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 interface BaseMqttCredential {
 	protocol: 'mqtt' | 'mqtts' | 'ws';

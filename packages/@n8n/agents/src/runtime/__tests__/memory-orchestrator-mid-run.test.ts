@@ -20,6 +20,14 @@ function userMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
 }
 
+/** After a mid-turn swap, the turn's request stays visible next to the notes. */
+function expectOnlyRequest(list: AgentMessageList) {
+	const messages = list.forLlm('base').messages;
+	expect(messages).toHaveLength(1);
+	expect(messages[0].role).toBe('user');
+	expect(messages[0].content).not.toBe(OBSERVATION_CONTINUATION_REMINDER);
+}
+
 function assistantMsg(text: string): AgentMessage {
 	return { role: 'assistant', content: [{ type: 'text', text }] };
 }
@@ -49,7 +57,13 @@ function buildOrchestrator(
 	const config = {
 		name: 'mid-run-agent',
 		memory: store,
-		observationalMemory,
+		// These cases cover the disable-for-run policy; retry has its own tests.
+		// System placement keeps the masked window easy to assert; message placement has its own tests.
+		observationalMemory: {
+			failurePolicy: 'disableForRun',
+			logPlacement: 'system',
+			...observationalMemory,
+		},
 		onMemoryTaskEvent: (event: ScopedMemoryTaskEvent) => events.push(event),
 	} as unknown as AgentRuntimeConfig;
 	const tracker = new BackgroundTaskTracker();
@@ -132,9 +146,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const cursor = await store.getCursor(THREAD_ID);
 		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 		expect(list.observationLogMemory).toContain('User set up mid-run observation.');
 	});
 
@@ -177,9 +189,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 	});
 
 	it('contains orchestration failures instead of failing the run', async () => {
@@ -226,7 +236,8 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await store.releaseObservationLogTaskLock(lock!);
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.llmVisibleMessages()).toHaveLength(0);
+		// Only the turn's request stays visible after the swap.
+		expect(list.llmVisibleMessages()).toHaveLength(1);
 	});
 
 	it('resets the budget after compaction and observes again when new messages cross it', async () => {
@@ -253,6 +264,56 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(2);
 		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(2);
+	});
+
+	describe('with measured request size', () => {
+		const usage = (promptTokens: number) => ({
+			promptTokens,
+			completionTokens: 0,
+			totalTokens: promptTokens,
+		});
+
+		it('blocks for observation when the measured request crosses the hard threshold', async () => {
+			const store = new InMemoryMemory();
+			const observe = vi.fn(
+				async () => await Promise.resolve('* IMPORTANT (14:31) Large prompt observed.'),
+			);
+			const { orchestrator } = buildOrchestrator(store, {
+				observerThresholdTokens: 1_000,
+				observe,
+				observationLogTailLimit: 20,
+			});
+			const list = new AgentMessageList();
+			list.addInput([userMsg('a short message')]);
+
+			// The system prompt and tools make the real request far larger than its messages.
+			await orchestrator.recordModelCallUsage(list, usage(5_000));
+			list.addResponse([assistantMsg('a short reply')]);
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+
+			expect(observe).toHaveBeenCalledTimes(1);
+			expectOnlyRequest(list);
+		});
+
+		it('keeps the message estimate when the call reports no usage', async () => {
+			const store = new InMemoryMemory();
+			const observe = vi.fn(async () => await Promise.resolve('* IMPORTANT (14:31) Unused.'));
+			const { orchestrator } = buildOrchestrator(store, {
+				observerThresholdTokens: 1_000,
+				observe,
+				observationLogTailLimit: 20,
+			});
+			const list = new AgentMessageList();
+			// Over the soft threshold on message size alone, so a lost estimate shows.
+			list.addInput([userMsg('x'.repeat(750))]);
+
+			await orchestrator.recordModelCallUsage(list, undefined);
+			await orchestrator.recordModelCallUsage(list, usage(0));
+			list.addResponse([assistantMsg('a short reply')]);
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+
+			await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
+		});
 	});
 
 	// With the character-count token counter, a 750-char message is inside the
@@ -287,9 +348,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		// The next boundary activates the settled result without a new observer run.
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 		expect(list.observationLogMemory).toContain('Background observation.');
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 	});
@@ -315,13 +374,10 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		d.resolve('* CRITICAL (14:30) First chunk observed.');
 		await boundary;
 
-		// Joined the in-flight result instead of running a second observer: the
-		// cursor covers only the first message, so the second stays visible.
-		expect(observe).toHaveBeenCalledTimes(1);
-		const visible = list.forLlm('base').messages;
-		expect(visible).toHaveLength(2);
-		expect(visible[0]).toEqual({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
-		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
+		// Joined the in-flight result first. The request stays visible, so the
+		// window is still too full and a second Observer call covers the reply.
+		expect(observe).toHaveBeenCalledTimes(2);
+		expectOnlyRequest(list);
 	});
 
 	it.each(['provider', 'commit'] as const)(
@@ -360,6 +416,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 			await orchestrator.loadInto(next, runOptions());
 			await orchestrator.maybeObserveMidRun(next, runOptions());
 			expect(observe).toHaveBeenCalledTimes(2);
+			// The next turn has no request of its own, so the reminder anchors the window.
 			expect(next.forLlm('base').messages).toEqual([
 				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
 			]);
@@ -481,13 +538,12 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 				{ text: fact },
 			]);
 			expect(list.observationLogMemory).toContain(fact);
-			expect(list.forLlm('base').messages).toEqual([
-				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-			]);
+			expectOnlyRequest(list);
 		},
 	);
 
-	it.each(['not a bullet line', 'NO_OBSERVATIONS'])(
+	// A valid NO_OBSERVATIONS advances the cursor, so only malformed output is non-advancing.
+	it.each(['not a bullet line'])(
 		'stops after a non-advancing response and permits another attempt on resume: %s',
 		async (output) => {
 			const store = new InMemoryMemory();
@@ -526,7 +582,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		},
 	);
 
-	it.each(['Not an observation.', 'NO_OBSERVATIONS'])(
+	it.each(['Not an observation.'])(
 		'does not retry a non-advancing in-flight attempt at the hard boundary: %s',
 		async (output) => {
 			const store = new InMemoryMemory();
@@ -550,38 +606,94 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		},
 	);
 
-	it('keeps raw history after empty results and retries only on a new run', async () => {
+	it('moves the cursor past empty results so a new run reads only new messages', async () => {
 		const store = new InMemoryMemory();
-		const observe = vi.fn(async () => await Promise.resolve('NO_OBSERVATIONS'));
+		const inputs: ObservationLogObserverInput[] = [];
+		const observe = vi.fn(async (input: ObservationLogObserverInput) => {
+			inputs.push(input);
+			return await Promise.resolve('NO_OBSERVATIONS');
+		});
 		const { orchestrator, tracker, events } = buildOrchestrator(store, {
 			observerThresholdTokens: 10,
 			observe,
 		});
-		for (const callCount of [1, 2]) {
+		for (const text of ['Thank you for the help.', 'Thanks again.']) {
 			const list = new AgentMessageList();
 			await orchestrator.loadInto(list, runOptions());
-			list.addInput([userMsg('Thank you for the help.')]);
-			await orchestrator.maybeObserveMidRun(list, runOptions());
+			list.addInput([userMsg(text)]);
 			await orchestrator.maybeObserveMidRun(list, runOptions());
 			await orchestrator.saveToMemory(list, runOptions());
 			await tracker.flush();
-			expect(observe).toHaveBeenCalledTimes(callCount);
-			expect(list.llmVisibleMessages()).toEqual(list.messages());
-			expect(await store.getMessagesForObservationScope(THREAD_ID)).toEqual(list.messages());
 			expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toEqual([]);
-			expect(await store.getCursor(THREAD_ID)).toBeNull();
+			expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 		}
+		expect(observe).toHaveBeenCalledTimes(2);
+		expect(inputs[1].deltaMessages).toHaveLength(1);
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: 'completed',
 				value: expect.objectContaining({
 					status: 'ran',
 					observationsWritten: 0,
-					cursorAdvanced: false,
+					cursorAdvanced: true,
 					skippedLines: [],
 				}),
 			}),
 		);
+	});
+
+	it('does not tell the observer that a live offloaded result is unavailable', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const inputs: ObservationLogObserverInput[] = [];
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			observationLogTailLimit: 20,
+			observe: async (input) => {
+				inputs.push(input);
+				return await Promise.resolve('* CRITICAL (14:30) Search done.');
+			},
+		});
+		const path = `tool-results/runs/${'a'.repeat(43)}/${'r'.repeat(43)}.result.json`;
+		const list = new AgentMessageList();
+		list.addInput([userMsg('search something big')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'search',
+						input: {},
+						state: 'resolved',
+						output: {
+							_offloaded: true,
+							path,
+							originalCharCount: 250_000,
+							estimatedTokenCount: 60_000,
+							requiredAction: {
+								toolName: 'workspace_read_tool_result',
+								input: { path, view: 'json', pointer: '' },
+							},
+							message: 'Stored in workspace',
+						},
+					},
+				],
+			},
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(inputs).toHaveLength(1);
+		const { transcript } = inputs[0];
+		expect(transcript).not.toMatch(/expired|unavailable/i);
+		expect(transcript).toContain('stored only for its originating run');
+		expect(transcript).toContain('250000');
+		// The durable log must not point at a run-scoped file.
+		expect(transcript).not.toContain(path);
+		// The live run keeps the readable reference.
+		expect(JSON.stringify(list.messages())).toContain(path);
 	});
 });
 
@@ -670,7 +782,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		expect(observe).toHaveBeenCalledTimes(2);
 	});
 
-	it.each(['invalid', 'provider', 'empty'] as const)(
+	it.each(['invalid', 'provider'] as const)(
 		'suppresses a queued tail after a non-advancing %s outcome without disabling a newer run',
 		async (outcome) => {
 			const store = new InMemoryMemory();
@@ -697,7 +809,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 			await orchestrator.loadInto(next, runOptions());
 			next.addInput([userMsg('z'.repeat(750))]);
 			const boundary = orchestrator.maybeObserveMidRun(next, runOptions());
-			pending.resolve(outcome === 'empty' ? 'NO_OBSERVATIONS' : 'Not an observation.');
+			pending.resolve('Not an observation.');
 			await boundary;
 			await tracker.flush();
 
@@ -733,9 +845,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		// and masks the window — no in-flight mid-run task remains.
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 
 		// A small post-boundary tail is added before the turn ends. Its budget
 		// is below the threshold, so the gate alone would skip it.
@@ -934,5 +1044,79 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 		await orchestrator.applyObservationMask(list, runOptions().persistence);
 		await orchestrator.persistTurnDelta(list, runOptions());
 		expect(saveSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('MemoryOrchestrator budget estimate', () => {
+	it('counts runtime catalogue reminders but ignores custom messages hidden from the model', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Review an invoice')]);
+		list.addResponse([
+			{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content: 'Current catalogue' } },
+			{ type: 'custom', data: { dummy: 'Hidden application state' } },
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(counted.join('\n')).toContain(
+			'<system-reminder>\nCurrent catalogue\n</system-reminder>',
+		);
+		expect(counted.join('\n')).not.toContain('Hidden application state');
+	});
+
+	it('does not count the bytes of a file in a tool output', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Read the image')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'call-1',
+						toolName: 'read_binary_data',
+						input: { fileId: 'file-1' },
+						state: 'resolved',
+						output: {
+							type: 'content',
+							value: [
+								{ type: 'text', text: '{"fileId":"file-1"}' },
+								{
+									type: 'file',
+									mediaType: 'image/png',
+									fileRef: { id: 'file-1' },
+									data: new Uint8Array(10_000),
+								},
+							],
+						},
+					},
+				],
+			} as unknown as AgentMessage,
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		const text = counted.join('\n');
+		expect(text).toContain('file-1');
+		expect(text).not.toContain('"data"');
+		expect(text.length).toBeLessThan(1_000);
 	});
 });

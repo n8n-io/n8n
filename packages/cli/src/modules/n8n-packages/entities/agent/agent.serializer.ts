@@ -1,3 +1,4 @@
+import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
@@ -20,7 +21,11 @@ type AgentPackageKeyHandling = {
 	integrations: 'transform';
 	tools: 'transform';
 	skills: 'exclude';
+	// Agent tags are not part of packages yet; they travel with the internal
+	// REST API only for now.
+	tags: 'exclude';
 	availableInMCP: 'copy';
+	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
 	scope: 'exclude';
@@ -54,10 +59,20 @@ const serializeMetadataPayload = definePackageSerializationPayload<
 	AgentMetadataKeyHandling
 >();
 
+/**
+ * Imported channels never use package credentials. Clearing the ID keeps channel credentials
+ * out of the package requirements. The key stays because the integration schema requires it.
+ */
+function withoutChannelCredentials(integrations: Agent['integrations']): Agent['integrations'] {
+	return integrations.map((integration) =>
+		isCredentialAgentIntegration(integration) ? { ...integration, credentialId: '' } : integration,
+	);
+}
+
 @Service()
 export class AgentSerializer {
 	serialize(
-		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP'>,
+		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP' | 'isArchived'>,
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
@@ -65,7 +80,7 @@ export class AgentSerializer {
 		const config = definition.schema
 			? {
 					...definition.schema,
-					integrations,
+					integrations: withoutChannelCredentials(integrations),
 					...(definition.schema.skills
 						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
 						: {}),
@@ -77,6 +92,7 @@ export class AgentSerializer {
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
+				...(agent.isArchived ? { isArchived: true } : {}),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

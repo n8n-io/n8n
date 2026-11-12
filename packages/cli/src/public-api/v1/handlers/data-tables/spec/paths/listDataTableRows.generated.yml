@@ -2,7 +2,10 @@ operationId: listDataTableRows
 tags:
   - DataTable
 summary: List rows of a data table
-description: Retrieve rows from a data table with optional filtering, sorting, and pagination.
+description: |-
+  Retrieve rows from a data table with optional filtering, sorting, and pagination.
+
+  Requires the `dataTableRow:read` API key scope.
 x-required-scope: dataTableRow:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -81,3 +84,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

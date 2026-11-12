@@ -6,9 +6,9 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { toAgentDocument } from '../json-config/agent-document';
@@ -51,6 +51,12 @@ export class SubAgentSourceResolver {
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
 		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
+		if (agent.isArchived) {
+			throw new UserError(
+				`Sub-agent "${agent.name}" is archived. Restore it before delegating to it.`,
+			);
+		}
+
 		if (context.runtimeSnapshot !== undefined) {
 			const saved = jsonParse<ResolvedSubAgentRuntimeSource | null>(context.runtimeSnapshot, {
 				fallbackValue: null,
@@ -81,6 +87,7 @@ export class SubAgentSourceResolver {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(
 				source.versionId,
 				source.agentId,
+				{},
 			);
 			if (!version) {
 				throw new NotFoundError(

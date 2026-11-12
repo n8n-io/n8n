@@ -187,9 +187,6 @@
 		"src/modules/chat-hub/chat-hub.models.service.ts",
 		"src/modules/chat-hub/chat-hub.service.ts",
 		"src/modules/chat-hub/chat-hub.settings.service.ts",
-		"src/modules/data-table/data-table-ddl.service.ts",
-		"src/modules/data-table/data-table.service.ts",
-		"src/modules/data-table/utils/sql-utils.ts",
 		"src/modules/dynamic-credentials.ee/database/entities/credential-resolver.ts",
 		"src/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.ts",
 		"src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts",
@@ -336,11 +333,41 @@
 		"src/features/shared/editors/plugins/codemirror/completions/__tests__/mock.ts",
 		"src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts"
 	],
+	"packages/modules/apps/frontend": [
+		"src/__tests__/setup.ts",
+		"src/apps.module.test.ts",
+		"src/apps.module.ts",
+		"src/views/AppsListView.vue"
+	],
+	"packages/modules/inbox/frontend": [
+		"src/__tests__/setup.ts",
+		"src/inbox.store.test.ts",
+		"src/inbox.store.ts",
+		"src/views/InboxView.vue"
+	],
 	"packages/modules/insights/frontend": [
 		"src/__tests__/setup.ts",
 		"src/chartjs.utils.ts",
 		"src/components/InsightsDashboard.test.ts",
 		"src/components/InsightsDashboard.vue"
+	],
+	"packages/modules/mcp/frontend": [
+		"src/SettingsMCPView.vue",
+		"src/__tests__/setup.ts",
+		"src/mcp.store.test.ts",
+		"src/mcp.store.ts"
+	],
+	"packages/modules/self-healing/frontend": [
+		"src/__tests__/setup.ts",
+		"src/self-healing.store.test.ts",
+		"src/self-healing.store.ts",
+		"src/views/SelfHealingConfigView.vue"
+	],
+	"packages/modules/type-availability-policies/frontend": [
+		"src/__tests__/setup.ts",
+		"src/components/RestrictedNodePanel.vue",
+		"src/type-availability-policies.store.test.ts",
+		"src/type-availability-policies.store.ts"
 	],
 	"packages/modules/instance-registry/frontend": [
 		"src/__tests__/setup.ts",
@@ -352,6 +379,12 @@
 		"src/SettingsOpenTelemetryView.test.ts",
 		"src/__tests__/setup.ts",
 		"src/index.ts"
+	],
+	"packages/modules/promotions/frontend": [
+		"src/__tests__/bindings.fixtures.ts",
+		"src/__tests__/design-system-icons.test.ts",
+		"src/components/ApplyInstanceDialog.vue",
+		"src/composables/useInstancePromotionConnection.ts"
 	],
 	"packages/node-dev": ["src/Build.ts"],
 	"packages/nodes-base": [

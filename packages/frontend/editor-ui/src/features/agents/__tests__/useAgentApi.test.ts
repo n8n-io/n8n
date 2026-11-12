@@ -11,6 +11,7 @@ import {
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
+	getAgentTaskCancellation,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -20,6 +21,8 @@ import {
 	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
 	getChatMessages,
+	getChatAttachmentUrl,
+	getSessionFiles,
 	listAgents,
 	listAgentsPage,
 	listN8nChatAgents,
@@ -49,13 +52,13 @@ describe('useAgentApi', () => {
 
 	describe('listAttachableSkills', () => {
 		it('lists the attachable skills of the agent in one call, by target and then by name', async () => {
-			const skill = (name: string, scope: SkillListItem['scope'], agentId: string | null = null) =>
-				({ id: name, name, scope, agentId }) as SkillListItem;
+			const skill = (name: string, scope: SkillListItem['scope']) =>
+				({ id: name, name, scope }) as SkillListItem;
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
 				count: 5,
 				data: [
 					skill('Tone', 'instance'),
-					skill('Notes', 'project', 'agent-1'),
+					skill('Notes', 'project'),
 					skill('SQL', 'project'),
 					skill('Brand', 'instance'),
 					skill('Billing', 'project'),
@@ -67,7 +70,7 @@ describe('useAgentApi', () => {
 			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills', {
 				attachableTo: 'agent-1',
 			});
-			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Notes', 'Brand', 'Tone']);
+			expect(result.map(({ name }) => name)).toEqual(['Billing', 'Notes', 'SQL', 'Brand', 'Tone']);
 		});
 	});
 
@@ -75,7 +78,7 @@ describe('useAgentApi', () => {
 		const skill = { name: 'Tone', description: 'Use for replies', instructions: 'Be kind' };
 
 		it('creates an agent skill with its target, and without one when none is given', async () => {
-			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, 'agent');
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, 'instance');
 			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill);
 
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
@@ -83,7 +86,7 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'POST',
 				'/projects/project-1/agents/v2/agent-1/skills',
-				{ ...skill, availableTo: 'agent' },
+				{ ...skill, availableTo: 'instance' },
 			);
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
 				2,
@@ -339,6 +342,44 @@ describe('useAgentApi', () => {
 		]);
 	});
 
+	describe('getChatAttachmentUrl', () => {
+		it('adds the session thread only when given', () => {
+			const url = getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1');
+			expect(url).toBe('/rest/projects/p1/agents/v2/a1/chat/attachments/att-1');
+			expect(getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', 'th/1')).toBe(
+				`${url}?threadId=th%2F1`,
+			);
+		});
+	});
+
+	describe('getSessionFiles', () => {
+		it('lists the files of a preview session', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await expect(getSessionFiles(restApiContext, 'p1', 'a1', 'th/1')).resolves.toEqual({
+				files: [],
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/p1/agents/v2/a1/chat/th%2F1/files',
+			);
+		});
+
+		it('lists the files of an n8n Chat session on the n8n Chat route', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'a1', 'th-1', 'n8n-chat');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
+			);
+		});
+	});
+
 	describe('getChatMessages', () => {
 		it('percent-encodes the thread id so a rotated session id survives as a URL, not a fragment', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ messages: [] });
@@ -370,6 +411,7 @@ describe('useAgentApi', () => {
 			restApiContext,
 			'DELETE',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
+			{ scope: 'foreground' },
 		);
 	});
 
@@ -389,6 +431,7 @@ describe('useAgentApi', () => {
 			await getChatMessages(...args, 'n8n-chat');
 			await cancelAgentChatExecution(...args, 'execution-1', 'n8n-chat');
 			await cancelAgentChatRun(restApiContext, 'project-1', 'agent-1', 'run-1', 'n8n-chat');
+			await getAgentTaskCancellation(...args, 'n8n-chat');
 
 			// Relative paths only: makeRestApiRequest prepends `restApiContext.baseUrl` itself.
 			const path = '/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1';
@@ -404,8 +447,14 @@ describe('useAgentApi', () => {
 				],
 				[restApiContext, 'POST', `${path}/queue/queue-1/steer`, { executionId: 'execution-1' }],
 				[restApiContext, 'GET', `${path}/messages`],
-				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
-				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],
+				[restApiContext, 'DELETE', `${path}/executions/execution-1`, { scope: 'foreground' }],
+				[
+					restApiContext,
+					'DELETE',
+					'/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1',
+					{ scope: 'foreground' },
+				],
+				[restApiContext, 'GET', `${path}/task-cancellation`],
 			]);
 		});
 	});
@@ -564,25 +613,22 @@ describe('useAgentApi', () => {
 	});
 
 	describe('duplicateAgent', () => {
-		it('fetches the source agent and config, then creates a clone with the new name', async () => {
-			const sourceAgent = {
-				id: 'agent-1',
-				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
-				tools: { refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } } },
-				skills: { skill_abc: { name: 'Triage', description: '', instructions: '' } },
-			} as unknown as AgentResource;
+		it('fetches the source agent, then creates a clone with the new name', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				config: sourceConfig,
+				tools: { refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } } },
+				skills: { skill_abc: { name: 'Triage', description: '', instructions: '' } },
+			} as unknown as AgentResource;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
-			// getAgent, getAgentConfig, then createAgent — in Promise.all order then sequential.
-			// getAgentConfig returns the AgentConfigResponse envelope { config, configHash }.
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			const result = await duplicateAgent(
@@ -593,23 +639,16 @@ describe('useAgentApi', () => {
 			);
 
 			expect(result).toBe(cloned);
-			// getAgent + getAgentConfig fetched in parallel.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
 				1,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1',
 			);
-			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				2,
-				restApiContext,
-				'GET',
-				'/projects/project-1/agents/v2/agent-1/config',
-			);
 			// createAgent posts the copied config with the new name overriding the source name;
 			// tasks are dropped and integrations are copied without their credential.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				3,
+				2,
 				restApiContext,
 				'POST',
 				'/projects/project-1/agents/v2',
@@ -623,13 +662,6 @@ describe('useAgentApi', () => {
 		});
 
 		it('copies channels without their credential so the clone opens as drafts', async () => {
-			const sourceAgent = {
-				id: 'agent-1',
-				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
-				tools: {},
-				skills: {},
-			} as unknown as AgentResource;
 			const sourceConfig = {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -640,15 +672,21 @@ describe('useAgentApi', () => {
 					{ type: 'n8n_chat', credentialId: '' },
 				],
 			} as unknown as AgentJsonConfig;
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				config: sourceConfig,
+				tools: {},
+				skills: {},
+			} as unknown as AgentResource;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			await duplicateAgent(restApiContext, 'project-1', 'agent-1', 'Support Agent (copy)');
 
-			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[2] as [
+			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[1] as [
 				unknown,
 				string,
 				string,

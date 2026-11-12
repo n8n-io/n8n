@@ -115,6 +115,20 @@ describe('parseSuspension', () => {
 		expect(parseSuspension(chunk)?.runId).toBe('run-1');
 	});
 
+	it('reports the tool that a tool catalog call_tool call suspended', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'call_tool',
+			input: { tool: 'setup_workflow', arguments: { workflowId: 'wf-1' } },
+			suspendPayload: { requestId: 'req-1' },
+		};
+
+		const suspension = parseSuspension(chunk);
+		expect(suspension?.toolName).toBe('call_tool');
+		expect(suspension?.targetToolName).toBe('setup_workflow');
+	});
+
 	it('handles missing payload gracefully', () => {
 		const chunk = { type: 'tool-call-suspended' };
 		expect(parseSuspension(chunk)).toBeNull();

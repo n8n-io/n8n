@@ -1,5 +1,6 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { hasPolicyRefusalMarker, UserError } from 'n8n-workflow';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** `enforce*` only throws when something objected, so an empty list is a bug, not a case. */
 export type NonEmptyViolations = [PolicyViolation, ...PolicyViolation[]];

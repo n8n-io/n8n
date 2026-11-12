@@ -88,7 +88,7 @@ test.describe('Feature', { annotation: [{ type: 'owner', description: team }] },
 		const file = createFile(
 			'/tests/e2e/example.spec.ts',
 			`
-test.describe('Feature', { annotation: [{ type: 'owner', description: 'Catalysts' }] }, () => {
+test.describe('Feature', { annotation: [{ type: 'owner', description: 'Core Execution' }] }, () => {
 	test('creates a resource', async ({ api }) => {
 		await api.create({ workflow: 'x', owner: 'alice@n8n.io' });
 	});
@@ -110,7 +110,7 @@ test.describe('Feature', { annotation: [{ type: 'owner', description: 'Catalysts
 test.describe(
 	'Benchmark',
 	{ annotation: [
-		{ type: 'owner', description: 'Catalysts' },
+		{ type: 'owner', description: 'Core Execution' },
 		{ type: 'question', description: 'webhook-single-instance' },
 	] },
 	() => {},

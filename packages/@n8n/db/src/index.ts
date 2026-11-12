@@ -8,11 +8,17 @@ export {
 	dbType,
 	JsonColumn,
 	DateTimeColumn,
+	BinaryColumn,
 } from './entities/abstract-entity';
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
-export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
+export {
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	parseDbTime,
+} from './utils/dialect-time';
+export { toDialectQuery } from './utils/dialect-sql';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
 export { isEntityNotFoundError } from './utils/is-entity-not-found-error';
@@ -22,11 +28,23 @@ export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { principalFromUser } from './utils/principal-from-user';
 export { isPerson, isServiceAccount } from './utils/account-guards';
+export {
+	accountFirstName,
+	accountFullName,
+	accountSummary,
+	type AccountSummary,
+} from './utils/account-display-name';
 export { parseListQuerySortBy } from './utils/list-query-sort';
 export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';
-export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
+export {
+	bigintStringToNumber,
+	idStringifier,
+	lowerCaser,
+	objectRetriever,
+	sqlite,
+} from './utils/transformers';
 export { withTransaction } from './utils/transaction';
 
 export * from './constants';
@@ -52,6 +70,9 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+export { DbLockUnavailableError } from './services/db-lock-unavailable.error';
+
+export * from './execution-ledger';
 
 export { TransactionRunner } from './services/transaction';
 export type {

@@ -4,16 +4,15 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	getExecutionCallAction,
+	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	DATA_TABLES_TOOL_ID,
-	DOMAIN_TOOL_IDS,
-	EVAL_CONFIG_TOOL_ID,
-} from '../../src/tools/tool-ids';
+import { DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
@@ -257,22 +256,25 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from the builder tools that the orchestrator runs: a successful
- * `agent_builder_select_agent` result, or any result stamped `configMutated: true`.
- * Both carry the target `agentId`. Deduped by type+id.
+ * The Agent a builder tool result targets: a successful `agent_builder_select_agent`
+ * result, or any result stamped `configMutated: true`. Both carry the `agentId`.
  */
+export function builderToolAgentId(toolName: string, result: unknown): string | undefined {
+	const record = toResultRecord(result);
+	const agentId = record ? getString(record, 'agentId') : undefined;
+	if (!record || !agentId) return undefined;
+	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
+	return selected || record.configMutated === true ? agentId : undefined;
+}
+
+/** Capture the Agent a builder tool targets as an artifact ref. Deduped by type+id. */
 function captureBuilderToolAgentRef(
 	toolName: string,
 	result: unknown,
 	out: Map<string, ArtifactRef>,
 ): void {
-	const record = toResultRecord(result);
-	const agentId = record ? getString(record, 'agentId') : undefined;
-	if (!record || !agentId) return;
-	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
-	if (selected || record.configMutated === true) {
-		out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
-	}
+	const agentId = builderToolAgentId(toolName, result);
+	if (agentId) out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
 }
 
 /**
@@ -601,10 +603,7 @@ function extractResourceIds(
 
 	const action = getString(args, 'action');
 
-	if (
-		toolName === EXECUTION_TOOL_LEGACY ||
-		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
-	) {
+	if (toolName === EXECUTION_TOOL_LEGACY || getExecutionCallAction(toolName, action) === 'run') {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
@@ -616,7 +615,10 @@ function extractResourceIds(
 
 	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
 	// and tracking those would let cleanup delete tables the agent only inspected.
-	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+	if (
+		toolName === SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE ||
+		(isFormerDataTablesTool(toolName) && action === 'create')
+	) {
 		const record = toResultRecord(result);
 		const table = record ? getRecord(record, 'table') : undefined;
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;

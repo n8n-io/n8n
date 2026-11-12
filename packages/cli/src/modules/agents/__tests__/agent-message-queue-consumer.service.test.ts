@@ -168,6 +168,32 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).not.toHaveBeenCalled();
 	});
 
+	it('runs a hidden stop report and disables tools through the report mode', async () => {
+		const item = claim('session');
+		item.payload = {
+			kind: 'preview',
+			message: 'Report the stop',
+			resourceId: 'draft-chat:user',
+			hidden: true,
+			stopReportId: 'stop',
+		};
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ pauseReport: true, hideUserMessageFromTranscript: true }),
+		);
+		expect(sender.send.mock.calls[0][0]).toMatchObject({
+			type: 'execution-started',
+			stopReport: true,
+		});
+		expect(sender.send.mock.calls[0][0]).not.toHaveProperty('message');
+	});
+
 	it('accepts Stop while the thread owner is loading', async () => {
 		const item = claim('session');
 		const owner = createDeferredPromise<User>();
@@ -352,6 +378,28 @@ describe('AgentMessageQueueConsumer', () => {
 			executionId: item.admission.executionId,
 		});
 		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('runs a hidden n8n Chat stop report as a pause report', async () => {
+		const item = claim('session');
+		item.payload = {
+			kind: 'n8n_chat',
+			message: 'stop',
+			resourceId: 'n8n-chat:user',
+			hidden: true,
+			stopReportId: 'stop-1',
+		};
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(orchestrator.executeForN8nChatPublished).toHaveBeenCalledWith(
+			expect.objectContaining({ pauseReport: true, hideUserMessageFromTranscript: true }),
+		);
 	});
 
 	it('does not finish an n8n Chat turn that suspended for HITL', async () => {

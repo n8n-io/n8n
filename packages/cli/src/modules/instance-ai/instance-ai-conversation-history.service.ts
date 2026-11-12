@@ -13,7 +13,8 @@ import type {
 	InstanceAiConversationHistoryReader,
 } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { ASK_USER_TOOL_NAMES, TOOL_CALL_PART_TYPES } from './conversation-history-content';

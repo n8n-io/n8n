@@ -1,7 +1,8 @@
 # Oxlint migration blockers
 
-Last reviewed: 2026-09-22
+Last reviewed: 2026-11-11
 Oxlint version: 1.78.0
+Vize version: 0.715.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
 
@@ -75,98 +76,75 @@ Keep `n8n-node-dev` on ESLint. The v3 removal plan makes an Oxlint migration unn
 
 Reconsider this exception only if the package removal plan changes.
 
-## Frontend package blockers
+## Frontend: Oxlint and Vize
 
-Oxlint can lint the script section of a Vue SFC, but it does not expose the Vue template AST. An Oxlint-only frontend package would lose the following 59 rules:
+The frontend packages that dropped ESLint run two tools:
 
-```text
-vue/block-order
-vue/comment-directive
-vue/component-name-in-template-casing
-vue/jsx-uses-vars
-vue/no-child-content
-vue/no-deprecated-dollar-listeners-api
-vue/no-deprecated-dollar-scopedslots-api
-vue/no-deprecated-filter
-vue/no-deprecated-functional-template
-vue/no-deprecated-html-element-is
-vue/no-deprecated-inline-template
-vue/no-deprecated-router-link-tag-prop
-vue/no-deprecated-scope-attribute
-vue/no-deprecated-slot-attribute
-vue/no-deprecated-slot-scope-attribute
-vue/no-deprecated-v-bind-sync
-vue/no-deprecated-v-is
-vue/no-deprecated-v-on-native-modifier
-vue/no-deprecated-v-on-number-modifiers
-vue/no-dupe-v-else-if
-vue/no-duplicate-attributes
-vue/no-multiple-template-root
-vue/no-parsing-error
-vue/no-ref-as-operand
-vue/no-template-key
-vue/no-textarea-mustache
-vue/no-undef-components
-vue/no-unused-components
-vue/no-unused-vars
-vue/no-use-computed-property-like-method
-vue/no-use-v-if-with-v-for
-vue/no-useless-template-attributes
-vue/no-v-for-template-key-on-child
-vue/no-v-html
-vue/require-component-is
-vue/require-macro-variable-name
-vue/require-toggle-inside-transition
-vue/require-v-for-key
-vue/require-valid-default-prop
-vue/use-v-on-exact
-vue/v-slot-style
-vue/valid-attribute-name
-vue/valid-template-root
-vue/valid-v-bind
-vue/valid-v-cloak
-vue/valid-v-else
-vue/valid-v-else-if
-vue/valid-v-for
-vue/valid-v-html
-vue/valid-v-if
-vue/valid-v-is
-vue/valid-v-memo
-vue/valid-v-model
-vue/valid-v-on
-vue/valid-v-once
-vue/valid-v-pre
-vue/valid-v-show
-vue/valid-v-slot
-vue/valid-v-text
+- Oxlint lints the TypeScript files and the `<script>` blocks of each SFC, through `@n8n/oxlint-config/frontend`.
+- Native `vize lint` lints the Vue templates and the SFC structure, through `@n8n/oxlint-config/vize`. Each package passes a config file to `vize lint -c`. Vize does not read a file named `vize.config.*` as a `-c` file.
+
+Vize is pinned exactly (`vize: 0.715.0` in the catalog), because Vize is alpha software and releases often.
+
+Run the parity check of such a package with its Vize config:
+
+```sh
+node scripts/lint-parity/oxlint-parity.mjs --pkg packages/<package> --eslint /tmp/eslint-snapshot.json --vize packages/<package>/vize-lint.config.mjs
 ```
 
-The design-system rule `@n8n/design-system/require-teleported-tooltip-in-dropdown` has the same blocker. It uses `vue-eslint-parser` template services, not TypeScript type information.
+`--vize` counts the rules that the Vize config turns on as enforced, under their ESLint ids. A Vize rule that no ESLint rule maps onto fails the check, as an Oxlint one does.
 
-Suggested direction:
+#### Raise the Vize pin
 
-1. Keep ESLint for `.vue` files until Oxlint exposes a template AST or another template-aware linter replaces it.
-2. Run Oxlint for `.ts`, `.tsx`, and the SFC script section.
-3. Do not rewrite 60 template rules as source-text checks.
+Do these checks for each package that runs `vize lint`, before you change the `vize` version in the catalog:
 
-## Node package blockers
+1. Run `pnpm lint` in the package. It must pass.
+2. For each rule in `@n8n/oxlint-config/vize`, add an SFC that breaks it, run `pnpm lint`, and check that it fails and reports the rule. Then delete the file.
+   - For a `vue/*` template rule, use an SFC with no `<script>` block, for example `<template><ul><li v-for="x in [1]">{{ x }}</li></ul></template>` for `vue/require-v-for-key`.
+   - For a `script/*` rule, the SFC needs a `<script>` block, for example `const total = count + 1` after `const count = ref(1)` for `script/no-ref-as-operand`.
+   - `pnpm lint` runs `vize lint` only when Oxlint passes. If Oxlint fails on the file first, run `pnpm exec vize lint -c vize-lint.config.mjs <file>` instead.
+3. Run `oxlint-parity.mjs` with `--vize`, as above. It must pass.
+4. Try `vue/valid-attribute-name` and `vue/valid-template-root` the same way. If the new version reports them, turn them on in `@n8n/oxlint-config/vize` and remove their entries from `oxlint-gap.json`.
+
+### Frontend: rules dropped in the move to Oxlint and Vize
+
+Measured with Oxlint 1.78.0 and Vize 0.715.0. ESLint enforced these rules at `error` in the frontend packages. They have no home, or only a partial one, after the move. Each was dropped on purpose. Each row has an entry in `oxlint-gap.json`.
+
+| Rule | Where it applied | Why it has no home | `oxlint-gap.json` |
+| --- | --- | --- | --- |
+| `@n8n/design-system/no-direct-component-imports`, template half | `.vue` | Oxlint gives JS plugins no template AST. The script half still runs. The `@vue/compiler-dom` technique of the tooltip rule can recover it. | `frontend/no-direct-component-imports-template` |
+| `vue/valid-attribute-name`, `vue/valid-template-root` | `.vue` | Vize 0.715.0 maps them but reports nothing. They are not turned on, so that the config does not claim coverage it lacks. | `frontend/vue-template-rules`, and one entry for each rule |
+| `vue/multi-word-component-names`, `vue/no-mutating-props`, `vue/no-v-text-v-html-on-component` | `defineComponent` in `.ts` | Vize does not lint component objects in `.ts`. ESLint had them at `warn` or `off` for `.vue`. | one entry for each rule |
+| `vue/no-deprecated-dollar-listeners-api`, `vue/no-deprecated-dollar-scopedslots-api`, `vue/no-ref-as-operand`, `vue/no-use-computed-property-like-method`, `vue/require-valid-default-prop`, `.ts` half | `.ts` | No Oxlint rule. Vize runs them on SFC scripts, as `script/*`. The lint scripts pass only `.vue` files to `vize lint`, although Vize 0.715.0 also reports these rules in `.ts` files. | one entry for each rule |
+| `@typescript-eslint/naming-convention` | `design-system` `validators.ts` only | No Oxlint rule. | `@typescript-eslint/naming-convention` |
+| `@typescript-eslint/prefer-optional-chain` | all | The Oxlint rule is nursery and its fix is wrong. | `typescript/prefer-optional-chain` |
+| `no-octal`, `no-dupe-args` | all, or `.vue` | No Oxlint rule. Near zero impact: strict mode rejects both. | one entry for each rule |
+| `no-undef` | `.vue` | Nursery in Oxlint 1.78, with 5 false positives. TypeScript reports undefined names. | `no-undef` |
+| `import-x/export` | all | Nursery in Oxlint 1.78. | `import/export` |
+| 21 typed `@typescript-eslint/*` rules | SFC `<script>` in `chat`, `design-system` and promotions | Oxlint's type-aware rules skip `.vue`. They still run on `.ts`. editor-ui and the Oxlint-first modules already lacked them on `.vue`. | `frontend/sfc-type-aware-rules` |
+| `@n8n/design-system/require-teleported-tooltip-in-dropdown` | the SFCs with no `<script>` only | It runs on every SFC that has a `<script>` block. Oxlint runs no JS plugin on a `.vue` file with no script. | `frontend/scriptless-sfc-js-plugin-rules` |
+| `unused-imports/no-unused-imports` | `.vue` | Oxlint sees only the script block, so an import that only the template uses reads as unused: 531 false positives in 7 modules. | `frontend/vue-unused-imports` |
+
+`n8n-local-rules/require-macro-variable-name` is the Oxlint port of `vue/require-macro-variable-name`. It checks the `<script setup>` block, as the original does.
+
+The parity check compares a union of rules across a package's sample files, so it cannot see a rule that still runs on some files but not on others. The `frontend/*` entries with a `rules` list record these partial gaps. The parity check does not read them.
+
+## Node package migration
 
 The `n8n-nodes-base` plugin contributes 94 enforced rules:
 
 - 12 credential rules in `packages/@n8n/eslint-config/src/configs/nodes.ts`.
 - 82 node rules in the same config.
 
-The blocker is not known type awareness. The plugin needs a compatibility test through Oxlint's JavaScript plugin bridge. Its file-scoped rule tables also need an Oxlint translation.
+The plugin runs through Oxlint's JavaScript plugin bridge. Its file-scoped rule tables are in `@n8n/oxlint-config/nodes`. The filename rule stays in a residual ESLint pass because the bridge supplies different filename context.
 
 Use the rule tables in `packages/@n8n/eslint-config/src/configs/nodes.ts` as the canonical list. They change more often than this document and must not be duplicated here.
 
-Suggested spike:
+Validation covered:
 
-1. Load `eslint-plugin-n8n-nodes-base` through `jsPlugins` in an isolated node package.
-2. Run all 12 credential rules against representative valid and invalid files.
-3. Run the 82 node rules against representative valid and invalid files.
-4. Compare diagnostics, locations, options, and fixes with ESLint.
-5. Add the working file-scoped tables to `@n8n/oxlint-config/nodes`.
+1. Loading `eslint-plugin-n8n-nodes-base` through `jsPlugins`.
+2. Running all 12 credential rules and 82 node rules on `n8n-nodes-base`, then isolating the filename-rule divergence.
+3. Comparing the enabled rule set with the ESLint snapshot.
+4. Keeping a focused ESLint pass for divergent native rules, the filename rule, and package-specific AST selectors.
 
 ## Rules that are not blockers
 
@@ -186,8 +164,8 @@ The main exceptions are:
 2. Resolve decorator-safe `consistent-type-imports` behavior.
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
-5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
-6. Keep a template-only ESLint pass for Vue until native template support exists.
+5. Migrate the remaining package-specific AST selector restrictions.
+6. Move the remaining frontend packages to Oxlint and Vize.
 
 ## Validation commands
 

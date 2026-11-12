@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * Thrown when a workflow keeps changing while its source and concurrency token
@@ -7,7 +7,7 @@ import { OperationalError } from 'n8n-workflow';
 export class WorkflowSnapshotChangedError extends OperationalError {
 	constructor(workflowId: string) {
 		super(
-			`Workflow ${workflowId} changed while its source was being read. Call get_workflow_as_code again.`,
+			`Workflow ${workflowId} changed while its source was being read. Run get_workflow_as_code again.`,
 			{ level: 'warning' },
 		);
 	}

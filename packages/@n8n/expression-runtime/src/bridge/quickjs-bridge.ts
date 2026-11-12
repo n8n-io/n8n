@@ -3,22 +3,32 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
-import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import {
+	DEFAULT_BRIDGE_CONFIG,
+	HostCallError,
+	MemoryLimitError,
+	RuntimeRestartingError,
+	TimeoutError,
+} from '../types';
+import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import { readToAsciiCharmapJson } from '../extensions/to-ascii';
+import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
+import { isArrayIndexKey } from '../runtime/utils';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
+	defineOwnValue,
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
-import type { DataHolder } from './host-functions';
+import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
 	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
-	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -183,7 +193,7 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry));
 	const unescaped: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(inner)) {
-		unescaped[key] = unwrapSentinels(entry);
+		defineOwnValue(unescaped, key, unwrapSentinels(entry));
 	}
 	return unescaped;
 }
@@ -202,11 +212,14 @@ function unwrapSentinels(value: unknown): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key]);
+			defineOwnValue(result, key, unwrapSentinels(inner[key]));
 		}
 		return result;
 	}
 	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isErrorTransferSentinel(value)) {
+		return rebuildErrorValue(value, unwrapSentinels);
+	}
 	if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
@@ -226,7 +239,7 @@ function unwrapSentinels(value: unknown): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
+				defineOwnValue(err, k, unwrapSentinels(v));
 			}
 		}
 		return err;
@@ -240,7 +253,7 @@ function unwrapSentinels(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry));
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
+		defineOwnValue(result, key, unwrapSentinels((value as Record<string, unknown>)[key]));
 	}
 	return result;
 }
@@ -255,6 +268,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isSet',
 	'__isEscaped',
 	'__isError',
+	'__isKeyedArray',
 ]);
 
 /**
@@ -284,15 +298,30 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	if (value instanceof Set) {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
-	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
+	if (Array.isArray(value)) return wrapArrayForGuest(value);
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
 	for (const key of Object.keys(record)) {
 		if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
-		result[key] = wrapSpecialValuesForGuest(record[key]);
+		defineOwnValue(result, key, wrapSpecialValuesForGuest(record[key]));
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
+}
+
+/** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
+function wrapArrayForGuest(value: unknown[]): unknown {
+	const items = value.map(wrapSpecialValuesForGuest);
+	const keys = Object.keys(value);
+	// Own keys list array indices first, so an array without named keys ends on an index.
+	if (keys.length === 0 || isArrayIndexKey(keys[keys.length - 1])) {
+		return items;
+	}
+	const namedKeys = keys.filter((key) => !isArrayIndexKey(key));
+	const record = value as unknown as Record<string, unknown>;
+	const props: Record<string, unknown> = {};
+	namedKeys.forEach((key) => defineOwnValue(props, key, wrapSpecialValuesForGuest(record[key])));
+	return { __isKeyedArray: true, __items: items, __props: props };
 }
 
 /**
@@ -338,7 +367,8 @@ function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return safeStringify(wrapSpecialValuesForGuest(value));
+		// JSON.stringify returns undefined for a symbol or a function.
+		return safeStringify(wrapSpecialValuesForGuest(value)) ?? 'undefined';
 	} catch {
 		return 'undefined';
 	}
@@ -508,13 +538,16 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private broken = false;
 
+	/** The name of the host error that broke the runtime. A nested call keeps the first one. */
+	private hostErrorName = 'Error';
+
 	/** The bundle that the runtime loaded. A rebuild loads it again. */
 	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
-	// Long-lived host-callback handles (Intl polyfills) — disposed on dispose()
-	private intlHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
+	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
+	private hostFunctionHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
 	// Memoized host Intl formatters keyed by ctor + locales + options.
 	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
@@ -608,6 +641,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Inject Intl polyfill — QuickJS doesn't include Intl, but Luxon needs it
 		this.injectIntlPolyfill();
 
+		// The runtime bundle takes this function off the global object when it loads.
+		this.injectToAsciiCharmap();
+
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
 		this.loadRuntimeBundle(runtimeBundle);
 		this.runtimeBundle = runtimeBundle;
@@ -648,6 +684,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.logger.info('[QuickJsBridge] Vendor libraries verified successfully');
 	}
 
+	/** Gives the guest the host function that returns the character map of `toAscii`. */
+	private injectToAsciiCharmap(): void {
+		if (!this.vm) throw new Error('Context not initialized');
+
+		const charmapFn = this.vm.newFunction(TO_ASCII_CHARMAP_HOST_FUNCTION, () =>
+			this.hostValueToQuickJSHandle(readToAsciiCharmapJson()),
+		);
+		this.vm.setProp(this.vm.global, TO_ASCII_CHARMAP_HOST_FUNCTION, charmapFn);
+		this.hostFunctionHandles.push(charmapFn);
+	}
+
 	/**
 	 * Inject a polyfill for the Intl API.
 	 *
@@ -682,10 +729,14 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 		});
 		vm.setProp(vm.global, '__intl', intlFn);
-		this.intlHandles.push(intlFn);
+		this.hostFunctionHandles.push(intlFn);
 
 		const shimCode = `
 (function() {
+	// An expression can replace a built-in, so keep the ones from context setup.
+	var isArray = Array.isArray;
+	var objectKeys = Object.keys;
+
 	function checkError(result) {
 		if (result && typeof result === 'object' && result.__intlError) {
 			throw new Error(result.message);
@@ -703,7 +754,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		return copy;
 	}
 	function snapshotLocales(locales) {
-		return Array.isArray(locales) ? locales.slice() : locales;
+		return isArray(locales) ? locales.slice() : locales;
 	}
 
 	function callIntl(inst, ctorName, op, args, transform) {
@@ -765,7 +816,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	// prefers getWeekInfo() — expose both, like current V8.
 	function Locale(tag, options) {
 		var dumped = checkError(__intl('Locale', 'dump', tag, snapshotOptions(options)));
-		var keys = Object.keys(dumped);
+		var keys = objectKeys(dumped);
 		for (var i = 0; i < keys.length; i++) {
 			var k = keys[i];
 			if (k === 'weekInfo') this._weekInfo = dumped[k];
@@ -908,6 +959,15 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const wrapperCode = `
 (function() {
+	// An expression can replace a built-in, so keep the ones from context setup.
+	var parseJSON = JSON.parse;
+	var defineProperty = Object.defineProperty;
+	var objectKeys = Object.keys;
+	var isArray = Array.isArray;
+	// Define own data keys so a JSON __proto__ key stays part of the data.
+	function defineOwnValue(target, key, value) {
+		defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
+	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
 		var prepared = original(value);
@@ -936,10 +996,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 		if (v instanceof Error) {
 			var errExtra = {};
-			var errKeys = Object.keys(v);
+			var errKeys = objectKeys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], true);
+					defineOwnValue(errExtra, errKeys[ei], wrapSpecialValues(v[errKeys[ei]], true));
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -958,10 +1018,14 @@ export class QuickJsBridge implements RuntimeBridge {
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
+		if (isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
+			// The values inside an Error marker still need the wrapping above.
+			if (v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+				return wrapErrorMarker(v);
+			}
 			if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') return v;
 			if (v['${TRANSFER_ESCAPED_KEY}'] === true) {
 				var payload = v.__value;
@@ -973,7 +1037,7 @@ export class QuickJsBridge implements RuntimeBridge {
 					opaqueWrapper['${TRANSFER_OPAQUE_KEY}'] = true;
 					return opaqueWrapper;
 				}
-				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+				if (payload !== null && typeof payload === 'object' && !isArray(payload)) {
 					var walkedWrapper = { __value: wrapOwnKeys(payload, inCollection) };
 					walkedWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
 					return walkedWrapper;
@@ -986,6 +1050,15 @@ export class QuickJsBridge implements RuntimeBridge {
 		return wrapOwnKeys(v, inCollection);
 	}
 
+	function wrapErrorMarker(marker) {
+		var result = {};
+		objectKeys(marker).forEach(function(key) {
+			var isData = key === '__props' || key === '__cause' || key === '__json';
+			defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
+		});
+		return result;
+	}
+
 	// vm.dump() drops an undefined object value and turns an undefined array item into null.
 	function wrapChild(v, inCollection) {
 		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
@@ -993,7 +1066,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
-		var keys = Object.keys(v);
+		var keys = objectKeys(v);
 		var collides = false;
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
@@ -1016,7 +1089,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapChild(v[key], inCollection);
+			defineOwnValue(result, key, wrapChild(v[key], inCollection));
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
@@ -1026,7 +1099,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
+	globalThis.__unwrapFromHost = function(json) {
+		return unwrapFromHost(parseJSON(json));
+	};
+	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
@@ -1042,19 +1118,25 @@ export class QuickJsBridge implements RuntimeBridge {
 			for (var j = 0; j < v.__values.length; j++) s.add(unwrapFromHost(v.__values[j]));
 			return s;
 		}
+		if (v.__isKeyedArray === true) {
+			var keyed = v.__items.map(unwrapFromHost);
+			var pkeys = objectKeys(v.__props);
+			for (var p = 0; p < pkeys.length; p++) defineOwnValue(keyed, pkeys[p], unwrapFromHost(v.__props[pkeys[p]]));
+			return keyed;
+		}
 		if (v.__isEscaped === true) {
 			var inner = v.__value;
 			var out = {};
-			var ekeys = Object.keys(inner);
-			for (var e = 0; e < ekeys.length; e++) out[ekeys[e]] = unwrapFromHost(inner[ekeys[e]]);
+			var ekeys = objectKeys(inner);
+			for (var e = 0; e < ekeys.length; e++) defineOwnValue(out, ekeys[e], unwrapFromHost(inner[ekeys[e]]));
 			return out;
 		}
-		if (Array.isArray(v)) return v.map(unwrapFromHost);
+		if (isArray(v)) return v.map(unwrapFromHost);
 		var result = {};
-		var keys = Object.keys(v);
-		for (var n = 0; n < keys.length; n++) result[keys[n]] = unwrapFromHost(v[keys[n]]);
+		var keys = objectKeys(v);
+		for (var n = 0; n < keys.length; n++) defineOwnValue(result, keys[n], unwrapFromHost(v[keys[n]]));
 		return result;
-	};
+	}
 })();
 `;
 
@@ -1142,7 +1224,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
-		holder: DataHolder,
+		resolver: HostDataResolver,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
@@ -1154,7 +1236,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
 					const pathArr = vm.dump(pathHandle) as string[];
 					try {
-						const result = getValueAtPath(heldData(holder), pathArr);
+						const result = getValueAtPath(resolver, pathArr);
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1167,7 +1249,7 @@ export class QuickJsBridge implements RuntimeBridge {
 					const pathArr = vm.dump(pathHandle) as string[];
 					const index = vm.dump(indexHandle) as number;
 					try {
-						const result = getArrayElement(heldData(holder), pathArr, index);
+						const result = getArrayElement(resolver, pathArr, index);
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1179,7 +1261,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				vm.newFunction('__callHostImpl', (msgHandle) => {
 					const rawMsg = vm.dump(msgHandle);
 					try {
-						const result = escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
+						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver));
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1236,7 +1318,12 @@ export class QuickJsBridge implements RuntimeBridge {
 		const json = hostValueToJson(value);
 		if (json === 'undefined') return this.vm.undefined;
 
-		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
+		// JSON keys must keep their data meaning, including __proto__.
+		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
+		const jsonHandle = this.vm.newString(json);
+		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		jsonHandle.dispose();
+		unwrapFn.dispose();
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;
@@ -1273,9 +1360,9 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// QuickJS frees a host function only when the guest function is collected,
 		// and its cycle collector runs late. So the callbacks read the data from a
-		// holder that `finally` clears, else a finished call's data stays in memory.
-		const holder: DataHolder = { data };
-		const callbackHandles = this.createCallbackHandles(holder);
+		// resolver that `finally` disposes, else a finished call's data stays in memory.
+		const resolver = new HostDataResolver(data);
+		const callbackHandles = this.createCallbackHandles(resolver);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1320,6 +1407,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
+				if (!this.broken) {
+					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+				}
 				this.broken = true;
 				throw error;
 			}
@@ -1374,7 +1464,12 @@ export class QuickJsBridge implements RuntimeBridge {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			// A host error, for example a WASM trap, can name memory without the
 			// guest reaching its memory limit.
-			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			if (this.broken) {
+				throw new HostCallError(
+					`Expression evaluation failed: ${errorMessage}`,
+					this.hostErrorName,
+				);
+			}
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1386,7 +1481,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
-			holder.data = undefined;
+			resolver.dispose();
 			this.deadlines.pop();
 			if (!this.broken) {
 				for (const handle of callbackHandles) {
@@ -1443,7 +1538,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			loadQuickJSWasm().catch((error: unknown) => {
 				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
 			});
-			throw new Error(
+			throw new RuntimeRestartingError(
 				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
 			);
 		}
@@ -1467,13 +1562,13 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private discardFailedRuntime(): void {
 		try {
-			for (const handle of this.intlHandles) handle.dispose();
+			for (const handle of this.hostFunctionHandles) handle.dispose();
 			this.vm?.dispose();
 			this.runtime?.dispose();
 		} catch {
 			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
 		} finally {
-			this.intlHandles = [];
+			this.hostFunctionHandles = [];
 			this.vm = undefined;
 			this.runtime = undefined;
 			this.wasm = undefined;
@@ -1490,7 +1585,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.wasm = undefined;
 		this.vm = undefined;
 		this.runtime = undefined;
-		this.intlHandles = [];
+		this.hostFunctionHandles = [];
 		this.initialized = false;
 		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
@@ -1526,10 +1621,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (this.disposed) return;
 		if (this.broken && this.vm) this.abandonRuntime();
 
-		for (const handle of this.intlHandles) {
+		for (const handle of this.hostFunctionHandles) {
 			handle.dispose();
 		}
-		this.intlHandles = [];
+		this.hostFunctionHandles = [];
 
 		if (this.vm) {
 			this.vm.dispose();

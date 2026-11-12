@@ -11,8 +11,8 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadTabsResponse,
-	InstanceAiThreadTabsState,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
 
 export async function fetchThreads(
@@ -62,15 +62,15 @@ export async function updateThreadMetadata(
 export async function fetchThreadTabs(
 	context: IRestApiContext,
 	threadId: string,
-): Promise<InstanceAiThreadTabsResponse> {
+): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/tabs`);
 }
 
 export async function saveThreadTabs(
 	context: IRestApiContext,
 	threadId: string,
-	state: InstanceAiThreadTabsState,
-): Promise<InstanceAiThreadTabsResponse> {
+	state: AssistantThreadTabsState,
+): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'PUT', `/instance-ai/threads/${threadId}/tabs`, state);
 }
 
@@ -98,10 +98,12 @@ export async function fetchThreadMessages(
 	threadId: string,
 	limit?: number,
 	page?: number,
+	cursor?: string,
 ): Promise<InstanceAiRichMessagesResponse> {
 	const params = new URLSearchParams();
 	if (limit !== undefined) params.set('limit', String(limit));
 	if (page !== undefined) params.set('page', String(page));
+	if (cursor !== undefined) params.set('cursor', cursor);
 	const qs = params.toString();
 	return await makeRestApiRequest(
 		context,

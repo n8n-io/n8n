@@ -12,12 +12,15 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
+import { AgentMemoryScopeRepository } from '../../repositories/agent-memory-scope.repository';
 import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
@@ -293,7 +296,7 @@ describe('N8nMemoryImpl', () => {
 				resourceId: scope.resourceId,
 				episodic: scope.episodic,
 				content,
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 				embeddingModel: 'test-model',
 				...overrides,
 			},
@@ -302,6 +305,119 @@ describe('N8nMemoryImpl', () => {
 		if (!entry) throw new Error('Expected an episodic entry');
 		return { entry, source };
 	}
+
+	describe('deleteThread', () => {
+		it.each(['active', 'dropped', 'superseded', 'deleted'] as const)(
+			'removes an orphaned %s entry and permits a later capture',
+			async (status) => {
+				const scope = { resourceId: 'user-1', threadId: 'deleted-thread' };
+				const { entry } = await captureEntry(memory, scope);
+				await entryRepository.update(entry.id, { status });
+
+				await memory.deleteThread(scope.threadId);
+
+				expect(await entryRepository.findOneBy({ id: entry.id })).toBeNull();
+				expect(await memory.episodic.getEntrySources([entry.id])).toEqual([]);
+				expect(await memory.getThread(scope.threadId)).toBeNull();
+				const { entry: capturedAgain } = await captureEntry(memory, {
+					...scope,
+					threadId: 'new-thread',
+				});
+				expect(capturedAgain).toMatchObject({
+					content: entry.content,
+					embedding: entry.embedding,
+					status: 'active',
+				});
+			},
+		);
+
+		it.runIf(process.env.DB_TYPE === 'postgresdb')(
+			'waits for a concurrent source write before deleting orphaned entries',
+			async () => {
+				const scope = { resourceId: 'shared-memory-scope', threadId: 'deleted-thread' };
+				const { entry } = await captureEntry(memory, scope);
+				await memory.saveThread({ id: 'kept-thread', resourceId: scope.resourceId });
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					resourceId: scope.resourceId,
+					threadId: 'kept-thread',
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId: 'call-2',
+					content: entry.content,
+					evidenceText: entry.content,
+					kind: 'fact',
+				});
+				const locked = createDeferredPromise();
+				const continueWrite = createDeferredPromise();
+				let deletionWaiting = false;
+				const scopes = Container.get(AgentMemoryScopeRepository);
+				const originalLock = scopes.lockActiveScope.bind(scopes);
+				let writer: OperationContext;
+				const lockSpy = vi.spyOn(scopes, 'lockActiveScope').mockImplementation(async (id, ctx) => {
+					if (writer && ctx.trx !== writer.trx) deletionWaiting = true;
+					return await originalLock(id, ctx);
+				});
+				const write = Container.get(TransactionRunner).run({}, async (ctx) => {
+					writer = ctx;
+					await scopes.lockActiveScope(scope.resourceId, ctx);
+					locked.resolve();
+					await continueWrite.promise;
+					return await entryRepository.addSources(
+						agentId,
+						entry.id,
+						[
+							{
+								candidateId: candidate.id,
+								threadId: 'kept-thread',
+								evidenceText: entry.content,
+							},
+						],
+						new Date(),
+						ctx,
+					);
+				});
+				await locked.promise;
+				const deletion = memory.deleteThread(scope.threadId);
+				try {
+					await vi.waitFor(() => expect(deletionWaiting).toBe(true));
+					continueWrite.resolve();
+					await Promise.all([write, deletion]);
+					expect(await entryRepository.findOneByOrFail({ id: entry.id })).toMatchObject({
+						status: 'active',
+					});
+					expect(await memory.episodic.getEntrySources([entry.id])).toEqual([
+						expect.objectContaining({ threadId: 'kept-thread' }),
+					]);
+				} finally {
+					continueWrite.resolve();
+					await Promise.allSettled([write, deletion]);
+					lockSpy.mockRestore();
+				}
+			},
+		);
+
+		it('keeps entries with another session source and entries of another agent', async () => {
+			const scope = { resourceId: 'user-1', threadId: 'deleted-thread' };
+			const { entry } = await captureEntry(memory, scope);
+			await captureEntry(memory, { ...scope, threadId: 'kept-thread' });
+			const { entry: other } = await captureEntry(otherMemory, {
+				...scope,
+				threadId: 'other-thread',
+			});
+
+			await memory.deleteThread(scope.threadId);
+
+			expect(await entryRepository.findOneBy({ id: entry.id })).toMatchObject({
+				status: 'active',
+				content: entry.content,
+				embedding: entry.embedding,
+			});
+			expect(await memory.episodic.getEntrySources([entry.id])).toEqual([
+				expect.objectContaining({ threadId: 'kept-thread' }),
+			]);
+			expect(await entryRepository.findOneBy({ id: other.id })).toMatchObject(other);
+		});
+	});
 
 	describe('saveThread', () => {
 		it('keeps every write when saves and patches run at the same time', async () => {
@@ -433,6 +549,34 @@ describe('N8nMemoryImpl', () => {
 			await expect(recalled(other)).resolves.toEqual(['Channel two chose MySQL.']);
 			await expect(memory.episodic.getPendingCaptureCandidates(first)).resolves.toHaveLength(2);
 			await expect(memory.episodic.getPendingCaptureCandidates(other)).resolves.toHaveLength(1);
+		});
+
+		it('stores embeddings as float32 bytes and returns full entries from a search', async () => {
+			const { entry: stored } = await captureEntry(memory, scope, 'Reports go to #finance.', {
+				embedding: new Float32Array([0.1, 0.2]),
+				metadata: { origin: 'test' },
+			});
+			const { entry: unembedded } = await captureEntry(memory, scope, 'Standup is at 10.');
+			await entryRepository.update(unembedded.id, { embedding: null });
+
+			const raw = await entryRepository
+				.createQueryBuilder('entry')
+				.select('entry.embedding', 'embedding')
+				.where('entry.id = :id', { id: stored.id })
+				.getRawOne<{ embedding: Uint8Array }>();
+			const results = await memory.episodic.searchEntries(scope, 'reports', {
+				queryEmbedding: [1, 2],
+			});
+
+			expect(Buffer.from(raw!.embedding)).toHaveLength(8);
+			expect(results).toEqual([
+				expect.objectContaining({
+					id: stored.id,
+					content: 'Reports go to #finance.',
+					metadata: { origin: 'test' },
+					embedding: new Float32Array([0.1, 0.2]),
+				}),
+			]);
 		});
 
 		describe('Slack ownership', () => {
@@ -627,9 +771,13 @@ describe('N8nMemoryImpl', () => {
 
 		it.each([
 			{ name: 'missing', embedding: undefined, embeddingModel: undefined },
-			{ name: 'empty', embedding: [], embeddingModel: 'test-model' },
-			{ name: 'invalid', embedding: [Number.NaN, 0], embeddingModel: 'test-model' },
-			{ name: 'different-model', embedding: [1, 0], embeddingModel: 'old-model' },
+			{ name: 'empty', embedding: new Float32Array([]), embeddingModel: 'test-model' },
+			{
+				name: 'invalid',
+				embedding: new Float32Array([Number.NaN, 0]),
+				embeddingModel: 'test-model',
+			},
+			{ name: 'different-model', embedding: new Float32Array([1, 0]), embeddingModel: 'old-model' },
 		])(
 			'replaces a $name embedding without changing the original entry',
 			async ({ embedding, embeddingModel }) => {
@@ -648,7 +796,7 @@ describe('N8nMemoryImpl', () => {
 					scope,
 					'  USER prefers\nconcise reports. ',
 					{
-						embedding: [0, 1],
+						embedding: new Float32Array([0, 1]),
 						embeddingModel: 'new-model',
 						createdAt: lastSeenAt,
 						lastSeenAt,
@@ -663,7 +811,7 @@ describe('N8nMemoryImpl', () => {
 					createdAt,
 					lastSeenAt,
 					metadata: { keep: true },
-					embedding: [0, 1],
+					embedding: new Float32Array([0, 1]),
 					embeddingModel: 'new-model',
 					status: 'active',
 					supersededBy: null,
@@ -675,7 +823,7 @@ describe('N8nMemoryImpl', () => {
 				);
 				expect(repeated).toMatchObject({
 					id: original.id,
-					embedding: [0, 1],
+					embedding: new Float32Array([0, 1]),
 					embeddingModel: 'new-model',
 					metadata: { keep: true },
 				});
@@ -711,7 +859,7 @@ describe('N8nMemoryImpl', () => {
 							{
 								resourceId: scope.resourceId,
 								content: first.entry.content,
-								embedding: [1, 0],
+								embedding: new Float32Array([1, 0]),
 								embeddingModel: 'test-model',
 							},
 							[source],
@@ -751,7 +899,11 @@ describe('N8nMemoryImpl', () => {
 			);
 			const sources = await memory.episodic.getEntrySources([entry.id]);
 			await memory.episodic.saveEntryWithSources(
-				{ resourceId: scope.resourceId, content: entry.content, embedding: [0, 1] },
+				{
+					resourceId: scope.resourceId,
+					content: entry.content,
+					embedding: new Float32Array([0, 1]),
+				},
 				replay,
 			);
 
@@ -770,7 +922,11 @@ describe('N8nMemoryImpl', () => {
 			await expect(
 				memory.episodic.getEntriesByContentHashes(scope, [entry.contentHash]),
 			).resolves.toEqual([
-				expect.objectContaining({ id: entry.id, embedding: [0, 1], embeddingModel: 'test-model' }),
+				expect.objectContaining({
+					id: entry.id,
+					embedding: new Float32Array([0, 1]),
+					embeddingModel: 'test-model',
+				}),
 			]);
 		});
 
@@ -789,7 +945,7 @@ describe('N8nMemoryImpl', () => {
 						{
 							resourceId: scope.resourceId,
 							content: entry.content,
-							embedding: [0, 1],
+							embedding: new Float32Array([0, 1]),
 							embeddingModel: 'replacement-model',
 						},
 						[
@@ -830,13 +986,13 @@ describe('N8nMemoryImpl', () => {
 
 			it('finds the closest active entries of the write scope for each embedding', async () => {
 				const { entry: near } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.', {
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 				});
 				const { entry: far } = await captureEntry(memory, scope, 'Acme uses Postgres.', {
-					embedding: [0.6, 0.8],
+					embedding: new Float32Array([0.6, 0.8]),
 				});
 				const { entry: inactive } = await captureEntry(memory, scope, 'Acme renewal is late.', {
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 				});
 				await entryRepository.update(inactive.id, { status: 'superseded' });
 				await captureEntry(otherMemory, scope, 'Acme renewal is on 2 March.');
@@ -913,7 +1069,7 @@ describe('N8nMemoryImpl', () => {
 							entry: {
 								resourceId: scope.resourceId,
 								content: 'Acme renewal is on 15 March.',
-								embedding: [1, 0],
+								embedding: new Float32Array([1, 0]),
 								embeddingModel: 'test-model',
 							},
 							sources: [source],
@@ -1025,7 +1181,7 @@ describe('N8nMemoryImpl', () => {
 					{
 						resourceId: scope.resourceId,
 						content: candidate.content,
-						embedding: [1, 0],
+						embedding: new Float32Array([1, 0]),
 						embeddingModel: 'test-model',
 					},
 					[

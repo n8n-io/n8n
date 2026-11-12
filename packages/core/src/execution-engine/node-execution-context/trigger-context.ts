@@ -9,7 +9,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -57,6 +57,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...schedulingFunctions,
+			withExpressionIsolate: async (fn) => await workflow.expression.withIsolate(fn),
 		};
 	}
 

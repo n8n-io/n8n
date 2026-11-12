@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import {
 	ref,
-	computed,
 	effectScope,
 	inject,
 	provide,
@@ -15,19 +14,14 @@ import { i18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
-	UNLIMITED_CREDITS,
 	type InstanceAiThreadHistoryResponse,
 	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
 	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
-	type PushMessage,
 } from '@n8n/api-types';
-import {
-	ensureThread,
-	getInstanceAiCredits,
-	type InstanceAiThreadLaunchInput,
-} from './instanceAi.api';
+import { ensureThread, type InstanceAiThreadLaunchInput } from './instanceAi.api';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
@@ -45,8 +39,6 @@ import {
 import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
-
-type InstanceAiCreditsPushData = Extract<PushMessage, { type: 'updateInstanceAiCredits' }>['data'];
 
 const THREAD_HISTORY_PAGE_SIZE = 30;
 
@@ -69,11 +61,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// The chat history page: cursor-paginated and searchable, kept apart from the sidebar list.
 	const threadHistory = ref(emptyThreadHistory());
 	const debugMode = ref(false);
-	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
-	// and updated in real-time via the 'updateInstanceAiCredits' push event.
-	// No reset needed on thread switch — login/logout reloads the page.
-	const creditsQuota = ref<number | undefined>(undefined);
-	const creditsClaimed = ref<number | undefined>(undefined);
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -120,65 +107,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimes.delete(threadId);
 	}
 
-	// --- Computed credits ---
-	const creditsRemaining = computed(() => {
-		if (
-			creditsQuota.value === undefined ||
-			creditsClaimed.value === undefined ||
-			creditsQuota.value === UNLIMITED_CREDITS
-		) {
-			return undefined;
-		}
-		return Math.max(0, creditsQuota.value - creditsClaimed.value);
-	});
+	// The instance credits are in `useAssistantCreditsStore`. This store keeps
+	// only the credit total of its own threads.
 
-	const creditsPercentageRemaining = computed(() => {
-		if (
-			creditsQuota.value === undefined ||
-			creditsQuota.value === UNLIMITED_CREDITS ||
-			creditsRemaining.value === undefined
-		) {
-			return undefined;
-		}
-		if (creditsQuota.value === 0) return 0;
-		return (creditsRemaining.value / creditsQuota.value) * 100;
-	});
-
-	const isLowCredits = computed(() => {
-		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
-	});
-
-	/** Send is blocked. A positive low balance stays a dismissible warning. */
-	const isOutOfCredits = computed(() => creditsRemaining.value === 0);
-
-	// --- Credits push handling ---
-
-	// Applies an `updateInstanceAiCredits` push. The instance-ai module descriptor
-	// registers this through its `pushHandlers`, so the shell owns the subscription
-	// lifecycle and credits stay current instance-wide; the store just applies the
-	// payload.
-	function handleCreditsPush(data: InstanceAiCreditsPushData): void {
-		creditsQuota.value = data.creditsQuota;
-		creditsClaimed.value = data.creditsClaimed;
-		// Per-message claims also carry the thread's running total — write it onto the
-		// matching thread so the credits dropdown updates live for the acting user.
-		const { creditsPerThread } = data;
-		if (creditsPerThread !== undefined) {
-			const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
-			if (thread) {
-				thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
-			}
-		}
-	}
-
-	async function fetchCredits(): Promise<void> {
-		try {
-			const result = await getInstanceAiCredits(rootStore.restApiContext);
-			creditsQuota.value = result.creditsQuota;
-			creditsClaimed.value = result.creditsClaimed;
-		} catch {
-			// Non-critical — credits display is optional
-		}
+	/** Writes the running credit total of a thread from an `updateInstanceAiCredits` push. */
+	function setThreadCreditsUsed(threadId: string, totalCreditsUsed: number): void {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = { ...thread.metadata, creditsUsed: totalCreditsUsed };
 	}
 
 	// --- Thread list & lifecycle ---
@@ -307,10 +242,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	 * `silent` suppresses the failure toast, for callers cleaning up after some other
 	 * failure they have already reported -- a second, unrelated "delete failed" on top of
 	 * the real error only confuses. Those callers should handle `false` themselves.
+	 * `preserveRuntime` keeps a mounted draft available after failed provisioning.
 	 */
 	async function deleteThread(
 		threadId: string,
-		options: { silent?: boolean } = {},
+		options: { silent?: boolean; preserveRuntime?: boolean } = {},
 	): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
@@ -328,7 +264,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 		threadHistory.value.threads = threadHistory.value.threads.filter((t) => t.id !== threadId);
-		disposeRuntime(threadId);
+		if (!options.preserveRuntime) disposeRuntime(threadId);
 
 		return true;
 	}
@@ -401,6 +337,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function stageElement(element: InstanceAiElementAttachment): void {
+		pendingComposerAttachments.value = [...pendingComposerAttachments.value, element];
+	}
+
+	const composerElementAppId = ref<string | null>(null);
+	function setComposerElementAppId(appId: string | null): void {
+		composerElementAppId.value = appId;
+	}
+	function hasComposerElementFor(appId: string): boolean {
+		return composerElementAppId.value === appId;
+	}
+
 	function consumePendingAttachments(): InstanceAiAttachment[] {
 		const staged = pendingComposerAttachments.value;
 		pendingComposerAttachments.value = [];
@@ -453,14 +401,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Instance-level state
 		threads,
 		debugMode,
-		creditsQuota,
-		creditsClaimed,
-
-		// Computed
-		creditsRemaining,
-		creditsPercentageRemaining,
-		isLowCredits,
-		isOutOfCredits,
 
 		// Thread-list actions
 		deleteThread,
@@ -474,14 +414,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		threadHistory,
 		resetThreadHistory,
 		loadThreadHistoryPage,
-		fetchCredits,
-		handleCreditsPush,
+		setThreadCreditsUsed,
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,
 		syncThread,
 		pendingComposerAttachments,
 		stageNodeSets,
+		stageElement,
+		setComposerElementAppId,
+		hasComposerElementFor,
 		consumePendingAttachments,
 		composerFocusRequest,
 		requestComposerFocus,

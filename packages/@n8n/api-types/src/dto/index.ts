@@ -4,6 +4,8 @@ export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
 export { PublishAppDto } from './app/publish-app.dto';
+export { RestoreAppVersionDto } from './app/restore-app-version.dto';
+export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
@@ -22,6 +24,7 @@ export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
+	type AiGatewayPromotion,
 } from './ai/ai-gateway-config-response.dto';
 export {
 	AiGatewayMcpServersResponse,
@@ -43,7 +46,8 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
-export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
+export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
+export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -238,6 +242,7 @@ export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export {
 	ManualRunDto,
 	type ManualRunPayload,
+	type ManualRunResponse,
 	type FullManualExecutionFromKnownTriggerPayload,
 	type FullManualExecutionFromUnknownTriggerPayload,
 	type PartialManualExecutionToDestinationPayload,
@@ -251,6 +256,7 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export {
+	DEPENDENCY_PUBLIC_TYPES,
 	DependencyListPublicDto,
 	ListDependenciesQueryDto,
 	type DependencyPublicType,
@@ -259,6 +265,7 @@ export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tag
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { PUBLIC_API_IGNORED_NODE_FIELDS } from './workflows/base-workflow-public.dto';
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
@@ -721,24 +728,19 @@ export {
 	type PublicApiRateLimitSettings,
 	type PublicApiRateLimitSettingsResponse,
 } from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
+export {
+	RateLimitSettingsPublicDto,
+	RateLimitSettingsQueryPublicDto,
+	UpdateRateLimitSettingsPublicDto,
+} from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
-	PromotionChangesDto,
-	PromotionChangesQueryDto,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	promotionsWorkflowsMovedCrossProjectMetaSchema,
-	promotableResourceSchema,
-	promotableResourceStatusSchema,
-	promotableResourceTypeSchema,
 	promoteRequestSchema,
 	PromoteSelectionRequestDto,
-	promotionChangesSchema,
-	type PromotableResource,
-	type PromotableResourceStatus,
-	type PromotableResourceType,
 	type PromoteRequest,
-	type PromotionChanges,
 	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 
@@ -808,6 +810,7 @@ export {
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionMissingProjectListPublicDto,
 	UpdatePromotionEnvironmentDto,
 	promotionEnvironmentRemoteSchema,
 	promotionDirectionSchema,

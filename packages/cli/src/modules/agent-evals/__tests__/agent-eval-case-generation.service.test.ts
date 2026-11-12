@@ -10,9 +10,12 @@ import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { EvalAgentExecutionService } from '../../instance-ai/eval/agent-execution.service';
-import type { DataTable } from '../../data-table/data-table.entity';
-import type { DataTableService } from '../../data-table/data-table.service';
-import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
+import {
+	type DataTable,
+	type DataTableService,
+	DataTableNameConflictError,
+} from '@n8n/backend-module-data-table';
+
 import { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -714,6 +717,23 @@ describe('AgentEvalCaseGenerationService', () => {
 					const result = await service.previewRun(user, 'project-1', 'agent-1');
 
 					expect(generateMock).toHaveBeenCalledTimes(1);
+					expect(result).not.toHaveProperty('verdict.suggestion');
+				});
+
+				it('does not suggest when the judge gives no readable verdict', async () => {
+					criteriaRunMock.mockResolvedValue({
+						pass: false,
+						reasoning: '{"pass": tr',
+						inconclusive: true,
+					});
+
+					const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+					expect(generateMock).toHaveBeenCalledTimes(1);
+					expect(result).toMatchObject({
+						status: 'completed',
+						verdict: { status: 'error', outcome: null },
+					});
 					expect(result).not.toHaveProperty('verdict.suggestion');
 				});
 

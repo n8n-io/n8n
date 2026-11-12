@@ -15,11 +15,16 @@ import type {
 	WorkflowDocument,
 } from '../../execution/execution.types';
 import type { StoredWorkflowGraph } from '../../graph';
+import type { LifecycleEventSubscription } from '../../lifecycle-events';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
-@Index('idx_workflow_execution_workflow_id', ['workflowId'])
+@Index('idx_workflow_execution_workflow_id_created_at_id', ['workflowId', 'createdAt', 'id'])
+@Index('idx_workflow_execution_created_at_id', ['createdAt', 'id'])
 @Index('idx_workflow_execution_status', ['status'])
+@Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'], {
+	where: 'parent_execution_id IS NOT NULL',
+})
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -50,6 +55,23 @@ export class WorkflowExecution {
 	/** What kind of a response (if any) the caller expects */
 	@Column('jsonb', { name: 'response_expectation' })
 	responseExpectation!: ResponseExpectation;
+
+	/**
+	 * The parent link, as three columns so the parent execution can be indexed.
+	 * All three are set, or none: see `chk_workflow_execution_parent`.
+	 */
+	@Column('uuid', { name: 'parent_execution_id', nullable: true })
+	parentExecutionId!: string | null;
+
+	@Column('uuid', { name: 'parent_step_id', nullable: true })
+	parentStepId!: string | null;
+
+	@Column('boolean', { name: 'parent_awaited', nullable: true })
+	parentAwaited!: boolean | null;
+
+	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
+	@Column('jsonb', { name: 'lifecycle_event_subscription', nullable: true })
+	lifecycleEventSubscription!: LifecycleEventSubscription | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

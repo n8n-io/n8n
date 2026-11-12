@@ -32,7 +32,6 @@ const HUB_UNAVAILABLE_NOTICE = 'Hub skills are temporarily unavailable. Do not u
 
 export interface HubRunSkills {
 	source: RuntimeSkillSource;
-	availabilityNotice?: string;
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
@@ -109,18 +108,33 @@ function createDeferredHubSource(
 	const source: RuntimeSkillSource = {
 		...builtIns,
 		registry: mergedRegistry(),
+		dynamicCatalog:
+			entries.length > 0 || summaries === null
+				? {
+						skillIds: entries.map(({ id }) => id),
+						notice:
+							summaries === null
+								? HUB_UNAVAILABLE_NOTICE
+								: 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.',
+					}
+				: undefined,
 		shouldAppendSkillUpdates: (id) =>
 			id.startsWith(HUB_SKILL_ID_PREFIX) &&
 			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
-		loadFile: async (id, path) => {
+		loadFile: async (id, path, onError) => {
 			const selected = hubSkills.get(id);
-			if (!selected) return (await builtIns.loadFile?.(id, path)) ?? null;
+			if (!selected) return (await builtIns.loadFile?.(id, path, onError)) ?? null;
 			const skill = await load(id);
-			if (!skill?.linkedFiles.references.some((file) => file.path === path)) return null;
+			if (!skill?.linkedFiles.references.some((file) => file.path === path)) {
+				const error = errors.get(id);
+				if (error) onError?.(error);
+				return null;
+			}
 			const file = await readHubReference(provider, context, selected.summary, id, path);
 			if ('message' in file) {
 				errors.set(id, file);
+				onError?.(file);
 				return null;
 			}
 			errors.delete(id);
@@ -147,12 +161,6 @@ function createDeferredHubSource(
 	return {
 		source,
 		mapSkillEventForDisplay: createHubSkillDisplayMapper(loaded),
-		availabilityNotice:
-			summaries === null
-				? HUB_UNAVAILABLE_NOTICE
-				: entries.length > 0
-					? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.'
-					: undefined,
 	};
 }
 

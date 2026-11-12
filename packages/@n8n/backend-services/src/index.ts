@@ -1,6 +1,21 @@
 export { EventService, type EventMap } from './events/event.service';
-export { isBillableExecution } from './executions/is-billable-execution';
-export { sumNodeTimeSavedMinutes } from './executions/time-saved';
+export {
+	countsTowardExecutionLimit,
+	executionLimitDelta,
+	isBillableExecution,
+	isInsightsProduction,
+	isLedgerFact,
+	savesTime,
+	toLedgerFact,
+	toLedgerOutcome,
+	type CompletedRun,
+	type LedgerEntityType,
+	type LedgerEvent,
+	type LedgerFact,
+	type LedgerOutcome,
+	type LedgerSource,
+} from './executions/counting-rules';
+export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
@@ -11,6 +26,11 @@ export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
+export { Publisher } from './pubsub/publisher.service';
+export { Subscriber } from './pubsub/subscriber.service';
+export { PubSubEventBus } from './pubsub/pubsub.eventbus';
+export type { PubSub } from './pubsub/pubsub.types';
+export { MAX_PUBSUB_PAYLOAD_BYTES, SELF_SEND_COMMANDS } from './pubsub/pubsub.constants';
 export { RoleCacheService, type RoleLoader } from './services/role-cache.service';
 export {
 	RoleDeletionCheckProxy,
@@ -36,6 +56,7 @@ export {
 export { FolderFinderService } from './services/folder-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
+export { PostHogClient } from './services/posthog-client';
 export {
 	classifyRestError,
 	isResponseError,
@@ -87,6 +108,8 @@ export {
 } from './services/instance-registry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionLedger } from './executions/execution-ledger.service';
+export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
 	isRedactableExecution,
@@ -102,6 +125,10 @@ export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
+export {
+	NodeTypesProviderMissingError,
+	NodeTypesProxy,
+} from './services/node-types-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
@@ -129,3 +156,4 @@ export {
 } from './services/ai-preference.service';
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
+export { ProjectNotFoundError } from './errors/project-not-found.error';

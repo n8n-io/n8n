@@ -136,6 +136,10 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe("Set only when the scope is 'project'. Workflows the user selected"),
+			selected_folder_count: z
+				.number()
+				.optional()
+				.describe("Set only when the scope is 'project'. Folders the user selected"),
 			opened_review: z
 				.boolean()
 				.optional()
@@ -168,6 +172,14 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe("Set when the outcome is 'applied'"),
+			folders_changed: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'applied'. Folders created, updated and removed"),
+			projects_changed: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'applied'. Projects created, updated and deleted"),
 		}),
 	},
 	USER_OPENED_PROMOTION_MERGE_REQUEST: {
@@ -197,6 +209,39 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			review_type: z.enum(['gitlab']),
 			review_age_ms: z.number().describe('Time from the review opening to this approval'),
 			outcome: z.enum(['merged', 'failed']),
+			failure_kind: failureKind,
+			duration_ms: z.number(),
+		}),
+	},
+	USER_CLOSED_PROMOTION_REVIEW: {
+		name: 'User closed promotion review',
+		description:
+			'A user closed a promotion review in n8n. The merge request stays open on the Git host. Fires once per attempt on an existing review, on success and on failure. It does not fire when the feature is off or the review does not exist.',
+		properties: z.object({
+			user_id: z.string(),
+			promotion_review_id: z.string(),
+			environment_id: z
+				.string()
+				.nullable()
+				.describe('Null when the environment was deleted after the review opened'),
+			review_type: z.enum(['gitlab']),
+			review_age_ms: z.number().describe('Time from the review opening to this close'),
+			host_status: z
+				.enum([
+					'open',
+					'changes_requested',
+					'merged',
+					'closed',
+					'not_found',
+					'auth',
+					'unreachable',
+					'no_connection',
+				])
+				.nullable()
+				.describe(
+					'What the Git host reported at close time: its state, or why it gave none. Null when the close failed before n8n asked the host',
+				),
+			outcome: z.enum(['closed', 'failed']),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
 		}),

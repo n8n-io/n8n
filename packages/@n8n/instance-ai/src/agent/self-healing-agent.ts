@@ -10,8 +10,8 @@ import {
 } from '../self-healing';
 import { SELF_HEALING_PROMPT } from '../self-healing/self-healing.prompt';
 import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registry';
-import { createDataTablesTool } from '../tools/data-tables.tool';
-import { createExecutionsTool } from '../tools/executions.tool';
+import { createDataTableTools } from '../tools/data-tables.tool';
+import { createExecutionTools } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
 import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
 import { createResearchTool } from '../tools/research.tool';
@@ -34,13 +34,15 @@ export interface CreateSelfHealingAgentOptions {
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
 
 const SOURCE_GUIDANCE =
-	'Read workflow source for context. Keep edits in the supplied self-healing candidate file. ' +
+	'Open a workflow as source before you edit it. ' +
+	'Reads of a workflow that you can change return its captured baseline. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'Reads of the target workflow return its captured baseline. ' +
-	'You can read other accessible workflows for context, including sub-workflows.';
+	'Use other workflows for context only. Do not edit them.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,
@@ -52,13 +54,12 @@ function createSelfHealingTools(
 			allowedActions: ['get', 'get-as-code'],
 			sourceGuidance: SOURCE_GUIDANCE,
 		}),
-		createExecutionsTool(context, {
+		...createExecutionTools(context, {
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
-			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
 		}),
-		createDataTablesTool(context, {
+		...createDataTableTools(context, {
 			allowedActions: ['list', 'schema', 'query'],
-			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
+			skillGuidance: false,
 		}),
 		createSearchNodesTool(context),
 		createGetNodeTypesTool(context),
@@ -109,7 +110,7 @@ export async function createSelfHealingAgent(
 		}) ?? tools;
 
 	const systemPrompt = [
-		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
+		'Investigate the supplied failed execution. Prepare candidate workflows for review.',
 		'Work without user interaction. Report blockers in the structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
 		SELF_HEALING_PROMPT,
@@ -132,9 +133,11 @@ export async function createSelfHealingAgent(
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	if (options.requestLabels) agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

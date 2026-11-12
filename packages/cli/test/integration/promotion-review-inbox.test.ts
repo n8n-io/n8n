@@ -1,7 +1,9 @@
+import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import nock from 'nock';
 import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
@@ -10,16 +12,13 @@ import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
+import { insertTokenProvider } from '@/modules/promotions.ee/__tests__/utils/promotion-fixtures';
+import { storePromotionRemote } from '@/modules/promotions.ee/git-hosts/git-host-remote';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import {
-	createAdmin,
-	createMember,
-	createMemberWithApiKey,
-	createOwnerWithApiKey,
-	createUser,
-} from '@test-integration/db/users';
+import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 const baseUrl = 'https://gitlab.example.com';
@@ -127,7 +126,8 @@ function gitlabWrites(
 
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
-		endpointGroups: ['publicApi'],
+		reuseServer: true,
+		endpointGroups: ['promotions'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
@@ -160,33 +160,35 @@ describe('Promotion reviews in the Inbox', () => {
 	}
 
 	async function createEnvironment(
-		provider: object,
-		target: { name: string; scope: string; remoteUrl: string },
+		provider: Parameters<typeof insertTokenProvider>[0],
+		target: { name: string; scope: 'instance' | 'projects'; remoteUrl: string },
 	) {
-		const agent = testServer.publicApiAgentFor(owner);
-		const created = await agent.post('/promotions/providers').send(provider);
-		expect(created.status, JSON.stringify(created.body)).toBe(201);
-		const environment = await agent.post('/promotions/environments').send({
+		// Provider validation has separate API tests. Inbox tests need stored fixtures.
+		const created = await insertTokenProvider(provider);
+		const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
 			name: target.name,
 			scope: target.scope,
-			providerId: created.body.provider.id,
-			remote: { schemaVersion: 1, remoteUrl: target.remoteUrl },
+			providerId: created.id,
+			// Stored like the API stores it: a repository path for a Git host.
+			remote: storePromotionRemote(created, { schemaVersion: 1, remoteUrl: target.remoteUrl }),
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});
-		expect(environment.status, JSON.stringify(environment.body)).toBe(201);
-		return environment.body.id as string;
+		return environment.id;
 	}
 
 	/** A plain Git provider has no host API, so its reviews report no_connection. */
 	const createGitEnvironment = async (name: string) =>
 		await createEnvironment(
-			{ name, type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
+			{ name, type: 'git' },
 			{ name, scope: 'projects', remoteUrl: `https://example.com/org/${name}.git` },
 		);
 
-	const inbox = async (user: User, query: Record<string, string>) =>
-		await testServer.authAgentFor(user).get('/inbox').query(query);
+	const inbox = async (user: User, query: Record<string, string>) => {
+		const response = await testServer.authAgentFor(user).get('/inbox').query(query);
+		expect(response.status, response.text).toBe(200);
+		return response;
+	};
 
 	const approve = async (user: User, reviewId: string, headCommitSha = headSha) =>
 		await testServer
@@ -198,15 +200,10 @@ describe('Promotion reviews in the Inbox', () => {
 		(await reviewRepository.findOneByOrFail({ id: reviewId })).approvedById;
 
 	beforeAll(async () => {
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
 		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 			environmentsVersion: 'v2',
 		};
 		reviewRepository = Container.get(PromotionReviewRepository);
-	});
-
-	afterAll(() => {
-		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	});
 
 	let emitSpy: MockInstance | undefined;
@@ -223,27 +220,76 @@ describe('Promotion reviews in the Inbox', () => {
 		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
-		owner = await createOwnerWithApiKey();
-
-		const validation = nock(baseUrl)
-			.get('/api/v4/user')
-			.reply(200, { id: 1 })
-			.get('/api/v4/projects')
-			.query(true)
-			.reply(200, []);
+		owner = await createOwner();
 		environmentId = await createEnvironment(
-			{
-				name: 'GitLab',
-				type: 'gitlab',
-				auth: { authType: 'token', password: token },
-				config: { schemaVersion: 1, baseUrl },
-			},
+			{ name: 'GitLab', type: 'gitlab', password: token, config: { schemaVersion: 1, baseUrl } },
 			{ name: 'To production', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
 		);
-		validation.done();
 	});
 
 	afterEach(() => nock.cleanAll());
+
+	describe('when an admin changes the environment', () => {
+		const stateOf = async (reviewId: string) =>
+			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
+
+		// The public API tests cover the endpoints. These tests need only the service.
+		const environments = () => Container.get(PromotionEnvironmentsService);
+
+		it('closes the open reviews of a deleted environment and keeps the merged ones', async () => {
+			const open = await insertReview(1);
+			const merged = await insertReview(2);
+			await reviewRepository.update({ id: merged }, { state: 'merged' });
+
+			await environments().delete(environmentId, owner);
+
+			expect(await stateOf(open)).toBe('closed');
+			expect(await stateOf(merged)).toBe('merged');
+		});
+
+		it.each<{
+			change: string;
+			expected: string;
+			update: () => Promise<UpdatePromotionEnvironmentDto>;
+		}>([
+			{ change: 'a rename', expected: 'open', update: async () => ({ name: 'Renamed' }) },
+			{
+				// Another base URL can name the same host, so only the repository decides.
+				change: 'another GitLab provider for the same repository',
+				expected: 'open',
+				update: async () => ({
+					providerId: (
+						await insertTokenProvider({
+							name: 'GitLab alias',
+							type: 'gitlab',
+							password: token,
+							config: { schemaVersion: 1, baseUrl: 'https://gitlab-alias.example.com' },
+						})
+					).id,
+				}),
+			},
+			{
+				change: 'another repository',
+				expected: 'closed',
+				update: async () => ({
+					remote: { schemaVersion: 1, remoteUrl: `${baseUrl}/platform/other.git` },
+				}),
+			},
+			{
+				change: 'a plain Git provider',
+				expected: 'closed',
+				update: async () => ({
+					providerId: (await insertTokenProvider({ name: 'Plain', type: 'git' })).id,
+				}),
+			},
+		])('after $change, the open review is $expected', async ({ expected, update }) => {
+			const review = await insertReview(1);
+
+			await environments().update(environmentId, await update(), owner);
+
+			expect(await stateOf(review)).toBe(expected);
+		});
+	});
 
 	it('lists the review opened by the promotion write path for its environment', async () => {
 		const branchName = 'n8n-promotion/1';
@@ -305,7 +351,7 @@ describe('Promotion reviews in the Inbox', () => {
 		]);
 	});
 
-	it('syncs from any tab, keeps reviews GitLab did not answer for, and ignores a merge request from another branch', async () => {
+	it('syncs from any tab, keeps reviews GitLab did not answer for, closes reviews without a GitLab environment, and ignores a merge request from another branch', async () => {
 		const opened = await insertReview(1);
 		const changesRequested = await insertReview(2);
 		const merged = await insertReview(3);
@@ -332,14 +378,24 @@ describe('Promotion reviews in the Inbox', () => {
 		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
 		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
-		expect(closedList.body.data.data).toHaveLength(2);
+		expect(closedList.body.data.data).toHaveLength(4);
 		expect(closedList.body.data.data).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: merged, state: 'closed', reviewState: 'merged' }),
 				expect.objectContaining({ id: closed, state: 'closed', reviewState: 'closed' }),
+				expect.objectContaining({
+					id: plainGit,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
+				expect.objectContaining({
+					id: deleted,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
 			]),
 		);
-		expect(open.body.data.data).toHaveLength(8);
+		expect(open.body.data.data).toHaveLength(6);
 		expect(open.body.data.data).toEqual(
 			expect.arrayContaining([
 				{
@@ -377,8 +433,6 @@ describe('Promotion reviews in the Inbox', () => {
 					title: null,
 					remoteError: 'not_found',
 				}),
-				expect.objectContaining({ id: plainGit, remoteError: 'no_connection' }),
-				expect.objectContaining({ id: deleted, remoteError: 'no_connection' }),
 			]),
 		);
 		expect(JSON.stringify([open.body, closedList.body])).not.toContain(token);
@@ -425,10 +479,10 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
-	it('hides promotion reviews from a member, while the rollout flag is off, and on environments v1', async () => {
+	it('hides promotion reviews from a member and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
-		const member = await createMemberWithApiKey();
+		const member = await createMember();
 
 		const asMember = await inbox(member, { state: 'open', category: 'waiting' });
 		expect(asMember.body.data.data).toEqual([]);
@@ -436,15 +490,6 @@ describe('Promotion reviews in the Inbox', () => {
 			open: 0,
 			closed: 0,
 		});
-
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
-		try {
-			const flagOff = await inbox(owner, { state: 'open', category: 'waiting' });
-			expect(flagOff.body.data.data).toEqual([]);
-			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
-		} finally {
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
-		}
 
 		const preferences = Container.get(SourceControlPreferencesService);
 		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
@@ -492,17 +537,18 @@ describe('Promotion reviews in the Inbox', () => {
 			);
 		});
 
-		it('refuses a member and a disabled rollout flag without a GitLab write', async () => {
+		it('refuses a member and an instance on environments v1 without a GitLab write', async () => {
 			const reviewId = await insertReview(1);
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
 
 			expect((await approve(await createMember(), reviewId)).status).toBe(403);
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
+			const preferences = Container.get(SourceControlPreferencesService);
+			preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 			try {
 				expect((await approve(await createAdmin(), reviewId)).status).toBe(403);
 			} finally {
-				process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+				preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 			}
 			expect(writes).toEqual([]);
 		});
@@ -644,6 +690,198 @@ describe('Promotion reviews in the Inbox', () => {
 			expect((await approve(admin, stale)).status).toBe(200);
 			expect((await approve(admin, live)).status).toBe(409);
 			expect(await approvedById(live)).toBe(other.id);
+		});
+	});
+
+	describe('close', () => {
+		const close = async (user: User, reviewId: string) =>
+			await testServer.authAgentFor(user).post(`/promotions/reviews/${reviewId}/close`);
+
+		const stateOf = async (reviewId: string) =>
+			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
+
+		it('closes a review in n8n only, and a later Inbox sync does not open it again', async () => {
+			const reviewId = await insertReview(1);
+			// GitLab keeps answering that the merge request is open.
+			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1);
+			const admin = await createAdmin();
+
+			const response = await close(admin, reviewId);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.data).toMatchObject({
+				id: reviewId,
+				state: 'closed',
+				reviewState: 'closed',
+			});
+			expect(writes).toEqual([]);
+
+			// The list and the counters sync every open review with the host. A closed one is not open.
+			const closed = (await inbox(admin, { state: 'closed' })).body.data;
+			expect(closed.data).toEqual([
+				expect.objectContaining({ id: reviewId, reviewState: 'closed' }),
+			]);
+			expect((await inbox(admin, { state: 'open' })).body.data.data).toEqual([]);
+			expect(await stateOf(reviewId)).toBe('closed');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({
+					reviewId,
+					reviewType: 'gitlab',
+					hostStatus: 'open',
+					outcome: 'closed',
+					durationMs: expect.any(Number),
+				}),
+			);
+		});
+
+		it('closes a review on which a reviewer requested changes', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened', detailed_merge_status: 'requested_changes' } });
+
+			expect((await close(await createAdmin(), reviewId)).status).toBe(200);
+			expect(await stateOf(reviewId)).toBe('closed');
+		});
+
+		it('refuses a member and answers 404 for an unknown review', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+
+			expect((await close(await createMember(), reviewId)).status).toBe(403);
+			expect(await stateOf(reviewId)).toBe('open');
+			expect((await close(await createAdmin(), uuidv7())).status).toBe(404);
+		});
+
+		it.each(['merged', 'closed'] as const)(
+			'records a merge request that already %s on GitLab, and refuses the close',
+			async (state) => {
+				const reviewId = await insertReview(1);
+				gitlab({ 1: { state } });
+
+				const response = await close(await createAdmin(), reviewId);
+
+				expect(response.status).toBe(409);
+				expect(await stateOf(reviewId)).toBe(state);
+			},
+		);
+
+		it('refuses a review that is already closed in n8n', async () => {
+			const reviewId = await insertReview(1);
+			await reviewRepository.update({ id: reviewId }, { state: 'closed' });
+
+			expect((await close(await createAdmin(), reviewId)).status).toBe(409);
+			// n8n never asked GitLab, so the event names no host status.
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ hostStatus: null, outcome: 'failed', failureKind: 'user' }),
+			);
+		});
+
+		it('keeps the review open and asks to try again when GitLab does not answer', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: 503 });
+
+			const response = await close(await createAdmin(), reviewId);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain('Try again');
+			expect(await stateOf(reviewId)).toBe('open');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ hostStatus: 'unreachable', outcome: 'failed' }),
+			);
+		});
+
+		it('reports an invalid GitLab answer as an unexpected failure, not as a host outage', async () => {
+			const reviewId = await insertReview(1);
+			nock(baseUrl)
+				.matchHeader('PRIVATE-TOKEN', token)
+				.get(`/api/v4/projects/${projectId}/merge_requests/1`)
+				.reply(200, { iid: 'not a number' });
+
+			const response = await close(await createAdmin(), reviewId);
+
+			expect(response.status).toBe(500);
+			expect(response.body.message).not.toContain('Try again');
+			expect(await stateOf(reviewId)).toBe('open');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'unexpected' }),
+			);
+		});
+
+		it('keeps a review closed when a sync that read it while open writes its older state later', async () => {
+			const reviewId = await insertReview(1);
+			// GitLab holds its answer until the test releases it, so the order of the steps is fixed.
+			const requested = createDeferredPromise<undefined>();
+			const release = createDeferredPromise<undefined>();
+			nock(baseUrl)
+				.matchHeader('PRIVATE-TOKEN', token)
+				.get(`/api/v4/projects/${projectId}/merge_requests/1`)
+				.reply((_uri, _body, respond) => {
+					requested.resolve(undefined);
+					void release.promise.then(() =>
+						respond(null, [
+							200,
+							mergeRequest(1, { state: 'opened', detailed_merge_status: 'requested_changes' }),
+						]),
+					);
+				});
+			const admin = await createAdmin();
+			const recordHostState = vi.spyOn(reviewRepository, 'recordHostState');
+			const sync = inbox(admin, { state: 'open' });
+
+			// The sync has loaded the open review and now waits for GitLab.
+			await requested.promise;
+			const closedAt = new Date();
+			expect(await reviewRepository.closeByUser(reviewId, closedAt, new Date(0), {})).toBe(true);
+			release.resolve(undefined);
+			await sync;
+
+			// The sync tried to record `changes_requested`. The database refused it.
+			expect(recordHostState).toHaveBeenCalledWith(reviewId, 'changes_requested', expect.any(Date));
+			await expect(recordHostState.mock.results[0].value).resolves.toBe(false);
+			expect(await reviewRepository.findOneByOrFail({ id: reviewId })).toMatchObject({
+				state: 'closed',
+				lastStateChangeAt: closedAt,
+			});
+			recordHostState.mockRestore();
+		});
+
+		it('closes a review that GitLab cannot find, or whose environment no longer uses GitLab', async () => {
+			const missing = await insertReview(1);
+			const withoutHost = await insertReview(2, {
+				environmentId: await createGitEnvironment('git'),
+			});
+			const hostCalls = gitlab({});
+			const admin = await createAdmin();
+
+			expect((await close(admin, missing)).status).toBe(200);
+			expect((await close(admin, withoutHost)).status).toBe(200);
+			// A review without a GitLab environment never reaches the host.
+			expect(hostCalls).toEqual([1]);
+			expect(await stateOf(missing)).toBe('closed');
+			expect(await stateOf(withoutHost)).toBe('closed');
+		});
+
+		it('refuses a review with a live approval claim, and closes one with an old claim', async () => {
+			const live = await insertReview(1);
+			const stale = await insertReview(2);
+			const approver = await createAdmin();
+			const claimedAgo = async (reviewId: string, ms: number) =>
+				await reviewRepository.update(
+					{ id: reviewId },
+					{ approvedById: approver.id, approvedAt: new Date(Date.now() - ms) },
+				);
+			await claimedAgo(live, 30_000);
+			await claimedAgo(stale, 3 * 60_000);
+			gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' } });
+			const admin = await createAdmin();
+
+			expect((await close(admin, live)).status).toBe(409);
+			expect(await stateOf(live)).toBe('open');
+			expect((await close(admin, stale)).status).toBe(200);
 		});
 	});
 });

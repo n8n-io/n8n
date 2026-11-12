@@ -5,12 +5,14 @@ import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import AgentTriggersSection from '../components/AgentTriggersSection.vue';
+import AgentChipButton from '../components/AgentChipButton.vue';
 import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 enableAutoUnmount(afterEach);
@@ -249,6 +251,31 @@ describe('AgentTriggersSection', () => {
 
 		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 	});
+
+	it.each([
+		['missing_required', 'missingRequired'],
+		['invalid_value', 'invalidValue'],
+		['missing_credential', 'missingCredential'],
+		['invalid_credential', 'invalidCredential'],
+		['incompatible_credential', 'incompatibleCredential'],
+		['missing_reference', 'missingReference'],
+		['incompatible_reference', 'incompatibleReference'],
+	] satisfies Array<[AgentConfigValidationIssue['code'], string]>)(
+		'keeps the channel message for %s',
+		async (code, key) => {
+			const wrapper = mountSection(undefined, false, {
+				connectedTriggers: ['slack'],
+				validationIssues: [
+					{ code, path: 'integrations.0', capability: { kind: 'channel', id: 'slack' } },
+				],
+			});
+			await flushPromises();
+
+			expect(wrapper.getComponent(AgentChipButton).props('invalidReasons')).toEqual([
+				`agents.builder.validation.issue.${key}`,
+			]);
+		},
+	);
 
 	it.each(['credential-1', ''])(
 		'disconnects a channel with credential %j and keeps the other channels',

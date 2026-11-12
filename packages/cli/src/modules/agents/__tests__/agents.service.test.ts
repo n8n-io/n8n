@@ -4,6 +4,7 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Telemetry } from '@/telemetry';
+import type { GlobalConfig } from '@n8n/config';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -14,6 +15,7 @@ import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectRelationRepository,
+	TagEntity,
 	TransactionRunner,
 	User,
 	WorkflowRepository,
@@ -24,7 +26,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -41,6 +43,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import type { AgentPolicyService } from '../agent-policy.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
@@ -139,6 +142,12 @@ function makeService() {
 
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
+	const tagService = mock<TagService>();
+	tagService.sortByRequestOrder.mockImplementation(
+		(tags: TagEntity[], { requestOrder }: { requestOrder: string[] }) =>
+			requestOrder.map((tagId) => tags.find((tag) => tag.id === tagId)) as TagEntity[],
+	);
 
 	const service = new AgentsService(
 		mockLogger(),
@@ -163,6 +172,8 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
+		globalConfig,
+		tagService,
 	);
 
 	return {
@@ -187,6 +198,8 @@ function makeService() {
 		credentialsService,
 		projectScopeService,
 		agentsSettingsService,
+		globalConfig,
+		tagService,
 	};
 }
 
@@ -293,6 +306,137 @@ describe('AgentsService', () => {
 
 			expect(n8nChatFlag.isEnabledFor).not.toHaveBeenCalled();
 			expect(agent.integrations).toEqual([]);
+		});
+	});
+
+	describe('agent tags', () => {
+		it('writes the requested tag mappings inside the creation transaction and carries them on the agent', async () => {
+			const { service, agentRepository, tagService, transactionRunner } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			const ctx = {} as never;
+			transactionRunner.run.mockImplementation(async (_ctx, write) => await write(ctx));
+			const tags = [mock<TagEntity>({ id: 'tag-1', name: 'One' })];
+			tagService.getByIds.mockResolvedValue(tags);
+
+			const { agent } = await service.createOrAdopt(projectId, 'Support Agent', {
+				actor,
+				user,
+				createdBy: 'user',
+				tagIds: ['tag-1'],
+			});
+
+			expect(agentRepository.overwriteTagMappings).toHaveBeenCalledWith(agentId, ['tag-1'], ctx);
+			expect(tagService.getByIds).toHaveBeenCalledWith(['tag-1']);
+			expect(agent.tags).toEqual(tags);
+		});
+
+		it('rejects a create with unknown tag ids before the agent is created', async () => {
+			const { service, agentRepository, tagService } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			tagService.getByIds.mockResolvedValue([]);
+
+			await expect(
+				service.createOrAdopt(projectId, 'Support Agent', {
+					actor,
+					tagIds: ['missing-tag'],
+				}),
+			).rejects.toThrow('Some tags not found');
+
+			expect(agentRepository.insertNew).not.toHaveBeenCalled();
+		});
+
+		it('rejects a create with tags when tags are disabled', async () => {
+			const { service, globalConfig } = makeService();
+			globalConfig.tags.disabled = true;
+
+			await expect(
+				service.createOrAdopt(projectId, 'Support Agent', {
+					actor,
+					tagIds: ['tag-1'],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		describe('updateAgentTags', () => {
+			it('overwrites the mappings and returns the tags in request order', async () => {
+				const { service, agentRepository, tagService } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				const tags = [
+					mock<TagEntity>({ id: 'tag-2', name: 'Two' }),
+					mock<TagEntity>({ id: 'tag-1', name: 'One' }),
+				];
+				tagService.getByIds.mockResolvedValue(tags);
+
+				const result = await service.updateAgentTags(agentId, projectId, ['tag-2', 'tag-1']);
+
+				expect(agentRepository.overwriteTagMappings).toHaveBeenCalledWith(agentId, [
+					'tag-2',
+					'tag-1',
+				]);
+				expect(result.map((tag) => tag.id)).toEqual(['tag-2', 'tag-1']);
+			});
+
+			it('dedupes repeated ids before validating them', async () => {
+				const { service, agentRepository, tagService } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				const tags = [mock<TagEntity>({ id: 'tag-1', name: 'One' })];
+				tagService.getByIds.mockResolvedValue(tags);
+
+				await service.updateAgentTags(agentId, projectId, ['tag-1', 'tag-1']);
+
+				expect(tagService.getByIds).toHaveBeenCalledWith(['tag-1']);
+				expect(agentRepository.overwriteTagMappings).toHaveBeenCalledWith(agentId, ['tag-1']);
+			});
+
+			it('clears the mappings when the list is empty', async () => {
+				const { service, agentRepository } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+				await expect(service.updateAgentTags(agentId, projectId, [])).resolves.toEqual([]);
+				expect(agentRepository.overwriteTagMappings).toHaveBeenCalledWith(agentId, []);
+			});
+
+			it('throws when a tag id does not exist', async () => {
+				const { service, agentRepository, tagService } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				tagService.getByIds.mockResolvedValue([mock<TagEntity>({ id: 'tag-1' })]);
+
+				await expect(
+					service.updateAgentTags(agentId, projectId, ['tag-1', 'missing']),
+				).rejects.toThrow('Some tags not found');
+				expect(agentRepository.overwriteTagMappings).not.toHaveBeenCalled();
+			});
+
+			it('throws when the agent is not in the project', async () => {
+				const { service, agentRepository } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+				await expect(service.updateAgentTags(agentId, 'other-project', ['tag-1'])).rejects.toThrow(
+					`Agent "${agentId}" not found`,
+				);
+			});
+
+			it('throws a BadRequest when tags are disabled', async () => {
+				const { service, globalConfig, agentRepository } = makeService();
+				globalConfig.tags.disabled = true;
+
+				await expect(service.updateAgentTags(agentId, projectId, ['tag-1'])).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			});
+
+			it('validates without writing when validateAgentTags is used alone', async () => {
+				const { service, agentRepository, tagService } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				const tags = [mock<TagEntity>({ id: 'tag-1', name: 'One' })];
+				tagService.getByIds.mockResolvedValue(tags);
+
+				await expect(service.validateAgentTags(agentId, projectId, ['tag-1'])).resolves.toEqual(
+					tags,
+				);
+				expect(agentRepository.overwriteTagMappings).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -924,6 +1068,19 @@ describe('AgentsService', () => {
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
+	});
+
+	it('deletes only an archived agent when the caller requires the archive', async () => {
+		const { service, agentRepository } = makeService();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await expect(service.delete(agentId, projectId, { requireArchived: true })).rejects.toThrow(
+			'Agent must be archived before it can be deleted.',
+		);
+		expect(agentRepository.remove).not.toHaveBeenCalled();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		await expect(service.delete(agentId, projectId, { requireArchived: true })).resolves.toBe(true);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

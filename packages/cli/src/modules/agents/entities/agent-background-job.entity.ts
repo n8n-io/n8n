@@ -1,7 +1,11 @@
 import type { AgentPlan } from './agent-plan.entity';
 import type { AgentExecution } from './agent-execution.entity';
-import type { AgentBackgroundJobDto } from '@n8n/api-types';
-import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
+import type {
+	AgentBackgroundJobDto,
+	AgentToolOutputFile,
+	AgentToolSkippedFile,
+} from '@n8n/api-types';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
@@ -103,10 +107,25 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	error: string | null;
 
+	/** Output files of a settled job. The root thread of the parent owns them. */
+	@JsonColumn({ nullable: true })
+	files: AgentToolOutputFile[] | null;
+
+	/** Output files that were too large to store, with the reason. */
+	@JsonColumn({ nullable: true })
+	skippedFiles: AgentToolSkippedFile[] | null;
+
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
 
 	/** When the parent received the latest result or approval request. */
 	@DateTimeColumn({ precision: 3, nullable: true })
 	notifiedAt: Date | null;
+
+	/**
+	 * Wake attempt that started with this unconsumed result. Recovery marks the
+	 * result consumed instead of running the wake again.
+	 */
+	@Column({ type: 'uuid', nullable: true })
+	wakeAttemptId: string | null;
 }

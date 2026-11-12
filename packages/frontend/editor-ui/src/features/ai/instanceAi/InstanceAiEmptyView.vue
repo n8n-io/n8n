@@ -37,10 +37,12 @@ import {
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useAssistantCreditsStore } from './assistantCredits.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_PENDING_APP_ID_QUERY,
 	INSTANCE_AI_PROJECT_ID_QUERY,
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
@@ -124,13 +126,19 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
+	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
-	rememberAssistantAgentThread,
+	stashAssistantAgentLaunch,
 	stashPendingAssistantAgentMessage,
 } from './assistantAgent/assistantAgentThreads';
 import { base64ToFile, resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
+import { provisionSubjectThread } from './composables/useInstanceAiHandoff';
+import {
+	INSTANCE_AI_APP_SUGGESTIONS,
+	INSTANCE_AI_APP_SUGGESTIONS_VERSION,
+} from './appEmptyStateSuggestions';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -158,6 +166,11 @@ const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
+const pendingAppId = computed(() => {
+	const value = route.query[INSTANCE_AI_PENDING_APP_ID_QUERY];
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+});
+const isCreatingApp = computed(() => pendingAppId.value !== undefined);
 function resolveInitialProjectId(): string | undefined {
 	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
 	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
@@ -177,10 +190,14 @@ const selectedProject = ref(resolveInitialProjectId());
 // user cannot work in them. Hide the picker then, the same way the sidebar
 // project list hides itself.
 const canSelectProject = computed(
-	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
+	() =>
+		!isCreatingApp.value &&
+		projectsStore.isTeamProjectFeatureEnabled &&
+		projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -212,7 +229,7 @@ const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyState
 const { isVariantA: isAgentsN8nChatVariantA, isVariantB: isAgentsN8nChatVariantB } =
 	useAgentsN8nChatVariant();
 const forcesDefaultEmptyLayout = computed(
-	() => isAgentsN8nChatVariantA.value || isAgentsN8nChatVariantB.value,
+	() => isCreatingApp.value || isAgentsN8nChatVariantA.value || isAgentsN8nChatVariantB.value,
 );
 // Variant B's picker selection: null is n8n Assistant, matching its own v-model contract.
 const selectedChatAgent = ref<AgentChatListItem | null>(null);
@@ -549,6 +566,14 @@ const shouldShowPersonalizedPromptSuggestions = computed(() =>
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
+	if (isCreatingApp.value) {
+		return {
+			suggestions: INSTANCE_AI_APP_SUGGESTIONS,
+			suggestionCatalogVersion: INSTANCE_AI_APP_SUGGESTIONS_VERSION,
+			placeholderKey: 'apps.assistant.empty.placeholder' as BaseTextKey,
+		};
+	}
+
 	// Variant A shows the agent picker, not suggestion chips.
 	if (isAgentsN8nChatVariantA.value) {
 		return { placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY };
@@ -649,6 +674,8 @@ const showClaudeBeforeSuggestions = computed(
 );
 // EOF Experiment cleanup
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	if (isCreatingApp.value) return 'apps.assistant.empty.title';
+
 	// Variant A keeps the default empty-state title.
 	if (isAgentsN8nChatVariantA.value) {
 		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
@@ -686,6 +713,11 @@ const composerAttachOnlyMimeTypes = computed(() =>
 	selectedChatAgent.value
 		? acceptedMimeTypesFromCapabilities(selectedChatAgent.value.attachments)
 		: undefined,
+);
+
+// The Assistant agent accepts only the files it can read. Check them on drop, not at send.
+const composerAcceptedMimeTypes = computed(() =>
+	settingsStore.isAssistantAgentEnabled ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
 );
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -781,7 +813,6 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
-	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -802,7 +833,6 @@ async function handleSubmit(
 		}
 		const pendingMessage = { agentId, text: message, files };
 		stashPendingN8nChatMessage(pendingMessage);
-		acceptDraft();
 		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
 		// A blocked or cancelled navigation must not leave the hand-off for a later
 		// visit. Only discard and restore the draft if the slot still holds this
@@ -824,18 +854,19 @@ async function handleSubmit(
 		return;
 	}
 
-	if (settingsStore.isAssistantAgentEnabled) {
+	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
 		await startAssistantAgentThread(
 			selectedProject.value,
 			message,
 			attachments,
 			restoreDraft,
-			acceptDraft,
+			authorship,
+			mentionCounts,
 		);
 		return;
 	}
 
-	const threadId = uuidv4();
+	let threadId: string;
 	isStartingThread.value = true;
 	// The composer clears on submit, but this view stays up until the send is
 	// accepted. Put the prompt back so the user sees what they sent meanwhile.
@@ -845,10 +876,21 @@ async function handleSubmit(
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId, selectedProject.value, {
-			source: resolveLaunchSource(),
-			origin: 'internal',
-		});
+		const launch = { source: resolveLaunchSource(), origin: 'internal' as const };
+		if (pendingAppId.value) {
+			threadId = await provisionSubjectThread(
+				{
+					type: 'app',
+					id: pendingAppId.value,
+					projectId: selectedProject.value,
+					pending: true,
+				},
+				launch,
+			);
+		} else {
+			threadId = uuidv4();
+			await store.syncThread(threadId, selectedProject.value, launch);
+		}
 	} catch {
 		isStartingThread.value = false;
 		restoreDraftAfterFailedSubmit(restoreDraft);
@@ -901,7 +943,6 @@ async function handleSubmit(
 			runtime: 'instance-ai',
 		});
 	}
-	acceptDraft();
 
 	try {
 		await router.replace({
@@ -924,9 +965,10 @@ async function startAssistantAgentThread(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
-	acceptDraft: () => void,
+	authorship: InstanceAiMessageAuthorship,
+	mentionCounts: AssistantMentionCounts,
 ) {
-	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
 		if (attachment.type !== 'file') continue;
@@ -954,15 +996,21 @@ async function startAssistantAgentThread(
 			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
 		),
 		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+		authorship,
+		mentionCounts,
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
-	rememberAssistantAgentThread(pendingMessage.threadId, projectId);
-	acceptDraft();
+	stashAssistantAgentLaunch(pendingMessage.threadId, {
+		projectId,
+		source: resolveLaunchSource(),
+		origin: 'internal',
+	});
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId: pendingMessage.threadId },
 	});
 	if (failure && discardPendingAssistantAgentMessage(pendingMessage)) {
+		clearAssistantAgentLaunch(pendingMessage.threadId);
 		restoreDraftAfterFailedSubmit(restoreDraft);
 	}
 }
@@ -1013,8 +1061,8 @@ async function handleWorkflowPreviewExampleUse(
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1059,8 +1107,8 @@ async function handleWorkflowPreviewExampleUse(
 					<div :class="$style.centeredInput">
 						<CreditWarningBanner
 							v-if="isOutOfCredits || creditBanner.visible.value"
-							:credits-remaining="store.creditsRemaining"
-							:credits-quota="store.creditsQuota"
+							:credits-remaining="creditsStore.creditsRemaining"
+							:credits-quota="creditsStore.creditsQuota"
 							:message="outOfCreditsMessage"
 							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1120,7 +1168,7 @@ async function handleWorkflowPreviewExampleUse(
 				</div>
 				<!-- EOF Experiment cleanup -->
 				<N8nChatAgentPicker
-					v-if="isAgentsN8nChatVariantB"
+					v-if="isAgentsN8nChatVariantB && !isCreatingApp"
 					v-model="selectedChatAgent"
 					:project-id="selectedProject"
 					:disabled="isChatAgentPickerDisabled"
@@ -1138,8 +1186,9 @@ async function handleWorkflowPreviewExampleUse(
 					"
 				>
 					<InstanceAiFreeNudge
+						v-if="!isCreatingApp"
 						:eligible="
-							store.creditsQuota !== undefined &&
+							creditsStore.creditsQuota !== undefined &&
 							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
@@ -1147,8 +1196,8 @@ async function handleWorkflowPreviewExampleUse(
 					/>
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1165,6 +1214,7 @@ async function handleWorkflowPreviewExampleUse(
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
+						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
 							showWorkflowPreviewsAboveAssistant
@@ -1188,12 +1238,15 @@ async function handleWorkflowPreviewExampleUse(
 						</template>
 					</InstanceAiInput>
 					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
-					<ClaudeEntryPoint v-if="!showClaudeBeforeSuggestions" placement="footer" />
+					<ClaudeEntryPoint
+						v-if="!isCreatingApp && !showClaudeBeforeSuggestions"
+						placement="footer"
+					/>
 					<!-- EOF Experiment cleanup -->
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->
-				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
+				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA && !isCreatingApp" />
 				<Transition v-else-if="!isAgentsN8nChatVariantB" name="workflow-preview-fade">
 					<div
 						v-if="

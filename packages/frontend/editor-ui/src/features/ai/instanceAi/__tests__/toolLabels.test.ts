@@ -6,6 +6,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.ask_user': 'Asking user',
+				'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.agent_builder_build_agent': 'Working with agent',
@@ -48,6 +50,8 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.load_skill.scriptFallback': 'script',
 				'instanceAi.tools.load_skill.template': 'Reading',
 				'instanceAi.tools.load_skill.templateFallback': 'template',
+				'instanceAi.tools.data_tables.query': 'Querying data table',
+				'instanceAi.tools.data_tables.insert-rows': 'Inserting rows',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -83,6 +87,8 @@ describe('getToolIcon', () => {
 
 	test('returns table for data-table tools', () => {
 		expect(getToolIcon('data_tables')).toBe('table');
+		expect(getToolIcon('list_data_tables')).toBe('table');
+		expect(getToolIcon('insert_data_table_rows')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -141,6 +147,8 @@ describe('getToolIcon', () => {
 
 	test('returns folder for workspace tools', () => {
 		expect(getToolIcon('workspace')).toBe('folder');
+		expect(getToolIcon('list_projects')).toBe('folder');
+		expect(getToolIcon('move_workflow_to_folder')).toBe('folder');
 		expect(getToolIcon('workspace_execute_command')).toBe('folder');
 		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});
@@ -170,7 +178,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
-		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
+		expect(getToolIcon('ask_user')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
 
@@ -255,6 +263,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 	});
 
+	test('getToolLabel resolves legacy question tools to the ask_user label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking user');
+		expect(getToolLabel('ask-user')).toBe('Asking user');
+		expect(getToolLabel('ask_user')).toBe('Asking user');
+	});
+
 	test('getToolLabel formats the tool name when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('unknown-tool')).toBe('Unknown tool');
@@ -263,8 +278,15 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel drops the builder prefix when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
+	});
+
+	test('getToolLabel resolves split data table tools to the action label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('query_data_table')).toBe('Querying data table');
+		expect(getToolLabel('insert_data_table_rows')).toBe('Inserting rows');
+		expect(getToolLabel('data_tables', { action: 'insert-rows' })).toBe('Inserting rows');
 	});
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {

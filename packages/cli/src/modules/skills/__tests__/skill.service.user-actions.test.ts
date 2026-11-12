@@ -1,11 +1,9 @@
 import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { createSkillServices, resetSkillMocks, TX_CTX } from './test-utils/skill-services';
 import type { SkillFile } from '../database/entities/skill-file.entity';
@@ -16,7 +14,6 @@ import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillService } from '../services/skill.service';
 import type { ResolvedSkillRow } from '../utils/skill-content';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
@@ -25,16 +22,13 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 const user = mock<User>({ id: 'user-1' });
 const DATE = new Date('2026-10-01T00:00:00.000Z');
 
-function skill(
-	id: string,
-	target: Partial<Pick<Skill, 'projectId' | 'agentId' | 'createdById'>> = {},
-): Skill {
+function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'createdById'>> = {}): Skill {
 	return mock<Skill>({
 		id,
 		projectId: target.projectId ?? null,
-		agentId: target.agentId ?? null,
 		source: 'ui',
 		availableToAssistant: false,
+		availableToMCP: false,
 		createdById: target.createdById ?? null,
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -83,6 +77,8 @@ describe('SkillService user actions', () => {
 		skillUsage,
 		assistantGate: rollout,
 		access,
+		links,
+		skillSyncGate,
 		service,
 	} = createSkillServices();
 	let canAccess: MockInstance<SkillAccessService['canAccess']>;
@@ -92,11 +88,12 @@ describe('SkillService user actions', () => {
 	let saveTrusted: MockInstance<SkillService['saveTrusted']>;
 	let moveTrusted: MockInstance<SkillService['moveTrusted']>;
 	let setAssistantAvailability: MockInstance<SkillService['setAssistantAvailability']>;
+	let setMcpAvailability: MockInstance<SkillService['setMcpAvailability']>;
 	let refreshFollowingAgents: MockInstance<SkillService['refreshFollowingAgents']>;
 	let visible: Skill[];
 
 	beforeEach(async () => {
-		await resetSkillMocks({ skills: repository, usage, txRunner });
+		await resetSkillMocks({ skills: repository, usage, txRunner, links, skillSyncGate });
 		// Support bot is the only agent, in project-1, and uses no skill.
 		await usage.seed({
 			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
@@ -129,7 +126,8 @@ describe('SkillService user actions', () => {
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		repository.findProjects.mockImplementation(
-			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
+			async (ids) =>
+				new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const, icon: null }])),
 		);
 		canAccess = vi.spyOn(access, 'canAccess').mockResolvedValue(true);
 		accessCheck = vi.spyOn(access, 'accessCheck').mockResolvedValue(() => true);
@@ -139,6 +137,7 @@ describe('SkillService user actions', () => {
 		saveTrusted = vi.spyOn(service, 'saveTrusted').mockResolvedValue(undefined as never);
 		moveTrusted = vi.spyOn(service, 'moveTrusted').mockResolvedValue();
 		setAssistantAvailability = vi.spyOn(service, 'setAssistantAvailability').mockResolvedValue();
+		setMcpAvailability = vi.spyOn(service, 'setMcpAvailability').mockResolvedValue();
 		refreshFollowingAgents = vi.spyOn(service, 'refreshFollowingAgents').mockResolvedValue();
 	});
 
@@ -150,7 +149,7 @@ describe('SkillService user actions', () => {
 				skill('skill_c', { createdById: 'user-gone' }),
 			];
 			userRepository.findManyByIds.mockResolvedValue([
-				mock<User>({
+				Object.assign(new Person(), {
 					id: 'user-2',
 					email: 'ada@example.com',
 					firstName: 'Ada',
@@ -183,10 +182,10 @@ describe('SkillService user actions', () => {
 			);
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ projectIds: ['project-1'], agentIds: ['agent-1'] },
+				{ projectIds: ['project-1'] },
 				{
 					scope: 'project',
-					project: { id: 'project-1', agentIds: ['agent-1'] },
+					projectId: 'project-1',
 					search: 'rules',
 					skip: 10,
 					take: 5,
@@ -227,13 +226,10 @@ describe('SkillService user actions', () => {
 		});
 
 		it('answers a project the user may not list with an empty page', async () => {
-			const findAgentIdsInProjects = vi.spyOn(skillUsage, 'findAgentIdsInProjects');
-
 			const result = await service.list(user, query({ projectId: 'project-hidden' }));
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
-			expect(findAgentIdsInProjects).not.toHaveBeenCalledWith(['project-hidden']);
 		});
 
 		it('filters by any project for a user with global scopes', async () => {
@@ -243,7 +239,7 @@ describe('SkillService user actions', () => {
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ project: { id: 'project-2', agentIds: [] } }),
+				expect.objectContaining({ projectId: 'project-2' }),
 			);
 		});
 
@@ -266,7 +262,7 @@ describe('SkillService user actions', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					usedBy: { agentId: 'agent-1', skillIds: ['skill_a', 'skill_b'] },
+					usedBySkillIds: ['skill_a', 'skill_b'],
 					search: 'voice',
 				}),
 			);
@@ -301,7 +297,7 @@ describe('SkillService user actions', () => {
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
-					attachableTo: { agentId: 'agent-1', projectId: 'project-1' },
+					attachableToProjectId: 'project-1',
 					search: 'voice',
 				}),
 			);
@@ -314,7 +310,7 @@ describe('SkillService user actions', () => {
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
 		});
 
-		it.each([{ scope: 'agent' as const }, { projectId: 'project-1' }])(
+		it.each([{ scope: 'project' as const }, { projectId: 'project-1' }])(
 			'refuses attachableTo together with %o',
 			async (filter) => {
 				await expect(
@@ -344,15 +340,13 @@ describe('SkillService user actions', () => {
 
 		it('widens the list for a user with global scopes', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
-			const findAgentIdsInProjects = vi.spyOn(skillUsage, 'findAgentIdsInProjects');
 
 			await service.list(user, query());
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ projectIds: 'all', agentIds: 'all' },
+				{ projectIds: 'all' },
 				expect.anything(),
 			);
-			expect(findAgentIdsInProjects).not.toHaveBeenCalled();
 		});
 
 		it('describes each skill', async () => {
@@ -369,7 +363,7 @@ describe('SkillService user actions', () => {
 				],
 			});
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
@@ -383,39 +377,64 @@ describe('SkillService user actions', () => {
 				projectId: 'project-1',
 				projectName: 'Team',
 				projectType: 'team',
-				agentId: null,
-				agentName: null,
+				projectIcon: null,
 				source: 'ui',
 				createdBy: null,
 				latestVersion: 2,
 				usedByAgents: 2,
 				availableToAssistant: false,
+				availableToMCP: false,
 				canEdit: true,
 				canDelete: false,
+				canStopSyncing: false,
+				syncState: null,
+				sourceId: null,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
 		});
 
-		it('describes an agent skill with its agent and the project of the agent', async () => {
-			visible = [skill('skill_a', { agentId: 'agent-1' })];
-			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+		it.each([
+			{
+				case: 'a synced skill the user may change',
+				on: true,
+				linked: true,
+				update: true,
+				can: true,
+			},
+			{
+				case: 'a skill with the Skill Sync flag off',
+				on: false,
+				linked: true,
+				update: true,
+				can: false,
+			},
+			{ case: 'a skill that is not synced', on: true, linked: false, update: true, can: false },
+			{
+				case: 'a synced skill the user may only read',
+				on: true,
+				linked: true,
+				update: false,
+				can: false,
+			},
+		])('offers Stop syncing only for $case', async ({ on, linked, update, can }) => {
+			visible = [skill('skill_a', { projectId: 'project-1' })];
+			skillSyncGate.isEnabled.mockResolvedValue(on);
+			links.findSyncStates.mockResolvedValue(
+				new Map(
+					linked ? [['skill_a', { state: 'up_to_date' as const, sourceId: 'source-1' }]] : [],
+				),
 			);
-			const check = vi.fn().mockReturnValue(true);
-			accessCheck.mockResolvedValue(check);
+			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
 
 			const [item] = (await service.list(user, query())).data;
 
 			expect(item).toMatchObject({
-				scope: 'agent',
-				projectId: 'project-1',
-				projectName: 'Team',
-				agentId: 'agent-1',
-				agentName: 'Support bot',
+				canStopSyncing: can,
+				sourceId: linked ? 'source-1' : null,
+				syncState: linked ? 'up_to_date' : null,
+				canEdit: update && !linked,
 			});
-			// Permissions come from the agent's project.
-			expect(check).toHaveBeenCalledWith(visible[0], 'project-1');
 		});
 
 		it('checks edit and delete once for the page, not once per skill', async () => {
@@ -459,7 +478,7 @@ describe('SkillService user actions', () => {
 		it('names the creators of the skills the user may see', async () => {
 			repository.findVisibleCreatorIds.mockResolvedValue(['user-2']);
 			userRepository.findManyByIds.mockResolvedValue([
-				mock<User>({
+				Object.assign(new Person(), {
 					id: 'user-2',
 					email: 'ada@example.com',
 					firstName: 'Ada',
@@ -472,7 +491,6 @@ describe('SkillService user actions', () => {
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:list']);
 			expect(repository.findVisibleCreatorIds).toHaveBeenCalledWith({
 				projectIds: ['project-1'],
-				agentIds: ['agent-1'],
 			});
 			expect(result).toEqual([
 				{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
@@ -573,7 +591,7 @@ describe('SkillService user actions', () => {
 
 		// A custom role can hold projectSkill:create without projectSkill:read.
 		it('returns the new skill to a creator who may not read it afterwards', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
 			canAccess.mockResolvedValue(false);
 			accessCheck.mockResolvedValue(() => false);
 
@@ -585,6 +603,17 @@ describe('SkillService user actions', () => {
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
+		it('makes the new skill available to MCP clients in the create transaction', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToMCP: true }));
+
+			const target = { projectId: null };
+			expect(createTrusted).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
+			expect(setMcpAvailability).toHaveBeenCalledWith('skill_new', true, target, TX_CTX);
+			expect(setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
 		it('reports the create with the method the client sent', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -592,7 +621,7 @@ describe('SkillService user actions', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'upload',
 			);
@@ -605,7 +634,7 @@ describe('SkillService user actions', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'mcp',
 				'ai',
 			);
@@ -618,7 +647,7 @@ describe('SkillService user actions', () => {
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
-				[{ id: 'skill_new', projectId: null, agentId: null }],
+				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'manual',
 			);
@@ -630,30 +659,12 @@ describe('SkillService user actions', () => {
 			expect(skillsTelemetry.created).not.toHaveBeenCalled();
 		});
 
-		it('creates an agent skill with projectSkill:create on the project of the agent', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-
-			const detail = await service.create(user, payload({ scope: 'agent', agentId: 'agent-1' }));
-
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId: 'project-1',
-			});
-			expect(createTrusted).toHaveBeenCalledWith({
-				checkNameTaken: true,
-				target: { projectId: null, agentId: 'agent-1' },
-				skill: body,
-				source: 'ui',
-				createdById: user.id,
-			});
-			expect(detail.id).toBe('skill_new');
-		});
-
 		it('makes the new skill available to the Assistant in the create transaction', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
 			await service.create(user, payload({ availableToAssistant: true }));
 
-			const target = { projectId: null, agentId: null };
+			const target = { projectId: null };
 			expect(createTrusted).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
 			expect(setAssistantAvailability).toHaveBeenCalledWith('skill_new', true, target, TX_CTX);
 		});
@@ -685,25 +696,16 @@ describe('SkillService user actions', () => {
 			expect(createTrusted).toHaveBeenCalledWith(expect.objectContaining({ source: 'assistant' }));
 		});
 
-		it('refuses an agent skill for an agent that does not exist', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-
-			await expect(
-				service.create(user, payload({ scope: 'agent', agentId: 'agent-gone' })),
-			).rejects.toThrow(NotFoundError);
-			expect(createTrusted).not.toHaveBeenCalled();
-		});
-
 		it('creates a project skill with projectSkill:create, also in a personal project', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
 
 			await service.create(user, payload({ scope: 'project', projectId: 'personal-1' }));
 
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId: 'personal-1',
-			});
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'personal-1', [
+				'projectSkill:create',
+			]);
 			expect(createTrusted).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { projectId: 'personal-1', agentId: null } }),
+				expect.objectContaining({ target: { projectId: 'personal-1' } }),
 			);
 		});
 
@@ -714,22 +716,17 @@ describe('SkillService user actions', () => {
 
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:create');
 			expect(createTrusted).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { projectId: null, agentId: null } }),
+				expect.objectContaining({ target: { projectId: null } }),
 			);
 		});
 
 		it.each([
 			['project', {}, UserError],
-			['project', { projectId: 'project-1', agentId: 'agent-1' }, UserError],
-			['agent', {}, UserError],
-			['agent', { agentId: 'agent-1', projectId: 'project-1' }, UserError],
-			['agent', { agentId: 'agent-1' }, ForbiddenError],
 			['instance', { projectId: 'project-1' }, UserError],
-			['instance', { agentId: 'agent-1' }, UserError],
 			['instance', {}, ForbiddenError],
 			['project', { projectId: 'project-1' }, ForbiddenError],
 		] as const)('refuses scope %s with %o', async (scope, extra, errorClass) => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(service.create(user, payload({ scope, ...extra }))).rejects.toThrow(errorClass);
 			expect(createTrusted).not.toHaveBeenCalled();
@@ -737,7 +734,7 @@ describe('SkillService user actions', () => {
 
 		// A global projectSkill:create passes the scope check for any project id.
 		it('refuses a project skill for a project that does not exist', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
 			repository.findProjects.mockResolvedValue(new Map());
 
 			await expect(
@@ -809,6 +806,26 @@ describe('SkillService user actions', () => {
 			);
 		});
 
+		it('stores an MCP availability change in the transaction of the save, without a move', async () => {
+			saveTrusted.mockResolvedValue({ ...saved, created: false });
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ availableToMCP: true, baseSkillHash: 'base' }),
+			);
+
+			expect(setMcpAvailability).toHaveBeenCalledWith('skill_a', true, visible[0], TX_CTX);
+			expect(saveTrusted).toHaveBeenCalledWith(
+				'skill_a',
+				{ baseSkillHash: 'base' },
+				user.id,
+				TX_CTX,
+			);
+			expect(moveTrusted).not.toHaveBeenCalled();
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
+		});
+
 		it('refuses a user who may not edit the skill', async () => {
 			canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
 
@@ -827,12 +844,12 @@ describe('SkillService user actions', () => {
 		});
 
 		it('moves the skill and saves it in one transaction, then refreshes after the commit', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			saveTrusted.mockResolvedValue(saved);
-			assertCanMove.mockResolvedValue({ projectId: null, agentId: null });
+			assertCanMove.mockResolvedValue({ projectId: null });
 
 			await service.update(
 				user,
@@ -842,14 +859,14 @@ describe('SkillService user actions', () => {
 
 			expect(moveTrusted).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: 'project-1', agentId: null },
+				{ projectId: 'project-1' },
 				undefined,
 				TX_CTX,
 				// The move is refused under its lock if the skill left the scope checked here.
 				// A refusal names only the agents in projects the user may read.
 				{
 					nameAfterMove: undefined,
-					checkedSource: { projectId: null, agentId: null },
+					checkedSource: { projectId: null },
 					agentProjectIds: ['project-1'],
 				},
 			);
@@ -864,7 +881,7 @@ describe('SkillService user actions', () => {
 			// The place the move wrote, not a read after the commit.
 			expect(skillsTelemetry.updated).toHaveBeenCalledWith(
 				user.id,
-				{ id: 'skill_a', projectId: 'project-1', agentId: null },
+				{ id: 'skill_a', projectId: 'project-1' },
 				'ui',
 				3,
 				true,
@@ -879,14 +896,14 @@ describe('SkillService user actions', () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			saveTrusted.mockResolvedValue(saved);
-			assertCanMove.mockResolvedValue({ projectId: 'project-1', agentId: null });
+			assertCanMove.mockResolvedValue({ projectId: 'project-1' });
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 
 			await service.update(user, 'skill_a', update({ scope: 'instance', baseSkillHash: 'base' }));
 
 			expect(moveTrusted).toHaveBeenCalledWith(
 				'skill_a',
-				{ projectId: null, agentId: null },
+				{ projectId: null },
 				undefined,
 				TX_CTX,
 				expect.objectContaining({ agentProjectIds: 'all' }),
@@ -912,7 +929,7 @@ describe('SkillService user actions', () => {
 		});
 
 		it('refuses a move to a place where the user may not create skills', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(
 				service.update(

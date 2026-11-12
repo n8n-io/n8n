@@ -10,14 +10,23 @@ describe('localRulesPlugin recommended config', () => {
 			],
 		).toBe('error');
 	});
+
+	it('enables the base error import ban for n8n-workflow as an error', () => {
+		expect(
+			localRulesPlugin.configs.recommended.rules[
+				'n8n-local-rules/no-base-error-import-from-workflow'
+			],
+		).toBe('error');
+	});
 });
 
 describe('frontendConfig', () => {
-	it('enables the reka-ui pagination import ban as an error', () => {
-		expect(
-			frontendConfig.find(
-				(config) => config.rules?.['n8n-local-rules/no-reka-ui-pagination'] !== undefined,
-			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
-		).toBe('error');
+	it('enables the design-system direct component import ban for Vue and TypeScript files', () => {
+		const ruleName = '@n8n/design-system/no-direct-component-imports';
+		const enabledFiles = frontendConfig
+			.filter((config) => config.rules?.[ruleName] === 'error')
+			.flatMap((config) => config.files ?? []);
+
+		expect(enabledFiles).toEqual(expect.arrayContaining(['**/*.vue', '**/*.{ts,tsx}']));
 	});
 });

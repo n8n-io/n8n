@@ -1,16 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, UserRepository } from '@n8n/db';
+import type { Person, PersonRepository, Project, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UserError } from '@n8n/errors';
 import type { License } from '@/license';
 import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -55,7 +54,7 @@ function makeService({
 	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
+	personRepository = mock<PersonRepository>({ findById: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
@@ -79,7 +78,7 @@ function makeService({
 		licenseState,
 		instanceSettings,
 		ownershipService,
-		userRepository,
+		personRepository,
 		urlService,
 		outboundHttp,
 		credentialTypes,
@@ -321,16 +320,16 @@ describe('AiGatewayService', () => {
 			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
-		it('includes userEmail and userName in token body when user exists', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+		it('includes userEmail and userName in token body when the user is a person', async () => {
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
+						mock<Person>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -349,15 +348,15 @@ describe('AiGatewayService', () => {
 		});
 
 		it('omits userName from token body when user has no first or last name', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
+						mock<Person>({ email: 'alice@example.com', firstName: '', lastName: '' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -366,9 +365,9 @@ describe('AiGatewayService', () => {
 			expect(body.userName).toBeUndefined();
 		});
 
-		it('omits userEmail and userName from token body when user is not found', async () => {
+		it('omits userEmail and userName from token body when the user is not found or is a service account', async () => {
 			mockConfigThenToken();
-			const service = makeService(); // userRepository returns null by default
+			const service = makeService(); // personRepository returns null by default
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -832,6 +831,119 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('sendProviderRequest()', () => {
+		const providerRequest = {
+			provider: 'browserbaseBrowserUse',
+			authHeaderKey: 'X-BB-API-Key',
+			method: 'POST' as const,
+			path: '/v1/sessions',
+			body: { keepAlive: false },
+			userId: USER_ID,
+			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task/1' },
+		};
+		const PROVIDER_URL = `${BASE_URL}/v1/gateway/exec/instance-ai/thread-1%7Ctask%2F1/browserbaseBrowserUse/v1/sessions`;
+
+		/** The token request succeeds, then the provider request gets `response`. */
+		function mockTokenThen(response: { statusCode: number; body: unknown }) {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'user-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(response);
+		}
+
+		it("sends the user's token to the provider through the instance-ai exec context URL", async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			const body = await makeService().sendProviderRequest(providerRequest);
+
+			expect(body).toEqual({ id: 'sess-1' });
+			expect(requestMock).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					url: `${BASE_URL}/v1/gateway/credentials`,
+					headers: expect.objectContaining({ 'x-user-id': USER_ID }),
+				}),
+			);
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					method: 'POST',
+					url: PROVIDER_URL,
+					headers: { 'X-BB-API-Key': 'user-jwt' },
+					body: { keepAlive: false },
+					json: true,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('sends the timeout with the token request and the provider request', async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			await makeService().sendProviderRequest({ ...providerRequest, timeoutMs: 30_000 });
+
+			expect(requestMock).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ url: `${BASE_URL}/v1/gateway/credentials`, timeout: 30_000 }),
+			);
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ url: PROVIDER_URL, timeout: 30_000 }),
+			);
+		});
+
+		it('sends no timeout with either request when none is given', async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			await makeService().sendProviderRequest(providerRequest);
+
+			for (const [options] of requestMock.mock.calls) {
+				expect(options).not.toHaveProperty('timeout');
+			}
+			expect(requestMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('throws a UserError with the status code for a failed response', async () => {
+			mockTokenThen(fail(503));
+
+			const result = makeService().sendProviderRequest(providerRequest);
+
+			await expect(result).rejects.toThrow(UserError);
+			await expect(result).rejects.toThrow('Gateway credits request failed: HTTP 503');
+		});
+
+		it('throws the error that mapErrorResponse gives for a failed response', async () => {
+			mockTokenThen({ statusCode: 402, body: { reason: 'no credits' } });
+			const mapErrorResponse = vi.fn(() => new Error('mapped'));
+
+			await expect(
+				makeService().sendProviderRequest({ ...providerRequest, mapErrorResponse }),
+			).rejects.toThrow('mapped');
+			expect(mapErrorResponse).toHaveBeenCalledWith({
+				statusCode: 402,
+				body: { reason: 'no credits' },
+			});
+		});
+
+		it.each(['', 'browserbase/../credentials', 'browserbase?x=1'])(
+			'refuses the provider name "%s" without sending a request',
+			async (provider) => {
+				await expect(
+					makeService().sendProviderRequest({ ...providerRequest, provider }),
+				).rejects.toThrow('Invalid gateway provider name');
+				expect(requestMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it('throws when gateway credits are not enabled', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.sendProviderRequest(providerRequest)).rejects.toThrow(
+				'Gateway credits are not enabled on this instance',
+			);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 

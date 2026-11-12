@@ -11,6 +11,10 @@ import type { InsightsRawRepository } from '../insights-raw.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import type { InsightsConfig } from '../insights.config';
 
+// A deep mock answers `source` with a function, which the counting rules treat as unknown.
+const createCtx = (overrides: Partial<WorkflowExecuteAfterContext>) =>
+	mock<WorkflowExecuteAfterContext>({ source: undefined, ...overrides });
+
 describe('initialization safeguards', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsRawRepository: InsightsRawRepository;
@@ -45,7 +49,7 @@ describe('initialization safeguards', () => {
 
 	test('does not collect events when not initialized', async () => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -64,7 +68,7 @@ describe('initialization safeguards', () => {
 
 	test('does not flush events when not initialized', async () => {
 		// ARRANGE - manually create some test context
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -131,7 +135,7 @@ describe('execution source', () => {
 	// would report them as production runs on schedule/form/webhook workflows.
 	test('does not collect events for instance AI runs that mimic a trigger mode', async () => {
 		const service = createInitializedService();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: 'instance_ai' });
+		const ctx = createCtx({ workflow, source: 'instance_ai' });
 		ctx.runData = mock<IRun>({
 			mode: 'trigger',
 			status: 'success',
@@ -146,7 +150,7 @@ describe('execution source', () => {
 
 	test('collects events for user-initiated runs in the same mode', async () => {
 		const service = createInitializedService();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: undefined });
+		const ctx = createCtx({ workflow, source: undefined });
 		ctx.runData = mock<IRun>({
 			mode: 'trigger',
 			status: 'success',
@@ -161,7 +165,7 @@ describe('execution source', () => {
 	});
 });
 
-describe('calculateTimeSaved', () => {
+describe('time saved', () => {
 	let insightsCollectionService: InsightsCollectionService;
 
 	const workflow = mock<WorkflowEntity & IWorkflowDb>({
@@ -169,7 +173,14 @@ describe('calculateTimeSaved', () => {
 		name: 'Test Workflow',
 	});
 
-	beforeAll(() => {
+	const bufferedTimeSaved = async (ctx: WorkflowExecuteAfterContext) => {
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		return [...insightsCollectionService['bufferedInsights']].find(
+			(insight) => insight.type === 'time_saved_min',
+		)?.value;
+	};
+
+	beforeEach(() => {
 		insightsCollectionService = new InsightsCollectionService(
 			mock<SharedWorkflowRepository>(),
 			mock<InsightsRawRepository>(),
@@ -177,10 +188,15 @@ describe('calculateTimeSaved', () => {
 			mock<InsightsConfig>(),
 			mockLogger(),
 		);
+		insightsCollectionService.init();
 	});
 
-	test('returns the workflow time saved when the time saved mode is fixed', () => {
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+	afterEach(() => {
+		insightsCollectionService.stopFlushingTimer();
+	});
+
+	test('records the workflow time saved when the time saved mode is fixed', async () => {
+		const ctx = createCtx({ workflow });
 		ctx.workflow.settings = {
 			timeSavedMode: 'fixed',
 			timeSavedPerExecution: 10,
@@ -192,23 +208,11 @@ describe('calculateTimeSaved', () => {
 			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
 		});
 
-		// @ts-expect-error private method under test
-		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
-		expect(timeSaved).toBe(10);
+		expect(await bufferedTimeSaved(ctx)).toBe(10);
 	});
 
 	test('does not record time saved for error mode executions', async () => {
-		const insightsRawRepository = mock<InsightsRawRepository>();
-		const service = new InsightsCollectionService(
-			mock<SharedWorkflowRepository>(),
-			insightsRawRepository,
-			mock<InsightsMetadataRepository>(),
-			mock<InsightsConfig>(),
-			mockLogger(),
-		);
-		service.init();
-
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		ctx.workflow.settings = {
 			timeSavedMode: 'fixed',
 			timeSavedPerExecution: 10,
@@ -220,16 +224,15 @@ describe('calculateTimeSaved', () => {
 			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
 		});
 
-		await service.handleWorkflowExecuteAfter(ctx);
+		expect(await bufferedTimeSaved(ctx)).toBeUndefined();
 
-		const buffered = [...service['bufferedInsights']];
-		expect(buffered.some((insight) => insight.type === 'time_saved_min')).toBe(false);
+		const buffered = [...insightsCollectionService['bufferedInsights']];
 		expect(buffered.some((insight) => insight.type === 'success')).toBe(true);
 		expect(buffered.some((insight) => insight.type === 'runtime_ms')).toBe(true);
 	});
 
-	test('returns the node time saved when the time saved mode is dynamic', () => {
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+	test('records the node time saved when the time saved mode is dynamic', async () => {
+		const ctx = createCtx({ workflow });
 		ctx.workflow.settings = {
 			timeSavedMode: 'dynamic',
 		};
@@ -249,13 +252,11 @@ describe('calculateTimeSaved', () => {
 			nodeTimeSavedMinutes: undefined,
 		});
 
-		// @ts-expect-error private method under test
-		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
-		expect(timeSaved).toBe(20);
+		expect(await bufferedTimeSaved(ctx)).toBe(20);
 	});
 
-	test('returns the node time saved minutes of the run when the time saved mode is dynamic', () => {
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+	test('records the node time saved minutes of the run when the time saved mode is dynamic', async () => {
+		const ctx = createCtx({ workflow });
 		ctx.workflow.settings = {
 			timeSavedMode: 'dynamic',
 		};
@@ -268,9 +269,7 @@ describe('calculateTimeSaved', () => {
 			nodeTimeSavedMinutes: 60,
 		});
 
-		// @ts-expect-error private method under test
-		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
-		expect(timeSaved).toBe(60);
+		expect(await bufferedTimeSaved(ctx)).toBe(60);
 	});
 });
 

@@ -10,6 +10,7 @@ import { AppsConfig } from '../apps.config';
 
 const FQDN_MAX_LENGTH = 253;
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const PREVIEW_MARKER = '--preview';
 
 @Service()
 export class AppHostService {
@@ -24,6 +25,7 @@ export class AppHostService {
 		if (!config.baseUrl) {
 			throw new BadRequestError('Set N8N_APPS_BASE_URL before enabling the apps module.');
 		}
+		const instanceBaseUrl = urls.getInstanceBaseUrl();
 		try {
 			const url = new URL(config.baseUrl);
 			if (
@@ -38,7 +40,7 @@ export class AppHostService {
 				!url.hostname.split('.').every((label) => DNS_LABEL_PATTERN.test(label))
 			)
 				throw new Error('Invalid apps URL');
-			for (const serviceUrl of [urls.getInstanceBaseUrl(), urls.getWebhookBaseUrl()]) {
+			for (const serviceUrl of [instanceBaseUrl, urls.getWebhookBaseUrl()]) {
 				const hostname = new URL(serviceUrl).hostname.toLowerCase();
 				if (hostname === url.hostname || hostname.endsWith(`.${url.hostname}`)) {
 					throw new Error('The apps parent overlaps an n8n service host');
@@ -51,10 +53,13 @@ export class AppHostService {
 			);
 		}
 		if (globalConfig.deployment.type === 'cloud') {
-			const instanceName = globalConfig.host.split('.')[0].toLowerCase();
-			if (!DNS_LABEL_PATTERN.test(instanceName)) {
+			// `globalConfig.sentry.deploymentName` reads from DEPLOYMENT_NAME on Cloud
+			const instanceName = (
+				globalConfig.sentry.deploymentName || new URL(instanceBaseUrl).hostname.split('.')[0]
+			).toLowerCase();
+			if (!DNS_LABEL_PATTERN.test(instanceName) || instanceName.includes('--')) {
 				throw new BadRequestError(
-					'Set N8N_HOST to a valid instance hostname before enabling apps on Cloud.',
+					'Apps require a valid Cloud instance name. Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
 				);
 			}
 			this.hostSuffix = `--${instanceName}`;
@@ -62,14 +67,11 @@ export class AppHostService {
 	}
 
 	origin(namespace: string): string | null {
-		if (!appNamespaceSchema.safeParse(namespace).success) return null;
-		const label = `${namespace}${this.hostSuffix}`;
-		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
-			return null;
-		const url = new URL(this.baseUrl);
-		const hostname = `${label}.${this.baseUrl.hostname}`;
-		url.hostname = hostname;
-		return url.hostname === hostname ? url.origin : null;
+		return this.originForLabel(namespace, '');
+	}
+
+	previewOrigin(namespace: string): string | null {
+		return this.originForLabel(namespace, PREVIEW_MARKER);
 	}
 
 	callbackUrl(app: { id: string; namespace: string }): string {
@@ -109,6 +111,25 @@ export class AppHostService {
 		if (!url.hostname.endsWith(suffix)) return undefined;
 		const namespace = url.hostname.slice(0, -suffix.length);
 		return this.origin(namespace) === url.origin ? namespace : undefined;
+	}
+
+	previewNamespace(req: IncomingMessage): string | undefined {
+		const host = this.parseHost(this.requestHost(req));
+		const suffix = `${PREVIEW_MARKER}${this.hostSuffix}.${this.baseUrl.hostname}`;
+		if (!host?.hostname.endsWith(suffix)) return undefined;
+		const namespace = host.hostname.slice(0, -suffix.length);
+		return this.previewOrigin(namespace) === host.origin ? namespace : undefined;
+	}
+
+	private originForLabel(namespace: string, marker: string): string | null {
+		if (!appNamespaceSchema.safeParse(namespace).success) return null;
+		const label = `${namespace}${marker}${this.hostSuffix}`;
+		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
+			return null;
+		const url = new URL(this.baseUrl);
+		const hostname = `${label}.${this.baseUrl.hostname}`;
+		url.hostname = hostname;
+		return url.hostname === hostname ? url.origin : null;
 	}
 
 	private isAppsHostRange(value: string | undefined): boolean {

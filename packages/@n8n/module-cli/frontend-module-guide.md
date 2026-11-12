@@ -105,7 +105,8 @@ packages/modules/my-feature/frontend/
 ├── package.json               # source-only; deps are L0-L2 only
 ├── tsconfig.json              # extends the shared module base
 ├── vite.config.ts             # vitest config + the shared source aliases
-├── eslint.config.mjs
+├── oxlint.config.mts          # lints the TypeScript and the SFC scripts
+├── vize-lint.config.mjs       # lints the Vue templates
 ├── biome.jsonc
 ├── README.md
 └── src/
@@ -176,21 +177,22 @@ shell imports.
 
 ## The descriptor contract
 
-`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares twelve
+`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares the
 extension surfaces. The shell connects them at three different levels. Read the difference before
 you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function              | Reader                                   |
-| ----------------------- | ------------------------------ | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`         | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`    | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`      | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`         | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`         | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
+| Field                   | Register function               | Reader                                   |
+| ----------------------- | ------------------------------- | ---------------------------------------- |
+| `routes`                | `registerModuleRoutes`          | vue-router                               |
+| `projectTabs`           | `registerModuleProjectTabs`     | `ProjectHeader`                          |
+| `resources`             | `registerModuleResources`       | `ResourcesListLayout`                    |
+| `modals`                | `registerModuleModals`          | `DynamicModalLoader`                     |
+| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry` (keys minted at runtime) |
+| `settingsPages`         | `registerModuleSettingsPages`   | `SettingsSidebar`                        |
+| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`  |
+| `parameterInputs`       | `registerModuleParameterInputs` | `ParameterInput`, `ParameterInputFull`   |
 
 ### Position of a settings link
 
@@ -226,11 +228,44 @@ composables. The registry keeps your `commands` array, but the command bar never
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
 
+`runDataDisplayModes` is also types-only for now. The shell support lands with **CAP-327**. See
+[Run data display modes](#run-data-display-modes) for the contract.
+
 Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
 The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
 
 **Note:** this is the most common cause of lost time for a new module author. The type accepts
 your `commands` array, and no component draws it.
+
+### Run data display modes
+
+A display mode is a view of run data in the NDV input and output panes and in the Logs panel, next
+to Table, JSON and Schema. A module adds one with `runDataDisplayModes`:
+
+```ts
+runDataDisplayModes: [
+	{
+		id: 'chart',
+		label: () => i18n.baseText('chart.displayMode'),
+		icon: 'chart-column-decreasing',
+		component: async () => await import('./ChartView.vue'),
+		canRender: ({ data, pane }) => pane === 'output' && data.length > 0,
+	},
+],
+```
+
+- `id` is also the saved display mode and the telemetry `view` value. Do not change it after a
+  release. The ids in `BUILT_IN_DISPLAY_MODES` are reserved.
+- `canRender` decides if the select offers the mode. It gets all items of the selected run, not
+  filtered by search. It must be synchronous and cheap, because it runs on every data change.
+- `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
+  if `canRender` is true.
+- `supports.search: true` shows the search field. Without it, the search field is hidden and
+  `search` is always `''`.
+
+The component gets `RunDataDisplayModeProps`: `data`, `node`, `pane`, `runIndex`, `outputIndex`,
+`search` and `compact`. `data` is never paginated, so a component that can get many items must
+handle that itself. Pinned data needs no code: `data` holds the pinned items when the node has them.
 
 ### Route names are yours, and a check guards them
 
@@ -396,14 +431,16 @@ base says the same:
 >
 > — `packages/@n8n/typescript-config/tsconfig.frontend-module.json`
 
+The rule that this comment names does not exist yet (see below).
+
 **`pnpm boundaries:check` does not close the gap either.** It runs `turbo boundaries` against a
 baseline in the repository (`.boundaries-baseline.json`). The count of issues can only decrease.
 `turbo boundaries` reports an *undeclared* dependency or a reach-in import. It accepts a declared
 dependency by design.
 
 The alias split changes an accidental import from a silent success into two clear failures. It
-does not stop a person who wants that import. An ESLint `no-restricted-imports` rule would stop
-it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
+does not stop a person who wants that import. A `no-restricted-imports` rule in the Oxlint config
+would stop it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
 
 Until that rule lands, the boundary is the responsibility of the reviewer. Reviewers, look for a
 new `@n8n/frontend-module-*` entry in the `dependencies` of a module. That entry is the only
@@ -626,27 +663,23 @@ Narrow the type of each error by hand.
 ## Lint
 
 ```sh
-pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # eslint src --quiet
-pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
+pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # oxlint, then vize lint
+pnpm --filter @n8n/frontend-module-my-feature lint:fix        # oxlint --fix, then vize lint
 ```
 
-**Note:** lint is stricter in a module than in the shell. `editor-ui/eslint.config.mjs` sets
-`'import-x/order': 'off'`. The shared frontend config keeps that rule on. Code that passed in
-editor-ui then fails in a module:
+A module does not use ESLint. Two tools lint it:
 
-```
-  2:1  error  `@n8n/stores/settings.store` import should occur before import of `vue`  import-x/order
+- **Oxlint** lints the TypeScript files and the `<script>` blocks of the SFCs.
+  `oxlint.config.mts` extends `@n8n/oxlint-config/frontend`. Its type-aware rules run on
+  `.ts` files only, not on SFC scripts.
+- **Vize** (`vize lint`) lints the Vue templates and the SFC structure. `vize-lint.config.mjs`
+  exports the shared config from `@n8n/oxlint-config/vize`. Do not rename this file to
+  `vize.config.*`: Vize does not read that name as a `-c` file.
 
-✖ 1 problem (1 error, 0 warnings)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
-```
+`lint:fix` does not pass `--fix` to `vize lint`, because nobody has tested the Vize fixes yet.
+Correct the Vue template findings by hand.
 
-`pnpm lint:fix` corrects this error. Every extraction PR gets these import-order changes, and they
-change no behaviour.
-
-Put those changes in one commit, so a reviewer can skip them. Then say so in the PR body. A new
-module author can read this error as a defect, and can then search for a problem that does not
-exist.
+The `eslint-disable` comments for `vue/*` rules work unchanged: Vize reads them.
 
 ## Tests
 
@@ -714,7 +747,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    command-bar host reads that registry. `locales`, `shortcuts`, `banners` and `setup` are types,
    and no file reads them (**CAT-3685**). Until that work lands, cross-feature code stays in the
    shell.
-2. **No tool stops a deliberate cross-module import.** The ESLint `no-restricted-imports` rule is
+2. **No tool stops a deliberate cross-module import.** The Oxlint `no-restricted-imports` rule is
    **CAT-3692**. The alias split stops an accident in a test run. The tsconfig base stops one at
    typecheck. `turbo boundaries` reports only an *undeclared* dependency. A declared dependency
    clears all three. This rule must land before the second extraction.
