@@ -558,7 +558,8 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 			testId: 'agent-skill-menu-mcp',
 		});
 	}
-	if (showScopeBadge.value) {
+	// A synced skill changes scope through its source, so its menu has no scope item.
+	if (showScopeBadge.value && !syncedFrom.value) {
 		items.push({
 			id: 'change-scope',
 			label: i18n.baseText('agents.builder.skills.menu.changeScope'),
@@ -586,6 +587,12 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	}
 	return items;
 });
+
+const menuSwitchTestIds: Record<string, string> = {
+	attach: 'agent-skill-menu-attach-switch',
+	assistant: 'skill-assistant-availability',
+	mcp: 'skill-available-to-mcp',
+};
 
 function onHeaderMenuSelect(action: string) {
 	if (action === 'assistant' && showAssistantToggle.value && !editorLocked.value) {
@@ -1326,13 +1333,7 @@ function onRemove() {
 						:class="$style.menuSwitch"
 						tabindex="-1"
 						aria-hidden="true"
-						:data-testid="
-							item.id === 'attach'
-								? 'agent-skill-menu-attach-switch'
-								: item.id === 'assistant'
-									? 'skill-assistant-availability'
-									: 'skill-available-to-mcp'
-						"
+						:data-testid="menuSwitchTestIds[item.id]"
 					/>
 				</template>
 			</N8nDropdownMenu>

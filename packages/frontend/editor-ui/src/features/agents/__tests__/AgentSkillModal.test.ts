@@ -1823,7 +1823,7 @@ describe('AgentSkillModal from Settings', () => {
 
 	it('keeps a synced skill scope locked without a badge dropdown', async () => {
 		const onConfirm = vi.fn();
-		const { getByTestId, getByRole, queryByRole } = renderModal({
+		const { getByTestId, queryByTestId, queryByRole } = renderModal({
 			realMenu: true,
 			skillId: 's1',
 			skill: SAVED_SKILL,
@@ -1850,10 +1850,8 @@ describe('AgentSkillModal from Settings', () => {
 		expect(badge.closest('button, [role="button"], [aria-haspopup]')).toBeNull();
 		await userEvent.click(badge);
 		expect(queryByRole('menu')).not.toBeInTheDocument();
-		await userEvent.click(getByTestId('agent-skill-header-menu'));
-		expect(
-			getByRole('menuitem', { name: 'agents.builder.skills.menu.changeScope' }),
-		).toHaveAttribute('aria-disabled', 'true');
+		// The skill changes scope through its source, so no "Change scope" item is left to show.
+		expect(queryByTestId('agent-skill-header-menu')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Global');
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
