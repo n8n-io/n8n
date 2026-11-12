@@ -7,7 +7,6 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -536,11 +535,12 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
-		const workflowData = changeNotifications.map((event) => [
-			{
+		// The node has one output. Each change notification becomes one item on it.
+		const workflowData = [
+			changeNotifications.map((event) => ({
 				json: (event.resourceData as IDataObject) ?? event,
-			} as INodeExecutionData,
-		]);
+			})),
+		];
 
 		if (lifecycleNotifications.length === 0) {
 			return { workflowData };

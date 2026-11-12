@@ -1128,6 +1128,31 @@ describe('Microsoft Teams Trigger Node', () => {
 			);
 		});
 
+		it('emits every change notification of a batch as an item of one execution', async () => {
+			const change = (id: string) => ({
+				subscriptionId: 'sub1',
+				clientState: 'secret',
+				resourceData: { id },
+			});
+			const { ctx, res } = arrange({ value: [change('m1'), change('m2'), change('m3')] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [[{ json: { id: 'm1' } }, { json: { id: 'm2' } }, { json: { id: 'm3' } }]],
+			});
+		});
+
+		it('emits the whole notification when it has no resourceData', async () => {
+			const bare = { subscriptionId: 'sub1', clientState: 'secret' };
+			const { ctx } = arrange({ value: [bare, { ...bare, resourceData: { id: 'm2' } }] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result).toEqual({ workflowData: [[{ json: bare }, { json: { id: 'm2' } }]] });
+		});
+
 		it('caps the logged subscription ids of the rejected notifications', async () => {
 			const rejectedItems = Array.from({ length: 25 }, (_, index) => ({
 				subscriptionId: `${index}`.padEnd(100, 'x'),
@@ -1346,7 +1371,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(res.status).toHaveBeenCalledWith(202);
 			expect(result).toEqual({
 				noWebhookResponse: true,
-				workflowData: [[{ json: change1.resourceData }], [{ json: change2.resourceData }]],
+				workflowData: [[{ json: change1.resourceData }, { json: change2.resourceData }]],
 			});
 		});
 
