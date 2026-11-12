@@ -6,7 +6,6 @@ import {
 	formatMetricLabel,
 	formatMetricRawScoreSum,
 	formatMetricValue,
-	formatMetricValueExact,
 	getDeltaTone,
 	isUnscaledCustomMetric,
 	type DeltaTone,
@@ -43,25 +42,19 @@ const formattedSumScore = computed(() =>
 			})
 		: '',
 );
-const exactValue = computed(() =>
-	formatMetricValueExact(props.currentValue, {
-		key: props.name,
-		category: props.category,
-		scale: props.scale,
-	}),
-);
-// The card caps long decimals, so keep the exact value one hover away.
 const valueTooltip = computed(() =>
-	formattedSumScore.value
-		? `${formattedValue.value} • ${formattedSumScore.value}`
-		: exactValue.value,
+	formattedSumScore.value ? `${formattedValue.value} • ${formattedSumScore.value}` : '',
 );
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="metric-summary-card">
 		<div :class="$style.titleRow">
-			<N8nTooltip :content="sourceNodeName ? `${name} · ${sourceNodeName}` : name" placement="top">
+			<N8nTooltip
+				:content="sourceNodeName ? `${name} · ${sourceNodeName}` : name"
+				placement="top"
+				as-child
+			>
 				<N8nText size="small" :class="$style.title">{{ formattedLabel }}</N8nText>
 			</N8nTooltip>
 		</div>
@@ -97,10 +90,7 @@ const valueTooltip = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-wrap: nowrap;
-	/* Takes its width from the card rather than giving width to it, so a long
-	   metric name still ellipsizes instead of stretching the card. */
-	width: 0;
-	min-width: 100%;
+	min-width: 0;
 }
 
 .title {
