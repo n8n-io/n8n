@@ -35,11 +35,12 @@ describe('ScheduledTaskRepository', () => {
 	});
 
 	describe('findRunningTasks', () => {
+		const running = [{ id: '7' }] as ScheduledTask[];
 		const selectRunning = () => {
 			const qb = {
 				where: vi.fn().mockReturnThis(),
 				andWhere: vi.fn().mockReturnThis(),
-				getMany: vi.fn().mockResolvedValue([]),
+				getMany: vi.fn().mockResolvedValue(running),
 			};
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			return qb;
@@ -48,21 +49,23 @@ describe('ScheduledTaskRepository', () => {
 		it('reads every running row whose handler started', async () => {
 			const qb = selectRunning();
 
-			await repository.findRunningTasks();
+			const result = await repository.findRunningTasks();
 
 			expect(qb.where).toHaveBeenCalledWith('t.status = :running', {
 				running: ScheduledTaskStatus.Running,
 			});
 			expect(qb.andWhere).toHaveBeenCalledTimes(1);
 			expect(qb.andWhere).toHaveBeenCalledWith('t.startedAt IS NOT NULL');
+			expect(result).toBe(running);
 		});
 
 		it('reads only the rows one host claimed', async () => {
 			const qb = selectRunning();
 
-			await repository.findRunningTasks({ claimedBy: 'main-1' });
+			const result = await repository.findRunningTasks({ claimedBy: 'main-1' });
 
 			expect(qb.andWhere).toHaveBeenCalledWith('t.claimedBy = :claimedBy', { claimedBy: 'main-1' });
+			expect(result).toBe(running);
 		});
 	});
 });
