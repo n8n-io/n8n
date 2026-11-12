@@ -8,7 +8,6 @@
 // ---------------------------------------------------------------------------
 
 import type {
-	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiHandoffContext,
@@ -19,7 +18,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { resolveEvalPromptSettings } from './build-mode';
+import { resolveEvalPromptVersion } from './prompt-version';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -131,8 +130,7 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
-	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
-	buildMode?: InstanceAiBuildMode;
+	/** Resolved wire value sent with every message (see `resolveEvalPromptVersion`). */
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
@@ -232,7 +230,6 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
-		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
 		config.observerThresholdTokens,
@@ -254,7 +251,6 @@ async function driveMultiTurnConversation(
 			confirmationStrategy,
 			nextMessageDecider,
 			proxyResponses: config.proxyResponses,
-			buildMode: config.buildMode,
 			promptVersion: config.promptVersion,
 			observerThresholdTokens: config.observerThresholdTokens,
 			allowUserExecution: config.allowUserExecution,
@@ -527,8 +523,6 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
-	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
 	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
@@ -600,7 +594,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
-	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	const promptVersion = resolveEvalPromptVersion(config);
 	const observerThresholdTokens = config.requiresMemoryCompaction
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
 		: undefined;
@@ -1232,7 +1226,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
-				buildMode,
 				promptVersion,
 				allowUserExecution: config.allowUserExecution,
 				beforeUserExecution: async (deadline) => {
@@ -1290,7 +1283,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
-				buildMode,
 				promptVersion,
 				openingHandoffContext,
 				observerThresholdTokens,

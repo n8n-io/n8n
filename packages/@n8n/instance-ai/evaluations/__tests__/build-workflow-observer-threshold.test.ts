@@ -68,9 +68,9 @@ const twoTurns = [
 	{ role: 'user' as const, text: 'now add a filter' },
 ];
 
-/** `sendMessage(threadId, message, attachments, mode, promptVersion, handoff, threshold)`. */
+/** `sendMessage(threadId, message, attachments, promptVersion, handoff, threshold)`. */
 function thresholdSentBy(sendMessage: ReturnType<typeof vi.fn>): unknown {
-	return sendMessage.mock.calls[0]?.[6];
+	return sendMessage.mock.calls[0]?.[5];
 }
 
 describe('buildWorkflow observer threshold', () => {

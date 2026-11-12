@@ -206,7 +206,6 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
-			payload.mode,
 			payload.promptVersion,
 			payload.browserUseAvailable,
 			payload.threadArtifacts,

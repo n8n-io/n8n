@@ -7,7 +7,7 @@
 import type { CliArgs } from '../cli/args';
 import { unsupportedMcpBuildSetupFields } from '../cli/mcp-builder';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { resolveEvalPromptSettings } from '../harness/build-mode';
+import { resolveEvalPromptVersion } from '../harness/prompt-version';
 import type { EvalLogger } from '../harness/logger';
 import {
 	loadPrebuiltManifest,
@@ -90,7 +90,7 @@ export function selectCases(
 	}
 	if (!args.buildViaMcp && !prebuiltManifest) {
 		// Reject invalid configuration before provisioning lanes or recording results.
-		for (const { testCase } of testCasesWithFiles) resolveEvalPromptSettings(testCase);
+		for (const { testCase } of testCasesWithFiles) resolveEvalPromptVersion(testCase);
 	}
 	return { testCasesWithFiles, prebuiltManifest };
 }

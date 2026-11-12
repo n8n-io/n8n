@@ -312,7 +312,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// The runtime adds the files to the model input as stored references, so the
 			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
-			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
+			hostMetadata: this.hostMetadataOf(options, trace),
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
 				// Recover token usage from raw provider events, so a stopped run is still billed.
@@ -403,8 +403,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				: {}),
 			checkpointStore: turn.checkpointStore,
 			turnState: {
-				getBuildMode: () => request.mode,
-				setBuildMode: () => {},
 				getPromptVersion: () => request.promptVersion,
 				setPromptConfiguration: () => {},
 				setSetupPanelEnabled: () => {},
@@ -485,12 +483,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	private hostMetadataOf(
 		options: AssistantTurnOptions,
-		buildMode: string | undefined,
 		trace: AssistantTurnTrace | undefined,
 	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
-			buildMode: buildMode ?? null,
 			promptVersion: options.request.promptVersion ?? null,
 			...trace?.hostMetadata(),
 		};

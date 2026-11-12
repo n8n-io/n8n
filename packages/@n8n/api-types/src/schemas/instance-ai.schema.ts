@@ -1761,14 +1761,6 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
-/**
- * Build style for a run. `progressive` makes the agent build a minimal working
- * slice first, gate increments on real executions, and extend on actual
- * execution data. `default` uses the standard building policy.
- */
-export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
-export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
-
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1795,9 +1787,7 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
-	/** Explicit override for evals. Omit to use the backend experiment assignment. */
-	mode: instanceAiBuildModeSchema.optional(),
-	/** Pin a published prompt profile. Takes precedence over mode. */
+	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: z.string().trim().min(1).max(128).optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
@@ -2867,9 +2857,6 @@ export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
-
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
 
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by

@@ -64,7 +64,7 @@ function setup() {
 		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
-		skillScope: { profile: { mode: 'default' } },
+		skillScope: { profile: {} },
 	} as unknown as AssistantTurnEnvironment;
 	const turnEnvironment = mock<AssistantTurnEnvironmentFactory>();
 	turnEnvironment.create.mockResolvedValue(environment);
@@ -187,13 +187,12 @@ describe('AssistantAgentProvider', () => {
 
 		const options = await provider.chatTurnOptions(user, thread, {
 			timeZone: 'UTC',
-			mode: 'progressive',
 		});
 
 		expect(options).toEqual({
 			runId: expect.stringMatching(/^run_/),
 			messageGroupId: expect.stringMatching(/^mg_/),
-			request: { timeZone: 'UTC', mode: 'progressive' },
+			request: { timeZone: 'UTC' },
 		});
 	});
 
@@ -285,7 +284,6 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-				buildMode: 'default',
 			});
 		});
 

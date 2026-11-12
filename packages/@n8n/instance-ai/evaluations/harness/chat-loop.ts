@@ -11,7 +11,7 @@
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -379,7 +379,6 @@ export interface MultiTurnConfig extends WaitConfig {
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	allowUserExecution?: boolean;
 	/** Repeat the eval override on each message to bypass the backend assignment. */
-	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 }
@@ -444,7 +443,6 @@ export async function runMultiTurnConversation(
 				config.threadId,
 				decision.message,
 				undefined,
-				config.buildMode,
 				config.promptVersion,
 				undefined,
 				// Re-sent per message: the backend clears an omitted override.

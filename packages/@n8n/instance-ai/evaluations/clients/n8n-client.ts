@@ -10,7 +10,6 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiSendMessageRequest,
 	type AgentConfigResponse,
-	type InstanceAiBuildMode,
 	type InstanceAiConfirmRequest,
 	type InstanceAiRichMessagesResponse,
 	type InstanceAiEvalAgentExecutionResult,
@@ -350,7 +349,6 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiResourceAttachment[],
-		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
 		observerThresholdTokens?: number,
@@ -360,7 +358,6 @@ export class N8nClient {
 			body: {
 				message,
 				...(attachments?.length ? { attachments } : {}),
-				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
 				// Per-thread, so other cases in the suite keep the instance default.

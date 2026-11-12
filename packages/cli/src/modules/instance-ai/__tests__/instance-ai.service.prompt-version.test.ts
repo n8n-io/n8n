@@ -7,12 +7,9 @@ describe('resolveOperatorPromptVersion', () => {
 		expect(resolveOperatorPromptVersion(configured)).toBeUndefined();
 	});
 
-	it.each(['default@1', 'progressive@1', 'concise@1'])(
-		'accepts published version %s',
-		(version) => {
-			expect(resolveOperatorPromptVersion(version)).toBe(version);
-		},
-	);
+	it.each(['default@1', 'concise@1'])('accepts published version %s', (version) => {
+		expect(resolveOperatorPromptVersion(version)).toBe(version);
+	});
 
 	it('trims surrounding whitespace', () => {
 		expect(resolveOperatorPromptVersion('  concise@1\n')).toBe('concise@1');

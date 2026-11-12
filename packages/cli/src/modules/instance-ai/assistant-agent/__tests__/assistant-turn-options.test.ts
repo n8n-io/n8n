@@ -13,7 +13,6 @@ describe('Assistant turn options', () => {
 		const options = createAssistantTurnOptions({
 			timeZone: 'Europe/Helsinki',
 			pushRef: 'push-1',
-			mode: 'progressive',
 			attachments: [
 				{ type: 'file', data: 'aGVsbG8=', mimeType: 'text/plain', fileName: 'notes.txt' },
 				{ type: 'workflow', id: 'wf-1', name: 'Digest' },
@@ -25,7 +24,6 @@ describe('Assistant turn options', () => {
 		expect(options.request).toEqual({
 			timeZone: 'Europe/Helsinki',
 			pushRef: 'push-1',
-			mode: 'progressive',
 			attachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
 		});
 	});
@@ -33,9 +31,19 @@ describe('Assistant turn options', () => {
 	it('drops a client context that does not parse and logs the invalid fields', () => {
 		const logger = mock<Logger>();
 
-		expect(createAssistantTurnOptions({ mode: 'not-a-mode' }, logger).request).toEqual({});
-		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { fields: ['mode'] });
-		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('not-a-mode');
+		expect(
+			createAssistantTurnOptions({ browserUseAvailable: 'not-a-boolean' }, logger).request,
+		).toEqual({});
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			fields: ['browserUseAvailable'],
+		});
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('not-a-boolean');
+	});
+
+	it('ignores the retired build mode of stored turn options', () => {
+		expect(createAssistantTurnOptions({ timeZone: 'UTC', mode: 'progressive' }).request).toEqual({
+			timeZone: 'UTC',
+		});
 	});
 
 	it('reads back what it stored, so a resume keeps its run id', () => {

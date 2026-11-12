@@ -162,7 +162,6 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
-				payload.mode,
 				payload.promptVersion,
 				payload.browserUseAvailable,
 				payload.threadArtifacts,
@@ -195,7 +194,6 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.context,
 				payloadWithArtifacts.timeZone,
 				payloadWithArtifacts.pushRef,
-				payloadWithArtifacts.mode,
 				payloadWithArtifacts.promptVersion,
 				payloadWithArtifacts.browserUseAvailable,
 				payloadWithArtifacts.threadArtifacts,
@@ -287,7 +285,6 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
-				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.browserUseAvailable,
 				payloadWithPushRef.threadArtifacts,
@@ -295,34 +292,32 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should forward the build mode and prompt version to startRun', async () => {
-			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+		it('should forward the prompt version to startRun', async () => {
+			const payloadWithVersion = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
-				mode: 'progressive',
-				promptVersion: 'progressive@1',
+				promptVersion: 'concise@1',
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-5');
 
-			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+			await controller.chat(req, res, THREAD_ID, payloadWithVersion);
 
 			expect(instanceAiService.startRun).toHaveBeenCalledWith(
 				req.user,
 				THREAD_ID,
-				payloadWithMode.message,
-				payloadWithMode.attachments,
-				payloadWithMode.context,
-				payloadWithMode.timeZone,
-				payloadWithMode.pushRef,
-				'progressive',
-				'progressive@1',
-				payloadWithMode.browserUseAvailable,
-				payloadWithMode.threadArtifacts,
-				payloadWithMode.observerThresholdTokens,
+				payloadWithVersion.message,
+				payloadWithVersion.attachments,
+				payloadWithVersion.context,
+				payloadWithVersion.timeZone,
+				payloadWithVersion.pushRef,
+				'concise@1',
+				payloadWithVersion.browserUseAvailable,
+				payloadWithVersion.threadArtifacts,
+				payloadWithVersion.observerThresholdTokens,
 			);
 		});
 
@@ -356,7 +351,6 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
-				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.browserUseAvailable,
 				payloadWithContext.threadArtifacts,
@@ -462,7 +456,6 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
-				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.browserUseAvailable,
 				nodesPayload.threadArtifacts,

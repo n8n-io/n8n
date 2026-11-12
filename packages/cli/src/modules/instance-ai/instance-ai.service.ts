@@ -3,10 +3,8 @@ import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
-	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
@@ -892,7 +890,6 @@ export class InstanceAiService {
 				// sweep can match a crashed run's checkpoint exactly.
 				hostRunId: runId,
 				hostMetadata: {
-					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
@@ -932,7 +929,6 @@ export class InstanceAiService {
 				threadId,
 				hostRunId: runId,
 				hostMetadata: {
-					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
@@ -1148,7 +1144,6 @@ export class InstanceAiService {
 		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
-		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
 		browserUseAvailable?: boolean,
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
@@ -1177,9 +1172,8 @@ export class InstanceAiService {
 		// whether the client renders the Browser Use + menu entry.
 		this.runState.setBrowserUseAvailable(threadId, browserUseAvailable);
 
-		// A new user message resets selection. Explicit eval modes take precedence;
+		// A new user message resets selection. An explicit pin takes precedence;
 		// otherwise environment creation selects and stores the backend assignment.
-		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
 		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
 
@@ -2049,8 +2043,6 @@ export class InstanceAiService {
 			eventBus: this.eventBus,
 			checkpointStore: this.checkpointStore,
 			turnState: {
-				getBuildMode: () => this.runState.getBuildMode(threadId),
-				setBuildMode: (mode) => this.runState.setBuildMode(threadId, mode),
 				getPromptVersion: () => this.runState.getPromptVersion(threadId),
 				setPromptConfiguration: (configuration) =>
 					this.runState.setPromptConfiguration(threadId, configuration),
@@ -3463,9 +3455,7 @@ export class InstanceAiService {
 				state.persistence?.hostMetadata?.instanceContext,
 			);
 			if (storedContext.success) instanceContext = storedContext.data;
-			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
-			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
-			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
+			// Restore before rebuilding the prompt and tools.
 			const version = state.persistence?.hostMetadata?.promptVersion;
 			this.runState.setPromptVersion(
 				orphan.threadId,

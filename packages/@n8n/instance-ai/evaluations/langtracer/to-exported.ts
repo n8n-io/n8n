@@ -77,9 +77,6 @@ export function unsupportedPushReason(testCase: EvalTestCaseInput): string | nul
 	if (testCase.promptVersion !== undefined) {
 		return 'pins promptVersion, which the current case-write contract does not carry. Keep the case on disk.';
 	}
-	if (testCase.buildMode !== undefined) {
-		return 'pins buildMode, which the current LangTracer write/export contract does not carry. Keep the case on disk until that contract supports the mode.';
-	}
 	if (testCase.allowUserExecution) {
 		return 'enables user execution, which the current LangTracer write/export contract does not carry.';
 	}

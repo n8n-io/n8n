@@ -1,5 +1,4 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { InstanceAiBuildMode } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { RunStateRegistry } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
@@ -15,7 +14,7 @@ type ServiceInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
 	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	runState: RunStateRegistry<User>;
-	modeWhenEnvironmentBuilt?: InstanceAiBuildMode;
+	versionWhenEnvironmentBuilt?: string;
 	threadPushRef: Map<string, string>;
 	checkpointStore: { load: (key: string) => Promise<SerializableAgentState | undefined> };
 	revalidateActiveUser: (userId: string) => Promise<User>;
@@ -62,14 +61,14 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 	service.checkpointStore = { load: vi.fn(async () => checkpoint) };
 	service.revalidateActiveUser = vi.fn(async () => user);
 	service.createExecutionEnvironment = vi.fn(async () => {
-		service.modeWhenEnvironmentBuilt = service.runState.getBuildMode(orphan.threadId);
+		service.versionWhenEnvironmentBuilt = service.runState.getPromptVersion(orphan.threadId);
 		return { orchestrationContext: {} };
 	});
 	service.createAgentFromEnvironment = vi.fn(async () => ({}));
 	return service;
 }
 
-describe('InstanceAiService build mode recovery', () => {
+describe('InstanceAiService checkpoint recovery', () => {
 	it.each([
 		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: true },
 		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: false },
@@ -126,64 +125,49 @@ describe('InstanceAiService build mode recovery', () => {
 		},
 	);
 
-	it.each(['default', 'progressive'] as const)(
-		'preserves mode %s when a saved run is rebuilt in a fresh service',
-		async (mode) => {
-			const original = createService();
-			original.runState.setBuildMode(orphan.threadId, mode);
-			original.runState.setPromptVersion(orphan.threadId, `${mode}@1`);
-			const signal = new AbortController().signal;
-			const { persistence } = original.buildOrchestratorAgentStreamOptions(
-				user,
-				orphan.threadId,
-				orphan.runId,
-				signal,
-			);
-			expect(persistence.hostMetadata).toEqual({ buildMode: mode, promptVersion: `${mode}@1` });
+	it('preserves the prompt version when a saved run is rebuilt in a fresh service', async () => {
+		const original = createService();
+		original.runState.setPromptVersion(orphan.threadId, 'concise@1');
+		const signal = new AbortController().signal;
+		const { persistence } = original.buildOrchestratorAgentStreamOptions(
+			user,
+			orphan.threadId,
+			orphan.runId,
+			signal,
+		);
+		expect(persistence.hostMetadata).toEqual({ promptVersion: 'concise@1' });
 
-			const checkpoint = mock<SerializableAgentState>({
-				persistence: structuredClone(persistence),
-			});
-			const restored = createService(checkpoint);
-			const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
-			expect(result.kind).toBe('ready');
-			if (result.kind !== 'ready') throw new Error('Expected a restored run');
-			expect(restored.runState.getBuildMode(orphan.threadId)).toBe(mode);
-			expect(restored.modeWhenEnvironmentBuilt).toBe(mode);
-			expect(restored.runState.getPromptVersion(orphan.threadId)).toBe(`${mode}@1`);
+		const checkpoint = mock<SerializableAgentState>({
+			persistence: structuredClone(persistence),
+		});
+		const restored = createService(checkpoint);
+		const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') throw new Error('Expected a restored run');
+		expect(restored.versionWhenEnvironmentBuilt).toBe('concise@1');
 
-			const resumed = restored.buildOrchestratorResumeAgentOptions(
-				user,
-				orphan.threadId,
-				orphan.runId,
-				orphan.checkpointKey,
-				orphan.toolCallId,
-				signal,
-			);
-			expect(resumed.persistence.hostMetadata).toEqual({
-				buildMode: mode,
-				promptVersion: `${mode}@1`,
-			});
-		},
-	);
+		const resumed = restored.buildOrchestratorResumeAgentOptions(
+			user,
+			orphan.threadId,
+			orphan.runId,
+			orphan.checkpointKey,
+			orphan.toolCallId,
+			signal,
+		);
+		expect(resumed.persistence.hostMetadata).toEqual({ promptVersion: 'concise@1' });
+	});
 
-	it.each([undefined, null, 'unknown'])(
-		'uses control for checkpoint mode %s',
-		async (buildMode) => {
-			const checkpoint = mock<SerializableAgentState>({
-				persistence: {
-					resourceId: user.id,
-					threadId: orphan.threadId,
-					...(buildMode !== undefined ? { hostMetadata: { buildMode } } : {}),
-				},
-			});
-			const restored = createService(checkpoint);
-			restored.runState.setBuildMode(orphan.threadId, 'progressive');
-			const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
-			expect(result.kind).toBe('ready');
-			if (result.kind !== 'ready') throw new Error('Expected a restored run');
-			expect(restored.runState.getBuildMode(orphan.threadId)).toBe('default');
-			expect(restored.modeWhenEnvironmentBuilt).toBe('default');
-		},
-	);
+	it('restores an older checkpoint that stored a build mode', async () => {
+		const checkpoint = mock<SerializableAgentState>({
+			persistence: {
+				resourceId: user.id,
+				threadId: orphan.threadId,
+				hostMetadata: { buildMode: 'progressive', promptVersion: null },
+			},
+		});
+		const restored = createService(checkpoint);
+		const result = await restored.rebuildSuspendedRunFromCheckpoint(orphan);
+		expect(result.kind).toBe('ready');
+		expect(restored.versionWhenEnvironmentBuilt).toBeUndefined();
+	});
 });

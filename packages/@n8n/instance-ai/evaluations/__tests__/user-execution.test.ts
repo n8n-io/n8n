@@ -44,8 +44,7 @@ async function run(
 		client,
 		logger,
 		threadId: 'thread',
-		buildMode: 'progressive',
-		promptVersion: 'progressive@1',
+		promptVersion: 'concise@1',
 		allowUserExecution: true,
 		beforeUserExecution,
 		events: [
@@ -90,8 +89,7 @@ describe('user execution during a conversation', () => {
 			'thread',
 			'I ran it',
 			undefined,
-			'progressive',
-			'progressive@1',
+			'concise@1',
 			undefined,
 			undefined,
 		);
