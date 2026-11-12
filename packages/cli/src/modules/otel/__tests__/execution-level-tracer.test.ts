@@ -713,7 +713,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['gen_ai.usage.input_tokens']).toBe(5);
 		});
 
-		it('should not apply workflow custom attributes to node spans', () => {
+		it('should apply workflow custom attributes to node spans', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-tags-on-node',
 				tracingContext: inboundTracingContext,
@@ -741,9 +741,9 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
-			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBeUndefined();
-			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('prod');
+			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBe('3');
+			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
 		});
 
 		it('should keep workflow and node custom attributes under separate prefixes', () => {
@@ -775,7 +775,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('workflow');
 			expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('node');
 		});
 
@@ -1679,6 +1679,7 @@ describe('ExecutionLevelTracer', () => {
 				'n8n.node.name': 'MyNode',
 				'n8n.node.type': 'test',
 				'n8n.node.type_version': 1,
+				'n8n.workflow.custom.team': 'ops',
 				'n8n.project.custom.env': 'prod',
 				...identity,
 			});
@@ -1747,12 +1748,13 @@ describe('ExecutionLevelTracer', () => {
 			tracer = makeTracer({ prefixes: noPrefixes });
 
 			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-prefixes', project, {
-				workflow: { env: 'workflow' },
-				node: { env: 'node' },
+				workflow: { env: 'workflow', model: 'workflow' },
+				node: { model: 'node' },
 			});
 
 			expect(workflowSpan.attributes.env).toBe('workflow');
-			expect(nodeSpan.attributes.env).toBe('node');
+			expect(nodeSpan.attributes.env).toBe('workflow');
+			expect(nodeSpan.attributes.model).toBe('node');
 		});
 
 		it('should let workflow attributes win over project attributes on a reconstructed crash span', () => {
