@@ -5,7 +5,7 @@ import { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
 import { createComponentRenderer } from '../../__tests__/render';
 
-const renderComponent = createComponentRenderer(N8nDataTableServer);
+const renderComponent = createComponentRenderer(N8nDataTableServer<Item>);
 
 const getRenderedOptions = async () => {
 	const dropdown = await waitFor(() => screen.getByRole('listbox'));
@@ -49,8 +49,7 @@ const headers: Array<TableHeader<Item>> = [
 
 describe('N8nDataTableServer', () => {
 	it('should render a table', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -61,8 +60,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should render dynamic slots', () => {
 		const slotName = 'item.id' as `item.${string}`;
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 			slots: {
 				[slotName]: ({ item }: { item: Item }) => {
@@ -78,9 +76,177 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('uses the server page count when a source exceeds the page size', async () => {
+		const { getByTestId, getByRole } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: [],
+				headers,
+				itemsLength: 100,
+				itemsPerPage: 10,
+				pageCount: 2,
+			},
+		});
+		expect(getByTestId('pagination')).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Page 2' })).toBeInTheDocument();
+		expect(() => getByRole('button', { name: 'Page 10' })).toThrow();
+	});
+
+	it('shows one page in All mode with a server page count', () => {
+		const { getByRole, getByTestId } = renderComponent({
+			props: {
+				items,
+				headers,
+				itemsLength: 100,
+				itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE,
+				pageCount: 1,
+				showAll: true,
+			},
+		});
+
+		expect(getByRole('button', { name: 'Page 1' })).toBeInTheDocument();
+		expect(getByTestId('pagination-prev')).toBeDisabled();
+		expect(getByTestId('pagination-next')).toBeDisabled();
+	});
+
+	it('shows a group row before the first row of each group, with one cell per column', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: 'x' },
+			{ id: '2', firstName: 'b', lastName: 'x' },
+			{ id: '3', firstName: 'c', lastName: '' },
+			{ id: '4', firstName: 'd', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: grouped,
+				headers,
+				itemsLength: grouped.length,
+				// A row without a group gets no group row.
+				groupBy: (row: Record<string, string>) => row.lastName || undefined,
+				extraGroups: [{ group: 'z', index: 4 }],
+			},
+			slots: {
+				'group.id': ({ group }: { group: string }) => `Group ${group}`,
+				'group.firstName': ({ item }: { item?: Item }) => item?.firstName ?? 'empty',
+			},
+		});
+
+		const rows = [...container.querySelectorAll('tbody tr')];
+		const groupRows = rows.filter((row) => row.classList.contains('group-row'));
+		expect(rows.map((row) => row.classList.contains('group-row'))).toEqual([
+			true,
+			false,
+			false,
+			false,
+			true,
+			false,
+			true,
+		]);
+		expect(groupRows.map((row) => row.querySelectorAll('td').length)).toEqual([
+			headers.length,
+			headers.length,
+			headers.length,
+		]);
+		expect(groupRows.map((row) => row.querySelector('td')?.textContent)).toEqual([
+			'Group x',
+			'Group y',
+			'Group z',
+		]);
+		expect(groupRows.map((row) => row.querySelectorAll('td')[1].textContent)).toEqual([
+			'a',
+			'd',
+			'empty',
+		]);
+	});
+
+	it('keeps the group row of a folded group and leaves out its rows', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: 'x' },
+			{ id: '2', firstName: 'b', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: grouped,
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				collapsedGroups: ['y'],
+			},
+			slots: { 'group.id': ({ group }: { group: string }) => `Group ${group}` },
+		});
+
+		const rows = [...container.querySelectorAll('tbody tr')];
+		expect(rows.map((row) => row.textContent?.startsWith('Group'))).toEqual([true, false, true]);
+		// The folded group row is the last row, so it gets the last-row style.
+		expect(rows[rows.length - 1]).toHaveClass('group-row');
+	});
+
+	it('emits click:group with the group of the clicked group row, and applies its props', async () => {
+		const grouped: Item[] = [{ id: '1', firstName: 'a', lastName: 'x' }];
+		const { container, emitted } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: grouped,
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				extraGroups: [{ group: 'z', index: 1 }],
+				groupRowProps: (group: string) => ({ class: group === 'x' ? 'clickable' : undefined }),
+			},
+		});
+
+		const groupRows = container.querySelectorAll('tr.group-row');
+		expect(groupRows[0]).toHaveClass('clickable');
+		expect(groupRows[1]).not.toHaveClass('clickable');
+		await userEvent.click(groupRows[0]);
+		await userEvent.click(groupRows[1]);
+
+		expect(
+			emitted<[MouseEvent, { group: string }]>('click:group')?.map(([, payload]) => payload),
+		).toEqual([{ group: 'x' }, { group: 'z' }]);
+	});
+
+	it('shows an extra group before the row at its index, and after the last row past it', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: '' },
+			{ id: '2', firstName: 'b', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: grouped,
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName || undefined,
+				// A folded group between the two rows, and an empty group at the end.
+				extraGroups: [
+					{ group: 'folded', index: 1 },
+					{ group: 'empty', index: 9 },
+				],
+			},
+			slots: { 'group.id': ({ group }: { group: string }) => `Group ${group}` },
+		});
+
+		expect(
+			[...container.querySelectorAll('tbody tr')].map(
+				(row) => row.querySelector('td')?.textContent,
+			),
+		).toEqual(['1', 'Group folded', 'Group y', '2', 'Group empty']);
+	});
+
+	it('shows the extra groups when the page has no rows', () => {
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: [],
+				headers,
+				itemsLength: 1,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				extraGroups: [{ group: 'folded', index: 0 }],
+			},
+		});
+
+		expect(container.querySelectorAll('tbody tr.group-row')).toHaveLength(1);
+	});
+
 	it('should synchronize the state', async () => {
-		const { container, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -160,8 +326,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not show the pagination if there are no items', async () => {
-		const { queryByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { queryByTestId } = render(N8nDataTableServer<Item>, {
 			props: { items: [], headers, itemsLength: 0 },
 		});
 
@@ -169,8 +334,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not show the pagination if there are less items than the smallest page size value', async () => {
-		const { queryByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { queryByTestId } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 3), headers, itemsLength: 3 },
 		});
 
@@ -179,8 +343,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should sync external selection model changes into row checkboxes', async () => {
 		const selectionItems = items.slice(0, 3);
-		const { container, emitted, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items: selectionItems, headers, itemsLength: 3, showSelect: true, selection: [] },
 		});
 
@@ -201,8 +364,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should render one skeleton row per page size while the first page loads', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },
 		});
 
@@ -210,10 +372,9 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should render a bounded skeleton while All is loading', () => {
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: [],
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: 100,
 				loading: true,
@@ -247,8 +408,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should pin the first column, and the selection column, when asked to', async () => {
-		const { container, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
@@ -276,9 +436,36 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('pins trailing columns in headers, source groups, and data rows', async () => {
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: items.slice(0, 1),
+				headers,
+				itemsLength: 1,
+				pinColumns: 1,
+				pinEndColumns: 2,
+				groupBy: () => 'source',
+			},
+		});
+
+		for (const row of container.querySelectorAll('tr')) {
+			const cells = row.querySelectorAll('th, td');
+			expect(cells[0]).toHaveStyle({ left: '0px' });
+			expect(cells[1]).not.toHaveClass('is-pinned');
+			expect(cells[3]).toHaveClass('is-pinned-end-edge');
+			expect(cells[3]).toHaveStyle({ right: '150px' });
+			expect(cells[4]).toHaveStyle({ right: '0px' });
+		}
+
+		await rerender({ pinColumns: 4 });
+		const cells = container.querySelectorAll('thead th');
+		expect(cells[3]).toHaveStyle({ left: '450px' });
+		expect(cells[4]).toHaveClass('is-pinned-end-edge');
+		expect(cells[4]).toHaveStyle({ right: '0px' });
+	});
+
 	it('should pin the leading columns when given a count', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },
 		});
 
@@ -296,8 +483,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not pin any column by default', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
 		});
 
@@ -305,8 +491,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should show the pinned edge only after the table has scrolled sideways', async () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
@@ -338,8 +523,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should show the right-edge hint only while columns remain past that edge', async () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
 		});
 

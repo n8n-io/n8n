@@ -6,7 +6,7 @@ import { AuthStrategyRegistry } from '../auth-strategy.registry';
 import type { AuthStrategy } from '../auth-strategy.types';
 
 const makeGrant = (id: string): TokenGrant => ({
-	subject: { ...mock<User>(), id },
+	subject: { ...mock<User>(), id } as unknown as User,
 	scopes: [],
 });
 

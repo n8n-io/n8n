@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { NotFoundError, UserError } from '@n8n/errors';
 import {
+	LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
 	TrustedSourceStore,
@@ -45,9 +46,11 @@ export class SystemTrustedSourceModificationError extends UserError {
 	}
 }
 
-const idKey = (id: string) => `trusted-source:id:${id}`;
-const issuerKey = (issuer: string) => `trusted-source:issuer:${issuer}`;
-const ALL_KEY = 'trusted-source:all';
+// One hash tag keeps every key of this cache in one cluster slot, so the multi-key DEL in
+// invalidateCache is valid on cluster-mode Redis.
+const idKey = (id: string) => `{trusted-source}:id:${id}`;
+const issuerKey = (issuer: string) => `{trusted-source}:issuer:${issuer}`;
+const ALL_KEY = '{trusted-source}:all';
 // Reads are look-aside, so a read that started before a concurrent write can re-cache the old
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
@@ -157,7 +160,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			{},
 		);
 		if (!claimed) return null;
-		await this.invalidateCache(source);
+		// The lease is committed. A failed invalidation must not fail the run that holds it.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('Discovery lease taken but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
 		return token;
 	}
 
@@ -196,7 +207,9 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
 		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
 		// with defaults filled in, so a later default change must not alter them.
-		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
+		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config), {
+			managedBy: 'admin',
+		});
 		const row = await this.trustedSourceRepository.insertRow(
 			{
 				name: input.name,
@@ -228,6 +241,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (input.config !== undefined) {
 			const config = migrateToLatest(
 				trustedSourceConfigSchemaFor(row.managedBy).parse(input.config),
+				{ managedBy: row.managedBy },
 			);
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
@@ -254,10 +268,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		await this.invalidateCache(row, changes.issuer);
 	}
 
-	async delete(id: string): Promise<void> {
+	/**
+	 * Reads only the raw row, never the config, so a source whose config cannot be read can still
+	 * be deleted. Returns the id and issuer of the deleted row.
+	 */
+	async delete(id: string): Promise<Pick<TrustedSource, 'id' | 'issuer'>> {
 		const row = await this.loadAdminRow(id, 'delete');
 		await this.trustedSourceRepository.deleteById(id, {}); // identities go with it via FK cascade
 		await this.invalidateCache(row);
+		return { id: row.id, issuer: row.issuer };
 	}
 
 	/**
@@ -270,7 +289,9 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		const existing = await this.trustedSourceRepository.findById(id, {});
 
 		if (!existing) {
-			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config));
+			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config), {
+				managedBy: 'system',
+			});
 			await this.trustedSourceRepository.insertIfAbsent(
 				{
 					id,
@@ -289,13 +310,12 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			);
 			// `orIgnore` also drops the insert when an admin row holds the name or the issuer.
 			if (!(await this.trustedSourceRepository.findById(id, {}))) return 'conflict';
-			await this.invalidateCache({ id, issuer });
+			await this.invalidateCacheAfterSeed({ id, issuer });
 			return 'inserted';
 		}
 
 		// Only a direct database write can put an admin row under the reserved id.
 		if (existing.managedBy !== 'system') return 'conflict';
-		await this.ensureAppsSurface(existing);
 		if (existing.issuer === issuer) return 'unchanged';
 
 		// Another seeder can move the issuer first; then the row holding it is this one.
@@ -322,23 +342,74 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			if (!winner) throw error;
 			return winner.id === id ? 'unchanged' : 'conflict';
 		}
-		await this.invalidateCache(existing, issuer);
+		await this.invalidateCacheAfterSeed(existing, issuer);
 		return 'issuer-updated';
 	}
 
-	private async ensureAppsSurface(source: TrustedSourceEntity): Promise<void> {
-		const config = trustedSourceConfigSchemaFor('system').parse(
-			jsonParse<unknown>(await this.cipher.decryptV2(source.config)),
-		);
-		if (config.surfaces.apps === undefined) {
-			config.surfaces.apps = {};
-			await this.trustedSourceRepository.updateById(
-				source.id,
-				{ config: await this.cipher.encryptV2(config) },
-				{},
-			);
-			await this.invalidateCache(source);
+	/** The seed row is committed, and the seeder runs at boot: a cache failure must not stop it. */
+	private async invalidateCacheAfterSeed(
+		row: Pick<TrustedSourceEntity, 'id' | 'issuer'>,
+		newIssuer?: string,
+	) {
+		try {
+			await this.invalidateCache(row, newIssuer);
+		} catch (error) {
+			this.logger.warn('System trusted source seeded but the cache could not be invalidated', {
+				id: row.id,
+				error,
+			});
 		}
+	}
+
+	/**
+	 * Rewrites every row stored below the latest config version, so the database holds what reads
+	 * return. Only the config changes: status, metadata and bindings stay. Reads still migrate on
+	 * demand, so a row this skips stays usable. Returns the number of rows it rewrote.
+	 */
+	async upgradeStoredConfigs(): Promise<number> {
+		const rows = await this.trustedSourceRepository.findWithConfigVersionBelow(
+			LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			{},
+		);
+		let upgraded = 0;
+		for (const row of rows) {
+			let written: boolean;
+			try {
+				const config = migrateToLatest(await this.parseConfig(row), {
+					managedBy: row.managedBy,
+				});
+				written = await this.trustedSourceRepository.upgradeConfig(
+					row.id,
+					row.configVersion,
+					{ config: await this.cipher.encryptV2(config), configVersion: config.version },
+					{},
+				);
+			} catch (error) {
+				this.logger.warn('Could not upgrade the config of a trusted source', {
+					id: row.id,
+					reason: ensureError(error).message,
+				});
+				continue;
+			}
+			if (!written) continue;
+			upgraded += 1;
+			// Cached copies were migrated on read, so a stale entry still serves the same config.
+			try {
+				await this.invalidateCache(row);
+			} catch (error) {
+				this.logger.warn('Config upgraded but the cache could not be invalidated', {
+					id: row.id,
+					error,
+				});
+			}
+		}
+		if (upgraded > 0) {
+			this.logger.info('Upgraded stored trusted source configs', {
+				count: upgraded,
+				version: LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			});
+		}
+		return upgraded;
 	}
 
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
@@ -365,9 +436,8 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	private async load(row: TrustedSourceEntity | null): Promise<TrustedSource | undefined> {
 		if (!row) return undefined;
 		try {
-			const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
-			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(document);
-			return this.toRuntime(row, migrateToLatest(config));
+			const config = migrateToLatest(await this.parseConfig(row), { managedBy: row.managedBy });
+			return this.toRuntime(row, config);
 		} catch (error) {
 			this.logger.warn('Skipping unusable trusted source', {
 				id: row.id,
@@ -375,6 +445,12 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			});
 			return undefined;
 		}
+	}
+
+	/** The stored document, validated for the row but not migrated. Throws when it is unusable. */
+	private async parseConfig(row: TrustedSourceEntity) {
+		const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
+		return trustedSourceConfigSchemaFor(row.managedBy).parse(document);
 	}
 
 	private async loadAll(): Promise<TrustedSource[]> {

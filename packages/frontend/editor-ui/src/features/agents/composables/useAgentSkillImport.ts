@@ -15,7 +15,10 @@ const FRONTMATTER_DELIMITER = '---';
 const MAX_REFERENCE_FILE_BYTES = AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH * 4;
 
 export class AgentSkillImportError extends Error {
-	constructor(readonly i18nKey: BaseTextKey) {
+	constructor(
+		readonly i18nKey: BaseTextKey,
+		readonly interpolate?: Record<string, string | number>,
+	) {
 		super(i18nKey);
 	}
 }
@@ -47,7 +50,13 @@ export function useAgentSkillImport() {
 			throw new AgentSkillImportError('agents.builder.skills.import.noFiles');
 		}
 
-		const skillFile = findSkillFile(fileEntries);
+		const skillFiles = findSkillFiles(fileEntries);
+		if (skillFiles.length > 1) {
+			throw new AgentSkillImportError('agents.builder.skills.import.multipleSkills', {
+				count: skillFiles.length,
+			});
+		}
+		const [skillFile] = skillFiles;
 		if (!skillFile) {
 			throw new AgentSkillImportError('agents.builder.skills.import.missingSkillFile');
 		}
@@ -137,8 +146,8 @@ async function readEntry(entry: FileSystemEntry): Promise<SkillFile[]> {
 	return files;
 }
 
-function findSkillFile(entries: Array<{ file: File; path: string }>) {
-	return entries.find(
+function findSkillFiles(entries: SkillFile[]) {
+	return entries.filter(
 		(entry) => entry.path === SKILL_FILE_NAME || entry.path.endsWith(`/${SKILL_FILE_NAME}`),
 	);
 }

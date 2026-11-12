@@ -1,10 +1,12 @@
+# check=skip=InvalidDefaultArgInFrom
 ARG PNPM_VERSION=12.4.2
 
-# Each digest pins the multi-arch index of its tag. Change the tag and the digest together.
-# NODE_IMAGE matches BUILDER_IMAGE in docker/images/n8n/Dockerfile.
-ARG NODE_IMAGE=node:26.12.1-alpine3.24@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
-ARG PYTHON_IMAGE=python:3.13.18-alpine3.24@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
-ARG ALPINE_IMAGE=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+# docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+# NODE_IMAGE is the BUILDER_IMAGE of the n8n image.
+ARG NODE_IMAGE
+ARG PYTHON_IMAGE
+ARG ALPINE_IMAGE
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI

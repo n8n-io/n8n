@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.47.0",
+  "version": "2.48.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -231,7 +231,6 @@
     "@types/oracledb": "catalog:",
     "@types/pg": "^8.15.6",
     "@types/sanitize-html": "catalog:",
-    "@types/temp": "^0.9.1",
     "@vitest/coverage-v8": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
     "fast-check": "catalog:",
@@ -284,6 +283,7 @@
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-16",
     "@n8n/typescript-config": "workspace:*",
@@ -324,7 +324,7 @@
     "redis": "4.6.14",
     "sanitize-html": "catalog:",
     "sqlite3": "5.1.7",
-    "temp": "0.9.4",
+    "tmp-promise": "catalog:",
     "uuid": "catalog:",
     "vm2": "catalog:",
     "weaviate-client": "3.9.0",

@@ -59,6 +59,7 @@ function ruleResult(ruleId: string): BreakingChangeRuleDetailResult {
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
+		assistantAction: 'none',
 	};
 }
 
@@ -170,6 +171,7 @@ describe('BreakingChangesController', () => {
 			const callOrder: string[] = [];
 			syncService.syncIfStale.mockImplementation(async () => {
 				callOrder.push('syncIfStale');
+				return true;
 			});
 			queryService.getLightReport.mockImplementation(async () => {
 				callOrder.push('getLightReport');
@@ -242,6 +244,7 @@ describe('BreakingChangesController', () => {
 			const callOrder: string[] = [];
 			syncService.sync.mockImplementation(async () => {
 				callOrder.push('sync');
+				return true;
 			});
 			queryService.getLightReport.mockImplementation(async () => {
 				callOrder.push('getLightReport');
@@ -294,6 +297,7 @@ describe('BreakingChangesController', () => {
 			const callOrder: string[] = [];
 			syncService.syncIfStale.mockImplementation(async () => {
 				callOrder.push('syncIfStale');
+				return true;
 			});
 			queryService.getLightReport.mockImplementation(async () => {
 				callOrder.push('getLightReport');
@@ -374,6 +378,7 @@ describe('BreakingChangesController', () => {
 			const callOrder: string[] = [];
 			syncService.syncIfStale.mockImplementation(async () => {
 				callOrder.push('syncIfStale');
+				return true;
 			});
 			queryService.getRuleFindings.mockImplementation(async () => {
 				callOrder.push('getRuleFindings');

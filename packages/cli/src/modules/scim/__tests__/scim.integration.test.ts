@@ -10,7 +10,10 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
+	Person,
 	ProjectRepository,
+	ServiceAccountRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -19,6 +22,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -58,8 +62,8 @@ const ERROR_SCHEMA = 'urn:ietf:params:scim:api:messages:2.0:Error';
 const USER_SCHEMA = 'urn:ietf:params:scim:schemas:core:2.0:User';
 const PATCH_SCHEMA = 'urn:ietf:params:scim:api:messages:2.0:PatchOp';
 
-let owner: User;
-let admin: User;
+let owner: Person;
+let admin: Person;
 let token: string;
 
 const scimRequest = (
@@ -78,8 +82,10 @@ const patchOps = (...Operations: Array<{ op: string; path?: string; value?: unkn
 	Operations,
 });
 
+const personTable = () => Container.get(DataSource).getRepository(Person);
+
 const reload = async (id: string) =>
-	await Container.get(UserRepository).findOneOrFail({ where: { id }, relations: ['role'] });
+	await personTable().findOneOrFail({ where: { id }, relations: ['role'] });
 
 const scimRoutes = [
 	['get', '/Users'],
@@ -413,6 +419,21 @@ describe('SCIM /scim/v2/Users', () => {
 		expect(response.body.Resources).toEqual([]);
 		expect(response.body.itemsPerPage).toBe(0);
 		expect(response.body.totalResults).toBe(3);
+	});
+
+	it('lists persons only', async () => {
+		const member = await createMember();
+		await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		const response = await scimRequest('get', '/Users').expect(200);
+
+		expect(response.body.totalResults).toBe(3);
+		expect(response.body.Resources.map(({ id }: { id: string }) => id).sort()).toEqual(
+			[owner.id, admin.id, member.id].sort(),
+		);
 	});
 
 	describe('owner guard', () => {
@@ -857,7 +878,7 @@ describe('GET /rest/scim/transfer-targets', () => {
 	const userIds = (items: PersonItem[]) => items.map(({ userId }) => userId);
 
 	const rename = async (user: User, firstName: string, lastName: string) =>
-		await Container.get(UserRepository).update({ id: user.id }, { firstName, lastName });
+		await personTable().update({ id: user.id }, { firstName, lastName });
 
 	const disable = async (user: User) =>
 		await Container.get(UserRepository).update({ id: user.id }, { disabled: true });
@@ -878,7 +899,7 @@ describe('GET /rest/scim/transfer-targets', () => {
 	it('finds a person by the current email when the project name has the old email', async () => {
 		const member = await createMember();
 		const newEmail = 'renamed.person@example.com';
-		await Container.get(UserRepository).update({ id: member.id }, { email: newEmail });
+		await personTable().update({ id: member.id }, { email: newEmail });
 		const personalProject = await getPersonalProject(member);
 		expect(personalProject.name).not.toContain(newEmail);
 
@@ -948,9 +969,9 @@ describe('GET /rest/scim/transfer-targets', () => {
 		const percent = await createMember();
 		await rename(percent, '100%', 'Done');
 		const underscore = await createMember();
-		await Container.get(UserRepository).update({ id: underscore.id }, { email: 'a_b@example.com' });
+		await personTable().update({ id: underscore.id }, { email: 'a_b@example.com' });
 		const lookalike = await createMember();
-		await Container.get(UserRepository).update({ id: lookalike.id }, { email: 'axb@example.com' });
+		await personTable().update({ id: lookalike.id }, { email: 'axb@example.com' });
 		for (const name of ['100% Done', 'a_b', 'axb', 'C:\\temp']) await createTeamProject(name);
 
 		const matches = async (search: string) => {
@@ -1302,7 +1323,7 @@ describe('SCIM and manual invites', () => {
 			.send([{ email: inviteeEmail, role }]);
 
 	const invitedUser = async () =>
-		await Container.get(UserRepository).findOne({
+		await personTable().findOne({
 			where: { email: inviteeEmail },
 			relations: ['role'],
 		});

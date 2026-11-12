@@ -1,6 +1,6 @@
 import { chunkArray } from '@langchain/core/utils/chunk_array';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { OpenAI } from 'openai';
 
 export type NvidiaInputType = 'passage' | 'query';

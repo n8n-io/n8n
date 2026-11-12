@@ -16,13 +16,13 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	createRunExecutionData,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';

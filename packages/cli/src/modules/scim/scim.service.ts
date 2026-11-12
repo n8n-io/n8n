@@ -7,7 +7,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthProviderType, Person } from '@n8n/db';
-import { PersonRepository, UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
@@ -50,7 +50,6 @@ function toScimBoolean(value: unknown): boolean | undefined {
 export class ScimService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly userRepository: UserRepository,
 		private readonly scimUserRepository: ScimUserRepository,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
@@ -212,7 +211,7 @@ export class ScimService {
 		const active = scimUser.active ?? true;
 		const externalId = scimUser.externalId;
 
-		const existingUser = await this.userRepository.findOne({ where: { email } });
+		const existingUser = await this.personRepository.findByEmail(email);
 		if (existingUser) {
 			throw new ScimConflictError('User with this userName already exists');
 		}
@@ -476,8 +475,8 @@ export class ScimService {
 	 * email into a SCIM uniqueness conflict.
 	 */
 	private async saveUser(person: Person): Promise<void> {
-		// The email is unique across accounts of both kinds.
-		const conflictingUser = await this.userRepository.findOne({ where: { email: person.email } });
+		// Only a person has an email.
+		const conflictingUser = await this.personRepository.findByEmail(person.email);
 		if (conflictingUser && conflictingUser.id !== person.id) {
 			throw new ScimConflictError('User with this userName already exists');
 		}

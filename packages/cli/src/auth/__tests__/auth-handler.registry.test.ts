@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { User } from '@n8n/db';
+import { Person, User } from '@n8n/db';
 import type { IPasswordAuthHandler, AuthHandlerEntryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -19,14 +19,14 @@ describe('AuthHandlerRegistry', () => {
 
 	describe('init', () => {
 		it('should discover and register auth handlers', async () => {
-			const mockHandler = mock<IPasswordAuthHandler<User>>({
+			const mockHandler = mock<IPasswordAuthHandler<Person>>({
 				metadata: { name: 'ldap', type: 'password' },
-				userClass: User,
+				userClass: Person,
 			});
 
 			class MockHandlerClass {
 				metadata = { name: 'ldap', type: 'password' as const };
-				readonly userClass = User;
+				readonly userClass = Person;
 				async handleLogin() {
 					return await mockHandler.handleLogin('', '');
 				}
@@ -42,9 +42,9 @@ describe('AuthHandlerRegistry', () => {
 		});
 
 		it('should call handler init() if present', async () => {
-			const mockHandler = mock<IPasswordAuthHandler<User>>({
+			const mockHandler = mock<IPasswordAuthHandler<Person>>({
 				metadata: { name: 'ldap', type: 'password' },
-				userClass: User,
+				userClass: Person,
 				init: vi.fn().mockResolvedValue(undefined),
 			});
 
@@ -56,6 +56,27 @@ describe('AuthHandlerRegistry', () => {
 			await registry.init();
 
 			expect(mockHandler.init).toHaveBeenCalled();
+		});
+
+		it('should skip a handler whose user class is not Person', async () => {
+			const mockHandler = mock<IPasswordAuthHandler<Person>>({
+				metadata: { name: 'ldap', type: 'password' },
+			});
+			// A handler for any account kind would let a service account log in with a password.
+			Object.assign(mockHandler, { userClass: User });
+
+			class MockHandlerClass {}
+
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
+			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
+
+			await registry.init();
+
+			expect(registry.has('ldap')).toBe(false);
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Expected Person but got User'),
+				expect.any(Object),
+			);
 		});
 
 		it('should skip handler on instantiation error', async () => {
@@ -75,9 +96,9 @@ describe('AuthHandlerRegistry', () => {
 		});
 
 		it('should skip handler on init error', async () => {
-			const mockHandler = mock<IPasswordAuthHandler<User>>({
+			const mockHandler = mock<IPasswordAuthHandler<Person>>({
 				metadata: { name: 'ldap', type: 'password' },
-				userClass: User,
+				userClass: Person,
 				init: vi.fn().mockRejectedValue(new Error('Init failed')),
 			});
 
@@ -96,13 +117,13 @@ describe('AuthHandlerRegistry', () => {
 		});
 
 		it('should warn on duplicate handler names', async () => {
-			const handler1 = mock<IPasswordAuthHandler<User>>({
+			const handler1 = mock<IPasswordAuthHandler<Person>>({
 				metadata: { name: 'ldap', type: 'password' },
-				userClass: User,
+				userClass: Person,
 			});
-			const handler2 = mock<IPasswordAuthHandler<User>>({
+			const handler2 = mock<IPasswordAuthHandler<Person>>({
 				metadata: { name: 'ldap', type: 'password' },
-				userClass: User,
+				userClass: Person,
 			});
 
 			class MockHandlerClass1 {}

@@ -2,7 +2,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseSender } from '@n8n/engine';
+import type { ExecutionChannelPublisher } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
@@ -15,29 +15,35 @@ import { BaseCommand } from './base-command';
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to report to and to resolve credentials from.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis to send execution responses and lifecycle events over.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
 
-	// No task runner yet, so the Code node fails with a clear error instead of
-	// waiting for a runner that never connects.
-	override needsTaskRunner = false;
+	// The data plane runs the nodes, so it hosts the task broker the Code node's
+	// runners connect to. Same module and env as `n8n start`.
+	// TODO(CET-332): remove once Code nodes run on the sandbox service.
+	override needsTaskRunner = true;
 
 	override needsExpressionEngine = true;
 
 	private runtime?: EngineV2Runtime;
 
-	private responseSender?: ExecutionResponseSender;
+	private channelPublisher?: ExecutionChannelPublisher;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
 		this.errorReporter = Container.get(ErrorReporter);
 		assertControlPlaneIsolated(process.env);
-		assertRemoteControlPlane(Container.get(EngineConfig));
+		const engineConfig = Container.get(EngineConfig);
+		assertRemoteControlPlane(engineConfig);
+		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
+		Container.get(EngineMtls).assertSecureTransport({
+			N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl,
+		});
 
 		this.logger.info('Starting engine v2 data plane...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
@@ -46,15 +52,29 @@ export class Engine extends BaseCommand {
 
 		await this.initBinaryDataStore();
 
-		// The control plane runs in another process, so responses travel over Redis.
-		const { createRedisExecutionResponseSender } = await import(
-			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+		// The control plane runs in another process, so the execution channel uses Redis.
+		const logger = this.logger.scoped('engine-v2');
+		const { createRedisExecutionChannelPublisher } = await import(
+			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
 		);
-		this.responseSender = await createRedisExecutionResponseSender(this.logger.scoped('engine-v2'));
+		const { ExecutionChannelSender } = await import(
+			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
+		);
+		const { createExecutionResponseCodec } = await import(
+			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
+		);
+		const { LifecycleEventChannelSender } = await import(
+			'@/modules/engine-v2/execution-channel/lifecycle-event-sender.js'
+		);
+		const publisher = await createRedisExecutionChannelPublisher(logger);
+		this.channelPublisher = publisher;
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init(this.responseSender);
+		await this.runtime.init({
+			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
+			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
+		});
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -113,7 +133,7 @@ export class Engine extends BaseCommand {
 				await this.runtime?.shutdown();
 			} finally {
 				// After the engine, so a final response still has somewhere to go.
-				await this.responseSender?.stop();
+				await this.channelPublisher?.stop();
 			}
 			await Expression.disposeExpressionEngine();
 		} catch (error) {

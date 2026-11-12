@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
+	N8nTabsRoot,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
@@ -62,7 +63,6 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
-import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
@@ -266,6 +266,7 @@ const preview = useCanvasPreview({
 		},
 	},
 });
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
 	[requestedAppId, () => preview.tabsLoaded.value],
 	([appId, tabsLoaded]) => {
@@ -344,6 +345,7 @@ const activeAgentPreviewSessionId = computed(() => {
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -750,7 +752,10 @@ function handleNewThreadClick() {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 				data-test-id="instance-ai-builder-chat-header"
 			>
-				<InstanceAiViewHeader :title="currentThreadTitle">
+				<InstanceAiViewHeader
+					:title="currentThreadTitle"
+					:thread-credits-used="store.threadCreditsUsed(props.threadId)"
+				>
 					<template #status>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"
@@ -980,7 +985,7 @@ function handleNewThreadClick() {
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
 				>
-					<TabsRoot
+					<N8nTabsRoot
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
@@ -1041,12 +1046,15 @@ function handleNewThreadClick() {
 								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
-							<InstanceAiSkillPreview
-								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value"
-								:class="$style.previewSlot"
-								:skill-id="preview.activeSkillId.value"
-								:refresh-key="preview.skillRefreshKey.value"
-							/>
+							<!-- Retain each open skill's draft while another artifact is visible. -->
+							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+								<InstanceAiSkillPreview
+									v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+									:class="$style.previewSlot"
+									:skill-id="tab.id"
+									:refresh-key="preview.skillRefreshKey.value"
+								/>
+							</KeepAlive>
 							<InstanceAiAppPreview
 								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
 								:class="$style.previewSlot"
@@ -1056,7 +1064,7 @@ function handleNewThreadClick() {
 								@deleted="preview.closeTab"
 							/>
 						</div>
-					</TabsRoot>
+					</N8nTabsRoot>
 				</N8nResizeWrapper>
 			</div>
 		</Transition>

@@ -9,6 +9,8 @@ import {
 	WorkflowPublishedDataService,
 	AiPreferenceService,
 	CredentialsFinderService,
+	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -23,8 +25,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -71,7 +71,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	aiPreferencesEnabled: false,
 	...overrides,
 });
 
@@ -127,7 +126,7 @@ describe('install_community_node registration', () => {
 			mockInstance(ProjectService),
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
-			mockInstance(NodeTypes),
+			mockInstance(NodeTypesProxy),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),

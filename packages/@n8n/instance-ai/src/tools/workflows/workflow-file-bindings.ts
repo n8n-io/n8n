@@ -47,11 +47,12 @@ export function hashWorkflowSource(source: string): string {
 
 export function normalizeWorkflowSourceFilePath(
 	filePath: string,
-	options: { workspaceRoot?: string } = {},
+	options: { workspaceRoot?: string; fallbackWorkspaceRoot?: string } = {},
 ): string {
 	return normalizeWorkspaceRelativePath(filePath, {
 		resourceLabel: 'Workflow source file',
 		workspaceRoot: options.workspaceRoot,
+		fallbackWorkspaceRoot: options.fallbackWorkspaceRoot,
 	});
 }
 

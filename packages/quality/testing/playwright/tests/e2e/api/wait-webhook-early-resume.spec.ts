@@ -49,7 +49,7 @@ async function startAndReadResumeUrl(api: ApiHelpers, workflowId: string) {
 
 test.describe(
 	'Wait node early resume request',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test.beforeEach(async ({ services }) => {
 			await services.proxy.clearAllExpectations();

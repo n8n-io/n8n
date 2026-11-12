@@ -141,7 +141,7 @@ export function groupingDecisionBlocker(input: {
 			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
 			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
 			'Wrap each stage in `.group(name, members, { description })` and build again. ' +
-			"If no valid group can hold these nodes, call workflow_builder_build_workflow again with `groupingDecision: 'not_warranted'` " +
+			"If no valid group can hold these nodes, run workflow_builder_build_workflow through call_tool again with `groupingDecision: 'not_warranted'` " +
 			'and a `groupingReason` that says why.',
 	};
 }

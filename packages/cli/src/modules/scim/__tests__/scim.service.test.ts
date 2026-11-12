@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Mocked } from 'vitest';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { PersonRepository, Role, User, UserRepository } from '@n8n/db';
+import type { Person, PersonRepository, Role, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@n8n/backend-services';
@@ -22,7 +22,7 @@ import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
 import { DEFAULT_SCIM_DEPROVISIONING_POLICY } from '../scim-settings.service';
 import { ScimService } from '../scim.service';
 
-const createTestUser = (overrides: Partial<User> = {}): User =>
+const createTestPerson = (overrides: Partial<Person> = {}): Person =>
 	({
 		id: 'user-1',
 		email: 'user@example.com',
@@ -33,7 +33,7 @@ const createTestUser = (overrides: Partial<User> = {}): User =>
 		updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 		authIdentities: [],
 		...overrides,
-	}) as User;
+	}) as Person;
 
 describe('ScimService', () => {
 	let userRepository: Mocked<UserRepository>;
@@ -49,11 +49,12 @@ describe('ScimService', () => {
 	beforeEach(() => {
 		userRepository = mock<UserRepository>();
 		personRepository = mock<PersonRepository>();
-		// The service loads people through `PersonRepository` and checks emails through
-		// `UserRepository`. Both read one ordered mock, so a test sets one call sequence.
-		const findOne = async (id: string) => await userRepository.findOne({ where: { id } });
+		// The service loads people by id and checks emails through `PersonRepository`.
+		// Every lookup reads one ordered mock, so a test sets one call sequence.
+		const findOne = async () => (await userRepository.findOne({})) as Person | null;
 		personRepository.findByIdWithRole.mockImplementation(findOne);
 		personRepository.findByIdWithAuthIdentities.mockImplementation(findOne);
+		personRepository.findByEmail.mockImplementation(findOne);
 		scimUserRepository = mock<ScimUserRepository>();
 		urlService = mock<UrlService>();
 		eventService = mock<EventService>();
@@ -71,7 +72,6 @@ describe('ScimService', () => {
 
 		service = new ScimService(
 			mock<Logger>(),
-			userRepository,
 			scimUserRepository,
 			urlService,
 			globalConfig,
@@ -84,10 +84,10 @@ describe('ScimService', () => {
 
 	describe('getUserById', () => {
 		it('should map the user entity to a SCIM user', async () => {
-			const user = createTestUser({
+			const user = createTestPerson({
 				authIdentities: [
 					{ providerId: 'okta-external-id', providerType: 'saml' },
-				] as User['authIdentities'],
+				] as Person['authIdentities'],
 			});
 			userRepository.findOne.mockResolvedValue(user);
 
@@ -119,7 +119,7 @@ describe('ScimService', () => {
 
 		it('should not expose the role, which SCIM does not manage', async () => {
 			userRepository.findOne.mockResolvedValue(
-				createTestUser({ role: { slug: 'global:admin' } as Role }),
+				createTestPerson({ role: { slug: 'global:admin' } as Role }),
 			);
 
 			const result = await service.getUserById('user-1');
@@ -128,7 +128,7 @@ describe('ScimService', () => {
 		});
 
 		it('should mark disabled users as inactive', async () => {
-			userRepository.findOne.mockResolvedValue(createTestUser({ disabled: true }));
+			userRepository.findOne.mockResolvedValue(createTestPerson({ disabled: true }));
 
 			const result = await service.getUserById('user-1');
 
@@ -145,10 +145,10 @@ describe('ScimService', () => {
 	describe('people only', () => {
 		// `UserRepository` would return the account. SCIM must read people through
 		// `PersonRepository`, which skips service accounts.
-		let serviceAccount: User;
+		let serviceAccount: Person;
 
 		beforeEach(() => {
-			serviceAccount = createTestUser({ id: 'sa-1', email: 'sa@example.com' });
+			serviceAccount = createTestPerson({ id: 'sa-1', email: 'sa@example.com' });
 			userRepository.findOne.mockResolvedValue(serviceAccount);
 			personRepository.findByIdWithRole.mockResolvedValue(null);
 			personRepository.findByIdWithAuthIdentities.mockResolvedValue(null);
@@ -170,18 +170,17 @@ describe('ScimService', () => {
 			).rejects.toThrow(ScimResourceNotFoundError);
 			await expect(service.deleteUser('sa-1')).rejects.toThrow(ScimResourceNotFoundError);
 			expect(personRepository.findByIdWithRole).toHaveBeenCalledTimes(3);
-			expect(serviceAccount).toEqual(createTestUser({ id: 'sa-1', email: 'sa@example.com' }));
+			expect(serviceAccount).toEqual(createTestPerson({ id: 'sa-1', email: 'sa@example.com' }));
 			expect(personRepository.save).not.toHaveBeenCalled();
-			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('getUsers', () => {
-		const pageOf = (users: User[], total = users.length) =>
+		const pageOf = (users: Person[], total = users.length) =>
 			scimUserRepository.findPage.mockResolvedValue([users, total]);
 
 		it('should return a SCIM list response with pagination metadata', async () => {
-			pageOf([createTestUser()], 5);
+			pageOf([createTestPerson()], 5);
 
 			const result = await service.getUsers({ startIndex: 3, count: 2 });
 
@@ -198,7 +197,7 @@ describe('ScimService', () => {
 		});
 
 		it('should filter by userName', async () => {
-			pageOf([createTestUser()]);
+			pageOf([createTestPerson()]);
 
 			await service.getUsers({ filter: 'userName eq "User@Example.com"' });
 
@@ -249,8 +248,8 @@ describe('ScimService', () => {
 		});
 
 		beforeEach(() => {
-			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createTestUser());
-			scimUserRepository.createProvisioned.mockResolvedValue(createTestUser({ id: 'u1' }));
+			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createTestPerson());
+			scimUserRepository.createProvisioned.mockResolvedValue(createTestPerson({ id: 'u1' }));
 		});
 
 		const emailUsed = () =>
@@ -295,16 +294,17 @@ describe('ScimService', () => {
 			active: true,
 		};
 
-		const provisions = (user: User) => scimUserRepository.createProvisioned.mockResolvedValue(user);
+		const provisions = (user: Person) =>
+			scimUserRepository.createProvisioned.mockResolvedValue(user);
 
 		it('should reject duplicate userName with a conflict', async () => {
-			userRepository.findOne.mockResolvedValue(createTestUser());
+			userRepository.findOne.mockResolvedValue(createTestPerson());
 
 			await expect(service.createUser(scimUserCreate)).rejects.toThrow(ScimConflictError);
 		});
 
 		it('should create a member with a personal project and an unusable password', async () => {
-			const createdUser = createTestUser({ id: 'new-user', email: 'new.user@example.com' });
+			const createdUser = createTestPerson({ id: 'new-user', email: 'new.user@example.com' });
 			userRepository.findOne
 				.mockResolvedValueOnce(null) // duplicate check
 				.mockResolvedValue(createdUser); // getUserById after creation
@@ -328,7 +328,7 @@ describe('ScimService', () => {
 		});
 
 		it('should link an SSO auth identity when externalId is provided', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -343,7 +343,7 @@ describe('ScimService', () => {
 		});
 
 		it('should emit a user-signed-up event', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -357,7 +357,7 @@ describe('ScimService', () => {
 		});
 
 		it('should create a member when roles are sent, since SCIM does not manage roles', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -374,7 +374,7 @@ describe('ScimService', () => {
 		});
 
 		it('should create an active user when active is omitted', async () => {
-			const createdUser = createTestUser({ id: 'new-user' });
+			const createdUser = createTestPerson({ id: 'new-user' });
 			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
 			provisions(createdUser);
 
@@ -408,7 +408,7 @@ describe('ScimService', () => {
 		});
 
 		it('should deactivate a user via an explicit active path', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -425,7 +425,7 @@ describe('ScimService', () => {
 		});
 
 		it('should apply path-less object values as sent by Entra ID', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -492,7 +492,7 @@ describe('ScimService', () => {
 		});
 
 		it('should update the email via a work-email path as sent by Okta', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -506,7 +506,7 @@ describe('ScimService', () => {
 		});
 
 		it('should update the email via a userName replace', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -518,8 +518,8 @@ describe('ScimService', () => {
 		});
 
 		it('should reject an email change that collides with another user', async () => {
-			const user = createTestUser();
-			const otherUser = createTestUser({ id: 'user-2', email: 'taken@example.com' });
+			const user = createTestPerson();
+			const otherUser = createTestPerson({ id: 'user-2', email: 'taken@example.com' });
 			userRepository.findOne
 				.mockResolvedValueOnce(user) // load target user
 				.mockResolvedValueOnce(otherUser); // conflict check on save
@@ -533,7 +533,7 @@ describe('ScimService', () => {
 		});
 
 		it('should not persist anything when no supported attribute changed', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser('user-1', patchRequest([{ op: 'remove', path: 'phoneNumbers' }]));
@@ -543,7 +543,7 @@ describe('ScimService', () => {
 		});
 
 		it('should not persist anything when the values equal the stored state', async () => {
-			const user = createTestUser({ disabled: true });
+			const user = createTestPerson({ disabled: true });
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -560,7 +560,7 @@ describe('ScimService', () => {
 		});
 
 		it('should record only the fields that changed', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser(
@@ -587,7 +587,7 @@ describe('ScimService', () => {
 		};
 
 		it('should replace email, name and active state', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne
 				.mockResolvedValueOnce(user) // load target user
 				.mockResolvedValueOnce(null) // conflict check on save
@@ -606,7 +606,7 @@ describe('ScimService', () => {
 		});
 
 		it('should keep a disabled user disabled when active is omitted', async () => {
-			const user = createTestUser({ disabled: true });
+			const user = createTestPerson({ disabled: true });
 			userRepository.findOne.mockResolvedValue(user);
 
 			const { active: _, ...withoutActive } = putBody;
@@ -639,7 +639,7 @@ describe('ScimService', () => {
 			}) as Parameters<ScimService['patchUser']>[1];
 
 		it('should ignore roles sent via PUT', async () => {
-			const user = createTestUser({ role: memberRole });
+			const user = createTestPerson({ role: memberRole });
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.updateUser('user-1', {
@@ -657,7 +657,7 @@ describe('ScimService', () => {
 			['a roles path', [{ op: 'replace', path: 'roles', value: [{ value: 'global:admin' }] }]],
 			['a path-less value', [{ op: 'replace', value: { roles: [{ value: 'global:admin' }] } }]],
 		])('should ignore roles sent via PATCH with %s', async (_, operations) => {
-			const user = createTestUser({ role: memberRole });
+			const user = createTestPerson({ role: memberRole });
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.patchUser('user-1', patchRequest(operations));
@@ -670,7 +670,7 @@ describe('ScimService', () => {
 	describe('owner guard', () => {
 		const ownerRole = { slug: 'global:owner', roleType: 'global' } as Role;
 		const createOwner = () =>
-			createTestUser({ id: 'owner-1', email: 'owner@example.com', role: ownerRole });
+			createTestPerson({ id: 'owner-1', email: 'owner@example.com', role: ownerRole });
 		const patchRequest = (operations: Array<{ op: string; path?: string; value?: unknown }>) =>
 			({
 				schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
@@ -721,7 +721,7 @@ describe('ScimService', () => {
 			],
 			['PUT', async () => await service.updateUser('owner-1', putBody({ active: false }))],
 		])('should treat a %s with active false on a disabled owner as a no-op', async (_, request) => {
-			const owner = createTestUser({
+			const owner = createTestPerson({
 				id: 'owner-1',
 				email: 'owner@example.com',
 				role: ownerRole,
@@ -764,7 +764,7 @@ describe('ScimService', () => {
 
 	describe('deleteUser', () => {
 		it('should soft-delete by disabling the user', async () => {
-			const user = createTestUser();
+			const user = createTestPerson();
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.deleteUser('user-1');
@@ -791,7 +791,7 @@ describe('ScimService', () => {
 				transferProjectId: null,
 			} as const;
 			scimDeprovisioningService.getPolicy.mockResolvedValue(policy);
-			const user = createTestUser({ role: GLOBAL_MEMBER_ROLE, disabled: true });
+			const user = createTestPerson({ role: GLOBAL_MEMBER_ROLE, disabled: true });
 			userRepository.findOne.mockResolvedValue(user);
 
 			await service.deleteUser('user-1');

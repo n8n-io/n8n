@@ -61,6 +61,7 @@ async function prepare(
 	}
 	const filePath = normalizeWorkflowSourceFilePath(input.filePath, {
 		workspaceRoot: context.workspaceRoot,
+		fallbackWorkspaceRoot: context.fallbackWorkspaceRoot,
 	});
 	let binding = await getWorkflowSourceFileBinding(context, filePath, { requirePersistence: true });
 	if (input.workflowId && binding?.workflowId && input.workflowId !== binding.workflowId) {
@@ -168,6 +169,6 @@ async function prepare(
 		workflowId: binding.workflowId,
 		filePath,
 		message:
-			'The setup panel is ready. Continue writing the workflow source and call workflow_builder_build_workflow with this filePath. Do not wait for connections or repeat folderPath on the build. The user can connect while you work. Their selections will be applied to the generated nodes. If the plan changes before building, call setup again with the complete remaining requirements.',
+			'The setup panel is ready. Continue writing the workflow source and run workflow_builder_build_workflow through call_tool with this filePath. Do not wait for connections or repeat folderPath on the build. The user can connect while you work. Their selections will be applied to the generated nodes. If the plan changes before building, call setup again with the complete remaining requirements.',
 	};
 }

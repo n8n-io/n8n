@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { readFile } from 'fs/promises';
 
 import { getAwsDomain, type AWSRegion } from './regions';
