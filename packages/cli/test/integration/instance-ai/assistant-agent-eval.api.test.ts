@@ -103,21 +103,22 @@ describe('Assistant agent eval routes', () => {
 	it('restores a seeded conversation that the next turn loads as history', async () => {
 		const threadId = randomUUID();
 		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
+		// The message id column holds 36 characters, like the v1 one, so the ids are UUIDs.
 		const messages = [
 			{
-				id: `${threadId}-1`,
+				id: randomUUID(),
 				createdAt: '2026-01-01T00:00:00.000Z',
 				role: 'user',
 				content: [{ type: 'text', text: 'Build a workflow that posts to Slack' }],
 			},
 			{
-				id: `${threadId}-2`,
+				id: randomUUID(),
 				createdAt: '2026-01-01T00:00:01.000Z',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'I built the workflow.' }],
 			},
 			{
-				id: `${threadId}-3`,
+				id: randomUUID(),
 				createdAt: '2026-01-01T00:00:02.000Z',
 				role: 'user',
 				content: [{ type: 'text', text: 'Thanks' }],
@@ -203,7 +204,7 @@ describe('Assistant agent eval routes', () => {
 				threadId,
 				messages: [
 					{
-						id: `${threadId}-1`,
+						id: randomUUID(),
 						createdAt: '2026-01-01T00:00:00.000Z',
 						role: 'user',
 						content: [{ type: 'text', text: 'Hi' }],
