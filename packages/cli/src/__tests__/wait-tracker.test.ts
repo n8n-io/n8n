@@ -258,21 +258,29 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		it.each([
-			[
-				'the run data is gone',
-				new MissingExecutionDataError({ executionId: '123', workflowId: 'abcd' }),
-			],
-			[
-				'the execution cannot be resumed',
-				new UnexpectedError('Only saved workflows can be resumed.'),
-			],
-		])('keeps the attempt when %s', async (_, error) => {
+		it('keeps the attempt when the run data is gone', async () => {
+			const error = new MissingExecutionDataError({ executionId: '123', workflowId: 'abcd' });
 			executionPersistence.findSingleExecution
 				.calledWith(execution.id)
 				.mockRejectedValueOnce(error);
 
 			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(error);
+
+			expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		});
+
+		it('keeps the attempt when the workflow was never saved', async () => {
+			executionPersistence.findSingleExecution.calledWith(execution.id).mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					id: execution.id,
+					finished: false,
+					workflowData: mock<IWorkflowBase>({ id: '' }),
+				}),
+			);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				'Only saved workflows can be resumed.',
+			);
 
 			expect(resumeAttemptService.release).not.toHaveBeenCalled();
 		});
