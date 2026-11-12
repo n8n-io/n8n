@@ -411,7 +411,7 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeElement).not.toHaveClass('success');
 		});
 
-		it('should apply pinned styling for workflow pin data that the displayed execution did not use', () => {
+		it('should apply pinned styling for workflow pin data without execution pin data', () => {
 			pinnedDataByNodeName['Test Node'] = [{ json: { ok: true } }];
 
 			const { getByText } = renderComponent({

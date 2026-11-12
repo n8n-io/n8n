@@ -266,7 +266,7 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
-	it('should render the pinned icon for workflow pin data that the displayed execution did not use', () => {
+	it('should render the pinned icon for workflow pin data without execution pin data', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
 		const { getByTestId, queryByTestId } = renderComponent({
