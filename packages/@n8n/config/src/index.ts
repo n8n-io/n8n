@@ -60,6 +60,11 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export {
+	setConfigWarningHandler,
+	resetConfigWarningHandler,
+	type ConfigWarningHandler,
+} from './config-warnings';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig, statementTimeoutSeconds } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';

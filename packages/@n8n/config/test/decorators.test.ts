@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import fs from 'fs';
 import { z } from 'zod';
 
+import { resetConfigWarningHandler, setConfigWarningHandler } from '../src/config-warnings';
 import { Config, Env } from '../src/decorators';
 
 vi.mock('fs');
@@ -185,5 +186,63 @@ describe('decorators', () => {
 		expect(config.value).toBe('legacy');
 		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('the value was trimmed'));
 		consoleWarnSpy.mockRestore();
+	});
+
+	describe('warning handler', () => {
+		afterEach(() => {
+			resetConfigWarningHandler();
+		});
+
+		it('should route the warnings through the configured handler instead of the console', () => {
+			process.env.NUMBER_VALUE = 'abc';
+			process.env.BOOLEAN_VALUE = 'maybe';
+			process.env.SCHEMA_VALUE = 'nope';
+			const handler = vi.fn();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			setConfigWarningHandler(handler);
+
+			@Config
+			class TestConfig {
+				@Env('NUMBER_VALUE')
+				count: number = 1;
+
+				@Env('BOOLEAN_VALUE')
+				flag: boolean = false;
+
+				@Env('SCHEMA_VALUE', z.enum(['legacy', 'vm']))
+				mode: string = 'vm';
+			}
+
+			const config = Container.get(TestConfig);
+
+			expect(config).toMatchObject({ count: 1, flag: false, mode: 'vm' });
+			expect(handler.mock.calls.flat()).toEqual([
+				'Invalid number value for NUMBER_VALUE: abc',
+				'Invalid boolean value for BOOLEAN_VALUE: maybe',
+				"Invalid value for SCHEMA_VALUE - Invalid enum value. Expected 'legacy' | 'vm', received 'nope'. Falling back to default value.",
+			]);
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+			consoleWarnSpy.mockRestore();
+		});
+
+		it('should warn on the console again after the handler is reset', () => {
+			process.env.NUMBER_VALUE = 'abc';
+			const handler = vi.fn();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			setConfigWarningHandler(handler);
+			resetConfigWarningHandler();
+
+			@Config
+			class TestConfig {
+				@Env('NUMBER_VALUE')
+				count: number = 1;
+			}
+
+			Container.get(TestConfig);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(consoleWarnSpy).toHaveBeenCalledWith('Invalid number value for NUMBER_VALUE: abc');
+			consoleWarnSpy.mockRestore();
+		});
 	});
 });

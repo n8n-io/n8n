@@ -3,6 +3,8 @@ import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
+import { emitConfigWarning } from './config-warnings';
+
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
@@ -26,7 +28,7 @@ const readEnv = (envName: string) => {
 		// File contents commonly carry a trailing newline (e.g. `echo value > file`)
 		const trimmed = value.trim();
 		if (value !== trimmed) {
-			console.warn(
+			emitConfigWarning(
 				`[n8n] Warning: The file specified by ${envName}_FILE contained leading or trailing whitespace; the value was trimmed.`,
 			);
 		}
@@ -68,7 +70,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				if (schema) {
 					const result = schema.safeParse(normalizeEnvValue(value));
 					if (result.error) {
-						console.warn(
+						emitConfigWarning(
 							`Invalid value for ${envName} - ${result.error.issues[0].message}. Falling back to default value.`,
 						);
 						continue;
@@ -77,7 +79,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
-						console.warn(`Invalid number value for ${envName}: ${value}`);
+						emitConfigWarning(`Invalid number value for ${envName}: ${value}`);
 					} else {
 						config[key] = parsed;
 					}
@@ -87,12 +89,12 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					} else if (['false', '0'].includes(value.toLowerCase())) {
 						config[key] = false;
 					} else {
-						console.warn(`Invalid boolean value for ${envName}: ${value}`);
+						emitConfigWarning(`Invalid boolean value for ${envName}: ${value}`);
 					}
 				} else if (type === Date) {
 					const timestamp = Date.parse(value);
 					if (isNaN(timestamp)) {
-						console.warn(`Invalid timestamp value for ${envName}: ${value}`);
+						emitConfigWarning(`Invalid timestamp value for ${envName}: ${value}`);
 					} else {
 						config[key] = new Date(timestamp);
 					}

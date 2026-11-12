@@ -1,4 +1,5 @@
 import { CliParser, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { setConfigWarningHandler } from '@n8n/config';
 import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -25,6 +26,12 @@ export class CommandRegistry {
 		private readonly cliParser: CliParser,
 	) {
 		this.commandName = process.argv[2] ?? 'start';
+		// The config package has no logger of its own. From here on, every config
+		// read for the first time (the commands and modules load after this)
+		// reports an invalid env value through the logger like any other warning.
+		// Bound rather than wrapped, so the logger attributes the line to the
+		// config package and not to this file.
+		setConfigWarningHandler(this.logger.warn.bind(this.logger));
 		this.moduleRegistry.registerPackagedModules(packagedModules);
 	}
 
