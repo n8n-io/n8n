@@ -952,10 +952,8 @@ async function autoAssignCredentialsForAddedNodes(
 function skipUnrecognizedExistingNodeTypes(
 	nodeTypes: INodeTypes,
 	existingNodes: INode[],
-	addedNodes: INode[],
 ): INodeTypes {
 	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
-	const addedNodeTypeNames = new Set(addedNodes.map((node) => node.type));
 
 	return {
 		getByName: (nodeType) => nodeTypes.getByName(nodeType),
@@ -964,11 +962,7 @@ function skipUnrecognizedExistingNodeTypes(
 			try {
 				return nodeTypes.getByNameAndVersion(nodeType, version);
 			} catch (error) {
-				if (
-					error instanceof UnrecognizedNodeTypeError &&
-					existingNodeTypeNames.has(nodeType) &&
-					!addedNodeTypeNames.has(nodeType)
-				) {
+				if (error instanceof UnrecognizedNodeTypeError && existingNodeTypeNames.has(nodeType)) {
 					return undefined as unknown as INodeType;
 				}
 				throw error;
@@ -977,25 +971,39 @@ function skipUnrecognizedExistingNodeTypes(
 	};
 }
 
+function isUnloadedNodeType(node: INode, nodeTypes: INodeTypes): boolean {
+	try {
+		nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return false;
+	} catch (error) {
+		return error instanceof UnrecognizedNodeTypeError;
+	}
+}
+
+function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes): void {
+	const unloadedNode = addedNodes.find((node) => isUnloadedNodeType(node, nodeTypes));
+	if (unloadedNode) {
+		throw Object.assign(
+			new Error(
+				`Cannot add node '${unloadedNode.name}': this instance does not load the node type '${unloadedNode.type}'. Check the type name, or use a node type that this instance has.`,
+			),
+			{ errorCode: 'UNRECOGNIZED_NODE_TYPE' },
+		);
+	}
+}
+
 function buildUnloadedNodeTypeWarnings(
 	nodes: INode[],
 	nodeTypes: INodeTypes,
 ): Array<ValidationWarning & { preExisting: true }> {
-	const isUnloaded = (node: INode) => {
-		try {
-			nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			return false;
-		} catch (error) {
-			return error instanceof UnrecognizedNodeTypeError;
-		}
-	};
-
-	return nodes.filter(isUnloaded).map((node) => ({
-		code: 'UNLOADED_NODE_TYPE',
-		message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
-		nodeName: node.name,
-		preExisting: true,
-	}));
+	return nodes
+		.filter((node) => isUnloadedNodeType(node, nodeTypes))
+		.map((node) => ({
+			code: 'UNLOADED_NODE_TYPE',
+			message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
+			nodeName: node.name,
+			preExisting: true,
+		}));
 }
 
 /**
@@ -1017,13 +1025,12 @@ async function collectValidationWarnings(
 	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	nodeTypes: INodeTypes,
-	addedNodes: INode[],
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: skipUnrecognizedExistingNodeTypes(nodeTypes, existing.nodes, addedNodes),
+		nodeTypesProvider: skipUnrecognizedExistingNodeTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
@@ -1227,6 +1234,11 @@ export const createUpdateWorkflowTool = (
 					throw new Error(result.error);
 				}
 
+				const addedNodes = result.workflow.nodes.filter((node) =>
+					result.addedNodeNames.includes(node.name),
+				);
+				assertAddedNodeTypesLoaded(addedNodes, nodeTypes);
+
 				// Setting a parameter can make a subnode input required without wiring it.
 				// Skip inputs this batch disconnected, or removeConnection is a no-op.
 				// Names are carried through later renames, since the pass runs against
@@ -1331,16 +1343,11 @@ export const createUpdateWorkflowTool = (
 					{ user, nodeTypes, credentialsService, aiGatewayService },
 				);
 
-				const addedNodes = workflowUpdateData.nodes.filter((node) =>
-					result.addedNodeNames.includes(node.name),
-				);
-
 				// After auto-assign, so the nodes being validated carry their credentials.
 				const validationWarnings = await collectValidationWarnings(
 					workflowUpdateData,
 					existingWorkflow,
 					nodeTypes,
-					addedNodes,
 				);
 
 				for (const link of addedSubnodeLinks) {

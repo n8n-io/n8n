@@ -3240,7 +3240,13 @@ describe('update-workflow MCP tool', () => {
 					});
 
 					expect(result.isError).toBe(true);
-					expect(parseResult(result).error).toContain('Unrecognized node type');
+					expect(parseResult(result)).toEqual(
+						expect.objectContaining({
+							errorCode: 'UNRECOGNIZED_NODE_TYPE',
+							error: expect.stringContaining(`node '${node.name}'`),
+						}),
+					);
+					expect(parseResult(result).error).toContain(`'${node.type}'`);
 					expect(updateMock).not.toHaveBeenCalled();
 				});
 
