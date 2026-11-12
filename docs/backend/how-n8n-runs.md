@@ -27,6 +27,19 @@ Each workflow execution is passed to the **execution engine**, a library in `n8n
 
 Agent turns run on another library, the agent runtime in `@n8n/agents`. Workflow executions and agent turns share the same nodes, credentials, permissions, and database.
 
+```mermaid
+flowchart LR
+    E([Editor]) --> C
+    W([Webhook callers]) --> C
+    subgraph M [Main]
+        C[Controllers] --> S[Services]
+        S --> R[Repositories]
+        S --> EN[Execution engine]
+        S --> AR[Agent runtime]
+    end
+    R --> DB[(Database)]
+```
+
 ## Workers
 
 In **regular mode**, one process serves the editor and runs executions, so heavy executions can slow the editor down. In **queue mode** (also called **scaling mode**), a main sets up the execution and adds a job to a [Bull](https://github.com/OptimalBits/bull) queue backed by Redis.
@@ -52,6 +65,34 @@ With one main, a stopped main takes down the editor, the APIs, the schedules and
 Several mains cause a new problem: some work must happen exactly once. If two mains ran the same poller, each new record would start two executions. Therefore one main is the **leader**, and only the leader runs pollers. Schedules need no leader, because any main starts each due run from a job in the database. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
 
 Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, if you publish a workflow through a main that is not the leader, that main broadcasts a command, and the leader starts the triggers.
+
+In queue mode with multi-main, all the processes connect like this:
+
+```mermaid
+flowchart TB
+    E([Editor]) --> LB[Load balancer]
+    C([Webhook callers]) --> LB
+    LB --> M
+    LB --> WH[Webhook processes]
+    subgraph M [Mains]
+        direction LR
+        L[Leader]
+        O[Other mains]
+    end
+    subgraph R [Redis]
+        direction LR
+        Q[Queue]
+        P[Pubsub]
+    end
+    M --> Q
+    WH --> Q
+    M --- P
+    Q --> W[Workers]
+    P --- W
+    M --> DB[(Database)]
+    WH --> DB
+    W --> DB
+```
 
 ## n8n Cloud
 

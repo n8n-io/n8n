@@ -235,53 +235,74 @@ import Default from '@astrojs/starlight/components/Head.astro';
 
 <script>
 	// A page counts as read when the reader scrolls to its end, or at once when it fits on the
-	// screen. A page with a quiz counts as read only when every answer is right. The list stays
-	// in this browser only, and the page works without it.
-	const STORAGE_KEY = 'n8n-backend-docs:read-pages';
+	// screen. A page with a quiz also counts as quiz done when every answer is right. Both lists
+	// stay in this browser only, and the page works without them.
+	const READ_KEY = 'n8n-backend-docs:read-pages';
+	const QUIZ_KEY = 'n8n-backend-docs:quiz-pages';
 	const normalize = (path: string) => path.replace(/\/+$/, '') || '/';
 
-	const loadRead = (): Set<string> => {
+	const load = (key: string): Set<string> => {
 		try {
-			const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+			const stored: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
 			return new Set(Array.isArray(stored) ? stored.filter((item) => typeof item === 'string') : []);
 		} catch {
 			return new Set();
 		}
 	};
 
-	const read = loadRead();
+	const read = load(READ_KEY);
+	const quizDone = load(QUIZ_KEY);
 	const current = normalize(location.pathname);
 
-	// The sidebar shows a tick after the name of each finished page.
-	const showRead = () => {
+	// After the name of each read page, the sidebar shows a tick. When the quiz of the page is
+	// also done, the tick sits in a filled circle. The mark names its meaning on hover.
+	const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>';
+	const showMarks = () => {
 		for (const link of document.querySelectorAll<HTMLAnchorElement>('.sidebar-content a[href]')) {
-			link.classList.toggle('is-read', read.has(normalize(new URL(link.href).pathname)));
+			const path = normalize(new URL(link.href).pathname);
+			const state = quizDone.has(path) ? 'quiz' : read.has(path) ? 'read' : undefined;
+			let mark = link.querySelector<HTMLElement>('.page-mark');
+			if (!state) {
+				mark?.remove();
+				continue;
+			}
+			if (!mark) {
+				mark = document.createElement('span');
+				mark.setAttribute('role', 'img');
+				link.append(mark);
+			}
+			const label = state === 'quiz' ? 'Page read, quiz done' : 'Page read';
+			mark.className = `page-mark page-mark--${state}`;
+			mark.innerHTML = state === 'quiz' ? CHECK : '\u2713';
+			mark.title = label;
+			mark.setAttribute('aria-label', label);
 		}
 	};
 
-	const markRead = () => {
-		if (read.has(current)) return;
-		read.add(current);
+	const mark = (pages: Set<string>, key: string) => {
+		if (pages.has(current)) return;
+		pages.add(current);
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify([...read]));
+			localStorage.setItem(key, JSON.stringify([...pages]));
 		} catch {
-			// Storage can be blocked. The tick then shows only until the next page load.
+			// Storage can be blocked. The mark then shows only until the next page load.
 		}
-		showRead();
+		showMarks();
 	};
 
 	const checkEnd = () => {
 		const root = document.documentElement;
-		if (window.scrollY + window.innerHeight >= root.scrollHeight - 48) markRead();
+		if (window.scrollY + window.innerHeight >= root.scrollHeight - 48) mark(read, READ_KEY);
 	};
 
-	showRead();
-	if (document.querySelector('.quiz-question')) {
-		document.addEventListener('quiz:all-right', markRead);
-	} else {
-		checkEnd();
-		window.addEventListener('scroll', checkEnd, { passive: true });
-	}
+	showMarks();
+	checkEnd();
+	window.addEventListener('scroll', checkEnd, { passive: true });
+	// The quiz is at the end of the page, so a quiz done also counts as a read page.
+	document.addEventListener('quiz:all-right', () => {
+		mark(read, READ_KEY);
+		mark(quizDone, QUIZ_KEY);
+	});
 </script>
 
 <script>

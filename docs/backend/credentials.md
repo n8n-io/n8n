@@ -36,9 +36,13 @@ To encrypt or decrypt, new code calls `encryptV2` and `decryptV2`. These methods
 
 ## Gateway credits
 
+<!-- contact: michael-radency -->
+
 **Gateway credits** allow a node or an agent to call a model provider without a credential from the user. Instead, the node holds a marker. When the node runs, n8n creates a credential in memory that sends the call to the n8n AI Gateway, a service outside the instance. The gateway calls the provider with its own key and bills the call.
 
 ## External secrets
+
+<!-- contact: kgrhartlage -->
 
 **External secrets** come from a store outside n8n, e.g. AWS Secrets Manager or HashiCorp Vault. Only a credential can read them, through `$secrets`. A node parameter cannot.
 

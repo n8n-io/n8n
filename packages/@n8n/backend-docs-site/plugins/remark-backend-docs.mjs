@@ -11,9 +11,11 @@
 // 6. Turns a multiple choice self-check into a quiz. See `buildQuizzes` for the format.
 // 7. Turns a GitHub alert, such as `> [!NOTE]`, into an aside. GitHub renders the same syntax.
 // 8. Shows an ordered list after a `<!-- steps -->` comment as numbered steps.
+// 9. Shows a `<!-- contact: <login> -->` comment below a heading as the contact for that topic.
 import { existsSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { contactFor } from '../src/lib/contacts.ts';
 
 const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const DOCS_DIR = resolve(REPO_DIR, 'docs/backend');
@@ -179,6 +181,29 @@ function buildSteps(tree) {
 	});
 }
 
+const TOPIC_CONTACT = /^<!--\s*contact:\s*(\S+)\s*-->$/;
+
+/** A topic that another team owns names its own contact, below its heading. */
+function buildTopicContacts(tree, filePath) {
+	walk(tree, (node, index, parent) => {
+		const match = node.type === 'html' ? node.value.trim().match(TOPIC_CONTACT) : null;
+		if (!match || !parent) return;
+		if (parent.children[index - 1]?.type !== 'heading') {
+			throw new Error(`${filePath}: put "${node.value.trim()}" directly below a heading.`);
+		}
+		const contact = contactFor(match[1]);
+		const label = `For questions on this topic, ask ${escapeHtml(contact.name)}`;
+		parent.children[index] = {
+			type: 'html',
+			value:
+				`<p class="topic-contact"><a href="${contact.url}" title="${label}">` +
+				`<img src="${contact.avatar}" width="16" height="16" alt="" loading="lazy" />` +
+				`<span><span class="sr-only">For questions on this topic, ask </span>${escapeHtml(contact.name)}</span>` +
+				'</a></p>',
+		};
+	});
+}
+
 export function remarkBackendDocs() {
 	return (tree, file) => {
 		const filePath = file.path ?? file.history?.[0];
@@ -212,6 +237,7 @@ export function remarkBackendDocs() {
 		buildQuizzes(tree);
 		buildAsides(tree);
 		buildSteps(tree);
+		buildTopicContacts(tree, filePath);
 		const frontmatter = file.data.astro?.frontmatter;
 		if (frontmatter) {
 			frontmatter.words = words;

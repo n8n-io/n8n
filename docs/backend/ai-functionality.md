@@ -19,6 +19,8 @@ n8n has these kinds of AI functionality:
 
 ## AI agents
 
+<!-- contact: bjorger -->
+
 An **AI agent** answers questions and takes actions in other services, e.g. Slack or Google Sheets. A user builds an AI agent in the editor from these parts:
 
 - **Instructions and a model:** The AI agent calls the model with a credential or with Gateway credits.
@@ -38,9 +40,13 @@ Each tool runs with the permissions of the user, and some tools ask the user to 
 
 ## MCP server
 
+<!-- contact: RicardoE105 -->
+
 A user connects an AI app (e.g. Claude Desktop) to the MCP server. The app can then search, run, test, publish, and build workflows and AI agents for the user. The app can access a workflow only if the user can access it and the workflow has MCP access turned on.
 
 ## Skills
+
+<!-- contact: RicardoE105 -->
 
 A **skill** is a set of instructions that a user saves once. AI agents, the n8n Assistant, and AI apps that connect to the MCP server read a skill when they need it. A user can also sync skills from a GitHub repository. A synced skill is read-only in n8n. n8n checks the repository for changes, and the user accepts each update.
 
@@ -48,12 +54,16 @@ A published AI agent keeps the skill versions that it had at publication. An edi
 
 ## Knowledge
 
+<!-- contact: dariacodes -->
+
 **Knowledge** is data that an AI agent searches to answer questions. A user adds knowledge to an AI agent in two ways:
 
 - **Files:** The user uploads files. To search them, n8n copies the files into a sandbox. The AI agent then finds files by name, and searches their text with a regular expression.
 - **Vector stores:** The user connects a Pinecone, Qdrant, Supabase, or Postgres vector store. Each vector store becomes a tool of the AI agent, which searches it by meaning with an embedding model.
 
 ## MCP registry
+
+<!-- contact: RomanDavydchuk -->
 
 The **MCP registry** is a catalog of external MCP servers that n8n hosts. For each server in the catalog, n8n makes a node type and an OAuth2 credential type at runtime. A user then adds the server to a workflow or an AI agent as a node, and signs in to the server with the credential. The credential sends requests only to the host of its server.
 

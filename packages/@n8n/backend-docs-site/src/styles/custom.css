@@ -144,15 +144,40 @@
 	border-radius: 0.25rem;
 }
 
-/* A finished page gets a small, muted green tick after its name. */
-.sidebar-content a.is-read > span::after {
-	content: '\2713';
+/* After its name, a read page gets a small, muted green tick. When its quiz is also done, the
+   tick sits in a filled circle of the same green. */
+.sidebar-content .page-mark {
+	--n8n-mark: color-mix(in srgb, var(--sl-color-green) 50%, var(--sl-color-bg-sidebar));
 	margin-inline-start: 0.5rem;
 	font-size: 0.75em;
 	font-weight: 400;
 	/* The smaller glyph sits on the baseline. Raise it to the middle of the text. */
 	vertical-align: 0.15em;
-	color: color-mix(in srgb, var(--sl-color-green) 50%, var(--sl-color-bg-sidebar));
+	color: var(--n8n-mark);
+	cursor: default;
+}
+/* The light theme green is bright, so the mark starts from the dark green to stay visible. */
+:root[data-theme='light'] .sidebar-content .page-mark {
+	--n8n-mark: color-mix(in srgb, var(--sl-color-green-high) 60%, var(--sl-color-bg-sidebar));
+}
+.sidebar-content .page-mark--quiz {
+	display: inline-grid;
+	place-items: center;
+	width: 1.25em;
+	height: 1.25em;
+	border-radius: 50%;
+	background: var(--n8n-mark);
+	color: var(--sl-color-bg-sidebar);
+	vertical-align: -0.05em;
+}
+.sidebar-content .page-mark--quiz svg {
+	width: 0.85em;
+	height: 0.85em;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 3.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
 }
 
 /* Right column: a plain label, compact link rows, and nested headings set in behind a
@@ -1061,4 +1086,42 @@ mobile-starlight-toc nav {
 	background-color: var(--sl-color-gray-6);
 	font-family: var(--__sl-font-mono);
 	font-size: 0.85em;
+}
+
+/* The contact of one topic, next to its heading. It looks like the contact pill below the page title. */
+.sl-markdown-content h2:has(+ .topic-contact) {
+	display: inline-block;
+	margin-inline-end: 0.75rem;
+}
+.sl-markdown-content .topic-contact {
+	display: inline-block;
+	margin-top: 0;
+	vertical-align: middle;
+	/* Centers the pill on the capital letters of the heading, not on its whole line box. */
+	position: relative;
+	top: -0.375rem;
+}
+.sl-markdown-content .topic-contact a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding: 0.25rem 0.625rem;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 999px;
+	font-size: var(--sl-text-xs);
+	line-height: 1.25rem;
+	color: var(--sl-color-gray-3);
+	text-decoration: none;
+}
+.sl-markdown-content .topic-contact a:hover {
+	border-color: var(--sl-color-accent);
+	color: var(--sl-color-white);
+}
+.sl-markdown-content .topic-contact img {
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+	border-radius: 50%;
+	background: var(--sl-color-gray-5);
+	flex-shrink: 0;
 }

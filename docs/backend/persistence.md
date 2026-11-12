@@ -37,6 +37,8 @@ Files in items (e.g. a PDF that a node downloads) are **binary data**. An item h
 
 ## Data tables
 
+<!-- contact: dariacodes -->
+
 Users can create small tables in a project, called **data tables**. n8n creates each data table at runtime as a real table in the n8n database, outside the migrations. Only data table nodes can reach these tables.
 
 ## Quiz

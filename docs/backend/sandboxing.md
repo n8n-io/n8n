@@ -37,11 +37,15 @@ By default (`N8N_RUNNERS_MODE=internal`), the runner is a child process of n8n i
 
 ## Custom tools
 
+<!-- contact: bjorger -->
+
 A **custom tool** is a function that a user writes for an agent to call. The `agents` module runs each custom tool in a pool of V8 isolates.
 
 Unlike a task runner, an isolate runs inside the n8n process. If a custom tool runs out of memory, n8n discards its isolate, and the main keeps running.
 
 ## n8n Assistant
+
+<!-- contact: Cadiac -->
 
 The [n8n Assistant](ai-functionality.md#n8n-assistant) writes the source code of a workflow, and compiles it in a remote sandbox, so that its file writes and commands do not run on the n8n host. Without a sandbox, the Assistant cannot build workflows.
 

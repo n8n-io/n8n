@@ -16,6 +16,8 @@ A user can ask for a review of a workflow before they publish it. While a review
 
 ## Data redaction
 
+<!-- contact: afitzek -->
+
 Data redaction hides the node data of executions from users. n8n stores the full data, and redacts it only when a user reads an execution. New code that shows execution data must therefore read it through the execution services.
 
 ## Insights and usage
