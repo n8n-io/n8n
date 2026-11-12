@@ -80,6 +80,8 @@ interface AppRuntimeContext {
 	user: AppRuntimeUser;
 	versionId: string;
 	isPreview: boolean;
+	/** The n8n OAuth access token of the session. A preview session has none. */
+	sessionToken?: string;
 }
 
 /** The app host of the request. A preview host serves a version that can be an unpublished draft. */
@@ -89,6 +91,7 @@ interface AppRuntimeAdmission {
 	app: App;
 	versionId: string | null;
 	user: AppRuntimeUser;
+	sessionToken?: string;
 }
 
 export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P> {
@@ -146,7 +149,7 @@ export class AppRuntimeController {
 			this.assertSameOriginRequest(req, host);
 			await run(parseCookies, req, res);
 			const isPreview = host?.kind === 'preview';
-			const { app, versionId, user } = isPreview
+			const { app, versionId, user, sessionToken } = isPreview
 				? await this.admitPreview(req)
 				: await this.admitPublished(req);
 			const version = await this.servedVersion(app, versionId);
@@ -157,6 +160,7 @@ export class AppRuntimeController {
 				user,
 				versionId: version.id,
 				isPreview,
+				sessionToken,
 			};
 			next();
 		} catch (error) {
@@ -240,6 +244,10 @@ export class AppRuntimeController {
 	async runWorkflow(req: KeyRequest, res: Response) {
 		await this.answer(res, async () => {
 			const { ctx, binding } = this.resolve(req, 'workflow');
+			const { app, user, sessionToken } = this.context(req);
+			if (sessionToken) {
+				ctx.runnerIdentity = await this.auth.sealVisitor(app, sessionToken, user.id);
+			}
 			const result = await this.workflows.run(ctx, binding.workflowId, req.body ?? {});
 			this.interacted(req, 'workflow_run');
 			if (result.status === 'running') res.status(202);
@@ -352,6 +360,7 @@ export class AppRuntimeController {
 			app: admission.app,
 			versionId: admission.app.publishedVersionId,
 			user: admission.security.subject,
+			sessionToken: admission.token,
 		};
 	}
 

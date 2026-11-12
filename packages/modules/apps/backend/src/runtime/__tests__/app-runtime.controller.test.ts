@@ -101,7 +101,13 @@ function response() {
 
 function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) {
 	const auth = mock<AppAuthService>();
-	auth.admit.mockResolvedValue({ ok: true, app, security: { subject: user } as never });
+	auth.admit.mockResolvedValue({
+		ok: true,
+		app,
+		security: { subject: user } as never,
+		token: 'app-token',
+	});
+	auth.sealVisitor.mockResolvedValue('sealed-identity');
 	const preview = mock<AppPreviewService>();
 	preview.admit.mockResolvedValue({
 		app,
@@ -242,6 +248,25 @@ describe('AppRuntimeController', () => {
 			expect(req.appRuntime?.user).toEqual(user);
 		});
 
+		it('runs a bound workflow with the sealed identity of the visitor', async () => {
+			const { controller, auth, workflows } = setup();
+			workflows.run.mockResolvedValue({ executionId: '1', status: 'success', output: [] });
+			const req = request({ method: 'POST', runtime: false });
+			await controller.prepare(req, response(), vi.fn());
+
+			await controller.runWorkflow(
+				Object.assign(req, { params: { key: 'submit' }, body: {} }),
+				response(),
+			);
+
+			expect(auth.sealVisitor).toHaveBeenCalledExactlyOnceWith(app, 'app-token', user.id);
+			expect(workflows.run).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: user.id, runnerIdentity: 'sealed-identity' }),
+				'workflow-1',
+				{},
+			);
+		});
+
 		it('serves the bindings of the published version', async () => {
 			const { controller, versions, preview } = setup();
 			const req = request({ runtime: false });
@@ -327,6 +352,21 @@ describe('AppRuntimeController', () => {
 				'workflow-2',
 				{},
 			);
+		});
+
+		it('runs a bound workflow without a sealed identity', async () => {
+			const { controller, auth, workflows } = setup({ host: 'preview' });
+			workflows.run.mockResolvedValue({ executionId: '1', status: 'success', output: [] });
+			const req = request({ method: 'POST', headers: sameOrigin, runtime: false });
+			await controller.prepare(req, response(), vi.fn());
+
+			await controller.runWorkflow(
+				Object.assign(req, { params: { key: 'submit' }, body: {} }),
+				response(),
+			);
+
+			expect(auth.sealVisitor).not.toHaveBeenCalled();
+			expect(workflows.run.mock.calls[0][0]).not.toHaveProperty('runnerIdentity');
 		});
 
 		it('rejects the origin of the published host', async () => {

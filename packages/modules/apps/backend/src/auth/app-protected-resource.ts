@@ -45,9 +45,13 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 				const current = await currentApp();
 				return !!current && (await this.canAccess(current, user));
 			},
-			// A grant cannot express app access, so a sealed run re-checks only the user.
-			getGrant: () => ({ audiences: [url] }),
+			getGrant: () => this.grantFor(app),
 		};
+	}
+
+	/** A grant cannot express app access, so a sealed run re-checks only the user. */
+	grantFor(app: Pick<App, 'id' | 'namespace'>) {
+		return { audiences: [this.hosts.callbackUrl(app)] };
 	}
 
 	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {
