@@ -36,6 +36,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 			type: 'hidden',
 			typeOptions: { expirable: true, password: true },
 			default: '',
+			displayOptions: { show: { authentication: ['oauth2'] } },
 		},
 		{
 			displayName: 'Base URL',

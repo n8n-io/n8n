@@ -4,7 +4,7 @@ import type {
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { NodeHelpers, UserError } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../../utils/custom-model-endpoint/credential-data';
 import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';
@@ -168,13 +168,31 @@ describe('CustomModelEndpointApi Credential', () => {
 		});
 	});
 
-	it('declares the expirable slot the engine needs before it will run preAuthentication', () => {
+	describe('the expirable slot the engine needs before it will run preAuthentication', () => {
 		const slot = credential.properties.find(
 			(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
 		);
 
-		expect(slot?.name).toBe('sessionToken');
-		expect(slot?.typeOptions?.password).toBe(true);
+		it('is the session token, hidden like the other secrets', () => {
+			expect(slot?.name).toBe('sessionToken');
+			expect(slot?.typeOptions?.password).toBe(true);
+		});
+
+		it.each(['bearer', 'header', 'basic', 'none', 'oauth2'] as const)(
+			'is carried with the login method "%s" only when that method mints one',
+			(authentication) => {
+				const carried = NodeHelpers.getNodeParameters(
+					credential.properties,
+					{ authentication, sessionToken: 'tok-abc' },
+					true,
+					false,
+					null,
+					null,
+				);
+
+				expect(carried?.sessionToken).toBe(authentication === 'oauth2' ? 'tok-abc' : undefined);
+			},
+		);
 	});
 
 	describe('preAuthentication', () => {
