@@ -992,7 +992,7 @@ function buildUnloadedNodeTypeWarnings(
 
 	return nodes.filter(isUnloaded).map((node) => ({
 		code: 'UNLOADED_NODE_TYPE',
-		message: `[pre-existing] This instance does not load the node type '${node.type}'. The node was kept unchanged, but the workflow cannot run it. Tell the user; an administrator of this instance must enable the node type or the node must be replaced.`,
+		message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
 		nodeName: node.name,
 		preExisting: true,
 	}));
