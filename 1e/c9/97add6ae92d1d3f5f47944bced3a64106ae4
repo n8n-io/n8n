@@ -1,0 +1,22 @@
+packages/cli/src/commands/__tests__/engine.test.ts
+  h_8fb27e0cdf6d1e 122
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  h_8fb27e0cdf6d1e 96
+packages/cli/src/commands/__tests__/execute.test.ts
+  h_8fb27e0cdf6d1e 85,168,203,260,314,407,444
+packages/cli/src/commands/__tests__/start.test.ts
+  h_8fb27e0cdf6d1e 196,278,318,368
+packages/cli/src/commands/__tests__/worker.test.ts
+  h_8fb27e0cdf6d1e 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ec997add6ae92d1d3f5f47944bced3a64106ae4",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
