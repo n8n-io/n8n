@@ -5,10 +5,10 @@ import { randomUUID } from 'node:crypto';
 
 import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
-import { AssistantTurnOverrides } from '@/modules/instance-ai/assistant-agent/assistant-turn-overrides';
+import { AssistantTurnOverrides } from '@/modules/instance-ai/turn-setup/assistant-turn-overrides';
 import { ASSISTANT_AGENT_ID } from '@/modules/instance-ai/assistant-agent/assistant-turn-options';
 import '@/modules/instance-ai/assistant-agent/eval/assistant-agent-eval.controller';
-import { EvalAssistantTurnOverrides } from '@/modules/instance-ai/assistant-agent/eval/eval-assistant-turn-overrides';
+import { EvalAssistantTurnOverrides } from '@/modules/instance-ai/eval/eval-assistant-turn-overrides';
 import { FailedExecutionPortabilityService } from '@/modules/instance-ai/eval/failed-execution-portability.service';
 import { EvalThreadRestoreService } from '@/modules/instance-ai/eval/thread-restore.service';
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';

@@ -14,7 +14,7 @@ import type { Response } from 'express';
 
 import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 
-import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
+import { EvalAssistantTurnOverrides } from '../../eval/eval-assistant-turn-overrides';
 import { FailedExecutionPortabilityService } from '../../eval/failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../../eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from '../../eval/thread-restore.service';

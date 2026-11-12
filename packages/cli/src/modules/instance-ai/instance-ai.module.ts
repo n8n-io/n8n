@@ -122,18 +122,8 @@ export class InstanceAiModule implements ModuleInterface {
 			return;
 		}
 		const { InstanceAiConfig } = await import('@n8n/config');
+		// `init` registers the eval turn overrides before this, so the provider injects them.
 		const evalInstance = Container.get(InstanceAiConfig).evalInstance;
-		if (evalInstance) {
-			// The provider injects the overrides when it is first resolved, so set them before.
-			// Only an eval instance loads this code.
-			const { AssistantTurnOverrides } = await import(
-				'./assistant-agent/assistant-turn-overrides.js'
-			);
-			const { EvalAssistantTurnOverrides } = await import(
-				'./assistant-agent/eval/eval-assistant-turn-overrides.js'
-			);
-			Container.set(AssistantTurnOverrides, Container.get(EvalAssistantTurnOverrides));
-		}
 		const { SystemAgentRegistrationService } = await import(
 			'@/modules/agents/system-agents/system-agent-registration.service.js'
 		);

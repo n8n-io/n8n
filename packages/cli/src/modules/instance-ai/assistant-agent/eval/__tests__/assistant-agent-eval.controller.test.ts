@@ -21,7 +21,7 @@ import { EvalThreadCredentialAllowlistService } from '../../../eval/thread-crede
 import type { EvalThreadRestoreService } from '../../../eval/thread-restore.service';
 import type { InstanceAiSettingsService } from '../../../instance-ai-settings.service';
 import { AssistantAgentEvalController } from '../assistant-agent-eval.controller';
-import { EvalAssistantTurnOverrides } from '../eval-assistant-turn-overrides';
+import { EvalAssistantTurnOverrides } from '../../../eval/eval-assistant-turn-overrides';
 
 const THREAD_ID = '6b1f0f5e-3c43-4a59-9e0c-2f6f4f3f9b11';
 const PROJECT_ID = 'project-1';
