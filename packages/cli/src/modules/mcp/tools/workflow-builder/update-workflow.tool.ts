@@ -950,7 +950,7 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
-function skipUnrecognizedExistingNodeTypes(
+function createNodeTypesIgnoringUnloadedExistingTypes(
 	nodeTypes: INodeTypes,
 	existingNodes: INode[],
 ): INodeTypes {
@@ -975,10 +975,10 @@ function skipUnrecognizedExistingNodeTypes(
 function isUnloadedNodeType(node: INode, nodeTypes: INodeTypes): boolean {
 	try {
 		nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		return false;
 	} catch (error) {
-		return error instanceof UnrecognizedNodeTypeError;
+		if (error instanceof UnrecognizedNodeTypeError) return true;
 	}
+	return false;
 }
 
 function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes): void {
@@ -1031,7 +1031,7 @@ async function collectValidationWarnings(
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: skipUnrecognizedExistingNodeTypes(nodeTypes, existing.nodes),
+		nodeTypesProvider: createNodeTypesIgnoringUnloadedExistingTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
