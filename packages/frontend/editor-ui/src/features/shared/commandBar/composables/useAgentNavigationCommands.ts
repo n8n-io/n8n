@@ -13,7 +13,7 @@ import { AGENT_BUILDER_VIEW, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH } from '@/features
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentListItem } from '@/features/agents/agent.types';
 import type {
 	CommandBarItem,
 	CommandBarSearchRequest,
@@ -52,7 +52,7 @@ export function useAgentNavigationCommands(options: {
 		return isIconOrEmoji(project.icon) ? project.icon : { type: 'icon', value: 'layers' };
 	};
 
-	const toCommandBarItem = (agent: AgentResource): CommandBarItem => {
+	const toCommandBarItem = (agent: AgentListItem): CommandBarItem => {
 		const location = {
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: agent.projectId, agentId: agent.id },

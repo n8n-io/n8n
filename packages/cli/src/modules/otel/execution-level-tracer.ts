@@ -57,7 +57,7 @@ function isError(status: ExecutionStatus): boolean {
 type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
-	projectCustomAttributes: Record<string, string>;
+	customAttributes: CustomAttributes;
 	baggage?: Baggage;
 };
 
@@ -84,14 +84,13 @@ export class ExecutionLevelTracer {
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const projectCustomAttributes = this.buildCustomAttributes(
-				'project',
-				params.project?.customAttributes,
-			);
+			const customAttributes = {
+				...this.buildCustomAttributes('project', params.project?.customAttributes),
+				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+			};
 
 			const attributes = {
-				...projectCustomAttributes,
-				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+				...customAttributes,
 				[ATTR.WORKFLOW_NAME]: params.workflow.name,
 				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
@@ -106,7 +105,7 @@ export class ExecutionLevelTracer {
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
-				projectCustomAttributes,
+				customAttributes,
 				baggage,
 			});
 
@@ -230,7 +229,7 @@ export class ExecutionLevelTracer {
 				[ATTR.NODE_NAME]: params.node.name,
 				[ATTR.NODE_TYPE]: params.node.type,
 				[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
-				...tracked.projectCustomAttributes,
+				...tracked.customAttributes,
 			};
 
 			const span = this.tracer.startSpan('node.execute', { attributes }, tracked.context);

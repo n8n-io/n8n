@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Z } from '../../zod-class';
 import {
 	appVersionDescriptionSchema,
@@ -12,6 +14,7 @@ export class PublishAppDto extends Z.class(
 		label: appVersionNameSchema,
 		description: appVersionDescriptionSchema.optional(),
 		visibility: appVisibilitySchema.optional(),
+		publishResources: z.boolean().optional(),
 	},
 	{ strict: true },
 ) {}

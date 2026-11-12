@@ -1,3 +1,4 @@
+import { setN8nVersion } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
@@ -22,10 +23,9 @@ import type { InstanceReportingSettingsService } from '../instance-reporting-set
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import { type DueReportWork, InstanceReportingService } from '../instance-reporting.service';
 
-vi.mock('@/constants', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/constants')>()),
-	N8N_VERSION: '1.2.3',
-}));
+beforeEach(() => {
+	setN8nVersion('1.2.3');
+});
 
 interface ReportPayload {
 	instanceId: string;

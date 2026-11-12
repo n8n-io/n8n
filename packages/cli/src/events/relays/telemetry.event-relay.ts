@@ -1,6 +1,6 @@
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -60,7 +60,6 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
@@ -298,6 +297,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-probed': (event) => this.credentialsProbed(event),
+			'oauth-client-registered': (event) => this.oauthClientRegistered(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -379,6 +379,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'promotion-applied': (event) => this.promotionApplied(event),
 			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
 			'promotion-review-approved': (event) => this.promotionReviewApproved(event),
+			'promotion-review-closed': (event) => this.promotionReviewClosed(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -1335,6 +1336,19 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private oauthClientRegistered(event: RelayEventMap['oauth-client-registered']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT, {
+			user_id: event.userId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			method: event.method,
+			success: event.success,
+			cimd_enabled: event.cimdEnabled,
+			server_supports_cimd: event.serverSupportsCimd,
+			server_supports_dcr: event.serverSupportsDcr,
+		});
+	}
+
 	private privateCredentialCreated({
 		user,
 		credentialId,
@@ -1725,7 +1739,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
-		includeArchivedWorkflows,
+		includeArchived,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1737,7 +1751,8 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
-			include_archived_workflows: includeArchivedWorkflows,
+			// The property keeps its first name. It now also covers archived agents.
+			include_archived_workflows: includeArchived,
 		});
 	}
 
@@ -3174,6 +3189,30 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			review_type: reviewType,
 			review_age_ms: reviewAgeMs,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionReviewClosed({
+		user,
+		reviewId,
+		environmentId,
+		reviewType,
+		reviewAgeMs,
+		hostStatus,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-review-closed']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW, {
+			user_id: user.id,
+			promotion_review_id: reviewId,
+			environment_id: environmentId,
+			review_type: reviewType,
+			review_age_ms: reviewAgeMs,
+			host_status: hostStatus,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,

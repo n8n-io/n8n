@@ -3,9 +3,17 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
-import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import {
+	DEFAULT_BRIDGE_CONFIG,
+	HostCallError,
+	MemoryLimitError,
+	RuntimeRestartingError,
+	TimeoutError,
+} from '../types';
 import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import { readToAsciiCharmapJson } from '../extensions/to-ascii';
+import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
 import { isArrayIndexKey } from '../runtime/utils';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
@@ -526,13 +534,16 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private broken = false;
 
+	/** The name of the host error that broke the runtime. A nested call keeps the first one. */
+	private hostErrorName = 'Error';
+
 	/** The bundle that the runtime loaded. A rebuild loads it again. */
 	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
-	// Long-lived host-callback handles (Intl polyfills) — disposed on dispose()
-	private intlHandles: Array<import('quickjs-emscripten-core').QuickJSHandle> = [];
+	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
+	private hostFunctionHandles: Array<import('quickjs-emscripten-core').QuickJSHandle> = [];
 
 	// Memoized host Intl formatters keyed by ctor + locales + options.
 	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
@@ -626,6 +637,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Inject Intl polyfill — QuickJS doesn't include Intl, but Luxon needs it
 		this.injectIntlPolyfill();
 
+		// The runtime bundle takes this function off the global object when it loads.
+		this.injectToAsciiCharmap();
+
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
 		this.loadRuntimeBundle(runtimeBundle);
 		this.runtimeBundle = runtimeBundle;
@@ -666,6 +680,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.logger.info('[QuickJsBridge] Vendor libraries verified successfully');
 	}
 
+	/** Gives the guest the host function that returns the character map of `toAscii`. */
+	private injectToAsciiCharmap(): void {
+		if (!this.vm) throw new Error('Context not initialized');
+
+		const charmapFn = this.vm.newFunction(TO_ASCII_CHARMAP_HOST_FUNCTION, () =>
+			this.hostValueToQuickJSHandle(readToAsciiCharmapJson()),
+		);
+		this.vm.setProp(this.vm.global, TO_ASCII_CHARMAP_HOST_FUNCTION, charmapFn);
+		this.hostFunctionHandles.push(charmapFn);
+	}
+
 	/**
 	 * Inject a polyfill for the Intl API.
 	 *
@@ -700,7 +725,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 		});
 		vm.setProp(vm.global, '__intl', intlFn);
-		this.intlHandles.push(intlFn);
+		this.hostFunctionHandles.push(intlFn);
 
 		const shimCode = `
 (function() {
@@ -1380,6 +1405,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
+				if (!this.broken) {
+					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+				}
 				this.broken = true;
 				throw error;
 			}
@@ -1434,7 +1462,12 @@ export class QuickJsBridge implements RuntimeBridge {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			// A host error, for example a WASM trap, can name memory without the
 			// guest reaching its memory limit.
-			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			if (this.broken) {
+				throw new HostCallError(
+					`Expression evaluation failed: ${errorMessage}`,
+					this.hostErrorName,
+				);
+			}
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1503,7 +1536,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			loadQuickJSWasm().catch((error: unknown) => {
 				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
 			});
-			throw new Error(
+			throw new RuntimeRestartingError(
 				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
 			);
 		}
@@ -1527,13 +1560,13 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private discardFailedRuntime(): void {
 		try {
-			for (const handle of this.intlHandles) handle.dispose();
+			for (const handle of this.hostFunctionHandles) handle.dispose();
 			this.vm?.dispose();
 			this.runtime?.dispose();
 		} catch {
 			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
 		} finally {
-			this.intlHandles = [];
+			this.hostFunctionHandles = [];
 			this.vm = undefined;
 			this.runtime = undefined;
 			this.wasm = undefined;
@@ -1550,7 +1583,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.wasm = undefined;
 		this.vm = undefined;
 		this.runtime = undefined;
-		this.intlHandles = [];
+		this.hostFunctionHandles = [];
 		this.initialized = false;
 		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
@@ -1586,10 +1619,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (this.disposed) return;
 		if (this.broken && this.vm) this.abandonRuntime();
 
-		for (const handle of this.intlHandles) {
+		for (const handle of this.hostFunctionHandles) {
 			handle.dispose();
 		}
-		this.intlHandles = [];
+		this.hostFunctionHandles = [];
 
 		if (this.vm) {
 			this.vm.dispose();
