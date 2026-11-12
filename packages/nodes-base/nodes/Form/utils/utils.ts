@@ -28,9 +28,9 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
-	UnexpectedError,
 	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 

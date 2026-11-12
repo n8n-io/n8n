@@ -29,6 +29,7 @@ const SERVICE_IMAGES = {
 	ngrok: ['ngrok'],
 	npmRegistry: ['verdaccio'],
 	enginePostgres: ['postgres'],
+	engineTaskRunner: ['taskRunner'],
 	postgres: ['postgres'],
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],

@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { ref, nextTick, watchEffect } from 'vue';
 import type {
 	InstanceAiMessage,
@@ -63,7 +64,7 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(() => messages.value, {
+	} = useResourceRegistry(() => toArtifactTurns(messages.value), {
 		workflowNameLookup,
 		agentBuilderTarget,
 		pendingAgentTarget,
@@ -562,132 +563,6 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
-	describe('producedArtifacts — targetResource registration', () => {
-		test('registers a builder sub-agent targetResource as a produced workflow', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-1',
-								role: 'workflow-builder',
-								kind: 'builder',
-								status: 'active',
-								targetResource: { type: 'workflow', id: 'wf-edit', name: 'Existing WF' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('wf-edit')).toEqual(
-				expect.objectContaining({ type: 'workflow', id: 'wf-edit', name: 'Existing WF' }),
-			);
-		});
-
-		test('ignores targetResource without an id (create flow)', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-1',
-								role: 'workflow-builder',
-								kind: 'builder',
-								status: 'active',
-								targetResource: { type: 'workflow' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.size).toBe(0);
-		});
-
-		test('ignores credential targetResource (not surfaced in the artifacts panel)', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-cred-1',
-								role: 'credential-setup',
-								kind: 'builder',
-								status: 'active',
-								targetResource: { type: 'credential', id: 'cred-1' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.size).toBe(0);
-		});
-
-		test('falls back to Untitled when targetResource has no name', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-1',
-								role: 'workflow-builder',
-								kind: 'builder',
-								status: 'active',
-								targetResource: { type: 'workflow', id: 'wf-edit' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('wf-edit')?.name).toBe('Untitled');
-		});
-
-		test('later build-workflow result overwrites the placeholder name', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-1',
-								role: 'workflow-builder',
-								kind: 'builder',
-								status: 'completed',
-								targetResource: { type: 'workflow', id: 'wf-edit' },
-								toolCalls: [
-									makeToolCall({
-										toolName: 'submit-workflow',
-										result: { workflowId: 'wf-edit', workflowName: 'Renamed' },
-									}),
-								],
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.size).toBe(1);
-			expect(producedArtifacts.get('wf-edit')?.name).toBe('Renamed');
-		});
-	});
-
 	describe('producedArtifacts — updates and merges', () => {
 		test('second write to the same workflow id updates the existing entry', async () => {
 			const { messages, producedArtifacts } = setup();
@@ -786,56 +661,6 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — agent registration', () => {
-		test('registers an agent from a targetResource on the agent tree', async () => {
-			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						targetResource: {
-							type: 'agent',
-							id: 'agent-1',
-							name: 'SEO Auditor',
-							projectId: 'project-1',
-						},
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('agent-1')).toEqual({
-				type: 'agent',
-				id: 'agent-1',
-				name: 'SEO Auditor',
-				projectId: 'project-1',
-			});
-			expect(resourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
-			expect(linkableResourceNameIndex.get('seo auditor')?.id).toBe('agent-1');
-		});
-
-		test('hydrates projectId from the persisted agent-builder target', async () => {
-			const { messages, producedArtifacts } = setup(undefined, () => ({
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			}));
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						targetResource: { type: 'agent', id: 'agent-1', name: 'Legacy Agent' },
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('agent-1')).toEqual({
-				type: 'agent',
-				id: 'agent-1',
-				name: 'Legacy Agent',
-				projectId: 'project-1',
-			});
-		});
-
 		test('registers an agent with agentName from a build-agent tool result', async () => {
 			const { messages, producedArtifacts, resourceNameIndex } = setup();
 
@@ -971,109 +796,6 @@ describe('useResourceRegistry', () => {
 			await nextTick();
 
 			expect(producedArtifacts.has('agent-1')).toBe(false);
-		});
-
-		test('registers an Agent at spawn while the builder is creating it', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder:agent-1',
-								activity: 'creating',
-								status: 'active',
-								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolName: 'agent_builder_build_agent',
-								isLoading: true,
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('agent-1')).toMatchObject({
-				type: 'agent',
-				id: 'agent-1',
-				name: 'Support Bot',
-			});
-		});
-
-		test('registers an Agent at spawn while the builder is editing it', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder:agent-1',
-								activity: 'editing',
-								status: 'active',
-								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolName: 'agent_builder_build_agent',
-								isLoading: true,
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.get('agent-1')).toMatchObject({
-				type: 'agent',
-				id: 'agent-1',
-				name: 'Support Bot',
-			});
-		});
-
-		test('keeps a spawn-registered Agent when the build settles with no change', async () => {
-			const { messages, producedArtifacts } = setup();
-
-			messages.value = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder:agent-1',
-								activity: 'creating',
-								status: 'active',
-								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolName: 'agent_builder_build_agent',
-								isLoading: true,
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(producedArtifacts.has('agent-1')).toBe(true);
-
-			const buildAgentCall = messages.value[0].agentTree!.toolCalls[0];
-			buildAgentCall.isLoading = false;
-			buildAgentCall.result = { ok: true, agentId: 'agent-1', agentChange: 'none' };
-			await nextTick();
-
-			expect(producedArtifacts.get('agent-1')).toMatchObject({
-				type: 'agent',
-				id: 'agent-1',
-				name: 'Support Bot',
-			});
 		});
 
 		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
@@ -1860,7 +1582,7 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+			const { producedArtifacts } = useResourceRegistry(() => toArtifactTurns(messages.value), {
 				archivedWorkflowIds: () => archived.value,
 			});
 			messages.value = [

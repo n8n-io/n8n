@@ -146,11 +146,11 @@ const executionLimit = {
 		trigger: true,
 		webhook: true,
 		evaluation: true,
-		internal: true,
 		agent: true,
 
 		integrated: false,
 		error: false,
+		internal: false,
 		manual: false,
 		chat: false,
 	},

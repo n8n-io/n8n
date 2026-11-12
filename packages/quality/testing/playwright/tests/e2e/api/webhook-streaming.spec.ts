@@ -5,7 +5,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'Streaming Webhook Responses',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('returns ordered text and JSON chunks and closes the stream @engine:v2', async ({

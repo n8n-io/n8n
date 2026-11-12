@@ -25,6 +25,7 @@ type AgentPackageKeyHandling = {
 	// REST API only for now.
 	tags: 'exclude';
 	availableInMCP: 'copy';
+	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
 	scope: 'exclude';
@@ -71,7 +72,7 @@ function withoutChannelCredentials(integrations: Agent['integrations']): Agent['
 @Service()
 export class AgentSerializer {
 	serialize(
-		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP'>,
+		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP' | 'isArchived'>,
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
@@ -91,6 +92,7 @@ export class AgentSerializer {
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
+				...(agent.isArchived ? { isArchived: true } : {}),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

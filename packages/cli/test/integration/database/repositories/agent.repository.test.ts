@@ -680,6 +680,22 @@ describe('AgentRepository', () => {
 			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
 		});
 
+		it('rejects a draft loaded before the agent was archived unless archived updates are allowed', async () => {
+			const stale = await createAgent();
+			expect(await agentRepo.setArchived(stale.id, true)).toBe(true);
+			stale.name = 'Stale Edit';
+
+			expect(await agentRepo.saveDraftFenced(stale)).toBe(false);
+			expect((await agentRepo.findById(stale.id))?.name).not.toBe('Stale Edit');
+
+			const allowed = await agentRepo.saveDraftFenced(stale, {}, {}, { allowArchivedUpdate: true });
+			expect(allowed).toBe(true);
+			expect(await agentRepo.findById(stale.id)).toMatchObject({
+				name: 'Stale Edit',
+				isArchived: true,
+			});
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
@@ -781,6 +797,19 @@ describe('AgentRepository', () => {
 				activeVersionId: null,
 				publicationRevision: 1,
 			});
+		});
+
+		it('changes the archive state only when the agent has the opposite state', async () => {
+			const agent = await createAgent();
+
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				isArchived: true,
+				publicationRevision: 1,
+			});
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(false);
 		});
 	});
 
@@ -884,6 +913,23 @@ describe('AgentRepository', () => {
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.integrations).toEqual([]);
 			expect(reloaded?.versionId).toBe('version-9');
+		});
+
+		it('refuses the write when the agent was archived after the read', async () => {
+			const agent = await createAgent({ versionId: 'version-1' });
+			await agentRepo.setArchived(agent.id, true);
+
+			const written = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'slack', credentialId: 'slack-1' }],
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
+				'version-2',
+			);
+
+			expect(written).toBe(false);
+			const reloaded = await agentRepo.findById(agent.id);
+			expect(reloaded?.integrations).toEqual([]);
+			expect(reloaded?.versionId).toBe('version-1');
 		});
 
 		it('rejects an integration delta after a draft save with the same version ID', async () => {

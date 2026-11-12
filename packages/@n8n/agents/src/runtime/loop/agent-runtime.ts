@@ -1088,6 +1088,8 @@ export class AgentRuntime {
 			return { suspended: false };
 		}
 		this.assertNotAborted(ctx.abortScope);
+		// Before the response joins the list, so the measurement matches the request.
+		await this.memory.recordModelCallUsage(ctx.list, turn.usage);
 		for (const message of ctx.list.inputDelta()) ctx.acceptedInputIds.add(message.id);
 
 		state.lastFinishReason = turn.finishReason;

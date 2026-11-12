@@ -160,10 +160,13 @@ describe('AgentRepository', () => {
 				'agent.updatedAt',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
+				isArchived: false,
+			});
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
-			expect(mockQb.andWhere).toHaveBeenCalledTimes(1);
+			expect(mockQb.andWhere).toHaveBeenCalledTimes(2);
 			expect(mockQb.take).not.toHaveBeenCalled();
 		});
 
@@ -174,7 +177,10 @@ describe('AgentRepository', () => {
 			await repository.findSummariesByProjectIds(null);
 
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
-			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
 		});
 
 		it('pushes all filters and the limit into the query', async () => {
@@ -465,6 +471,29 @@ describe('AgentRepository', () => {
 				agentId: 'agent-1',
 			});
 			expect(entityManager.insert).not.toHaveBeenCalled();
+	describe('findN8nChatListPaginated', () => {
+		it('excludes archived agents when the filter requests them', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findN8nChatListPaginated(null, ['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true, includeArchived: true },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
+				isArchived: false,
+			});
 		});
 	});
 
@@ -523,15 +552,31 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findMcpAvailabilityCandidates', () => {
-		it('filters only on the project scope when all agents are requested', async () => {
+		it('filters on the project scope and the archive state when all agents are requested', async () => {
 			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			await repository.findMcpAvailabilityCandidates({ all: true });
 
 			expect(find).toHaveBeenCalledWith({
 				select: ['id', 'projectId', 'availableInMCP'],
-				where: { scope: 'project' },
+				where: { scope: 'project', isArchived: false },
 			});
+		});
+	});
+
+	describe('setAvailableInMCP', () => {
+		it('updates only agents that are not archived and returns the affected count', async () => {
+			const update = vi
+				.spyOn(repository, 'update')
+				.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			const result = await repository.setAvailableInMCP(['a1', 'a2'], true);
+
+			expect(update).toHaveBeenCalledWith(
+				{ id: In(['a1', 'a2']), scope: 'project', isArchived: false },
+				expect.objectContaining({ availableInMCP: true }),
+			);
+			expect(result).toBe(1);
 		});
 	});
 
