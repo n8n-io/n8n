@@ -578,6 +578,16 @@ describe('HttpRequestV3', () => {
 							return genericCredentialType;
 						case 'options':
 							return options;
+						case 'sendQuery':
+							return genericCredentialType === 'httpMultipleHeadersAuth';
+						case 'specifyQuery':
+							return 'keypair';
+						case 'queryParameters.parameters':
+							return [
+								{ name: 'First', value: 'first-test-value' },
+								{ name: 'Second', value: 'prefix-second-test-value' },
+								{ name: 'Keep', value: 'visible' },
+							];
 						default:
 							return undefined;
 					}
@@ -610,10 +620,18 @@ describe('HttpRequestV3', () => {
 							headers: expect.objectContaining(
 								Object.fromEntries(Object.keys(authValue).map((name) => [name, '**hidden**'])),
 							),
+							qs: { First: '**hidden**', Second: 'prefix-**hidden**', Keep: 'visible' },
 						}),
 					);
 					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
-						expect.objectContaining({ allowedDomains: 'example.com' }),
+						expect.objectContaining({
+							allowedDomains: 'example.com',
+							qs: {
+								First: 'first-test-value',
+								Second: 'prefix-second-test-value',
+								Keep: 'visible',
+							},
+						}),
 					);
 				}
 			},

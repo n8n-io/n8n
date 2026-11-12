@@ -6,6 +6,7 @@ import set from 'lodash/set';
 import {
 	deepCopy,
 	getCredentialAllowedDomains,
+	getMcpAuthHeaders,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INode,
@@ -168,9 +169,10 @@ export function sanitizeUiMessage(
 }
 
 export function getSecrets(credentials: ICredentialDataDecryptedObject): string[] {
-	const secrets = Object.values(credentials).filter(
-		(value): value is string => typeof value === 'string' && value.length > 0,
-	);
+	const secrets = [
+		...Object.values(credentials),
+		...Object.values(getMcpAuthHeaders('multipleHeadersAuth', credentials)),
+	].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
 	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
 	if (typeof oauthAccessToken === 'string' && !secrets.includes(oauthAccessToken)) {

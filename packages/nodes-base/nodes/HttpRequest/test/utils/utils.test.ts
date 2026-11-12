@@ -476,6 +476,49 @@ describe('HTTP Node Utils', () => {
 			expect(secrets).toContain('user123');
 		});
 
+		it('should include nested header values without header names', () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'top-level-value',
+				headers: {
+					values: [
+						{ name: 'X-Service-Token', value: 'first-test-value' },
+						{ name: 'X-Account-Key', value: 'second-test-value' },
+					],
+				},
+			};
+
+			expect(getSecrets(credentials)).toEqual([
+				'top-level-value',
+				'first-test-value',
+				'second-test-value',
+			]);
+		});
+
+		it('should skip empty and non-string header values', () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				headers: {
+					values: [
+						null,
+						'not-a-header',
+						{},
+						{ name: 'X-Empty', value: '' },
+						{ name: 'X-Number', value: 123 },
+						{ name: 'X-Boolean', value: false },
+						{ name: 'X-Valid', value: 'valid-test-value' },
+					],
+				},
+			};
+
+			expect(getSecrets(credentials)).toEqual(['valid-test-value']);
+		});
+
+		it.each([null, {}, { values: 'not-an-array' }])(
+			'should skip a header collection without an array: %j',
+			(headers) => {
+				expect(getSecrets({ headers })).toEqual([]);
+			},
+		);
+
 		it('should not include non-string values', () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 12345,
