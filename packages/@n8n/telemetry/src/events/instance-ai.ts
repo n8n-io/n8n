@@ -929,8 +929,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING: {
 		name: 'User left n8n while AI Assistant was running',
 		description:
-			'The browser tab with n8n became hidden while the Assistant was still running. This happens when the user switches to another browser tab or app, or closes the tab.',
-		properties: z.object({ thread_id: z.string() }),
+			'The browser tab with n8n became hidden while the Assistant was still running. This happens when the user switches to another browser tab or app, or closes the tab. The backend emits this event, because the browser cannot reliably send events while a tab closes.',
+		properties: z.object({ thread_id: z.string(), user_id: z.string() }),
 	},
 	USER_RETURNED_TO_N8N_WHILE_AI_ASSISTANT_RUNNING: {
 		name: 'User returned to n8n after leaving while AI Assistant was running',

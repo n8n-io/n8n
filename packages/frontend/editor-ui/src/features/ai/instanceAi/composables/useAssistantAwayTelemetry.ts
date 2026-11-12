@@ -1,7 +1,10 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+
+import { postLeftN8nWhileRunning } from '../instanceAi.api';
 
 const { INSTANCE_AI } = TELEMETRY_EVENT;
 
@@ -12,7 +15,9 @@ const leftThreadAt = new Map<string, number>();
  * Tracks the user leaving and returning while the Assistant runs: first the
  * thread (another thread or page), then the browser tab (another tab or app,
  * or closing the tab). `visibilitychange` fires before a tab closes, so it
- * covers both tab cases.
+ * covers both tab cases. The telemetry SDK loses requests that start while a
+ * tab closes, so the backend emits "left n8n" and this sends it a keepalive
+ * request instead.
  */
 export function useAssistantAwayTelemetry(options: {
 	threadId: () => string;
@@ -20,6 +25,7 @@ export function useAssistantAwayTelemetry(options: {
 }) {
 	const telemetry = useTelemetry();
 	const router = useRouter();
+	const rootStore = useRootStore();
 	let tabHiddenAt: number | undefined;
 
 	onMounted(() => {
@@ -51,9 +57,7 @@ export function useAssistantAwayTelemetry(options: {
 		if (document.hidden) {
 			if (!options.isRunning()) return;
 			tabHiddenAt = Date.now();
-			telemetry.track(INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING, {
-				thread_id: options.threadId(),
-			});
+			postLeftN8nWhileRunning(rootStore.restApiContext, options.threadId());
 			return;
 		}
 		if (tabHiddenAt === undefined) return;

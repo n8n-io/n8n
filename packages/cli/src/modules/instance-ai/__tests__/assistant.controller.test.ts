@@ -3,6 +3,7 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -15,6 +16,7 @@ import type { InstanceAiErrorReporterService } from '../instance-ai-error-report
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import type { Telemetry } from '@/telemetry';
 
 type ControllerClass = Parameters<ControllerRegistryMetadata['getControllerMetadata']>[0];
 
@@ -26,6 +28,7 @@ describe('AssistantController', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const publisher = mock<Publisher>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
+	const telemetry = mock<Telemetry>();
 
 	const controller = new AssistantController(
 		settingsService,
@@ -35,6 +38,7 @@ describe('AssistantController', () => {
 		moduleRegistry,
 		publisher,
 		instanceAiErrorReporter,
+		telemetry,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
@@ -48,6 +52,32 @@ describe('AssistantController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+	});
+
+	describe('trackLeftN8nWhileRunning', () => {
+		it('tracks that the user left n8n, with their id and the thread', () => {
+			controller.trackLeftN8nWhileRunning(req, res, { threadId: 'thread-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING,
+				{ thread_id: 'thread-1', user_id: 'user-1' },
+			);
+		});
+
+		it('requires the Assistant message scope', () => {
+			expect(scopeOf('trackLeftN8nWhileRunning')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('is served as a POST under /assistant/telemetry/left-n8n', () => {
+			const route = registry.getRouteMetadata(
+				AssistantController as unknown as ControllerClass,
+				'trackLeftN8nWhileRunning',
+			);
+			expect(route).toMatchObject({ method: 'post', path: '/telemetry/left-n8n' });
+		});
 	});
 
 	it('serves the routes under /assistant', () => {

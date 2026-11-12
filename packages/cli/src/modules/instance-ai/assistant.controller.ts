@@ -1,5 +1,6 @@
 import {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiLeftN8nRequestDto,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
@@ -10,6 +11,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Body, Get, GlobalScope, OnPubSubEvent, Post, Put, RestController } from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Response } from 'express';
 
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -18,6 +20,7 @@ import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.servi
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
+import { Telemetry } from '@/telemetry';
 
 import { Publisher } from '@n8n/backend-services';
 
@@ -37,7 +40,28 @@ export class AssistantController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly telemetry: Telemetry,
 	) {}
+
+	// ── Telemetry ────────────────────────────────────────────────────────────
+
+	/**
+	 * The editor calls this with `fetch` and `keepalive` when the tab becomes
+	 * hidden. A request that the telemetry SDK starts while the tab closes does
+	 * not survive it, so the backend emits this event instead.
+	 */
+	@Post('/telemetry/left-n8n', { ipRateLimit: { limit: 60, windowMs: 60_000 } })
+	@GlobalScope('instanceAi:message')
+	trackLeftN8nWhileRunning(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiLeftN8nRequestDto,
+	) {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING, {
+			thread_id: payload.threadId,
+			user_id: req.user.id,
+		});
+	}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
 

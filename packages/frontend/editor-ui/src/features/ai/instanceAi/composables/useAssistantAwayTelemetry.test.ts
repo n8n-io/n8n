@@ -2,10 +2,16 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { render } from '@testing-library/vue';
 import { defineComponent, h, ref } from 'vue';
 
+import { postLeftN8nWhileRunning } from '../instanceAi.api';
 import { useAssistantAwayTelemetry } from './useAssistantAwayTelemetry';
 
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
+
+vi.mock('../instanceAi.api', () => ({ postLeftN8nWhileRunning: vi.fn() }));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
+}));
 
 const routeParams = ref<{ threadId?: string }>({});
 vi.mock('vue-router', () => ({
@@ -40,6 +46,7 @@ function setTabHidden(hidden: boolean) {
 describe('useAssistantAwayTelemetry', () => {
 	beforeEach(() => {
 		track.mockClear();
+		vi.mocked(postLeftN8nWhileRunning).mockClear();
 		vi.useFakeTimers();
 		setTabHidden(false);
 		track.mockClear();
@@ -105,15 +112,16 @@ describe('useAssistantAwayTelemetry', () => {
 			mountHarness('t-tab', { value: true });
 			setTabHidden(true);
 
-			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING, {
-				thread_id: 't-tab',
-			});
+			expect(postLeftN8nWhileRunning).toHaveBeenCalledWith({ baseUrl: '/rest' }, 't-tab');
+			// The backend emits this event, so the SDK must not send it a second time.
+			expect(track).not.toHaveBeenCalled();
 		});
 
 		it('does not track hiding the tab when the Assistant is idle', () => {
 			mountHarness('t-tab-idle', { value: false });
 			setTabHidden(true);
 
+			expect(postLeftN8nWhileRunning).not.toHaveBeenCalled();
 			expect(track).not.toHaveBeenCalled();
 		});
 
@@ -136,6 +144,7 @@ describe('useAssistantAwayTelemetry', () => {
 			setTabHidden(true);
 			setTabHidden(false);
 
+			expect(postLeftN8nWhileRunning).not.toHaveBeenCalled();
 			expect(track).not.toHaveBeenCalled();
 		});
 
@@ -146,7 +155,7 @@ describe('useAssistantAwayTelemetry', () => {
 			track.mockClear();
 			setTabHidden(true);
 
-			expect(track).not.toHaveBeenCalled();
+			expect(postLeftN8nWhileRunning).not.toHaveBeenCalled();
 		});
 	});
 });
