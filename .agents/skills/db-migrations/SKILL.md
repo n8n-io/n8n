@@ -555,6 +555,26 @@ Schema, entity, and OpenAPI types must agree. Caught regularly:
 - `@Index` mirrors don't exist on the entity.
 - `up` and entity disagree on defaults or constraints.
 
+CI checks most of this. `packages/cli/test/migration/entity-schema-parity.test.ts` runs all migrations on SQLite and Postgres. Then it compares each entity with the real schema:
+
+- Each entity table and column exists.
+- The type family agrees (string, number, uuid, json, datetime, bool, binary).
+- Nullability agrees.
+- Each entity foreign key and `@Index` exists. On SQLite, the index column order must also agree.
+- No database column is `NOT NULL` without a default and missing from the entity.
+
+The test does not compare defaults or `CHECK` constraints. Make sure they agree yourself.
+
+Known mismatches are in `packages/@n8n/db/src/migrations/entity-schema-parity.baseline.json`. Do not add new entries to this file. Fix the migration or the entity. When you fix a known mismatch, remove its entry. The test fails until you do. To regenerate the file, run the test with `UPDATE_PARITY_BASELINE=true`, once for each database:
+
+```bash
+cd packages/cli
+UPDATE_PARITY_BASELINE=true pnpm test:sqlite:migrations test/migration/entity-schema-parity.test.ts
+UPDATE_PARITY_BASELINE=true pnpm test:postgres:migrations:tc test/migration/entity-schema-parity.test.ts
+```
+
+The test loads migrations and module entities from `dist`. Build `@n8n/db` and `n8n` before you run it locally.
+
 When a new column is required for data integrity (e.g. `activeVersionId` should be set whenever `active` is TRUE), enforce it via a CHECK constraint in the migration **and** a runtime invariant in app code.
 
 ### Deprecate columns, then drop in a follow-up
