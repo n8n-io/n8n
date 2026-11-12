@@ -33,14 +33,9 @@ export function buildNodeGenAiAttributes(
 	const attributes = pickGenAiAttributes(tracing);
 	if (attributes[GEN_AI_ATTR.OPERATION_NAME]) return attributes;
 
-	if (isConnectedAsTool(node.name, connections)) {
-		return {
-			[GEN_AI_ATTR.OPERATION_NAME]: 'execute_tool',
-			[GEN_AI_ATTR.TOOL_NAME]: node.name,
-		};
-	}
-
-	return undefined;
+	return isConnectedAsTool(node.name, connections)
+		? { [GEN_AI_ATTR.OPERATION_NAME]: 'execute_tool', [GEN_AI_ATTR.TOOL_NAME]: node.name }
+		: undefined;
 }
 
 function isConnectedAsTool(nodeName: string, connections: IConnections): boolean {
