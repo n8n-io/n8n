@@ -12,6 +12,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
@@ -174,7 +175,9 @@ export class LmChatCohere implements INodeType {
 		const model = new ChatCohere({
 			// Route chat requests through the `/v2/chat` endpoint; current Cohere
 			// models reject the legacy `/v1/chat` endpoint ChatCohere uses by default.
-			client: createCohereV2ChatClient({ apiKey: credentials.apiKey }),
+			client: createCohereV2ChatClient({
+				apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
+			}),
 			model: modelName,
 			temperature: options.temperature,
 			maxRetries: options.maxRetries ?? 2,

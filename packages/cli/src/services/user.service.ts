@@ -1,9 +1,16 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	JwtService,
+	PostHogClient,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
 import {
+	isPerson,
 	TransactionRunner,
 	Project,
 	ProjectRelation,
@@ -47,7 +54,6 @@ import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled, isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -118,16 +124,15 @@ export class UserService {
 		}
 	}
 
+	/** Both kinds of account have settings. Returns the merged settings. */
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
+		const account = await this.userRepository.findOneBy({ id: userId });
+		if (!account) throw new NotFoundError('User not found');
 
-		if (user.settings) {
-			Object.assign(user.settings, newSettings);
-		} else {
-			user.settings = newSettings;
-		}
+		account.settings = { ...account.settings, ...newSettings };
+		await this.userRepository.save(account);
 
-		await this.userRepository.save(user);
+		return account.settings;
 	}
 
 	async findUserWithAuthIdentities(userId: string): Promise<Person> {
@@ -158,15 +163,9 @@ export class UserService {
 			mfaAuthenticated?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
-			user;
-
-		const providerType = authIdentities?.[0]?.providerType;
-
 		let publicUser: PublicUser = {
-			...rest,
-			role: role?.slug,
-			signInType: providerType ?? 'email',
+			...this.publicFields(user),
+			role: user.role?.slug,
 			isOwner: user.role.slug === 'global:owner',
 		};
 
@@ -184,6 +183,7 @@ export class UserService {
 		const { instanceSettingsLoader } = this.globalConfig;
 		if (
 			instanceSettingsLoader.ownerManagedByEnv &&
+			isPerson(user) &&
 			!!user.email &&
 			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
 		) {
@@ -191,6 +191,23 @@ export class UserService {
 		}
 
 		return publicUser;
+	}
+
+	/** The fields of the account without its secrets. */
+	private publicFields(user: User): Omit<PublicUser, 'role' | 'isOwner'> {
+		if (isPerson(user)) {
+			const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
+				user;
+			return { ...rest, signInType: authIdentities?.[0]?.providerType ?? 'email' };
+		}
+
+		return this.serviceAccountFields(user);
+	}
+
+	/** A service account has no person columns and never waits for an invite. */
+	private serviceAccountFields(user: User): Omit<PublicUser, 'role' | 'isOwner'> {
+		const { id, createdAt, disabled, settings } = user;
+		return { id, createdAt, disabled, settings, isPending: false, signInType: 'email' };
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -302,7 +319,7 @@ export class UserService {
 	async inviteUsers(owner: User, invitations: Invitation[]) {
 		const emails = invitations.map(({ email }) => email);
 
-		const existingUsers = await this.userRepository.findManyByEmail(emails);
+		const existingUsers = await this.personRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
@@ -329,7 +346,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const { user: savedUser } = await this.userRepository.createUserWithProject(
+							const { user: savedUser } = await this.personRepository.createPersonWithProject(
 								{
 									email,
 									role: {
@@ -515,7 +532,7 @@ export class UserService {
 	async getUser(withIdentifier: string): Promise<User | null> {
 		return uuidValidate(withIdentifier)
 			? await this.userRepository.findByIdWithRole(withIdentifier)
-			: await this.userRepository.findByEmailWithRole(withIdentifier);
+			: await this.personRepository.findByEmailWithRole(withIdentifier);
 	}
 
 	async getUsersAndCount(options: {
@@ -710,7 +727,7 @@ export class UserService {
 			user: actorUser,
 			...(systemActor && { source: systemActor.reason }),
 			publicApi: false,
-			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
+			targetUserOldStatus: isPerson(userToDelete) && userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,

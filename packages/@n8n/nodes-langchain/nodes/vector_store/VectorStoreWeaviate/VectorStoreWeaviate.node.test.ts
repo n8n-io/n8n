@@ -1,6 +1,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { UserError, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import weaviate from 'weaviate-client';

@@ -43,10 +43,10 @@
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-core": "workspace:*",
-    "n8n-workflow": "workspace:*",
     "uuid": "catalog:"
   },
   "devDependencies": {

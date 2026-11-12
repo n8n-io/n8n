@@ -143,6 +143,21 @@ describe('AgentsController create', () => {
 		});
 	});
 
+	it('passes the requested tag ids to the creation options', async () => {
+		const { controller, agentsService } = makeCreateController('tagged-agent');
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Support Agent',
+			tags: ['tag-1', 'tag-2'],
+		} as never);
+
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
+			'project-1',
+			'Support Agent',
+			expect.objectContaining({ tagIds: ['tag-1', 'tag-2'] }),
+		);
+	});
+
 	it('passes initial configuration and returns the committed autosave baseline', async () => {
 		const { controller, agentsService, agentDefaultModelResolverService } =
 			makeCreateController('new-agent');

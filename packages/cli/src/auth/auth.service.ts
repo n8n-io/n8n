@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { AuthenticatedRequest, Person, User } from '@n8n/db';
+import type { AuthenticatedRequest, Person } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -310,21 +310,21 @@ export class AuthService {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	issueCookie(
 		res: Response,
-		user: User,
+		person: Person,
 		usedMfa: boolean,
 		browserId?: string,
 		isEmbed?: boolean,
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
 	) {
-		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
-		this.eventService.emit('experiment-user-first-login', { userId: user.id, at: Date.now() });
+		this.setAuthCookie(res, person, usedMfa, browserId, isEmbed, cookieOverrides);
+		this.eventService.emit('experiment-user-first-login', { userId: person.id, at: Date.now() });
 	}
 	// EOF Experiment cleanup
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): rename setAuthCookie to public issueCookie; keep the method body.
 	private setAuthCookie(
 		res: Response,
-		user: User,
+		person: Person,
 		usedMfa: boolean,
 		browserId?: string,
 		isEmbed?: boolean,
@@ -334,11 +334,11 @@ export class AuthService {
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
+		if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
+		const token = this.issueJWT(person, usedMfa, browserId, isEmbed);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
@@ -348,10 +348,10 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
+	issueJWT(person: Person, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
-			id: user.id,
-			hash: this.createJWTHash(user),
+			id: person.id,
+			hash: this.createJWTHash(person),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
 			...(isEmbed && { isEmbed }),
@@ -585,7 +585,7 @@ export class AuthService {
 		return person;
 	}
 
-	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
+	createJWTHash({ email, password, mfaEnabled, mfaSecret }: Person) {
 		const payload = [email, password];
 		if (mfaEnabled && mfaSecret) {
 			payload.push(mfaSecret);

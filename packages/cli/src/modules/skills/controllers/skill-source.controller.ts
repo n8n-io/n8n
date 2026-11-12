@@ -81,12 +81,18 @@ export class SkillSourceController {
 		return { ok: true };
 	}
 
+	/** The sources that the user can see, each with its counts, for its row in the skills table. */
+	@Get('/')
+	async list(req: AuthenticatedRequest) {
+		return await this.skillSourceService.list(req.user);
+	}
+
 	/**
-	 * Check now: checks the whole source of a synced skill for updates, as the hourly check
-	 * does. A source checked less than a minute ago is not checked again.
+	 * Check for updates: checks the source, as the hourly check does. A source checked less
+	 * than a minute ago is not checked again.
 	 */
-	@Post('/skills/:skillId/check')
-	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		return await this.skillSyncService.checkNow(req.user, skillId);
+	@Post('/:sourceId/check')
+	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.checkNow(req.user, sourceId);
 	}
 }

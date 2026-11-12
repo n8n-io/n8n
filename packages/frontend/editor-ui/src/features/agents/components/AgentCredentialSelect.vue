@@ -9,6 +9,8 @@ import CredentialsDropdown, {
 export interface AgentCredentialOption {
 	id: string;
 	name: string;
+	/** The credential type, for a channel that accepts more than one. */
+	type?: string;
 	typeDisplayName?: string;
 	homeProject?: DropdownCredentialOption['homeProject'];
 }

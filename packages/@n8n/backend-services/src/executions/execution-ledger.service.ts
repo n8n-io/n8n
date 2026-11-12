@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type {
 	ExecutionLedgerEndedFacts,

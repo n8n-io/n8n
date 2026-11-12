@@ -33,7 +33,7 @@ function makeUser(
 			slug: roleSlug,
 			scopes: scopeSlugs.map((slug) => ({ ...mock(), slug: slug as ScopeType })),
 		},
-	};
+	} as unknown as User;
 }
 
 function makeTokenExchangeJwt(payload: Partial<IssuedJwtPayload> = {}): string {
