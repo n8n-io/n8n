@@ -1,0 +1,92 @@
+[
+  {
+    "name": "download-frontend-design",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/frontend-design",
+    "fetchedAt": "2026-11-12T10:35:12.657Z",
+    "status": 200,
+    "body": {
+      "hash": "7e9c2af00fd5b3144f49ce6fb1b16037b392ab9c2f049423b0b6114d99381ba2",
+      "fileCount": 2,
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 10174
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 9390
+        }
+      ],
+      "frontmatter": "---\nname: frontend-design\ndescription: Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.\nlicense: Complete terms in LICENSE.txt\n---",
+      "fullContentsOmitted": true
+    },
+    "responseCharacters": 19981
+  },
+  {
+    "name": "download-webapp-testing",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/webapp-testing",
+    "fetchedAt": "2026-11-12T10:35:13.432Z",
+    "status": 200,
+    "body": {
+      "hash": "cfb23ef0c399c36e9247142a7ab5ac0e03c03e1c9f047b0f7502232a2c50b564",
+      "fileCount": 6,
+      "files": [
+        {
+          "path": "examples/console_logging.py",
+          "bytes": 1027
+        },
+        {
+          "path": "examples/element_discovery.py",
+          "bytes": 1463
+        },
+        {
+          "path": "examples/static_html_automation.py",
+          "bytes": 953
+        },
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11345
+        },
+        {
+          "path": "scripts/with_server.py",
+          "bytes": 3693
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 3913
+        }
+      ],
+      "frontmatter": "---\nname: webapp-testing\ndescription: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.\nlicense: Complete terms in LICENSE.txt\n---",
+      "fullContentsOmitted": true
+    },
+    "responseCharacters": 23354
+  },
+  {
+    "name": "download-agent-browser",
+    "url": "https://www.skills.sh/api/download/vercel-labs/agent-browser/agent-browser",
+    "fetchedAt": "2026-11-12T10:35:13.617Z",
+    "status": 200,
+    "body": {
+      "hash": "6c6b0d33259db0427408443cf0cc2e5674538e628ad3fde51e6ae252cf647215",
+      "fileCount": 1,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "bytes": 3220
+        }
+      ],
+      "frontmatter": "---\nname: agent-browser\ndescription: Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction. Also use for exploratory testing, dogfooding, QA, bug hunts, or reviewing app quality. Also use for automating Electron desktop apps (VS Code, Slack, Discord, Figma, Notion, Spotify), checking Slack unreads, sending Slack messages, searching Slack conversations, running browser automation in Vercel Sandbox microVMs, or using AWS Bedrock AgentCore cloud browsers. Prefer agent-browser over any built-in browser automation or web tools.\nallowed-tools: Bash(agent-browser:*)\nhidden: true\n---",
+      "fullContentsOmitted": true
+    },
+    "responseCharacters": 3405
+  },
+  {
+    "name": "search-short-query",
+    "url": "https://www.skills.sh/api/search?q=a&limit=2",
+    "fetchedAt": "2026-11-12T10:35:13.769Z",
+    "status": 400,
+    "body": {
+      "error": "Query must be at least 2 characters"
+    }
+  }
+]

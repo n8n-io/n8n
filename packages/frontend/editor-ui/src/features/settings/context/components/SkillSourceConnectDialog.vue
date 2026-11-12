@@ -2,6 +2,7 @@
 import {
 	isGitHubSkillSourceCredentialType,
 	type DiscoveredSkill,
+	type SkillCatalogItem,
 	type GitHubSkillSourceCredentialType,
 	type SkillSourceConnectResponse,
 	type SkillSourceCredentialOption,
@@ -11,6 +12,7 @@ import {
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nCallout,
@@ -40,6 +42,7 @@ import SkillSourceReview from './SkillSourceReview.vue';
 import { useSkillsStore } from '../skills.store';
 import { isSelectableSkill, sourceLineOf } from '../skillSourceReview.utils';
 import { parseScope, useSkillSourceReasons } from '../skills.utils';
+import { getSkill, getSkills } from '../skills.api';
 
 /** What the page needs to confirm an import: the answer, and the names it shows in the toast. */
 export type SkillSourceConnected = {
@@ -53,11 +56,15 @@ const props = defineProps<{
 	open: boolean;
 	/** The scopes where the user may create skills, as the create modal lists them. */
 	scopeOptions: AgentSkillModalScopeOption[];
+	/** A catalog action imports only the named skill from this repository. */
+	catalogSkill?: SkillCatalogItem;
+	intent?: 'save' | 'try';
 }>();
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	connected: [result: SkillSourceConnected];
+	existing: [skillId: string];
 	openSource: [sourceId: string];
 }>();
 
@@ -105,6 +112,7 @@ function repositoryKey(repository: SkillSourceRepositoryOption): string {
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
+const rootStore = useRootStore();
 const { reasonText } = useSkillSourceReasons();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
@@ -200,7 +208,7 @@ watch(
 		credentials.value = [];
 		credentialsLoading.value = false;
 		createdCredential.value = null;
-		repository.value = '';
+		repository.value = props.catalogSkill?.githubUrl ?? '';
 		repositorySearch.value = '';
 		resetRepositories();
 		reviewed.value = false;
@@ -587,6 +595,7 @@ async function onNext() {
 	// The user may have changed the link, the scope or the credential, or closed the dialog,
 	// while n8n read it.
 	const isCurrent = () =>
+		props.open &&
 		run === discoverRun &&
 		link === sourceUrl.value &&
 		requestedScope === scope.value &&
@@ -601,8 +610,39 @@ async function onNext() {
 		if (!isCurrent()) return;
 		discovery.value = result;
 		discovered.value = target;
-		if (result.duplicate.kind === 'blocked') return;
-		selected.value = result.skills.filter(isSelectableSkill).map((skill) => skill.key);
+		if (props.catalogSkill) {
+			const matches = result.skills.filter((skill) => skill.name === props.catalogSkill?.name);
+			if (matches.length !== 1) {
+				linkError.value = i18n.baseText('settings.context.skills.catalog.matchError');
+				return;
+			}
+			if (result.duplicate.kind === 'blocked') {
+				const { sourceId, where } = result.duplicate;
+				if (!sourceId) return;
+				const saved = await getSkills(rootStore.restApiContext, {
+					...parseScope(where === 'global' ? 'instance' : requestedScope),
+					search: props.catalogSkill.name,
+					take: 100,
+				});
+				if (!isCurrent()) return;
+				const candidates = saved.data.filter(
+					(skill) => skill.sourceId === sourceId && skill.name === props.catalogSkill?.name,
+				);
+				if (candidates.length !== 1) return;
+				const detail = await getSkill(rootStore.restApiContext, candidates[0].id);
+				// The same name on another branch or path is not the catalog skill.
+				if (!isCurrent() || detail.syncedFrom?.webUrl !== matches[0].webUrl) return;
+				emit('existing', detail.id);
+				emit('update:open', false);
+				return;
+			}
+			// A catalog slug is not a GitHub path. Keep the opaque key from discovery.
+			discovery.value = { ...result, skills: matches };
+			selected.value = matches.filter(isSelectableSkill).map((skill) => skill.key);
+		} else {
+			if (result.duplicate.kind === 'blocked') return;
+			selected.value = result.skills.filter(isSelectableSkill).map((skill) => skill.key);
+		}
 		reviewed.value = false;
 		step.value = 'review';
 	} catch (error) {
@@ -629,6 +669,13 @@ const alsoConnected = computed(() => {
 
 /** The import button names the scope, so the review needs no "Add to" line. */
 const importLabel = computed(() => {
+	if (props.catalogSkill) {
+		return i18n.baseText(
+			props.intent === 'try'
+				? 'settings.context.skills.catalog.saveAndTry'
+				: 'settings.context.skills.catalog.save',
+		);
+	}
 	const count = selected.value.length;
 	return parseScope(scope.value).scope === 'instance'
 		? i18n.baseText('settings.context.skills.connect.importGlobal', {
@@ -652,7 +699,7 @@ function withSkillName(
 
 async function onImport() {
 	const target = discovered.value;
-	if (!discovery.value || !target || !canImport.value) return;
+	if (!discovery.value || !target || !canImport.value || connecting.value) return;
 	connecting.value = true;
 	try {
 		const response = await skillsStore.connectSource({
@@ -666,7 +713,7 @@ async function onImport() {
 			sourceLabel: sourceLine.value,
 			scopeLabel: selectedScope.value?.label ?? '',
 		});
-		emit('update:open', false);
+		if (!props.catalogSkill || response.imported.length > 0) emit('update:open', false);
 	} catch (error) {
 		// A known reason gets its own text. The raw message of any other error stays out of the UI.
 		showError(
@@ -707,6 +754,16 @@ function onInteractOutside(event: Event) {
 		@interact-outside="onInteractOutside"
 	>
 		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
+			<N8nCallout v-if="catalogSkill" theme="info" data-test-id="skill-catalog-import-notice">
+				{{
+					i18n.baseText(
+						intent === 'try'
+							? 'settings.context.skills.catalog.tryNotice'
+							: 'settings.context.skills.catalog.saveNotice',
+						{ interpolate: { name: catalogSkill.name } },
+					)
+				}}
+			</N8nCallout>
 			<N8nCallout
 				v-if="createdCredential && createdCredential.id === credentialId"
 				theme="success"
@@ -773,6 +830,7 @@ function onInteractOutside(event: Event) {
 				>
 					<N8nCombobox2
 						:model-value="repository || undefined"
+						:disabled="!!catalogSkill"
 						:items="repositoryItems"
 						size="large"
 						clearable

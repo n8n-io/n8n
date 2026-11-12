@@ -3,6 +3,8 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import type {
 	DiscoveredSkill,
+	SkillDetail,
+	SkillListItem,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -11,6 +13,7 @@ import type {
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
+import { mock } from 'vitest-mock-extended';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
@@ -20,6 +23,9 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 
 import SkillSourceConnectDialog from './SkillSourceConnectDialog.vue';
 import { useSkillsStore } from '../skills.store';
+import { getSkill, getSkills } from '../skills.api';
+
+vi.mock('../skills.api', () => ({ getSkill: vi.fn(), getSkills: vi.fn() }));
 
 const showErrorMock = vi.fn();
 const oauth = vi.hoisted(() => ({
@@ -233,6 +239,111 @@ describe('SkillSourceConnectDialog', () => {
 	});
 
 	describe('the connect form', () => {
+		const catalogSkill = {
+			id: 'acme/skills/brand-voice',
+			name: 'brand-voice',
+			slug: 'brand-voice',
+			source: 'acme/skills',
+			installs: 42,
+			githubUrl: 'https://github.com/acme/skills',
+			catalogUrl: 'https://skills.sh/acme/skills/brand-voice',
+		};
+
+		it('prefills a catalog source and imports only its discovered key', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({
+				sourceId: 'source-1',
+				imported: [{ key: 'skills/brand-voice', skillId: 'skill-1', name: 'brand-voice' }],
+				failed: [],
+			});
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, catalogSkill } });
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			expect(view.queryByText('seo-check')).not.toBeInTheDocument();
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			await waitFor(() =>
+				expect(skillsStore.connectSource).toHaveBeenCalledWith({
+					url: catalogSkill.githubUrl,
+					scope: 'instance',
+					skillKeys: ['skills/brand-voice'],
+				}),
+			);
+		});
+
+		it.each(['missing', 'ambiguous'])(
+			'does not select all skills when the catalog match is %s',
+			async (kind) => {
+				skillsStore.discoverSource.mockResolvedValue(
+					discovery({
+						skills:
+							kind === 'missing'
+								? [discovered({ name: 'other' })]
+								: [discovered(), discovered({ key: 'other/brand-voice' })],
+					}),
+				);
+				const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, catalogSkill } });
+				await next(view);
+				await view.findByText(/Couldn't match this listing/);
+				expect(view.queryByTestId('skill-source-review')).not.toBeInTheDocument();
+				expect(skillsStore.connectSource).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([true, false])(
+			'reuses a saved skill only when its source path matches: %s',
+			async (samePath) => {
+				skillsStore.discoverSource.mockResolvedValue(
+					discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: 'source-1' } }),
+				);
+				vi.mocked(getSkills).mockResolvedValue({
+					count: 1,
+					data: [mock<SkillListItem>({ id: 'saved-1', name: 'brand-voice', sourceId: 'source-1' })],
+				});
+				vi.mocked(getSkill).mockResolvedValue(
+					mock<SkillDetail>({
+						id: 'saved-1',
+						syncedFrom: {
+							sourceId: 'source-1',
+							type: 'github',
+							label: 'acme/skills',
+							canStopSyncing: true,
+							webUrl: samePath
+								? discovered().webUrl
+								: 'https://github.com/acme/skills/tree/other/brand-voice',
+						},
+					}),
+				);
+				const view = renderDialog({
+					props: { open: true, scopeOptions: SCOPES, catalogSkill, intent: 'try' },
+				});
+				await next(view);
+				await waitFor(() => expect(getSkill).toHaveBeenCalled());
+				if (samePath) {
+					await waitFor(() => expect(view.emitted('existing')).toEqual([['saved-1']]));
+				} else {
+					expect(view.emitted('existing')).toBeUndefined();
+				}
+				expect(skillsStore.connectSource).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps the review open when the selected skill fails to import', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({
+				sourceId: '',
+				imported: [],
+				failed: [{ key: 'skills/brand-voice', name: 'brand-voice', reason: 'review_required' }],
+			});
+			const view = renderDialog({
+				props: { open: true, scopeOptions: SCOPES, catalogSkill, intent: 'try' },
+			});
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			await waitFor(() => expect(view.emitted('connected')).toHaveLength(1));
+			expect(view.emitted('update:open')).toBeUndefined();
+		});
+
 		it('asks for the scope, the credential and the repository in one modal', async () => {
 			const view = render();
 

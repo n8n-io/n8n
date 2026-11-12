@@ -12,6 +12,7 @@ export class SkillsModule implements ModuleInterface {
 	async init() {
 		await import('./controllers/skills.controller.js');
 		await import('./controllers/skill-source.controller.js');
+		await import('./controllers/skill-catalog.controller.js');
 
 		const { SkillSourceClientRegistry } = await import(
 			'./sources/skill-source-client-registry.service.js'

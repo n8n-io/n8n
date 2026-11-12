@@ -1280,7 +1280,9 @@ describe('SettingsSkillsView', () => {
 		}
 
 		function renderWithDialogStub() {
-			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
+			return renderView({
+				global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub, SkillsDiscover: true } },
+			});
 		}
 
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {

@@ -1,0 +1,3451 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/charts/; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Skill Hub marketplace spike</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+
+</head>
+<body>
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Skill Hub marketplace spike" data-srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/charts/; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Skill Hub marketplace spike&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, &quot;Segoe UI&quot;,
+    Helvetica, &quot;Apple Color Emoji&quot;, Arial, sans-serif, &quot;Segoe UI Emoji&quot;,
+    &quot;Segoe UI Symbol&quot;;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 8px);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-weight: var(--font-weight-normal);
+}
+
+.cursor-interaction {
+  cursor: var(--cursor-interaction, pointer);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+  text-underline-offset: 2px;
+  font-weight: inherit;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+.table {
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: calc(var(--font-size-base) * 1.5);
+  line-height: 1.3333333333;
+}
+
+h2 {
+  font-size: calc(var(--font-size-base) * 1.25);
+  line-height: 1.4;
+}
+h3 {
+  font-size: calc(var(--font-size-base) * 1.125);
+  line-height: 1.5555555556;
+}
+h4 {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+h5,
+h6 {
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+th {
+  font-weight: 600;
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+pre,
+pre code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: calc(var(--font-size-base) * 0.875);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-family: var(--font-sans);
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.table :is(th, td):not(:last-child) {
+  padding-inline-end: calc(var(--font-size-base) * 1.5);
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead :is(th, td) {
+  border-bottom-color: var(--border-strong, var(--input));
+  padding-block: calc(var(--font-size-base) / 2);
+  line-height: var(--font-size-base);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.table tbody :is(th, td) {
+  padding-block: calc(var(--font-size-base) * 0.625);
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 8px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+.widget {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  box-shadow: 0 0 0 0.5px var(--border-strong, var(--border));
+  color: var(--foreground);
+  background: var(--background);
+}
+
+#widget &gt; :not(.card, .widget, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  border: 1px solid var(--border);
+  corner-shape: var(--corner-shape);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-sans);
+  padding: 5px 12px;
+  border-color: color-mix(
+    in oklab,
+    light-dark(var(--primary-foreground), var(--foreground)) 5%,
+    transparent
+  );
+  border-radius: var(--radius-2xl);
+  color: light-dark(var(--primary-foreground), var(--foreground));
+  background: light-dark(var(--foreground), var(--popover));
+  box-shadow: 0 8px 18px rgb(15 23 42 / 20%);
+  letter-spacing: -0.15px;
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: color-mix(in srgb, var(--foreground) 40%, var(--muted-foreground));
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-family: var(--font-sans);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1;
+}
+
+small,
+.text-small {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+/* Match inline alignment without overriding a containing flex or grid layout. */
+.btn,
+.nav-link,
+.form-control,
+.form-select,
+.form-range,
+.form-check {
+  vertical-align: middle;
+}
+
+.btn,
+.nav-link {
+  --btn-size: calc(12px + 2 * var(--control-spacing, 12px));
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: inherit;
+  font-family: var(--font-sans);
+  height: fit-content;
+  min-height: var(--btn-size);
+  padding-inline: var(--control-spacing, 12px);
+  border-color: transparent;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.btn {
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+}
+
+/* Codex Button size=&quot;compact&quot;; appearance stays with the button variant. */
+.btn-sm {
+  --btn-size: 24px;
+  padding-inline: 8px;
+  font-size: calc(var(--font-size-base) * 12 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 12 / 16), 1px);
+  line-height: 16px;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.btn-primary {
+  border-color: var(--border);
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: border-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: border-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--muted-foreground);
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* Shared preview chrome; product styles stay inside each variant. */
+.viz-dotted-background {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 14%, transparent) 0.8px,
+    transparent 0.8px
+  );
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.viz-carousel {
+  position: relative;
+  min-width: 0;
+}
+
+.viz-carousel:has(&gt; .viz-carousel-controls) {
+  min-height: calc(60px + var(--viz-carousel-picker-height, 0px));
+  padding-bottom: 60px;
+}
+
+.viz-carousel &gt; [data-variant][hidden] {
+  display: none !important;
+}
+
+.viz-carousel &gt; [data-variant] {
+  isolation: isolate;
+}
+
+.viz-carousel-controls {
+  --viz-carousel-hover: light-dark(
+    color-mix(in srgb, var(--foreground) 5.4%, transparent),
+    color-mix(in srgb, var(--foreground) 7.8%, transparent)
+  );
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  width: max-content;
+  /* Leave room for the host&#x27;s design-controls launcher at the trailing edge. */
+  max-width: calc(100% - 96px);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  /* Match the settings dropdown chrome independently of the content font size. */
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+  transform: translateX(-50%);
+  user-select: none;
+}
+
+/* Keep authored mockup button styles out of the shared carousel chrome. */
+.viz-carousel-controls button,
+.viz-carousel-picker &gt; summary {
+  display: flex !important;
+  height: auto !important;
+  min-height: 30px;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  -webkit-app-region: no-drag;
+  border: 0 !important;
+  border-radius: 14px !important;
+  color: inherit !important;
+  background: transparent !important;
+  font: inherit !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-picker &gt; summary {
+  position: relative;
+  isolation: isolate;
+}
+
+.viz-carousel-controls &gt; button {
+  --icon-size: 16px;
+  width: 30px !important;
+  padding: 0 !important;
+}
+
+.viz-carousel-picker &gt; summary {
+  padding-inline: 12px !important;
+}
+
+.viz-carousel-controls .viz-carousel-caret {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  color: inherit;
+  transform: rotate(180deg);
+}
+
+.viz-carousel-controls &gt; button &gt; svg,
+.viz-carousel-controls .viz-carousel-caret,
+.viz-carousel-count {
+  opacity: 0.5;
+}
+
+.viz-carousel-controls &gt; button::before,
+.viz-carousel-picker &gt; summary::before {
+  position: absolute;
+  z-index: -1;
+  inset: 3px;
+  border-radius: 12px;
+  content: &quot;&quot;;
+  pointer-events: none;
+}
+
+.viz-carousel-controls &gt; button:hover::before,
+.viz-carousel-picker &gt; summary:hover::before {
+  background: var(--viz-carousel-hover);
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-controls [data-lucide],
+.viz-carousel-controls .lucide {
+  flex-shrink: 0;
+}
+
+.viz-carousel-picker {
+  min-width: 0;
+}
+
+.viz-carousel-picker &gt; summary {
+  min-width: 0;
+  list-style: none;
+}
+
+.viz-carousel-picker &gt; summary::-webkit-details-marker {
+  display: none;
+}
+
+.viz-carousel-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.viz-carousel-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viz-carousel-options {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  box-shadow: 0 4px 12px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 25%));
+}
+
+.viz-carousel-options &gt; button {
+  border-radius: max(0px, calc(var(--radius-lg) - 5px)) !important;
+  width: 100% !important;
+  min-height: 28px;
+  justify-content: flex-start !important;
+  padding: 4px 8px !important;
+  font-size: var(--font-size-small) !important;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.viz-carousel-options &gt; [aria-current=&quot;true&quot;],
+.viz-carousel-options &gt; button:hover {
+  background: var(--viz-carousel-hover) !important;
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding-inline: calc(4px + var(--control-spacing, 12px) / 2);
+  border-color: var(--input);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4285714286;
+}
+.form-control:is(
+  [type=&quot;file&quot;],
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;],
+  [type=&quot;color&quot;]
+) {
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  line-height: 18px;
+}
+.form-control:is(
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;]
+) {
+  padding-inline: var(--control-spacing, 12px);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+  padding: 0;
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+  min-height: calc(10px + 2 * var(--control-spacing, 12px));
+  padding-inline: var(--control-spacing, 12px);
+  margin-inline-end: var(--control-spacing, 12px);
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  resize: vertical;
+  min-height: 96px;
+  padding: 8px 10px;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: none;
+}
+.form-control:disabled {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 1;
+}
+.form-control[aria-invalid=&quot;true&quot;] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: fit-content;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  margin: 0;
+  /* The secondary icon role is 14px at compact density and 16px at web density. */
+  --icon-size: calc(10px + var(--control-spacing, 12px) / 2);
+  /* Settings dropdowns retain a 12px inset and a 4px text-to-chevron gap. */
+  padding: 0 calc(16px + var(--icon-size)) 0 12px;
+  outline: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+  background-position:
+    calc(100% - 12px - var(--icon-size) / 2) 50%,
+    calc(100% - 12px - var(--icon-size) * 0.18) 50%;
+  background-repeat: no-repeat;
+  background-size: calc(var(--icon-size) * 0.32) calc(var(--icon-size) * 0.32);
+  cursor: var(--cursor-interaction, default);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.form-select :is(option, optgroup) {
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+}
+
+.form-select :is(option, optgroup):disabled {
+  color: var(--muted-foreground);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.form-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.form-select:disabled {
+  opacity: 0.4;
+}
+
+.form-check {
+  display: flex;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  corner-shape: round;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  width: calc(10px + var(--control-spacing, 12px) / 2);
+  height: calc(10px + var(--control-spacing, 12px) / 2);
+  border-color: var(--border-strong, var(--input));
+  border-radius: calc(var(--radius-sm) / 2);
+  background-color: transparent;
+  color: var(--foreground);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:is(:checked, :indeterminate) {
+  border-color: var(--border-strong, var(--input));
+  background-color: color-mix(in srgb, var(--popover) 96%, transparent);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+  background-color: var(--foreground);
+}
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:indeterminate::before {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 65%;
+  height: 6.65%;
+  margin: auto;
+  border-radius: var(--radius-full);
+  background: var(--foreground);
+  mask: none;
+  content: &quot;&quot;;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--input);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 0;
+  background: radial-gradient(
+    circle,
+    var(--primary-foreground) 0 3px,
+    var(--foreground) 3px
+  );
+  box-shadow: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;radio&quot;]:disabled,
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;radio&quot;]:disabled
+  + .form-check-label {
+  opacity: 0.5;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+  border-color: #fff;
+  background: #fff;
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--blue);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: none;
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--primary);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  outline: none;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: transparent;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-top: -9px;
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline the native track and thumb, preserving the larger input hit area. */
+.form-range:focus-visible::-webkit-slider-runnable-track {
+  outline: 2px auto Highlight;
+  outline-color: -webkit-focus-ring-color;
+}
+
+.form-range::-moz-range-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.form-range:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--blue);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.viz-carousel-controls :is(button, summary):focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+}
+
+/* Web recipes are the default, including on renderers without inline style queries. */
+@supports (border-radius: if(style(--corner-shape: round): 1px; else: 2px)) {
+  /* Match the host&#x27;s proportional text-sm scale at every text preference. */
+  .tooltip,
+  .viz-badge,
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 14 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 13 / 14), 1px)
+    );
+  }
+
+  .btn-sm {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 12 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 12 / 14), 1px)
+    );
+  }
+
+  .btn,
+  .nav-link,
+  .form-select {
+    border-radius: if(
+      style(--corner-shape: round): var(--radius-full); else: var(--radius-lg)
+    );
+  }
+
+  .form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+    border-radius: if(
+      style(--corner-shape: round): calc(var(--radius-sm) / 2);
+        else: calc(var(--radius-lg) * 0.4)
+    );
+  }
+
+  .tooltip {
+    font-weight: if(
+      style(--corner-shape: round): 600; else: var(--font-weight-normal)
+    );
+  }
+}
+
+@media (pointer: coarse) {
+  .viz-carousel:has(&gt; .viz-carousel-controls) {
+    min-height: calc(76px + var(--viz-carousel-picker-height, 0px));
+    padding-bottom: 76px;
+  }
+
+  .btn,
+  .nav-link,
+  .viz-carousel-controls button,
+  .viz-carousel-picker &gt; summary,
+  .form-control,
+  .form-select {
+    --btn-size: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+  .form-control:is(
+    [type=&quot;file&quot;],
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;week&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;color&quot;]
+  ) {
+    height: 44px;
+    min-height: 44px;
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
+&lt;script&gt;(() =&gt; {
+  const root = document.documentElement;
+  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
+  const apply = Reflect.apply;
+  const isArray = Array.isArray;
+  const hasOwn = Object.hasOwn;
+  const parentWindow = globalThis.parent;
+  const stringify = JSON.stringify;
+  const parse = JSON.parse;
+  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
+  const initialStateElement = document.getElementById(
+    &quot;codex-visualization-widget-state&quot;,
+  );
+  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
+  initialStateElement?.remove();
+  /** @type {Record&lt;string, unknown&gt; | null} */
+  let state = initialGlobals.widgetState ?? null;
+  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
+  let nextStateRequestId = 0;
+  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
+  const pendingStateWrites = new Map();
+  const persistenceError = () =&gt;
+    Object.assign(
+      new Error(&quot;The host could not persist the widget state update&quot;),
+      {
+        code: -32000,
+        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
+      },
+    );
+  /**
+   * @param {object} prototype
+   * @param {string} property
+   */
+  const getPrototypeGetter = (prototype, property) =&gt; {
+    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
+    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
+    if (getter == null) {
+      throw new Error(`Missing ${property} getter`);
+    }
+    return getter;
+  };
+  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
+  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
+  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const addHostMessageListener = MessagePort.prototype.addEventListener;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const postHostMessage = MessagePort.prototype.postMessage;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const startHostPort = MessagePort.prototype.start;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
+  /** @type {MessagePort | null} */
+  let hostPort = null;
+  const postToHost = (type, payload) =&gt; {
+    if (hostPort != null) {
+      apply(postHostMessage, hostPort, [{ type, ...payload }]);
+    }
+  };
+  const openExternal = ({ href }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;open-external&quot;, { href });
+    }
+  };
+  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;follow-up&quot;, { context, prompt, title });
+    }
+    return Promise.resolve();
+  };
+  /**
+   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
+   * @returns {Promise&lt;void&gt;}
+   */
+  const setWidgetState = async (next) =&gt; {
+    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
+    if (
+      nextState == null ||
+      typeof nextState !== &quot;object&quot; ||
+      isArray(nextState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const inputState = stringify(
+      nextState,
+      (_key, /** @type {unknown} */ value) =&gt; {
+        if (
+          typeof value === &quot;undefined&quot; ||
+          typeof value === &quot;function&quot; ||
+          typeof value === &quot;symbol&quot; ||
+          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
+        ) {
+          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+        }
+        return value;
+      },
+    );
+    const parsedState = parse(inputState);
+    if (
+      parsedState == null ||
+      typeof parsedState !== &quot;object&quot; ||
+      isArray(parsedState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const storedState = {
+      modelContent: null,
+      privateContent: null,
+      ...parsedState,
+    };
+    const serializedState = stringify(storedState);
+    if (encode(serializedState).length &gt; 16 * 1024) {
+      throw new TypeError(
+        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
+      );
+    }
+    if (
+      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
+      (!isArray(storedState.imageIds) ||
+        storedState.imageIds.some(
+          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
+        ))
+    ) {
+      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
+    }
+    if (storedState.imageIds?.length &gt; 0) {
+      throw Object.assign(
+        new TypeError(&quot;Visualization state does not support image attachments&quot;),
+        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
+      );
+    }
+    state = storedState;
+    globalThis.openai.widgetState = state;
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: { widgetState: state } },
+      }),
+    );
+    if (statePersistence === &quot;none&quot;) {
+      throw persistenceError();
+    }
+    const id = ++nextStateRequestId;
+    return new Promise((resolve, reject) =&gt; {
+      const timeout = globalThis.setTimeout(() =&gt; {
+        pendingStateWrites.delete(id);
+        reject(persistenceError());
+      }, 30_000);
+      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
+      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+    });
+  };
+  const mockElement = document.getElementById(&quot;codex-connector-mocks&quot;);
+  const connectorGlobals = {};
+  if (mockElement != null) {
+    const values = new Map(Object.entries(parse(mockElement.textContent)));
+    mockElement.remove();
+    connectorGlobals.visualizationData = {
+      updates: Array.from(values, ([name, value]) =&gt; ({
+        name,
+        revision: 1,
+        state: &quot;ready&quot;,
+        value: { type: &quot;json&quot;, value },
+      })),
+    };
+    connectorGlobals.visualization = {
+      /** @param {string} name @param {(value: unknown) =&gt; void} callback */
+      onData(name, callback) {
+        if (typeof callback !== &quot;function&quot;) {
+          throw new TypeError(&quot;onData requires a callback&quot;);
+        }
+        try {
+          callback(values.get(name));
+        } catch (error) {
+          // oxlint-disable-next-line no-console -- Keep authored callback failures local.
+          console.error(&quot;Live visualization data callback failed&quot;, error);
+        }
+        // A static preview delivers the current fixture once per subscription.
+        return () =&gt; {};
+      },
+    };
+  }
+  const syncTheme = () =&gt; {
+    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
+    root.dataset.theme = theme;
+    globalThis.openai = {
+      ...globalThis.openai,
+      ...connectorGlobals,
+      openExternal,
+      sendFollowUpMessage,
+      setWidgetState,
+      theme,
+      visualizationStyleVariables: {},
+      visualizationTheme: theme,
+      widgetState: state,
+      statePersistence,
+      stateModelContext: &quot;none&quot;,
+    };
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: globalThis.openai },
+      }),
+    );
+  };
+  const sendHeight = () =&gt; {
+    postToHost(&quot;height&quot;, {
+      height: Math.ceil(
+        Math.max(
+          document.body.scrollHeight,
+          document.body.getBoundingClientRect().height,
+        ),
+      ),
+    });
+  };
+
+  globalThis.addEventListener(
+    &quot;message&quot;,
+    (event) =&gt; {
+      const data = apply(getMessageData, event, []);
+      const ports = apply(getMessagePorts, event, []);
+      const source = apply(getMessageSource, event, []);
+      if (
+        hostPort != null ||
+        source !== parentWindow ||
+        typeof data !== &quot;object&quot; ||
+        data?.type !== &quot;codex-visualization-initialize&quot; ||
+        !isArray(ports) ||
+        ports.length !== 1
+      ) {
+        return;
+      }
+      apply(stopMessagePropagation, event, []);
+      const nextHostPort = ports[0];
+      try {
+        apply(addHostMessageListener, nextHostPort, [
+          &quot;message&quot;,
+          (event) =&gt; {
+            const data = apply(getMessageData, event, []);
+            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
+              sendHeight();
+            } else if (
+              typeof data === &quot;object&quot; &amp;&amp;
+              data?.type === &quot;widget-state-result&quot;
+            ) {
+              /** @type {unknown} */
+              const id = data.id;
+              if (typeof id !== &quot;number&quot;) {
+                return;
+              }
+              const pending = pendingStateWrites.get(id);
+              if (pending != null) {
+                pendingStateWrites.delete(id);
+                globalThis.clearTimeout(pending.timeout);
+                if (data.ok === true) {
+                  pending.resolve();
+                } else {
+                  pending.reject(persistenceError());
+                }
+              }
+            }
+          },
+        ]);
+        apply(startHostPort, nextHostPort, []);
+      } catch {
+        return;
+      }
+      hostPort = nextHostPort;
+      for (const [id, { serializedState }] of pendingStateWrites) {
+        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+      }
+      sendHeight();
+    },
+    { capture: true },
+  );
+  document.currentScript?.remove();
+  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
+    if (event.defaultPrevented) {
+      return;
+    }
+    let element = null;
+    if (event.target instanceof globalThis.Element) {
+      element = event.target;
+    } else if (event.target instanceof globalThis.Node) {
+      element = event.target.parentElement;
+    }
+    const link = element?.closest(&quot;a[href]&quot;);
+    const href = link?.getAttribute(&quot;href&quot;);
+    if (href == null) {
+      return;
+    }
+    if (href.startsWith(&quot;#&quot;)) {
+      let id;
+      try {
+        id = decodeURIComponent(href.slice(1));
+      } catch {
+        return;
+      }
+      const target = id.length === 0 ? root : document.getElementById(id);
+      if (
+        target == null ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      event.preventDefault();
+      postToHost(&quot;scroll-to&quot;, {
+        top: target.getBoundingClientRect().top + globalThis.scrollY,
+      });
+      return;
+    }
+    event.preventDefault();
+    openExternal({ href });
+  });
+  new ResizeObserver(sendHeight).observe(document.body);
+  syncTheme();
+})();
+&lt;/script&gt;
+&lt;style&gt;
+#skill-marketplace {color-scheme:light dark;--color--pink-500:oklch(78.07% .136 5.02);--background--surface:light-dark(#fff,#202020);--background--subtle:light-dark(#f6f6f6,#181818);--background--hover:light-dark(#eee,#2c2c2c);--text-color:light-dark(#282828,#eee);--text-color--subtle:light-dark(#666,#aaa);--border-color:light-dark(#e5e5e5,#383838);--warning-bg:light-dark(#fff7e5,#382d1d);--warning-text:light-dark(#885511,#edc986);--spacing--4xs:.25rem;--spacing--2xs:.5rem;--spacing--xs:.75rem;--spacing--sm:1rem;--spacing--lg:1.5rem;--spacing--xl:2rem;--spacing--2xl:3rem;--radius--xs:.5rem;--radius--sm:.75rem;--font-size--2xs:.75rem;--font-size--sm:.875rem;--font-size--md:1rem;--font-size--xl:1.25rem;--font-size--2xl:1.75rem;--height--lg:2.25rem;font:400 var(--font-size--sm)/1.5 &#x27;Geist&#x27;,-apple-system,BlinkMacSystemFont,&#x27;Segoe UI&#x27;,sans-serif;color:var(--text-color);width:100%;}
+#skill-marketplace *{box-sizing:border-box}
+#skill-marketplace [hidden]{display:none!important}
+#skill-marketplace h1,#skill-marketplace h2,#skill-marketplace h3,#skill-marketplace p{margin:0;color:inherit;font-family:inherit;line-height:1.5}
+#skill-marketplace h1{font-size:var(--font-size--2xl);font-weight:600;letter-spacing:-.03em}
+#skill-marketplace h2{font-size:var(--font-size--xl);font-weight:600}
+#skill-marketplace h3{font-size:var(--font-size--md);font-weight:600}
+#skill-marketplace button,#skill-marketplace input,#skill-marketplace select{font:inherit;color:inherit}
+#skill-marketplace button,#skill-marketplace a{touch-action:manipulation}
+#skill-marketplace a{color:inherit;text-underline-offset:3px}
+#skill-marketplace button{cursor:pointer}
+#skill-marketplace button:focus-visible,#skill-marketplace a:focus-visible,#skill-marketplace input:focus-visible,#skill-marketplace select:focus-visible{outline:2px solid var(--text-color);outline-offset:3px}
+#skill-marketplace svg{width:var(--spacing--sm);height:var(--spacing--sm);flex-shrink:0}
+#skill-marketplace .muted{color:var(--text-color--subtle)}
+#skill-marketplace .small{font-size:var(--font-size--2xs)}
+#skill-marketplace .row{display:flex;align-items:center;gap:var(--spacing--2xs);flex-wrap:wrap}
+#skill-marketplace .between{justify-content:space-between}
+#skill-marketplace .review-strip{display:flex;justify-content:space-between;align-items:center;gap:var(--spacing--sm);flex-wrap:wrap;padding:var(--spacing--xs) var(--spacing--sm);background:var(--background--subtle);border:1px solid var(--border-color);border-bottom:0;border-radius:var(--radius--sm) var(--radius--sm) 0 0;font-size:var(--font-size--2xs)}
+#skill-marketplace .review-label{font-weight:600;letter-spacing:.06em}
+#skill-marketplace .review-strip select{background:var(--background--surface);border:1px solid var(--border-color);border-radius:var(--radius--xs);padding:var(--spacing--4xs) var(--spacing--2xs)}
+#skill-marketplace .window{background:var(--background--surface);border:1px solid var(--border-color);border-radius:0 0 var(--radius--sm) var(--radius--sm);overflow:hidden}
+#skill-marketplace .topbar{display:flex;align-items:center;gap:var(--spacing--lg);padding:var(--spacing--sm) var(--spacing--lg);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .logo{font-size:var(--font-size--xl);font-weight:700;letter-spacing:-.06em;display:flex;align-items:center;gap:var(--spacing--2xs)}
+#skill-marketplace .logo i,#skill-marketplace .logo svg{color:var(--color--pink-500)}
+#skill-marketplace .crumb{padding-left:var(--spacing--lg);border-left:1px solid var(--border-color)}
+#skill-marketplace .workspace{display:grid;grid-template-columns:10.5rem minmax(0,1fr)} /* The settings rail has no matching size token. */
+#skill-marketplace .sidebar{padding:var(--spacing--lg) var(--spacing--xs);background:var(--background--subtle);border-right:1px solid var(--border-color)}
+#skill-marketplace .nav-title{padding:var(--spacing--2xs) var(--spacing--xs);font-weight:600}
+#skill-marketplace .nav-item{display:flex;gap:var(--spacing--xs);align-items:center;padding:var(--spacing--2xs) var(--spacing--xs);margin-top:var(--spacing--4xs);color:var(--text-color--subtle);border-radius:var(--radius--xs)}
+#skill-marketplace .nav-item.active{background:var(--background--hover);color:var(--text-color);font-weight:500}
+#skill-marketplace main{padding:var(--spacing--xl);min-width:0}
+#skill-marketplace .back{border:0;background:none;padding:0;color:var(--text-color--subtle);display:inline-flex;align-items:center;gap:var(--spacing--2xs);margin-bottom:var(--spacing--sm)}
+#skill-marketplace .subtitle{margin-top:var(--spacing--4xs);color:var(--text-color--subtle)}
+#skill-marketplace .tabs{display:flex;gap:var(--spacing--lg);border-bottom:1px solid var(--border-color);margin-top:var(--spacing--lg);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .tab{border:0;border-bottom:2px solid transparent;background:none;padding:var(--spacing--xs) 0;color:var(--text-color--subtle)}
+#skill-marketplace .tab[aria-selected=true]{border-bottom-color:var(--text-color);color:var(--text-color);font-weight:500}
+#skill-marketplace .intro{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing--sm);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .btn{display:inline-flex;justify-content:center;align-items:center;gap:var(--spacing--2xs);background:var(--background--surface);border:1px solid var(--border-color);border-radius:var(--radius--xs);min-height:var(--height--lg);padding:var(--spacing--2xs) var(--spacing--xs);text-decoration:none;white-space:normal}
+#skill-marketplace .btn:hover{background:var(--background--hover)}
+#skill-marketplace .btn.primary{background:var(--text-color);border-color:var(--text-color);color:var(--background--surface)}
+#skill-marketplace .btn.quiet{background:none;border-color:transparent;color:var(--text-color--subtle)}
+#skill-marketplace .search-row{display:flex;gap:var(--spacing--xs);align-items:center;margin-bottom:var(--spacing--sm)}
+#skill-marketplace .searchbox{display:flex;align-items:center;gap:var(--spacing--2xs);border:1px solid var(--border-color);border-radius:var(--radius--xs);padding:0 var(--spacing--xs);flex:1;min-width:0;background:var(--background--surface)}
+#skill-marketplace .searchbox input{width:100%;border:0;min-height:var(--height--lg);background:none;outline-offset:0}
+#skill-marketplace .sort{min-height:var(--height--lg);border:1px solid var(--border-color);background:var(--background--surface);border-radius:var(--radius--xs);padding:var(--spacing--2xs)}
+#skill-marketplace .chips{display:flex;flex-wrap:wrap;gap:var(--spacing--2xs);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .chip{border:1px solid var(--border-color);background:var(--background--surface);border-radius:var(--radius--xs);padding:var(--spacing--4xs) var(--spacing--xs);color:var(--text-color--subtle)}
+#skill-marketplace .chip[aria-pressed=true]{background:var(--text-color);color:var(--background--surface);border-color:var(--text-color)}
+#skill-marketplace .result-line{margin-bottom:var(--spacing--xs)}
+#skill-marketplace .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing--sm)}
+#skill-marketplace .skill-card{border:1px solid var(--border-color);border-radius:var(--radius--sm);padding:var(--spacing--lg);display:flex;flex-direction:column;gap:var(--spacing--xs);min-width:0;background:var(--background--surface)}
+#skill-marketplace .card-title{display:flex;align-items:center;gap:var(--spacing--xs)}
+#skill-marketplace .skill-icon{width:var(--spacing--2xl);height:var(--spacing--2xl);border:1px solid var(--border-color);border-radius:var(--radius--xs);display:flex;align-items:center;justify-content:center;background:var(--background--subtle);flex-shrink:0}
+#skill-marketplace .skill-icon svg{width:var(--spacing--lg);height:var(--spacing--lg)}
+#skill-marketplace .publisher{font-size:var(--font-size--2xs);color:var(--text-color--subtle);overflow-wrap:anywhere}
+#skill-marketplace .summary{flex:1}
+#skill-marketplace .badge{display:inline-flex;align-items:center;gap:var(--spacing--4xs);font-size:var(--font-size--2xs);padding:var(--spacing--4xs) var(--spacing--2xs);border-radius:var(--radius--xs);background:var(--background--subtle);color:var(--text-color--subtle)}
+#skill-marketplace .badge.warning{background:var(--warning-bg);color:var(--warning-text)}
+#skill-marketplace .card-bottom{display:flex;justify-content:space-between;align-items:center;gap:var(--spacing--2xs);border-top:1px solid var(--border-color);padding-top:var(--spacing--xs);margin-top:var(--spacing--4xs)}
+#skill-marketplace .number{font-variant-numeric:tabular-nums;font-weight:500}
+#skill-marketplace .notice{background:var(--warning-bg);color:var(--warning-text);border-radius:var(--radius--xs);padding:var(--spacing--sm);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .empty{padding:var(--spacing--2xl) var(--spacing--sm);text-align:center;border:1px dashed var(--border-color);border-radius:var(--radius--sm)}
+#skill-marketplace .empty p{margin:var(--spacing--2xs) auto var(--spacing--sm);max-width:34rem}
+#skill-marketplace .source-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--spacing--sm);flex-wrap:wrap;margin-top:var(--spacing--lg);font-size:var(--font-size--2xs);color:var(--text-color--subtle)}
+#skill-marketplace .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing--lg);flex-wrap:wrap}
+#skill-marketplace .detail-body{display:grid;grid-template-columns:minmax(0,1fr) 13rem;gap:var(--spacing--xl);margin-top:var(--spacing--lg)} /* Metadata needs a readable fixed column. */
+#skill-marketplace .detail-section{padding-bottom:var(--spacing--lg);margin-bottom:var(--spacing--lg);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .detail-section h3{margin-bottom:var(--spacing--2xs)}
+#skill-marketplace .facts{margin:0}
+#skill-marketplace .facts dt{color:var(--text-color--subtle);font-size:var(--font-size--2xs);margin-top:var(--spacing--lg)}
+#skill-marketplace .facts dt:first-child{margin-top:0}
+#skill-marketplace .facts dd{margin:var(--spacing--4xs) 0 0;overflow-wrap:anywhere}
+#skill-marketplace .audit{padding:var(--spacing--xs) 0;border-top:1px solid var(--border-color)}
+#skill-marketplace .audit p{margin-top:var(--spacing--4xs)}
+#skill-marketplace .file-row{display:flex;gap:var(--spacing--sm);justify-content:space-between;padding:var(--spacing--2xs) 0;border-bottom:1px solid var(--border-color)}
+#skill-marketplace .file-row code{overflow-wrap:anywhere;white-space:normal;background:none;font-size:var(--font-size--2xs);color:inherit}
+#skill-marketplace .file-row span{flex-shrink:0}
+#skill-marketplace .file-list{margin-top:var(--spacing--sm)}
+#skill-marketplace .provenance-table{width:100%;border-collapse:collapse;margin-top:var(--spacing--sm)}
+#skill-marketplace .provenance-table th,#skill-marketplace .provenance-table td{text-align:left;vertical-align:top;padding:var(--spacing--xs) var(--spacing--2xs);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .provenance-table th{font-weight:500}
+#skill-marketplace .provenance-table td:first-child{width:30%}
+#skill-marketplace .spaced{margin-top:var(--spacing--sm)}
+@media(max-width:850px){#skill-marketplace .workspace{grid-template-columns:1fr}#skill-marketplace .sidebar{display:none}#skill-marketplace main{padding:var(--spacing--lg)}}
+@media(max-width:600px){#skill-marketplace .grid,#skill-marketplace .detail-body{grid-template-columns:1fr}#skill-marketplace .search-row{flex-wrap:wrap}#skill-marketplace .searchbox{flex-basis:100%}#skill-marketplace .intro{flex-wrap:wrap}#skill-marketplace .detail-body aside{border-top:1px solid var(--border-color);padding-top:var(--spacing--lg)}#skill-marketplace .topbar{padding:var(--spacing--sm)}#skill-marketplace .crumb{padding-left:var(--spacing--sm)}#skill-marketplace main{padding:var(--spacing--sm)}#skill-marketplace .skill-card{padding:var(--spacing--sm)}#skill-marketplace .review-strip{padding-right:var(--spacing--2xl)}}
+@media(pointer:coarse){#skill-marketplace button,#skill-marketplace .btn,#skill-marketplace select{min-height:2.75rem}#skill-marketplace input{font-size:var(--font-size--md)}}
+&lt;/style&gt;
+&lt;div id=&quot;skill-marketplace&quot;&gt;
+  &lt;div class=&quot;review-strip&quot;&gt;
+    &lt;span&gt;&lt;span class=&quot;review-label&quot;&gt;SPIKE PREVIEW&lt;/span&gt; &lt;span class=&quot;muted&quot;&gt;· Skills.sh snapshot · 12 Nov 2026&lt;/span&gt;&lt;/span&gt;
+    &lt;label class=&quot;row&quot;&gt;Preview state &lt;select id=&quot;market-scenario&quot; aria-label=&quot;Preview state&quot;&gt;&lt;option value=&quot;available&quot;&gt;Catalog available&lt;/option&gt;&lt;option value=&quot;stale&quot;&gt;Catalog unavailable&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;window&quot;&gt;
+    &lt;header class=&quot;topbar&quot;&gt;&lt;div class=&quot;logo&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;n8n&lt;/div&gt;&lt;span class=&quot;crumb muted&quot;&gt;Settings &lt;span aria-hidden=&quot;true&quot;&gt;/&lt;/span&gt; Context&lt;/span&gt;&lt;/header&gt;
+    &lt;div class=&quot;workspace&quot;&gt;
+      &lt;aside class=&quot;sidebar&quot; aria-label=&quot;Settings navigation preview&quot;&gt;
+        &lt;div class=&quot;nav-title&quot;&gt;Settings&lt;/div&gt;
+        &lt;div class=&quot;nav-item&quot;&gt;&lt;i data-lucide=&quot;user&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Personal&lt;/div&gt;
+        &lt;div class=&quot;nav-item&quot;&gt;&lt;i data-lucide=&quot;users&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Users&lt;/div&gt;
+        &lt;div class=&quot;nav-item&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Projects&lt;/div&gt;
+        &lt;div class=&quot;nav-item&quot;&gt;&lt;i data-lucide=&quot;key-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;SSO&lt;/div&gt;
+        &lt;div class=&quot;nav-item active&quot;&gt;&lt;i data-lucide=&quot;layers&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Context&lt;/div&gt;
+        &lt;div class=&quot;nav-item&quot;&gt;&lt;i data-lucide=&quot;puzzle&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Community nodes&lt;/div&gt;
+      &lt;/aside&gt;
+      &lt;main&gt;
+        &lt;section id=&quot;market-home&quot;&gt;
+          &lt;h1&gt;Skills&lt;/h1&gt;
+          &lt;p class=&quot;subtitle&quot;&gt;Give your agents reusable instructions for the work you do&lt;/p&gt;
+          &lt;div class=&quot;tabs&quot; role=&quot;tablist&quot; aria-label=&quot;Skills&quot;&gt;
+            &lt;button class=&quot;tab&quot; id=&quot;market-owned-tab&quot; role=&quot;tab&quot; aria-selected=&quot;false&quot; aria-controls=&quot;market-owned&quot;&gt;Your skills&lt;/button&gt;
+            &lt;button class=&quot;tab&quot; id=&quot;market-discover-tab&quot; role=&quot;tab&quot; aria-selected=&quot;true&quot; aria-controls=&quot;market-discover&quot;&gt;Discover&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;section id=&quot;market-owned&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;market-owned-tab&quot; hidden&gt;
+            &lt;div class=&quot;empty&quot;&gt;&lt;h2&gt;Your skills will appear here&lt;/h2&gt;&lt;p class=&quot;muted&quot;&gt;Browse community skills to find reusable instructions for your agents&lt;/p&gt;&lt;button class=&quot;btn primary&quot; data-action=&quot;discover&quot;&gt;Explore skills&lt;/button&gt;&lt;/div&gt;
+            &lt;p class=&quot;source-foot&quot;&gt;Empty example · This preview is not connected to your account&lt;/p&gt;
+          &lt;/section&gt;
+          &lt;section id=&quot;market-discover&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;market-discover-tab&quot;&gt;
+            &lt;div class=&quot;intro&quot;&gt;&lt;div&gt;&lt;h2&gt;Find your next skill&lt;/h2&gt;&lt;p class=&quot;subtitle&quot;&gt;Explore community skills from &lt;a href=&quot;https://skills.sh&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;skills.sh&lt;/a&gt;&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;btn quiet&quot; data-action=&quot;data&quot;&gt;&lt;i data-lucide=&quot;info&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;About this data&lt;/button&gt;&lt;/div&gt;
+            &lt;div id=&quot;market-outage&quot; class=&quot;notice&quot; hidden&gt;&lt;strong&gt;Skills.sh is unavailable&lt;/strong&gt;&lt;p&gt;Showing the saved sample from 12 Nov 2026. Open Skills.sh to check for updates.&lt;/p&gt;&lt;/div&gt;
+            &lt;div class=&quot;search-row&quot;&gt;&lt;label class=&quot;searchbox&quot;&gt;&lt;i data-lucide=&quot;search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input id=&quot;market-search&quot; type=&quot;search&quot; placeholder=&quot;Search by task, skill, or publisher&quot; aria-label=&quot;Search the six sampled skills&quot;&gt;&lt;/label&gt;&lt;select class=&quot;sort&quot; id=&quot;market-sort&quot; aria-label=&quot;Sort sampled skills&quot;&gt;&lt;option value=&quot;installs&quot;&gt;Most installed&lt;/option&gt;&lt;option value=&quot;name&quot;&gt;Name: A–Z&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+            &lt;div id=&quot;market-categories&quot; class=&quot;chips&quot; aria-label=&quot;Filter by topic&quot;&gt;&lt;/div&gt;
+            &lt;div class=&quot;row between result-line&quot;&gt;&lt;span id=&quot;market-count&quot; class=&quot;small muted&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;&lt;span class=&quot;small muted&quot;&gt;Installs on Skills.sh&lt;/span&gt;&lt;/div&gt;
+            &lt;div id=&quot;market-grid&quot; class=&quot;grid&quot;&gt;&lt;/div&gt;
+            &lt;div id=&quot;market-empty&quot; class=&quot;empty&quot; hidden&gt;&lt;h3&gt;No matching skills in this sample&lt;/h3&gt;&lt;p class=&quot;muted&quot;&gt;Try another task or clear the filters&lt;/p&gt;&lt;button class=&quot;btn&quot; data-action=&quot;clear&quot;&gt;Clear filters&lt;/button&gt;&lt;/div&gt;
+            &lt;footer class=&quot;source-foot&quot;&gt;&lt;span&gt;6 sampled skills · Categories and summaries include editorial annotations&lt;/span&gt;&lt;a href=&quot;https://skills.sh&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Browse all on Skills.sh ↗&lt;/a&gt;&lt;/footer&gt;
+          &lt;/section&gt;
+        &lt;/section&gt;
+        &lt;section id=&quot;market-detail&quot; hidden aria-label=&quot;Skill details&quot;&gt;&lt;/section&gt;
+        &lt;section id=&quot;market-data&quot; hidden&gt;
+          &lt;button class=&quot;back&quot; data-action=&quot;back&quot;&gt;&lt;i data-lucide=&quot;arrow-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Back to discovery&lt;/button&gt;
+          &lt;h1&gt;About this data&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;What Skills.sh supplies, and what still needs evidence&lt;/p&gt;
+          &lt;table class=&quot;provenance-table&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Information&lt;/th&gt;&lt;th&gt;Source and limits&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;
+          &lt;tr&gt;&lt;td&gt;Install counts&lt;/td&gt;&lt;td&gt;Real values from the Skills.sh search API, captured on 12 Nov 2026. They measure installs, not runs or active users.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;Purpose&lt;/td&gt;&lt;td&gt;Short editorial summaries of skill content returned by Skills.sh. These are descriptions, not measured outcomes.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;Categories&lt;/td&gt;&lt;td&gt;Agent workflows, Design &amp;amp; UI, and Testing appear on Skills.sh pages. Documents is a proposed n8n category. No category field was found in the documented API.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;Model performance&lt;/td&gt;&lt;td&gt;Not evaluated. Skills.sh does not supply model-level results in the API we reviewed.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;File support&lt;/td&gt;&lt;td&gt;Compared with the current n8n importer. File support does not establish that the skill can run in n8n.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;Security audits&lt;/td&gt;&lt;td&gt;Provider results and dates were fetched for find-skills only. They do not establish that the fetched content is safe.&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;Coverage&lt;/td&gt;&lt;td&gt;Six sampled records. This preview is not a complete catalog or a live integration.&lt;/td&gt;&lt;/tr&gt;
+          &lt;/tbody&gt;&lt;/table&gt;
+          &lt;div class=&quot;row spaced&quot;&gt;&lt;a class=&quot;btn&quot; href=&quot;https://skills.sh/docs/api&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Read the API reference ↗&lt;/a&gt;&lt;a class=&quot;btn&quot; href=&quot;https://skills.sh/terms&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;Read Skills.sh terms ↗&lt;/a&gt;&lt;/div&gt;
+        &lt;/section&gt;
+      &lt;/main&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;script id=&quot;market-snapshot&quot; type=&quot;application/json&quot;&gt;{
+  &quot;source&quot;: &quot;Skills.sh&quot;,
+  &quot;capturedOn&quot;: &quot;2026-11-12&quot;,
+  &quot;mode&quot;: &quot;Saved sample; no live API calls from prototype&quot;,
+  &quot;items&quot;: [
+    {
+      &quot;id&quot;: &quot;vercel-labs/skills/find-skills&quot;,
+      &quot;source&quot;: &quot;vercel-labs/skills&quot;,
+      &quot;skillId&quot;: &quot;find-skills&quot;,
+      &quot;name&quot;: &quot;find-skills&quot;,
+      &quot;installs&quot;: 4320589,
+      &quot;title&quot;: &quot;Find skills&quot;,
+      &quot;summary&quot;: &quot;Discover skills for a task and install them with the Skills CLI.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Agent workflows&quot;,
+      &quot;topicSource&quot;: &quot;Skills.sh page&quot;,
+      &quot;requirements&quot;: &quot;Terminal access and the Skills CLI&quot;,
+      &quot;fit&quot;: &quot;Needs tools&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/vercel-labs/skills/find-skills&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:34:42.026Z&quot;,
+      &quot;hash&quot;: &quot;b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 5472
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 0,
+      &quot;license&quot;: &quot;Not included in this snapshot&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: [
+        {
+          &quot;provider&quot;: &quot;Gen Agent Trust Hub&quot;,
+          &quot;slug&quot;: &quot;agent-trust-hub&quot;,
+          &quot;status&quot;: &quot;pass&quot;,
+          &quot;summary&quot;: &quot;This skill facilitates the discovery and installation of agent extensions using a dedicated command-line interface. It includes guidance on verifying the reputation of external packages, which aligns with secure development practices for package management.&quot;,
+          &quot;auditedAt&quot;: &quot;2026-09-15T08:00:05.922Z&quot;,
+          &quot;riskLevel&quot;: &quot;SAFE&quot;,
+          &quot;categories&quot;: [
+            &quot;COMMAND_EXECUTION&quot;,
+            &quot;EXTERNAL_DOWNLOADS&quot;,
+            &quot;INDIRECT_PROMPT_INJECTION&quot;
+          ]
+        },
+        {
+          &quot;provider&quot;: &quot;Socket&quot;,
+          &quot;slug&quot;: &quot;socket&quot;,
+          &quot;status&quot;: &quot;pass&quot;,
+          &quot;summary&quot;: &quot;No alerts&quot;,
+          &quot;auditedAt&quot;: &quot;2026-09-15T08:00:19.647Z&quot;
+        },
+        {
+          &quot;provider&quot;: &quot;Snyk&quot;,
+          &quot;slug&quot;: &quot;snyk&quot;,
+          &quot;status&quot;: &quot;warn&quot;,
+          &quot;summary&quot;: &quot;Risk: MEDIUM · 1 issue&quot;,
+          &quot;auditedAt&quot;: &quot;2026-09-15T07:59:46.904821+00:00&quot;,
+          &quot;riskLevel&quot;: &quot;MEDIUM&quot;
+        },
+        {
+          &quot;provider&quot;: &quot;Runlayer&quot;,
+          &quot;slug&quot;: &quot;runlayer&quot;,
+          &quot;status&quot;: &quot;pass&quot;,
+          &quot;summary&quot;: &quot;1 file scanned · No issues&quot;,
+          &quot;auditedAt&quot;: &quot;2026-03-14T07:45:27.566Z&quot;,
+          &quot;riskLevel&quot;: &quot;NONE&quot;
+        },
+        {
+          &quot;provider&quot;: &quot;ZeroLeaks&quot;,
+          &quot;slug&quot;: &quot;zeroleaks&quot;,
+          &quot;status&quot;: &quot;pass&quot;,
+          &quot;summary&quot;: &quot;Score: 93/100 · 2 sections analyzed&quot;,
+          &quot;auditedAt&quot;: &quot;2026-04-16T07:47:59.444Z&quot;,
+          &quot;riskLevel&quot;: &quot;NONE&quot;
+        }
+      ]
+    },
+    {
+      &quot;id&quot;: &quot;anthropics/skills/frontend-design&quot;,
+      &quot;source&quot;: &quot;anthropics/skills&quot;,
+      &quot;skillId&quot;: &quot;frontend-design&quot;,
+      &quot;name&quot;: &quot;frontend-design&quot;,
+      &quot;installs&quot;: 1107660,
+      &quot;title&quot;: &quot;Frontend design&quot;,
+      &quot;summary&quot;: &quot;Plan a visual direction and create a distinctive interface.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Design &amp; UI&quot;,
+      &quot;topicSource&quot;: &quot;Skills.sh page&quot;,
+      &quot;requirements&quot;: &quot;A runtime that can create and edit frontend files&quot;,
+      &quot;fit&quot;: &quot;License review&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/anthropics/skills/frontend-design&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:35:12.657Z&quot;,
+      &quot;hash&quot;: &quot;7e9c2af00fd5b3144f49ce6fb1b16037b392ab9c2f049423b0b6114d99381ba2&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;LICENSE.txt&quot;,
+          &quot;bytes&quot;: 10174
+        },
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 9390
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 1,
+      &quot;license&quot;: &quot;See LICENSE.txt; terms not evaluated&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;vercel-labs/agent-browser/agent-browser&quot;,
+      &quot;source&quot;: &quot;vercel-labs/agent-browser&quot;,
+      &quot;skillId&quot;: &quot;agent-browser&quot;,
+      &quot;name&quot;: &quot;agent-browser&quot;,
+      &quot;installs&quot;: 1411072,
+      &quot;title&quot;: &quot;Agent browser&quot;,
+      &quot;summary&quot;: &quot;Navigate websites, inspect pages, and automate browser tasks.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Agent workflows&quot;,
+      &quot;topicSource&quot;: &quot;Skills.sh page&quot;,
+      &quot;requirements&quot;: &quot;The agent-browser CLI and a browser runtime&quot;,
+      &quot;fit&quot;: &quot;Needs tools&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/vercel-labs/agent-browser/agent-browser&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:35:13.617Z&quot;,
+      &quot;hash&quot;: &quot;6c6b0d33259db0427408443cf0cc2e5674538e628ad3fde51e6ae252cf647215&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 3220
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 0,
+      &quot;license&quot;: &quot;Not included in this snapshot&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;anthropics/skills/pdf&quot;,
+      &quot;source&quot;: &quot;anthropics/skills&quot;,
+      &quot;skillId&quot;: &quot;pdf&quot;,
+      &quot;name&quot;: &quot;pdf&quot;,
+      &quot;installs&quot;: 227573,
+      &quot;title&quot;: &quot;PDF&quot;,
+      &quot;summary&quot;: &quot;Extract text, combine documents, and work with PDF forms.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Documents&quot;,
+      &quot;topicSource&quot;: &quot;Proposed n8n category&quot;,
+      &quot;requirements&quot;: &quot;Python tools, PDF libraries, and the bundled scripts&quot;,
+      &quot;fit&quot;: &quot;Unsupported files&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/anthropics/skills/pdf&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:34:42.192Z&quot;,
+      &quot;hash&quot;: &quot;7eef6bba4bdef8f9b9277d1684a047a3d5a286a798efc1c06bfc3f5bb5ddb8e0&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;forms.md&quot;,
+          &quot;bytes&quot;: 11854
+        },
+        {
+          &quot;path&quot;: &quot;LICENSE.txt&quot;,
+          &quot;bytes&quot;: 11357
+        },
+        {
+          &quot;path&quot;: &quot;reference.md&quot;,
+          &quot;bytes&quot;: 16692
+        },
+        {
+          &quot;path&quot;: &quot;scripts/check_bounding_boxes.py&quot;,
+          &quot;bytes&quot;: 2774
+        },
+        {
+          &quot;path&quot;: &quot;scripts/check_fillable_fields.py&quot;,
+          &quot;bytes&quot;: 268
+        },
+        {
+          &quot;path&quot;: &quot;scripts/convert_pdf_to_images.py&quot;,
+          &quot;bytes&quot;: 1008
+        },
+        {
+          &quot;path&quot;: &quot;scripts/create_validation_image.py&quot;,
+          &quot;bytes&quot;: 1258
+        },
+        {
+          &quot;path&quot;: &quot;scripts/extract_form_field_info.py&quot;,
+          &quot;bytes&quot;: 4300
+        },
+        {
+          &quot;path&quot;: &quot;scripts/extract_form_structure.py&quot;,
+          &quot;bytes&quot;: 3945
+        },
+        {
+          &quot;path&quot;: &quot;scripts/fill_fillable_fields.py&quot;,
+          &quot;bytes&quot;: 3819
+        },
+        {
+          &quot;path&quot;: &quot;scripts/fill_pdf_form_with_annotations.py&quot;,
+          &quot;bytes&quot;: 3235
+        },
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 8058
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 11,
+      &quot;license&quot;: &quot;See LICENSE.txt; terms not evaluated&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;anthropics/skills/webapp-testing&quot;,
+      &quot;source&quot;: &quot;anthropics/skills&quot;,
+      &quot;skillId&quot;: &quot;webapp-testing&quot;,
+      &quot;name&quot;: &quot;webapp-testing&quot;,
+      &quot;installs&quot;: 202992,
+      &quot;title&quot;: &quot;Web app testing&quot;,
+      &quot;summary&quot;: &quot;Check a local web app with Playwright and inspect browser output.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Testing&quot;,
+      &quot;topicSource&quot;: &quot;Skills.sh page&quot;,
+      &quot;requirements&quot;: &quot;Python, Playwright, a browser, and the bundled scripts&quot;,
+      &quot;fit&quot;: &quot;Unsupported files&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/anthropics/skills/webapp-testing&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:35:13.432Z&quot;,
+      &quot;hash&quot;: &quot;cfb23ef0c399c36e9247142a7ab5ac0e03c03e1c9f047b0f7502232a2c50b564&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;examples/console_logging.py&quot;,
+          &quot;bytes&quot;: 1027
+        },
+        {
+          &quot;path&quot;: &quot;examples/element_discovery.py&quot;,
+          &quot;bytes&quot;: 1463
+        },
+        {
+          &quot;path&quot;: &quot;examples/static_html_automation.py&quot;,
+          &quot;bytes&quot;: 953
+        },
+        {
+          &quot;path&quot;: &quot;LICENSE.txt&quot;,
+          &quot;bytes&quot;: 11345
+        },
+        {
+          &quot;path&quot;: &quot;scripts/with_server.py&quot;,
+          &quot;bytes&quot;: 3693
+        },
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 3913
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 5,
+      &quot;license&quot;: &quot;See LICENSE.txt; terms not evaluated&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;anthropics/skills/xlsx&quot;,
+      &quot;source&quot;: &quot;anthropics/skills&quot;,
+      &quot;skillId&quot;: &quot;xlsx&quot;,
+      &quot;name&quot;: &quot;xlsx&quot;,
+      &quot;installs&quot;: 197139,
+      &quot;title&quot;: &quot;Spreadsheets&quot;,
+      &quot;summary&quot;: &quot;Create and edit spreadsheets with formulas and formatting.&quot;,
+      &quot;summarySource&quot;: &quot;Editorial paraphrase of Skills.sh content&quot;,
+      &quot;topic&quot;: &quot;Documents&quot;,
+      &quot;topicSource&quot;: &quot;Proposed n8n category&quot;,
+      &quot;requirements&quot;: &quot;A file runtime, spreadsheet libraries, and the bundled scripts&quot;,
+      &quot;fit&quot;: &quot;Unsupported files&quot;,
+      &quot;url&quot;: &quot;https://skills.sh/anthropics/skills/xlsx&quot;,
+      &quot;fetchedAt&quot;: &quot;2026-11-12T10:34:42.510Z&quot;,
+      &quot;hash&quot;: &quot;8c85f6cfdca12e4cb728af6a858660cf168b4716f2e92c46c3f159fdd917fcf8&quot;,
+      &quot;files&quot;: [
+        {
+          &quot;path&quot;: &quot;LICENSE.txt&quot;,
+          &quot;bytes&quot;: 11357
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/helpers/__init__.py&quot;,
+          &quot;bytes&quot;: 3358
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/helpers/pptx_chart.py&quot;,
+          &quot;bytes&quot;: 5862
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/helpers/pptx_slide.py&quot;,
+          &quot;bytes&quot;: 1675
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/helpers/pptx_theme.py&quot;,
+          &quot;bytes&quot;: 3510
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd&quot;,
+          &quot;bytes&quot;: 1963
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd&quot;,
+          &quot;bytes&quot;: 2515
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd&quot;,
+          &quot;bytes&quot;: 2856
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd&quot;,
+          &quot;bytes&quot;: 1344
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd&quot;,
+          &quot;bytes&quot;: 74984
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd&quot;,
+          &quot;bytes&quot;: 6956
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd&quot;,
+          &quot;bytes&quot;: 51302
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd&quot;,
+          &quot;bytes&quot;: 624
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd&quot;,
+          &quot;bytes&quot;: 152039
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd&quot;,
+          &quot;bytes&quot;: 1231
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd&quot;,
+          &quot;bytes&quot;: 8862
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd&quot;,
+          &quot;bytes&quot;: 14795
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd&quot;,
+          &quot;bytes&quot;: 83612
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd&quot;,
+          &quot;bytes&quot;: 1269
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd&quot;,
+          &quot;bytes&quot;: 7328
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd&quot;,
+          &quot;bytes&quot;: 6382
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd&quot;,
+          &quot;bytes&quot;: 1248
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd&quot;,
+          &quot;bytes&quot;: 880
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd&quot;,
+          &quot;bytes&quot;: 2608
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd&quot;,
+          &quot;bytes&quot;: 3507
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd&quot;,
+          &quot;bytes&quot;: 7507
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd&quot;,
+          &quot;bytes&quot;: 23313
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd&quot;,
+          &quot;bytes&quot;: 1367
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd&quot;,
+          &quot;bytes&quot;: 242277
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd&quot;,
+          &quot;bytes&quot;: 26148
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd&quot;,
+          &quot;bytes&quot;: 25279
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd&quot;,
+          &quot;bytes&quot;: 535
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd&quot;,
+          &quot;bytes&quot;: 5712
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd&quot;,
+          &quot;bytes&quot;: 4010
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd&quot;,
+          &quot;bytes&quot;: 171367
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd&quot;,
+          &quot;bytes&quot;: 4646
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/mce/mc.xsd&quot;,
+          &quot;bytes&quot;: 3127
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-2010.xsd&quot;,
+          &quot;bytes&quot;: 26549
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-2012.xsd&quot;,
+          &quot;bytes&quot;: 3745
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-2018.xsd&quot;,
+          &quot;bytes&quot;: 901
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-cex-2018.xsd&quot;,
+          &quot;bytes&quot;: 1778
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-cid-2016.xsd&quot;,
+          &quot;bytes&quot;: 1002
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd&quot;,
+          &quot;bytes&quot;: 600
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/schemas/microsoft/wml-symex-2015.xsd&quot;,
+          &quot;bytes&quot;: 745
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/soffice.py&quot;,
+          &quot;bytes&quot;: 5927
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validate.py&quot;,
+          &quot;bytes&quot;: 6142
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validators/__init__.py&quot;,
+          &quot;bytes&quot;: 336
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validators/base.py&quot;,
+          &quot;bytes&quot;: 33756
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validators/docx.py&quot;,
+          &quot;bytes&quot;: 17482
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validators/pptx.py&quot;,
+          &quot;bytes&quot;: 15966
+        },
+        {
+          &quot;path&quot;: &quot;scripts/office/validators/redlining.py&quot;,
+          &quot;bytes&quot;: 11231
+        },
+        {
+          &quot;path&quot;: &quot;scripts/recalc.py&quot;,
+          &quot;bytes&quot;: 10670
+        },
+        {
+          &quot;path&quot;: &quot;SKILL.md&quot;,
+          &quot;bytes&quot;: 8584
+        }
+      ],
+      &quot;keptFiles&quot;: [
+        &quot;SKILL.md&quot;
+      ],
+      &quot;skippedCount&quot;: 52,
+      &quot;license&quot;: &quot;See LICENSE.txt; terms not evaluated&quot;,
+      &quot;models&quot;: null,
+      &quot;runFrequency&quot;: null,
+      &quot;audit&quot;: null
+    }
+  ]
+}
+&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById(&#x27;skill-marketplace&#x27;);
+  const sample = JSON.parse(document.getElementById(&#x27;market-snapshot&#x27;).textContent);
+  const byId = (id) =&gt; root.querySelector(&#x27;#&#x27; + id);
+  const state = { query: &#x27;&#x27;, category: &#x27;All topics&#x27;, sort: &#x27;installs&#x27;, scenario: &#x27;available&#x27;, selectedId: null };
+  const topics = [&#x27;All topics&#x27;, &#x27;Agent workflows&#x27;, &#x27;Design &amp; UI&#x27;, &#x27;Documents&#x27;, &#x27;Testing&#x27;];
+  const esc = (value) =&gt; String(value).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g, (char) =&gt; ({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[char]));
+  const icon = (name) =&gt; &#x27;&lt;i data-lucide=&quot;&#x27; + name + &#x27;&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&#x27;;
+  const icons = {&#x27;Agent workflows&#x27;:&#x27;blocks&#x27;,&#x27;Design &amp; UI&#x27;:&#x27;palette&#x27;,&#x27;Documents&#x27;:&#x27;files&#x27;,&#x27;Testing&#x27;:&#x27;flask-conical&#x27;};
+  const count = (value) =&gt; Intl.NumberFormat(&#x27;en&#x27;, {notation:&#x27;compact&#x27;,maximumFractionDigits:1}).format(value);
+  const drawIcons = () =&gt; { if(globalThis.lucide) globalThis.lucide.createIcons({attrs:{width:16,height:16}}); };
+  function save() {
+    if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{selectedSkill:state.selectedId,category:state.category},privateContent:{...state}}).catch(()=&gt;{});
+  }
+  function show(view) {
+    byId(&#x27;market-home&#x27;).hidden = view !== &#x27;home&#x27;;
+    byId(&#x27;market-detail&#x27;).hidden = view !== &#x27;detail&#x27;;
+    byId(&#x27;market-data&#x27;).hidden = view !== &#x27;data&#x27;;
+  }
+  function tab(discover) {
+    byId(&#x27;market-owned&#x27;).hidden = discover;
+    byId(&#x27;market-discover&#x27;).hidden = !discover;
+    byId(&#x27;market-owned-tab&#x27;).setAttribute(&#x27;aria-selected&#x27;, String(!discover));
+    byId(&#x27;market-discover-tab&#x27;).setAttribute(&#x27;aria-selected&#x27;, String(discover));
+  }
+  function render() {
+    const q = state.query.trim().toLowerCase();
+    const items = sample.items.filter(s =&gt; (state.category === &#x27;All topics&#x27; || s.topic === state.category) &amp;&amp; [s.name,s.title,s.summary,s.source,s.topic].join(&#x27; &#x27;).toLowerCase().includes(q));
+    items.sort((a,b) =&gt; state.sort === &#x27;installs&#x27; ? b.installs-a.installs : a.title.localeCompare(b.title));
+    byId(&#x27;market-categories&#x27;).innerHTML = topics.map(t =&gt; &#x27;&lt;button class=&quot;chip&quot; data-category=&quot;&#x27;+esc(t)+&#x27;&quot; aria-pressed=&quot;&#x27;+(state.category===t)+&#x27;&quot;&gt;&#x27;+esc(t)+(t===&#x27;Documents&#x27;?&#x27; · proposed&#x27;:&#x27;&#x27;)+&#x27;&lt;/button&gt;&#x27;).join(&#x27;&#x27;);
+    byId(&#x27;market-count&#x27;).textContent = items.length + &#x27; of 6 sampled skills&#x27;;
+    byId(&#x27;market-grid&#x27;).innerHTML = items.map(s =&gt; &#x27;&lt;article class=&quot;skill-card&quot;&gt;&lt;div class=&quot;card-title&quot;&gt;&lt;div class=&quot;skill-icon&quot;&gt;&#x27;+icon(icons[s.topic])+&#x27;&lt;/div&gt;&lt;div&gt;&lt;h3&gt;&#x27;+esc(s.title)+&#x27;&lt;/h3&gt;&lt;div class=&quot;publisher&quot;&gt;&#x27;+esc(s.source)+&#x27;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;p class=&quot;summary&quot;&gt;&#x27;+esc(s.summary)+&#x27;&lt;/p&gt;&lt;div class=&quot;row&quot;&gt;&lt;span class=&quot;badge&quot;&gt;&#x27;+esc(s.topic)+(s.topicSource.startsWith(&#x27;Proposed&#x27;)?&#x27; · proposed&#x27;:&#x27;&#x27;)+&#x27;&lt;/span&gt;&lt;span class=&quot;badge warning&quot;&gt;&#x27;+esc(s.fit)+&#x27;&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;card-bottom&quot;&gt;&lt;span&gt;&lt;span class=&quot;number&quot;&gt;&#x27;+count(s.installs)+&#x27;&lt;/span&gt; &lt;span class=&quot;small muted&quot;&gt;installs&lt;/span&gt;&lt;/span&gt;&lt;button class=&quot;btn&quot; data-skill=&quot;&#x27;+esc(s.id)+&#x27;&quot; aria-label=&quot;View &#x27;+esc(s.title)+&#x27;&quot;&gt;View skill &#x27;+icon(&#x27;arrow-up-right&#x27;)+&#x27;&lt;/button&gt;&lt;/div&gt;&lt;/article&gt;&#x27;).join(&#x27;&#x27;);
+    byId(&#x27;market-empty&#x27;).hidden = items.length &gt; 0;
+    byId(&#x27;market-outage&#x27;).hidden = state.scenario !== &#x27;stale&#x27;;
+    drawIcons();
+  }
+  function detail(id, persist = true) {
+    const s=sample.items.find(item=&gt;item.id===id); if(!s) return;
+    state.selectedId=id;
+    const skip=s.skippedCount;
+    const files=s.files.map(f=&gt;&#x27;&lt;div class=&quot;file-row&quot;&gt;&lt;code&gt;&#x27;+esc(f.path)+&#x27;&lt;/code&gt;&lt;span class=&quot;small &#x27;+(s.keptFiles.includes(f.path)?&#x27;muted&#x27;:&#x27;&#x27;)+&#x27;&quot;&gt;&#x27;+(s.keptFiles.includes(f.path)?&#x27;Kept&#x27;:&#x27;Skipped&#x27;)+&#x27;&lt;/span&gt;&lt;/div&gt;&#x27;).join(&#x27;&#x27;);
+    const audits = s.audit ? s.audit.map(a=&gt;&#x27;&lt;div class=&quot;audit&quot;&gt;&lt;div class=&quot;row between&quot;&gt;&lt;span&gt;&#x27;+esc(a.provider)+&#x27;&lt;/span&gt;&lt;span class=&quot;badge &#x27;+(a.status===&#x27;warn&#x27;?&#x27;warning&#x27;:&#x27;&#x27;)+&#x27;&quot;&gt;&#x27;+esc(a.status)+&#x27;&lt;/span&gt;&lt;/div&gt;&lt;p class=&quot;small muted&quot;&gt;Audited &#x27;+esc(a.auditedAt.slice(0,10))+&#x27;&lt;/p&gt;&lt;/div&gt;&#x27;).join(&#x27;&#x27;) : &#x27;&lt;p class=&quot;muted&quot;&gt;Audit results were not fetched for this skill in the sample. Check Skills.sh for its current results.&lt;/p&gt;&#x27;;
+    byId(&#x27;market-detail&#x27;).innerHTML = &#x27;&lt;button class=&quot;back&quot; data-action=&quot;back&quot;&gt;&#x27;+icon(&#x27;arrow-left&#x27;)+&#x27;Back to discovery&lt;/button&gt;&lt;div class=&quot;detail-top&quot;&gt;&lt;div&gt;&lt;div class=&quot;row&quot;&gt;&lt;span class=&quot;badge&quot;&gt;&#x27;+esc(s.topic)+&#x27;&lt;/span&gt;&lt;span class=&quot;badge warning&quot;&gt;&#x27;+esc(s.fit)+&#x27;&lt;/span&gt;&lt;/div&gt;&lt;h1 class=&quot;spaced&quot;&gt;&#x27;+esc(s.title)+&#x27;&lt;/h1&gt;&lt;p class=&quot;publisher&quot;&gt;&#x27;+esc(s.id)+&#x27;&lt;/p&gt;&lt;/div&gt;&lt;a class=&quot;btn primary&quot; href=&quot;&#x27;+esc(s.url)+&#x27;&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;View on Skills.sh &#x27;+icon(&#x27;arrow-up-right&#x27;)+&#x27;&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;detail-body&quot;&gt;&lt;div&gt;&lt;section class=&quot;detail-section&quot;&gt;&lt;h3&gt;What it helps you do&lt;/h3&gt;&lt;p&gt;&#x27;+esc(s.summary)+&#x27;&lt;/p&gt;&lt;p class=&quot;small muted spaced&quot;&gt;Summary adapted from skill content supplied by Skills.sh&lt;/p&gt;&lt;/section&gt;&lt;section class=&quot;detail-section&quot;&gt;&lt;h3&gt;Using this skill in n8n&lt;/h3&gt;&lt;div class=&quot;notice spaced&quot;&gt;&lt;strong&gt;&#x27;+(skip?&#x27;Some files would be left out&#x27;:&#x27;Check the required tools&#x27;)+&#x27;&lt;/strong&gt;&lt;p&gt;&#x27;+(skip?esc(skip)+&#x27; of &#x27;+s.files.length+&#x27; files are outside the current import format. Review file support and preserve license notices before adding this skill.&#x27;:&#x27;The current importer can keep all files in this snapshot. The required tools and license still need review.&#x27;)+&#x27;&lt;/p&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Needs:&lt;/strong&gt; &#x27;+esc(s.requirements)+&#x27;&lt;/p&gt;&lt;details class=&quot;spaced&quot;&gt;&lt;summary&gt;Inspect &#x27;+s.files.length+&#x27; files · &#x27;+s.keptFiles.length+&#x27; supported by the current importer&lt;/summary&gt;&lt;div class=&quot;file-list&quot;&gt;&#x27;+files+&#x27;&lt;/div&gt;&lt;/details&gt;&lt;/section&gt;&lt;section class=&quot;detail-section&quot;&gt;&lt;h3&gt;Model performance&lt;/h3&gt;&lt;p&gt;Not evaluated&lt;/p&gt;&lt;p class=&quot;muted spaced&quot;&gt;Skills.sh does not provide model-specific test results. An agent install count does not tell us which model works best.&lt;/p&gt;&lt;/section&gt;&lt;section class=&quot;detail-section&quot;&gt;&lt;h3&gt;Security audits&lt;/h3&gt;&#x27;+audits+&#x27;&lt;p class=&quot;small muted spaced&quot;&gt;Provider results can refer to older content. They do not replace a review of the version you import.&lt;/p&gt;&lt;/section&gt;&lt;/div&gt;&lt;aside&gt;&lt;dl class=&quot;facts&quot;&gt;&lt;dt&gt;Installs on Skills.sh&lt;/dt&gt;&lt;dd class=&quot;number&quot;&gt;&#x27;+s.installs.toLocaleString(&#x27;en&#x27;)+&#x27;&lt;/dd&gt;&lt;dt&gt;Run frequency&lt;/dt&gt;&lt;dd&gt;Not provided&lt;/dd&gt;&lt;dt&gt;Source&lt;/dt&gt;&lt;dd&gt;&#x27;+esc(s.source)+&#x27;&lt;/dd&gt;&lt;dt&gt;Category source&lt;/dt&gt;&lt;dd&gt;&#x27;+esc(s.topicSource)+&#x27;&lt;/dd&gt;&lt;dt&gt;License&lt;/dt&gt;&lt;dd&gt;&#x27;+esc(s.license)+&#x27;&lt;/dd&gt;&lt;dt&gt;Files&lt;/dt&gt;&lt;dd&gt;&#x27;+s.files.length+&#x27; in this snapshot&lt;/dd&gt;&lt;dt&gt;Snapshot captured&lt;/dt&gt;&lt;dd&gt;12 Nov 2026&lt;/dd&gt;&lt;dt&gt;Content hash&lt;/dt&gt;&lt;dd class=&quot;small&quot;&gt;&#x27;+esc(s.hash)+&#x27;&lt;/dd&gt;&lt;/dl&gt;&lt;button class=&quot;btn quiet spaced&quot; data-action=&quot;data&quot;&gt;About this data &#x27;+icon(&#x27;arrow-right&#x27;)+&#x27;&lt;/button&gt;&lt;/aside&gt;&lt;/div&gt;&#x27;;
+    show(&#x27;detail&#x27;); drawIcons(); if(persist) save();
+  }
+  root.addEventListener(&#x27;click&#x27;, (e) =&gt; {
+    const b=e.target.closest(&#x27;button&#x27;); if(!b) return;
+    if(b.dataset.category){state.category=b.dataset.category;render();save();}
+    if(b.dataset.skill) detail(b.dataset.skill);
+    if(b.dataset.action===&#x27;back&#x27;){state.selectedId=null;show(&#x27;home&#x27;);tab(true);save();}
+    if(b.dataset.action===&#x27;data&#x27;){show(&#x27;data&#x27;);drawIcons();}
+    if(b.dataset.action===&#x27;discover&#x27;){show(&#x27;home&#x27;);tab(true);}
+    if(b.dataset.action===&#x27;clear&#x27;){state.query=&#x27;&#x27;;state.category=&#x27;All topics&#x27;;byId(&#x27;market-search&#x27;).value=&#x27;&#x27;;render();save();}
+  });
+  byId(&#x27;market-search&#x27;).addEventListener(&#x27;input&#x27;,e=&gt;{state.query=e.target.value;render();save();});
+  byId(&#x27;market-sort&#x27;).addEventListener(&#x27;change&#x27;,e=&gt;{state.sort=e.target.value;render();save();});
+  byId(&#x27;market-scenario&#x27;).addEventListener(&#x27;change&#x27;,e=&gt;{state.scenario=e.target.value;show(&#x27;home&#x27;);tab(true);render();save();});
+  byId(&#x27;market-owned-tab&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;tab(false));
+  byId(&#x27;market-discover-tab&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;tab(true));
+  for(const [id,other] of [[&#x27;market-owned-tab&#x27;,&#x27;market-discover-tab&#x27;],[&#x27;market-discover-tab&#x27;,&#x27;market-owned-tab&#x27;]]) byId(id).addEventListener(&#x27;keydown&#x27;,e=&gt;{if([&#x27;ArrowLeft&#x27;,&#x27;ArrowRight&#x27;].includes(e.key)){e.preventDefault();byId(other).focus();tab(other===&#x27;market-discover-tab&#x27;);}});
+  function restore(saved) {
+    if(!saved) return;
+    if(typeof saved.query===&#x27;string&#x27;)state.query=saved.query;
+    if(topics.includes(saved.category))state.category=saved.category;
+    if([&#x27;name&#x27;,&#x27;installs&#x27;].includes(saved.sort))state.sort=saved.sort;
+    if([&#x27;available&#x27;,&#x27;stale&#x27;].includes(saved.scenario))state.scenario=saved.scenario;
+    byId(&#x27;market-search&#x27;).value=state.query;byId(&#x27;market-sort&#x27;).value=state.sort;byId(&#x27;market-scenario&#x27;).value=state.scenario;
+    render(); if(sample.items.some(s=&gt;s.id===saved.selectedId))detail(saved.selectedId, false);
+  }
+  render();restore(window.openai?.widgetState?.privateContent);
+  window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;restore(e.detail?.globals?.widgetState?.privateContent));
+})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (event) =&gt; {
+    for (const target of event.composedPath()) {
+      if (target?.nodeType === Node.ELEMENT_NODE) {
+        const trigger = target.closest(&quot;[data-tooltip]&quot;);
+        if (trigger) return trigger;
+      }
+    }
+    return null;
+  };
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handlers = {
+    pointerover: handlePointerOpen,
+    pointerdown: handlePointer,
+    pointercancel: handlePointer,
+    click: handleTouchClick,
+    pointerout: handleLeave,
+    focusin: handleFocusIn,
+    focusout: handleLeave,
+    keydown: handleKeyDown,
+    contextmenu: handleContextMenu,
+  };
+  const roots = new Map();
+  const handledEvents = new WeakSet();
+  const handleEvent = (event) =&gt; {
+    if (handledEvents.has(event)) return;
+    handledEvents.add(event);
+    handlers[event.type](event);
+  };
+  const discoverRoots = (node) =&gt; {
+    if (node.shadowRoot) listen(node.shadowRoot);
+    for (const element of node.querySelectorAll(&quot;*&quot;)) {
+      if (element.shadowRoot) listen(element.shadowRoot);
+    }
+  };
+  const listen = (root) =&gt; {
+    if (roots.has(root)) return;
+    for (const type of Object.keys(handlers)) root.addEventListener(type, handleEvent);
+    const observer = new window.MutationObserver((records) =&gt; {
+      for (const { addedNodes } of records) {
+        for (const node of addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) discoverRoots(node);
+        }
+      }
+      for (const [root, cleanup] of roots) {
+        if (root.host &amp;&amp; !root.host.isConnected) {
+          cleanup();
+          roots.delete(root);
+        }
+      }
+      if (activeTrigger &amp;&amp; !activeTrigger.isConnected) closeTooltip(false);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    roots.set(root, () =&gt; {
+      observer.disconnect();
+      for (const type of Object.keys(handlers)) root.removeEventListener(type, handleEvent);
+    });
+    discoverRoots(root);
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    for (const cleanup of roots.values()) cleanup();
+    roots.clear();
+    tooltip = null;
+  };
+
+  // Events between children of one shadow root never reach the document.
+  listen(document);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-carousel&quot;&gt;
+  (() =&gt; {
+    for (const root of document.querySelectorAll(&quot;.viz-carousel&quot;)) {
+      const panels = Array.from(
+        root.querySelectorAll(&quot;:scope &gt; [data-variant]&quot;),
+      );
+      if (panels.length === 0) {
+        continue;
+      }
+      root.setAttribute(&quot;role&quot;, &quot;group&quot;);
+      panels.forEach((panel, index) =&gt; {
+        panel.hidden = index !== 0;
+        panel.setAttribute(&quot;role&quot;, &quot;group&quot;);
+        if (!panel.hasAttribute(&quot;aria-label&quot;)) {
+          panel.setAttribute(&quot;aria-label&quot;, panel.dataset.variant);
+        }
+      });
+      root.dataset.activeVariant = panels[0].dataset.variant;
+      if (panels.length === 1) {
+        continue;
+      }
+
+      const controls = document.createElement(&quot;div&quot;);
+      controls.className = &quot;viz-carousel-controls&quot;;
+      // Portable copy of the settings dropdown&#x27;s legacy glyph; no 14px icon-package preset matches it.
+      // https://github.com/openai/openai/blob/master/codex/codex-apps/webview/src/icons/chevron.svg
+      controls.innerHTML = `
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-previous cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;details class=&quot;viz-carousel-picker&quot;&gt;
+        &lt;summary class=&quot;cursor-interaction&quot;&gt;
+          &lt;span class=&quot;viz-carousel-count tabular-nums&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;viz-carousel-name&quot;&gt;&lt;/span&gt;
+          &lt;svg class=&quot;viz-carousel-caret&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 20 21&quot; fill=&quot;none&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
+            &lt;path d=&quot;M15.2793 7.71101C15.539 7.45131 15.961 7.45131 16.2207 7.71101C16.4804 7.97071 16.4804 8.39272 16.2207 8.65242L10.4707 14.4024C10.211 14.6621 9.78902 14.6621 9.52932 14.4024L3.77932 8.65242L3.69436 8.54792C3.52385 8.28979 3.55205 7.93828 3.77932 7.71101C4.00659 7.48374 4.3581 7.45554 4.61623 7.62605L4.72073 7.71101L10 12.9903L15.2793 7.71101Z&quot; fill=&quot;currentColor&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;0.6&quot; /&gt;
+          &lt;/svg&gt;
+        &lt;/summary&gt;
+        &lt;div class=&quot;viz-carousel-options&quot;&gt;&lt;/div&gt;
+      &lt;/details&gt;
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-next cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;`;
+      const previous = controls.querySelector(&quot;.viz-carousel-previous&quot;);
+      const next = controls.querySelector(&quot;.viz-carousel-next&quot;);
+      const picker = controls.querySelector(&quot;.viz-carousel-picker&quot;);
+      const summary = picker.querySelector(&quot;summary&quot;);
+      const count = controls.querySelector(&quot;.viz-carousel-count&quot;);
+      const name = controls.querySelector(&quot;.viz-carousel-name&quot;);
+      const options = controls.querySelector(&quot;.viz-carousel-options&quot;);
+      const status = document.createElement(&quot;span&quot;);
+      status.className = &quot;sr-only&quot;;
+      status.setAttribute(&quot;role&quot;, &quot;status&quot;);
+      status.setAttribute(&quot;aria-live&quot;, &quot;polite&quot;);
+      status.setAttribute(&quot;aria-atomic&quot;, &quot;true&quot;);
+      previous.setAttribute(
+        &quot;aria-label&quot;,
+        root.dataset.previousLabel ?? &quot;Previous variant&quot;,
+      );
+      next.setAttribute(&quot;aria-label&quot;, root.dataset.nextLabel ?? &quot;Next variant&quot;);
+
+      let active = 0;
+      let mousePointerId = null;
+      let summaryPointerHandled = false;
+      summary.addEventListener(&quot;pointerdown&quot;, (event) =&gt; {
+        summaryPointerHandled =
+          event.pointerType === &quot;mouse&quot; &amp;&amp; event.button === 0 &amp;&amp; !event.ctrlKey;
+        if (!summaryPointerHandled) {
+          return;
+        }
+        event.preventDefault();
+        summary.focus({ preventScroll: true });
+        picker.open = !picker.open;
+        mousePointerId = picker.open ? event.pointerId : null;
+      });
+      summary.addEventListener(&quot;click&quot;, (event) =&gt; {
+        if (summaryPointerHandled &amp;&amp; event.detail &gt; 0) {
+          event.preventDefault();
+        }
+      });
+      const choices = panels.map((panel, index) =&gt; {
+        const choice = document.createElement(&quot;button&quot;);
+        choice.type = &quot;button&quot;;
+        choice.className = &quot;cursor-interaction&quot;;
+        choice.textContent = panel.dataset.variant;
+        choice.addEventListener(&quot;click&quot;, () =&gt; {
+          select(index);
+          summary.focus();
+        });
+        choice.addEventListener(&quot;pointerup&quot;, (event) =&gt; {
+          if (
+            picker.open &amp;&amp;
+            event.pointerType === &quot;mouse&quot; &amp;&amp;
+            event.button === 0 &amp;&amp;
+            event.pointerId === mousePointerId
+          ) {
+            choice.click();
+          }
+        });
+        options.appendChild(choice);
+        return choice;
+      });
+      const select = (index) =&gt; {
+        const changed = active !== index;
+        active = index;
+        panels.forEach((panel, position) =&gt; {
+          panel.hidden = position !== active;
+          choices[position].setAttribute(
+            &quot;aria-current&quot;,
+            String(position === active),
+          );
+        });
+        root.dataset.activeVariant = panels[active].dataset.variant;
+        count.textContent = `${active + 1} / ${panels.length}`;
+        name.textContent = panels[active].dataset.variant;
+        picker.open = false;
+        mousePointerId = null;
+        if (changed) {
+          status.textContent = `${count.textContent}: ${name.textContent}`;
+        }
+      };
+      previous.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + panels.length - 1) % panels.length),
+      );
+      next.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + 1) % panels.length),
+      );
+      picker.addEventListener(&quot;keydown&quot;, (event) =&gt; {
+        if (event.key === &quot;Escape&quot; &amp;&amp; picker.open) {
+          event.preventDefault();
+          picker.open = false;
+          mousePointerId = null;
+          summary.focus();
+          return;
+        }
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const index = choices.indexOf(document.activeElement);
+        let nextIndex;
+        if (event.key === &quot;ArrowDown&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + 1) % choices.length;
+        } else if (event.key === &quot;ArrowUp&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + choices.length - 1) % choices.length;
+        } else if (picker.open &amp;&amp; event.key === &quot;Home&quot;) {
+          nextIndex = 0;
+        } else if (picker.open &amp;&amp; event.key === &quot;End&quot;) {
+          nextIndex = choices.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        picker.open = true;
+        choices[nextIndex].focus();
+      });
+      picker.addEventListener(&quot;focusout&quot;, (event) =&gt; {
+        if (!picker.contains(event.relatedTarget)) {
+          picker.open = false;
+          mousePointerId = null;
+        }
+      });
+      const dismiss = (event) =&gt; {
+        if (!summary.contains(event.target)) {
+          mousePointerId = null;
+        }
+        if (!picker.contains(event.target)) {
+          picker.open = false;
+        }
+      };
+      const endPointerSelection = () =&gt; {
+        mousePointerId = null;
+      };
+      const sizePicker = () =&gt; {
+        root.style.setProperty(
+          &quot;--viz-carousel-picker-height&quot;,
+          `${picker.open ? options.offsetHeight : 0}px`,
+        );
+      };
+      picker.addEventListener(&quot;toggle&quot;, sizePicker);
+      window.addEventListener(&quot;resize&quot;, sizePicker);
+      document.addEventListener(&quot;pointerdown&quot;, dismiss);
+      document.addEventListener(&quot;pointerup&quot;, endPointerSelection);
+      document.addEventListener(&quot;pointercancel&quot;, endPointerSelection);
+      window.addEventListener(&quot;blur&quot;, endPointerSelection);
+      window.addEventListener(
+        &quot;pagehide&quot;,
+        () =&gt; {
+          document.removeEventListener(&quot;pointerdown&quot;, dismiss);
+          document.removeEventListener(&quot;pointerup&quot;, endPointerSelection);
+          document.removeEventListener(&quot;pointercancel&quot;, endPointerSelection);
+          window.removeEventListener(&quot;blur&quot;, endPointerSelection);
+          window.removeEventListener(&quot;resize&quot;, sizePicker);
+        },
+        { once: true },
+      );
+      root.append(controls, status);
+      select(0);
+    }
+  })();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+
+<script>(() => {
+  const frame = document.getElementById("codex-visualization");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+  const isShare = document.documentElement.classList.contains(
+    "visualization-share-root",
+  );
+  let viewportHeight = globalThis.innerHeight;
+  let sizeFingerprint = null;
+  let sizeWriteTimeout;
+  let lastSize = null;
+  let pendingSize = null;
+  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
+    globalThis.location.pathname,
+    globalThis.location.search,
+  ])}`;
+  const sizeStorageKey = `${storageKey}:share-size-v1`;
+  const parseState = (serializedState) => {
+    if (
+      typeof serializedState !== "string" ||
+      new TextEncoder().encode(serializedState).length > 16 * 1024
+    ) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    /** @type {unknown} */
+    const state = JSON.parse(serializedState);
+    if (
+      state == null ||
+      typeof state !== "object" ||
+      Array.isArray(state) ||
+      ("imageIds" in state &&
+        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
+    ) {
+      throw new TypeError("Widget state must be a JSON object");
+    }
+    const storedState = { modelContent: null, privateContent: null, ...state };
+    const canonicalState = JSON.stringify(
+      storedState,
+      (_key, /** @type {unknown} */ value) => {
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new TypeError("Widget state must contain finite numbers");
+        }
+        return value;
+      },
+    );
+    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    return storedState;
+  };
+  let storage = null;
+  let state = null;
+  try {
+    const localStorage = globalThis.localStorage;
+    const probeKey = `${storageKey}:probe`;
+    localStorage.setItem(probeKey, "1");
+    localStorage.removeItem(probeKey);
+    storage = localStorage;
+    const savedState = storage.getItem(storageKey);
+    if (savedState != null) {
+      try {
+        state = parseState(savedState);
+      } catch {
+        // Invalid saved state does not disable future writes.
+      }
+    }
+  } catch {
+    storage = null;
+  }
+  const persistSize = () => {
+    globalThis.clearTimeout(sizeWriteTimeout);
+    if (pendingSize == null) {
+      return;
+    }
+    try {
+      storage?.setItem(sizeStorageKey, pendingSize);
+    } catch {
+      // A denied or full cache must not affect the visualization.
+    }
+    pendingSize = null;
+  };
+  if (isShare) {
+    globalThis.addEventListener("pagehide", persistSize);
+  }
+  const initialGlobals = {
+    widgetState: state,
+    statePersistence: storage == null ? "none" : "local",
+  };
+
+  const channel = new MessageChannel();
+  channel.port1.addEventListener("message", (event) => {
+    const data = event.data;
+    if (typeof data !== "object" || data == null) {
+      return;
+    }
+    if (data.type === "widget-state-write") {
+      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
+        return;
+      }
+      let ok = false;
+      try {
+        if (storage != null) {
+          const state = parseState(data.state);
+          storage.setItem(storageKey, JSON.stringify(state));
+          ok = true;
+        }
+      } catch {
+        // Storage denial, quota limits, and invalid state return a failed receipt.
+      }
+      channel.port1.postMessage({
+        type: "widget-state-result",
+        id: data.id,
+        ok,
+      });
+      return;
+    }
+    if (data.type === "height") {
+      const height = data.height;
+      if (
+        typeof height !== "number" ||
+        !Number.isFinite(height) ||
+        height < 0
+      ) {
+        return;
+      }
+      if (height <= 10_000) {
+        const width = isShare && storage != null ? frame.clientWidth : null;
+        frame.style.height = Math.ceil(height) + "px";
+        if (isShare && storage != null) {
+          const size = JSON.stringify({
+            fingerprint: sizeFingerprint,
+            width,
+            viewportHeight: globalThis.innerHeight,
+            dark: globalThis.matchMedia("(prefers-color-scheme: dark)").matches,
+            scale: globalThis.devicePixelRatio,
+            height: Math.ceil(height),
+          });
+          if (size !== lastSize) {
+            lastSize = size;
+            pendingSize = size;
+            globalThis.clearTimeout(sizeWriteTimeout);
+            sizeWriteTimeout = globalThis.setTimeout(persistSize, 100);
+          }
+        }
+      }
+      if (isShare) {
+        // Keep unusually tall content accessible without accepting an unbounded height.
+        if (height > 10_000 && Number.parseFloat(frame.style.height) === 0) {
+          frame.style.removeProperty("height");
+        }
+        frame.scrolling = height > 10_000 ? "auto" : "no";
+        document.documentElement.classList.add("visualization-share-ready");
+      }
+      return;
+    }
+    if (data.type === "scroll-to") {
+      const top = data.top;
+      if (
+        typeof top === "number" &&
+        Number.isFinite(top) &&
+        top >= 0 &&
+        globalThis.navigator.userActivation?.isActive === true
+      ) {
+        globalThis.scrollTo({
+          top: Math.ceil(
+            globalThis.scrollY + frame.getBoundingClientRect().top + top,
+          ),
+        });
+      }
+      return;
+    }
+    if (data.type === "open-external") {
+      const rawHref = data.href;
+      if (typeof rawHref !== "string") {
+        return;
+      }
+      let href;
+      try {
+        const url = new URL(rawHref, document.baseURI);
+        if (url.protocol !== "https:") {
+          return;
+        }
+        href = url.href;
+      } catch {
+        return;
+      }
+      if (globalThis.navigator.userActivation?.isActive === true) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.rel = "noopener noreferrer";
+        anchor.target = "_blank";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      return;
+    }
+    if (data.type === "follow-up") {
+      const prompt = data.prompt;
+      if (
+        typeof prompt !== "string" ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      const title = data.title;
+      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
+    }
+  });
+  channel.port1.start();
+  const srcdoc = frame.dataset.srcdoc;
+  if (srcdoc == null) {
+    return;
+  }
+  globalThis.addEventListener("resize", () => {
+    const height = Number.parseFloat(frame.style.height);
+    if (!isShare && (!Number.isFinite(height) || height <= viewportHeight)) {
+      frame.style.removeProperty("height");
+    }
+    viewportHeight = globalThis.innerHeight;
+    channel.port1.postMessage({ type: "measure" });
+  });
+  frame.addEventListener(
+    "load",
+    () => {
+      frame.contentWindow?.postMessage(
+        { type: "codex-visualization-initialize" },
+        "*",
+        [channel.port2],
+      );
+    },
+    { once: true },
+  );
+  // Match the trusted bootstrap element, not the same text in an authored title.
+  const frameHtml = srcdoc.replace(
+    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
+    () =>
+      '<script type="application/json" id="codex-visualization-widget-state">' +
+      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
+      "<\/script>",
+  );
+  if (isShare && storage != null) {
+    // Fingerprint the rendered document, including restored widget state, without
+    // storing its content. This is a layout cache, not a security identity.
+    let hash = 5381;
+    for (let index = 0; index < frameHtml.length; index += 1) {
+      hash = (hash * 33 + frameHtml.charCodeAt(index)) % 4_294_967_296;
+    }
+    sizeFingerprint = hash.toString(36);
+    try {
+      const size = JSON.parse(storage.getItem(sizeStorageKey) ?? "null");
+      if (
+        size?.fingerprint === sizeFingerprint &&
+        size.width === frame.clientWidth &&
+        size.viewportHeight === globalThis.innerHeight &&
+        size.dark ===
+          globalThis.matchMedia("(prefers-color-scheme: dark)").matches &&
+        size.scale === globalThis.devicePixelRatio &&
+        typeof size.height === "number" &&
+        Number.isFinite(size.height) &&
+        size.height >= 0 &&
+        size.height <= 10_000
+      ) {
+        frame.style.height = size.height + "px";
+      }
+    } catch {
+      // Ignore missing or invalid cache entries and measure the live frame.
+    }
+  }
+  frame.srcdoc = frameHtml;
+  delete frame.dataset.srcdoc;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+[
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "v1-list",
+    "url": "https://www.skills.sh/api/v1/skills?per_page=2&page=0",
+    "fetchedAt": "2026-11-12T10:34:38.584Z",
+    "status": 401,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 204
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "v1-search",
+    "url": "https://www.skills.sh/api/v1/skills/search?q=pdf&limit=2",
+    "fetchedAt": "2026-11-12T10:34:38.843Z",
+    "status": 401,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 204
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "v1-curated",
+    "url": "https://www.skills.sh/api/v1/skills/curated",
+    "fetchedAt": "2026-11-12T10:34:39.081Z",
+    "status": 401,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 204
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "v1-detail",
+    "url": "https://www.skills.sh/api/v1/skills/vercel-labs/skills/find-skills",
+    "fetchedAt": "2026-11-12T10:34:39.293Z",
+    "status": 401,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 204
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "v1-audit",
+    "url": "https://www.skills.sh/api/v1/skills/audit/vercel-labs/skills/find-skills",
+    "fetchedAt": "2026-11-12T10:34:39.527Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 1178
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-find",
+    "url": "https://www.skills.sh/api/search?q=find-skills&limit=3",
+    "fetchedAt": "2026-11-12T10:34:39.903Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 903
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-design",
+    "url": "https://www.skills.sh/api/search?q=design&limit=5",
+    "fetchedAt": "2026-11-12T10:34:40.363Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 1117
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-testing",
+    "url": "https://www.skills.sh/api/search?q=testing&limit=3",
+    "fetchedAt": "2026-11-12T10:34:40.773Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 846
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-pdf",
+    "url": "https://www.skills.sh/api/search?q=pdf&owner=anthropics&limit=2",
+    "fetchedAt": "2026-11-12T10:34:41.199Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 666
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-xlsx",
+    "url": "https://www.skills.sh/api/search?q=xlsx&owner=anthropics&limit=2",
+    "fetchedAt": "2026-11-12T10:34:41.523Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public, max-age=0, must-revalidate",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 668
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-find",
+    "url": "https://www.skills.sh/api/download/vercel-labs/skills/find-skills",
+    "fetchedAt": "2026-11-12T10:34:42.026Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 5750
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-pdf",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/pdf",
+    "fetchedAt": "2026-11-12T10:34:42.192Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 72088
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-xlsx",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/xlsx",
+    "fetchedAt": "2026-11-12T10:34:42.510Z",
+    "status": 200,
+    "headers": {
+      "cache-control": "public",
+      "content-type": "application/json"
+    },
+    "responseCharacters": 1204071
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-frontend-design",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/frontend-design",
+    "fetchedAt": "2026-11-12T10:35:12.657Z",
+    "status": 200,
+    "responseCharacters": 19981
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-webapp-testing",
+    "url": "https://www.skills.sh/api/download/anthropics/skills/webapp-testing",
+    "fetchedAt": "2026-11-12T10:35:13.432Z",
+    "status": 200,
+    "responseCharacters": 23354
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "download-agent-browser",
+    "url": "https://www.skills.sh/api/download/vercel-labs/agent-browser/agent-browser",
+    "fetchedAt": "2026-11-12T10:35:13.617Z",
+    "status": 200,
+    "responseCharacters": 3405
+  },
+  {
+    "transport": "Browser same-origin GET; no Authorization header supplied",
+    "name": "search-short-query",
+    "url": "https://www.skills.sh/api/search?q=a&limit=2",
+    "fetchedAt": "2026-11-12T10:35:13.769Z",
+    "status": 400
+  }
+]

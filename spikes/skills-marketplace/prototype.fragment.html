@@ -1,0 +1,736 @@
+<style>
+#skill-marketplace {color-scheme:light dark;--color--pink-500:oklch(78.07% .136 5.02);--background--surface:light-dark(#fff,#202020);--background--subtle:light-dark(#f6f6f6,#181818);--background--hover:light-dark(#eee,#2c2c2c);--text-color:light-dark(#282828,#eee);--text-color--subtle:light-dark(#666,#aaa);--border-color:light-dark(#e5e5e5,#383838);--warning-bg:light-dark(#fff7e5,#382d1d);--warning-text:light-dark(#885511,#edc986);--spacing--4xs:.25rem;--spacing--2xs:.5rem;--spacing--xs:.75rem;--spacing--sm:1rem;--spacing--lg:1.5rem;--spacing--xl:2rem;--spacing--2xl:3rem;--radius--xs:.5rem;--radius--sm:.75rem;--font-size--2xs:.75rem;--font-size--sm:.875rem;--font-size--md:1rem;--font-size--xl:1.25rem;--font-size--2xl:1.75rem;--height--lg:2.25rem;font:400 var(--font-size--sm)/1.5 'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text-color);width:100%;}
+#skill-marketplace *{box-sizing:border-box}
+#skill-marketplace [hidden]{display:none!important}
+#skill-marketplace h1,#skill-marketplace h2,#skill-marketplace h3,#skill-marketplace p{margin:0;color:inherit;font-family:inherit;line-height:1.5}
+#skill-marketplace h1{font-size:var(--font-size--2xl);font-weight:600;letter-spacing:-.03em}
+#skill-marketplace h2{font-size:var(--font-size--xl);font-weight:600}
+#skill-marketplace h3{font-size:var(--font-size--md);font-weight:600}
+#skill-marketplace button,#skill-marketplace input,#skill-marketplace select{font:inherit;color:inherit}
+#skill-marketplace button,#skill-marketplace a{touch-action:manipulation}
+#skill-marketplace a{color:inherit;text-underline-offset:3px}
+#skill-marketplace button{cursor:pointer}
+#skill-marketplace button:focus-visible,#skill-marketplace a:focus-visible,#skill-marketplace input:focus-visible,#skill-marketplace select:focus-visible{outline:2px solid var(--text-color);outline-offset:3px}
+#skill-marketplace svg{width:var(--spacing--sm);height:var(--spacing--sm);flex-shrink:0}
+#skill-marketplace .muted{color:var(--text-color--subtle)}
+#skill-marketplace .small{font-size:var(--font-size--2xs)}
+#skill-marketplace .row{display:flex;align-items:center;gap:var(--spacing--2xs);flex-wrap:wrap}
+#skill-marketplace .between{justify-content:space-between}
+#skill-marketplace .review-strip{display:flex;justify-content:space-between;align-items:center;gap:var(--spacing--sm);flex-wrap:wrap;padding:var(--spacing--xs) var(--spacing--sm);background:var(--background--subtle);border:1px solid var(--border-color);border-bottom:0;border-radius:var(--radius--sm) var(--radius--sm) 0 0;font-size:var(--font-size--2xs)}
+#skill-marketplace .review-label{font-weight:600;letter-spacing:.06em}
+#skill-marketplace .review-strip select{background:var(--background--surface);border:1px solid var(--border-color);border-radius:var(--radius--xs);padding:var(--spacing--4xs) var(--spacing--2xs)}
+#skill-marketplace .window{background:var(--background--surface);border:1px solid var(--border-color);border-radius:0 0 var(--radius--sm) var(--radius--sm);overflow:hidden}
+#skill-marketplace .topbar{display:flex;align-items:center;gap:var(--spacing--lg);padding:var(--spacing--sm) var(--spacing--lg);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .logo{font-size:var(--font-size--xl);font-weight:700;letter-spacing:-.06em;display:flex;align-items:center;gap:var(--spacing--2xs)}
+#skill-marketplace .logo i,#skill-marketplace .logo svg{color:var(--color--pink-500)}
+#skill-marketplace .crumb{padding-left:var(--spacing--lg);border-left:1px solid var(--border-color)}
+#skill-marketplace .workspace{display:grid;grid-template-columns:10.5rem minmax(0,1fr)} /* The settings rail has no matching size token. */
+#skill-marketplace .sidebar{padding:var(--spacing--lg) var(--spacing--xs);background:var(--background--subtle);border-right:1px solid var(--border-color)}
+#skill-marketplace .nav-title{padding:var(--spacing--2xs) var(--spacing--xs);font-weight:600}
+#skill-marketplace .nav-item{display:flex;gap:var(--spacing--xs);align-items:center;padding:var(--spacing--2xs) var(--spacing--xs);margin-top:var(--spacing--4xs);color:var(--text-color--subtle);border-radius:var(--radius--xs)}
+#skill-marketplace .nav-item.active{background:var(--background--hover);color:var(--text-color);font-weight:500}
+#skill-marketplace main{padding:var(--spacing--xl);min-width:0}
+#skill-marketplace .back{border:0;background:none;padding:0;color:var(--text-color--subtle);display:inline-flex;align-items:center;gap:var(--spacing--2xs);margin-bottom:var(--spacing--sm)}
+#skill-marketplace .subtitle{margin-top:var(--spacing--4xs);color:var(--text-color--subtle)}
+#skill-marketplace .tabs{display:flex;gap:var(--spacing--lg);border-bottom:1px solid var(--border-color);margin-top:var(--spacing--lg);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .tab{border:0;border-bottom:2px solid transparent;background:none;padding:var(--spacing--xs) 0;color:var(--text-color--subtle)}
+#skill-marketplace .tab[aria-selected=true]{border-bottom-color:var(--text-color);color:var(--text-color);font-weight:500}
+#skill-marketplace .intro{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing--sm);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .btn{display:inline-flex;justify-content:center;align-items:center;gap:var(--spacing--2xs);background:var(--background--surface);border:1px solid var(--border-color);border-radius:var(--radius--xs);min-height:var(--height--lg);padding:var(--spacing--2xs) var(--spacing--xs);text-decoration:none;white-space:normal}
+#skill-marketplace .btn:hover{background:var(--background--hover)}
+#skill-marketplace .btn.primary{background:var(--text-color);border-color:var(--text-color);color:var(--background--surface)}
+#skill-marketplace .btn.quiet{background:none;border-color:transparent;color:var(--text-color--subtle)}
+#skill-marketplace .search-row{display:flex;gap:var(--spacing--xs);align-items:center;margin-bottom:var(--spacing--sm)}
+#skill-marketplace .searchbox{display:flex;align-items:center;gap:var(--spacing--2xs);border:1px solid var(--border-color);border-radius:var(--radius--xs);padding:0 var(--spacing--xs);flex:1;min-width:0;background:var(--background--surface)}
+#skill-marketplace .searchbox input{width:100%;border:0;min-height:var(--height--lg);background:none;outline-offset:0}
+#skill-marketplace .sort{min-height:var(--height--lg);border:1px solid var(--border-color);background:var(--background--surface);border-radius:var(--radius--xs);padding:var(--spacing--2xs)}
+#skill-marketplace .chips{display:flex;flex-wrap:wrap;gap:var(--spacing--2xs);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .chip{border:1px solid var(--border-color);background:var(--background--surface);border-radius:var(--radius--xs);padding:var(--spacing--4xs) var(--spacing--xs);color:var(--text-color--subtle)}
+#skill-marketplace .chip[aria-pressed=true]{background:var(--text-color);color:var(--background--surface);border-color:var(--text-color)}
+#skill-marketplace .result-line{margin-bottom:var(--spacing--xs)}
+#skill-marketplace .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing--sm)}
+#skill-marketplace .skill-card{border:1px solid var(--border-color);border-radius:var(--radius--sm);padding:var(--spacing--lg);display:flex;flex-direction:column;gap:var(--spacing--xs);min-width:0;background:var(--background--surface)}
+#skill-marketplace .card-title{display:flex;align-items:center;gap:var(--spacing--xs)}
+#skill-marketplace .skill-icon{width:var(--spacing--2xl);height:var(--spacing--2xl);border:1px solid var(--border-color);border-radius:var(--radius--xs);display:flex;align-items:center;justify-content:center;background:var(--background--subtle);flex-shrink:0}
+#skill-marketplace .skill-icon svg{width:var(--spacing--lg);height:var(--spacing--lg)}
+#skill-marketplace .publisher{font-size:var(--font-size--2xs);color:var(--text-color--subtle);overflow-wrap:anywhere}
+#skill-marketplace .summary{flex:1}
+#skill-marketplace .badge{display:inline-flex;align-items:center;gap:var(--spacing--4xs);font-size:var(--font-size--2xs);padding:var(--spacing--4xs) var(--spacing--2xs);border-radius:var(--radius--xs);background:var(--background--subtle);color:var(--text-color--subtle)}
+#skill-marketplace .badge.warning{background:var(--warning-bg);color:var(--warning-text)}
+#skill-marketplace .card-bottom{display:flex;justify-content:space-between;align-items:center;gap:var(--spacing--2xs);border-top:1px solid var(--border-color);padding-top:var(--spacing--xs);margin-top:var(--spacing--4xs)}
+#skill-marketplace .number{font-variant-numeric:tabular-nums;font-weight:500}
+#skill-marketplace .notice{background:var(--warning-bg);color:var(--warning-text);border-radius:var(--radius--xs);padding:var(--spacing--sm);margin-bottom:var(--spacing--lg)}
+#skill-marketplace .empty{padding:var(--spacing--2xl) var(--spacing--sm);text-align:center;border:1px dashed var(--border-color);border-radius:var(--radius--sm)}
+#skill-marketplace .empty p{margin:var(--spacing--2xs) auto var(--spacing--sm);max-width:34rem}
+#skill-marketplace .source-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--spacing--sm);flex-wrap:wrap;margin-top:var(--spacing--lg);font-size:var(--font-size--2xs);color:var(--text-color--subtle)}
+#skill-marketplace .detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing--lg);flex-wrap:wrap}
+#skill-marketplace .detail-body{display:grid;grid-template-columns:minmax(0,1fr) 13rem;gap:var(--spacing--xl);margin-top:var(--spacing--lg)} /* Metadata needs a readable fixed column. */
+#skill-marketplace .detail-section{padding-bottom:var(--spacing--lg);margin-bottom:var(--spacing--lg);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .detail-section h3{margin-bottom:var(--spacing--2xs)}
+#skill-marketplace .facts{margin:0}
+#skill-marketplace .facts dt{color:var(--text-color--subtle);font-size:var(--font-size--2xs);margin-top:var(--spacing--lg)}
+#skill-marketplace .facts dt:first-child{margin-top:0}
+#skill-marketplace .facts dd{margin:var(--spacing--4xs) 0 0;overflow-wrap:anywhere}
+#skill-marketplace .audit{padding:var(--spacing--xs) 0;border-top:1px solid var(--border-color)}
+#skill-marketplace .audit p{margin-top:var(--spacing--4xs)}
+#skill-marketplace .file-row{display:flex;gap:var(--spacing--sm);justify-content:space-between;padding:var(--spacing--2xs) 0;border-bottom:1px solid var(--border-color)}
+#skill-marketplace .file-row code{overflow-wrap:anywhere;white-space:normal;background:none;font-size:var(--font-size--2xs);color:inherit}
+#skill-marketplace .file-row span{flex-shrink:0}
+#skill-marketplace .file-list{margin-top:var(--spacing--sm)}
+#skill-marketplace .provenance-table{width:100%;border-collapse:collapse;margin-top:var(--spacing--sm)}
+#skill-marketplace .provenance-table th,#skill-marketplace .provenance-table td{text-align:left;vertical-align:top;padding:var(--spacing--xs) var(--spacing--2xs);border-bottom:1px solid var(--border-color)}
+#skill-marketplace .provenance-table th{font-weight:500}
+#skill-marketplace .provenance-table td:first-child{width:30%}
+#skill-marketplace .spaced{margin-top:var(--spacing--sm)}
+@media(max-width:850px){#skill-marketplace .workspace{grid-template-columns:1fr}#skill-marketplace .sidebar{display:none}#skill-marketplace main{padding:var(--spacing--lg)}}
+@media(max-width:600px){#skill-marketplace .grid,#skill-marketplace .detail-body{grid-template-columns:1fr}#skill-marketplace .search-row{flex-wrap:wrap}#skill-marketplace .searchbox{flex-basis:100%}#skill-marketplace .intro{flex-wrap:wrap}#skill-marketplace .detail-body aside{border-top:1px solid var(--border-color);padding-top:var(--spacing--lg)}#skill-marketplace .topbar{padding:var(--spacing--sm)}#skill-marketplace .crumb{padding-left:var(--spacing--sm)}#skill-marketplace main{padding:var(--spacing--sm)}#skill-marketplace .skill-card{padding:var(--spacing--sm)}#skill-marketplace .review-strip{padding-right:var(--spacing--2xl)}}
+@media(pointer:coarse){#skill-marketplace button,#skill-marketplace .btn,#skill-marketplace select{min-height:2.75rem}#skill-marketplace input{font-size:var(--font-size--md)}}
+</style>
+<div id="skill-marketplace">
+  <div class="review-strip">
+    <span><span class="review-label">SPIKE PREVIEW</span> <span class="muted">· Skills.sh snapshot · 12 Nov 2026</span></span>
+    <label class="row">Preview state <select id="market-scenario" aria-label="Preview state"><option value="available">Catalog available</option><option value="stale">Catalog unavailable</option></select></label>
+  </div>
+  <div class="window">
+    <header class="topbar"><div class="logo"><i data-lucide="workflow" aria-hidden="true"></i>n8n</div><span class="crumb muted">Settings <span aria-hidden="true">/</span> Context</span></header>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Settings navigation preview">
+        <div class="nav-title">Settings</div>
+        <div class="nav-item"><i data-lucide="user" aria-hidden="true"></i>Personal</div>
+        <div class="nav-item"><i data-lucide="users" aria-hidden="true"></i>Users</div>
+        <div class="nav-item"><i data-lucide="folder" aria-hidden="true"></i>Projects</div>
+        <div class="nav-item"><i data-lucide="key-round" aria-hidden="true"></i>SSO</div>
+        <div class="nav-item active"><i data-lucide="layers" aria-hidden="true"></i>Context</div>
+        <div class="nav-item"><i data-lucide="puzzle" aria-hidden="true"></i>Community nodes</div>
+      </aside>
+      <main>
+        <section id="market-home">
+          <h1>Skills</h1>
+          <p class="subtitle">Give your agents reusable instructions for the work you do</p>
+          <div class="tabs" role="tablist" aria-label="Skills">
+            <button class="tab" id="market-owned-tab" role="tab" aria-selected="false" aria-controls="market-owned">Your skills</button>
+            <button class="tab" id="market-discover-tab" role="tab" aria-selected="true" aria-controls="market-discover">Discover</button>
+          </div>
+          <section id="market-owned" role="tabpanel" aria-labelledby="market-owned-tab" hidden>
+            <div class="empty"><h2>Your skills will appear here</h2><p class="muted">Browse community skills to find reusable instructions for your agents</p><button class="btn primary" data-action="discover">Explore skills</button></div>
+            <p class="source-foot">Empty example · This preview is not connected to your account</p>
+          </section>
+          <section id="market-discover" role="tabpanel" aria-labelledby="market-discover-tab">
+            <div class="intro"><div><h2>Find your next skill</h2><p class="subtitle">Explore community skills from <a href="https://skills.sh" target="_blank" rel="noopener noreferrer">skills.sh</a></p></div><button class="btn quiet" data-action="data"><i data-lucide="info" aria-hidden="true"></i>About this data</button></div>
+            <div id="market-outage" class="notice" hidden><strong>Skills.sh is unavailable</strong><p>Showing the saved sample from 12 Nov 2026. Open Skills.sh to check for updates.</p></div>
+            <div class="search-row"><label class="searchbox"><i data-lucide="search" aria-hidden="true"></i><input id="market-search" type="search" placeholder="Search by task, skill, or publisher" aria-label="Search the six sampled skills"></label><select class="sort" id="market-sort" aria-label="Sort sampled skills"><option value="installs">Most installed</option><option value="name">Name: A–Z</option></select></div>
+            <div id="market-categories" class="chips" aria-label="Filter by topic"></div>
+            <div class="row between result-line"><span id="market-count" class="small muted" aria-live="polite"></span><span class="small muted">Installs on Skills.sh</span></div>
+            <div id="market-grid" class="grid"></div>
+            <div id="market-empty" class="empty" hidden><h3>No matching skills in this sample</h3><p class="muted">Try another task or clear the filters</p><button class="btn" data-action="clear">Clear filters</button></div>
+            <footer class="source-foot"><span>6 sampled skills · Categories and summaries include editorial annotations</span><a href="https://skills.sh" target="_blank" rel="noopener noreferrer">Browse all on Skills.sh ↗</a></footer>
+          </section>
+        </section>
+        <section id="market-detail" hidden aria-label="Skill details"></section>
+        <section id="market-data" hidden>
+          <button class="back" data-action="back"><i data-lucide="arrow-left" aria-hidden="true"></i>Back to discovery</button>
+          <h1>About this data</h1><p class="subtitle">What Skills.sh supplies, and what still needs evidence</p>
+          <table class="provenance-table"><thead><tr><th>Information</th><th>Source and limits</th></tr></thead><tbody>
+          <tr><td>Install counts</td><td>Real values from the Skills.sh search API, captured on 12 Nov 2026. They measure installs, not runs or active users.</td></tr>
+          <tr><td>Purpose</td><td>Short editorial summaries of skill content returned by Skills.sh. These are descriptions, not measured outcomes.</td></tr>
+          <tr><td>Categories</td><td>Agent workflows, Design &amp; UI, and Testing appear on Skills.sh pages. Documents is a proposed n8n category. No category field was found in the documented API.</td></tr>
+          <tr><td>Model performance</td><td>Not evaluated. Skills.sh does not supply model-level results in the API we reviewed.</td></tr>
+          <tr><td>File support</td><td>Compared with the current n8n importer. File support does not establish that the skill can run in n8n.</td></tr>
+          <tr><td>Security audits</td><td>Provider results and dates were fetched for find-skills only. They do not establish that the fetched content is safe.</td></tr>
+          <tr><td>Coverage</td><td>Six sampled records. This preview is not a complete catalog or a live integration.</td></tr>
+          </tbody></table>
+          <div class="row spaced"><a class="btn" href="https://skills.sh/docs/api" target="_blank" rel="noopener noreferrer">Read the API reference ↗</a><a class="btn" href="https://skills.sh/terms" target="_blank" rel="noopener noreferrer">Read Skills.sh terms ↗</a></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+<script id="market-snapshot" type="application/json">{
+  "source": "Skills.sh",
+  "capturedOn": "2026-11-12",
+  "mode": "Saved sample; no live API calls from prototype",
+  "items": [
+    {
+      "id": "vercel-labs/skills/find-skills",
+      "source": "vercel-labs/skills",
+      "skillId": "find-skills",
+      "name": "find-skills",
+      "installs": 4320589,
+      "title": "Find skills",
+      "summary": "Discover skills for a task and install them with the Skills CLI.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Agent workflows",
+      "topicSource": "Skills.sh page",
+      "requirements": "Terminal access and the Skills CLI",
+      "fit": "Needs tools",
+      "url": "https://skills.sh/vercel-labs/skills/find-skills",
+      "fetchedAt": "2026-11-12T10:34:42.026Z",
+      "hash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "bytes": 5472
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 0,
+      "license": "Not included in this snapshot",
+      "models": null,
+      "runFrequency": null,
+      "audit": [
+        {
+          "provider": "Gen Agent Trust Hub",
+          "slug": "agent-trust-hub",
+          "status": "pass",
+          "summary": "This skill facilitates the discovery and installation of agent extensions using a dedicated command-line interface. It includes guidance on verifying the reputation of external packages, which aligns with secure development practices for package management.",
+          "auditedAt": "2026-09-15T08:00:05.922Z",
+          "riskLevel": "SAFE",
+          "categories": [
+            "COMMAND_EXECUTION",
+            "EXTERNAL_DOWNLOADS",
+            "INDIRECT_PROMPT_INJECTION"
+          ]
+        },
+        {
+          "provider": "Socket",
+          "slug": "socket",
+          "status": "pass",
+          "summary": "No alerts",
+          "auditedAt": "2026-09-15T08:00:19.647Z"
+        },
+        {
+          "provider": "Snyk",
+          "slug": "snyk",
+          "status": "warn",
+          "summary": "Risk: MEDIUM · 1 issue",
+          "auditedAt": "2026-09-15T07:59:46.904821+00:00",
+          "riskLevel": "MEDIUM"
+        },
+        {
+          "provider": "Runlayer",
+          "slug": "runlayer",
+          "status": "pass",
+          "summary": "1 file scanned · No issues",
+          "auditedAt": "2026-03-14T07:45:27.566Z",
+          "riskLevel": "NONE"
+        },
+        {
+          "provider": "ZeroLeaks",
+          "slug": "zeroleaks",
+          "status": "pass",
+          "summary": "Score: 93/100 · 2 sections analyzed",
+          "auditedAt": "2026-04-16T07:47:59.444Z",
+          "riskLevel": "NONE"
+        }
+      ]
+    },
+    {
+      "id": "anthropics/skills/frontend-design",
+      "source": "anthropics/skills",
+      "skillId": "frontend-design",
+      "name": "frontend-design",
+      "installs": 1107660,
+      "title": "Frontend design",
+      "summary": "Plan a visual direction and create a distinctive interface.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Design & UI",
+      "topicSource": "Skills.sh page",
+      "requirements": "A runtime that can create and edit frontend files",
+      "fit": "License review",
+      "url": "https://skills.sh/anthropics/skills/frontend-design",
+      "fetchedAt": "2026-11-12T10:35:12.657Z",
+      "hash": "7e9c2af00fd5b3144f49ce6fb1b16037b392ab9c2f049423b0b6114d99381ba2",
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 10174
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 9390
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 1,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "vercel-labs/agent-browser/agent-browser",
+      "source": "vercel-labs/agent-browser",
+      "skillId": "agent-browser",
+      "name": "agent-browser",
+      "installs": 1411072,
+      "title": "Agent browser",
+      "summary": "Navigate websites, inspect pages, and automate browser tasks.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Agent workflows",
+      "topicSource": "Skills.sh page",
+      "requirements": "The agent-browser CLI and a browser runtime",
+      "fit": "Needs tools",
+      "url": "https://skills.sh/vercel-labs/agent-browser/agent-browser",
+      "fetchedAt": "2026-11-12T10:35:13.617Z",
+      "hash": "6c6b0d33259db0427408443cf0cc2e5674538e628ad3fde51e6ae252cf647215",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "bytes": 3220
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 0,
+      "license": "Not included in this snapshot",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/pdf",
+      "source": "anthropics/skills",
+      "skillId": "pdf",
+      "name": "pdf",
+      "installs": 227573,
+      "title": "PDF",
+      "summary": "Extract text, combine documents, and work with PDF forms.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Documents",
+      "topicSource": "Proposed n8n category",
+      "requirements": "Python tools, PDF libraries, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/pdf",
+      "fetchedAt": "2026-11-12T10:34:42.192Z",
+      "hash": "7eef6bba4bdef8f9b9277d1684a047a3d5a286a798efc1c06bfc3f5bb5ddb8e0",
+      "files": [
+        {
+          "path": "forms.md",
+          "bytes": 11854
+        },
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11357
+        },
+        {
+          "path": "reference.md",
+          "bytes": 16692
+        },
+        {
+          "path": "scripts/check_bounding_boxes.py",
+          "bytes": 2774
+        },
+        {
+          "path": "scripts/check_fillable_fields.py",
+          "bytes": 268
+        },
+        {
+          "path": "scripts/convert_pdf_to_images.py",
+          "bytes": 1008
+        },
+        {
+          "path": "scripts/create_validation_image.py",
+          "bytes": 1258
+        },
+        {
+          "path": "scripts/extract_form_field_info.py",
+          "bytes": 4300
+        },
+        {
+          "path": "scripts/extract_form_structure.py",
+          "bytes": 3945
+        },
+        {
+          "path": "scripts/fill_fillable_fields.py",
+          "bytes": 3819
+        },
+        {
+          "path": "scripts/fill_pdf_form_with_annotations.py",
+          "bytes": 3235
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 8058
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 11,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/webapp-testing",
+      "source": "anthropics/skills",
+      "skillId": "webapp-testing",
+      "name": "webapp-testing",
+      "installs": 202992,
+      "title": "Web app testing",
+      "summary": "Check a local web app with Playwright and inspect browser output.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Testing",
+      "topicSource": "Skills.sh page",
+      "requirements": "Python, Playwright, a browser, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/webapp-testing",
+      "fetchedAt": "2026-11-12T10:35:13.432Z",
+      "hash": "cfb23ef0c399c36e9247142a7ab5ac0e03c03e1c9f047b0f7502232a2c50b564",
+      "files": [
+        {
+          "path": "examples/console_logging.py",
+          "bytes": 1027
+        },
+        {
+          "path": "examples/element_discovery.py",
+          "bytes": 1463
+        },
+        {
+          "path": "examples/static_html_automation.py",
+          "bytes": 953
+        },
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11345
+        },
+        {
+          "path": "scripts/with_server.py",
+          "bytes": 3693
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 3913
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 5,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/xlsx",
+      "source": "anthropics/skills",
+      "skillId": "xlsx",
+      "name": "xlsx",
+      "installs": 197139,
+      "title": "Spreadsheets",
+      "summary": "Create and edit spreadsheets with formulas and formatting.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Documents",
+      "topicSource": "Proposed n8n category",
+      "requirements": "A file runtime, spreadsheet libraries, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/xlsx",
+      "fetchedAt": "2026-11-12T10:34:42.510Z",
+      "hash": "8c85f6cfdca12e4cb728af6a858660cf168b4716f2e92c46c3f159fdd917fcf8",
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11357
+        },
+        {
+          "path": "scripts/office/helpers/__init__.py",
+          "bytes": 3358
+        },
+        {
+          "path": "scripts/office/helpers/pptx_chart.py",
+          "bytes": 5862
+        },
+        {
+          "path": "scripts/office/helpers/pptx_slide.py",
+          "bytes": 1675
+        },
+        {
+          "path": "scripts/office/helpers/pptx_theme.py",
+          "bytes": 3510
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+          "bytes": 1963
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+          "bytes": 2515
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+          "bytes": 2856
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+          "bytes": 1344
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+          "bytes": 74984
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+          "bytes": 6956
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+          "bytes": 51302
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+          "bytes": 624
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+          "bytes": 152039
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+          "bytes": 1231
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+          "bytes": 8862
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+          "bytes": 14795
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+          "bytes": 83612
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+          "bytes": 1269
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+          "bytes": 7328
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+          "bytes": 6382
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+          "bytes": 1248
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+          "bytes": 880
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+          "bytes": 2608
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+          "bytes": 3507
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+          "bytes": 7507
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+          "bytes": 23313
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+          "bytes": 1367
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+          "bytes": 242277
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+          "bytes": 26148
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+          "bytes": 25279
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+          "bytes": 535
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+          "bytes": 5712
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+          "bytes": 4010
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+          "bytes": 171367
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+          "bytes": 4646
+        },
+        {
+          "path": "scripts/office/schemas/mce/mc.xsd",
+          "bytes": 3127
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
+          "bytes": 26549
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
+          "bytes": 3745
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
+          "bytes": 901
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+          "bytes": 1778
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+          "bytes": 1002
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+          "bytes": 600
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+          "bytes": 745
+        },
+        {
+          "path": "scripts/office/soffice.py",
+          "bytes": 5927
+        },
+        {
+          "path": "scripts/office/validate.py",
+          "bytes": 6142
+        },
+        {
+          "path": "scripts/office/validators/__init__.py",
+          "bytes": 336
+        },
+        {
+          "path": "scripts/office/validators/base.py",
+          "bytes": 33756
+        },
+        {
+          "path": "scripts/office/validators/docx.py",
+          "bytes": 17482
+        },
+        {
+          "path": "scripts/office/validators/pptx.py",
+          "bytes": 15966
+        },
+        {
+          "path": "scripts/office/validators/redlining.py",
+          "bytes": 11231
+        },
+        {
+          "path": "scripts/recalc.py",
+          "bytes": 10670
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 8584
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 52,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    }
+  ]
+}
+</script>
+<script>
+(() => {
+  const root = document.getElementById('skill-marketplace');
+  const sample = JSON.parse(document.getElementById('market-snapshot').textContent);
+  const byId = (id) => root.querySelector('#' + id);
+  const state = { query: '', category: 'All topics', sort: 'installs', scenario: 'available', selectedId: null };
+  const topics = ['All topics', 'Agent workflows', 'Design & UI', 'Documents', 'Testing'];
+  const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const icon = (name) => '<i data-lucide="' + name + '" aria-hidden="true"></i>';
+  const icons = {'Agent workflows':'blocks','Design & UI':'palette','Documents':'files','Testing':'flask-conical'};
+  const count = (value) => Intl.NumberFormat('en', {notation:'compact',maximumFractionDigits:1}).format(value);
+  const drawIcons = () => { if(globalThis.lucide) globalThis.lucide.createIcons({attrs:{width:16,height:16}}); };
+  function save() {
+    if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{selectedSkill:state.selectedId,category:state.category},privateContent:{...state}}).catch(()=>{});
+  }
+  function show(view) {
+    byId('market-home').hidden = view !== 'home';
+    byId('market-detail').hidden = view !== 'detail';
+    byId('market-data').hidden = view !== 'data';
+  }
+  function tab(discover) {
+    byId('market-owned').hidden = discover;
+    byId('market-discover').hidden = !discover;
+    byId('market-owned-tab').setAttribute('aria-selected', String(!discover));
+    byId('market-discover-tab').setAttribute('aria-selected', String(discover));
+  }
+  function render() {
+    const q = state.query.trim().toLowerCase();
+    const items = sample.items.filter(s => (state.category === 'All topics' || s.topic === state.category) && [s.name,s.title,s.summary,s.source,s.topic].join(' ').toLowerCase().includes(q));
+    items.sort((a,b) => state.sort === 'installs' ? b.installs-a.installs : a.title.localeCompare(b.title));
+    byId('market-categories').innerHTML = topics.map(t => '<button class="chip" data-category="'+esc(t)+'" aria-pressed="'+(state.category===t)+'">'+esc(t)+(t==='Documents'?' · proposed':'')+'</button>').join('');
+    byId('market-count').textContent = items.length + ' of 6 sampled skills';
+    byId('market-grid').innerHTML = items.map(s => '<article class="skill-card"><div class="card-title"><div class="skill-icon">'+icon(icons[s.topic])+'</div><div><h3>'+esc(s.title)+'</h3><div class="publisher">'+esc(s.source)+'</div></div></div><p class="summary">'+esc(s.summary)+'</p><div class="row"><span class="badge">'+esc(s.topic)+(s.topicSource.startsWith('Proposed')?' · proposed':'')+'</span><span class="badge warning">'+esc(s.fit)+'</span></div><div class="card-bottom"><span><span class="number">'+count(s.installs)+'</span> <span class="small muted">installs</span></span><button class="btn" data-skill="'+esc(s.id)+'" aria-label="View '+esc(s.title)+'">View skill '+icon('arrow-up-right')+'</button></div></article>').join('');
+    byId('market-empty').hidden = items.length > 0;
+    byId('market-outage').hidden = state.scenario !== 'stale';
+    drawIcons();
+  }
+  function detail(id, persist = true) {
+    const s=sample.items.find(item=>item.id===id); if(!s) return;
+    state.selectedId=id;
+    const skip=s.skippedCount;
+    const files=s.files.map(f=>'<div class="file-row"><code>'+esc(f.path)+'</code><span class="small '+(s.keptFiles.includes(f.path)?'muted':'')+'">'+(s.keptFiles.includes(f.path)?'Kept':'Skipped')+'</span></div>').join('');
+    const audits = s.audit ? s.audit.map(a=>'<div class="audit"><div class="row between"><span>'+esc(a.provider)+'</span><span class="badge '+(a.status==='warn'?'warning':'')+'">'+esc(a.status)+'</span></div><p class="small muted">Audited '+esc(a.auditedAt.slice(0,10))+'</p></div>').join('') : '<p class="muted">Audit results were not fetched for this skill in the sample. Check Skills.sh for its current results.</p>';
+    byId('market-detail').innerHTML = '<button class="back" data-action="back">'+icon('arrow-left')+'Back to discovery</button><div class="detail-top"><div><div class="row"><span class="badge">'+esc(s.topic)+'</span><span class="badge warning">'+esc(s.fit)+'</span></div><h1 class="spaced">'+esc(s.title)+'</h1><p class="publisher">'+esc(s.id)+'</p></div><a class="btn primary" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">View on Skills.sh '+icon('arrow-up-right')+'</a></div><div class="detail-body"><div><section class="detail-section"><h3>What it helps you do</h3><p>'+esc(s.summary)+'</p><p class="small muted spaced">Summary adapted from skill content supplied by Skills.sh</p></section><section class="detail-section"><h3>Using this skill in n8n</h3><div class="notice spaced"><strong>'+(skip?'Some files would be left out':'Check the required tools')+'</strong><p>'+(skip?esc(skip)+' of '+s.files.length+' files are outside the current import format. Review file support and preserve license notices before adding this skill.':'The current importer can keep all files in this snapshot. The required tools and license still need review.')+'</p></div><p><strong>Needs:</strong> '+esc(s.requirements)+'</p><details class="spaced"><summary>Inspect '+s.files.length+' files · '+s.keptFiles.length+' supported by the current importer</summary><div class="file-list">'+files+'</div></details></section><section class="detail-section"><h3>Model performance</h3><p>Not evaluated</p><p class="muted spaced">Skills.sh does not provide model-specific test results. An agent install count does not tell us which model works best.</p></section><section class="detail-section"><h3>Security audits</h3>'+audits+'<p class="small muted spaced">Provider results can refer to older content. They do not replace a review of the version you import.</p></section></div><aside><dl class="facts"><dt>Installs on Skills.sh</dt><dd class="number">'+s.installs.toLocaleString('en')+'</dd><dt>Run frequency</dt><dd>Not provided</dd><dt>Source</dt><dd>'+esc(s.source)+'</dd><dt>Category source</dt><dd>'+esc(s.topicSource)+'</dd><dt>License</dt><dd>'+esc(s.license)+'</dd><dt>Files</dt><dd>'+s.files.length+' in this snapshot</dd><dt>Snapshot captured</dt><dd>12 Nov 2026</dd><dt>Content hash</dt><dd class="small">'+esc(s.hash)+'</dd></dl><button class="btn quiet spaced" data-action="data">About this data '+icon('arrow-right')+'</button></aside></div>';
+    show('detail'); drawIcons(); if(persist) save();
+  }
+  root.addEventListener('click', (e) => {
+    const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.category){state.category=b.dataset.category;render();save();}
+    if(b.dataset.skill) detail(b.dataset.skill);
+    if(b.dataset.action==='back'){state.selectedId=null;show('home');tab(true);save();}
+    if(b.dataset.action==='data'){show('data');drawIcons();}
+    if(b.dataset.action==='discover'){show('home');tab(true);}
+    if(b.dataset.action==='clear'){state.query='';state.category='All topics';byId('market-search').value='';render();save();}
+  });
+  byId('market-search').addEventListener('input',e=>{state.query=e.target.value;render();save();});
+  byId('market-sort').addEventListener('change',e=>{state.sort=e.target.value;render();save();});
+  byId('market-scenario').addEventListener('change',e=>{state.scenario=e.target.value;show('home');tab(true);render();save();});
+  byId('market-owned-tab').addEventListener('click',()=>tab(false));
+  byId('market-discover-tab').addEventListener('click',()=>tab(true));
+  for(const [id,other] of [['market-owned-tab','market-discover-tab'],['market-discover-tab','market-owned-tab']]) byId(id).addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();byId(other).focus();tab(other==='market-discover-tab');}});
+  function restore(saved) {
+    if(!saved) return;
+    if(typeof saved.query==='string')state.query=saved.query;
+    if(topics.includes(saved.category))state.category=saved.category;
+    if(['name','installs'].includes(saved.sort))state.sort=saved.sort;
+    if(['available','stale'].includes(saved.scenario))state.scenario=saved.scenario;
+    byId('market-search').value=state.query;byId('market-sort').value=state.sort;byId('market-scenario').value=state.scenario;
+    render(); if(sample.items.some(s=>s.id===saved.selectedId))detail(saved.selectedId, false);
+  }
+  render();restore(window.openai?.widgetState?.privateContent);
+  window.addEventListener('openai:set_globals',e=>restore(e.detail?.globals?.widgetState?.privateContent));
+})();
+</script>

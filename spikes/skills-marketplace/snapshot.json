@@ -1,0 +1,514 @@
+{
+  "source": "Skills.sh",
+  "capturedOn": "2026-11-12",
+  "mode": "Saved sample; no live API calls from prototype",
+  "items": [
+    {
+      "id": "vercel-labs/skills/find-skills",
+      "source": "vercel-labs/skills",
+      "skillId": "find-skills",
+      "name": "find-skills",
+      "installs": 4320589,
+      "title": "Find skills",
+      "summary": "Discover skills for a task and install them with the Skills CLI.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Agent workflows",
+      "topicSource": "Skills.sh page",
+      "requirements": "Terminal access and the Skills CLI",
+      "fit": "Needs tools",
+      "url": "https://skills.sh/vercel-labs/skills/find-skills",
+      "fetchedAt": "2026-11-12T10:34:42.026Z",
+      "hash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "bytes": 5472
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 0,
+      "license": "Not included in this snapshot",
+      "models": null,
+      "runFrequency": null,
+      "audit": [
+        {
+          "provider": "Gen Agent Trust Hub",
+          "slug": "agent-trust-hub",
+          "status": "pass",
+          "summary": "This skill facilitates the discovery and installation of agent extensions using a dedicated command-line interface. It includes guidance on verifying the reputation of external packages, which aligns with secure development practices for package management.",
+          "auditedAt": "2026-09-15T08:00:05.922Z",
+          "riskLevel": "SAFE",
+          "categories": [
+            "COMMAND_EXECUTION",
+            "EXTERNAL_DOWNLOADS",
+            "INDIRECT_PROMPT_INJECTION"
+          ]
+        },
+        {
+          "provider": "Socket",
+          "slug": "socket",
+          "status": "pass",
+          "summary": "No alerts",
+          "auditedAt": "2026-09-15T08:00:19.647Z"
+        },
+        {
+          "provider": "Snyk",
+          "slug": "snyk",
+          "status": "warn",
+          "summary": "Risk: MEDIUM · 1 issue",
+          "auditedAt": "2026-09-15T07:59:46.904821+00:00",
+          "riskLevel": "MEDIUM"
+        },
+        {
+          "provider": "Runlayer",
+          "slug": "runlayer",
+          "status": "pass",
+          "summary": "1 file scanned · No issues",
+          "auditedAt": "2026-03-14T07:45:27.566Z",
+          "riskLevel": "NONE"
+        },
+        {
+          "provider": "ZeroLeaks",
+          "slug": "zeroleaks",
+          "status": "pass",
+          "summary": "Score: 93/100 · 2 sections analyzed",
+          "auditedAt": "2026-04-16T07:47:59.444Z",
+          "riskLevel": "NONE"
+        }
+      ]
+    },
+    {
+      "id": "anthropics/skills/frontend-design",
+      "source": "anthropics/skills",
+      "skillId": "frontend-design",
+      "name": "frontend-design",
+      "installs": 1107660,
+      "title": "Frontend design",
+      "summary": "Plan a visual direction and create a distinctive interface.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Design & UI",
+      "topicSource": "Skills.sh page",
+      "requirements": "A runtime that can create and edit frontend files",
+      "fit": "License review",
+      "url": "https://skills.sh/anthropics/skills/frontend-design",
+      "fetchedAt": "2026-11-12T10:35:12.657Z",
+      "hash": "7e9c2af00fd5b3144f49ce6fb1b16037b392ab9c2f049423b0b6114d99381ba2",
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 10174
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 9390
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 1,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "vercel-labs/agent-browser/agent-browser",
+      "source": "vercel-labs/agent-browser",
+      "skillId": "agent-browser",
+      "name": "agent-browser",
+      "installs": 1411072,
+      "title": "Agent browser",
+      "summary": "Navigate websites, inspect pages, and automate browser tasks.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Agent workflows",
+      "topicSource": "Skills.sh page",
+      "requirements": "The agent-browser CLI and a browser runtime",
+      "fit": "Needs tools",
+      "url": "https://skills.sh/vercel-labs/agent-browser/agent-browser",
+      "fetchedAt": "2026-11-12T10:35:13.617Z",
+      "hash": "6c6b0d33259db0427408443cf0cc2e5674538e628ad3fde51e6ae252cf647215",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "bytes": 3220
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 0,
+      "license": "Not included in this snapshot",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/pdf",
+      "source": "anthropics/skills",
+      "skillId": "pdf",
+      "name": "pdf",
+      "installs": 227573,
+      "title": "PDF",
+      "summary": "Extract text, combine documents, and work with PDF forms.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Documents",
+      "topicSource": "Proposed n8n category",
+      "requirements": "Python tools, PDF libraries, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/pdf",
+      "fetchedAt": "2026-11-12T10:34:42.192Z",
+      "hash": "7eef6bba4bdef8f9b9277d1684a047a3d5a286a798efc1c06bfc3f5bb5ddb8e0",
+      "files": [
+        {
+          "path": "forms.md",
+          "bytes": 11854
+        },
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11357
+        },
+        {
+          "path": "reference.md",
+          "bytes": 16692
+        },
+        {
+          "path": "scripts/check_bounding_boxes.py",
+          "bytes": 2774
+        },
+        {
+          "path": "scripts/check_fillable_fields.py",
+          "bytes": 268
+        },
+        {
+          "path": "scripts/convert_pdf_to_images.py",
+          "bytes": 1008
+        },
+        {
+          "path": "scripts/create_validation_image.py",
+          "bytes": 1258
+        },
+        {
+          "path": "scripts/extract_form_field_info.py",
+          "bytes": 4300
+        },
+        {
+          "path": "scripts/extract_form_structure.py",
+          "bytes": 3945
+        },
+        {
+          "path": "scripts/fill_fillable_fields.py",
+          "bytes": 3819
+        },
+        {
+          "path": "scripts/fill_pdf_form_with_annotations.py",
+          "bytes": 3235
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 8058
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 11,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/webapp-testing",
+      "source": "anthropics/skills",
+      "skillId": "webapp-testing",
+      "name": "webapp-testing",
+      "installs": 202992,
+      "title": "Web app testing",
+      "summary": "Check a local web app with Playwright and inspect browser output.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Testing",
+      "topicSource": "Skills.sh page",
+      "requirements": "Python, Playwright, a browser, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/webapp-testing",
+      "fetchedAt": "2026-11-12T10:35:13.432Z",
+      "hash": "cfb23ef0c399c36e9247142a7ab5ac0e03c03e1c9f047b0f7502232a2c50b564",
+      "files": [
+        {
+          "path": "examples/console_logging.py",
+          "bytes": 1027
+        },
+        {
+          "path": "examples/element_discovery.py",
+          "bytes": 1463
+        },
+        {
+          "path": "examples/static_html_automation.py",
+          "bytes": 953
+        },
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11345
+        },
+        {
+          "path": "scripts/with_server.py",
+          "bytes": 3693
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 3913
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 5,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    },
+    {
+      "id": "anthropics/skills/xlsx",
+      "source": "anthropics/skills",
+      "skillId": "xlsx",
+      "name": "xlsx",
+      "installs": 197139,
+      "title": "Spreadsheets",
+      "summary": "Create and edit spreadsheets with formulas and formatting.",
+      "summarySource": "Editorial paraphrase of Skills.sh content",
+      "topic": "Documents",
+      "topicSource": "Proposed n8n category",
+      "requirements": "A file runtime, spreadsheet libraries, and the bundled scripts",
+      "fit": "Unsupported files",
+      "url": "https://skills.sh/anthropics/skills/xlsx",
+      "fetchedAt": "2026-11-12T10:34:42.510Z",
+      "hash": "8c85f6cfdca12e4cb728af6a858660cf168b4716f2e92c46c3f159fdd917fcf8",
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11357
+        },
+        {
+          "path": "scripts/office/helpers/__init__.py",
+          "bytes": 3358
+        },
+        {
+          "path": "scripts/office/helpers/pptx_chart.py",
+          "bytes": 5862
+        },
+        {
+          "path": "scripts/office/helpers/pptx_slide.py",
+          "bytes": 1675
+        },
+        {
+          "path": "scripts/office/helpers/pptx_theme.py",
+          "bytes": 3510
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+          "bytes": 1963
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+          "bytes": 2515
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+          "bytes": 2856
+        },
+        {
+          "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+          "bytes": 1344
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+          "bytes": 74984
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+          "bytes": 6956
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+          "bytes": 51302
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+          "bytes": 624
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+          "bytes": 152039
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+          "bytes": 1231
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+          "bytes": 8862
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+          "bytes": 14795
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+          "bytes": 83612
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+          "bytes": 1269
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+          "bytes": 7328
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+          "bytes": 6382
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+          "bytes": 1248
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+          "bytes": 880
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+          "bytes": 2608
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+          "bytes": 3507
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+          "bytes": 7507
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+          "bytes": 23313
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+          "bytes": 1367
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+          "bytes": 242277
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+          "bytes": 26148
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+          "bytes": 25279
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+          "bytes": 535
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+          "bytes": 5712
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+          "bytes": 4010
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+          "bytes": 171367
+        },
+        {
+          "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+          "bytes": 4646
+        },
+        {
+          "path": "scripts/office/schemas/mce/mc.xsd",
+          "bytes": 3127
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
+          "bytes": 26549
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
+          "bytes": 3745
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
+          "bytes": 901
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+          "bytes": 1778
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+          "bytes": 1002
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+          "bytes": 600
+        },
+        {
+          "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+          "bytes": 745
+        },
+        {
+          "path": "scripts/office/soffice.py",
+          "bytes": 5927
+        },
+        {
+          "path": "scripts/office/validate.py",
+          "bytes": 6142
+        },
+        {
+          "path": "scripts/office/validators/__init__.py",
+          "bytes": 336
+        },
+        {
+          "path": "scripts/office/validators/base.py",
+          "bytes": 33756
+        },
+        {
+          "path": "scripts/office/validators/docx.py",
+          "bytes": 17482
+        },
+        {
+          "path": "scripts/office/validators/pptx.py",
+          "bytes": 15966
+        },
+        {
+          "path": "scripts/office/validators/redlining.py",
+          "bytes": 11231
+        },
+        {
+          "path": "scripts/recalc.py",
+          "bytes": 10670
+        },
+        {
+          "path": "SKILL.md",
+          "bytes": 8584
+        }
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "skippedCount": 52,
+      "license": "See LICENSE.txt; terms not evaluated",
+      "models": null,
+      "runFrequency": null,
+      "audit": null
+    }
+  ]
+}

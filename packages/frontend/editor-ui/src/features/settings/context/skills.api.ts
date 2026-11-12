@@ -1,4 +1,5 @@
 import type {
+	SkillCatalogResponse,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -24,6 +25,17 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 
 const ENDPOINT = '/skills';
 const SOURCES_ENDPOINT = '/skill-sources';
+
+export async function searchSkillCatalog(
+	context: IRestApiContext,
+	query: string,
+	projectId?: string,
+): Promise<SkillCatalogResponse> {
+	const endpoint = projectId
+		? `/skill-catalog/projects/${encodeURIComponent(projectId)}`
+		: '/skill-catalog';
+	return await makeRestApiRequest<SkillCatalogResponse>(context, 'GET', endpoint, { query });
+}
 
 /** The request side of `ListSkillsQueryDto`, with numbers as the client holds them. */
 export type SkillListQuery = {

@@ -35,6 +35,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
+	N8nTabs,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -64,6 +65,7 @@ import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import SkillsDiscover from '../components/SkillsDiscover.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -113,6 +115,20 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const skillsTab = ref('owned');
+const skillsTabs = computed(() => [
+	{ value: 'owned', label: i18n.baseText('settings.context.skills.catalog.yourSkills') },
+	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
+]);
+
+function openCatalogSource(sourceId: string) {
+	skillsTab.value = 'owned';
+	void onOpenSource(sourceId);
+}
+
+watch(skillSyncEnabled, (enabled) => {
+	if (!enabled) skillsTab.value = 'owned';
+});
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -915,175 +931,191 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.toolbar">
-			<N8nInput
-				v-model="search"
-				:class="$style.search"
-				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
-				clearable
-				data-test-id="skills-search"
-				@update:model-value="onSearch"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
-			<ResourceFiltersDropdown
-				:model-value="filters"
-				:keys="FILTER_KEYS"
-				:reset="resetFilters"
-				:shareable="false"
-				just-icon
-			>
-				<div :class="$style.filter">
-					<N8nInputLabel
-						:label="i18n.baseText('settings.context.skills.filter.scope')"
-						:bold="false"
-						size="small"
-						color="text-base"
-					/>
-					<N8nSelect
-						:model-value="filters.scope"
-						size="medium"
-						filterable
-						clearable
-						:placeholder="i18n.baseText('settings.context.skills.filter.all')"
-						data-test-id="skills-filter-scope"
-						@update:model-value="setFilter('scope', $event)"
-					>
-						<N8nOption
-							v-for="option in scopeFilterOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
-				</div>
-				<div :class="$style.filter">
-					<N8nInputLabel
-						:label="i18n.baseText('settings.context.skills.filter.agentLabel')"
-						:bold="false"
-						size="small"
-						color="text-base"
-					/>
-					<N8nSelect
-						:model-value="filters.agentId"
-						size="medium"
-						filterable
-						remote
-						:remote-method="onAgentSearch"
-						:loading="agentsLoading"
-						clearable
-						:placeholder="i18n.baseText('settings.context.skills.filter.anyAgent')"
-						data-test-id="skills-filter-agent"
-						@update:model-value="onAgentFilter"
-					>
-						<N8nOption
-							v-for="agent in agentFilterOptions"
-							:key="agent.id"
-							:value="agent.id"
-							:label="agent.name"
-						/>
-					</N8nSelect>
-				</div>
-				<div :class="$style.filter">
-					<N8nInputLabel
-						:label="i18n.baseText('settings.context.skills.filter.createdBy')"
-						:bold="false"
-						size="small"
-						color="text-base"
-					/>
-					<N8nSelect
-						:model-value="filters.createdById"
-						size="medium"
-						filterable
-						clearable
-						:placeholder="i18n.baseText('settings.context.skills.filter.anyone')"
-						data-test-id="skills-filter-created-by"
-						@update:model-value="setFilter('createdById', $event)"
-					>
-						<N8nOption
-							v-for="creator in creators"
-							:key="creator.id"
-							:value="creator.id"
-							:label="creatorLabel(creator)"
-						/>
-					</N8nSelect>
-				</div>
-			</ResourceFiltersDropdown>
-			<span :class="$style.spacer" />
-			<N8nActionDropdown
-				v-if="scopeOptions.length > 0"
-				:items="createMenuItems"
-				placement="bottom-end"
-				data-test-id="skills-create-menu"
-				@select="onCreateMenuSelect"
-			>
-				<template #activator>
-					<N8nButton data-test-id="skills-create-menu-button">
-						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
-						<N8nIcon icon="chevron-down" size="small" />
-					</N8nButton>
-				</template>
-			</N8nActionDropdown>
-		</div>
-
-		<SkillsTable
-			v-model:table-options="tableOptions"
-			:skills="skillsStore.skills"
-			:items-length="skillsStore.count"
-			:page-count="skillsStore.pageCount"
-			:loading="showLoading"
-			:show-empty="emptyState !== 'none' && skillsStore.collapsedSources.length === 0"
-			:show-assistant-availability="assistantSkillsEnabled"
-			:show-mcp-availability="mcpSkillsEnabled"
-			:sources="tableSources"
-			:collapsed-source-ids="collapsedSourceIds"
-			:collapsed-sources="skillsStore.collapsedSources"
-			:checking-source-ids="checkingSourceIds"
-			@open="openEditModal($event)"
-			@timeline="openEditModal($event, 'versions')"
-			@download="onDownload"
-			@toggle-source="onToggleSource"
-			@check-source="onCheckSource"
-			@stop-syncing="onStopSyncing($event)"
-			@delete="onDelete"
-			@update:options="onOptionsUpdate"
-		>
-			<template #empty>
-				<div
-					v-if="emptyState === 'noResults'"
-					:class="$style.empty"
-					data-test-id="skills-no-results"
+		<N8nTabs
+			v-if="skillSyncEnabled && scopeOptions.length"
+			v-model="skillsTab"
+			:options="skillsTabs"
+			variant="modern"
+			data-test-id="skills-tabs"
+		/>
+		<SkillsDiscover
+			v-if="skillSyncEnabled && scopeOptions.length"
+			v-show="skillsTab === 'discover'"
+			:scope-options="scopeOptions"
+			@connected="onSourceConnected"
+			@open-source="openCatalogSource"
+		/>
+		<div v-show="skillsTab === 'owned'">
+			<div :class="$style.toolbar">
+				<N8nInput
+					v-model="search"
+					:class="$style.search"
+					:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
+					clearable
+					data-test-id="skills-search"
+					@update:model-value="onSearch"
 				>
-					<N8nText color="text-light">
-						{{ i18n.baseText('settings.context.skills.search.noResults') }}
-					</N8nText>
-				</div>
-				<div v-else :class="$style.empty" data-test-id="skills-empty-state">
-					<N8nHeading tag="h2" size="medium" bold>
-						{{ i18n.baseText('settings.context.skills.empty.title') }}
-					</N8nHeading>
-					<N8nText color="text-light">
-						{{ i18n.baseText('settings.context.skills.empty.description') }}
-					</N8nText>
-					<N8nActionDropdown
-						v-if="scopeOptions.length > 0"
-						:items="createMenuItems"
-						placement="bottom"
-						data-test-id="skills-empty-create-menu"
-						@select="onCreateMenuSelect"
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+				<ResourceFiltersDropdown
+					:model-value="filters"
+					:keys="FILTER_KEYS"
+					:reset="resetFilters"
+					:shareable="false"
+					just-icon
+				>
+					<div :class="$style.filter">
+						<N8nInputLabel
+							:label="i18n.baseText('settings.context.skills.filter.scope')"
+							:bold="false"
+							size="small"
+							color="text-base"
+						/>
+						<N8nSelect
+							:model-value="filters.scope"
+							size="medium"
+							filterable
+							clearable
+							:placeholder="i18n.baseText('settings.context.skills.filter.all')"
+							data-test-id="skills-filter-scope"
+							@update:model-value="setFilter('scope', $event)"
+						>
+							<N8nOption
+								v-for="option in scopeFilterOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+					</div>
+					<div :class="$style.filter">
+						<N8nInputLabel
+							:label="i18n.baseText('settings.context.skills.filter.agentLabel')"
+							:bold="false"
+							size="small"
+							color="text-base"
+						/>
+						<N8nSelect
+							:model-value="filters.agentId"
+							size="medium"
+							filterable
+							remote
+							:remote-method="onAgentSearch"
+							:loading="agentsLoading"
+							clearable
+							:placeholder="i18n.baseText('settings.context.skills.filter.anyAgent')"
+							data-test-id="skills-filter-agent"
+							@update:model-value="onAgentFilter"
+						>
+							<N8nOption
+								v-for="agent in agentFilterOptions"
+								:key="agent.id"
+								:value="agent.id"
+								:label="agent.name"
+							/>
+						</N8nSelect>
+					</div>
+					<div :class="$style.filter">
+						<N8nInputLabel
+							:label="i18n.baseText('settings.context.skills.filter.createdBy')"
+							:bold="false"
+							size="small"
+							color="text-base"
+						/>
+						<N8nSelect
+							:model-value="filters.createdById"
+							size="medium"
+							filterable
+							clearable
+							:placeholder="i18n.baseText('settings.context.skills.filter.anyone')"
+							data-test-id="skills-filter-created-by"
+							@update:model-value="setFilter('createdById', $event)"
+						>
+							<N8nOption
+								v-for="creator in creators"
+								:key="creator.id"
+								:value="creator.id"
+								:label="creatorLabel(creator)"
+							/>
+						</N8nSelect>
+					</div>
+				</ResourceFiltersDropdown>
+				<span :class="$style.spacer" />
+				<N8nActionDropdown
+					v-if="scopeOptions.length > 0"
+					:items="createMenuItems"
+					placement="bottom-end"
+					data-test-id="skills-create-menu"
+					@select="onCreateMenuSelect"
+				>
+					<template #activator>
+						<N8nButton data-test-id="skills-create-menu-button">
+							{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+							<N8nIcon icon="chevron-down" size="small" />
+						</N8nButton>
+					</template>
+				</N8nActionDropdown>
+			</div>
+
+			<SkillsTable
+				v-model:table-options="tableOptions"
+				:skills="skillsStore.skills"
+				:items-length="skillsStore.count"
+				:page-count="skillsStore.pageCount"
+				:loading="showLoading"
+				:show-empty="emptyState !== 'none' && skillsStore.collapsedSources.length === 0"
+				:show-assistant-availability="assistantSkillsEnabled"
+				:show-mcp-availability="mcpSkillsEnabled"
+				:sources="tableSources"
+				:collapsed-source-ids="collapsedSourceIds"
+				:collapsed-sources="skillsStore.collapsedSources"
+				:checking-source-ids="checkingSourceIds"
+				@open="openEditModal($event)"
+				@timeline="openEditModal($event, 'versions')"
+				@download="onDownload"
+				@toggle-source="onToggleSource"
+				@check-source="onCheckSource"
+				@stop-syncing="onStopSyncing($event)"
+				@delete="onDelete"
+				@update:options="onOptionsUpdate"
+			>
+				<template #empty>
+					<div
+						v-if="emptyState === 'noResults'"
+						:class="$style.empty"
+						data-test-id="skills-no-results"
 					>
-						<template #activator>
-							<N8nButton data-test-id="skills-empty-create-button">
-								{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
-								<N8nIcon icon="chevron-down" size="small" />
-							</N8nButton>
-						</template>
-					</N8nActionDropdown>
-				</div>
-			</template>
-		</SkillsTable>
+						<N8nText color="text-light">
+							{{ i18n.baseText('settings.context.skills.search.noResults') }}
+						</N8nText>
+					</div>
+					<div v-else :class="$style.empty" data-test-id="skills-empty-state">
+						<N8nHeading tag="h2" size="medium" bold>
+							{{ i18n.baseText('settings.context.skills.empty.title') }}
+						</N8nHeading>
+						<N8nText color="text-light">
+							{{ i18n.baseText('settings.context.skills.empty.description') }}
+						</N8nText>
+						<N8nActionDropdown
+							v-if="scopeOptions.length > 0"
+							:items="createMenuItems"
+							placement="bottom"
+							data-test-id="skills-empty-create-menu"
+							@select="onCreateMenuSelect"
+						>
+							<template #activator>
+								<N8nButton data-test-id="skills-empty-create-button">
+									{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</N8nActionDropdown>
+					</div>
+				</template>
+			</SkillsTable>
+		</div>
 
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"

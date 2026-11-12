@@ -313,7 +313,7 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
-		config?: AgentJsonConfig;
+		config?: Partial<AgentJsonConfig>;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
 		skills?: Record<string, AgentSkill>;
