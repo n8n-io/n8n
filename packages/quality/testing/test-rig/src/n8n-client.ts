@@ -100,10 +100,13 @@ export class N8nClient {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(payload),
 			signal: controller.signal,
-		}).then(
-			async (res) => ({ status: res.status, body: await res.text(), ms: Date.now() - startedAt }),
-			(error: Error) => ({ status: 0, body: error.message, ms: Date.now() - startedAt }),
-		);
+		})
+			.then(async (res) => ({
+				status: res.status,
+				body: await res.text(),
+				ms: Date.now() - startedAt,
+			}))
+			.catch((error: Error) => ({ status: 0, body: error.message, ms: Date.now() - startedAt }));
 		return { result, abort: () => controller.abort() };
 	}
 }
