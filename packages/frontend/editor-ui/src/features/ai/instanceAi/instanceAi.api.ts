@@ -1,4 +1,3 @@
-import { getBrowserId } from '@n8n/constants';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
@@ -18,23 +17,6 @@ import type {
 	InstanceAiPreferenceCardEditResponse,
 	InstanceAiPreferenceCardUndoResponse,
 } from '@n8n/api-types';
-
-/**
- * POST /assistant/telemetry/left-n8n
- * Reports that the tab became hidden while the Assistant runs. It uses `fetch`
- * with `keepalive` because the browser cancels other requests when the tab
- * closes, and a beacon cannot send the `browser-id` header that auth needs.
- * Telemetry must never fail the page, so errors are ignored.
- */
-export function postLeftN8nWhileRunning(context: IRestApiContext, threadId: string): void {
-	void fetch(`${context.baseUrl}/assistant/telemetry/left-n8n`, {
-		method: 'POST',
-		keepalive: true,
-		credentials: 'include',
-		headers: { 'browser-id': getBrowserId(), 'Content-Type': 'application/json' },
-		body: JSON.stringify({ threadId }),
-	}).catch(() => {});
-}
 
 export interface InstanceAiThreadLaunchInput {
 	source: InstanceAiThreadSource;

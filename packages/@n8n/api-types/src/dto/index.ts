@@ -46,7 +46,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
-export { InstanceAiLeftN8nRequestDto } from './instance-ai/instance-ai-left-n8n-request.dto';
+export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {

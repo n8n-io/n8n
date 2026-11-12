@@ -4,7 +4,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { onBeforeUnmount, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { postLeftN8nWhileRunning } from '../instanceAi.api';
+import { trackOnPageHide } from '@/app/plugins/telemetry/trackOnPageHide';
 
 const { INSTANCE_AI } = TELEMETRY_EVENT;
 
@@ -16,8 +16,8 @@ const leftThreadAt = new Map<string, number>();
  * thread (another thread or page), then the browser tab (another tab or app,
  * or closing the tab). `visibilitychange` fires before a tab closes, so it
  * covers both tab cases. The telemetry SDK loses requests that start while a
- * tab closes, so the backend emits "left n8n" and this sends it a keepalive
- * request instead.
+ * tab closes, so "left n8n" goes through `trackOnPageHide`, and the backend
+ * emits it.
  */
 export function useAssistantAwayTelemetry(options: {
 	threadId: () => string;
@@ -64,7 +64,13 @@ export function useAssistantAwayTelemetry(options: {
 		if (document.hidden) {
 			if (!options.isRunning()) return;
 			tabHiddenAt = Date.now();
-			postLeftN8nWhileRunning(rootStore.restApiContext, options.threadId());
+			trackOnPageHide(
+				rootStore.restApiContext,
+				INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING,
+				{
+					thread_id: options.threadId(),
+				},
+			);
 			return;
 		}
 		if (tabHiddenAt === undefined) return;
