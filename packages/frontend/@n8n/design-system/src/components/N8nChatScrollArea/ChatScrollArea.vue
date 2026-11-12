@@ -15,6 +15,7 @@ import {
 	AT_BOTTOM_THRESHOLD_PX,
 	LOAD_OLDER_ROOT_MARGIN,
 	getAnchoredScrollTop,
+	isNearTop,
 	scrollToBottom,
 	takeScrollSnapshot,
 } from './ChatScrollArea.utils';
@@ -41,7 +42,19 @@ const inputOverlay = useTemplateRef<HTMLElement>('inputOverlay');
 
 const isAtBottom = ref(true);
 const inputHeight = ref(0);
+/** Stays `false` until the first jump to the bottom, so the start position does not load older messages. */
+const isReady = ref(false);
 let anchorSnapshot: ScrollAnchorSnapshot | undefined;
+
+/**
+ * Emits `load-older` when the top is near. Reads `scrollTop` directly,
+ * because an observer entry can be from before the last scroll.
+ */
+function requestOlder() {
+	if (!isReady.value || props.loadingOlder || !viewport.value) return;
+	if (!isNearTop(viewport.value)) return;
+	emit('load-older');
+}
 
 useIntersectionObserver(
 	bottomSentinel,
@@ -57,8 +70,8 @@ useIntersectionObserver(
 useIntersectionObserver(
 	topSentinel,
 	([entry]) => {
-		if (!entry?.isIntersecting || props.loadingOlder) return;
-		emit('load-older');
+		if (!entry?.isIntersecting) return;
+		requestOlder();
 	},
 	{ root: viewport, rootMargin: LOAD_OLDER_ROOT_MARGIN },
 );
@@ -76,23 +89,26 @@ useResizeObserver(inputOverlay, ([entry]) => {
 watch(
 	() => props.loadingOlder,
 	async (loading, wasLoading) => {
-		if (!viewport.value) return;
+		if (!viewport.value || !content.value) return;
 		if (loading) {
-			anchorSnapshot = takeScrollSnapshot(viewport.value);
+			anchorSnapshot = takeScrollSnapshot(viewport.value, content.value);
 			return;
 		}
-		if (wasLoading && anchorSnapshot) {
-			await nextTick();
-			viewport.value.scrollTop = getAnchoredScrollTop(anchorSnapshot, viewport.value.scrollHeight);
-			anchorSnapshot = undefined;
+		if (!wasLoading) return;
+		await nextTick();
+		if (anchorSnapshot && viewport.value) {
+			viewport.value.scrollTop = getAnchoredScrollTop(anchorSnapshot, viewport.value);
 		}
+		anchorSnapshot = undefined;
+		/** A page that does not fill the view leaves the top visible, and the observer does not fire again. */
+		requestOlder();
 	},
 );
 
-/** Scrolls smoothly to the bottom. Following starts again when the bottom is visible. */
-function onScrollToBottom(behaviour: ScrollBehavior = 'smooth') {
+/** Scrolls to the bottom. Following starts again when the bottom is visible. */
+function onScrollToBottom(behavior: ScrollBehavior = 'smooth') {
 	if (!viewport.value) return;
-	scrollToBottom(viewport.value, behaviour);
+	scrollToBottom(viewport.value, behavior);
 }
 
 const exposed: ChatScrollAreaExposed = { scrollToBottom: () => onScrollToBottom('auto') };
@@ -106,6 +122,9 @@ onMounted(async () => {
 	if (inputOverlay.value) inputHeight.value = inputOverlay.value.offsetHeight;
 	await nextTick();
 	if (viewport.value) scrollToBottom(viewport.value);
+	isReady.value = true;
+	/** A thread too short to scroll keeps the top visible, so it loads older messages here. */
+	requestOlder();
 });
 </script>
 
