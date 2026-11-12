@@ -94,6 +94,56 @@ export class AgentPublishController {
 		);
 	}
 
+	@Post('/:agentId/archive')
+	@ProjectScope('agent:delete')
+	async archive(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'archive',
+		);
+		const agent = await this.agentPublishService.archiveAgent(
+			agentId,
+			projectId,
+			req.user,
+			pushRef,
+		);
+		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
+	}
+
+	@Post('/:agentId/unarchive')
+	@ProjectScope('agent:delete')
+	async unarchive(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'unarchive',
+		);
+		const agent = await this.agentPublishService.unarchiveAgent(
+			agentId,
+			projectId,
+			req.user,
+			pushRef,
+		);
+		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
+	}
+
 	@Post('/:agentId/revert-to-published')
 	@ProjectScope('agent:update')
 	async revertToPublished(

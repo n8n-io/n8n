@@ -280,6 +280,11 @@ export {
 	formatRedactedError,
 } from './errors';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	createSampleFile,
+	resolveSampleFileMarkers,
+	SAMPLE_FILE_MIME_TYPES,
+} from './tools/workflows/sample-files';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {

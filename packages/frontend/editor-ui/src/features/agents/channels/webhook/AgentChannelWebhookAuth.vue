@@ -4,7 +4,7 @@ import {
 	type AgentWebhookAuthentication,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 
@@ -65,20 +65,20 @@ const AUTHENTICATION_LABELS: Record<AgentWebhookAuthentication, BaseTextKey> = {
 					:label="i18n.baseText(AUTHENTICATION_LABELS[option])"
 				/>
 			</N8nSelect>
-			<N8nText
+			<N8nCallout
 				v-if="authentication === 'none'"
-				size="small"
-				:class="$style.hint"
+				theme="warning"
+				:class="$style.notice"
 				data-testid="webhook-public-notice"
 			>
 				{{ i18n.baseText('agents.channels.webhook.authentication.noneNotice') }}
-			</N8nText>
+			</N8nCallout>
 		</div>
 		<AgentIntegrationCredentialConnection
 			v-if="authentication !== 'none'"
 			v-model="credentialId"
 			:integration-type="integration.type"
-			:integration-label="integration.label"
+			:integration-label="i18n.baseText(AUTHENTICATION_LABELS[authentication])"
 			:credentials="credentials"
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
@@ -107,7 +107,7 @@ const AUTHENTICATION_LABELS: Record<AgentWebhookAuthentication, BaseTextKey> = {
 	gap: var(--spacing--3xs);
 }
 
-.hint {
-	color: var(--text-color--subtler);
+.notice {
+	margin-top: var(--spacing--2xs);
 }
 </style>

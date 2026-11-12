@@ -174,7 +174,7 @@ export type RelayEventMap = ModuleEventMap & {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
-		includeArchivedWorkflows: boolean;
+		includeArchived: boolean;
 	};
 
 	'n8n-package-export-failed': {
@@ -1345,6 +1345,18 @@ export type RelayEventMap = ModuleEventMap & {
 	};
 
 	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
 		agentId: string;
 		projectId: string;
 	};

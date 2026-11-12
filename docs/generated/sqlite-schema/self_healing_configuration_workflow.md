@@ -58,6 +58,7 @@ erDiagram
   varchar enabledById FK
   INTEGER id
   BOOLEAN includeAllProjectMembers
+  BOOLEAN includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt

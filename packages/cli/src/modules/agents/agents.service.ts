@@ -41,7 +41,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -567,7 +567,7 @@ export class AgentsService {
 		if (projectIds.length === 0) return [];
 
 		return await this.agentRepository.find({
-			where: { projectId: In(projectIds) },
+			where: { projectId: In(projectIds), isArchived: false },
 			order: { updatedAt: 'DESC' },
 		});
 	}
@@ -762,11 +762,19 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async delete(agentId: string, projectId: string): Promise<boolean> {
+	/** `requireArchived`: reject the delete of an agent that a user did not archive first. */
+	async delete(
+		agentId: string,
+		projectId: string,
+		{ requireArchived = false }: { requireArchived?: boolean } = {},
+	): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return false;
+		}
+		if (requireArchived && !agent.isArchived) {
+			throw new BadRequestError('Agent must be archived before it can be deleted.');
 		}
 
 		await this.deleteKnowledgeFiles(projectId, agentId);
