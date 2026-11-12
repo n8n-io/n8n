@@ -105,7 +105,7 @@ const approveDescribedBy = computed(() => {
 
 const canClose = computed(() => rbacStore.hasScope('promotions:approveReviews'));
 /** The review the user confirms. A later change of the selected row does not change it. */
-const pendingClose = ref<{ id: string; title: string } | null>(null);
+const pendingClose = ref<{ id: string; title: string | null } | null>(null);
 const closing = ref(false);
 // The buttons stay still while the changes load. Without a Changes tab, nothing reports a state,
 // so a review without an environment must not wait for one.
@@ -141,11 +141,8 @@ async function onClose() {
 }
 
 function openClose() {
-	const { id, title, branchName } = props.item;
-	pendingClose.value = {
-		id,
-		title: title ?? branchName ?? i18n.baseText('inbox.promotionReview.untitled'),
-	};
+	const { id, title } = props.item;
+	pendingClose.value = { id, title };
 }
 
 function openApproval() {
@@ -365,17 +362,16 @@ async function onApprove() {
 			@update:open="dismissClose"
 		>
 			<N8nDialogHeader>
-				<N8nDialogTitle>
-					{{ i18n.baseText('inbox.promotionReview.close.confirm.title') }}
+				<N8nDialogTitle data-test-id="inbox-promotion-review-close-title">
+					{{
+						pendingClose?.title
+							? i18n.baseText('inbox.promotionReview.close.confirm.titleNamed', {
+									interpolate: { title: pendingClose.title },
+								})
+							: i18n.baseText('inbox.promotionReview.close.confirm.title')
+					}}
 				</N8nDialogTitle>
 				<N8nDialogDescription>
-					<N8nText
-						bold
-						:class="$style.closeTitle"
-						data-test-id="inbox-promotion-review-close-title"
-					>
-						{{ pendingClose?.title }}
-					</N8nText>
 					{{ i18n.baseText('inbox.promotionReview.close.confirm.description') }}
 				</N8nDialogDescription>
 			</N8nDialogHeader>
@@ -483,11 +479,6 @@ async function onApprove() {
 	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--xs);
-}
-
-.closeTitle {
-	display: block;
-	margin-bottom: var(--spacing--xs);
 }
 
 .gitlabLink {

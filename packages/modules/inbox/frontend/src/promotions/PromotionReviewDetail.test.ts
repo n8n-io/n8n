@@ -294,7 +294,7 @@ describe('close', () => {
 		await userEvent.click(getByTestId('inbox-promotion-review-close'));
 		const dialog = within(getByRole('dialog'));
 		expect(dialog.getByTestId('inbox-promotion-review-close-title')).toHaveTextContent(
-			'Promote the thing',
+			"Close 'Promote the thing'?",
 		);
 		expect(
 			dialog.getByText(
@@ -304,6 +304,18 @@ describe('close', () => {
 		await userEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
 		expect(closePromotionReview).not.toHaveBeenCalled();
+	});
+
+	it('asks about the promotion review in general when the review has no title', async () => {
+		const { getByRole, getByTestId } = renderComponent({
+			props: { item: item({ title: null }), onItemChange },
+		});
+
+		await userEvent.click(getByTestId('inbox-promotion-review-close'));
+
+		expect(
+			within(getByRole('dialog')).getByTestId('inbox-promotion-review-close-title'),
+		).toHaveTextContent('Close this promotion review?');
 	});
 
 	it('closes the review the user confirmed, even after the selected row changes', async () => {
