@@ -3,6 +3,11 @@ name: 'Test: DB'
 on:
   workflow_call:
     inputs:
+      runner-provider:
+        description: 'Optional runner provider override'
+        required: false
+        type: string
+        default: ''
       ref:
         required: false
         type: string
@@ -35,7 +40,7 @@ jobs:
   # This job runs each entry as given.
   integration:
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -94,7 +99,7 @@ jobs:
   migration:
     name: ${{ matrix.name }}
     if: inputs.run-migrations
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false

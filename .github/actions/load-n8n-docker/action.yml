@@ -1,17 +1,19 @@
-# Restores the n8n + runners image tarball (produced by build-n8n-docker
-# under the variant+SHA-derived cache key) and loads both images into the
-# local docker daemon.
+# Makes the n8n + runners CI images (produced by build-n8n-docker under a
+# variant+SHA-derived name) available in the local docker daemon.
+#
+# Namespace runners pull both images from the workspace registry. Other runners
+# restore the tarball from the cache and load it.
 #
 # After this action runs, `n8nio/n8n:local` and `n8nio/runners:local` are
 # present on the runner.
 #
-# If the cache entry has been evicted (e.g. Blacksmith cache thrash between
-# prepare-docker and slow shards), the action falls back to invoking
-# build-n8n-docker, which leaves both images tagged in dockerd and re-saves
-# the tarball to cache as a side effect.
+# If the images are missing (e.g. Blacksmith cache thrash between
+# prepare-docker and slow shards, or an expired registry image on a late
+# re-run), the action falls back to invoking build-n8n-docker, which publishes
+# the images again as a side effect.
 
-name: 'Load n8n Docker images from cache'
-description: 'Restores the n8n + runners image tarballs from the variant+SHA-keyed GHA cache and loads both images into the local docker daemon. Falls back to rebuilding on cache miss.'
+name: 'Load n8n Docker images'
+description: 'Pulls the n8n + runners images from the Namespace registry, or restores and loads the variant+SHA-keyed GHA cache tarballs elsewhere. Falls back to rebuilding when the images are missing.'
 
 inputs:
   build-variant:
@@ -19,15 +21,43 @@ inputs:
     required: false
     default: 'standard'
   cache-sha:
-    description: 'SHA for the image cache key. Empty = github.sha. Override when testing a ref other than the triggering commit (e.g. a PR head resolved at dispatch time) so the restore matches the code under test instead of a stale image (cache miss => rebuild from the checkout).'
+    description: 'SHA for the image name. Empty = github.sha. Override when testing a ref other than the triggering commit (e.g. a PR head resolved at dispatch time) so the restore matches the code under test instead of a stale image (miss => rebuild from the checkout).'
     required: false
     default: ''
 
 runs:
   using: 'composite'
   steps:
+    # Namespace sets NSC_CONTAINER_REGISTRY on its runners. The names must track
+    # build-n8n-docker.
+    - name: Pull images from the Namespace registry
+      id: pull
+      shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        IMAGE_SHA: ${{ inputs.cache-sha || github.sha }}
+      run: |
+        if [ -z "${NSC_CONTAINER_REGISTRY:-}" ]; then
+          echo "registry=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "registry=true" >> "$GITHUB_OUTPUT"
+        tag="ci-${BUILD_VARIANT}-${IMAGE_SHA}"
+        n8n="${NSC_CONTAINER_REGISTRY}/n8n-ci/n8n:${tag}"
+        runners="${NSC_CONTAINER_REGISTRY}/n8n-ci/runners:${tag}"
+        docker pull --quiet "$n8n" & n8n_pull=$!
+        docker pull --quiet "$runners" & runners_pull=$!
+        if wait "$n8n_pull" && wait "$runners_pull"; then
+          docker tag "$n8n" n8nio/n8n:local
+          docker tag "$runners" n8nio/runners:local
+          echo "pulled=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::Could not pull $n8n and $runners; falling back to rebuild via build-n8n-docker."
+        fi
+
     - name: Restore image tarball from cache
       id: restore
+      if: steps.pull.outputs.registry != 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: n8n-docker-image-v2-${{ inputs.build-variant }}-${{ inputs.cache-sha || github.sha }}
@@ -50,7 +80,7 @@ runs:
         for f in "${files[@]}"; do docker load -i "$f"; done
 
     - name: Warn on cache miss
-      if: steps.restore.outputs.cache-hit != 'true'
+      if: steps.pull.outputs.registry != 'true' && steps.restore.outputs.cache-hit != 'true'
       shell: bash
       env:
         BUILD_VARIANT: ${{ inputs.build-variant }}
@@ -58,19 +88,31 @@ runs:
       run: |
         echo "::warning::Cache miss for n8n-docker-image-v2-$BUILD_VARIANT-$GITHUB_SHA (SHA $GITHUB_SHA); falling back to rebuild via build-n8n-docker."
 
-    - name: Rebuild image on cache miss
-      if: steps.restore.outputs.cache-hit != 'true'
+    - name: Rebuild image when it is missing
+      if: steps.pull.outputs.pulled != 'true' && steps.restore.outputs.cache-hit != 'true'
       uses: ./.github/actions/build-n8n-docker
       with:
         build-variant: ${{ inputs.build-variant }}
 
-    # build-n8n-docker writes archives rather than loading them, so the fallback
-    # has to load them here or downstream steps find no images.
-    - name: Load rebuilt images into docker
-      if: steps.restore.outputs.cache-hit != 'true'
+    # build-n8n-docker publishes rather than loading, so the fallback has to
+    # fetch the images here or downstream steps find none.
+    - name: Fetch rebuilt images into docker
+      if: steps.pull.outputs.pulled != 'true' && steps.restore.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        REGISTRY: ${{ steps.pull.outputs.registry }}
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        IMAGE_SHA: ${{ github.sha }}
       run: |
         set -euo pipefail
+        if [ "$REGISTRY" = "true" ]; then
+          tag="ci-${BUILD_VARIANT}-${IMAGE_SHA}"
+          for name in n8n runners; do
+            docker pull --quiet "${NSC_CONTAINER_REGISTRY}/n8n-ci/${name}:${tag}"
+            docker tag "${NSC_CONTAINER_REGISTRY}/n8n-ci/${name}:${tag}" "n8nio/${name}:local"
+          done
+          exit 0
+        fi
         shopt -s nullglob
         files=(/tmp/n8n-images/*.tar)
         if [ ${#files[@]} -eq 0 ]; then
