@@ -630,3 +630,28 @@ describe('agent-sse-stream — subagent-chunk', () => {
 		expect(events).toEqual([]);
 	});
 });
+
+describe('emitChunkEvents — test runs', () => {
+	it('sends the route of a simulated tool call with its result', () => {
+		const events: AgentSseEvent[] = [];
+
+		emitChunkEvents(
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'Send_Slack',
+				output: { ok: true },
+				simulation: { route: 'blocked', reason: 'unsupported_by_simulator', detail: 'No Slack' },
+			},
+			(event) => events.push(event),
+		);
+
+		expect(events).toEqual([
+			expect.objectContaining({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				simulation: { route: 'blocked', reason: 'unsupported_by_simulator', detail: 'No Slack' },
+			}),
+		]);
+	});
+});

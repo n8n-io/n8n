@@ -51,6 +51,7 @@ import {
 	startServer,
 	waitForClose,
 } from '@test/file-stream-server';
+import type { SimulationSessionService } from '../simulation/simulation-session.service';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -91,6 +92,7 @@ function makeController() {
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		mock<N8NCheckpointStorage>(),
+		mock<SimulationSessionService>(),
 	);
 
 	const messageQueue = mock<AgentMessageQueueService>();

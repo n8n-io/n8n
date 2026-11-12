@@ -151,6 +151,7 @@ erDiagram
   varchar_255_ model
   varchar_36_ parentExecutionId FK
   integer promptTokens
+  boolean simulated
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

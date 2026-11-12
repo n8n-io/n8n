@@ -17,6 +17,8 @@ import {
 } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
+import { NON_HTTP_NODE_TYPES } from '@/modules/agents/simulation/non-http-node-types';
+
 import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
 
@@ -34,26 +36,6 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	}
 	return subNodes;
 }
-
-/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). The run-time node mock answers for them. */
-const BYPASS_NODE_TYPES = new Set([
-	'n8n-nodes-base.redis',
-	'n8n-nodes-base.mongoDb',
-	'n8n-nodes-base.mySql',
-	'n8n-nodes-base.postgres',
-	'n8n-nodes-base.microsoftSql',
-	'n8n-nodes-base.snowflake',
-	'n8n-nodes-base.kafka',
-	'n8n-nodes-base.rabbitmq',
-	'n8n-nodes-base.mqtt',
-	'n8n-nodes-base.amqp',
-	'n8n-nodes-base.ftp',
-	'n8n-nodes-base.ssh',
-	'n8n-nodes-base.ldap',
-	'n8n-nodes-base.emailSend',
-	'n8n-nodes-base.rssFeedRead',
-	'n8n-nodes-base.git',
-]);
 
 /** LLM sub-node types whose vendor URL can be rewritten to the wire server (must match `EVAL_PROVIDER_URL_FIELD`). */
 const SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES = new Set(['@n8n/n8n-nodes-langchain.lmChatOpenAi']);
@@ -122,7 +104,7 @@ export function identifyNodesForRunMock(workflow: IWorkflowBase): INode[] {
 	return workflow.nodes.filter(
 		(node) =>
 			!node.disabled &&
-			(BYPASS_NODE_TYPES.has(node.type) || node.parameters?.operation === 'sendAndWait'),
+			(NON_HTTP_NODE_TYPES.has(node.type) || node.parameters?.operation === 'sendAndWait'),
 	);
 }
 

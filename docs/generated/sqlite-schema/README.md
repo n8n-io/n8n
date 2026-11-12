@@ -21,7 +21,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 16 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 28 |  | table |
+| [agent_execution](agent_execution.md) | 29 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
@@ -655,6 +655,7 @@ erDiagram
   varchar_255_ model
   varchar_36_ parentExecutionId FK
   INTEGER promptTokens
+  boolean simulated
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

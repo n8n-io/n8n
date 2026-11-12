@@ -84,6 +84,8 @@ export class InstanceAiModule implements ModuleInterface {
 			await this.registerAssistantAgent();
 		}
 
+		await this.registerSimulationBackend();
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
@@ -98,6 +100,20 @@ export class InstanceAiModule implements ModuleInterface {
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
 		}
+	}
+
+	/**
+	 * Serve agent test runs (safe testing) with the LLM mock. Without this
+	 * registration, test runs block every call that needs the simulator.
+	 */
+	private async registerSimulationBackend(): Promise<void> {
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) return;
+		const { SimulationBackendRegistry } = await import(
+			'@/modules/agents/simulation/simulation-backend-registry.js'
+		);
+		const { LlmMockSimulationBackend } = await import('./eval/llm-mock-simulation-backend.js');
+		Container.get(SimulationBackendRegistry).register(Container.get(LlmMockSimulationBackend));
 	}
 
 	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */

@@ -89,6 +89,7 @@ import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
+import type { SimulationSession } from './simulation/simulation-session';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 /** Written on a manual task run so a later approval can rebuild that starter's runtime. */
@@ -121,6 +122,12 @@ interface ChatExecutionInput extends AgentExecutionInput {
 	attachments?: StoredAttachmentRef[];
 }
 
+/**
+ * Resolves the test-run session of a draft chat thread, or `undefined` for a
+ * live run. Set only by `AgentTestRunService`.
+ */
+export type DraftSimulationResolver = (threadId: string) => Promise<SimulationSession | undefined>;
+
 interface ChatExecutionCallbacks {
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
@@ -148,6 +155,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	/** Preview chat sends the approaching-budget card. The run continues. */
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
+	/** Makes the draft run a test run when it resolves a session. */
+	simulation?: DraftSimulationResolver;
 }
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
@@ -218,6 +227,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
+	/** Makes a draft resume a test run when it resolves a session. */
+	simulation?: DraftSimulationResolver;
 }
 
 export interface ExecuteForTaskPublishedConfig extends AgentExecutionInput {
@@ -311,8 +322,14 @@ interface ResumeCheckpoint {
 	scope: ResumeScope;
 }
 
-type ResumeChatConfig = ResumeForChatConfig & { usePublishedVersion: boolean };
-type DraftChatConfig = ExecuteForChatConfig & { sessionMode: AgentSessionMode };
+type ResumeChatConfig = ResumeForChatConfig & {
+	usePublishedVersion: boolean;
+	simulationSession?: SimulationSession;
+};
+type DraftChatConfig = ExecuteForChatConfig & {
+	sessionMode: AgentSessionMode;
+	simulationSession?: SimulationSession;
+};
 
 /**
  * The access, sandbox, and runtime scope for a run on one chat channel —
@@ -597,8 +614,13 @@ export class AgentExecutionOrchestratorService {
 		}
 		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
+		const simulationSession = await resume.simulation?.(checkpoint.memoryScope.threadId);
 		// n8n Chat has one canonical source; the caller doesn't need to pass it.
-		const run = { ...resume, source: resume.source ?? checkpoint.scope.source };
+		const run = {
+			...resume,
+			source: resume.source ?? checkpoint.scope.source,
+			simulationSession,
+		};
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
@@ -836,7 +858,8 @@ export class AgentExecutionOrchestratorService {
 			previewChat: config.previewChat,
 			sessionMode,
 		});
-		const draft = { ...config, sessionMode };
+		const simulationSession = await config.simulation?.(config.memory.threadId);
+		const draft = { ...config, sessionMode, simulationSession };
 		yield* this.withRuntimeLease(
 			async () => await this.getDraftChatRuntime(draft, setup),
 			async (runtime) => await this.streamDraftChatResponse(draft, runtime, setup),
@@ -1439,6 +1462,7 @@ export class AgentExecutionOrchestratorService {
 				attributionUserId: scope.runtime.attributionUserId,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat,
+				...simulationRuntimeParams(config.simulationSession),
 			},
 			{
 				threadId: memoryScope.threadId,
@@ -1745,6 +1769,7 @@ export class AgentExecutionOrchestratorService {
 				user: setup.runtime.user,
 				sandboxPrincipalHash: setup.sandboxPrincipalHash,
 				previewChat: setup.runtime.previewChat,
+				...simulationRuntimeParams(config.simulationSession),
 			},
 			{
 				threadId: memory.threadId,
@@ -2038,4 +2063,12 @@ export class AgentExecutionOrchestratorService {
 			onRuntimeStarted: config.onRuntimeStarted,
 		});
 	}
+}
+
+/**
+ * A test run gets a runtime of its own, with no background jobs: a job would
+ * outlive the turn and run without the simulation.
+ */
+function simulationRuntimeParams(session: SimulationSession | undefined) {
+	return session ? { simulation: session, allowBackgroundTasks: false } : {};
 }

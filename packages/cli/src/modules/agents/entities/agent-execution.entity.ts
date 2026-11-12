@@ -151,6 +151,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
 
+	/** True when the run was a test run: its tool calls went to a simulation, not to real services. */
+	@Column({ type: 'boolean', default: false })
+	simulated: boolean;
+
 	/** Where the timeline payload is stored: 'db' (inline column), 'fs', 's3', or 'az'. */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;

@@ -22,6 +22,7 @@
 | model | varchar(255) |  | true |  |  |  |
 | parentExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution of the parent turn that delegated this run. Null for a top-level turn |
 | promptTokens | integer |  | true |  |  |  |
+| simulated | boolean | false | false |  |  | True when the run was a test run: tool calls went to a simulation, not to real services. |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -47,6 +48,7 @@
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
+| agent_execution_simulated_not_null | n | NOT NULL simulated |
 | agent_execution_status_not_null | n | NOT NULL status |
 | agent_execution_storedAt_not_null | n | NOT NULL "storedAt" |
 | agent_execution_threadId_not_null | n | NOT NULL "threadId" |
@@ -92,6 +94,7 @@ erDiagram
   varchar_255_ model
   varchar_36_ parentExecutionId FK
   integer promptTokens
+  boolean simulated
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

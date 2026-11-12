@@ -5,7 +5,7 @@ import {
 	type StreamChunk,
 } from '@n8n/agents';
 import type { ApprovalSuspendPayload } from '@n8n/agents/tool';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type ToolCallSimulation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
@@ -21,6 +21,8 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { SimulationSession } from './simulation/simulation-session';
+import { SimulationSessionService } from './simulation/simulation-session.service';
 import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -43,6 +45,7 @@ export type PrepareDraftRunResult =
 
 interface DraftRunState {
 	response: string;
+	simulatedToolCalls: SimulatedToolCall[];
 	suspensions: AgentTestRunSuspension[];
 	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
@@ -53,6 +56,19 @@ interface DraftRunState {
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+}
+
+/** How one tool call of a test run ran. */
+export interface SimulatedToolCall extends ToolCallSimulation {
+	toolCallId: string;
+	toolName: string;
+}
+
+/** Set on the result of a test run (safe testing). Absent for a live run. */
+export interface DraftRunSimulation {
+	/** Absent when the simulator was not available: every simulated call was blocked. */
+	worldId?: string;
+	toolCalls: SimulatedToolCall[];
 }
 
 export interface ExecutePreparedDraftRunInput
@@ -118,6 +134,7 @@ export type PreparedDraftRunResult = {
 	executionId: string;
 	/** The run stopped on the iteration cap. It did not finish its work. */
 	maxIterations?: true;
+	simulation?: DraftRunSimulation;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -159,6 +176,7 @@ export class AgentTestRunService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly simulationSessions: SimulationSessionService,
 	) {}
 
 	async prepareDraftRun({
@@ -220,19 +238,25 @@ export class AgentTestRunService {
 		...execution
 	}: ExecutePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		let executionId: string | undefined;
+		const simulation = this.simulationResolver(execution, execution.message);
 		const stream = this.agentExecutionOrchestratorService.executeForChat({
 			...execution,
 			memory: {
 				threadId: sessionId,
 				resourceId: draftChatMemoryResourceId(execution.user.id),
 			},
+			simulation: simulation.resolve,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 				onExecutionRecorded?.(id);
 			},
 		});
 
-		return await this.collectDraftRun(stream, '', () => executionId, { errorMode, onChunk });
+		return await this.collectDraftRun(stream, '', () => executionId, {
+			errorMode,
+			onChunk,
+			simulation: simulation.session,
+		});
 	}
 
 	async resumePreparedDraftRun({
@@ -244,10 +268,12 @@ export class AgentTestRunService {
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
+		const simulation = this.simulationResolver(execution, '');
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,
 			usePublishedVersion: false,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			simulation: simulation.resolve,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 				onExecutionRecorded?.(id);
@@ -257,6 +283,7 @@ export class AgentTestRunService {
 		return await this.collectDraftRun(stream, initialResponse, () => executionId, {
 			errorMode,
 			onChunk,
+			simulation: simulation.session,
 		});
 	}
 
@@ -358,36 +385,79 @@ export class AgentTestRunService {
 		}
 	}
 
+	/**
+	 * The orchestrator resolves the test chat's session once it knows the
+	 * thread. `session()` returns it afterwards, for this run's bookkeeping.
+	 */
+	private simulationResolver(
+		execution: { user?: User; agentId: string; projectId: string },
+		message: string,
+	) {
+		let resolved: SimulationSession | undefined;
+		const { user } = execution;
+		return {
+			resolve: async (threadId: string) => {
+				if (!user) return undefined;
+				resolved = await this.simulationSessions.openForDraftRun({
+					user,
+					agentId: execution.agentId,
+					projectId: execution.projectId,
+					testChatId: threadId,
+					message,
+				});
+				return resolved;
+			},
+			session: () => resolved,
+		};
+	}
+
 	private async collectDraftRun(
 		stream: AsyncIterable<AgentExecutionStreamChunk>,
 		initialResponse: string,
 		getExecutionId: () => string | undefined,
-		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
+		{
+			errorMode = 'throw',
+			onChunk,
+			simulation,
+		}: DraftRunConsumptionOptions & { simulation?: () => SimulationSession | undefined },
 	): Promise<PreparedDraftRunResult> {
 		const state: DraftRunState = {
 			response: initialResponse,
+			simulatedToolCalls: [],
 			suspensions: [],
 			maxIterations: false,
 			observerFailed: false,
 		};
 		try {
-			for await (const chunk of stream) {
+			for await (const rawChunk of stream) {
+				const chunk = this.withSimulation(rawChunk, simulation?.(), state);
 				this.observeDraftChunk(chunk, onChunk, state);
 				this.collectDraftChunk(chunk, errorMode, state);
 			}
 		} catch (error) {
 			if (state.observerFailed) throw state.observerError;
 			throw error;
+		} finally {
+			await this.recordSimulation(simulation?.(), getExecutionId());
 		}
 		if (state.observerFailed) throw state.observerError;
 		// Drain first so terminal usage and finalization errors are preserved.
 		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
+		const session = simulation?.();
 		const metadata = {
 			response: state.response,
 			executionId,
 			...(state.maxIterations ? { maxIterations: true as const } : {}),
+			...(session
+				? {
+						simulation: {
+							...(session.worldId ? { worldId: session.worldId } : {}),
+							toolCalls: state.simulatedToolCalls,
+						},
+					}
+				: {}),
 		};
 		if (state.suspensions.length > 0) {
 			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
@@ -417,6 +487,32 @@ export class AgentTestRunService {
 		if (!findPendingStandardApproval(checkpoint, expected)) {
 			throw new InvalidAgentTestRunCheckpointError();
 		}
+	}
+
+	/** Adds the route of a settled tool call to its result chunk. */
+	private withSimulation(
+		chunk: AgentExecutionStreamChunk,
+		session: SimulationSession | undefined,
+		state: DraftRunState,
+	): AgentExecutionStreamChunk {
+		if (!session || chunk.type !== 'tool-result') return chunk;
+		const simulation = session.takeDecision(chunk.toolCallId);
+		if (!simulation) return chunk;
+		state.simulatedToolCalls.push({
+			toolCallId: chunk.toolCallId,
+			toolName: chunk.toolName,
+			...simulation,
+		});
+		return { ...chunk, simulation };
+	}
+
+	/** Marks the execution as a test run. */
+	private async recordSimulation(
+		session: SimulationSession | undefined,
+		executionId: string | undefined,
+	): Promise<void> {
+		if (!session || !executionId) return;
+		await this.simulationSessions.markExecutionSimulated(executionId);
 	}
 
 	private observeDraftChunk(

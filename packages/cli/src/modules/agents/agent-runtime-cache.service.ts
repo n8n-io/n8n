@@ -27,6 +27,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
+import type { SimulationSession } from './simulation/simulation-session';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -51,6 +52,11 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
+	/**
+	 * A test run (safe testing). The runtime sends its tool traffic to this
+	 * session's simulated world, so it is cached for this test chat only.
+	 */
+	simulation?: SimulationSession;
 }
 
 /**
@@ -135,6 +141,8 @@ export class AgentRuntimeCacheService {
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
+		// A simulated runtime must never serve a live run, or another test chat.
+		if (params.simulation) parts.push(params.simulation.runtimeCacheKey);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -313,6 +321,7 @@ export class AgentRuntimeCacheService {
 			allowBackgroundTasks,
 			previewChat,
 			attributionUserId,
+			simulation,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -347,7 +356,7 @@ export class AgentRuntimeCacheService {
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
 			user,
-			undefined,
+			simulation?.instrumentation(),
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
 			{ previewChat, allowBackgroundTasks, attributionUserId },
