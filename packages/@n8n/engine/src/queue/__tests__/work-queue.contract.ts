@@ -118,7 +118,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 			for (const dispose of disposers.splice(0)) await dispose();
 		});
 
-		it.each([1, 3])(
+		it.each([1, 2, 3, 4])(
 			'delivers every published message exactly once at concurrency %i',
 			async (concurrency) => {
 				const queue = await build(concurrency);
@@ -194,6 +194,24 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 			await eventually(() => expect(gated.started).toHaveLength(2));
 			gated.releaseAll();
 			await eventually(() => expect(gated.finished).toHaveLength(2));
+		});
+
+		it('keeps other in-flight handlers running when one handler throws', async () => {
+			const queue = await build(2);
+			const gated = gatedHandler();
+			queue.start(gated.handler);
+
+			await publishAll(queue, [1, 2, 3]);
+			await eventually(() => expect(gated.started).toHaveLength(2));
+
+			const [failing, other] = gated.started;
+			gated.fail(failing);
+
+			await eventually(() => expect(gated.started).toHaveLength(3));
+			expect(gated.finished).not.toContain(other);
+
+			gated.releaseAll();
+			await eventually(() => expect(gated.finished).toHaveLength(3));
 		});
 
 		it('delivers messages that a handler publishes while it runs', async () => {

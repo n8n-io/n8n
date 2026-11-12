@@ -79,7 +79,7 @@ describe('InMemoryWorkQueue', () => {
 		};
 		queue.start(throwingHandler);
 
-		await expect.poll(() => attempted, { timeout: 5_000 }).toBe(count);
+		await expect.poll(() => attempted, { timeout: 2_000 }).toBe(count);
 	});
 
 	it.each([0, -1, 1.5, Number.NaN])('refuses a concurrency of %s', (concurrency) => {

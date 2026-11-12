@@ -180,8 +180,8 @@ describe('createEngineRuntime', () => {
 		});
 
 		expect(InMemoryWorkQueue).toHaveBeenCalledTimes(2);
-		expect(InMemoryWorkQueue).toHaveBeenCalledWith(expect.anything(), { concurrency: 2 });
-		expect(InMemoryWorkQueue).toHaveBeenCalledWith(expect.anything(), { concurrency: 3 });
+		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(1, expect.anything(), { concurrency: 2 });
+		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(2, expect.anything(), { concurrency: 3 });
 	});
 
 	it('starts and stops both workers', async () => {
