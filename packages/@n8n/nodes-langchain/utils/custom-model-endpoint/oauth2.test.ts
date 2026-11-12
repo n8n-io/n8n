@@ -172,21 +172,27 @@ describe('createClientCredentialsTokenSource', () => {
 		);
 	});
 
-	it.each([
-		['the field is missing', { token_type: 'Bearer' }],
-		['the field is empty', { access_token: '' }],
+	// A login server that grants nothing usable is a credential to correct, not a blip to retry
+	it.each<[string, Record<string, unknown>, string]>([
+		['the field is missing', { token_type: 'Bearer' }, 'no access token'],
+		['the field is empty', { access_token: '' }, 'no access token'],
 		[
 			'the field holds nothing but whitespace, which is sent as nothing at all',
-			{
-				access_token: '  ',
-			},
+			{ access_token: '  ' },
+			'no access token',
 		],
-	])('fails when %s', async (_name, grant) => {
+	])('reports what the user has to correct when %s', async (_name, grant, expected) => {
 		const { fetchImpl } = granting(grant);
 
-		await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).rejects.toThrow(
-			'no access token',
-		);
+		const error = await createClientCredentialsTokenSource(login(), fetchImpl)
+			.getToken()
+			.then(
+				() => undefined,
+				(reason: Error) => reason,
+			);
+
+		expect(error).toBeInstanceOf(UserError);
+		expect(error?.message).toContain(expected);
 	});
 
 	it('gives the token request a deadline of its own, not the one an inference request gets', async () => {

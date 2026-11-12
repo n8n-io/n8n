@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { messageFromBody, truncateMessage } from './error-handling';
 import { oauth2BasicCredentials } from './headers';
@@ -68,7 +68,11 @@ export function accessTokenIn(parsed: unknown): string {
 	const stated =
 		isRecord(parsed) && typeof parsed.access_token === 'string' ? parsed.access_token : '';
 	const token = stated.trim();
-	if (token.length === 0) throw new OperationalError('The login server returned no access token');
+	if (token.length === 0) {
+		throw new UserError('The login server returned no access token', {
+			description: 'Check the client ID, client secret and scope on the credential.',
+		});
+	}
 	return token;
 }
 
