@@ -12,7 +12,7 @@ const getContainerName = (log: LogEntry): string | undefined => log.container_na
 test(
 	'Leader election @mode:multi-main @chaostest',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	async ({ n8nContainer, services }) => {
 		// Find the current leader by querying VictoriaLogs

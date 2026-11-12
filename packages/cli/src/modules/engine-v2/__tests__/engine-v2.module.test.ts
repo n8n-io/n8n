@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -9,10 +11,24 @@ import { RedisClientService } from '@n8n/backend-services';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import { EngineMtls } from '../engine-mtls';
+import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import type { RedisChannelSubscriber } from '../response-channel/redis-execution-response-receiver';
+import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
+import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
+import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
+
+/** The real boot check, over files this test does not need to write. */
+const useTls = (enabled: boolean) => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const mtls = new EngineMtls(Container.get(EngineConfig), mock<OutboundHttp>(), logger);
+	vi.spyOn(mtls, 'enabled', 'get').mockReturnValue(enabled);
+	Container.set(EngineMtls, mtls);
+	return mtls;
+};
 
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
@@ -22,6 +38,7 @@ describe('EngineV2Module', () => {
 	let client: EngineDataPlaneClient;
 	let controlPlaneServer: EngineControlPlaneServer;
 	let webhookResponseRegistry: EngineV2WebhookResponseRegistry;
+	let lifecycleSubscriptions: EngineV2LifecycleSubscriptions;
 	let redisClientService: RedisClientService;
 	let subscriber: ReturnType<typeof mock<RedisChannelSubscriber>>;
 
@@ -33,11 +50,14 @@ describe('EngineV2Module', () => {
 			authSecret: '',
 			mode: 'in-process',
 			resumeSecret: '',
+			tlsInsecureAllowPlainHttp: false,
 		});
+		useTls(false);
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
 		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
+		lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 		subscriber = mock<RedisChannelSubscriber>();
 		mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
 		redisClientService = mockInstance(RedisClientService, {
@@ -80,7 +100,7 @@ describe('EngineV2Module', () => {
 			expect(client.startExecution).toHaveBeenCalledWith(request);
 		});
 
-		it('starts the control plane server before the engine, so a report always lands', async () => {
+		it('starts the control plane server before the engine, so the first step can resolve credentials', async () => {
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
@@ -99,10 +119,47 @@ describe('EngineV2Module', () => {
 			expect(redisClientService.createClient).not.toHaveBeenCalled();
 		});
 
+		it('carries lifecycle events in memory from the engine to the subscriptions', async () => {
+			await module.init();
+
+			expect(lifecycleSubscriptions.useReceiver).toHaveBeenCalledWith(
+				expect.any(ExecutionChannelReceiver),
+			);
+			expect(runtime.init).toHaveBeenCalledWith({
+				responseSender: expect.any(ExecutionChannelSender),
+				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+			});
+		});
+
+		it('delivers a lifecycle event from the engine to its subscriber', async () => {
+			await module.init();
+			const [receiver] = vi.mocked(lifecycleSubscriptions.useReceiver).mock.calls[0];
+			const lifecycleEventSender = vi.mocked(runtime.init).mock.calls[0][0]?.lifecycleEventSender;
+			const handler = vi.fn();
+			const event = {
+				type: 'execution:completed' as const,
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				at: '2026-10-29T10:00:00.000Z',
+			};
+			await receiver.receive('exec-1', handler);
+
+			await lifecycleEventSender?.send([event], new AbortController().signal);
+
+			expect(handler).toHaveBeenCalledExactlyOnceWith(event);
+		});
+
 		it('generates a secret when unset', async () => {
 			await module.init();
 
 			expect(engineConfig.authSecret).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		it('refuses TLS files, which only remote mode uses', async () => {
+			useTls(true);
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_MODE=remote');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
 		});
 
 		it('leaves a configured secret untouched', async () => {
@@ -119,12 +176,47 @@ describe('EngineV2Module', () => {
 			engineConfig.mode = 'remote';
 			engineConfig.authSecret = 'a'.repeat(32);
 			engineConfig.baseUrl = 'http://engine:3000';
+			engineConfig.tlsInsecureAllowPlainHttp = true;
+		});
+
+		it('starts over mutual TLS with an https data plane address', async () => {
+			useTls(true);
+			engineConfig.baseUrl = 'https://engine:3000';
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+		});
+
+		it('refuses to start over plain HTTP without the opt-out', async () => {
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
+		});
+
+		it('refuses an http data plane address when TLS is on', async () => {
+			useTls(true);
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_BASE_URL must start with https://');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
 		});
 
 		it('starts the control plane server and not the data plane', async () => {
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
+		it('starts in queue mode', async () => {
+			executionsConfig.mode = 'queue';
+
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
 			expect(runtime.init).not.toHaveBeenCalled();
 		});
 
@@ -151,6 +243,20 @@ describe('EngineV2Module', () => {
 			expect(subscriber.on).toHaveBeenCalledWith('message', expect.any(Function));
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
 				expect.any(ExecutionChannelReceiver),
+			);
+		});
+
+		it('receives lifecycle events over Redis on their own channel', async () => {
+			subscriber.subscribe.mockResolvedValue(1);
+			await module.init();
+			const [receiver] = vi.mocked(lifecycleSubscriptions.useReceiver).mock.calls[0];
+
+			expect(receiver).toBeInstanceOf(ExecutionChannelReceiver);
+			await receiver.receive('exec-1', vi.fn());
+
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
+			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(
+				'n8n:engine-v2-lifecycle:exec-1',
 			);
 		});
 
@@ -224,13 +330,21 @@ describe('EngineV2Module', () => {
 			expect(runtime.shutdown).toHaveBeenCalled();
 		});
 
-		it('stops the control plane server after the engine, so a final flush still lands', async () => {
+		it('stops the control plane server after the engine, so a running step can still resolve credentials', async () => {
 			await module.shutdown();
 
 			expect(controlPlaneServer.stop).toHaveBeenCalled();
 			expect(vi.mocked(controlPlaneServer.stop).mock.invocationCallOrder[0]).toBeGreaterThan(
 				vi.mocked(runtime.shutdown).mock.invocationCallOrder[0],
 			);
+		});
+
+		it('stops watching the TLS files', async () => {
+			const close = vi.spyOn(useTls(false), 'close');
+
+			await module.shutdown();
+
+			expect(close).toHaveBeenCalledOnce();
 		});
 	});
 });

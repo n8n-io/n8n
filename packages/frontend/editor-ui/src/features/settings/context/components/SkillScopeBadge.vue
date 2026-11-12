@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { SkillListItem } from '@n8n/api-types';
+import type { ProjectIcon as ProjectIconData, SkillListItem } from '@n8n/api-types';
 import { N8nBadge, N8nIcon } from '@n8n/design-system';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 import { useSkillScopeDisplay } from '../skills.utils';
 
 const props = defineProps<{
 	skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>;
+	projectIcon?: ProjectIconData | null;
 }>();
 
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -18,7 +20,14 @@ const display = computed(() => scopeDisplay(props.skill));
 	<N8nBadge variant="outline" :class="$style.badge" data-test-id="skill-scope-badge">
 		<!-- The leading slot is a direct flex child of the badge, so the icon centres with the label. -->
 		<template #leading>
-			<N8nIcon :class="$style.icon" :icon="display.icon" size="small" />
+			<ProjectIcon
+				v-if="props.skill.scope === 'project' && props.projectIcon"
+				:class="$style.icon"
+				:icon="props.projectIcon"
+				size="mini"
+				border-less
+			/>
+			<N8nIcon v-else :class="$style.icon" :icon="display.icon" size="small" />
 		</template>
 		{{ display.label }}
 	</N8nBadge>

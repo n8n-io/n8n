@@ -5,13 +5,12 @@ import { Container } from '@n8n/di';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, Publisher } from '@n8n/backend-services';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 import { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createUser } from './shared/db/users';

@@ -34,6 +34,7 @@ export type Agent = {
 	// the fields list consumers (e.g. the MCP agents table) read are typed.
 	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;
 	availableInMCP?: boolean;
+	isArchived?: boolean;
 	isCompiled: boolean;
 	isRunnable?: boolean;
 	hasPublishHistory?: boolean;
