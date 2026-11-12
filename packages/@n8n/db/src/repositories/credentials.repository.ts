@@ -6,7 +6,7 @@ import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } 
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	CredentialsEntity,

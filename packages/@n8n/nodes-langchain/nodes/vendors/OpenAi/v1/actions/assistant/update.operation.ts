@@ -4,7 +4,8 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
@@ -167,7 +168,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			// updating file_ids for file_search directly is not supported by OpenAI API
 			// only updating vector_store_ids for file_search is supported
 			// support for this to be added as part of ADO-2968
-			// https://platform.openai.com/docs/api-reference/assistants/modifyAssistant
 		};
 	}
 

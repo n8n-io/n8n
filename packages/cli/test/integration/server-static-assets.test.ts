@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, PostHogClient } from '@n8n/backend-services';
 import { mockInstance, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { EMBEDDED_SETTINGS_GLOBAL, HTML_NONCE_PLACEHOLDER } from '@n8n/constants';
@@ -21,7 +21,6 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import { ExternalHooks } from '@/external-hooks';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { FrontendService, PublicFrontendSettings } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';

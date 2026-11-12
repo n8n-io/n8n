@@ -2415,6 +2415,7 @@ describe('WorkflowService', () => {
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowIndexServiceMock: MockProxy<WorkflowIndexService>;
+		let eventServiceMock: MockProxy<EventService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const ACTIVE_VERSION_ID = 'v1';
@@ -2442,6 +2443,7 @@ describe('WorkflowService', () => {
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 			workflowIndexServiceMock = mock<WorkflowIndexService>();
+			eventServiceMock = mock<EventService>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -2460,7 +2462,7 @@ describe('WorkflowService', () => {
 				mock(), // roleService
 				mock(), // projectService
 				mock(), // executionPersistence
-				mock(), // eventService
+				eventServiceMock, // eventService
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
@@ -2495,7 +2497,7 @@ describe('WorkflowService', () => {
 		test('removes the published dependency index after teardown', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(workflowIndexServiceMock.removePublishedDependenciesForWorkflow).toHaveBeenCalledWith(
 				WORKFLOW_ID,
@@ -2505,12 +2507,31 @@ describe('WorkflowService', () => {
 			);
 		});
 
+		test('emits workflow-deactivated-by-system with the reason after teardown', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-deactivated-by-system',
+				{
+					workflowId: WORKFLOW_ID,
+					workflowName: 'My workflow',
+					deactivatedVersionId: ACTIVE_VERSION_ID,
+					reason: 'memory-guard',
+				},
+			);
+			expect(workflowRepositoryMock.update.mock.invocationCallOrder[0]).toBeLessThan(
+				eventServiceMock.emit.mock.invocationCallOrder[0],
+			);
+		});
+
 		test('proceeds with deactivation when the workflow.deactivate hook fails', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
 			externalHooksMock.run.mockRejectedValue(new Error('Code freeze in effect'));
 
 			await expect(
-				workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID),
+				workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard'),
 			).resolves.toBeUndefined();
 
 			expect(activeWorkflowManagerMock.remove).toHaveBeenCalledWith(WORKFLOW_ID);
@@ -2529,7 +2550,7 @@ describe('WorkflowService', () => {
 		test('does nothing when the workflow does not exist', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(null);
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(externalHooksMock.run).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
@@ -2542,7 +2563,7 @@ describe('WorkflowService', () => {
 				makeWorkflowEntity({ active: false, activeVersionId: null }),
 			);
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(externalHooksMock.run).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
@@ -2551,6 +2572,7 @@ describe('WorkflowService', () => {
 			expect(
 				workflowIndexServiceMock.removePublishedDependenciesForWorkflow,
 			).not.toHaveBeenCalled();
+			expect(eventServiceMock.emit).not.toHaveBeenCalled();
 		});
 	});
 

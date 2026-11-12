@@ -23,7 +23,7 @@ import { UserError } from '@n8n/errors';
 
 import { CacheService } from '@n8n/backend-services';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type {
 	AgentExecutionAdmission,
@@ -683,10 +683,13 @@ export class AgentChatBridge {
 		// (unset) — only fall back to the integration's default when the setting
 		// was never configured at all, not when it was deliberately disabled.
 		// Some integration types (see `AgentIntegrationConfig`) carry no
-		// `settings` field at all, hence the `in` check before reading it.
+		// `settings` field at all, or settings without an idle timeout, hence
+		// the `in` checks before reading it.
 		const configuredIdleTimeoutMinutes =
-			'settings' in this.integration
-				? this.integration.settings?.sessionIdleTimeoutMinutes
+			'settings' in this.integration &&
+			this.integration.settings &&
+			'sessionIdleTimeoutMinutes' in this.integration.settings
+				? this.integration.settings.sessionIdleTimeoutMinutes
 				: undefined;
 		const idleTimeoutMinutes =
 			configuredIdleTimeoutMinutes !== undefined
@@ -1318,7 +1321,9 @@ export class AgentChatBridge {
 				attachmentNotes.push(
 					error instanceof InboundAttachmentAccessError
 						? `[Attachment "${name}" could not be read: ${error.message}]`
-						: `[Attachment "${name}" could not be processed]`,
+						: error instanceof AgentFileLimitError
+							? `[Attachment "${name}" was skipped: ${error.message}]`
+							: `[Attachment "${name}" could not be processed]`,
 				);
 			}
 		}

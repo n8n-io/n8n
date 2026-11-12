@@ -4,7 +4,7 @@ import {
 	instanceAiSetupCredentialSelectionKey,
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
-import { node, trigger, workflow } from '@n8n/workflow-sdk';
+import { node, trigger, workflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -23,7 +23,11 @@ import {
 } from '../build-workflow.tool';
 import { collectHostSdkValidatorWarnings } from '../host-sdk-validation';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
-import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
+import {
+	buildCredentialMap,
+	buildCredentialResolutionNote,
+	resolveCredentials,
+} from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import {
@@ -1590,6 +1594,100 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
 	});
 
+	describe('saved HTTP Request node with generic header auth', () => {
+		function headerAuthWorkflow(credentialId: string, jsCode = 'return [];'): WorkflowJSON {
+			return {
+				name: 'Target workflow',
+				nodes: [
+					{
+						id: 'http-1',
+						name: 'Fetch results',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0],
+						parameters: {
+							url: 'https://urlscan.io/api/v1/search/',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							options: {},
+						},
+						credentials: { httpHeaderAuth: { id: credentialId, name: 'urlscan header' } },
+					},
+					{
+						id: 'code-1',
+						name: 'Compose',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [200, 0],
+						parameters: { jsCode },
+					},
+				],
+				connections: { 'Fetch results': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] } },
+			};
+		}
+
+		async function buildAgainstSaved(built: WorkflowJSON) {
+			const actualWarnings = await vi.importActual<
+				typeof import('../workflow-validation-warnings')
+			>('../workflow-validation-warnings');
+			vi.mocked(partitionWarnings).mockImplementation(actualWarnings.partitionWarnings);
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: built,
+				warnings: [
+					{
+						code: 'PREFER_PREDEFINED_CREDENTIAL',
+						nodeName: 'Fetch results',
+						message:
+							'This request targets a service with a dedicated n8n credential ("urlScanIoApi").',
+					},
+				],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath } = makeContext({});
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+				headerAuthWorkflow('stored-header-1'),
+			);
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-bound',
+			});
+			return { context, result };
+		}
+
+		it('saves an edit to another node and keeps the stored credential', async () => {
+			const { context, result } = await buildAgainstSaved(
+				headerAuthWorkflow('stored-header-1', 'return [{ json: { updated: true } }];'),
+			);
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+			expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-bound',
+				expect.objectContaining({
+					nodes: expect.arrayContaining([
+						expect.objectContaining({
+							name: 'Fetch results',
+							credentials: { httpHeaderAuth: { id: 'stored-header-1', name: 'urlscan header' } },
+						}),
+					]),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('refuses the save when the build changes the generic credential', async () => {
+			const { context, result } = await buildAgainstSaved(headerAuthWorkflow('stored-header-2'));
+
+			expect(result).toMatchObject({
+				success: false,
+				remediation: { reason: 'workflow_source_validation_failed' },
+			});
+			expect(result.errors?.some((e) => e.includes('urlScanIoApi'))).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not require setup for pending nodes the build did not change', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{
@@ -2901,7 +2999,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call workflow_builder_build_workflow again with the same filePath and omit workflowId',
+			'Run workflow_builder_build_workflow through call_tool again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
@@ -3243,6 +3341,27 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(result.success).toBe(true);
 		expect((result.warnings ?? []).join('\n')).not.toContain('chat_model_provider_mismatch');
+	});
+
+	it('passes Gateway credits rejections to the credential resolution note', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const gatewayRejectionsByNode = { 'Analyze image': 'image.analyze not supported' };
+		vi.mocked(resolveCredentials).mockResolvedValueOnce({
+			mockedNodeNames: [],
+			mockedCredentialTypes: [],
+			mockedCredentialsByNode: {},
+			heldForNewCredentialTypes: [],
+			resolvedCredentialsByNode: {},
+			gatewayRejectionsByNode,
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+		expect(buildCredentialResolutionNote).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ gatewayRejectionsByNode }),
+		);
 	});
 
 	it('skips supplemental diagnostics on a sandbox failure', async () => {

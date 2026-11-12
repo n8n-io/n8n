@@ -9,10 +9,18 @@ import {
 	shallowReactive,
 	useTemplateRef,
 	watch,
+	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import {
+	N8nButton,
+	N8nChatMessage,
+	N8nIconButton,
+	N8nScrollArea,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+import { useInfiniteScroll, useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -31,6 +39,7 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
@@ -80,28 +89,34 @@ import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builder
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
-const props = defineProps<{
-	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
-	beforeSend?: () => Promise<void>;
-	placeholder?: string;
-	composerHeight?: string;
-	/**
-	 * The live embed subject (an agent in the builder today). When it refers to
-	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
-	 * context chip follows this subject's `name` instead of the snapshot taken
-	 * at thread mint — so a rename in the host updates the chip live. Optional:
-	 * the full thread view passes no subject and keeps the stashed-name behavior.
-	 */
-	subject?: InstanceAiEmbedSubject;
-	/** Extra scroll space for a panel that overlays messages above the input. */
-	aboveInputOverlapHeight?: number;
-	/** Enables the dormant mention integration after the rollout gate resolves true. */
-	mentionsEnabled?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
+		beforeSend?: () => Promise<void>;
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		autofocus?: boolean;
+		composerHeight?: string;
+		/**
+		 * The live embed subject (an agent in the builder today). When it refers to
+		 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
+		 * context chip follows this subject's `name` instead of the snapshot taken
+		 * at thread mint — so a rename in the host updates the chip live. Optional:
+		 * the full thread view passes no subject and keeps the stashed-name behavior.
+		 */
+		subject?: InstanceAiEmbedSubject;
+		/** Extra scroll space for a panel that overlays messages above the input. */
+		aboveInputOverlapHeight?: number;
+		/** Enables the dormant mention integration after the rollout gate resolves true. */
+		mentionsEnabled?: boolean;
+	}>(),
+	{ autofocus: undefined },
+);
 
 const emit = defineEmits<{
 	'thread-missing': [];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
 }>();
 
@@ -136,7 +151,8 @@ const showMentionedWorkflow = inject<((workflowId: string) => boolean) | undefin
 	'showMentionedWorkflow',
 	undefined,
 );
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -214,9 +230,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// Show the input disclaimer only once the AI has produced a visible response.
-const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
 // thinking block plays a thinking beat, then the apps card takes the input slot. Once per
@@ -409,9 +422,11 @@ const scrollContainerRef = computed(
 		(scrollableRef.value?.closest('[data-reka-scroll-area-viewport]') as HTMLElement | null) ??
 		null,
 );
-const { arrivedState } = useScroll(scrollContainerRef, {
+/** Distance from the top, in px, at which older history starts to load. */
+const OLDER_MESSAGES_DISTANCE = 200;
+const { arrivedState, measure: measureScroll } = useScroll(scrollContainerRef, {
 	throttle: 100,
-	offset: { bottom: 100 },
+	offset: { top: OLDER_MESSAGES_DISTANCE, bottom: 100 },
 });
 const userScrolledUp = ref(false);
 
@@ -419,6 +434,56 @@ watch(
 	() => arrivedState.bottom,
 	(atBottom) => {
 		userScrolledUp.value = !atBottom;
+	},
+);
+
+// Stops a failed load from retrying in a loop. The retry button or leaving the top area allows a new try.
+const loadOlderFailed = ref(false);
+watch(
+	() => arrivedState.top,
+	(nearTop) => {
+		if (!nearTop) loadOlderFailed.value = false;
+	},
+);
+const viewScrolled = ref(false);
+const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
+	scrollContainerRef,
+	async () => {
+		const container = scrollContainerRef.value;
+		if (!container) return;
+		// The throttled scroll state can miss one scroll event, such as a jump to the top.
+		// Measure it now, so that auto-follow does not move the view to the bottom when the page lands.
+		// Set the flag directly: when the state was already wrong, its watcher does not run.
+		measureScroll();
+		userScrolledUp.value = !arrivedState.bottom;
+		// The older page lands above the first message. Measure only how far that message moves:
+		// the user can scroll and a live reply can grow below the view while the page loads.
+		const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
+		const anchor = messageListRef.value?.querySelector<HTMLElement>('[data-message-id]');
+		const anchorTop = anchor ? contentTop(anchor) : 0;
+		try {
+			await thread.loadOlderMessages();
+		} catch {
+			loadOlderFailed.value = true;
+			return;
+		}
+		await nextTick();
+		// Keep the messages the user reads in place.
+		if (anchor && container.contains(anchor)) container.scrollTop += contentTop(anchor) - anchorTop;
+	},
+	{
+		direction: 'top',
+		distance: OLDER_MESSAGES_DISTANCE,
+		// This listener has no throttle, so it also gets a single scroll event.
+		onScroll: () => {
+			viewScrolled.value = true;
+		},
+		// Wait for the first scroll: on mount the view is at the top before it scrolls to the bottom.
+		// A thread too short to scroll still fills itself.
+		canLoadMore: (el) =>
+			thread.hasOlderMessages &&
+			!loadOlderFailed.value &&
+			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
 	},
 );
 
@@ -457,8 +522,10 @@ watch(
 
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 
 function focusChatInputIfFocusIsIdle() {
+	if (props.autofocus === false) return;
 	const activeElement = document.activeElement;
 	if (
 		activeElement instanceof HTMLElement &&
@@ -471,11 +538,30 @@ function focusChatInputIfFocusIsIdle() {
 	chatInputRef.value?.focus();
 }
 
-// Focus input on initial render (ref rebinds when messages load)
-watch(chatInputRef, (el) => {
-	if (el) {
-		void nextTick(focusChatInputIfFocusIsIdle);
-	}
+// Confirmations can remount the composer while the user edits another field.
+let hasMountedChatInput = false;
+watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAutofocus]) => {
+	if (!input) return;
+	const forceFocus = autofocus === true && (!hasMountedChatInput || previousAutofocus !== true);
+	hasMountedChatInput = true;
+	if (autofocus === false) return;
+	void nextTick(() => {
+		if (chatInputRef.value !== input || props.autofocus === false) return;
+		if (forceFocus) input.focus();
+		else focusChatInputIfFocusIsIdle();
+	});
+});
+
+watch(hasFloatingConfirmation, (isFloating) => {
+	if (isFloating) return;
+	void nextTick(() => {
+		// The leaving panel can still hold focus during its transition.
+		if (inputSwapRef.value?.contains(document.activeElement)) {
+			chatInputRef.value?.focus();
+			return;
+		}
+		focusChatInputIfFocusIsIdle();
+	});
 });
 
 watch(
@@ -850,6 +936,26 @@ defineExpose({
 
 <template>
 	<div :class="$style.chatContent">
+		<!-- Floats over the messages, so the content does not move when it disappears. -->
+		<N8nSpinner
+			v-if="isLoadingOlderMessages"
+			:class="$style.olderMessagesStatus"
+			data-test-id="instance-ai-older-messages-loading"
+		/>
+		<!-- A thread too short to scroll cannot leave the top area, so it needs this button to try again. -->
+		<div
+			v-else-if="loadOlderFailed"
+			:class="[$style.olderMessagesStatus, $style.olderMessagesError]"
+			role="alert"
+			data-test-id="instance-ai-older-messages-error"
+		>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('instanceAi.thread.loadOlderError') }}
+			</N8nText>
+			<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
+		</div>
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div
 				ref="scrollable"
@@ -883,6 +989,7 @@ defineExpose({
 							v-for="message in renderedMessages"
 							:key="message.id"
 							:message="message"
+							:data-message-id="message.id"
 							:class="{ [$style.greetingLines]: greetingPhase !== null }"
 						/>
 					</TransitionGroup>
@@ -928,8 +1035,8 @@ defineExpose({
 					<InstanceAiStatusBar />
 				</div>
 
-				<!-- Floating input slot - replaced by the confirmation panel while a
-					 floating interaction is pending. The credit banner stays
+				<!-- Floating input slot - the confirmation panel takes the place of the
+					 hidden input while a floating interaction is pending. The credit banner stays
 					 anchored above the slot in both states. The leaving child is
 					 positioned absolutely during the cross-fade so the in-flow child
 					 can size the slot to its natural height. -->
@@ -963,25 +1070,24 @@ defineExpose({
 							<LimitedModeNotice />
 							<CreditWarningBanner
 								v-if="isOutOfCredits || creditBanner.visible.value"
-								:credits-remaining="store.creditsRemaining"
-								:credits-quota="store.creditsQuota"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
 								:message="outOfCreditsMessage"
 								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
 							<slot name="above-input" />
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
-									<InstanceAiConfirmationPanel
-										v-if="hasFloatingConfirmation"
-										key="floating-confirmation"
-										kind="floating"
-									/>
+									<InstanceAiConfirmationPanel v-if="hasFloatingConfirmation" kind="floating" />
+								</Transition>
+								<!-- Hidden, not unmounted, so the unsent draft survives the confirmation. -->
+								<Transition name="input-swap">
 									<InstanceAiInput
-										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-show="!hasFloatingConfirmation"
 										ref="chatInputRef"
-										key="chat-input"
 										:is-streaming="thread.isStreaming"
 										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
@@ -995,6 +1101,7 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:placeholder="props.placeholder"
+										:placeholder-preview="props.placeholderPreview"
 										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
@@ -1005,22 +1112,22 @@ defineExpose({
 										:mention-artifacts="mentionArtifacts"
 										:mention-active-workflow-id="mentionActiveWorkflowId"
 										:reserved-attachment-count="reservedComposerAttachmentCount"
+										@content-change="emit('content-change', $event)"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
 									>
-										<template v-if="$slots['composer-start']" #footer-start>
+										<template
+											v-if="$slots['composer-start'] && !hasFloatingConfirmation"
+											#footer-start
+										>
 											<slot name="composer-start" />
 										</template>
 									</InstanceAiInput>
 								</Transition>
 								<slot v-if="hasFloatingConfirmation" name="composer-start" />
 							</div>
-							<slot name="composer-footer">
-								<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-									{{ i18n.baseText('instanceAi.input.disclaimer') }}
-								</p>
-							</slot>
+							<slot name="composer-footer" />
 						</div>
 					</div>
 				</div>
@@ -1042,6 +1149,25 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	position: relative;
+}
+
+.olderMessagesStatus {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 1;
+}
+
+.olderMessagesError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	box-shadow: var(--shadow--xs);
 }
 
 .scrollArea {
@@ -1162,14 +1288,6 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.disclaimer {
-	margin: 0;
-	text-align: center;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
 }
 
 // The leaving child is detached from layout (see `.input-swap-leave-active`

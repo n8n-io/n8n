@@ -1,4 +1,6 @@
 import { ChildEntity, OneToOne, Relation } from '@n8n/typeorm';
+import type { IUser } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ServiceAccountDetails } from './service-account-details';
 import { User } from './user';
@@ -19,8 +21,14 @@ export class ServiceAccount extends User {
 	@OneToOne('ServiceAccountDetails', 'serviceAccount', { eager: true })
 	details: Relation<ServiceAccountDetails>;
 
-	/** A service account never waits for an invite. */
-	override computeIsPending(): void {
-		this.isPending = false;
+	/** No email. The name goes in `firstName`, as in `accountSummary`. */
+	override toIUser(): IUser {
+		// `details` loads eagerly, so this fails only for a query builder that skipped the join.
+		if (!this.details) {
+			throw new UnexpectedError('Service account details were not loaded', {
+				extra: { userId: this.id },
+			});
+		}
+		return { id: this.id, email: '', firstName: this.details.name, lastName: '' };
 	}
 }

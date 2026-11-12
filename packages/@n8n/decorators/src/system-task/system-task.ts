@@ -7,7 +7,7 @@ import {
 	type IntervalDefinition,
 } from '@n8n/constants';
 import { Service, type Constructable } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type {
 	ClusterTarget,
@@ -68,6 +68,12 @@ export interface ResolvedSystemTask {
 export function resolveSystemTask(task: SystemTask): ResolvedSystemTask {
 	const runOptions = resolveSystemTaskRunOptions(task);
 	validateTimerOptions(task);
+	if (task.initialDelaySeconds !== undefined) {
+		if (task.schedule.kind !== 'interval') {
+			throw new UnexpectedError('Only interval system tasks can declare an initial delay');
+		}
+		assertInRange(task.name, 'initialDelaySeconds', task.initialDelaySeconds, 0);
+	}
 	return { schedule: resolveSystemTaskSchedule(task), runOptions };
 }
 

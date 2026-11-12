@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component, type Ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -98,6 +98,7 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
@@ -159,10 +160,7 @@ const emit = defineEmits<{
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	// Fires when the composer goes between empty and non-empty so the split
-	// empty state can pause its cycling placeholders only once the user types
-	// (auto-focus on mount must NOT pause the cycle).
+	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
 }>();
 
@@ -324,8 +322,7 @@ const attachedEncodedBytes = computed(() =>
 	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
 );
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
@@ -405,7 +402,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
@@ -454,6 +451,15 @@ const placeholder = computed(() => {
 	}
 	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
+
+const canPreviewPlaceholder = computed(
+	() =>
+		!isGatedBySetup.value &&
+		!props.previewPromptKey &&
+		!previewPrompt.value &&
+		!props.amendContext &&
+		!props.contextualSuggestion,
+);
 
 watch(
 	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
@@ -884,6 +890,7 @@ const resizable = computed(() => {
 			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
+			:placeholder-preview="canPreviewPlaceholder ? props.placeholderPreview : undefined"
 			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
@@ -944,6 +951,7 @@ const resizable = computed(() => {
 					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
+					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>

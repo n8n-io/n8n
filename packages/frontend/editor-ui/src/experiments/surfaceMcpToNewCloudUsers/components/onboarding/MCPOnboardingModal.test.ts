@@ -76,8 +76,8 @@ const renderComponent = createComponentRenderer(MCPOnboardingModal, {
 	global: {
 		stubs: {
 			Modal: ModalStub,
-			// Stub ElSwitch to avoid jsdom-triggered spurious model updates.
-			ElSwitch: {
+			// Stub N8nSwitch to avoid jsdom-triggered spurious model updates.
+			N8nSwitch: {
 				props: ['modelValue', 'disabled', 'loading'],
 				template:
 					'<button type="button" role="switch" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" :disabled="disabled || loading" @click="$emit(\'update:modelValue\')" />',

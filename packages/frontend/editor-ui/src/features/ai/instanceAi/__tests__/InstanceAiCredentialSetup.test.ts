@@ -284,6 +284,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'project-team-1',
+				forAssistant: true,
 			});
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 		});

@@ -1,9 +1,10 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { ActionScope } from '@n8n/engine';
 import { mintActionToken } from '@n8n/engine';
+
+import { EngineMtls } from './engine-mtls';
 
 /**
  * Builds the HTTP clients that call the control plane server.
@@ -16,12 +17,12 @@ import { mintActionToken } from '@n8n/engine';
 export class EngineControlPlaneTransport {
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly outboundHttp: OutboundHttp,
+		private readonly mtls: EngineMtls,
 	) {}
 
 	/** Returns a client that sends a fresh action token with `scope` on every request. */
 	forScope(scope: ActionScope): HttpRequestClient {
-		return this.outboundHttp.requests({
+		return this.mtls.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
 			// A bind address is not dialable, so default to loopback.

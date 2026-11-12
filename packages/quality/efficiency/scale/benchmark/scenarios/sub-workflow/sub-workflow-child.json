@@ -1,0 +1,67 @@
+{
+	"id": "SubWorkflowBenchmarkChild",
+	"name": "Sub-workflow child",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"id": "3f1c6a52-9a4e-4b1f-8f43-0d7e5c2b6a11",
+			"name": "When Executed by Another Workflow"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b6f2a1d4-5c3e-4a8b-9d7f-1e2c3b4a5d61",
+							"name": "fullName",
+							"value": "={{ $json.firstName }} {{ $json.lastName }}",
+							"type": "string"
+						},
+						{
+							"id": "c7e3b2f5-6d4f-4b9c-8e1a-2f3d4c5b6e72",
+							"name": "ageNextYear",
+							"value": "={{ $json.age + 1 }}",
+							"type": "number"
+						},
+						{
+							"id": "d8f4c3a6-7e5a-4c1d-9f2b-3a4e5d6c7f83",
+							"name": "processedBySubWorkflow",
+							"value": true,
+							"type": "boolean"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [224, 0],
+			"id": "e9a5d4b7-8f6b-4d2e-8a3c-4b5f6e7d8a94",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"tags": []
+}

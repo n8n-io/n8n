@@ -12,6 +12,7 @@ import {
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
+	type Workspace,
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
@@ -22,6 +23,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	buildProxyHeaders,
+	hasChannelRuntime,
 	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
 	type BudgetGuardrailConfig,
@@ -33,7 +35,7 @@ import {
 	type SubAgentSource,
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -43,7 +45,6 @@ import { UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -63,6 +64,7 @@ import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { AgentCredentialProvider } from './agent-credential-provider.contracts';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
@@ -114,6 +116,11 @@ import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolve
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import {
+	AgentSandboxFilesService,
+	SANDBOX_FILES_INSTRUCTIONS,
+} from './agent-sandbox-files.service';
+import { createImportFilesTool, IMPORT_FILES_TOOL_NAME } from './tools/import-files.tool';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -145,7 +152,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
-	credentialProvider: CredentialProvider;
+	credentialProvider: AgentCredentialProvider;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
 	 * Telemetry classification of the run this runtime serves. Baked in at build
@@ -237,6 +244,27 @@ interface ToolRunIdentity {
 	publishedN8nChat?: boolean;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
+}
+
+/**
+ * Harness tools stay eager, so the model sees their schemas without a tool search.
+ * The user's own tools (workflow, node, integration, MCP) stay deferred.
+ */
+function harnessEagerToolNames(params: RuntimeDependencies): string[] {
+	return [
+		...CORE_WORKSPACE_TOOL_NAMES,
+		'load_skill',
+		MARK_SESSION_FAILED_TOOL_NAME,
+		DELEGATE_SUB_AGENT_TOOL_NAME,
+		WRITE_TODOS_TOOL_NAME,
+		READ_BINARY_DATA_TOOL_NAME,
+		GET_ENVIRONMENT_TOOL_NAME,
+		RECALL_MEMORY_TOOL_NAME,
+		FLAG_MEMORY_TOOL_NAME,
+		...Object.values(AGENT_PLAN_TOOL_NAMES),
+		// Only top-level runs with background tasks get these tools.
+		...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
+	];
 }
 
 async function getChatIntegrationToolServices() {
@@ -339,6 +367,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsService: CredentialsService,
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -778,6 +807,7 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -793,7 +823,7 @@ export class AgentRuntimeReconstructionService {
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			onVectorStoreSearch: (runId) =>
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
-			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
+			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
@@ -959,7 +989,7 @@ export class AgentRuntimeReconstructionService {
 					headers.set(key, value);
 				}
 				for (const [key, value] of Object.entries(
-					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: N8N_VERSION }),
+					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: getN8nVersion() }),
 				)) {
 					headers.set(key, value);
 				}
@@ -1054,24 +1084,7 @@ export class AgentRuntimeReconstructionService {
 		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
 
 		throwIfAborted(abortSignal);
-		// Harness tools stay eager, so the model sees their schemas without a tool search.
-		// The user's own tools (workflow, node, integration, MCP) stay deferred.
-		agent.nativeToolDeferral({
-			eagerToolNames: [
-				...CORE_WORKSPACE_TOOL_NAMES,
-				'load_skill',
-				MARK_SESSION_FAILED_TOOL_NAME,
-				DELEGATE_SUB_AGENT_TOOL_NAME,
-				WRITE_TODOS_TOOL_NAME,
-				READ_BINARY_DATA_TOOL_NAME,
-				GET_ENVIRONMENT_TOOL_NAME,
-				RECALL_MEMORY_TOOL_NAME,
-				FLAG_MEMORY_TOOL_NAME,
-				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				// Only top-level runs with background tasks get these tools.
-				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
-			],
-		});
+		agent.nativeToolDeferral({ eagerToolNames: harnessEagerToolNames(params) });
 
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
@@ -1126,15 +1139,29 @@ export class AgentRuntimeReconstructionService {
 		return parentWorkspaceHandle;
 	}
 
+	private async attachWorkspaceTools(params: RuntimeDependencies, workspace: Workspace) {
+		const { agent, projectId } = params;
+		agent.workspace(workspace);
+		if (!(await this.sandboxFiles.isEnabled())) return;
+		const getInstructions = workspace.getInstructions.bind(workspace);
+		workspace.getInstructions = () =>
+			[getInstructions(), SANDBOX_FILES_INSTRUCTIONS].filter(Boolean).join('\n\n');
+		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
+		// Eager only when attached, so a user tool with the same name stays deferred.
+		agent.nativeToolDeferral({
+			eagerToolNames: [...harnessEagerToolNames(params), IMPORT_FILES_TOOL_NAME],
+		});
+	}
+
 	private async attachWorkspace(
 		params: RuntimeDependencies,
 	): Promise<AgentSandboxRuntime | undefined> {
-		const { agent, agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } =
-			params;
+		const { agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } = params;
 		if (runtimeProfile === 'sub-agent') {
 			// Delegated runs use the parent's sandbox only.
 			if (parentWorkspace) {
-				agent.workspace(
+				await this.attachWorkspaceTools(
+					params,
 					this.agentWorkspaceService.getDelegatedAgentWorkspace(
 						parentWorkspace.handle,
 						parentWorkspace.delegationThreadId,
@@ -1155,7 +1182,7 @@ export class AgentRuntimeReconstructionService {
 				sandboxPrincipalHash,
 			);
 			throwIfAborted(params.abortSignal);
-			agent.workspace(workspace);
+			await this.attachWorkspaceTools(params, workspace);
 			return handle;
 		} catch (error) {
 			throwIfAborted(params.abortSignal);
@@ -1178,7 +1205,7 @@ export class AgentRuntimeReconstructionService {
 
 		const descriptors = this.createIntegrationDescriptors(
 			agentId,
-			credentialIntegrations.filter(isCredentialAgentIntegration),
+			credentialIntegrations.filter(hasChannelRuntime),
 			integrationRegistry,
 		);
 
@@ -1217,6 +1244,7 @@ export class AgentRuntimeReconstructionService {
 									buildFileUploadGuidance(
 										integrationDef.fileUploadLimits,
 										!integrationDef.disableStreaming,
+										this.agentChatAttachmentService.maxStoredFileBytes,
 									),
 								]
 							: []),

@@ -104,7 +104,7 @@ export class CredentialsOverwrites {
 	}
 
 	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		const { Publisher } = await import('@n8n/backend-services');
 		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
 	}
 

@@ -2,7 +2,10 @@ operationId: stopExecution
 tags:
   - Executions
 summary: Stop an execution
-description: Stop an execution by id.
+description: |-
+  Stop an execution by id.
+
+  Requires the `execution:stop` API key scope.
 x-required-scope: execution:stop
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

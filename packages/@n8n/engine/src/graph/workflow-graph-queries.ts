@@ -6,6 +6,16 @@ export function findTriggerNode(graph: WorkflowGraph): GraphNode | undefined {
 }
 
 /**
+ * Returns a function that labels a node id for user-facing messages: the
+ * node's name in quotes, or the quoted id when no node has it. Node ids are
+ * opaque to users, so messages must name the node.
+ */
+export function createNodeLabeler(graph: WorkflowGraph): (nodeId: string) => string {
+	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	return (nodeId) => `"${namesById.get(nodeId) ?? nodeId}"`;
+}
+
+/**
  * Ids of the nodes directly downstream of `nodeId`, de-duplicated, in edge order.
  *
  * TODO(CAT-3854): validate edge endpoints against `nodes`.
