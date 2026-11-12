@@ -597,7 +597,7 @@ function toAiMessageList(
 	msg: Message,
 	messageIndex: number,
 	replayReasoningText = false,
-	keepToolCallIds = false,
+	keepToolCallIds: boolean,
 ): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
