@@ -376,4 +376,81 @@ describe('SimulationSession', () => {
 		const [request] = vi.mocked(world.handleRequest).mock.calls[0];
 		expect(request.url).toBe('https://api.telegram.org/bot[REDACTED]/sendMessage');
 	});
+
+	it('sends query parameters from `qs` to the world, without secret values', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'search', kind: 'node', testability: 'simulated' }],
+		});
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		session
+			.instrumentation()
+			.configureToolAdditionalData?.(additionalData, { toolName: 'search', toolKind: 'node' });
+		const tool = nodeTool(
+			'search',
+			'n8n-nodes-base.slack',
+			async () =>
+				await additionalData.evalLlmMockHandler!(
+					{
+						url: '/search.messages',
+						baseURL: 'https://slack.com/api',
+						qs: { query: 'release', count: 20, api_key: 'abcdefgh1234' },
+					},
+					slackNode,
+				),
+		);
+
+		await runTool(session, tool);
+
+		const [request] = vi.mocked(world.handleRequest).mock.calls[0];
+		const url = new URL(request.url);
+		expect(url.pathname).toBe('/api/search.messages');
+		expect(url.searchParams.get('query')).toBe('release');
+		expect(url.searchParams.get('count')).toBe('20');
+		expect(url.searchParams.get('api_key')).toBe('[REDACTED]');
+	});
+
+	it('blocks a tool whose list entry has the same name but another kind', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'notify', kind: 'node', testability: 'simulated' }],
+		});
+		const handler = vi.fn();
+		const workflowTool: BuiltTool = {
+			name: 'notify',
+			description: '',
+			metadata: { kind: 'workflow' },
+			handler,
+		};
+
+		await expect(runTool(session, workflowTool)).rejects.toThrow(SimulationBlockedError);
+		session.updateCapabilities([{ toolName: 'notify', kind: 'node', testability: 'simulated' }]);
+		await expect(runTool(session, workflowTool, 'tc-2')).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('blocks workflow tools in queue mode even when the list says simulated', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			queueMode: true,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, {
+				name: 'notify',
+				description: '',
+				metadata: { kind: 'workflow' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
 });

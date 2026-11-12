@@ -51,7 +51,7 @@ export class SimulationSessionService {
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
+		// A chat that is already a test run stays one, even if the flag reads off for a moment.
 		const cached = this.sessions.get(input.testChatId);
 		if (cached) {
 			this.sessions.touch(input.testChatId);
@@ -61,6 +61,7 @@ export class SimulationSessionService {
 			);
 			return cached;
 		}
+		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 
 		const described = await this.describeAgent(input.agentId, input.projectId);
 		const capabilities = await this.capabilitiesFor(described);
@@ -90,6 +91,7 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
+			queueMode: this.executionsConfig.mode === 'queue',
 		});
 		this.sessions.set(input.testChatId, session);
 		return session;

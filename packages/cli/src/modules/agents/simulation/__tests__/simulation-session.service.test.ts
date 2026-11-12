@@ -83,7 +83,7 @@ function setup({
 		skillRefs,
 		executionRepository,
 	);
-	return { service, executionRepository };
+	return { service, executionRepository, flagGate };
 }
 
 function llmBackend(): SimulationBackend {
@@ -226,5 +226,17 @@ describe('SimulationSessionService', () => {
 			route: 'blocked',
 			detail: 'Workflow tools cannot run in a test run in queue mode yet.',
 		});
+	});
+
+	it('keeps a running test chat a test run when the flag reads off on a later turn', async () => {
+		const backend = llmBackend();
+		const { service, flagGate } = setup({ backend });
+		const first = await service.openForDraftRun(openInput);
+		flagGate.isEnabled.mockResolvedValue(false);
+
+		await expect(service.openForDraftRun({ ...openInput, message: 'again' })).resolves.toBe(first);
+		await expect(
+			service.openForDraftRun({ ...openInput, testChatId: 'other-chat' }),
+		).resolves.toBeUndefined();
 	});
 });
