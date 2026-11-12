@@ -15,6 +15,7 @@ import {
 	getExitCode,
 	EXIT_CODES,
 	ScanInputError,
+	LOCAL_SKIPPED_CHECKS,
 	type PackageScan,
 	type ScanReport,
 } from './scanner.js';
@@ -85,7 +86,13 @@ const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number
 		const message =
 			error instanceof ScanInputError ? error.message : `Analysis failed: ${errorMessage(error)}`;
 		console.error(error instanceof ScanInputError ? `❌ ${message}` : error);
-		const report = buildReport(spec, { version: null, passed: false, message, error });
+		const report = buildReport(spec, {
+			version: null,
+			passed: false,
+			message,
+			error,
+			skippedChecks: isLocalPath(spec) ? LOCAL_SKIPPED_CHECKS : [],
+		});
 		return { report, exitCode: EXIT_CODES.INTERNAL_ERROR };
 	}
 };

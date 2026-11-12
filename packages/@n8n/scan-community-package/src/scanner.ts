@@ -556,6 +556,9 @@ export const isLocalPath = (packageSpec: string): boolean => {
 	return firstSegment === '.' || firstSegment === '..' || path.isAbsolute(packageSpec);
 };
 
+/** npm provenance and the attested source only exist after publishing. */
+export const LOCAL_SKIPPED_CHECKS: readonly Check[] = [CHECKS.PROVENANCE, CHECKS.SOURCE];
+
 export type PackageScan = AnalysisResult & {
 	readonly packageName: string;
 	readonly version: string | null;
@@ -638,7 +641,7 @@ export const analyzeLocalPackage = async (packageDir: string): Promise<PackageSc
 	);
 	writeAnalyzed(label, result);
 
-	return { packageName, version, ...result, skippedChecks: [CHECKS.PROVENANCE, CHECKS.SOURCE] };
+	return { packageName, version, ...result, skippedChecks: LOCAL_SKIPPED_CHECKS };
 };
 
 export const analyzePackageByName = async (

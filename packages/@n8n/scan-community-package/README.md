@@ -29,10 +29,13 @@ $ npx @n8n/scan-community-package .
 
 The scanner lints your sources and the JavaScript files that `npm publish` would put in the package, with the same rules it applies to a published package. It reads the file list from `npm pack --dry-run`, so it respects the `files` field and `.npmignore`. Build the package first, or the scanner lints your sources only. The npm provenance and attested source checks need a published package, so a local scan skips them and lists them in `skippedChecks`.
 
-To get the result as JSON, add `--output` with a file path. The scanner still prints its progress to the terminal:
+### Write the result as JSON
+
+To get the result as JSON, add `--output` with a file path. This works for a published package and for a local directory. The scanner still prints its progress to the terminal:
 
 ```
 $ npx @n8n/scan-community-package n8n-nodes-PACKAGE --output scan-result.json
+$ npx @n8n/scan-community-package . --output scan-result.json
 ```
 
 The file has this shape:
