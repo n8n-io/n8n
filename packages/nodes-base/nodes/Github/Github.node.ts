@@ -2492,6 +2492,7 @@ export class Github implements INodeType {
 
 		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
+		let requestOption: IDataObject = {};
 
 		const operation = this.getNodeParameter('operation', 0);
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -2558,6 +2559,7 @@ export class Github implements INodeType {
 				endpoint = '';
 				body = {};
 				qs = {};
+				requestOption = {};
 
 				let owner = '';
 				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
@@ -2817,6 +2819,10 @@ export class Github implements INodeType {
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i);
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+
+						// Revalidate with ETag / If-None-Match so an unchanged pull
+						// request is answered with a 304 instead of a full body.
+						requestOption = { conditionalRequest: true };
 					} else if (operation === 'createComment') {
 						// ----------------------------------
 						//         createComment
@@ -3263,7 +3269,14 @@ export class Github implements INodeType {
 						qs,
 					);
 				} else {
-					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = await githubApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs,
+						requestOption,
+					);
 				}
 
 				if (fullOperation === 'file:get') {
