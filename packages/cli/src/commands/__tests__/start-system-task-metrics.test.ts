@@ -25,6 +25,7 @@ import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.se
 import { Push } from '@/push';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { ScheduledJobCrashRecovery } from '@/scheduling/scheduled-job-crash-recovery';
 import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
@@ -86,6 +87,7 @@ describe('Start system task metrics', () => {
 		mockInstance(WorkflowHistoryCompactionService);
 		mockInstance(EnqueuedExecutionRecoveryService);
 		mockInstance(DurableScheduler);
+		mockInstance(ScheduledJobCrashRecovery);
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });

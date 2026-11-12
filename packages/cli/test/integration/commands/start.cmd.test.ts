@@ -29,6 +29,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { PubSubEventBus } from '@n8n/backend-services';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { ScheduledJobCrashRecovery } from '@/scheduling/scheduled-job-crash-recovery';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
@@ -55,6 +56,7 @@ mockInstance(ExecutionsPruningService);
 mockInstance(WorkflowHistoryCompactionService);
 mockInstance(WorkflowStatisticsRollupService);
 mockInstance(DurableScheduler);
+mockInstance(ScheduledJobCrashRecovery);
 // Also proves `run()`'s dynamic `.js` import resolves to the same module as this
 // static one - otherwise the mock would silently not apply and the real recovery
 // would query the test DB.
