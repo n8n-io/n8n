@@ -503,21 +503,25 @@ describe('CredentialsSelect — restricted credential types', () => {
 			},
 		);
 
-		it('keeps a saved predefined selection after its type becomes generic', () => {
-			const wrapper = mountSelect(
-				'n8n-nodes-base.httpRequest',
-				[genericType('httpMultipleHeadersAuth', 'Multiple Headers Auth')],
-				{
-					parameters: { nodeCredentialType: 'httpMultipleHeadersAuth' },
-					displayValue: 'Multiple Headers Auth',
-				},
-			);
+		it.each([baseParameter, genericAuthParameter])(
+			'keeps a saved Multiple Headers Auth selection in $name',
+			(parameter) => {
+				const wrapper = mountSelect(
+					'n8n-nodes-base.httpRequest',
+					[genericType('httpMultipleHeadersAuth', 'Multiple Headers Auth')],
+					{
+						parameter,
+						parameters: { [parameter.name]: 'httpMultipleHeadersAuth' },
+						displayValue: 'Multiple Headers Auth',
+					},
+				);
 
-			expect(wrapper.findComponent({ name: 'N8nSelect' }).props('modelValue')).toBe(
-				'Multiple Headers Auth',
-			);
-			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-		});
+				expect(wrapper.findComponent({ name: 'N8nSelect' }).props('modelValue')).toBe(
+					'Multiple Headers Auth',
+				);
+				expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+			},
+		);
 
 		it('puts a restricted generic type last and disables it', () => {
 			mockRestrictedCredentialTypes({ httpBasicAuth: 'instance' });

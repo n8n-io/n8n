@@ -515,7 +515,7 @@ describe('HTTP Node Utils', () => {
 		it.each([null, {}, { values: 'not-an-array' }])(
 			'should skip a header collection without an array: %j',
 			(headers) => {
-				expect(getSecrets({ headers })).toEqual([]);
+				expect(getSecrets({ headers } as ICredentialDataDecryptedObject)).toEqual([]);
 			},
 		);
 
