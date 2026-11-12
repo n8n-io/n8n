@@ -29,15 +29,15 @@ pnpm scenarios worker-drain-long-task --runs 1     # one scenario, one run per v
 pnpm scenarios --variant before                    # only the before images
 ```
 
-A variant passes when the image behaves as the spec expects for that variant. A `before` run passes only when it shows the bug in the way the spec describes, so a `before` run that fails for some other reason counts as a failure. An image that cannot be pulled shows `image missing` and fails the run. The command exits with a non-zero code when any variant did not pass on every run.
+A `before` run passes only when it shows the bug as the spec describes. A `before` run that fails for another reason counts as a failure. An image that cannot be pulled shows `image missing` and fails the run. The command exits with a non-zero code when any variant did not pass on every run.
 
 ## Read the results
 
-The command prints the results directory when it finishes. By default it is `test-rig-results/<timestamp>/` under your system temporary directory, and `--out` changes it. Each variant writes a Playwright JSON report, `<scenario>.<variant>.json`, with one test result per run. Each result has a `scenario` attachment, base64-encoded JSON, that holds the record of the run: the values the scenario recorded, the checks that failed, any error, and a timeline of the steps with their times in milliseconds. When a run fails, the timeline and the failed checks are usually the fastest way to see what went wrong.
+The command prints the results directory when it finishes. By default it is `test-rig-results/<timestamp>/` under your system temporary directory, and `--out` changes it. Each variant writes a Playwright JSON report, `<scenario>.<variant>.json`, with one test result per run. Each result has a `scenario` attachment, base64-encoded JSON, that holds the record of the run: the values the scenario recorded, the checks that failed, any error, and a timeline of the steps with their times in milliseconds.
 
 The container logs of each run are in `<scenario>.<variant>/<test>/logs/`, one file for each n8n process: `main.log`, `worker-1.log` and so on.
 
-To run one spec by hand, without the table, run Playwright directly from the Playwright package:
+To run one spec without the table, run Playwright from its package:
 
 ```bash
 cd packages/quality/testing/playwright
