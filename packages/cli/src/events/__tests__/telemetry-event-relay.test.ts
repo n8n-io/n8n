@@ -6032,6 +6032,71 @@ describe('TelemetryEventRelay', () => {
 				TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW.getValidationError(payload),
 			).toBeNull();
 		});
+
+		it('should track a closed review, with what the host reported', () => {
+			eventService.emit('promotion-review-closed', {
+				user,
+				reviewId: 'review-1',
+				environmentId: 'env-1',
+				reviewType: 'gitlab',
+				reviewAgeMs: 3600000,
+				hostStatus: 'not_found',
+				outcome: 'closed',
+				durationMs: 40,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				promotion_review_id: 'review-1',
+				environment_id: 'env-1',
+				review_type: 'gitlab',
+				review_age_ms: 3600000,
+				host_status: 'not_found',
+				outcome: 'closed',
+				failure_kind: undefined,
+				duration_ms: 40,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a failed close that never reached the host', () => {
+			eventService.emit('promotion-review-closed', {
+				user,
+				reviewId: 'review-1',
+				environmentId: 'env-1',
+				reviewType: 'gitlab',
+				reviewAgeMs: 1000,
+				hostStatus: null,
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 5,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				promotion_review_id: 'review-1',
+				environment_id: 'env-1',
+				review_type: 'gitlab',
+				review_age_ms: 1000,
+				host_status: null,
+				outcome: 'failed',
+				failure_kind: 'user',
+				duration_ms: 5,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
 	});
 
 	describe('workflow review events', () => {
