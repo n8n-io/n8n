@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
+	N8nTabsRoot,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
@@ -62,7 +63,6 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
-import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
@@ -985,7 +985,7 @@ function handleNewThreadClick() {
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
 				>
-					<TabsRoot
+					<N8nTabsRoot
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
@@ -1064,7 +1064,7 @@ function handleNewThreadClick() {
 								@deleted="preview.closeTab"
 							/>
 						</div>
-					</TabsRoot>
+					</N8nTabsRoot>
 				</N8nResizeWrapper>
 			</div>
 		</Transition>

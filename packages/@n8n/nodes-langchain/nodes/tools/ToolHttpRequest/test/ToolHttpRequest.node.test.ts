@@ -37,6 +37,8 @@ describe('ToolHttpRequest', () => {
 	});
 
 	describe('Binary response', () => {
+		const genericAuthTypes = ['httpHeaderAuth', 'httpBearerAuth'];
+
 		it('should return the error when receiving a binary response', async () => {
 			helpers.httpRequest.mockResolvedValue({
 				body: Buffer.from(''),
@@ -351,6 +353,53 @@ describe('ToolHttpRequest', () => {
 			},
 		);
 
+		it('should handle authentication with generic Bearer Auth credentials', async () => {
+			// AGENT-668: Bearer Auth setup succeeds, so the configured tool must execute the request.
+			executeFunctions.getNode.mockReturnValue(
+				mock<INode>({
+					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					name: 'HTTP Request',
+					typeVersion: 1.1,
+					credentials: {
+						httpBearerAuth: { id: 'bearer-auth-credential', name: 'Bearer Auth' },
+					},
+				}),
+			);
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+			executeFunctions.getCredentials.mockResolvedValue({ token: 'test-bearer-token' });
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBearerAuth';
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const result = await (response as N8nTool).invoke({});
+
+			expect(result).toBe('Hello World');
+			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpBearerAuth', 0);
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://api.example.com/data',
+					headers: expect.objectContaining({ Authorization: 'Bearer test-bearer-token' }),
+				}),
+			);
+		});
+
 		it('should apply Simplified Custom Auth through credential authentication', async () => {
 			helpers.httpRequestWithAuthentication.mockResolvedValue({
 				body: 'Hello World',
@@ -390,8 +439,8 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
-		it.each(['httpHeaderAuth', 'httpMultipleHeadersAuth'])(
-			'should apply the domain restriction for %s',
+		it.each([...genericAuthTypes, 'httpMultipleHeadersAuth'])(
+			'blocks %s on restricted domains',
 			async (genericAuthType) => {
 				executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					switch (paramName) {
@@ -415,6 +464,7 @@ describe('ToolHttpRequest', () => {
 				executeFunctions.getCredentials.mockResolvedValue({
 					name: 'X-Secret-Token',
 					value: 'SECRET-TOOLHTTP-CANARY',
+					token: 'test-bearer-token',
 					headers: { values: [{ name: 'X-Secret-Token', value: 'SECRET-TOOLHTTP-CANARY' }] },
 					allowedHttpRequestDomains: 'domains',
 					allowedDomains: 'api.example.com',
@@ -429,7 +479,7 @@ describe('ToolHttpRequest', () => {
 			},
 		);
 
-		it('should send generic credentials to a domain the credential allows', async () => {
+		it.each(genericAuthTypes)('sends %s to an allowed domain', async (genericAuthType) => {
 			helpers.httpRequest.mockResolvedValue({
 				body: 'Hello World',
 				headers: { 'content-type': 'text/plain' },
@@ -444,7 +494,7 @@ describe('ToolHttpRequest', () => {
 					case 'authentication':
 						return 'genericCredentialType';
 					case 'genericAuthType':
-						return 'httpHeaderAuth';
+						return genericAuthType;
 					case 'options':
 						return {};
 					case 'placeholderDefinitions.values':
@@ -457,6 +507,7 @@ describe('ToolHttpRequest', () => {
 			executeFunctions.getCredentials.mockResolvedValue({
 				name: 'X-Secret-Token',
 				value: 'SECRET-TOOLHTTP-CANARY',
+				token: 'test-bearer-token',
 				allowedHttpRequestDomains: 'domains',
 				allowedDomains: 'api.example.com',
 			});
