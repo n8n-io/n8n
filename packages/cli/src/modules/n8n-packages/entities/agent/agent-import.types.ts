@@ -10,9 +10,12 @@ import type { ImportContext } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
 import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
 import type { SkillImportPlan } from '../skill/skill-import.types';
+import type { WorkflowArchiveTransition } from '../workflow/workflow-archive-transition';
 
 export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
+	/** The archive step that makes the destination match the package. */
+	archiveTransition: WorkflowArchiveTransition | null;
 	channels: ImportedChannel[];
 } & ({ action: 'create'; existing: null } | { action: 'update' | 'skip'; existing: ProjectAgent });
 
@@ -44,7 +47,9 @@ export interface AgentImportOutcome {
 
 export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;
 
-export interface PreparedAgent extends Omit<SerializedAgent, 'id'> {
+export interface PreparedAgent extends Omit<SerializedAgent, 'id' | 'isArchived'> {
+	/** The package omits the key for an agent that is not archived. */
+	isArchived: boolean;
 	sourceAgentId: string;
 	metadata: SerializedAgentMetadata;
 }
@@ -77,6 +82,8 @@ export function requiredAgentScopes(plan: AgentImportPlan): Scope[] {
 		scopes.add(item.action === 'create' ? 'agent:create' : 'agent:update');
 		if (item.publishingAction === 'publish') scopes.add('agent:publish');
 		if (item.publishingAction === 'unpublish') scopes.add('agent:unpublish');
+		// An archive change needs the same scope as a delete, as on the archive routes.
+		if (item.archiveTransition !== null) scopes.add('agent:delete');
 	}
 	return [...scopes];
 }

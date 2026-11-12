@@ -897,6 +897,34 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	});
 });
 
+it('archives and restores a matched Agent to match the package', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const published = await importSelected(input, { publishingPolicy: 'match-source' });
+	expect(published.agentOutcomes[0].agent).toMatchObject({ isArchived: false });
+	expect(published.agentOutcomes[0].agent.activeVersionId).not.toBeNull();
+
+	source(input).isArchived = true;
+	const archived = await importSelected(input, { publishingPolicy: 'match-source' });
+	expect(archived.agentOutcomes[0]).toMatchObject({
+		status: 'updated',
+		agent: { isArchived: true, activeVersionId: null },
+		publishing: { state: 'unchanged' },
+	});
+
+	// An import replaces the definition of an agent that stays archived.
+	source(input).name = 'Renamed while archived';
+	const updated = await importSelected(input);
+	expect(updated.agentOutcomes[0].agent).toMatchObject({ isArchived: true });
+
+	source(input).isArchived = false;
+	const restored = await importSelected(input, { publishingPolicy: 'preserve-published-state' });
+	expect(restored.agentOutcomes[0].agent).toMatchObject({
+		isArchived: false,
+		activeVersionId: null,
+	});
+});
+
 describe('channels', () => {
 	const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
 

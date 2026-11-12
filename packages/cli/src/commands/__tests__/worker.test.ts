@@ -5,6 +5,7 @@ import {
 	JwtService,
 	NodeTypesProxy,
 	RedisClientService,
+	PostHogClient,
 	Subscriber,
 } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -35,7 +36,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { WorkerServer } from '@/scaling/worker-server';
