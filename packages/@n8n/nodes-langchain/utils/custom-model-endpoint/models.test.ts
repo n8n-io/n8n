@@ -37,12 +37,18 @@ const endpointWith = (
 ): EndpointCredential => ({ baseUrl: BASE_URL, login, gatewayHeaders });
 
 function answering(body: string, status = 200) {
-	const calls: Array<{ url: string; method?: string; headers: Headers }> = [];
+	const calls: Array<{
+		url: string;
+		method?: string;
+		headers: Headers;
+		signal?: AbortSignal | null;
+	}> = [];
 	const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
 		calls.push({
 			url: input instanceof Request ? input.url : input.toString(),
 			method: init?.method,
 			headers: new Headers(init?.headers ?? {}),
+			signal: init?.signal,
 		});
 		return new Response(body, { status });
 	};
@@ -68,6 +74,32 @@ describe('listGatewayModels', () => {
 
 		expect(calls[0].url).toBe('https://gateway.example.com/v1/models');
 		expect(calls[0].method).toBe('GET');
+	});
+
+	it('gives the list request a deadline of its own, not the hour an inference request gets', async () => {
+		const { calls, fetchImpl } = answering(openAiStyle);
+
+		await listGatewayModels(node, endpointWith(), fetchImpl);
+
+		expect(calls[0].signal).toBeInstanceOf(AbortSignal);
+	});
+
+	it('says the deadline passed, rather than handing back the abort the runtime threw', async () => {
+		const controller = new AbortController();
+		const expired = new DOMException('This operation was aborted', 'TimeoutError');
+		const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+		const stalling = (async (_url: RequestInfo | URL, init?: RequestInit) =>
+			await new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => reject(expired));
+				controller.abort(expired);
+			})) as typeof fetch;
+
+		const error = await rejection(listGatewayModels(node, endpointWith(), stalling));
+
+		expect(deadline).toHaveBeenCalledWith(30_000);
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.message).toBe('The gateway did not answer the model list within 30 seconds');
+		expect(error?.description).toBe(BY_ID_HINT);
 	});
 
 	it.each([
