@@ -144,6 +144,8 @@ describe.each(['generate', 'stream'] as const)('OpenRouter %s', (mode) => {
 				]),
 			);
 			expect(fetch.mock.calls[0][0]).toBe('https://openrouter.ai/api/v1/chat/completions');
+			const headers = new Headers(fetch.mock.calls[0][1]?.headers);
+			expect(headers.get('http-referer')).toBe('https://n8n.io/');
 		},
 	);
 

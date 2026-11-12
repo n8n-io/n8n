@@ -21,6 +21,9 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
+/** Attributes n8n usage in OpenRouter's app rankings. See openrouter.ai/docs/app-attribution. */
+const OPENROUTER_ATTRIBUTION_HEADERS = { 'HTTP-Referer': 'https://n8n.io/' };
+
 interface OpenAIToolCall {
 	function?: { arguments?: unknown };
 }
@@ -430,6 +433,7 @@ export class LmChatOpenRouter implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			defaultHeaders: OPENROUTER_ATTRIBUTION_HEADERS,
 			fetch: createOpenRouterFetch(aiClientFetch),
 			fetchOptions: {
 				dispatcher: getProxyAgent(

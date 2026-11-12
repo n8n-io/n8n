@@ -696,7 +696,12 @@ describe('createModel', () => {
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
-			expect(createOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'or-test' }));
+			expect(createOpenRouter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'or-test',
+					headers: { 'HTTP-Referer': 'https://n8n.io/' },
+				}),
+			);
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {

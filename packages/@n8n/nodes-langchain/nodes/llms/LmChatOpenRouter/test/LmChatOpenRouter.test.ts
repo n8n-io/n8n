@@ -173,6 +173,17 @@ describe('LmChatOpenRouter', () => {
 			expect(callArgs?.configuration?.fetch).toEqual(expect.any(Function));
 		});
 
+		it('should attribute requests to n8n in OpenRouter app rankings', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			const callArgs = MockedChatOpenAI.mock.calls[0][0];
+			expect(callArgs?.configuration?.defaultHeaders).toEqual({
+				'HTTP-Referer': 'https://n8n.io/',
+			});
+		});
+
 		describe('provider routing options', () => {
 			it('should handle order option with comma-separated providers and spaces', async () => {
 				const ctx = setupMockContext();
