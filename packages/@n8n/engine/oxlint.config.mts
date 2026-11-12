@@ -11,6 +11,7 @@ export default defineConfig({
 				'src/database/migrations/1778529600000-CreateWorkflowExecution.ts',
 				'src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts',
 				'src/database/migrations/1791417600000-CreateWorkflowSeededStep.ts',
+				'src/database/migrations/1794700800000-CreateWorkflowStepRound.ts',
 			],
 			rules: { 'unicorn/filename-case': 'off' },
 		},

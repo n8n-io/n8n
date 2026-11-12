@@ -42,7 +42,8 @@ export async function resumeAwaitingParent(
 /**
  * The nodes whose outputs are a sub-execution's result, in graph order: the
  * nodes nothing follows. A loop's entry node counts when no edge leaves the
- * loop, since its edges into the loop body are the loop's own.
+ * loop, since its edges into the loop body are the loop's own. An `attached`
+ * node never counts: it has no edges, but it is not part of the flow.
  */
 export function terminalNodeIds(graph: WorkflowGraph): string[] {
 	const closedLoopEntries = new Set(
@@ -52,6 +53,7 @@ export function terminalNodeIds(graph: WorkflowGraph): string[] {
 	);
 	const sources = new Set(graph.edges.map((edge) => edge.from));
 	return graph.nodes
+		.filter((node) => node.type !== 'attached')
 		.filter((node) => closedLoopEntries.has(node.id) || !sources.has(node.id))
 		.map((node) => node.id);
 }

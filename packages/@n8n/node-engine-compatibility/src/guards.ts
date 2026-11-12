@@ -1,9 +1,12 @@
+import type { JsonObject, JsonValue } from '@n8n/engine';
 import type { INodeCredentials } from 'n8n-workflow';
 
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export const isJsonObject = (value: JsonValue): value is JsonObject => isRecord(value);
 
 export function isTriggerStepConfig(config: unknown): config is TriggerStepConfig {
 	if (!isRecord(config)) return false;

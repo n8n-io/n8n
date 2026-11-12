@@ -11,9 +11,10 @@ import {
 	createStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
+	WorkflowStepRound,
 } from '../../database';
 import { generateId } from '../../database/generate-id';
-import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
+import type { IStepExecutor, StepExecutionRequest, StepExecutionResult } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import {
 	LifecycleEventPublisherFactory,
@@ -24,9 +25,11 @@ import type {
 	LifecycleEvent,
 	LifecycleEventSubscription,
 } from '../../lifecycle-events';
-import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
+import type { ActionDeclaration } from '../actions.types';
+import { CancelExecutionService } from '../cancel-execution.service';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult, StartExecutionService } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
@@ -880,6 +883,7 @@ describe('step execution (integration)', () => {
 			executionStore,
 			stepStore,
 			orchestrationQueue,
+			new InMemoryWorkQueue<StepMessage>(),
 			{ v1StepExecutor: { execute } },
 			new LifecycleEventPublisherFactory(noopLifecycleEventPublisher),
 			noopExecutionResponseSender,
@@ -916,5 +920,278 @@ describe('step execution (integration)', () => {
 			.getRepository(WorkflowStepExecution)
 			.findOneOrFail({ where: { id: stepId } });
 		expect(step.status).toBe('completed');
+	});
+	describe('actions', () => {
+		/** Webhook -> Agent -> After, with a tool and a chat model attached to the agent. */
+		const agentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'agent', name: 'Agent', type: 'v1-node', actionTargetKinds: ['ai_tool'] },
+				{ id: 'tool', name: 'Tool', type: 'attached' },
+				{ id: 'model', name: 'Model', type: 'attached' },
+				{ id: 'after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'agent', outputIndex: 0, inputIndex: 0 },
+				{ from: 'agent', to: 'after', outputIndex: 0, inputIndex: 0 },
+			],
+			attachments: [
+				{ from: 'tool', to: 'agent', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'model', to: 'agent', kind: 'ai_languageModel', inputIndex: 0 },
+			],
+		};
+
+		const call = (callId: string, targetNodeId = 'tool'): ActionDeclaration => ({
+			targetNodeId,
+			callId,
+			itemIndex: 0,
+			arguments: { q: callId },
+			metadata: { by: 'test' },
+		});
+
+		/**
+		 * An agent that declares `rounds[n]` in round n and then returns outputs.
+		 * The tool returns its arguments, or throws for a call id in `failing`.
+		 */
+		function agentExecutor(
+			rounds: ActionDeclaration[][],
+			{ failing = [] as string[], waiting = [] as string[] } = {},
+		) {
+			const requests: StepExecutionRequest[] = [];
+			const executor: IStepExecutor = {
+				execute: async (request): Promise<StepExecutionResult> => {
+					requests.push(request);
+					await Promise.resolve();
+					if (request.node.id === 'agent') {
+						const done = request.continuation?.rounds.length ?? 0;
+						if (done < rounds.length) {
+							return { actions: { actions: rounds[done], payload: { round: done } } };
+						}
+						return { outputs: [[{ json: { answer: 42 } }]] };
+					}
+					if (request.node.id === 'tool') {
+						const callId = request.spawnedAction?.action.callId ?? '';
+						if (failing.includes(callId)) throw new Error(`tool failed for ${callId}`);
+						if (waiting.includes(callId)) return { wait: { resumeBinding: 'execution' } };
+						return {
+							outputs: [[{ json: { result: request.spawnedAction?.action.arguments ?? null } }]],
+						};
+					}
+					return { outputs: [[{ json: { ran: request.node.id } }]] };
+				},
+			};
+			return { requests, executor };
+		}
+
+		async function loadRounds(executionId: string) {
+			return await dataSource
+				.getRepository(WorkflowStepRound)
+				.find({ where: { executionId }, order: { round: 'ASC' } });
+		}
+
+		it('runs two calls of one tool as spawned steps and continues the agent once with both outcomes in declared order', async () => {
+			const { requests, executor } = agentExecutor([[call('call-b'), call('call-a')]]);
+
+			const { executionId, execution, steps, events } = await runWorkflow(executor, [[{}]], {
+				graph: agentGraph,
+			});
+
+			expect(execution.status).toBe('completed');
+
+			const agentRows = steps.filter(({ nodeId }) => nodeId === 'agent');
+			expect(agentRows).toHaveLength(1);
+			const [agent] = agentRows;
+			expect(agent).toMatchObject({
+				kind: 'graph',
+				iteration: 0,
+				status: 'completed',
+				waitDeclaration: { round: 0 },
+				resumeCause: { kind: 'actions', round: 0 },
+				outputs: [[{ json: { answer: 42 } }]],
+			});
+
+			const spawned = steps.filter(({ kind }) => kind === 'spawned');
+			expect(
+				spawned.map(({ nodeId, iteration, status, declaringStepId, round, callId }) => ({
+					nodeId,
+					iteration,
+					status,
+					declaringStepId,
+					round,
+					callId,
+				})),
+			).toEqual(
+				expect.arrayContaining(
+					['call-b', 'call-a'].map((callId) => ({
+						nodeId: 'tool',
+						iteration: 0,
+						status: 'completed',
+						declaringStepId: agent.id,
+						round: 0,
+						callId,
+					})),
+				),
+			);
+			expect(spawned).toHaveLength(2);
+
+			const rounds = await loadRounds(executionId);
+			expect(rounds.map(({ stepId, round, payload }) => ({ stepId, round, payload }))).toEqual([
+				{ stepId: agent.id, round: 0, payload: { round: 0 } },
+			]);
+
+			const agentRuns = requests.filter(({ node }) => node.id === 'agent');
+			expect(agentRuns).toHaveLength(2);
+			expect(agentRuns[0].continuation).toBeUndefined();
+			expect(agentRuns[1].inputs).toEqual(agentRuns[0].inputs);
+			expect(agentRuns[1].continuation).toEqual({
+				rounds: [
+					{
+						round: 0,
+						payload: { round: 0 },
+						actions: ['call-b', 'call-a'].map((callId) => ({
+							...call(callId),
+							outcome: { status: 'completed', outputs: [[{ json: { result: { q: callId } } }]] },
+						})),
+					},
+				],
+			});
+
+			const toolRuns = requests.filter(({ node }) => node.id === 'tool');
+			expect(toolRuns).toHaveLength(2);
+			expect(toolRuns[0].inputs).toEqual([]);
+			expect(toolRuns[0].spawnedAction).toEqual({
+				declaringStepId: agent.id,
+				declaringNodeId: 'agent',
+				round: 0,
+				action: call('call-b'),
+				declaringInputs: agentRuns[0].inputs,
+				kind: 'ai_tool',
+				attachedToNodeId: 'agent',
+			});
+
+			// The successor ran once, on the final outputs.
+			const afterRuns = requests.filter(({ node }) => node.id === 'after');
+			expect(afterRuns).toHaveLength(1);
+			expect(afterRuns[0].inputs).toEqual([[{ json: { answer: 42 } }]]);
+
+			// One start for all rounds, no `step:waiting` for the engine's own wait,
+			// and the spawned steps' events name their declaring step.
+			const agentEvents = events.filter((event) => 'nodeId' in event && event.nodeId === 'agent');
+			expect(agentEvents.map(({ type }) => type)).toEqual(['step:started', 'step:completed']);
+			const toolStarts = events.filter(
+				(event) => event.type === 'step:started' && event.nodeId === 'tool',
+			);
+			expect(toolStarts).toEqual(
+				['call-b', 'call-a'].map((callId) =>
+					expect.objectContaining({ declaringStepId: agent.id, round: 0, callId }),
+				),
+			);
+			expect(events.at(-1)?.type).toBe('execution:completed');
+		});
+
+		it('hands a failed tool call to the agent as data and completes the execution', async () => {
+			const { requests, executor } = agentExecutor([[call('call-1'), call('call-2')]], {
+				failing: ['call-1'],
+			});
+
+			const { execution, steps } = await runWorkflow(executor, [[{}]], { graph: agentGraph });
+
+			expect(execution.status).toBe('completed');
+			expect(steps.find(({ callId }) => callId === 'call-1')?.status).toBe('failed');
+			expect(steps.find(({ nodeId }) => nodeId === 'agent')?.status).toBe('completed');
+			expect(steps.find(({ nodeId }) => nodeId === 'after')?.status).toBe('completed');
+
+			const continued = requests.filter(({ node }) => node.id === 'agent')[1];
+			expect(continued.continuation?.rounds[0].actions.map(({ outcome }) => outcome)).toEqual([
+				{
+					status: 'failed',
+					error: expect.objectContaining({ message: 'tool failed for call-1' }),
+				},
+				{ status: 'completed', outputs: [[{ json: { result: { q: 'call-2' } } }]] },
+			]);
+		});
+
+		it('records each round in its own row and keeps one step row and one iteration for the agent', async () => {
+			const { requests, executor } = agentExecutor([[call('call-1')], [call('call-2')]]);
+
+			const { executionId, execution, steps, events } = await runWorkflow(executor, [[{}]], {
+				graph: agentGraph,
+			});
+
+			expect(execution.status).toBe('completed');
+			const agentRows = steps.filter(({ nodeId }) => nodeId === 'agent');
+			expect(agentRows).toHaveLength(1);
+			expect(agentRows[0]).toMatchObject({
+				iteration: 0,
+				status: 'completed',
+				resumeCause: { kind: 'actions', round: 1 },
+			});
+			expect((await loadRounds(executionId)).map(({ round }) => round)).toEqual([0, 1]);
+			expect(
+				steps
+					.filter(({ kind }) => kind === 'spawned')
+					.map(({ round, callId }) => [round, callId])
+					.sort(),
+			).toEqual([
+				[0, 'call-1'],
+				[1, 'call-2'],
+			]);
+
+			const agentRuns = requests.filter(({ node }) => node.id === 'agent');
+			expect(agentRuns).toHaveLength(3);
+			expect(agentRuns[2].continuation?.rounds.map(({ round }) => round)).toEqual([0, 1]);
+			expect(
+				events.filter((event) => event.type === 'step:started' && event.nodeId === 'agent'),
+			).toHaveLength(1);
+		});
+
+		it('fails the agent step when an action targets a node that is not an allowed action target', async () => {
+			const { requests, executor } = agentExecutor([[call('call-1', 'model')]]);
+
+			const { executionId, execution, steps } = await runWorkflow(executor, [[{}]], {
+				graph: agentGraph,
+			});
+
+			expect(execution.status).toBe('failed');
+			const agent = steps.find(({ nodeId }) => nodeId === 'agent');
+			expect(agent?.status).toBe('failed');
+			expect(agent?.error).toMatchObject({
+				name: 'InvalidActionsError',
+				message: expect.stringContaining('"Model"') as string,
+			});
+			expect(steps.filter(({ kind }) => kind === 'spawned')).toHaveLength(0);
+			expect(await loadRounds(executionId)).toHaveLength(0);
+			expect(requests.filter(({ node }) => node.id === 'model')).toHaveLength(0);
+		});
+
+		it('cancels the waiting agent and its pending spawned steps when the execution is cancelled', async () => {
+			const { executor } = agentExecutor([[call('call-1'), call('call-2')]], {
+				waiting: ['call-1'],
+			});
+
+			const { executionId } = await runWorkflow(executor, [[{}]], {
+				graph: agentGraph,
+				resolveOn: 'suspend',
+			});
+
+			const { executionStore, stepStore } = createStores(dataSource);
+			const cancelled = await new CancelExecutionService(
+				executionStore,
+				stepStore,
+				new LifecycleEventPublisherFactory(noopLifecycleEventPublisher),
+				noopExecutionResponseSender,
+				new InMemoryWorkQueue<StepMessage>(),
+			).cancel(executionId);
+			expect(cancelled.status).toBe('cancelled');
+
+			const steps = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.find({ where: { executionId } });
+			expect(steps.find(({ nodeId }) => nodeId === 'agent')?.status).toBe('cancelled');
+			expect(steps.find(({ callId }) => callId === 'call-1')?.status).toBe('cancelled');
+			expect(
+				steps.filter(({ status }) => ['queued', 'running', 'waiting'].includes(status)),
+			).toEqual([]);
+		});
 	});
 });

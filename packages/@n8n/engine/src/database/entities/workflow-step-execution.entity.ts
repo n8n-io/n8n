@@ -8,6 +8,7 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
+import type { StepKind } from '../../execution/step-store';
 import type {
 	StepError,
 	ResumeCause,
@@ -21,9 +22,16 @@ import { generateId } from '../generate-id';
 @Index(
 	'uniq_workflow_step_execution_execution_id_node_id_iteration',
 	['executionId', 'nodeId', 'iteration'],
-	{ unique: true },
+	{ unique: true, where: "kind = 'graph'" },
 )
-@Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
+@Index(
+	'uniq_workflow_step_execution_declaring_step_id_round_call_id',
+	['declaringStepId', 'round', 'callId'],
+	{ unique: true, where: "kind = 'spawned'" },
+)
+@Index('idx_workflow_step_execution_failed', ['executionId'], {
+	where: "status = 'failed' AND kind = 'graph'",
+})
 @Index('idx_workflow_step_execution_wait_till', ['waitTill'], { where: "status = 'waiting'" })
 @Index('idx_workflow_step_execution_unsettled', ['executionId', 'status'], {
 	where: "status IN ('queued', 'running', 'waiting')",
@@ -43,6 +51,19 @@ export class WorkflowStepExecution {
 
 	@Column('varchar', { length: 32 })
 	status!: StepStatus;
+
+	/** A graph step follows from the graph. A spawned step runs one action of a declaring step. */
+	@Column('varchar', { length: 16, default: 'graph' })
+	kind!: StepKind;
+
+	@Column('uuid', { name: 'declaring_step_id', nullable: true })
+	declaringStepId!: string | null;
+
+	@Column('int', { nullable: true })
+	round!: number | null;
+
+	@Column('varchar', { name: 'call_id', nullable: true })
+	callId!: string | null;
 
 	@Column('jsonb', { nullable: true })
 	outputs!: StepSlots | null;

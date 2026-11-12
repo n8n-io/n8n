@@ -59,6 +59,16 @@ export class StepSettledHandler {
 		]);
 		const node = validateStepContext(step, execution);
 
+		// A spawned step's outcome is data for its declaring step. It never fails
+		// the execution, plans graph successors or finishes the execution.
+		if (step.kind === 'spawned') {
+			await this.wakeDeclaringStep(step);
+			// After the wake, so the execution never reads `waiting` between the last
+			// action and the continue: a wake does not refresh the live status.
+			await this.executionStore.refreshLiveStatus(execution.id);
+			return;
+		}
+
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
@@ -89,6 +99,27 @@ export class StepSettledHandler {
 		// If this call just finished the execution, it is no longer live, and the
 		// refresh leaves it alone.
 		await this.executionStore.refreshLiveStatus(execution.id);
+	}
+
+	/**
+	 * Wake the declaring step once every action of the round has settled. Every
+	 * settler checks after its own settlement committed, so the last one always
+	 * sees the others. Two last settlers race on the compare-and-set, and one wins.
+	 */
+	private async wakeDeclaringStep(step: StepRecord): Promise<void> {
+		const { declaringStepId, round } = step;
+		if (!declaringStepId || round === null || round === undefined) {
+			throw new UnexpectedError(`spawned step ${step.id} has no declaring step or round`);
+		}
+		// SPIKE: a crash between the last settlement and this wake leaves the
+		// declaring step `waiting` for ever. Reconciliation (CAT-2938) must find it.
+		if (!(await this.stepStore.allActionsSettled(declaringStepId, round))) return;
+		if (!(await this.stepStore.resumeStepForActions(declaringStepId, round))) return;
+		await this.stepQueue.publish({
+			type: 'step:ready',
+			executionId: step.executionId,
+			stepId: declaringStepId,
+		});
 	}
 
 	private async failExecution(

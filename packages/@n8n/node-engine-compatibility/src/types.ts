@@ -10,6 +10,7 @@ import type {
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import type { DurableWaitExecuteContext } from './v1-adapters';
 import type {
+	EngineResponse,
 	INode,
 	INodeCredentials,
 	INodeExecutionData,
@@ -149,9 +150,13 @@ export interface CreateExecuteContextParams {
 	subWorkflowCalls: SubWorkflowCalls;
 	subExecutionResume?: SubExecutionResumeCause;
 	resumeMinters?: StepResumeMinters;
+	/** Set when the step continues after its actions: what v1 hands the node's `execute`. */
+	subNodeExecutionResults?: EngineResponse;
 }
 
 export interface RunNodeParams {
 	nodeType: ExecutableNodeType;
 	context: DurableWaitExecuteContext;
+	/** Whether the node may declare actions: its graph node lists target kinds. */
+	declaresActions: boolean;
 }

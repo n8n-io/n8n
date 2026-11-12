@@ -3,8 +3,8 @@ import type { ExecutionStore, StepSlots, StepStore } from '@n8n/engine';
 import type { StepData, StepDataLoader } from './types';
 
 /**
- * Loads what an expression might name: the graph, and every completed step's
- * output at every pass.
+ * Loads what an expression might name: the graph, and every completed graph
+ * step's output at every pass. Expressions cannot read a spawned step.
  *
  * A step that has not completed is left out, so naming it fails with the usual
  * "hasn't been executed" error.
@@ -22,6 +22,9 @@ export function createEngineStepDataLoader(
 
 		const byNode = new Map<string, Record<number, StepSlots>>();
 		for (const step of steps) {
+			// The store returns graph steps only. A spawned step shares the node id and
+			// iteration of another run of its node, so it must never reach run data.
+			if ('kind' in step && step.kind === 'spawned') continue;
 			if (step.status !== 'completed' || step.outputs === null) continue;
 			let byIteration = byNode.get(step.nodeId);
 			if (byIteration === undefined) {

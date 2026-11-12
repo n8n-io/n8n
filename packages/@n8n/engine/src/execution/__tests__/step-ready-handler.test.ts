@@ -8,7 +8,7 @@ import {
 	type LifecycleEvent,
 } from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import {
 	stepKeyId,
@@ -78,6 +78,7 @@ function makeHandler(
 		executionStore,
 		stepStore,
 		queue,
+		makeStepQueue(),
 		dependencies,
 		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
@@ -152,8 +153,18 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
+		recordRound: vi.fn(),
+		loadRound: vi.fn().mockResolvedValue(null),
+		loadRounds: vi.fn().mockResolvedValue([]),
+		loadSpawnedSteps: vi.fn().mockResolvedValue([]),
+		allActionsSettled: vi.fn().mockResolvedValue(false),
+		resumeStepForActions: vi.fn().mockResolvedValue(false),
 		...overrides,
 	} satisfies StepStore;
+}
+
+function makeStepQueue(): WorkQueue<StepMessage> {
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {

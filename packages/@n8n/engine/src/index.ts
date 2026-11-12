@@ -27,6 +27,7 @@ export type {
 	CancelExecutionResponse,
 	EngineErrorResponse,
 	ExecutionSnapshot,
+	RoundDetail,
 	StepDetail,
 } from './server';
 export type {
@@ -129,6 +130,12 @@ export type {
 } from './queue';
 
 export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	ActionLimitError,
+	DEFAULT_MAX_ROUNDS_PER_EXECUTION,
+	DEFAULT_MAX_SPAWNED_STEPS_PER_EXECUTION,
+	InvalidActionsError,
+} from './execution';
 export type {
 	ActionContinuation,
 	ActionDeclaration,
@@ -163,6 +170,9 @@ export type {
 	StepStatus,
 	StepStore,
 	StepView,
+	RoundView,
+	StepKind,
+	ActionLimits,
 	SeededSteps,
 	TriggerOutputs,
 	ExecutorWaitDeclaration,

@@ -117,6 +117,40 @@ describe('toV1Execution', () => {
 		});
 	});
 
+	it('rebuilds the sub-nodes and their v1 connections from the attachments', () => {
+		const connections = {
+			Trigger: { main: [[{ node: 'Agent', type: 'main' as const, index: 0 }]] },
+			Model: {
+				ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel' as const, index: 0 }]],
+			},
+			Approval: { ai_tool: [[{ node: 'Agent', type: 'ai_tool' as const, index: 0 }]] },
+			Mailer: { ai_tool: [[{ node: 'Approval', type: 'ai_tool' as const, index: 0 }]] },
+		};
+		const agentGraph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+					{ id: 'agent', name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' },
+					{ id: 'model', name: 'Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
+					{ id: 'approval', name: 'Approval', type: 'n8n-nodes-base.slackHitlTool' },
+					{ id: 'mailer', name: 'Mailer', type: 'n8n-nodes-base.gmailTool' },
+				],
+				connections,
+			),
+		);
+
+		const execution = toV1Execution(agentGraph, {}, 'agent', 0);
+
+		expect(execution.connections).toEqual(connections);
+		expect(execution.nodes.map((node) => node.name)).toEqual([
+			'Trigger',
+			'Agent',
+			'Model',
+			'Approval',
+			'Mailer',
+		]);
+	});
+
 	it('rebuilds run data with input provenance from the edges', () => {
 		const execution = toV1Execution(graph, { a: { 0: items({ x: 1 }) } }, 'a', 0);
 

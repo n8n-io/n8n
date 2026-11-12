@@ -22,6 +22,13 @@ const stepFields = {
 	/** Loop iteration this step ran at; `0` for a node outside a loop. */
 	iteration: z.number().int().nonnegative(),
 	at: z.string().datetime(),
+	/**
+	 * Set for a spawned step only: the step that declared its action, the round
+	 * and the call id. A consumer shows the step under its declaring step.
+	 */
+	declaringStepId: z.string().min(1).optional(),
+	round: z.number().int().nonnegative().optional(),
+	callId: z.string().min(1).optional(),
 };
 
 /** The one definition of an event's shape. `LifecycleEvent` is inferred from it. */

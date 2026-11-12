@@ -19,6 +19,36 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						comment: 'Which pass over a loop body this row belongs to. 0 for non-loops.',
 					},
 					{ name: 'status', type: 'varchar', length: '32' },
+					// SPIKE: the four spawned-step columns, their check and indexes are added
+					// to this create migration in place. A database that ran it before must
+					// be dropped. Write an ALTER migration once engine v2 data must survive.
+					{
+						name: 'kind',
+						type: 'varchar',
+						length: '16',
+						default: "'graph'",
+						comment:
+							"'graph' for a step the graph plans. 'spawned' for a step that runs one action of a declaring step.",
+					},
+					{
+						name: 'declaring_step_id',
+						type: 'uuid',
+						isNullable: true,
+						comment: 'For a spawned step: the step that declared its action.',
+					},
+					{
+						name: 'round',
+						type: 'int',
+						isNullable: true,
+						comment:
+							'For a spawned step: the round of the declaring step that declared its action.',
+					},
+					{
+						name: 'call_id',
+						type: 'varchar',
+						isNullable: true,
+						comment: 'For a spawned step: the call id of its action, unique within the round.',
+					},
 					{
 						name: 'outputs',
 						type: 'jsonb',
@@ -70,18 +100,29 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 				indices: [
 					// Index execution, node and iteration to look up inputs on the hot path.
 					// Unique to prevent double writes on failure recovery, and keyed per pass
-					// because a node inside a loop body runs once per pass.
+					// because a node inside a loop body runs once per pass. Graph steps only:
+					// spawned steps of one node share the node and the iteration.
 					{
 						name: 'uniq_workflow_step_execution_execution_id_node_id_iteration',
 						columnNames: ['execution_id', 'node_id', 'iteration'],
 						isUnique: true,
+						where: "kind = 'graph'",
+					},
+					// One spawned step for each action. Also serves the continuation and
+					// the wake check, which read the spawned steps of one declaring step.
+					{
+						name: 'uniq_workflow_step_execution_declaring_step_id_round_call_id',
+						columnNames: ['declaring_step_id', 'round', 'call_id'],
+						isUnique: true,
+						where: "kind = 'spawned'",
 					},
 					// Partial index for the failed-sibling checks: they run on every event, and
-					// loops make an execution's row count scale with its data.
+					// loops make an execution's row count scale with its data. Graph steps
+					// only, because a failed action does not fail the execution.
 					{
 						name: 'idx_workflow_step_execution_failed',
 						columnNames: ['execution_id'],
-						where: "status = 'failed'",
+						where: "status = 'failed' AND kind = 'graph'",
 					},
 					// The sweep reads waiting rows only, so the index is partial.
 					{
@@ -104,12 +145,23 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						referencedColumnNames: ['id'],
 						onDelete: 'CASCADE',
 					},
+					{
+						columnNames: ['declaring_step_id'],
+						referencedTableName: TABLE,
+						referencedColumnNames: ['id'],
+						onDelete: 'CASCADE',
+					},
 				],
 				checks: [
 					{
 						name: 'chk_workflow_step_execution_status',
 						expression:
 							"status IN ('queued', 'running', 'waiting', 'completed', 'failed', 'skipped', 'cancelled')",
+					},
+					{
+						name: 'chk_workflow_step_execution_kind',
+						expression:
+							"(kind = 'graph' AND declaring_step_id IS NULL AND round IS NULL AND call_id IS NULL) OR (kind = 'spawned' AND declaring_step_id IS NOT NULL AND round IS NOT NULL AND call_id IS NOT NULL)",
 					},
 				],
 			}),

@@ -1,4 +1,5 @@
 export { isBatchStepConfig } from './workflow-graph';
+export { findActionTargetPath, validateAttachments } from './attachments';
 export type {
 	BatchStepConfig,
 	GraphAttachment,

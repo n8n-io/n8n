@@ -321,11 +321,14 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		{
 			resolveSubWorkflow = noSubWorkflows,
 			finishCount = 1,
+			nodeTypes = realNodeTypes,
 		}: {
 			/** Resolves the sub-workflows the run calls, as the control plane would. */
 			resolveSubWorkflow?: SubWorkflowResolver;
 			/** How many executions must finish first: a sub-execution finishes before its parent. */
 			finishCount?: number;
+			/** The node types the run knows. Defaults to the real nodes-base nodes above. */
+			nodeTypes?: INodeTypes;
 		} = {},
 	) {
 		const dataSource = getDataSource();
@@ -351,7 +354,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 
 				return {
 					v1StepExecutor: new V1StepExecutor({
-						nodeTypes: realNodeTypes,
+						nodeTypes,
 						additionalDataFactory: testAdditionalDataFactory,
 						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
 						resolveSubWorkflow,

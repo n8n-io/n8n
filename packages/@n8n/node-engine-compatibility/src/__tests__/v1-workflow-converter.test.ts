@@ -1,4 +1,10 @@
-import type { IConnection, INode, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INode,
+	IWorkflowBase,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -429,6 +435,119 @@ describe('V1WorkflowConverter', () => {
 		});
 	});
 
+	describe('sub-nodes', () => {
+		const attach = (target: string, type: NodeConnectionType, index = 0) => ({
+			[type]: [[{ node: target, type, index }]],
+		});
+		const agentNodes = [
+			manualTrigger,
+			node('agent-uuid', 'Agent', { type: '@n8n/n8n-nodes-langchain.agent' }),
+			node('model-uuid', 'Model', { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			node('memory-uuid', 'Memory', { type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' }),
+			node('approval-uuid', 'Approval', { type: 'n8n-nodes-base.slackHitlTool' }),
+			node('mailer-uuid', 'Mailer', { type: 'n8n-nodes-base.gmailTool' }),
+			node('agent-tool-uuid', 'Agent Tool', { type: '@n8n/n8n-nodes-langchain.agentTool' }),
+			node('sub-model-uuid', 'Sub Model', { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			node('calculator-uuid', 'Calculator', { type: '@n8n/n8n-nodes-langchain.toolCalculator' }),
+		];
+		const agentConnections: IConnections = {
+			'When clicking Execute': { main: [[main('Agent')]] },
+			Model: attach('Agent', 'ai_languageModel'),
+			Memory: attach('Agent', 'ai_memory'),
+			Approval: attach('Agent', 'ai_tool'),
+			Mailer: attach('Approval', 'ai_tool'),
+			'Agent Tool': attach('Agent', 'ai_tool'),
+			'Sub Model': attach('Agent Tool', 'ai_languageModel'),
+			Calculator: attach('Agent Tool', 'ai_tool'),
+		};
+
+		it('attaches the sub-nodes of a kept node, recursively, outside the edges', () => {
+			// trigger -> Agent
+			// Model, Memory, Approval, Agent Tool attach to Agent
+			// Mailer attaches to Approval; Sub Model, Calculator attach to Agent Tool
+			const graph = converter.convert(
+				workflow({ nodes: agentNodes, connections: agentConnections }),
+			);
+
+			expect(graph.edges).toEqual([
+				{ from: 'trigger-uuid', to: 'agent-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
+			expect(graph.attachments).toEqual([
+				{ from: 'model-uuid', to: 'agent-uuid', kind: 'ai_languageModel', inputIndex: 0 },
+				{ from: 'memory-uuid', to: 'agent-uuid', kind: 'ai_memory', inputIndex: 0 },
+				{ from: 'approval-uuid', to: 'agent-uuid', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'mailer-uuid', to: 'approval-uuid', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'agent-tool-uuid', to: 'agent-uuid', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'sub-model-uuid', to: 'agent-tool-uuid', kind: 'ai_languageModel', inputIndex: 0 },
+				{ from: 'calculator-uuid', to: 'agent-tool-uuid', kind: 'ai_tool', inputIndex: 0 },
+			]);
+			expect(
+				graph.nodes.map(({ name, type, actionTargetKinds }) => ({ name, type, actionTargetKinds })),
+			).toEqual([
+				{ name: 'When clicking Execute', type: 'trigger', actionTargetKinds: undefined },
+				{ name: 'Agent', type: 'v1-node', actionTargetKinds: ['ai_tool'] },
+				{ name: 'Model', type: 'attached', actionTargetKinds: undefined },
+				{ name: 'Memory', type: 'attached', actionTargetKinds: undefined },
+				{ name: 'Approval', type: 'attached', actionTargetKinds: ['ai_tool'] },
+				{ name: 'Mailer', type: 'attached', actionTargetKinds: undefined },
+				{ name: 'Agent Tool', type: 'attached', actionTargetKinds: ['ai_tool'] },
+				{ name: 'Sub Model', type: 'attached', actionTargetKinds: undefined },
+				{ name: 'Calculator', type: 'attached', actionTargetKinds: undefined },
+			]);
+			expect(graph.nodes.find((n) => n.name === 'Mailer')?.config).toEqual({
+				nodeType: 'n8n-nodes-base.gmailTool',
+				typeVersion: 1,
+				parameters: {},
+				continueOnFail: false,
+			});
+		});
+
+		it('drops a disabled sub-node, the sub-nodes below it and their attachments', () => {
+			const graph = converter.convert(
+				workflow({
+					nodes: agentNodes.map((n) => (n.name === 'Approval' ? { ...n, disabled: true } : n)),
+					connections: agentConnections,
+				}),
+			);
+
+			const names = graph.nodes.map((n) => n.name);
+			expect(names).not.toContain('Approval');
+			expect(names).not.toContain('Mailer');
+			expect(graph.attachments?.map((a) => a.from)).toEqual([
+				'model-uuid',
+				'memory-uuid',
+				'agent-tool-uuid',
+				'sub-model-uuid',
+				'calculator-uuid',
+			]);
+		});
+
+		it('drops the sub-nodes of a disabled node the trigger reaches', () => {
+			const graph = converter.convert(
+				workflow({
+					nodes: agentNodes.map((n) => (n.name === 'Agent' ? { ...n, disabled: true } : n)),
+					connections: agentConnections,
+				}),
+			);
+
+			expect(graph.nodes.map((n) => n.name)).toEqual(['When clicking Execute']);
+			expect(graph.attachments).toBeUndefined();
+		});
+
+		it('accepts onError=continueErrorOutput on a sub-node', () => {
+			const graph = converter.convert(
+				workflow({
+					nodes: agentNodes.map((n) =>
+						n.name === 'Mailer' ? { ...n, onError: 'continueErrorOutput' as const } : n,
+					),
+					connections: agentConnections,
+				}),
+			);
+
+			expect(graph.nodes.find((n) => n.name === 'Mailer')?.type).toBe('attached');
+		});
+	});
+
 	describe('edges', () => {
 		it('maps connections to id-keyed edges with slot indexes', () => {
 			// ┌───────┐    ┌─┐
@@ -529,7 +648,7 @@ describe('V1WorkflowConverter', () => {
 			]);
 		});
 
-		it('rejects non-main connection types', () => {
+		it('rejects a non-main connection when no trigger roots the sub-nodes', () => {
 			expect(() =>
 				converter.convert(
 					workflow({

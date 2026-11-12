@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",

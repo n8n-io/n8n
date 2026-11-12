@@ -1185,7 +1185,20 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
 			'(execution_id, node_id, iteration)',
 		);
-		expect(byName.idx_workflow_step_execution_failed).toContain("WHERE ((status)::text = 'failed'");
+		// Graph steps only: a spawned step of the same node and iteration is no duplicate.
+		expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
+			"WHERE ((kind)::text = 'graph'",
+		);
+		expect(byName.uniq_workflow_step_execution_declaring_step_id_round_call_id).toContain(
+			'(declaring_step_id, round, call_id)',
+		);
+		expect(byName.uniq_workflow_step_execution_declaring_step_id_round_call_id).toContain(
+			"WHERE ((kind)::text = 'spawned'",
+		);
+		// A failed action is data, so the fail-fast checks read graph steps only.
+		expect(byName.idx_workflow_step_execution_failed).toContain(
+			"WHERE (((status)::text = 'failed'::text) AND ((kind)::text = 'graph'",
+		);
 		// the sweep's index: due waits only, so it must not cover settled rows
 		expect(byName.idx_workflow_step_execution_wait_till).toContain('(wait_till)');
 		expect(byName.idx_workflow_step_execution_wait_till).toContain(

@@ -10,3 +10,4 @@ export const SPLIT_IN_BATCHES_TYPE_VERSION = 3;
 /** SplitInBatchesV3's own default, for a workflow that never set the parameter. */
 export const DEFAULT_BATCH_SIZE = 1;
 export const MAIN_CONNECTION_TYPE = 'main';
+export const AI_TOOL_CONNECTION_TYPE = 'ai_tool';

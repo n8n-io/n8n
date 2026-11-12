@@ -133,6 +133,7 @@ export function toExecutionSnapshot(
 		// Absent unless the request asked for steps, which a caller cannot tell
 		// from an execution that ran none.
 		...('steps' in record ? { steps: record.steps.map(toStepDetail) } : {}),
+		...('steps' in record && record.rounds ? { rounds: record.rounds } : {}),
 	};
 }
 
@@ -146,6 +147,14 @@ function toStepDetail(record: StepView): StepDetail {
 		error: record.error,
 		createdAt: record.createdAt,
 		updatedAt: record.updatedAt,
+		...(record.kind === 'spawned'
+			? {
+					kind: record.kind,
+					declaringStepId: record.declaringStepId,
+					round: record.round,
+					callId: record.callId,
+				}
+			: {}),
 	};
 }
 

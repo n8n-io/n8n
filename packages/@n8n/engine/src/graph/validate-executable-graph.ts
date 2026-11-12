@@ -1,4 +1,5 @@
 import { UnimplementedError } from '../common';
+import { validateAttachments } from './attachments';
 import { GraphValidationError } from './graph-validation.error';
 import { validateLoops } from './loops';
 import type { WorkflowGraph } from './workflow-graph';
@@ -29,6 +30,8 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 
 	const [trigger] = triggers;
 	const reachable = new Set([trigger.id, ...getDescendantNodeIds(graph, trigger.id)]);
+	validateAttachments(graph, reachable);
+
 	for (const edge of graph.edges) {
 		if (reachable.has(edge.to) && !reachable.has(edge.from)) {
 			throw new GraphValidationError(

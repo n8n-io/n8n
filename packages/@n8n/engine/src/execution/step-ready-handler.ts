@@ -6,7 +6,9 @@ import type {
 	StepExecutionResult,
 } from '../dependencies';
 import {
+	createNodeLabeler,
 	deriveLoops,
+	findActionTargetPath,
 	isBatchStepConfig,
 	type GraphEdge,
 	type GraphNode,
@@ -14,14 +16,22 @@ import {
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
+import {
+	ActionLimitError,
+	buildContinuation,
+	DEFAULT_ACTION_LIMITS,
+	validateActionsDeclaration,
+} from './actions';
+import type { ActionContinuation, ActionsDeclaration, SpawnedAction } from './actions.types';
 import { runBatchStep } from './batch-step';
-import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
+import type { OrchestrationMessage, StepMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isLiveExecutionStatus,
 	isSettledStatus,
 	hasResumeCondition,
+	type ActionsResumeCause,
 	type ResumeCause,
 	type SubExecutionResumeCause,
 	type StepError,
@@ -33,12 +43,12 @@ import {
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
-import type { StepRecord, StepStore } from './step-store';
+import type { ActionLimits, StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
 /** A resume that emits outputs the engine already holds, so no node code runs. */
-type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause>;
+type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause | ActionsResumeCause>;
 
 /**
  * How a step produces its result. A replay emits recorded outputs. A batch pass
@@ -53,6 +63,10 @@ type Dispatch =
 			executor: IStepExecutor;
 			inputs: StepSlots;
 			subExecutionResult?: SubExecutionResumeCause;
+			/** Set when the step continues after the actions of its last round settled. */
+			continuation?: ActionContinuation;
+			/** Set for a spawned step. */
+			spawnedAction?: SpawnedAction;
 	  };
 
 /**
@@ -74,12 +88,15 @@ export class StepReadyHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		/** Spawned steps are announced here. */
+		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
+		private readonly actionLimits: ActionLimits = DEFAULT_ACTION_LIMITS,
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -101,9 +118,12 @@ export class StepReadyHandler {
 			return;
 		}
 
-		// This worker won the claim, so it is the one that announces the start.
+		// This worker won the claim, so it is the one that announces the start. A
+		// continue after actions is not a new start: all rounds are one run of the node.
 		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
-		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		if (step.resumeCause?.kind !== 'actions') {
+			lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		}
 
 		// Decided outside the `try` below on purpose. Its errors are the engine's
 		// own bookkeeping, not the node's, so they leave the step `running`
@@ -118,6 +138,7 @@ export class StepReadyHandler {
 			| { kind: 'outputs'; outputs: StepSlots }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
+			| { kind: 'actions'; actions: ActionsDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
@@ -132,6 +153,9 @@ export class StepReadyHandler {
 				run = { kind: 'wait', wait: result.wait };
 			} else if (result.subExecution) {
 				run = { kind: 'subExecution', subExecution: result.subExecution };
+			} else if (result.actions) {
+				validateActionsDeclaration(execution.graph, node, result.actions);
+				run = { kind: 'actions', actions: result.actions };
 			} else {
 				run = { kind: 'outputs', outputs: result.outputs };
 			}
@@ -150,6 +174,12 @@ export class StepReadyHandler {
 				started.kind === 'error'
 					? { kind: 'error', error: started.error }
 					: { kind: 'outputs', outputs: subExecution.outputs };
+		}
+
+		if (run.kind === 'actions') {
+			const recorded = await this.handleActions(event, step, execution, node, run.actions);
+			if (recorded.kind !== 'error') return;
+			run = recorded;
 		}
 
 		let recorded: boolean;
@@ -227,6 +257,46 @@ export class StepReadyHandler {
 		});
 	}
 
+	/**
+	 * Record the round, suspend the step and create its spawned steps in one
+	 * write, then announce the spawned steps. No `step:waiting`: only the engine
+	 * ends this wait. The execution stays `running`, because the spawned steps
+	 * are queued. Returns an error when the round goes over a cap, so the caller
+	 * fails the step.
+	 */
+	private async handleActions(
+		event: StepReadyEvent,
+		step: StepRecord,
+		execution: ExecutionRecord,
+		node: GraphNode,
+		actions: ActionsDeclaration,
+	): Promise<{ kind: 'done' } | { kind: 'error'; error: unknown }> {
+		const recorded = await this.stepStore.recordRound(step, actions, this.actionLimits);
+		if (recorded.kind === 'over-cap') {
+			const name = createNodeLabeler(execution.graph)(node.id);
+			const max = this.actionLimits[recorded.limit];
+			return {
+				kind: 'error',
+				error: new ActionLimitError(name, recorded.limit, recorded.value, max),
+			};
+		}
+		if (recorded.kind === 'execution-ended') {
+			// The end's sweep cancels pending steps only, so settle this one here.
+			await this.stepStore.cancelStep(step.id);
+			return { kind: 'done' };
+		}
+		if (recorded.kind === 'lost') return { kind: 'done' };
+
+		for (const spawned of recorded.spawned) {
+			await this.stepQueue.publish({
+				type: 'step:ready',
+				executionId: event.executionId,
+				stepId: spawned.id,
+			});
+		}
+		return { kind: 'done' };
+	}
+
 	/** Starts a detached sub-execution. */
 	private async handleDetachedSubExecution(
 		step: StepRecord,
@@ -278,15 +348,76 @@ export class StepReadyHandler {
 		execution: ExecutionRecord,
 	): Promise<Dispatch> {
 		const { resumeCause } = step;
-		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
+		if (resumeCause?.kind === 'deadline' || resumeCause?.kind === 'request') {
 			return { kind: 'replay', cause: resumeCause };
 		}
 		if (node.type === 'batch') return { kind: 'batch' };
+
+		// A spawned step stores no input. Its executor derives it from the action.
+		const spawned = step.kind === 'spawned';
+		// SPIKE: a continue reads every round and every spawned step with its
+		// outputs, so the reads over a whole run grow with the square of the rounds.
+		// SPIKE: the continuation is passed only on a continue. A declaring step that
+		// later waits on a sub-execution gets no continuation when that resumes.
+		const continuation =
+			resumeCause?.kind === 'actions'
+				? buildContinuation(
+						await this.stepStore.loadRounds(step.id),
+						await this.stepStore.loadSpawnedSteps(step.id),
+					)
+				: undefined;
 		return {
 			kind: 'run',
 			executor: this.executorFor(step, node),
-			inputs: await this.gatherInputs(execution, step),
-			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
+			inputs: spawned ? [] : await this.gatherInputs(execution, step),
+			...(resumeCause?.kind === 'subExecution' ? { subExecutionResult: resumeCause } : {}),
+			...(continuation ? { continuation } : {}),
+			...(spawned ? { spawnedAction: await this.spawnedActionFor(execution, step) } : {}),
+		};
+	}
+
+	/**
+	 * What a spawned step runs for: its action, the declaring step's inputs as
+	 * gathered for its first round, and the attachment that makes the target
+	 * valid. For a nested declaring step, the chain of actions up to a graph step.
+	 */
+	private async spawnedActionFor(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<SpawnedAction> {
+		const { declaringStepId, round, callId } = step;
+		if (!declaringStepId || round === null || round === undefined || !callId) {
+			throw new UnexpectedError(`spawned step ${step.id} has no declaring step, round or call id`);
+		}
+		const declaring = await this.stepStore.loadStep(declaringStepId);
+		const action = (await this.stepStore.loadRound(declaringStepId, round))?.actions.find(
+			(candidate) => candidate.callId === callId,
+		);
+		if (!action) {
+			throw new UnexpectedError(
+				`spawned step ${step.id} runs call ${callId}, which round ${round} of step ${declaringStepId} does not declare`,
+			);
+		}
+		// Checked when the round was declared. The graph is immutable, so this holds.
+		const path = findActionTargetPath(execution.graph, declaring.nodeId, step.nodeId);
+		if (!path) {
+			throw new UnexpectedError(
+				`spawned step ${step.id} runs node ${step.nodeId}, which is no action target of node ${declaring.nodeId}`,
+			);
+		}
+
+		// SPIKE: each spawned step gathers the declaring step's inputs again, so a
+		// round of N actions reads the same predecessor rows N times.
+		const nested = declaring.kind === 'spawned';
+		return {
+			declaringStepId,
+			declaringNodeId: declaring.nodeId,
+			round,
+			action,
+			declaringInputs: nested ? [] : await this.gatherInputs(execution, declaring),
+			...(nested ? { declaringAction: await this.spawnedActionFor(execution, declaring) } : {}),
+			kind: path.kind,
+			attachedToNodeId: path.attachedToNodeId,
 		};
 	}
 
@@ -294,7 +425,13 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
+		{
+			executor,
+			inputs,
+			subExecutionResult,
+			continuation,
+			spawnedAction,
+		}: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -307,6 +444,8 @@ export class StepReadyHandler {
 			// If we're resuming from a sub-execution, we pass in the result so the
 			// executor can use it to answer the sub-workflow call.
 			...(subExecutionResult ? { resume: subExecutionResult } : {}),
+			...(continuation ? { continuation } : {}),
+			...(spawnedAction ? { spawnedAction } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -408,7 +547,8 @@ export class StepReadyHandler {
 	 * aren't built yet.
 	 */
 	private executorFor(step: StepRecord, node: GraphNode): IStepExecutor {
-		if (node.type === 'v1-node') {
+		// An `attached` node has the configuration of a `v1-node`, and runs only as a spawned step.
+		if (node.type === 'v1-node' || node.type === 'attached') {
 			const executor = this.dependencies.v1StepExecutor;
 			if (!executor) {
 				throw new UnimplementedError(
@@ -505,6 +645,9 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 		nodeName: node.name,
 		iteration: step.iteration,
 		at: new Date().toISOString(),
+		...(step.kind === 'spawned' && step.declaringStepId && step.callId && step.round !== null
+			? { declaringStepId: step.declaringStepId, round: step.round, callId: step.callId }
+			: {}),
 	};
 }
 

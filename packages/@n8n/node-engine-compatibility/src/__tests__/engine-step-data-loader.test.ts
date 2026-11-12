@@ -26,7 +26,7 @@ const context = {
 } as const;
 
 describe('createEngineStepDataLoader', () => {
-	it('loads the graph and the outputs of every completed step', async () => {
+	it('loads the graph and the outputs of every completed graph step', async () => {
 		const executionStore = {
 			loadExecution: vi.fn().mockResolvedValue({ id: 'exec-1', graph }),
 		} as unknown as ExecutionStore;
@@ -43,6 +43,14 @@ describe('createEngineStepDataLoader', () => {
 				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { from: 'a' } }]] },
 				{ nodeId: 'a', iteration: 1, status: 'completed', outputs: [[{ json: { from: 'a2' } }]] },
 				{ nodeId: 'b', iteration: 0, status: 'running', outputs: null },
+				// a spawned step of `a`, at the same iteration as a graph step: never read
+				{
+					nodeId: 'a',
+					iteration: 0,
+					kind: 'spawned',
+					status: 'completed',
+					outputs: [[{ json: { from: 'tool' } }]],
+				},
 			]),
 		} as unknown as StepStore;
 
