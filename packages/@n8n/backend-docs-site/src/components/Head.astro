@@ -377,3 +377,16 @@ import Default from '@astrojs/starlight/components/Head.astro';
 		retry.addEventListener('click', reset);
 	}
 </script>
+
+<script>
+	// CI deploys each PR to pr-<number>.n8n-backend-docs.pages.dev. On those hosts, a corner
+	// label shows that the page is a preview and links to the PR.
+	const pr = /^pr-(\d+)\./.exec(location.hostname)?.[1];
+	if (pr) {
+		const label = document.createElement('a');
+		label.className = 'preview-label';
+		label.href = `https://github.com/n8n-io/n8n/pull/${pr}`;
+		label.textContent = `Preview of PR #${pr}`;
+		document.body.append(label);
+	}
+</script>

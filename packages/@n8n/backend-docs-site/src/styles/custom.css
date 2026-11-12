@@ -1058,3 +1058,23 @@ mobile-starlight-toc nav {
 	background: var(--sl-color-gray-5);
 	flex-shrink: 0;
 }
+
+/* Corner label on PR previews, added by the script in Head.astro. */
+.preview-label {
+	position: fixed;
+	inset-inline-end: 1rem;
+	inset-block-end: 1rem;
+	z-index: 100;
+	padding: 0.375rem 0.75rem;
+	border-radius: 999px;
+	background: var(--sl-color-accent);
+	color: var(--sl-color-black);
+	font-size: var(--sl-text-xs);
+	font-weight: 600;
+	text-decoration: none;
+	box-shadow: var(--sl-shadow-sm);
+}
+.preview-label:hover {
+	background: var(--sl-color-accent-high);
+	color: var(--sl-color-black);
+}

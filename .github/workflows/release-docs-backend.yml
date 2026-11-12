@@ -1,7 +1,8 @@
 name: 'Release: Backend docs'
 
 # Deploys the backend onboarding site to Cloudflare Pages. A push to master
-# updates https://n8n-backend-docs.pages.dev, and a PR gets a preview URL.
+# updates https://n8n-backend-docs.pages.dev, and a PR gets a preview at
+# https://pr-<number>.n8n-backend-docs.pages.dev.
 
 on:
   push:
@@ -65,5 +66,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/@n8n/backend-docs-site/dist --project-name=n8n-backend-docs --branch=${{ github.head_ref || github.ref_name }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}
+          command: pages deploy packages/@n8n/backend-docs-site/dist --project-name=n8n-backend-docs --branch=${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
