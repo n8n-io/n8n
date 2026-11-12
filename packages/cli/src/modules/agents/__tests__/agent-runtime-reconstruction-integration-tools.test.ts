@@ -19,6 +19,7 @@ import type {
 	UserRepository,
 	CredentialsEntity,
 	ProjectRelationRepository,
+	ProjectRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -389,6 +390,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			logger,
 			agentRepository,
 			projectRelationRepository,
+			mock<ProjectRepository>(),
 			mock<AgentChatAttachmentService>(),
 			agentKnowledgeService,
 			runtimeCacheService,

@@ -15,6 +15,7 @@ import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectRelationRepository,
+	ProjectRepository,
 	TagEntity,
 	TransactionRunner,
 	User,
@@ -26,7 +27,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -83,6 +84,7 @@ function makeService() {
 	const skillRefs = createAgentSkillRefsService();
 	const agentRepository = mock<AgentRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
@@ -153,6 +155,7 @@ function makeService() {
 		mockLogger(),
 		agentRepository,
 		projectRelationRepository,
+		projectRepository,
 		mock<AgentChatAttachmentService>(),
 		agentKnowledgeService,
 		runtimeCacheService,
@@ -186,6 +189,7 @@ function makeService() {
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
+		projectRepository,
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -211,6 +215,44 @@ describe('AgentsService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	describe('resolveOwningProjectId', () => {
+		it('falls back to the personal project when no projectId is given', async () => {
+			const { service, projectRepository } = makeService();
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'personal-project',
+			} as never);
+
+			await expect(service.resolveOwningProjectId(user)).resolves.toBe('personal-project');
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(user.id);
+		});
+
+		it('returns an existing project the user may create agents in', async () => {
+			const { service, projectRepository, projectScopeService } = makeService();
+			projectRepository.exists.mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(true);
+
+			await expect(service.resolveOwningProjectId(user, projectId)).resolves.toBe(projectId);
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, projectId, ['agent:create']);
+		});
+
+		it('rejects a project that does not exist', async () => {
+			const { service, projectRepository } = makeService();
+			projectRepository.exists.mockResolvedValue(false);
+
+			await expect(service.resolveOwningProjectId(user, 'missing-project')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('rejects a project the user lacks agent:create on', async () => {
+			const { service, projectRepository, projectScopeService } = makeService();
+			projectRepository.exists.mockResolvedValue(true);
+			projectScopeService.hasScopes.mockResolvedValue(false);
+
+			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(ForbiddenError);
+		});
 	});
 
 	it.each([
