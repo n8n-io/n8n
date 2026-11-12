@@ -182,7 +182,7 @@
     "sshpk": "1.18.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",
-    "undici": "^7.16.0",
+    "undici": "^7.30.2",
     "uuid": "catalog:",
     "validator": "13.15.20",
     "ws": "8.17.1",
