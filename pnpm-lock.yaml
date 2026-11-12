@@ -1103,7 +1103,7 @@ patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
-  '@google/generative-ai@0.24.0': 81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad
+  '@google/generative-ai@0.24.0': a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17
   '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/google-genai@2.1.24': 30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e
@@ -3746,7 +3746,7 @@ importers:
         version: 1.19.0(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@google/generative-ai':
         specifier: 0.24.0
-        version: 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+        version: 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@huggingface/inference':
         specifier: 4.0.5
         version: 4.0.5
@@ -28455,7 +28455,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@google/generative-ai@0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)': {}
+  '@google/generative-ai@0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.11.0)':
     dependencies:
@@ -29031,7 +29031,7 @@ snapshots:
 
   '@langchain/google-genai@2.1.24(patch_hash=30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))':
     dependencies:
-      '@google/generative-ai': 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+      '@google/generative-ai': 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       uuid: 13.0.1
 

@@ -167,6 +167,43 @@ describe('LmChatGoogleGemini', () => {
 		);
 	});
 
+	describe('when the connection fails', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should retry twice and show the network cause', async () => {
+			vi.useFakeTimers();
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'modelName') return 'models/gemini-2.5-flash';
+				if (name === 'options') return {};
+				return null;
+			});
+			mockedProxyFetch.mockReset();
+			mockedProxyFetch.mockRejectedValue(
+				new TypeError('fetch failed', {
+					cause: Object.assign(new Error('Connect Timeout Error'), {
+						code: 'UND_ERR_CONNECT_TIMEOUT',
+					}),
+				}),
+			);
+
+			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+			const result = (response as ChatGoogleGenerativeAI).invoke('hello').catch((e: unknown) => e);
+			await vi.runAllTimersAsync();
+			const error = await result;
+
+			expect(mockedProxyFetch).toHaveBeenCalledTimes(3);
+			expect(error).toHaveProperty(
+				'message',
+				expect.stringContaining('fetch failed (UND_ERR_CONNECT_TIMEOUT: Connect Timeout Error)'),
+			);
+		});
+	});
+
 	describe('when Gemini returns no candidates', () => {
 		const invokeWithResponse = async (body: object) => {
 			const ctx = mockDeep<ISupplyDataFunctions>();

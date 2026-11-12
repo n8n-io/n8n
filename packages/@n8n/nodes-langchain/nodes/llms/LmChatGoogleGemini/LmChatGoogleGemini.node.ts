@@ -317,6 +317,8 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: options.temperature,
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
+			// LangChain defaults to 6 retries, so a failing connection surfaced only after ~3 minutes
+			maxRetries: 2,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
