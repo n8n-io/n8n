@@ -54,6 +54,7 @@ function mockExecuteFunctions(
 		getInputData: () => [{ json: {} }],
 		continueOnFail: () => continueOnFail,
 		getCredentials: async () => creds,
+		addExecutionHints: () => {},
 		helpers: {
 			constructExecutionMetaData,
 			getSSHClient: () => {
@@ -123,5 +124,66 @@ describe('MySQL Integration - NODE-4174', () => {
 		};
 
 		await expect(router.call(mockExecuteFunctions(params, badCreds, false))).rejects.toThrow();
+	});
+});
+
+describe('MySQL Integration - Select Start After', () => {
+	const executeQuery = async (query: string) =>
+		await router.call(
+			mockExecuteFunctions(
+				{
+					resource: 'database',
+					operation: 'executeQuery',
+					query,
+					options: { queryBatching: 'single', nodeVersion: 2.5 },
+				},
+				credentials,
+			),
+		);
+
+	const selectPage = async (column: string, value: string) =>
+		await router.call(
+			mockExecuteFunctions(
+				{
+					resource: 'database',
+					operation: 'select',
+					table: 'paging_test',
+					limit: 2,
+					sort: {},
+					startAfter: { values: { column, value } },
+					options: { queryBatching: 'single', nodeVersion: 2.5 },
+				},
+				credentials,
+			),
+		);
+
+	beforeAll(async () => {
+		await executeQuery(
+			'CREATE TABLE paging_test (id INT PRIMARY KEY, code VARCHAR(8) UNIQUE, grp INT, INDEX (grp))',
+		);
+		await executeQuery(
+			"INSERT INTO paging_test (id, code, grp) VALUES (1,'g',1),(2,'f',1),(3,'e',1),(4,'d',1),(5,'c',1),(6,'b',1),(7,'a',1)",
+		);
+	});
+
+	test('walks every row once over a unique non-primary column', async () => {
+		const codes: string[] = [];
+		let cursor = '';
+		let pages = 0;
+
+		while (true) {
+			const rows = (await selectPage('code', cursor))[0];
+			pages++;
+			codes.push(...rows.map((row) => row.json.code as string));
+			if (rows.length < 2) break;
+			cursor = rows[rows.length - 1].json.code as string;
+		}
+
+		expect(codes).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+		expect(pages).toBe(4);
+	});
+
+	test('rejects a column without a single-column unique index', async () => {
+		await expect(selectPage('grp', '')).rejects.toThrow('Column "grp" in table "paging_test"');
 	});
 });

@@ -8,11 +8,18 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import type { QueryRunner, QueryValues, QueryWithValues, SortRule } from '../../helpers/interfaces';
+import type {
+	Mysql2Pool,
+	QueryRunner,
+	QueryValues,
+	QueryWithValues,
+	SortRule,
+} from '../../helpers/interfaces';
 import {
 	addSortRules,
 	addWhereClauses,
 	escapeSqlIdentifier,
+	getUniqueKeyColumns,
 	getWhereClauses,
 	prepareErrorItem,
 } from '../../helpers/utils';
@@ -21,6 +28,7 @@ import {
 	sortFixedCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
+	startAfterFixedCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -52,6 +60,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -74,10 +83,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputItems: INodeExecutionData[],
 	runQueries: QueryRunner,
+	_nodeOptions: IDataObject,
+	pool: Mysql2Pool,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
 	const queries: QueryWithValues[] = [];
+	const uniqueColumnsByTable = new Map<string, string[]>();
 
 	for (let i = 0; i < inputItems.length; i++) {
 		try {
@@ -104,6 +116,7 @@ export async function execute(
 
 			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
+			const base = query;
 			[query, values] = addWhereClauses(
 				this.getNode(),
 				i,
@@ -115,10 +128,47 @@ export async function execute(
 
 			const sortRules =
 				((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-
-			[query, values] = addSortRules(query, sortRules, values);
+			let rules = sortRules;
 
 			const returnAll = this.getNodeParameter('returnAll', i, false);
+			if (!returnAll) {
+				const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
+					{}) as IDataObject;
+				const column = String(cursor.column ?? '');
+				const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+
+				if (column !== '') {
+					let uniqueColumns = uniqueColumnsByTable.get(table);
+					if (!uniqueColumns) {
+						uniqueColumns = await getUniqueKeyColumns(pool, table);
+						uniqueColumnsByTable.set(table, uniqueColumns);
+					}
+					if (!uniqueColumns.includes(column.toLowerCase())) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
+							{ itemIndex: i },
+						);
+					}
+
+					if (value !== '') {
+						const where = query.slice(base.length);
+						const predicate = `${escapeSqlIdentifier(column)} > ?`;
+						query = where
+							? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
+							: `${base} WHERE ${predicate}`;
+						values.push(value);
+					}
+
+					// ponytail: the walk is only correct with no Sort rules or Sort = cursor column ASC
+					rules = sortRules.some((rule) => rule.column.toLowerCase() === column.toLowerCase())
+						? sortRules
+						: [...sortRules, { column, direction: 'ASC' }];
+				}
+			}
+
+			[query, values] = addSortRules(query, rules, values);
+
 			if (!returnAll) {
 				const limit = this.getNodeParameter('limit', i, 50);
 				query += ' LIMIT ?';

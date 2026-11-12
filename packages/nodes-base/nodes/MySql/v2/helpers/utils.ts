@@ -1,3 +1,4 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -585,6 +586,21 @@ export function addSortRules(
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
+}
+
+export async function getUniqueKeyColumns(pool: Mysql2Pool, table: string): Promise<string[]> {
+	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
+	const columnsByKey = new Map<string, string[]>();
+	for (const row of rows) {
+		// A functional index part has no Column_name
+		if (Number(row.Non_unique) !== 0 || row.Column_name == null) continue;
+		const key = String(row.Key_name);
+		columnsByKey.set(key, [
+			...(columnsByKey.get(key) ?? []),
+			String(row.Column_name).toLowerCase(),
+		]);
+	}
+	return [...columnsByKey.values()].filter((cols) => cols.length === 1).map(([col]) => col);
 }
 
 export function replaceEmptyStringsByNulls(

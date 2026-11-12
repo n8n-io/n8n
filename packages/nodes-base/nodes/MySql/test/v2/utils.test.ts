@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import type { QueryValues, SortRule, WhereClause } from '../../v2/helpers/interfaces';
+import type { Mysql2Pool, QueryValues, SortRule, WhereClause } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
@@ -11,6 +11,7 @@ import {
 	addSortRules,
 	replaceEmptyStringsByNulls,
 	escapeSqlIdentifier,
+	getUniqueKeyColumns,
 	splitQueryToStatements,
 } from '../../v2/helpers/utils';
 
@@ -475,5 +476,26 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 				expect(utils.getWhereClauses(ctx, 0)).toBe(clauses);
 			},
 		);
+	});
+});
+
+describe('Test MySql V2, getUniqueKeyColumns', () => {
+	it('should return lower-cased single-column unique keys of a qualified table', async () => {
+		const pool = {
+			query: vi.fn().mockResolvedValue([
+				[
+					{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id' },
+					{ Key_name: 'uq_email', Non_unique: 0, Seq_in_index: 1, Column_name: 'Email' },
+					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
+					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
+					{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
+					{ Key_name: 'idx_name', Non_unique: 1, Seq_in_index: 1, Column_name: 'name' },
+				],
+				[],
+			]),
+		} as unknown as Mysql2Pool;
+
+		await expect(getUniqueKeyColumns(pool, 'otherdb.orders')).resolves.toEqual(['id', 'email']);
+		expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `otherdb`.`orders`');
 	});
 });
