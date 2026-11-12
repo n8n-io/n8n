@@ -86,6 +86,7 @@ flowchart TB
     WH --> Q
     M --- P
     Q --> W[Workers]
+    WH --- P
     P --- W
     M --> DB[(Database)]
     WH --> DB

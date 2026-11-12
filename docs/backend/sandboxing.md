@@ -31,7 +31,7 @@ The frontend still evaluates expressions with the legacy engine, but is moving t
 
 A Code node runs JavaScript or Python in a [task runner](https://github.com/n8n-io/task-runner-launcher), i.e. a separate process next to the main in regular mode, or next to the worker in queue mode.
 
-By default (`N8N_RUNNERS_MODE=internal`), the runner is a child process of n8n in the same container. It gets only a set of allowed environment variables, but it shares the files and the OS user of n8n. In `external` mode, the runner is in a sidecar container, so the code cannot reach the memory, environment variables, or files of n8n. In both modes, if the code crashes or runs out of memory, only the runner fails, not the main or the worker.
+By default (`N8N_RUNNERS_MODE=internal`), the runner is a child process of n8n in the same container. It gets only a set of allowed environment variables, but it shares the files and the OS user of n8n. In `external` mode, the runner is in a sidecar container, so the code cannot reach the memory, environment variables, or files of n8n. In both modes, if the code crashes or goes over the heap limit of the runner, only the runner fails. In `internal` mode, the runner and n8n share the memory limit of the container. If the container runs out of memory, the system can stop n8n too.
 
 ## Custom tools
 

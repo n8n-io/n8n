@@ -280,6 +280,8 @@ import Default from '@astrojs/starlight/components/Head.astro';
 	};
 
 	const mark = (pages: Set<string>, key: string) => {
+		// Another tab can save marks after this page loads, so add the stored list first.
+		for (const path of load(key)) pages.add(path);
 		if (pages.has(current)) return;
 		pages.add(current);
 		try {
