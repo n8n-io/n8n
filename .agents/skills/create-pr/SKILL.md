@@ -89,10 +89,10 @@ comma and a space: `fix(core, editor): ...`.
    creating the PR:
    - **Summary**: describe what the PR does
    - **Why**: explain why the change is needed (see Why below)
-   - **How to test**: write the steps that a person follows in the product to see the change work. Include an example workflow if appropriate.
-     Fill the `Test command:` line
-   - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links.
-     Fill the `Docs:` line
+   - **How to test**: write the steps that a person follows in the product to see the change work. Include an example workflow if appropriate
+   - **Test command**: give the command that runs the tests for the change (see How to test below)
+   - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
+   - **Docs**: link the n8n-docs PR or the follow-up ticket, or write "none needed"
 
    Before you create the PR, proofread the body with these checks. Rewrite
    each sentence that fails a check:
@@ -195,7 +195,7 @@ Together, the alternatives must be shorter than the core Why section.
   module via `N8N_ENABLED_MODULES`, an enterprise license, a feature flag, or
   similar), note which env vars/license are needed so the tester can deploy a
   correctly configured instance
-- On the `Test command:` line, give the command that runs the tests for the
+- In the Test command section, give the command that runs the tests for the
   change, for example `pnpm agent:test --filter <package> -- <test-file>`.
   If there are no tests, state why. A bug fix needs a regression test. A
   feature needs tests
@@ -205,7 +205,7 @@ Together, the alternatives must be shorter than the core Why section.
 - Link to GitHub issues using keywords to auto-close:
   - `closes #123` / `fixes #123` / `resolves #123`
 - Link to Community forum posts if applicable
-- On the `Docs:` line, link the n8n-docs PR or the follow-up ticket, or write
+- In the Docs section, link the n8n-docs PR or the follow-up ticket, or write
   "none needed"
 
 ### Backport labels
@@ -269,7 +269,7 @@ letter in the summary.
 
 If a matching plan file was found in a repository plan directory and the user has approved
 including it, add a collapsible section at the end of the PR body (after the
-`Docs:` line, before `EOF`):
+Docs section, before `EOF`):
 
 ```markdown
 <details>

@@ -28,7 +28,12 @@ Include an example workflow if the changes affect Workflow builder, execution or
 If the change needs a feature flag, an environment variable (for example N8N_ENABLED_MODULES), or a license, list them.
 -->
 
-Test command: <!-- Give the command that runs the tests for this change, for example `pnpm agent:test --filter <package> -- <test-file>`. If there are no tests, write why. A bug fix needs a test that fails without the fix. A feature needs tests. -->
+## Test command
+
+<!--
+Give the command that runs the tests for this change, for example `pnpm agent:test --filter <package> -- <test-file>`.
+If there are no tests, write why. A bug fix needs a test that fails without the fix. A feature needs tests.
+-->
 
 ## Related Linear tickets, Github issues, and Community forum posts
 
@@ -39,4 +44,6 @@ https://linear.app/n8n/issue/[TICKET-ID]
 -->
 <!-- Use "closes #<issue-number>", "fixes #<issue-number>", or "resolves #<issue-number>" to automatically close issues when the PR is merged. -->
 
-Docs: <!-- Link the n8n-docs PR or the follow-up ticket, or write "none needed". -->
+## Docs
+
+<!-- Link the n8n-docs PR or the follow-up ticket, or write "none needed". -->

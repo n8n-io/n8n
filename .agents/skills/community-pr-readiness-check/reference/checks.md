@@ -101,7 +101,7 @@ Procedure:
 
 1. Read the template file and extract every `## Heading` (the expected section list).
 2. For each `## Heading` from the template, check the PR body contains a heading with the same text. Treat headings case-insensitively but require the exact text — `## Related Issue` does **not** satisfy `## Related Linear tickets, Github issues, and Community forum posts`.
-3. For the `## Summary` heading specifically, require non-empty content below it (the HTML comment placeholder doesn't count as content).
+3. For the `## Summary`, `## Test command`, and `## Docs` headings, require non-empty content below each (the HTML comment placeholder doesn't count as content).
 4. For the "Related tickets" section: if the heading is present, accept any of these as content: a URL (`http`), a GitHub closing keyword (`closes #N`, `fixes #N`, `resolves #N`), or empty (only the HTML comment). Only flag if the heading is missing entirely.
 
 When the check fails, report **which** section is missing — that's what the contributor message includes.
