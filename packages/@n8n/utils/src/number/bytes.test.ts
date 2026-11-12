@@ -1,4 +1,4 @@
-import { formatBytes, toMb } from './bytes';
+import { formatBytes, toGb, toMb } from './bytes';
 
 describe('formatBytes', () => {
 	test.each([
@@ -26,5 +26,18 @@ describe('toMb', () => {
 		[5 * 1024 * 1024, 5],
 	])('converts %i bytes to %i MB', (input, expected) => {
 		expect(toMb(input)).toBe(expected);
+	});
+});
+
+describe('toGb', () => {
+	test.each([
+		[0, 0],
+		[1024 * 1024 * 1024, 1],
+		[1536 * 1024 * 1024, 1.5],
+		[2000 * 1024 * 1024, 1.95],
+		[500 * 1024 * 1024, 0.49],
+		[1024 * 1024 * 1024 + 1, 1],
+	])('converts %i bytes to %s GB', (input, expected) => {
+		expect(toGb(input)).toBe(expected);
 	});
 });

@@ -40,7 +40,8 @@ vector-stores/   external vector-store connections
 - Keep the names of the agents-module facade (`AgentKnowledgeService`) and of its repository methods while moving. Rename them only together with the schema change that makes them scope-based.
 - Business logic must not import `@n8n/typeorm`. Put operator queries behind use-case-named repository methods.
 - Tool names, descriptions, inputs and outputs stay identical to what the agents module exposes. Sandbox ids stay unchanged.
-- Add an `@Env` property only in the PR that reads it: its JSDoc is exported to the public environment variable reference, so a variable must not appear there before it does something. Follow the `n8n:env-var-docs` skill. The upload limits (`MAX_AGENT_FILE_SIZE_BYTES`, `MAX_AGENT_FILES_PER_UPLOAD`, `MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES` in `@n8n/api-types`) become `KnowledgeConfig` env vars together with the upload middleware and the size check that read them, and with the editor reading the same values from module settings.
+- Add an `@Env` property only in the PR that reads it: its JSDoc is exported to the public environment variable reference, so a variable must not appear there before it does something. Follow the `n8n:env-var-docs` skill.
+- The upload limits live in `knowledge.config.ts` (`KnowledgeConfig`, the `N8N_KNOWLEDGE_*` variables, integer megabytes). The upload middleware and the file service read them, and `settings()` exposes them to the editor as `moduleSettings.knowledge.limits` in bytes, so the editor rejects an upload with the same limits before the request. The defaults equal the constants in `@n8n/api-types`, which the editor falls back to while the module is off. A new limit goes into the same class with the same prefix; never rename a variable, because operators configure it.
 - Log with `logger.scoped('knowledge')`.
 
 ## Disabled module

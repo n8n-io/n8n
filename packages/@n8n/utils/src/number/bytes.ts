@@ -6,6 +6,13 @@ export function toMb(sizeInBytes: number): number {
 }
 
 /**
+ * Convert bytes to gigabytes (rounded to at most two decimals, so 1.5 GB stays 1.5)
+ */
+export function toGb(sizeInBytes: number): number {
+	return Math.round((sizeInBytes / (1024 * 1024 * 1024)) * 100) / 100;
+}
+
+/**
  * Format bytes to human-readable size with appropriate unit (B, KB, or MB)
  */
 export function formatBytes(sizeInBytes: number): string {
