@@ -23,35 +23,25 @@ export function findConverterReasons(nodes: INode[], connections: IConnections):
 	const triggers = nodes.filter((node) => node.disabled !== true && isTriggerNodeType(node.type));
 	const reachable = reachableNodeNames(nodes, connections, triggers);
 
-	const reasons = nodes
+	return nodes
 		.filter((node) => reachable.has(node.name))
 		.flatMap((node) => {
 			// The converter turns the fired trigger into a trigger step and skips its node rules.
 			const nodeReasons =
 				node.disabled === true || isTriggerNodeType(node.type) ? [] : findNodeReasons(node);
 			// The converter checks connection types before it removes disabled nodes.
-			if (hasNonMainConnection(connections, node.name)) {
+			const connectionType = findNonMainConnectionType(connections, node.name);
+			if (connectionType !== undefined) {
 				nodeReasons.push(
 					reason(
 						node,
 						'NON_MAIN_CONNECTION',
-						'has a connection of a type other than main. Engine v2 does not run AI sub-nodes yet.',
+						`has a "${connectionType}" connection. Engine v2 runs only "main" connections.`,
 					),
 				);
 			}
 			return nodeReasons;
 		});
-
-	if (triggers.length > 1) {
-		reasons.push({
-			code: 'MULTIPLE_TRIGGERS',
-			severity: 'warning',
-			message:
-				'The workflow has more than one enabled trigger. Engine v2 runs it only when the caller names the trigger that fired.',
-		});
-	}
-
-	return reasons;
 }
 
 /** With no live trigger the converter does not root the graph, so every node counts. */
@@ -152,14 +142,17 @@ function findSplitInBatchesReasons(node: INode): EngineV2Reason[] {
 }
 
 /** Checks the type of each output group and of each connection in it, as the converter does. */
-function hasNonMainConnection(connections: IConnections, nodeName: string): boolean {
-	return Object.entries(connections[nodeName] ?? {}).some(
-		([connectionType, outputSlots]) =>
-			connectionType !== NodeConnectionTypes.Main ||
-			outputSlots.some((slot) =>
-				(slot ?? []).some((connection) => connection.type !== NodeConnectionTypes.Main),
-			),
-	);
+function findNonMainConnectionType(
+	connections: IConnections,
+	nodeName: string,
+): string | undefined {
+	for (const [connectionType, outputSlots] of Object.entries(connections[nodeName] ?? {})) {
+		if (connectionType !== NodeConnectionTypes.Main) return connectionType;
+		for (const connection of outputSlots.flat()) {
+			if (connection && connection.type !== NodeConnectionTypes.Main) return connection.type;
+		}
+	}
+	return undefined;
 }
 
 function reason(node: INode, code: EngineV2ReasonCode, problem: string): EngineV2Reason {

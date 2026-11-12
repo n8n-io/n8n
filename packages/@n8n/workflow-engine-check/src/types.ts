@@ -26,8 +26,7 @@ export type EngineV2ReasonCode =
 	| 'SPLIT_IN_BATCHES_OPTIONS_EXPRESSION'
 	| 'SPLIT_IN_BATCHES_RESET'
 	| 'SPLIT_IN_BATCHES_BATCH_SIZE'
-	| 'NON_MAIN_CONNECTION'
-	| 'MULTIPLE_TRIGGERS';
+	| 'NON_MAIN_CONNECTION';
 
 /**
  * - `temporary`: engine v2 will support this later. The message tells the user to run
