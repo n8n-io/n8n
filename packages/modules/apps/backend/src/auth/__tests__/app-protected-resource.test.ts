@@ -140,6 +140,12 @@ describe('AppProtectedResource', () => {
 		expect(await resource.canRead(app, user)).toBe(false);
 	});
 
+	it('offers a grant for the app audience without a workflow requirement', async () => {
+		const { resource, app } = setup();
+
+		expect(resource.forApp(app).getGrant?.()).toEqual({ audiences: [url] });
+	});
+
 	it('makes old resources unavailable after unpublish or rename', async () => {
 		const { resource, app, apps } = setup();
 		const descriptor = resource.forApp(app);

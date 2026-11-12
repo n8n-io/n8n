@@ -45,6 +45,8 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 				const current = await currentApp();
 				return !!current && (await this.canAccess(current, user));
 			},
+			// A grant cannot express app access, so a sealed run re-checks only the user.
+			getGrant: () => ({ audiences: [url] }),
 		};
 	}
 
