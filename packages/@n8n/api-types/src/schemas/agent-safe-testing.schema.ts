@@ -70,3 +70,7 @@ export const toolTestCapabilitySchema = z.object({
 	detail: z.string().optional(),
 });
 export type ToolTestCapability = z.infer<typeof toolTestCapabilitySchema>;
+
+export interface AgentTestRunToolsResponse {
+	tools: ToolTestCapability[];
+}
