@@ -138,20 +138,22 @@ describe('N8nAttachment', function describeComponent() {
 		expect(caption.firstElementChild).toHaveTextContent(fileName);
 	});
 
-	it('keeps the full file name before and after hover', async function testHover() {
+	it('starts the marquee when the caption overflows', async function testHover() {
 		const fileName = 'a-very-long-file-name12.pdf';
 		render(N8nAttachment, { props: { fileName, mimeType: 'application/pdf' } });
 
 		const container = screen.getByRole('figure').parentElement;
-		const visibleName = screen.getByTitle(fileName).querySelector('[aria-hidden="true"]');
+		const viewport = screen.getByTitle(fileName).querySelector('[aria-hidden="true"]');
 		expect(container).not.toBeNull();
-		if (!container) return;
+		expect(viewport).not.toBeNull();
+		if (!container || !viewport) return;
+		Object.defineProperty(viewport, 'scrollWidth', { value: 200 });
+		Object.defineProperty(viewport, 'clientWidth', { value: 100 });
 
 		await fireEvent.mouseEnter(container);
-		expect(visibleName).toHaveTextContent(fileName);
-
-		await fireEvent.mouseLeave(container);
-		expect(visibleName).toHaveTextContent(fileName);
+		await nextTick();
+		expect(viewport.style.getPropertyValue('--marquee-distance')).toBe('-100px');
+		expect(viewport.firstElementChild?.className).toContain('scrolling');
 	});
 
 	it('keeps the full name through the return transition', async function testReturn() {
@@ -166,12 +168,12 @@ describe('N8nAttachment', function describeComponent() {
 		await fireEvent.mouseEnter(container);
 		name.setAttribute('style', 'transform: matrix(1, 0, 0, 1, -50, 0)');
 		await fireEvent.mouseLeave(container);
-		expect(viewport).toHaveTextContent(fileName);
+		expect(viewport.className).toContain('marqueeMask');
 
 		const transitionEnd = new Event('transitionend', { bubbles: true });
 		Object.defineProperty(transitionEnd, 'propertyName', { value: 'transform' });
 		await fireEvent(name, transitionEnd);
-		expect(viewport).toHaveTextContent(fileName);
+		expect(viewport.className).not.toContain('marqueeMask');
 	});
 
 	it('renders the attachment as a link that opens in a new tab', function testFileLink() {
