@@ -215,6 +215,11 @@ export interface AgentWhatsAppVerifyTokenResponse {
 	verifyToken: string;
 }
 
+/** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
+export interface AgentWebhookUrlResponse {
+	url: string;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;

@@ -11,6 +11,8 @@ import {
 
 import { logWrapper, getConnectionHintNoticeField, proxyFetch } from '@n8n/ai-utilities';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 export class EmbeddingsMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Mistral Cloud',
@@ -149,7 +151,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
 
 		const embeddings = new MistralAIEmbeddings({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			httpClient,

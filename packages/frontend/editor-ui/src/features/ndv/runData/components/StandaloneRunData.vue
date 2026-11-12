@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { UnexpectedError, type IRunExecutionData } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { inject } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';

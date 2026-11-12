@@ -15,11 +15,11 @@ import { useArtifactThread, type ArtifactThread } from '../artifactThread';
  *
  * Reuses the per-artifact editing-lock signals (`isAgentEditingWorkflow` /
  * `isAgentEditingAgent`), so the indicator covers the same window as the
- * editing lock: from sub-agent spawn (or first mutating tool call) until the
- * run settles. Data tables have no lock signal and are not tracked.
+ * editing lock: from the first mutating tool call until the run settles.
+ * Data tables have no lock signal and are not tracked.
  *
  * Agents selected in an active run count even before they are produced: the
- * orchestrator can read and ask about an existing draft before its first write.
+ * agent can read and ask about an existing draft before its first write.
  *
  * Pass `runtime` from the component that *provides* the thread — it can't
  * inject what it provides. Everything below it just calls this with no
@@ -29,22 +29,13 @@ export function useBuildingArtifactIds(runtime?: ArtifactThread): ComputedRef<Se
 	const thread = runtime ?? useArtifactThread();
 
 	return computed(() => {
-		const ids = new Set<string>();
-		for (const message of thread.messages) {
-			if (!message.agentTree) continue;
-			for (const agentId of getActiveSelectedAgentIds(message.agentTree)) ids.add(agentId);
-		}
+		const turns = thread.artifactTurns;
+		const ids = getActiveSelectedAgentIds(turns);
 		for (const entry of thread.producedArtifacts.values()) {
 			if (entry.type !== 'workflow' && entry.type !== 'agent') continue;
 			if (ids.has(entry.id)) continue;
 			const isEditing = entry.type === 'workflow' ? isAgentEditingWorkflow : isAgentEditingAgent;
-			for (const message of thread.messages) {
-				if (!message.agentTree) continue;
-				if (isEditing(message.agentTree, entry.id)) {
-					ids.add(entry.id);
-					break;
-				}
-			}
+			if (isEditing(turns, entry.id)) ids.add(entry.id);
 		}
 		return ids;
 	});

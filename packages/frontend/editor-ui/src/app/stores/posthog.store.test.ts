@@ -11,6 +11,7 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 } from '@/app/constants';
 import {
@@ -30,7 +31,6 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -218,6 +218,55 @@ describe('Posthog store', () => {
 
 			posthog.reset();
 			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
+		it('enables autocapture when the server-evaluated flag is on', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					autocapture: {
+						element_attribute_ignorelist: expect.arrayContaining([
+							'data-node-name',
+							'title',
+							'alt',
+							'data-value',
+						]),
+					},
+				}),
+			);
+		});
+
+		it('masks the text of captured elements', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ mask_all_text: true }),
+			);
+		});
+
+		it('keeps autocapture off when the flag is off', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
+		});
+
+		it('keeps autocapture off when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
 		});
 
 		it('disables client-side flag refetch when flags are bootstrapped', () => {

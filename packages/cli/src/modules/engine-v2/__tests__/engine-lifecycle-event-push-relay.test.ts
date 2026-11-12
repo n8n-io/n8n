@@ -49,6 +49,18 @@ const stepFailed: LifecycleEvent = {
 	at: '2026-08-25T10:00:01.500Z',
 };
 
+const stepWaiting: LifecycleEvent = {
+	...stepFields,
+	type: 'step:waiting',
+	at: '2026-08-25T10:00:01.200Z',
+};
+
+const stepResumed: LifecycleEvent = {
+	...stepFields,
+	type: 'step:started',
+	at: '2026-08-25T10:00:01.300Z',
+};
+
 describe('EngineLifecycleEventPushRelay', () => {
 	let push: Push;
 	let logger: Logger;
@@ -235,6 +247,20 @@ describe('EngineLifecycleEventPushRelay', () => {
 			});
 		});
 
+		it('reports success without data when the engine withheld the outputs', () => {
+			register();
+
+			relay.relay([
+				stepStarted,
+				{ ...stepFields, type: 'step:completed', at: '2026-08-25T10:00:01.500Z' },
+			]);
+
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('success');
+			expect(after.data.data).not.toHaveProperty('error');
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
+		});
+
 		it('still reports the outcome when the start was lost', () => {
 			register();
 
@@ -312,6 +338,80 @@ describe('EngineLifecycleEventPushRelay', () => {
 
 			const { error } = sentOfType('nodeExecuteAfter')[0].data.data;
 			expect(JSON.stringify(error)).toContain('Node execution failed');
+		});
+	});
+
+	describe('step:waiting', () => {
+		it('marks the node waiting with the start executionIndex and sends no data message', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting]);
+
+			const [before] = sentOfType('nodeExecuteBefore');
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('waiting');
+			expect(after.data.data.executionIndex).toBe(before.data.data.executionIndex);
+			expect(after.data.data.error).toBeUndefined();
+			expect(after.data.itemCountByConnectionType).toEqual({});
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
+		});
+
+		it('still reports the outcome after the step resumes', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepResumed, stepCompleted]);
+
+			const statuses = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionStatus);
+			expect(statuses).toEqual(['waiting', 'success']);
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(1);
+		});
+
+		it('shows the node running again when the step resumes, with the first start', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepResumed]);
+
+			const [first, resumed] = sentOfType('nodeExecuteBefore');
+			expect(resumed.data.data).toEqual(first.data.data);
+			expect(resumed.data.sequenceNumber).toBeGreaterThan(first.data.sequenceNumber);
+		});
+
+		it('shows the resumed run on redelivery when the first send failed', () => {
+			register();
+			relay.relay([stepStarted, stepWaiting]);
+			vi.mocked(push.send).mockImplementationOnce(() => {
+				throw new Error('socket gone');
+			});
+
+			relay.relay([stepResumed, stepResumed]);
+
+			// The first start, the failed attempt and the redelivery.
+			expect(sentOfType('nodeExecuteBefore')).toHaveLength(3);
+		});
+
+		it('shows a second wait after the step resumes', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepResumed, stepWaiting]);
+
+			const statuses = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionStatus);
+			expect(statuses).toEqual(['waiting', 'waiting']);
+		});
+
+		it('ignores a redelivered wait, since the editor appends every waiting run', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepWaiting]);
+
+			expect(sentOfType('nodeExecuteAfter')).toHaveLength(1);
+		});
+
+		it('still reports the wait when the start was lost', () => {
+			register();
+
+			relay.relay([stepWaiting]);
+
+			expect(sentOfType('nodeExecuteAfter')[0].data.data.executionStatus).toBe('waiting');
 		});
 	});
 

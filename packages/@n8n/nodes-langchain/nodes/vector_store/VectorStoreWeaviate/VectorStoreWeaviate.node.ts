@@ -2,14 +2,14 @@ import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-import {
-	UnexpectedError,
-	type IDataObject,
-	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyOptions,
+import type {
+	IDataObject,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 } from 'n8n-workflow';
-import { type TimeoutParams } from 'weaviate-client';
+import { type MetadataKeys, type TimeoutParams } from 'weaviate-client';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
@@ -62,18 +62,21 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const args = this.args;
 
 		if (args.hybridQuery) {
+			const returnMetadata: MetadataKeys | undefined = args.hybridExplainScore
+				? ['explainScore']
+				: undefined;
 			const options = {
 				limit: k ?? undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
 				alpha: args.alpha ?? undefined,
 				vector: query,
-				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				filters: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
 					? args.queryProperties.split(',').map((prop) => prop.trim())
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
-				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
+				returnMetadata,
 			};
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {

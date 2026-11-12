@@ -7,8 +7,9 @@
 | activeVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) |  |
 | availableInMCP | boolean | false | false |  |  | Whether MCP clients granted agent scopes may operate on this agent |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) [public.agents_tags](public.agents_tags.md) |  |  |
 | integrations | json | '[]'::json | false |  |  |  |
+| isArchived | boolean | false | false |  |  | Whether the agent is archived: hidden, unpublished and read-only |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | publicationRevision | integer | 0 | false |  |  |  |
@@ -34,6 +35,7 @@
 | agents_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_id_not_null | n | NOT NULL id |
 | agents_integrations_not_null | n | NOT NULL integrations |
+| agents_isArchived_not_null | n | NOT NULL "isArchived" |
 | agents_name_not_null | n | NOT NULL name |
 | agents_publicationRevision_not_null | n | NOT NULL "publicationRevision" |
 | agents_revision_not_null | n | NOT NULL revision |
@@ -78,6 +80,7 @@ erDiagram
 "public.agents_observation_cursors" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.agents" {
@@ -86,6 +89,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
   integer publicationRevision
@@ -136,6 +140,7 @@ erDiagram
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agent_channel_status" {
@@ -328,9 +333,14 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -354,6 +364,10 @@ erDiagram
   text text
   integer tokenCount
   timestamp_3__with_time_zone updatedAt
+}
+"public.agents_tags" {
+  varchar_36_ agentId FK
+  varchar_36_ tagId FK
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt

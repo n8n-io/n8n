@@ -1981,8 +1981,8 @@ export class InstanceAiEventsQuery extends Z.class({
 /** Ceilings for a single thread-history read: `limit` bounds the rows (and the
  *  tree hydration hanging off them) one request can pull, `page` bounds the
  *  offset scan behind it. Both sit above any real client — the UI's largest page
- *  is 100 messages and it never pages past the first — so they only ever bite a
- *  hand-crafted request. */
+ *  is 100 messages, and it loads older pages with `cursor`, not `page` — so they
+ *  only ever bite a hand-crafted request. */
 export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
@@ -1994,7 +1994,10 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 		.min(1)
 		.max(INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT)
 		.default(INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT),
+	/** Offset paging for `raw` reads. Rich reads page with `cursor`. */
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
+	/** `nextCursor` of the previous rich read: returns the messages before it. */
+	cursor: z.string().min(1).max(512).optional(),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
@@ -2291,6 +2294,8 @@ export interface InstanceAiRichMessagesResponse {
 	threadId: string;
 	projectId?: string;
 	messages: InstanceAiMessage[];
+	/** Pass as `cursor` to load the older messages. Absent when the page reaches the start of the thread. */
+	nextCursor?: string;
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
 	/**
