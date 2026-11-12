@@ -87,19 +87,20 @@ comma and a space: `fix(core, editor): ...`.
 7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
-   - **Summary**: describe what the PR does and why (see PR Body Guidelines below)
-   - **How to test**: write the steps that a person follows in the product to see the change work. Include an example workflow if appropriate
+   - **Summary**: what the PR does and why, plus any surprises (see PR Body Guidelines below)
+   - **How to test**: the steps that a person follows in the product to see the change work
    - **Test command**: give the command that runs the tests for the change (see How to test below)
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
    - **Docs**: link the n8n-docs PR or the follow-up ticket, or write "none needed"
 
    Before you create the PR, proofread the body with these checks. Rewrite
    each sentence that fails a check:
-   1. The length of the Summary matches the complexity of the problem. If
-      not, first remove the details that the reviewer reads in the diff.
-   2. Each sentence names who does what: a component, a process, or a person
-      as the subject, with a plain technical verb.
-   3. Each domain term has a plain definition where it first appears.
+   1. Each sentence tells the reviewer something that the diff does not
+      show. Delete the sentences that only restate the diff.
+   2. Each Summary sentence after the first two describes a surprise (see
+      Summary Section). If not, delete it.
+   3. Each sentence uses the exact technical term: the component, function,
+      API, or mechanism, with a plain technical verb.
    4. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
@@ -147,48 +148,57 @@ environment from a webhook sections in `.github/WORKFLOWS.md`.
 
 Based on `.github/pull_request_template.md`.
 
-Write a concise Summary that says what the PR does and why. Keep its length
-in proportion to the complexity of the problem that the PR solves. A small
-fix needs one or two sentences. A large PR rarely needs more than about 200
-words. Write for a reviewer who does not know this area of the code: the
-reviewer must understand the change before they open the diff. Use ASD-STE100
-Simplified Technical English: short sentences, active voice.
+Keep the description short. The reviewer reads the diff for the details. The
+description gives only what the diff cannot show: why the change exists, and
+what could surprise the reviewer. If nothing is surprising, the Summary is one
+or two sentences and nothing more.
+
+Write for an engineer. Use exact technical terms, and do not simplify them.
+Use ASD-STE100 Simplified Technical English: short sentences, active voice,
+plain technical verbs, no metaphors.
 
 ### Summary Section
-1. If the reader needs background, start with one to three sentences of it.
-2. State what the PR does. Write **prose** about behaviour, not a list of code
-   edits. Name a class or a function when it represents a core concept and it
-   helps the reader to navigate the change.
-3. State why the change is needed: the problem or the constraint that makes
-   the pre-existing code unfit.
-4. If the PR changes no product code, say so in the first sentence
-   (for example: "This PR only adds tests.").
-5. Define each domain term in plain words where it first appears. Do not use
-   a ticket ID or an internal name as an explanation.
-6. Leave out details that the reviewer reads in the diff: error cases, status
-   codes, renamed fields, the order of calls, file lists, test names. Mention
-   one only when it changes behaviour that a reviewer could miss. Also leave
-   out what reviewers already know (framework behaviour).
-7. Use plain technical verbs, not metaphors ("passes the value", not
-   "hands the value" or "lets the value through").
-8. If there are accepted gaps, or changes for existing code paths, state them
-   in a separate short paragraph.
-9. Add a rejected alternative only when a reviewer would otherwise ask about
-   it. Use one or two sentences: state the concrete reason it fails.
-10. Include screenshots or videos for UI changes.
+1. Start with one or two sentences: what the PR does and why. Name the
+   component, function, API, or mechanism that changes.
+2. Stop there, unless the change has one of these surprises. For each surprise
+   that applies, add one short paragraph:
+   - **Unexpected behaviour:** a change in behaviour for users or for other
+     code paths, a changed default, a migration, or a side effect outside the
+     obvious scope.
+   - **Technical challenge:** a root cause that is not obvious, a constraint
+     that forced the design, a workaround, or a known gap or follow-up.
+   - **Rejected alternative:** only when a reviewer would suggest it. Give one
+     sentence with the concrete reason it fails.
+3. Leave out what the diff shows: file lists, renamed fields, call order, test
+   names, error cases, and descriptions of the code. Leave out framework
+   behaviour that reviewers know.
+4. Do not add background, an introduction that repeats the title, or a
+   closing sentence.
+5. Define an n8n-internal term only if an engineer from another team would not
+   know it. Use one short clause.
+6. Include screenshots or videos for UI changes.
+
+Examples of a complete Summary for a change with no surprises:
+
+> `rabbitmqConnectQueue` bound queues in a `forEach` with an `async` callback,
+> so the RabbitMQ Trigger returned the channel before the bindings existed.
+> This PR awaits each binding in a `for...of` loop.
+
+> `AGENTS.md` referred to the `design-system` skill, which is now
+> `n8n:ui-design`. This PR changes only documentation.
 
 ### How to test Section
-- Write steps for a person who tests the product change by hand: what to set
-  up, what to do in the n8n UI or API, and what result to expect
-- Include an example workflow if appropriate
-- If the feature is gated in a default n8n instance (requires a non-default
-  module via `N8N_ENABLED_MODULES`, an enterprise license, a feature flag, or
-  similar), note which env vars/license are needed so the tester can deploy a
-  correctly configured instance
+- Write short steps for a person who tests the product change by hand: the
+  setup, the action in the n8n UI or API, and the expected result
+- Add an example workflow only if the test needs one
+- If the change needs a non-default module (`N8N_ENABLED_MODULES`), an
+  enterprise license, a feature flag, or similar, give the setting
+- If the change has no behaviour that a person can see (refactor, CI, docs),
+  write one line that says so
 - In the Test command section, give the command that runs the tests for the
   change, for example `pnpm agent:test --filter <package> -- <test-file>`.
-  If there are no tests, state why. A bug fix needs a regression test. A
-  feature needs tests
+  If there are no tests, give the reason in one line. A bug fix needs a
+  regression test. A feature needs tests
 
 ### Related Links Section
 - Link to Linear ticket: `https://linear.app/n8n/issue/[TICKET-ID]`
