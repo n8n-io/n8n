@@ -1,0 +1,68 @@
+packages/cli/test/integration/license-metrics.repository.test.ts
+  s_4a3382d717bf3e::t_4a3a3283d5f0f4 44-49,53-61,63-82
+  s_4a3382d717bf3e::t_8170bfd6987da2 33
+  s_4a3382d717bf3e::t_79e99d489e7e9d 41-43,50-52,62,83-90,128-129,138-139
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4a3382d717bf3e::t_31db16b37beec6 871,972,1042,1191
+  s_4a3382d717bf3e::t_d8728c1f87cf9f 18,385,388-395
+  s_4a3382d717bf3e::t_4cac8b3d2df6ca 396
+packages/@n8n/db/src/entities/agent-execution-statistics.ts
+  s_4a3382d717bf3e::t_d8728c1f87cf9f 1-14
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_4a3382d717bf3e::t_8170bfd6987da2 78-79
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4a3382d717bf3e::t_73952e2cf773ea 3957
+  s_4a3382d717bf3e::t_8170bfd6987da2 28,246,323,328
+  s_4a3382d717bf3e::t_4a3a3283d5f0f4 2282,2413,2484,3016,3074-3083,3086-3088,3114-3120,3467,3903
+  s_4a3382d717bf3e::t_79e99d489e7e9d 2327,2462,2506,3046,3068-3073,3084-3085,3089-3090,3092,3110,3136,3514
+packages/cli/test/migration/1794319355722-create-agent-execution-statistics.test.ts
+  s_4a3382d717bf3e::t_b4908358beed8e 1-41
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_4a3382d717bf3e::t_d52d09f0301a6a 8,11-15,27
+  s_4a3382d717bf3e::t_2d60bb642a46bc 30-32,48-49
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_4a3382d717bf3e::t_8170bfd6987da2 1,340
+packages/@n8n/db/src/migrations/common/1794319355722-CreateAgentExecutionStatistics.ts
+  s_4a3382d717bf3e::t_d79c56edc2f6ba 1-3,9-10,13-14
+  s_4a3382d717bf3e::t_d8728c1f87cf9f 4-8,11-12
+packages/@n8n/db/src/entities/index.ts
+  s_4a3382d717bf3e::t_d8728c1f87cf9f 9,124,236
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_4a3382d717bf3e::t_d52d09f0301a6a 364
+  s_4a3382d717bf3e::t_4a3a3283d5f0f4 376-379,401-418
+  s_4a3382d717bf3e::t_8173d680ceb34d 372-375,428
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_4a3382d717bf3e::t_4a3a3283d5f0f4 536-544,546,548-553,556-557,560-565
+  s_4a3382d717bf3e::t_79e99d489e7e9d 545,547,554-555,558-559,566-575
+  s_4a3382d717bf3e::t_8170bfd6987da2 82,123-124,158
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_4a3382d717bf3e::t_8170bfd6987da2 1,1552
+packages/@n8n/db/src/repositories/license-metrics.repository.ts
+  s_4a3382d717bf3e::t_da631439f22ff1 34,39-43
+  s_4a3382d717bf3e::t_4a3a3283d5f0f4 53-55
+  s_4a3382d717bf3e::t_d8728c1f87cf9f 3-5,28-33,35-38,44-52,56-65,83-84,108-109
+docs/generated/postgres-schema/README.md
+  s_4a3382d717bf3e::t_c520bab8ff50af 26,686-689
+docs/generated/postgres-schema/public.agent_execution_statistics.md
+  s_4a3382d717bf3e::t_cd522e7319522c 1-38
+docs/generated/sqlite-schema/README.md
+  s_4a3382d717bf3e::t_ac432242faaa6a 26,672-675
+docs/generated/sqlite-schema/agent_execution_statistics.md
+  s_4a3382d717bf3e::t_0e472d02b22347 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "304513e9431eff0b15f16a950587b42c82f58f15",
+  "prompts": {},
+  "sessions": {
+    "s_4a3382d717bf3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c564-665d-70f2-a96c-b4cc9c552153",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

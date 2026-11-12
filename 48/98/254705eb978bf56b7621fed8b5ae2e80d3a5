@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_ee8a607eb32020 74
+  s_dfe3f914c8bb46::t_327f8a80c3ac07 31-41,64,66,83-87,91-97,119,127-133,137,140-142,154,248-256
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_7c7e8af72ee704 25,41-43
+  s_dfe3f914c8bb46::t_d94bafb9a7a087 7-22
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_be883f2d7089c2 32-46
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_b96f3a27602ddf 14
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_baa4600669ea9f 191-193,205-216
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_dfe3f914c8bb46::t_4e3bfb9bc09c7a 3,8,23-37
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_9cc21b11500462 843,852-858
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_1b0a9ed2885a00 15,22-34,59-61,66
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_99c8a2e7e3114e 1-2,146-160
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_5f493be63fb14f 47-56,166,195-205,234,237-238,310-483
+packages/cli/src/modules/agents/approval/__tests__/agent-hitl-workflow.repository.test.ts
+  s_dfe3f914c8bb46::t_3bfcdb5db46f7a 1-41
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_a42adb47c3bf3a 10,13,84-97
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-suspension-cards.test.ts
+  s_dfe3f914c8bb46::t_53581579ca6546 37-47
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_dfe3f914c8bb46::t_6d8b1171c23fe3 3,114-124
+packages/cli/src/modules/agents/repositories/agent-hitl-workflow.repository.ts
+  s_dfe3f914c8bb46::t_e13eb45960e82f 1-36
+packages/cli/test/integration/agents/agent-hitl-workflow.integration.test.ts
+  s_dfe3f914c8bb46::t_be3a415c05c0af 1-47
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_467b4ad8cc5e89 30-32,41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_2cc8a870d86298 3,212-227
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlPanel.test.ts
+  s_dfe3f914c8bb46::t_a3b55673c40d28 1-85
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_dfe3f914c8bb46::t_be7b5c254dac25 59-84
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_598574948868e8 387-396
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_0feef4b1505cd1 20,29,49
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_844a0ddb44ae1e 12,34,58,236-240,276-287
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlPanel.vue
+  s_dfe3f914c8bb46::t_640211e70b1f04 6-8,23,47-48,75-79,81-89,91-107,116,123-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4898254705eb978bf56b7621fed8b5ae2e80d3a5",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

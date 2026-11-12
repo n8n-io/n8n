@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/scripts/distribution-images.mjs
+  s_b2c8dff9da12f0::t_ffc766f7e0c3ec 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "122cc788bd651c03b71629311799cf23836297e9",
+  "prompts": {},
+  "sessions": {
+    "s_b2c8dff9da12f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3daee663-6a84-4afa-ac29-c0d42efb43a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.ts
+  s_a1d66d64c63009::t_e1c565db0b5ba1 10,130
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.ts
+  s_a1d66d64c63009::t_e1c565db0b5ba1 52-79,86,127
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.ts
+  s_a1d66d64c63009::t_e1c565db0b5ba1 17,122
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.test.ts
+  s_a1d66d64c63009::t_6da28f81e1bb7b 7-12,250-270
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.test.ts
+  s_a1d66d64c63009::t_6da28f81e1bb7b 4-7,12,14-19,64-90,93-99
+  s_a1d66d64c63009::t_56d2c88437a022 91-92
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ChatHubVectorStorePinecone.node.ts
+  s_a1d66d64c63009::t_e1c565db0b5ba1 14,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0d00349168160c42499df593d34f97be70ac7c3",
+  "prompts": {},
+  "sessions": {
+    "s_a1d66d64c63009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3047a3-60ee-4c59-bccd-2836cb5cb5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

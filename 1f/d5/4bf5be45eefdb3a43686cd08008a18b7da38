@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_08690fb8a4caf5::t_a652a1dfce78dd 92-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fd54bf5be45eefdb3a43686cd08008a18b7da38",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

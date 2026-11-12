@@ -1,0 +1,14 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ff6b86e7ebbc4be143266873ac9139409b54891",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

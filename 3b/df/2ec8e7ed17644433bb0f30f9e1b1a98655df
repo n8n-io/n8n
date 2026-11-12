@@ -1,0 +1,92 @@
+packages/cli/src/webhooks/__tests__/webhook-server.test.ts
+  s_bbdff09dde7545::t_5c5985a1a53d51 10
+  s_bbdff09dde7545::t_8620a529258296 59,61-62,66
+packages/cli/src/chat/__tests__/chat-server.test.ts
+  s_bbdff09dde7545::t_bb213b46a5801c 57
+  s_bbdff09dde7545::t_5c652433066d3a 3
+  s_bbdff09dde7545::t_7f8cce8463bf18 37
+  s_bbdff09dde7545::t_546952e1f7b9a5 56
+  s_bbdff09dde7545::t_53a32ebd0427cc 40,60
+packages/cli/src/upgrade-router.ts
+  s_bbdff09dde7545::t_5496b9a7f029a5 3,5-8,34-36,38-42
+  s_bbdff09dde7545::t_4f580db63bdf51 9-11,32-33
+  s_bbdff09dde7545::t_de29fe0aea7602 37
+  s_bbdff09dde7545::t_6e83a91b0a569a 1-2,4,12-31
+packages/cli/src/server.ts
+  s_bbdff09dde7545::t_80094d58c1684e 33
+  s_bbdff09dde7545::t_52681b6e7a2322 574-579,581,583
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_bbdff09dde7545::t_f036a313b10375 15,17
+  s_bbdff09dde7545::t_1155e0b96c3c3e 42
+  s_bbdff09dde7545::t_062e78ea8cc04a 39-40,43-44
+  s_bbdff09dde7545::t_b1e85d0feb43aa 14,16
+  s_bbdff09dde7545::t_53da9306a21369 7
+  s_bbdff09dde7545::t_f912574cfff5f0 41
+  s_bbdff09dde7545::t_147f4dabe98f1b 6
+  s_bbdff09dde7545::t_ba4cb5a2ba3af8 30
+  s_bbdff09dde7545::t_364ee984f9d7de 18
+packages/cli/src/chat/chat-server.ts
+  s_bbdff09dde7545::t_df5e52eba946df 25
+  s_bbdff09dde7545::t_b20b19c065d04a 23
+  s_bbdff09dde7545::t_ac8d0fb667b63c 17,22
+  s_bbdff09dde7545::t_69dce7f722a15e 9
+  s_bbdff09dde7545::t_ebecb9d91e89db 24
+packages/cli/src/push/index.ts
+  s_bbdff09dde7545::t_523146e57dfc23 66-69,72-73
+  s_bbdff09dde7545::t_8fc52fe910a4b7 15
+  s_bbdff09dde7545::t_1fc7d29b236ba0 70
+  s_bbdff09dde7545::t_8d3e94c88f425c 71
+packages/cli/src/abstract-server.ts
+  s_bbdff09dde7545::t_0bc34e51437197 22
+  s_bbdff09dde7545::t_3eb2d7fe977958 145-147
+  s_bbdff09dde7545::t_6e0bfbf7893ef5 288
+packages/cli/src/webhooks/webhook-server.ts
+  s_bbdff09dde7545::t_05cd9aabb3ddff 25-26
+  s_bbdff09dde7545::t_2c924e404ba620 6
+packages/cli/src/push/__tests__/index.test.ts
+  s_bbdff09dde7545::t_84716b335a8728 16
+  s_bbdff09dde7545::t_7f495c47146c57 50-51,56,60,63-65,70,81,89,96
+  s_bbdff09dde7545::t_8e4d5fe3b3bdbd 5
+packages/cli/src/modules/instance-ai/__tests__/browser-use-server.test.ts
+  s_bbdff09dde7545::t_d9d4f38eee3456 14-15
+  s_bbdff09dde7545::t_00f796ab44e876 37
+packages/cli/src/__tests__/upgrade-routing.test.ts
+  s_bbdff09dde7545::t_a66f39df97309f 38-47
+  s_bbdff09dde7545::t_e8734f6bd278b3 65-68
+  s_bbdff09dde7545::t_51a094ecb55423 1-14,16-19,22-30,32-37,74-75,78-81,84-88,94-101,103-106,128-151,154,162
+  s_bbdff09dde7545::t_49fb876e068d2d 89-93
+  s_bbdff09dde7545::t_e4fb371bf49441 153
+  s_bbdff09dde7545::t_0fea92a8bcf044 31
+  s_bbdff09dde7545::t_11eb3ef6e8b1da 155-161
+  s_bbdff09dde7545::t_28d114adc12845 152
+  s_bbdff09dde7545::t_302124b4b688a9 55
+  s_bbdff09dde7545::t_3580c84d18fd22 20
+  s_bbdff09dde7545::t_a93fc242128bb6 64
+  s_bbdff09dde7545::t_caeeab4b95eb1e 102,117,120-123
+  s_bbdff09dde7545::t_c3e3fe66010c20 110-115
+  s_bbdff09dde7545::t_979e0e59d604a4 53
+  s_bbdff09dde7545::t_582facf07203d1 76-77,82
+  s_bbdff09dde7545::t_1ca892dee76f65 15
+  s_bbdff09dde7545::t_84ad5778e72ae9 21
+  s_bbdff09dde7545::t_2e83c9b2e60ab1 48-52,54,56-63,72-73
+  s_bbdff09dde7545::t_9746eea273edcb 107,118-119,124,126-127
+  s_bbdff09dde7545::t_2167795fd92715 108-109,116,125
+  s_bbdff09dde7545::t_b13970a1dc63da 69-71
+  s_bbdff09dde7545::t_2770ad723c2586 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3bdf2ec8e7ed17644433bb0f30f9e1b1a98655df",
+  "prompts": {},
+  "sessions": {
+    "s_bbdff09dde7545": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9be07d-342d-4c2d-b886-410aa08a5488",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

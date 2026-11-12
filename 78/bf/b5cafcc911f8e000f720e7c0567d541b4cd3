@@ -1,0 +1,23 @@
+packages/@n8n/utils/src/object/rename-record-key.ts
+  s_fdc21302a0e47a::t_521f2c18bbf9de 3,10
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_fdc21302a0e47a::t_6404715ddd448c 437-456
+packages/@n8n/utils/src/object/rename-record-key.test.ts
+  s_fdc21302a0e47a::t_2de92b9652e7c7 23-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78bfb5cafcc911f8e000f720e7c0567d541b4cd3",
+  "prompts": {},
+  "sessions": {
+    "s_fdc21302a0e47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a376b60-3f3c-43fe-bc09-dde3e877902d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
