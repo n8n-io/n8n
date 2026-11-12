@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 
 import { PUBLISHED_URL, testApp, testVersion } from '../../__tests__/fixtures';
 import { getAppPublishPreview, publishApp } from '../../apps.api';
@@ -290,6 +291,29 @@ describe('AppPublishDialog', () => {
 			await userEvent.click(screen.getByTestId('app-publish-resources'));
 
 			expect(screen.queryByTestId('app-publish-resources-error')).not.toBeInTheDocument();
+		});
+
+		it('ignores an older preview response that arrives after a newer one', async () => {
+			type Preview = { resources: Array<typeof sales | typeof support> };
+			let resolveFirst: (value: Preview) => void = () => {};
+			vi.mocked(getAppPublishPreview).mockReturnValueOnce(
+				new Promise((done) => {
+					resolveFirst = done;
+				}),
+			);
+			vi.mocked(getAppPublishPreview).mockResolvedValueOnce({ resources: [support] });
+			vi.mocked(publishApp).mockRejectedValue(new Error('denied'));
+			renderComponent();
+
+			await userEvent.click(await screen.findByTestId('app-publish-dialog-confirm'));
+			await screen.findByTestId('app-publish-resource-support');
+			resolveFirst({ resources: [sales, support] });
+
+			await flushPromises();
+
+			expect(getAppPublishPreview).toHaveBeenCalledTimes(2);
+			expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-resource-support')).toBeInTheDocument();
 		});
 
 		it('reloads the list after a failed publish', async () => {

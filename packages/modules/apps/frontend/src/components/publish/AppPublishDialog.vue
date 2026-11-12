@@ -56,7 +56,10 @@ const showResources = computed(
 );
 const canPublish = computed(() => appVersionNameSchema.safeParse(label.value).success);
 
+let latestLoad = 0;
+
 async function loadResources() {
+	const load = ++latestLoad;
 	const versionId = props.version.id;
 	loadingResources.value = true;
 	resourcesLoadFailed.value = false;
@@ -67,14 +70,14 @@ async function loadResources() {
 			props.app.id,
 			versionId,
 		);
-		if (versionId === props.version.id) resources.value = preview.resources;
+		if (load === latestLoad) resources.value = preview.resources;
 	} catch {
-		if (versionId === props.version.id) {
+		if (load === latestLoad) {
 			resources.value = [];
 			resourcesLoadFailed.value = true;
 		}
 	} finally {
-		if (versionId === props.version.id) loadingResources.value = false;
+		if (load === latestLoad) loadingResources.value = false;
 	}
 }
 

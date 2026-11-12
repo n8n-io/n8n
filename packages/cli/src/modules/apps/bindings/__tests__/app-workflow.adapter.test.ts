@@ -381,17 +381,13 @@ describe('AppWorkflowAdapter', () => {
 			});
 		});
 
-		it('reports a changed draft even when the published version cannot run from an app', async () => {
+		it('reports nothing for a draft that cannot run from an app', async () => {
 			const { adapter, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(
 				workflow({ nodes: [], versionId: 'v2', activeVersionId: 'v1' }),
 			);
 
-			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
-				name: 'Flow',
-				published: true,
-				hasChanges: true,
-			});
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
 		});
 
 		it('reports nothing for a workflow that is not in the project', async () => {

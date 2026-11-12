@@ -170,7 +170,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			workflowId: binding.workflowId,
 			workflowName: '',
 		});
-		if (!draft) return null;
+		if (!draft || getWorkflowToolIncompatibilityReason(draft) !== null) return null;
 		const published = draft.activeVersionId !== null;
 		return {
 			name: draft.name,
