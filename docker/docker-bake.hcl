@@ -45,6 +45,15 @@ variable "PC_RUNTIME_IMAGE" {
   default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc@sha256:757a7ca4022a4a2aebdc6e1f07e9d08016e446994aed1c8473922df54a14eb01"
 }
 
+# Inputs of n8nio/node-patched, the Node 24 runtime of the 1.x image, which
+# pins it in docker/images/n8n/Dockerfile on the 1.x branch. NODE_24_RUNTIME_IMAGE
+# is the base that the 1.x image runs on today; keep it on the pin of that
+# Dockerfile. build-node-pc-image.yml publishes node-patched on master.
+variable "NODE_24_VERSION" { default = "24.22.3" }
+variable "NODE_24_RUNTIME_IMAGE" {
+  default = "n8nio/base:24.22.1@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2"
+}
+
 # Other base images. The runners take their Python version from the image tag.
 variable "ALPINE_IMAGE" {
   default = "alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
@@ -210,17 +219,30 @@ target "base-node-24" {
   tags     = ["n8nio/base:${dhi_node_version(NODE_24_DHI_REF)}"]
 }
 
-# build-node-pc-image.yml builds the runtime and dev stages and sets the tags.
+# build-node-pc-image.yml builds the runtime and dev stages of both Node
+# source builds and sets the tags.
 target "node-pc" {
   inherits   = ["_context"]
   dockerfile = "docker/images/node-pc/Dockerfile"
   target     = "runtime"
   args = {
-    NODE_VERSION  = NODE_VERSION
-    ALPINE_IMAGE  = ALPINE_IMAGE
-    RUNTIME_IMAGE = RUNTIME_IMAGE
+    NODE_VERSION               = NODE_VERSION
+    ALPINE_IMAGE               = ALPINE_IMAGE
+    RUNTIME_IMAGE              = RUNTIME_IMAGE
+    ENABLE_POINTER_COMPRESSION = "true"
   }
   tags = ["n8nio/node-pc:${NODE_VERSION}"]
+}
+
+# Stock-configured Node 24 with the same V8 patches, for the 1.x image.
+target "node-patched-24" {
+  inherits = ["node-pc"]
+  args = {
+    NODE_VERSION               = NODE_24_VERSION
+    RUNTIME_IMAGE              = NODE_24_RUNTIME_IMAGE
+    ENABLE_POINTER_COMPRESSION = "false"
+  }
+  tags = ["n8nio/node-patched:${NODE_24_VERSION}"]
 }
 
 group "default" { targets = ["n8n", "runners"] }

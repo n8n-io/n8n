@@ -1,9 +1,13 @@
 name: 'Build: Node PC Image'
 
-# Publishes n8nio/node-pc, the pointer-compressed Node runtime consumed by the
-# n8n `-pc` image variant. Compiling Node from source is too slow under QEMU,
-# so each architecture builds on its native runner and a manifest job stitches
-# the per-arch images, following docker-build-push.yml.
+# Publishes the Node runtimes that n8n compiles from source:
+#   n8nio/node-pc      - pointer-compressed Node 26, consumed by the n8n `-pc`
+#                        image variant
+#   n8nio/node-patched - stock-configured Node 24 with the same V8 patches,
+#                        consumed by the 1.x image
+# Compiling Node from source is too slow under QEMU, so each architecture
+# builds on its native runner and a manifest job stitches the per-arch images,
+# following docker-build-push.yml.
 
 on:
   push:
@@ -29,13 +33,15 @@ on:
 
 jobs:
   # A rebuild compiles Node and moves the tags to new digests. So master builds
-  # only when the inputs (the node-pc bake target) changed.
+  # only when the inputs (the node-pc and node-patched-24 bake targets) changed.
   prepare:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.gate.outputs.changed }}
-      node_version: ${{ steps.resolve.outputs.node_version }}
-      build_args: ${{ steps.resolve.outputs.build_args }}
+      node_version_node_pc: ${{ steps.resolve.outputs.node_version_node_pc }}
+      build_args_node_pc: ${{ steps.resolve.outputs.build_args_node_pc }}
+      node_version_node_patched_24: ${{ steps.resolve.outputs.node_version_node_patched_24 }}
+      build_args_node_patched_24: ${{ steps.resolve.outputs.build_args_node_patched_24 }}
     steps:
       # A pin must point at an image that master built. See docker/AGENTS.md.
       - name: Publish from master only
@@ -53,36 +59,44 @@ jobs:
           BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           node .github/scripts/docker/bake-inputs-changed.mjs --event "$EVENT" --base "$BASE_COMMIT" \
-            --targets node-pc --paths docker/images/node-pc --pr-paths .github/workflows/build-node-pc-image.yml
+            --targets node-pc,node-patched-24 --paths docker/images/node-pc --pr-paths .github/workflows/build-node-pc-image.yml
 
+      # One output pair per target, named after the target with `-` as `_`.
       - name: Read the build args from docker-bake.hcl
         id: resolve
         if: steps.gate.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          plan=$(docker buildx bake -f docker/docker-bake.hcl --print node-pc)
-          {
-            echo "node_version=$(jq -r '.target["node-pc"].args.NODE_VERSION' <<<"$plan")"
-            echo "build_args<<BUILD_ARGS_EOF"
-            jq -r '.target["node-pc"].args | to_entries[] | "\(.key)=\(.value)"' <<<"$plan"
-            echo "BUILD_ARGS_EOF"
-          } >> "$GITHUB_OUTPUT"
+          plan=$(docker buildx bake -f docker/docker-bake.hcl --print node-pc node-patched-24)
+          for target in node-pc node-patched-24; do
+            key=${target//-/_}
+            {
+              echo "node_version_$key=$(jq -r --arg t "$target" '.target[$t].args.NODE_VERSION' <<<"$plan")"
+              echo "build_args_$key<<BUILD_ARGS_EOF"
+              jq -r --arg t "$target" '.target[$t].args | to_entries[] | "\(.key)=\(.value)"' <<<"$plan"
+              echo "BUILD_ARGS_EOF"
+            } >> "$GITHUB_OUTPUT"
+          done
 
   build:
     needs: prepare
     if: needs.prepare.outputs.changed == 'true'
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.platform.runner }}
     timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: linux/amd64
-            runner: blacksmith-32vcpu-ubuntu-2204
-            arch: amd64
-          - platform: linux/arm64
-            runner: blacksmith-32vcpu-ubuntu-2204-arm
-            arch: arm64
+        image:
+          # key: the prepare output suffix; repo: the image name in each registry
+          - { target: node-pc, key: node_pc, repo: node-pc }
+          - { target: node-patched-24, key: node_patched_24, repo: node-patched }
+        platform:
+          - { name: linux/amd64, runner: blacksmith-32vcpu-ubuntu-2204, arch: amd64 }
+          - { name: linux/arm64, runner: blacksmith-32vcpu-ubuntu-2204-arm, arch: arm64 }
+    env:
+      NODE_VERSION: ${{ needs.prepare.outputs[format('node_version_{0}', matrix.image.key)] }}
+      BUILD_ARGS: ${{ needs.prepare.outputs[format('build_args_{0}', matrix.image.key)] }}
+      REPO: ${{ matrix.image.repo }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -104,16 +118,16 @@ jobs:
           context: .
           file: ./docker/images/node-pc/Dockerfile
           target: runtime
-          platforms: ${{ matrix.platform }}
-          build-args: ${{ needs.prepare.outputs.build_args }}
+          platforms: ${{ matrix.platform.name }}
+          build-args: ${{ env.BUILD_ARGS }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ matrix.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
           no-cache: true
 
       # No no-cache here: reuses the compile layers from the runtime build
@@ -124,21 +138,26 @@ jobs:
           context: .
           file: ./docker/images/node-pc/Dockerfile
           target: dev
-          platforms: ${{ matrix.platform }}
-          build-args: ${{ needs.prepare.outputs.build_args }}
+          platforms: ${{ matrix.platform.name }}
+          build-args: ${{ env.BUILD_ARGS }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-dev-${{ matrix.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}-dev-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
 
   create-multi-arch-manifest:
     needs: [prepare, build]
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - { key: node_pc, repo: node-pc }
+          - { key: node_patched_24, repo: node-patched }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -152,11 +171,11 @@ jobs:
 
       - name: Create multi-arch manifests
         env:
-          NODE_VERSION: ${{ needs.prepare.outputs.node_version }}
+          NODE_VERSION: ${{ needs.prepare.outputs[format('node_version_{0}', matrix.image.key)] }}
         run: |
           for REPO in \
-            "${{ secrets.DOCKER_USERNAME }}/node-pc" \
-            "ghcr.io/${{ github.repository_owner }}/node-pc" \
+            "${{ secrets.DOCKER_USERNAME }}/${{ matrix.image.repo }}" \
+            "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.repo }}" \
           ; do
             for DEV in "" "-dev"; do
               AMD64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-amd64"
