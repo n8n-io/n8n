@@ -43,6 +43,11 @@ interface ChatScrollAreaSlots {
 	 */
 	input(): unknown;
 }
+
+interface ChatScrollAreaExposed {
+	/** Scrolls smoothly to the bottom and starts following again. */
+	scrollToBottom(): void;
+}
 ```
 
 ## Example
@@ -129,6 +134,8 @@ N8nChatScrollArea                # position: relative; height: 100%
 - **User scrolls back to the bottom:** hide the button. Follow content again.
 - **User clicks the scroll button:** scroll smoothly to the bottom. Follow content again.
 - **Older messages load at the top:** keep the visible message in the same position.
+- **User presses `End` or `Ctrl+End` while the message list has focus:** go to the bottom. Follow content again.
+- **Host calls `scrollToBottom()`** (for example, from an app-wide shortcut): same as a click on the scroll button.
 - **Thread is too short to scroll:** emit `load-older` one time if more history exists. Hide the button.
 
 The user's scroll position is the only signal that pauses or resumes following. 

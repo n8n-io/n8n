@@ -160,6 +160,7 @@ export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nChatScrollArea } from './N8nChatScrollArea';
 export type {
 	ChatScrollAreaEmits,
+	ChatScrollAreaExposed,
 	ChatScrollAreaProps,
 	ChatScrollAreaSlots,
 } from './N8nChatScrollArea/ChatScrollArea.types';

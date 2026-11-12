@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { onBeforeUnmount, ref } from 'vue';
 
+import type { ChatScrollAreaExposed } from './ChatScrollArea.types';
+
 import N8nChatInput from '../N8nChatInput';
 import N8nChatScrollArea from './ChatScrollArea.vue';
 
@@ -35,6 +37,7 @@ export const Default: Story = {
 						return `Message ${index + 1}`;
 					}),
 				);
+				const scrollArea = ref<ChatScrollAreaExposed>();
 				const inputValue = ref('');
 				const isStreaming = ref(false);
 				let streamTimer: ReturnType<typeof setInterval> | undefined;
@@ -63,12 +66,21 @@ export const Default: Story = {
 					inputValue.value = '';
 				}
 
+				/** Ctrl+End (Cmd+End on macOS) in the input jumps to the newest message. */
+				function onInputKeydown(event: KeyboardEvent) {
+					if (event.key !== 'End' || !(event.ctrlKey || event.metaKey)) return;
+					event.preventDefault();
+					scrollArea.value?.scrollToBottom();
+				}
+
 				onBeforeUnmount(stopStreaming);
 
 				return {
 					args,
 					messages,
+					scrollArea,
 					inputValue,
+					onInputKeydown,
 					sendMessage,
 					isStreaming,
 					toggleStreaming,
@@ -81,12 +93,12 @@ export const Default: Story = {
 					{{ isStreaming ? 'Stop streaming' : 'Start streaming' }}
 				</button>
 				<div style="height: 400px; border: var(--border);">
-					<N8nChatScrollArea v-bind="args" @load-older="onLoadOlder" @update:at-bottom="onAtBottom">
+					<N8nChatScrollArea ref="scrollArea" v-bind="args" @load-older="onLoadOlder" @update:at-bottom="onAtBottom">
 						<p v-for="message in messages" :key="message" style="padding: var(--spacing--2xs) var(--spacing--sm);">
 							{{ message }}
 						</p>
 						<template #input>
-							<div style="width: 100%; padding: var(--spacing--sm);">
+							<div style="width: 100%; padding: var(--spacing--sm);" @keydown.capture="onInputKeydown">
 								<N8nChatInput v-model="inputValue" placeholder="Type a message" @submit="sendMessage" />
 							</div>
 						</template>
