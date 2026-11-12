@@ -11,6 +11,7 @@ import {
 	SELF_SEND_COMMANDS,
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
 	MCP_RELAY_PUBSUB_CHANNEL,
+	PUBLISHER_SHUTDOWN_TIMEOUT_MS,
 } from './pubsub.constants';
 import type { PubSub } from './pubsub.types';
 import type { McpRelayMessage } from './subscriber.service';
@@ -57,7 +58,15 @@ export class Publisher {
 	}
 
 	// @TODO: Use `@OnShutdown()` decorator
-	shutdown() {
+	async shutdown() {
+		let timeout: NodeJS.Timeout | undefined;
+		await Promise.race([
+			this.client.quit().catch(() => {}),
+			new Promise<void>((resolve) => {
+				timeout = setTimeout(resolve, PUBLISHER_SHUTDOWN_TIMEOUT_MS);
+			}),
+		]);
+		clearTimeout(timeout);
 		this.client.disconnect();
 	}
 

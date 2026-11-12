@@ -152,6 +152,11 @@ test.describe(
 				.poll(async () => await api.isHealthy().catch(() => false), { timeout: 6_000 })
 				.toBe(false);
 			await expect(api.mcp.sseSetup(mcpPath, { maxNotFoundRetries: 0 })).rejects.toThrow();
+			const lateWebhookAccepted = await api.webhooks
+				.trigger(`webhook/${webhook.webhookPath}`, { method: 'POST', maxNotFoundRetries: 0 })
+				.then((response) => response.ok())
+				.catch(() => false);
+			expect(lateWebhookAccepted).toBe(false);
 
 			const result = await toolCall;
 			expect(result.isError).toBeFalsy();
@@ -169,8 +174,7 @@ test.describe(
 			await n8nContainer.replaceN8N({ image: TEST_CONTAINER_IMAGES.n8n });
 			for (const workflowId of [mcp.workflowId, webhook.workflowId]) {
 				const executions = await api.workflows.getExecutions(workflowId);
-				expect(executions.length).toBeGreaterThan(0);
-				expect(executions.map((execution) => execution.status)).not.toContain('error');
+				expect(executions.map((execution) => execution.status)).toEqual(['success']);
 			}
 		});
 	},

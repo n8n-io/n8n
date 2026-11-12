@@ -57,12 +57,6 @@ export class PendingCallsManager {
 		return false;
 	}
 
-	rejectAll(error: Error): void {
-		for (const callId of Object.keys(this.pendingCalls)) {
-			this.reject(callId, error);
-		}
-	}
-
 	get(callId: string): PendingCall | undefined {
 		return this.pendingCalls[callId];
 	}

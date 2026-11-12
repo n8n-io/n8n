@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '../../services/redis-client.service';
 import { Publisher } from '../publisher.service';
+import { PUBLISHER_SHUTDOWN_TIMEOUT_MS } from '../pubsub.constants';
 import type { PubSub } from '../pubsub.types';
 
 describe('Publisher', () => {
@@ -45,16 +46,58 @@ describe('Publisher', () => {
 	});
 
 	describe('shutdown', () => {
-		it('should disconnect Redis client', () => {
-			const publisher = new Publisher(
-				logger,
-				redisClientService,
-				instanceSettings,
-				executionsConfig,
-				globalConfig,
+		const createPublisher = () =>
+			new Publisher(logger, redisClientService, instanceSettings, executionsConfig, globalConfig);
+
+		beforeEach(() => {
+			client.quit.mockReset();
+			client.disconnect.mockReset();
+		});
+
+		it('should wait for pending commands before it disconnects', async () => {
+			let finishQuit = () => {};
+			client.quit.mockReturnValue(
+				new Promise<'OK'>((resolve) => {
+					finishQuit = () => resolve('OK');
+				}),
 			);
-			publisher.shutdown();
-			expect(client.disconnect).toHaveBeenCalled();
+
+			const shuttingDown = createPublisher().shutdown();
+			await Promise.resolve();
+
+			expect(client.quit).toHaveBeenCalledOnce();
+			expect(client.disconnect).not.toHaveBeenCalled();
+
+			finishQuit();
+			await shuttingDown;
+
+			expect(client.disconnect).toHaveBeenCalledOnce();
+		});
+
+		it('should disconnect when pending commands do not finish in time', async () => {
+			vi.useFakeTimers();
+			try {
+				client.quit.mockReturnValue(new Promise<'OK'>(() => {}));
+
+				const shuttingDown = createPublisher().shutdown();
+				await vi.advanceTimersByTimeAsync(PUBLISHER_SHUTDOWN_TIMEOUT_MS - 1);
+				expect(client.disconnect).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(1);
+				await shuttingDown;
+
+				expect(client.disconnect).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should disconnect when quit fails', async () => {
+			client.quit.mockRejectedValue(new Error('Connection is closed.'));
+
+			await expect(createPublisher().shutdown()).resolves.toBeUndefined();
+
+			expect(client.disconnect).toHaveBeenCalledOnce();
 		});
 	});
 

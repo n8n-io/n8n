@@ -53,10 +53,10 @@ describe.skipIf(!host || !port)('self-healing failure relay (real Redis)', () =>
 		await subscriber.subscribe(subscriber.getCommandChannel());
 	});
 
-	afterAll(() => {
+	afterAll(async () => {
 		bus?.removeAllListeners();
 		subscriber?.shutdown();
-		publisher?.shutdown();
+		await publisher?.shutdown();
 	});
 
 	it('delivers consecutive failures to main without debounce or a worker-side start', async () => {

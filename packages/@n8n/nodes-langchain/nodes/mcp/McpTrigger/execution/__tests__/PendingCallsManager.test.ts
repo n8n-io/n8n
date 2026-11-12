@@ -248,22 +248,4 @@ describe('PendingCallsManager', () => {
 			expect(() => manager.remove('non-existent')).not.toThrow();
 		});
 	});
-
-	describe('rejectAll', () => {
-		it('should reject every pending call with the given error', async () => {
-			const first = manager.waitForResult('session-1_1', 'tool', {}, 5000);
-			const second = manager.waitForResult('session-2_1', 'tool', {}, 5000);
-
-			manager.rejectAll(new Error('n8n is shutting down'));
-
-			await expect(first).rejects.toThrow('n8n is shutting down');
-			await expect(second).rejects.toThrow('n8n is shutting down');
-			expect(manager.has('session-1_1')).toBe(false);
-			expect(manager.has('session-2_1')).toBe(false);
-		});
-
-		it('should do nothing when no call is pending', () => {
-			expect(() => manager.rejectAll(new Error('n8n is shutting down'))).not.toThrow();
-		});
-	});
 });

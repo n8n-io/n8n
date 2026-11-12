@@ -35,7 +35,6 @@ import type { NativeVerifyMismatch } from 'n8n-workflow';
 import type { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 
 import type { AbstractServer } from '@/abstract-server';
-import { ActiveExecutions } from '@/active-executions';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -128,7 +127,11 @@ export abstract class BaseCommand<F = never> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
-		process.on('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		if (this.server) {
+			process.on('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		} else {
+			process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		}
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
@@ -345,6 +348,7 @@ export abstract class BaseCommand<F = never> {
 
 	protected async drainInFlightWork() {
 		const deadline = this.shutdownDrainDeadline();
+		const { ActiveExecutions } = await import('@/active-executions.js');
 		const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 		const mcpServer = McpServer.instance(this.logger);
 

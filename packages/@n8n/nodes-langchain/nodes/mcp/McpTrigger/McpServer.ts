@@ -16,6 +16,7 @@ import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
+import { raceAbort } from '@n8n/utils/race-abort';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
@@ -44,7 +45,7 @@ import { TransportFactory } from './transport/TransportFactory';
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
 
-const CANCELLED_TOOL_CALL_GRACE_MS = 1_000;
+const SHUTDOWN_GRACE_MS = 1_000;
 
 function toolDescriptors(tools: Tool[]) {
 	return tools.map((tool) => ({
@@ -93,6 +94,7 @@ export class McpServer {
 
 	private activeToolCalls = 0;
 	private toolCallsIdleWaiters: Array<() => void> = [];
+	private readonly toolCallCancellation = new AbortController();
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
@@ -474,26 +476,38 @@ export class McpServer {
 
 	async settleToolCalls(deadline: number): Promise<void> {
 		this.stopSweep();
-		if (this.activeToolCalls === 0) return;
+		if (this.activeToolCalls > 0) {
+			this.logger.info(`Waiting for ${this.activeToolCalls} MCP tool calls to finish...`);
+			if (!(await this.waitForToolCalls(deadline))) {
+				this.logger.warn(
+					`Cancelling ${this.activeToolCalls} MCP tool calls that did not finish before shutdown`,
+				);
+			}
+		}
 
-		this.logger.info(`Waiting for ${this.activeToolCalls} MCP tool calls to finish...`);
-		if (await this.waitForToolCalls(deadline)) return;
-
-		this.logger.warn(
-			`Cancelling ${this.activeToolCalls} MCP tool calls that did not finish before shutdown`,
-		);
-		this.pendingCallsManager.rejectAll(new OperationalError('n8n is shutting down'));
-		await this.waitForToolCalls(Date.now() + CANCELLED_TOOL_CALL_GRACE_MS);
+		this.toolCallCancellation.abort();
+		await this.waitForToolCalls(Date.now() + SHUTDOWN_GRACE_MS);
 	}
 
 	async closeSessions(): Promise<void> {
-		for (const sessionId of this.sessionManager.getSessionIds()) {
-			if (this.sessionManager.getTransport(sessionId)?.transportType === 'sse') {
-				await this.releaseSession(sessionId);
-			} else {
-				await this.sessionManager.detachSession(sessionId);
-			}
-		}
+		const closing = Promise.all(
+			this.sessionManager.getSessionIds().map(async (sessionId) => {
+				if (this.sessionManager.getTransport(sessionId)?.transportType === 'sse') {
+					await this.releaseSession(sessionId);
+				} else {
+					await this.sessionManager.detachSession(sessionId);
+				}
+			}),
+		);
+
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		await Promise.race([
+			closing,
+			new Promise<void>((resolve) => {
+				timer = setTimeout(resolve, SHUTDOWN_GRACE_MS);
+			}),
+		]);
+		clearTimeout(timer);
 	}
 
 	private async waitForToolCalls(deadline: number): Promise<boolean> {
@@ -512,6 +526,13 @@ export class McpServer {
 		this.activeToolCalls--;
 		if (this.activeToolCalls > 0) return;
 		for (const notifyIdle of this.toolCallsIdleWaiters.splice(0)) notifyIdle();
+	}
+
+	private async cancellable<T>(run: () => Promise<T>): Promise<T> {
+		const { signal } = this.toolCallCancellation;
+		const shutdownError = () => new OperationalError('n8n is shutting down');
+		if (signal.aborted) throw shutdownError();
+		return await raceAbort(run(), signal, shutdownError);
 	}
 
 	private createServer(serverName: string, instructions?: string): Server {
@@ -630,14 +651,17 @@ export class McpServer {
 			try {
 				const outcomes: CredentialGateElicitationOutcome[] = [];
 				for (const cred of connectable) {
-					const { action } = await server.elicitInput(
-						{
-							mode: 'url',
-							elicitationId: randomUUID(),
-							url: cred.authorizationUrl!,
-							message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
-						},
-						{ timeout: ELICITATION_TIMEOUT_MS },
+					const { action } = await this.cancellable(
+						async () =>
+							await server.elicitInput(
+								{
+									mode: 'url',
+									elicitationId: randomUUID(),
+									url: cred.authorizationUrl!,
+									message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
+								},
+								{ timeout: ELICITATION_TIMEOUT_MS },
+							),
 					);
 					outcomes.push({
 						credentialName: cred.credentialName,
@@ -718,10 +742,10 @@ export class McpServer {
 						}
 
 						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
-						const result = await strategy.executeTool(requestedTool, toolArguments, {
-							sessionId: extra.sessionId,
-							messageId: requestId,
-						});
+						const context = { sessionId: extra.sessionId, messageId: requestId };
+						const result = await this.cancellable(
+							async () => await strategy.executeTool(requestedTool, toolArguments, context),
+						);
 
 						return MessageFormatter.formatToolResult(
 							result,
@@ -730,10 +754,11 @@ export class McpServer {
 						);
 					}
 
-					const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-						sessionId: extra.sessionId,
-						messageId: extra.requestId?.toString(),
-					});
+					const context = { sessionId: extra.sessionId, messageId: extra.requestId?.toString() };
+					const result = await this.cancellable(
+						async () =>
+							await this.executionCoordinator.executeTool(requestedTool, toolArguments, context),
+					);
 
 					return MessageFormatter.formatToolResult(
 						result,

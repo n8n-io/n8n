@@ -117,6 +117,17 @@ describe('SessionManager', () => {
 			expect(server.close).toHaveBeenCalled();
 		});
 
+		it('should close the session here before it waits for the store', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+			mockStore.unregister.mockReturnValueOnce(new Promise<void>(() => {}));
+
+			void manager.destroySession('session-1');
+
+			await vi.waitFor(() => expect(server.close).toHaveBeenCalled());
+			expect(manager.getSession('session-1')).toBeUndefined();
+		});
+
 		it('should not recurse when closing the server re-enters destroySession', async () => {
 			const server = createMockServer();
 			// Production wires transport.onclose -> cleanupSession -> destroySession, so

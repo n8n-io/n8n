@@ -118,8 +118,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.drainInFlightWork();
 
 			if (this.globalConfig.executions.mode === 'queue') {
-				Container.get(Publisher).shutdown();
 				Container.get(Subscriber).shutdown();
+				await Container.get(Publisher).shutdown();
 			}
 
 			// Finally shut down Event Bus

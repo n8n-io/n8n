@@ -638,6 +638,7 @@ describe('Start - stopProcess', () => {
 		Container.set(Subscriber, subscriber);
 		Container.set(MessageEventBus, messageEventBus);
 		Container.set(WaitTracker, mock<WaitTracker>());
+		publisher.shutdown.mockResolvedValue(undefined);
 		server.waitForRequests.mockResolvedValue(undefined);
 		mcpServer.settleToolCalls.mockResolvedValue(undefined);
 		mcpServer.closeSessions.mockResolvedValue(undefined);
@@ -717,6 +718,31 @@ describe('Start - stopProcess', () => {
 		expect(callOrder(activeExecutions.shutdown)).toBeLessThan(callOrder(subscriber.shutdown));
 		expect(callOrder(server.waitForRequests)).toBeLessThan(callOrder(publisher.shutdown));
 		expect(callOrder(server.closeConnections)).toBeLessThan(callOrder(publisher.shutdown));
+		expect(exitSpy).toHaveBeenCalledOnce();
+	});
+
+	it('should close the event bus only after the publisher has sent its pending commands', async () => {
+		const activeExecutions = mock<ActiveExecutions>();
+		activeExecutions.shutdown.mockResolvedValue(undefined);
+		Container.set(ActiveExecutions, activeExecutions);
+		let finishPublisherShutdown = () => {};
+		publisher.shutdown.mockReturnValue(
+			new Promise<void>((resolve) => {
+				finishPublisherShutdown = resolve;
+			}),
+		);
+
+		const stopping = createStart('queue').stopProcess();
+
+		await vi.waitFor(() => expect(publisher.shutdown).toHaveBeenCalled());
+		expect(callOrder(subscriber.shutdown)).toBeLessThan(callOrder(publisher.shutdown));
+		expect(messageEventBus.close).not.toHaveBeenCalled();
+		expect(exitSpy).not.toHaveBeenCalled();
+
+		finishPublisherShutdown();
+		await stopping;
+
+		expect(messageEventBus.close).toHaveBeenCalledOnce();
 		expect(exitSpy).toHaveBeenCalledOnce();
 	});
 

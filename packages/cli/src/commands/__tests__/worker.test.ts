@@ -227,6 +227,18 @@ describe('Worker', () => {
 			);
 		});
 
+		it('should let a repeated SIGTERM end the worker', async () => {
+			const once = vi.spyOn(process, 'once');
+
+			try {
+				await createWorkerForInit().init();
+
+				expect(once).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+			} finally {
+				once.mockRestore();
+			}
+		});
+
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
