@@ -342,6 +342,41 @@ describe('HTTP Node Utils', () => {
 			});
 		});
 
+		it.each([
+			['abc', 'abcdef'],
+			['abcdef', 'abc'],
+		])('should mask overlapping header values with %s first', (first, second) => {
+			const credentials: ICredentialDataDecryptedObject = {
+				headers: {
+					values: [
+						{ name: 'X-First', value: first },
+						{ name: 'X-Second', value: second },
+					],
+				},
+			};
+			const query = {
+				shorter: 'abc',
+				longer: 'abcdef',
+				embedded: 'prefix-abcdef-suffix',
+				keep: 'visible',
+			};
+			const requestOptions: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.com',
+				qs: { ...query },
+			};
+			const secrets = getSecrets(credentials);
+
+			expect(sanitizeUiMessage(requestOptions, {}, secrets).qs).toEqual({
+				shorter: REDACTED,
+				longer: REDACTED,
+				embedded: `prefix-${REDACTED}-suffix`,
+				keep: 'visible',
+			});
+			expect(requestOptions.qs).toEqual(query);
+			expect(secrets).toEqual([first, second]);
+		});
+
 		it('should redact secrets in auth fields not tracked by authDataKeys', async () => {
 			const secretValue = '{"username":"testuser","password":"fake-pass-123"}';
 			const requestOptions: IRequestOptions = {

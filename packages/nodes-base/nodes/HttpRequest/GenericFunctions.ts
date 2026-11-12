@@ -95,7 +95,9 @@ function replaceUploads(value: IDataObject[string]): IDataObject[string] {
 }
 
 function redactString(str: string, secrets: string[]): string {
-	return secrets.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
+	return [...secrets]
+		.sort((a, b) => b.length - a.length)
+		.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
 }
 
 function redact<T = unknown>(obj: T, secrets: string[]): T {
