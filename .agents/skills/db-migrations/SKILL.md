@@ -106,20 +106,22 @@ Default precision for the timestamp variants is 3 ms; override with `.timestampT
 
 Run through this before requesting review. Each item is a real, recurring reviewer flag; the link points to the section that explains the rule.
 
+CI checks the items marked **(CI)** on each migration file that a PR adds. The `migration-conventions` rule in `@n8n/code-health` does these checks. To run them locally, set `CODE_HEALTH_ADDED_FILES` to your new migration paths and run `pnpm --filter=@n8n/code-health check --rule=migration-conventions`. For an approved exception, add the violation to `.code-health-baseline.json`.
+
 - [ ] Migration was scaffolded with `pnpm --filter=@n8n/db migration:new` (timestamp + registration are automatic; the `migration-timestamp` lint rule catches drift). — [Creating Migrations](#creating-migrations)
-- [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes. — [Always escape identifiers](#always-escape-identifiers)
+- [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes. **(CI)** checks table names in raw SQL. — [Always escape identifiers](#always-escape-identifiers)
 - [ ] **Match column type to value semantics.** Native `uuid` for UUIDs, `timestampTimezone()` for timestamps, a numeric type for numbers, `bool` for booleans, `json` for structured data. Never `varchar` as a catch-all. — [Column types](#column-types)
 - [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers. — [Column types](#column-types)
 - [ ] **A generated `id` key is an integer** (`int.primary.autoGenerate2`). A UUID key is a UUIDv7. For a UUID or string key, write the reason in the PR description. A join table uses its foreign-key columns as the key, not an `id` column. — [Primary Keys](#primary-keys)
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL. Migration's `notNull` matches the entity's nullability. — [NOT NULL and entity parity](#not-null-and-entity-parity)
-- [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`. — [Constrain enum-like strings](#constrain-enum-like-strings), [Add comments on columns](#add-comments-on-columns)
+- [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`. **(CI)** checks that each `.withEnumCheck` column has a `.comment`. — [Constrain enum-like strings](#constrain-enum-like-strings), [Add comments on columns](#add-comments-on-columns)
 - [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. Avoid polymorphic `(typeCol, idCol)` patterns. — [Foreign Key Constraints](#foreign-key-constraints), [General Design Guidance](#general-design-guidance)
 - [ ] **Indexes match real query patterns.** A unique constraint already creates an index; a composite PK indexes its prefix. Mirror `withIndexOn(...)` to entity `@Index(...)`. — [Index Management](#index-management)
 - [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL`. — [Index Management](#index-management)
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage. — [Index Management](#index-management)
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
 - [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
-- [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. — [Never import entities as values](#never-import-entities-as-values)
+- [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
@@ -269,6 +271,8 @@ await queryRunner.manager.update(ApiKey, { id }, { scopes });
 type ApiKeyRow = { id: string; scopes: string };
 await runQuery(`UPDATE ${table} SET scopes = :scopes WHERE id = :id`, { scopes, id });
 ```
+
+The `migration-conventions` CI rule allows value imports only from these sources: files in the migrations directory, Node.js built-ins, third-party packages, `@n8n/typeorm`, `@n8n/utils`, `@n8n/errors`, the error classes of `n8n-workflow`, `Cipher` from `n8n-core`, and `Container` from `@n8n/di`. `Cipher` and `Container` are for the decryption of stored secrets.
 
 **Type-only imports** (`import type { Entity }`) are acceptable for typing query results, but prefer inline types like `type WorkflowRow = { id: string; nodes: string }` to avoid coupling to entities that may be renamed or restructured.
 
