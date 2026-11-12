@@ -1,4 +1,4 @@
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility } from '../index';
 
@@ -20,10 +20,8 @@ const subWorkflowTrigger: INode = {
 	parameters: {},
 };
 
-const nodeTypes: INodeTypeDescription[] = [];
-
 function check(nodes: INode[]) {
-	return checkEngineV2Eligibility({ nodes, connections: {}, settings: {} }, nodeTypes);
+	return checkEngineV2Eligibility({ nodes, connections: {}, settings: {} });
 }
 
 describe('trigger identity rule', () => {

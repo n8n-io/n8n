@@ -1,4 +1,4 @@
-import type { INode, INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
+import type { INode, IWorkflowSettings } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility } from '../index';
 
@@ -20,15 +20,10 @@ const oauth2Webhook: INode = {
 	parameters: { authentication: 'n8nOAuth2' },
 };
 
-const nodeTypes: INodeTypeDescription[] = [];
-
 describe('checkEngineV2Eligibility', () => {
 	it('reports a clean manual-trigger workflow as eligible with no reasons', () => {
 		expect(
-			checkEngineV2Eligibility(
-				{ nodes: [manualTrigger], connections: {}, settings: {} },
-				nodeTypes,
-			),
+			checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings: {} }),
 		).toEqual({ eligible: true, reasons: [] });
 	});
 
@@ -37,16 +32,17 @@ describe('checkEngineV2Eligibility', () => {
 		// The settings column is nullable, so stored workflows can have null settings.
 		['with null settings', null as unknown as IWorkflowSettings],
 	])('reports a workflow %s as eligible', (_, settings) => {
-		expect(
-			checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings }, nodeTypes),
-		).toEqual({ eligible: true, reasons: [] });
+		expect(checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings })).toEqual(
+			{ eligible: true, reasons: [] },
+		);
 	});
 
 	it('reports a workflow as not eligible with the reasons of every rule', () => {
-		const result = checkEngineV2Eligibility(
-			{ nodes: [oauth2Webhook], connections: {}, settings: { redactionPolicy: 'all' } },
-			nodeTypes,
-		);
+		const result = checkEngineV2Eligibility({
+			nodes: [oauth2Webhook],
+			connections: {},
+			settings: { redactionPolicy: 'all' },
+		});
 
 		expect(result.eligible).toBe(false);
 		expect(result.reasons.map(({ code, severity }) => ({ code, severity }))).toEqual([
@@ -56,10 +52,11 @@ describe('checkEngineV2Eligibility', () => {
 	});
 
 	it('keeps a workflow with only warnings eligible and still reports the warnings', () => {
-		const result = checkEngineV2Eligibility(
-			{ nodes: [manualTrigger], connections: {}, settings: { redactionPolicy: 'all' } },
-			nodeTypes,
-		);
+		const result = checkEngineV2Eligibility({
+			nodes: [manualTrigger],
+			connections: {},
+			settings: { redactionPolicy: 'all' },
+		});
 
 		expect(result).toEqual({
 			eligible: true,

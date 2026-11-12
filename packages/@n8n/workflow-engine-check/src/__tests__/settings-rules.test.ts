@@ -1,4 +1,4 @@
-import type { INode, INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
+import type { INode, IWorkflowSettings } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
 
@@ -11,10 +11,8 @@ const manualTrigger: INode = {
 	parameters: {},
 };
 
-const nodeTypes: INodeTypeDescription[] = [];
-
 function check(settings: IWorkflowSettings) {
-	return checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings }, nodeTypes);
+	return checkEngineV2Eligibility({ nodes: [manualTrigger], connections: {}, settings });
 }
 
 describe('settings rules', () => {
