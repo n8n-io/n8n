@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.utils.ts
+  s_2eae3aaaf9d7ad::t_731f6289149f3c 58-62
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
+  s_2eae3aaaf9d7ad::t_ddace6ba784ba5 18,60-69,80-81,88-89,124
+  s_2eae3aaaf9d7ad::t_785e214a9dbcce 82-87
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_2eae3aaaf9d7ad::t_9a4fff7c06e9e9 1152-1169,1172-1178
+  s_2eae3aaaf9d7ad::t_b24fa3fec17613 1170-1171
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.test.ts
+  s_2eae3aaaf9d7ad::t_4dfe5a586b87f7 168
+  s_2eae3aaaf9d7ad::t_0087143544f60b 35-68,104,119-120,125,144-167,169-187
+  s_2eae3aaaf9d7ad::t_6fda9a1260e1a5 90-103,188
+  s_2eae3aaaf9d7ad::t_b6e98767728852 105,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b10ee571db92cc1ce0de1874ca93a2d506d11d4",
+  "prompts": {},
+  "sessions": {
+    "s_2eae3aaaf9d7ad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d074-4ae5-75f9-b82c-04f1c1b6a700",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
