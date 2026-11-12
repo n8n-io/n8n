@@ -1699,10 +1699,39 @@ export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
 	typeof instanceAiSetupPanelExecuteHandoffContextSchema
 >;
 
+/** What an automated migration left for the Assistant. Display text, so every field is length-capped. */
+export const instanceAiAutomatedMigrationOutcomeSchema = z.discriminatedUnion('outcome', [
+	z.object({
+		outcome: z.literal('refused'),
+		message: z.string().min(1).max(1000),
+		nodeName: z.string().min(1).max(255).optional(),
+	}),
+	z.object({
+		outcome: z.literal('partial'),
+		unmapped: z.array(z.string().min(1).max(500)).max(50),
+		notes: z.array(z.string().min(1).max(1000)).max(50),
+	}),
+]);
+export type InstanceAiAutomatedMigrationOutcome = z.infer<
+	typeof instanceAiAutomatedMigrationOutcomeSchema
+>;
+
+/** Opens the Assistant on one migration report finding. The client sends ids only; the server reads the finding. */
+export const instanceAiMigrationReportHandoffContextSchema = z.object({
+	source: z.literal('migration-report'),
+	ruleId: z.string().min(1).max(128),
+	workflowId: z.string().min(1).max(64),
+	automatedMigration: instanceAiAutomatedMigrationOutcomeSchema.optional(),
+});
+export type InstanceAiMigrationReportHandoffContext = z.infer<
+	typeof instanceAiMigrationReportHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiSetupPanelExecuteHandoffContextSchema,
+	instanceAiMigrationReportHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1796,6 +1825,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `app_builder_page` — Instance AI hand-off from the app builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
+ * - `migration_report`: fix one finding of the major-version migration report
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1818,6 +1848,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'app_builder_page',
 	'agent_preview',
 	'self_healing_result',
+	'migration_report',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1856,6 +1887,8 @@ export type InstanceAiThreadSourcePersisted =
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
  *   change request, dropped into the composer
+ * - `handoff_migration_report`: fix one migration report finding, from the
+ *   finding row or after an automated migration left work behind
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1878,6 +1911,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_fix_with_ai',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
+	'handoff_migration_report',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',
@@ -1947,8 +1981,8 @@ export class InstanceAiEventsQuery extends Z.class({
 /** Ceilings for a single thread-history read: `limit` bounds the rows (and the
  *  tree hydration hanging off them) one request can pull, `page` bounds the
  *  offset scan behind it. Both sit above any real client — the UI's largest page
- *  is 100 messages and it never pages past the first — so they only ever bite a
- *  hand-crafted request. */
+ *  is 100 messages, and it loads older pages with `cursor`, not `page` — so they
+ *  only ever bite a hand-crafted request. */
 export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
@@ -1960,7 +1994,10 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 		.min(1)
 		.max(INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT)
 		.default(INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT),
+	/** Offset paging for `raw` reads. Rich reads page with `cursor`. */
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
+	/** `nextCursor` of the previous rich read: returns the messages before it. */
+	cursor: z.string().min(1).max(512).optional(),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
@@ -2257,6 +2294,8 @@ export interface InstanceAiRichMessagesResponse {
 	threadId: string;
 	projectId?: string;
 	messages: InstanceAiMessage[];
+	/** Pass as `cursor` to load the older messages. Absent when the page reaches the start of the thread. */
+	nextCursor?: string;
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
 	/**

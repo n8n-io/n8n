@@ -1,16 +1,34 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { UserError, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
+import { Document as LcDocument } from '@langchain/core/documents';
+import { WeaviateStore } from '@langchain/weaviate';
+import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import weaviate from 'weaviate-client';
+import weaviate, { type WeaviateClient } from 'weaviate-client';
+
+const store = vi.hoisted(() => ({
+	fromExistingIndex: vi.fn(),
+	similaritySearchVectorWithScore: vi.fn(),
+	hybridSearch: vi.fn(),
+	returnForeignInstance: false,
+}));
 
 vi.mock('@langchain/weaviate', () => {
 	class WeaviateStore {
-		static async fromExistingIndex() {
-			return new this();
+		static async fromExistingIndex(...args: unknown[]) {
+			store.fromExistingIndex(...args);
+			return store.returnForeignInstance ? new WeaviateStore() : new this();
 		}
 		static fromDocuments = vi.fn();
+		// Prototype methods, so the subclass overrides still call them through `super`.
+		async similaritySearchVectorWithScore(...args: unknown[]) {
+			return await store.similaritySearchVectorWithScore(...args);
+		}
+		async hybridSearch(...args: unknown[]) {
+			return await store.hybridSearch(...args);
+		}
 	}
 	return { WeaviateStore };
 });
@@ -30,11 +48,12 @@ vi.mock('../shared/methods/listSearch', () => ({ weaviateCollectionsSearch: vi.f
 vi.mock('../shared/descriptions', () => ({ weaviateCollectionRLC: {} }));
 
 import { VectorStoreWeaviate } from './VectorStoreWeaviate.node';
+import { parseCompositeFilter } from './Weaviate.utils';
 
 type TestNode = {
 	getVectorStoreClient: (
 		context: ISupplyDataFunctions,
-		filter: undefined,
+		filter: IDataObject | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
 	) => Promise<unknown>;
@@ -93,6 +112,10 @@ describe('VectorStoreWeaviate.node', () => {
 	beforeEach(() => {
 		delete process.env.grpc_proxy;
 		connectSpy = vi.spyOn(weaviate, 'connectToCustom');
+		store.returnForeignInstance = false;
+		store.fromExistingIndex.mockClear();
+		store.similaritySearchVectorWithScore.mockReset();
+		store.hybridSearch.mockReset();
 	});
 
 	afterEach(() => {
@@ -166,5 +189,261 @@ describe('VectorStoreWeaviate.node', () => {
 
 		expect(usedProxies()).toEqual([NODE_PROXY, CREDENTIAL_PROXY, undefined]);
 		expect(process.env.grpc_proxy).toBeUndefined();
+	});
+
+	type SearchableStore = {
+		similaritySearchVectorWithScore: (
+			query: number[],
+			k: number,
+			filter?: IDataObject,
+		) => Promise<Array<[LcDocument, number]>>;
+	};
+
+	const getStore = async (options: Record<string, unknown>, filter?: IDataObject) =>
+		(await node.getVectorStoreClient(
+			createContext(options),
+			filter,
+			mock<Embeddings>(),
+			0,
+		)) as SearchableStore;
+
+	const authorFilter = {
+		OR: [{ path: ['author'], operator: 'Equal', valueString: 'Elis' }],
+	};
+
+	describe('getVectorStoreClient', () => {
+		it('should pass the node options to the store and the client', async () => {
+			await getClient({
+				tenant: 'tenantA',
+				textKey: 'content',
+				metadataKeys: 'source,page',
+				hybridQuery: 'cats',
+				autoCutLimit: 2,
+				alpha: 0.3,
+				queryProperties: 'title, body',
+				maxVectorDistance: 0.4,
+				fusionType: 'Ranked',
+				hybridExplainScore: true,
+				timeout_init: 3,
+				timeout_insert: 60,
+				timeout_query: 20,
+			});
+
+			expect(connectSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					timeout: { init: 3, insert: 60, query: 20 },
+					skipInitChecks: true,
+				}),
+			);
+			expect(store.fromExistingIndex).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					indexName: 'TestCollection',
+					tenant: 'tenantA',
+					textKey: 'content',
+					metadataKeys: ['source', 'page'],
+					hybridQuery: 'cats',
+					autoCutLimit: 2,
+					alpha: 0.3,
+					queryProperties: 'title, body',
+					maxVectorDistance: 0.4,
+					fusionType: 'Ranked',
+					hybridExplainScore: true,
+				}),
+			);
+		});
+
+		it('should use the default values when the options are not set', async () => {
+			await getClient({});
+
+			expect(store.fromExistingIndex).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					tenant: undefined,
+					textKey: 'text',
+					metadataKeys: [],
+					hybridQuery: undefined,
+					maxVectorDistance: undefined,
+					hybridExplainScore: false,
+				}),
+			);
+		});
+
+		it('should treat a max vector distance of 0 as not set', async () => {
+			await getClient({ maxVectorDistance: 0 });
+
+			expect(store.fromExistingIndex).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ maxVectorDistance: undefined }),
+			);
+		});
+
+		it('should throw when the store factory returns a different class', async () => {
+			store.returnForeignInstance = true;
+
+			await expect(getClient({})).rejects.toThrow(UnexpectedError);
+		});
+	});
+
+	describe('vector search', () => {
+		it('should search without a filter when the node filter is empty', async () => {
+			const vectorStore = await getStore({}, {});
+
+			await vectorStore.similaritySearchVectorWithScore([0.1], 4);
+
+			expect(store.similaritySearchVectorWithScore).toHaveBeenCalledWith([0.1], 4, undefined);
+		});
+
+		it('should use the node filter when the search has no filter', async () => {
+			const vectorStore = await getStore({}, authorFilter);
+
+			await vectorStore.similaritySearchVectorWithScore([0.1], 4);
+
+			expect(store.similaritySearchVectorWithScore).toHaveBeenCalledWith(
+				[0.1],
+				4,
+				parseCompositeFilter(authorFilter),
+			);
+		});
+
+		it('should prefer the filter of the search over the node filter', async () => {
+			const searchFilter = { AND: [{ path: ['year'], operator: 'LessThan', valueNumber: 2000 }] };
+			const vectorStore = await getStore({}, authorFilter);
+
+			await vectorStore.similaritySearchVectorWithScore([0.1], 4, searchFilter);
+
+			expect(store.similaritySearchVectorWithScore).toHaveBeenCalledWith(
+				[0.1],
+				4,
+				parseCompositeFilter(searchFilter),
+			);
+		});
+	});
+
+	describe('hybrid search', () => {
+		const hybridOptions = {
+			hybridQuery: 'cats',
+			autoCutLimit: 2,
+			alpha: 0.3,
+			queryProperties: 'title , body',
+			maxVectorDistance: 0.4,
+			fusionType: 'Ranked',
+			hybridExplainScore: true,
+		};
+
+		it('should send the hybrid options with the query vector', async () => {
+			store.hybridSearch.mockResolvedValue([]);
+			const vectorStore = await getStore(hybridOptions);
+
+			await vectorStore.similaritySearchVectorWithScore([0.1, 0.2], 3);
+
+			expect(store.hybridSearch).toHaveBeenCalledWith('cats', {
+				limit: 3,
+				autoLimit: 2,
+				alpha: 0.3,
+				vector: [0.1, 0.2],
+				filter: undefined,
+				queryProperties: ['title', 'body'],
+				maxVectorDistance: 0.4,
+				fusionType: 'Ranked',
+				returnMetadata: ['explainScore'],
+			});
+		});
+
+		it('should not ask for the score explanation when it is turned off', async () => {
+			store.hybridSearch.mockResolvedValue([]);
+			const vectorStore = await getStore({ hybridQuery: 'cats' });
+
+			await vectorStore.similaritySearchVectorWithScore([0.1], 3);
+
+			expect(store.hybridSearch).toHaveBeenCalledWith(
+				'cats',
+				expect.objectContaining({ queryProperties: undefined, returnMetadata: undefined }),
+			);
+		});
+
+		it('should return the score apart from the document metadata', async () => {
+			store.hybridSearch.mockResolvedValue([
+				new LcDocument({ pageContent: 'A cat', metadata: { source: 'a.pdf', score: 0.9 } }),
+			]);
+			const vectorStore = await getStore(hybridOptions);
+
+			const results = await vectorStore.similaritySearchVectorWithScore([0.1], 3);
+
+			expect(results).toEqual([
+				[new LcDocument({ pageContent: 'A cat', metadata: { source: 'a.pdf' } }), 0.9],
+			]);
+		});
+
+		it('should throw when the score is not a number', async () => {
+			store.hybridSearch.mockResolvedValue([
+				new LcDocument({ pageContent: 'A cat', metadata: { score: 'high' } }),
+			]);
+			const vectorStore = await getStore(hybridOptions);
+
+			await expect(vectorStore.similaritySearchVectorWithScore([0.1], 3)).rejects.toThrow(
+				'Unexpected score type: string',
+			);
+		});
+	});
+
+	describe('populateVectorStore', () => {
+		const deleteCollection = vi.fn();
+		const removeTenants = vi.fn();
+		const client = mock<WeaviateClient>({
+			collections: mock<WeaviateClient['collections']>({
+				delete: deleteCollection,
+				get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
+			}),
+		});
+		const documents = [new LcDocument({ pageContent: 'A cat', metadata: {} })];
+		const embeddings = mock<Embeddings>();
+
+		const insert = async (options: Record<string, unknown>) =>
+			await node.populateVectorStore(createContext(options), embeddings, documents, 0);
+
+		beforeEach(() => {
+			connectSpy.mockResolvedValue(client);
+			deleteCollection.mockClear();
+			removeTenants.mockClear();
+			vi.mocked(WeaviateStore.fromDocuments).mockClear();
+		});
+
+		it('should insert the documents with the node options', async () => {
+			await insert({ tenant: 'tenantA', textKey: 'content', metadataKeys: 'source,page' });
+
+			expect(WeaviateStore.fromDocuments).toHaveBeenCalledWith(documents, embeddings, {
+				client,
+				indexName: 'TestCollection',
+				tenant: 'tenantA',
+				textKey: 'content',
+				metadataKeys: ['source', 'page'],
+			});
+			expect(deleteCollection).not.toHaveBeenCalled();
+		});
+
+		it('should use the default text key and metadata keys', async () => {
+			await insert({});
+
+			expect(WeaviateStore.fromDocuments).toHaveBeenCalledWith(
+				documents,
+				embeddings,
+				expect.objectContaining({ tenant: undefined, textKey: 'text', metadataKeys: [] }),
+			);
+		});
+
+		it('should delete the collection before the insert when Clear Data is on', async () => {
+			await insert({ clearStore: true });
+
+			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+			expect(removeTenants).not.toHaveBeenCalled();
+		});
+
+		it('should remove only the tenant when Clear Data is on and a tenant is set', async () => {
+			await insert({ clearStore: true, tenant: 'tenantA' });
+
+			expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+			expect(deleteCollection).not.toHaveBeenCalled();
+		});
 	});
 });

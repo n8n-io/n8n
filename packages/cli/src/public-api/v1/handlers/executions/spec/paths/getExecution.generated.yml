@@ -2,7 +2,10 @@ operationId: getExecution
 tags:
   - Executions
 summary: Retrieve an execution
-description: Retrieve an execution from your instance.
+description: |-
+  Retrieve an execution from your instance.
+
+  Requires the `execution:read` API key scope.
 x-required-scope: execution:read
 parameters:
   - schema:

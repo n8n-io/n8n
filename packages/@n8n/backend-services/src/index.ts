@@ -56,6 +56,7 @@ export {
 export { FolderFinderService } from './services/folder-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
+export { PostHogClient } from './services/posthog-client';
 export {
 	classifyRestError,
 	isResponseError,
@@ -107,6 +108,8 @@ export {
 } from './services/instance-registry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionLedger } from './executions/execution-ledger.service';
+export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
 	isRedactableExecution,
@@ -122,6 +125,10 @@ export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
+export {
+	NodeTypesProviderMissingError,
+	NodeTypesProxy,
+} from './services/node-types-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,

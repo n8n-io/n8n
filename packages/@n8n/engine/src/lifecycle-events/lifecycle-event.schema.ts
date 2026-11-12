@@ -47,10 +47,16 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		 * where freshness matters most. A slot's contents are opaque and can be
 		 * large, so only the list is validated: walking every value cost the host
 		 * more CPU than running the step did.
+		 *
+		 * Absent when the serialized event was over the execution channel's frame
+		 * limit. The step still completed; a consumer that needs the outputs reads
+		 * them from the data plane.
 		 */
-		outputs: z.array(z.custom<JsonValue>()),
+		outputs: z.array(z.custom<JsonValue>()).optional(),
 	}),
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
+	/** The step paused until a deadline or a resume request. It has no outcome yet. */
+	z.object({ type: z.literal('step:waiting'), ...stepFields }),
 ]);
 
 /** Body of the host's lifecycle event endpoint. */

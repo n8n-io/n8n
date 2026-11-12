@@ -2,7 +2,10 @@ operationId: getWorkflowTags
 tags:
   - Workflow
 summary: Get workflow tags
-description: Get workflow tags.
+description: |-
+  Get workflow tags.
+
+  Requires the `workflowTags:list` API key scope.
 x-required-scope: workflowTags:list
 parameters:
   - schema:

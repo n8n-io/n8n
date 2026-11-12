@@ -79,7 +79,7 @@ export const READY_TO_RUN_WORKFLOW_V6: WorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'✅ This AI News agent is ready to use. Chat with it! \n✨ We gave you free OpenAI credits\n💡 Next: [Connect a Google Sheet](https://n8n.io/workflows/7639-talk-to-your-google-sheets-using-chatgpt-5/) to chat with your data',
+					'✅ This AI News agent is ready to use. Chat with it! \n✨ We gave you free OpenAI credits\n💡 Next: [Connect a Google Sheet](https://n8n.io/workflows/7449-talk-to-your-google-sheets-using-chatgpt-5/) to chat with your data',
 				height: 80,
 				width: 448,
 				color: 4,

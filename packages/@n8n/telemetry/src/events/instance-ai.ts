@@ -754,7 +754,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.int()
 				.positive()
-				.describe('One-based position in the current search list, browse section, or submenu'),
+				.describe(
+					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows), or a submenu',
+				),
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
 			artifact_origin: z
@@ -809,6 +811,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
 			...mentionContextProperties,
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

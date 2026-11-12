@@ -1,3 +1,4 @@
+import type { PromotionReviewRemoteError, PromotionReviewState } from '@n8n/api-types';
 import {
 	ResponseError,
 	ServiceUnavailableError,
@@ -6,6 +7,9 @@ import {
 } from '@n8n/errors';
 
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
+
+/** What the host reported when a user closed a review: its state, or why it gave none. */
+export type ClosedHostStatus = PromotionReviewState | PromotionReviewRemoteError;
 
 export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected';
 

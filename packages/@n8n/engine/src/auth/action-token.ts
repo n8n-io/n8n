@@ -8,7 +8,6 @@ import {
 
 /** What an action token authorizes. Scoped, so a leaked token buys only one of them. */
 export const ACTION_SCOPES = [
-	'lifecycle-events:write',
 	'credentials:read',
 	'data-tables:use',
 	'sub-workflows:resolve',
