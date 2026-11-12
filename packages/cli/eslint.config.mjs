@@ -111,6 +111,7 @@ const skillsModuleDynamicImportBoundary = {
 
 // The Assistant agent eval code loads only on an eval instance, through a dynamic import in
 // the instance-ai module. Product code reads the overrides through `AssistantTurnOverrides`.
+// CI enforces this with oxlint (oxlint.config.mts), whose rule also checks `import()`.
 const assistantAgentEvalBoundary = {
 	group: ['**/assistant-agent/eval', '**/assistant-agent/eval/**'],
 	message:
@@ -216,7 +217,7 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry, assistantAgentEvalBoundary],
 				},
 			],
 		},
