@@ -1821,6 +1821,41 @@ describe('AgentSkillModal from Settings', () => {
 		expect(getSkillDetail).not.toHaveBeenCalled();
 	});
 
+	it('shows the server project icon, and the chosen option icon after a scope change', async () => {
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [
+					{
+						value: 'project:other-personal',
+						label: 'Ada',
+						icon: 'user',
+						projectIcon: { type: 'emoji', value: '🦊' },
+					},
+					{
+						value: 'project:team-1',
+						label: 'Marketing',
+						icon: 'layers',
+						projectIcon: { type: 'emoji', value: '🚀' },
+					},
+				],
+				initialScope: 'project:other-personal',
+				projectType: 'personal',
+				projectIcon: { type: 'emoji', value: '🦊' },
+			},
+		});
+
+		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent(/🦊\s*Ada/);
+
+		await chooseScopeOption('Marketing');
+
+		const badge = getByTestId('agent-skill-scope-badge');
+		expect(badge).toHaveTextContent(/🚀\s*Marketing/);
+		// The saved personal type belongs to the saved scope only.
+		expect(badge.querySelector('[data-icon="user"]')).toBeNull();
+	});
+
 	it('keeps a synced skill scope locked without a badge dropdown', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId, queryByRole } = renderModal({

@@ -8,7 +8,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSkillScopeDisplay } from '../skills.utils';
 
 const props = defineProps<{
-	skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>;
+	skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'projectIcon'>;
 	projectIcon?: ProjectIconData | null;
 	/** Use the caller's scope label in a modal or review. */
 	label?: string;
@@ -39,7 +39,9 @@ const display = computed(() =>
 				: null),
 	}),
 );
-const projectIcon = computed(() => props.projectIcon ?? project.value?.icon);
+const projectIcon = computed(
+	() => props.projectIcon ?? props.skill.projectIcon ?? project.value?.icon,
+);
 </script>
 
 <template>

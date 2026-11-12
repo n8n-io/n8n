@@ -229,6 +229,7 @@ const scopeSkill = computed(() => {
 		projectId: target.projectId ?? null,
 		projectName: selectedScope.value?.label ?? null,
 		projectType: null,
+		projectIcon: selectedScope.value?.projectIcon ?? null,
 	};
 });
 

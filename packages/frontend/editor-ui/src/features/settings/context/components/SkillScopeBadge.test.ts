@@ -8,7 +8,10 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 import SkillScopeBadge from './SkillScopeBadge.vue';
 
 const renderBadge = createComponentRenderer(SkillScopeBadge);
-const skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'> = {
+const skill: Pick<
+	SkillListItem,
+	'scope' | 'projectId' | 'projectName' | 'projectType' | 'projectIcon'
+> = {
 	scope: 'project',
 	projectId: 'p1',
 	projectName: 'Marketing',
@@ -18,6 +21,14 @@ const skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projec
 describe('SkillScopeBadge', () => {
 	beforeEach(() => {
 		createTestingPinia();
+	});
+
+	it('uses the project icon that the server sends', () => {
+		const { getByTestId } = renderBadge({
+			props: { skill: { ...skill, projectIcon: { type: 'emoji', value: '💰' } } },
+		});
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Marketing/);
 	});
 
 	it('uses the current project icon when the project lists are empty', () => {

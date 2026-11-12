@@ -11,6 +11,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
 	type AgentSkillAvailability,
+	type ProjectIcon,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
@@ -73,6 +74,8 @@ export type AgentSkillModalScopeOption = {
 	value: string;
 	label: string;
 	icon: IconName;
+	/** The project's own icon, which the scope badge shows instead of `icon`. */
+	projectIcon?: ProjectIcon | null;
 	/** Where the option puts the skill, so the modal can warn when agents would lose it. */
 	target?: SkillMoveTarget;
 };
@@ -111,6 +114,8 @@ export type AgentSkillModalData = {
 	initialScope?: string;
 	/** Settings only: the saved project's type, even when the project is not listed. */
 	projectType?: SkillDetail['projectType'];
+	/** Settings only: the saved project's icon, even when the project is not listed. */
+	projectIcon?: SkillDetail['projectIcon'];
 	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
 	availableToMCP?: boolean;
@@ -448,7 +453,12 @@ const availabilityOptions = computed(() => [
 			]
 		: []),
 ]);
-type ScopeChoice = { value: string; label: string; icon: IconName };
+type ScopeChoice = {
+	value: string;
+	label: string;
+	icon: IconName;
+	projectIcon?: ProjectIcon | null;
+};
 
 /**
  * The scope badge in the header and the "Change scope" submenu. Settings picks from
@@ -469,14 +479,21 @@ const selectedScopeSkill = computed(() => {
 	const target = showScope.value
 		? parseScope(scope.value)
 		: { scope: availableTo.value, projectId: props.data.projectId };
+	// The saved project's type and icon belong only to the saved scope. For another scope the
+	// option gives the icon, and the badge finds the type in the project store.
+	const saved = showScope.value
+		? scope.value === props.data.initialScope
+			? { projectType: props.data.projectType, projectIcon: props.data.projectIcon }
+			: undefined
+		: availableTo.value === savedTarget.value
+			? skillAccess.value
+			: undefined;
 	return {
 		scope: target.scope,
 		projectId: target.scope === 'project' ? (target.projectId ?? null) : null,
 		projectName: selectedScope.value?.label ?? null,
-		projectType:
-			showScope.value && scope.value === props.data.initialScope
-				? (props.data.projectType ?? null)
-				: (skillAccess.value?.projectType ?? null),
+		projectType: saved?.projectType ?? null,
+		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
 const showScopeBadge = computed(

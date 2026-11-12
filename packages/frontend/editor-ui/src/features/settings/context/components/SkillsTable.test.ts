@@ -142,6 +142,20 @@ describe('SkillsTable', () => {
 		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
 	});
 
+	it('shows the project icon from the server when the project is not listed', () => {
+		const { getByTestId } = render([
+			skill({
+				scope: 'project',
+				projectId: 'team-unlisted',
+				projectName: 'Finance',
+				projectType: 'team',
+				projectIcon: { type: 'emoji', value: '💰' },
+			}),
+		]);
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Finance/);
+	});
+
 	it('shows the creator name and email without an avatar', () => {
 		const { getByTestId } = render([
 			skill({
