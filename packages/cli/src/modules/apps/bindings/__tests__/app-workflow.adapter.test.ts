@@ -352,26 +352,53 @@ describe('AppWorkflowAdapter', () => {
 		});
 
 		it.each([
-			['differs from', 'v2', 'v1', true],
-			['matches', 'v1', 'v1', false],
-		])('reports a draft that %s the published version', async (_, draftId, activeId, expected) => {
+			['is not published', null, 'v1', { published: false, hasChanges: false }],
+			[
+				'has a draft that differs from the published version',
+				'v1',
+				'v2',
+				{ published: true, hasChanges: true },
+			],
+			[
+				'has a draft that matches the published version',
+				'v1',
+				'v1',
+				{ published: true, hasChanges: false },
+			],
+		])('reports a workflow that %s', async (_, activeId, draftId, expected) => {
 			const { adapter, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(
 				workflow({ versionId: draftId, activeVersionId: activeId }),
 			);
 
-			await expect(adapter.hasUnpublishedChanges('project-1', binding)).resolves.toBe(expected);
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
+				name: 'Flow',
+				...expected,
+			});
 			expect(loader.loadWorkflow).toHaveBeenCalledWith('project-1', {
 				workflowId: 'workflow-1',
 				workflowName: '',
 			});
 		});
 
-		it('reports no changes for a workflow that is not in the project', async () => {
+		it('reports a changed draft even when the published version cannot run from an app', async () => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockResolvedValue(
+				workflow({ nodes: [], versionId: 'v2', activeVersionId: 'v1' }),
+			);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
+				name: 'Flow',
+				published: true,
+				hasChanges: true,
+			});
+		});
+
+		it('reports nothing for a workflow that is not in the project', async () => {
 			const { adapter, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(null);
 
-			await expect(adapter.hasUnpublishedChanges('project-1', binding)).resolves.toBe(false);
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
 		});
 
 		it('publishes the current draft as the acting user', async () => {

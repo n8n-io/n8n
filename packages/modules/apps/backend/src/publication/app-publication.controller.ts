@@ -63,6 +63,7 @@ export class AppPublicationController {
 		const { projectId, appId } = req.params;
 		const { versionId, publishResources, ...details } = dto;
 		if (publishResources) {
+			await this.publication.assertCanPublish(projectId, appId, versionId);
 			await this.bindings.publishResources(req.user, projectId, appId, versionId);
 		}
 		await this.publication.publish(projectId, appId, versionId, details, { userId: req.user.id });

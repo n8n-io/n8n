@@ -14,8 +14,15 @@ import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
-import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-ports';
+import {
+	AppAgentPort,
+	AppDataTablePort,
+	AppWorkflowPort,
+	type AppPublishPort,
+	type AppPublishState,
+} from './app-binding-ports';
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
@@ -25,11 +32,27 @@ import { AppChangeService } from '../versions/app-change.service';
 
 type AppPublishBinding = Extract<AppBinding, { kind: 'workflow' | 'agent' }>;
 
-type PublishEntry = { binding: AppPublishBinding; resource: AppPublishPreviewResource };
+type PublishTarget = {
+	canPublish(user: User, projectId: string): Promise<boolean>;
+	getPublishState(projectId: string): Promise<AppPublishState | null>;
+	publish(user: User, projectId: string): Promise<void>;
+};
+
+type PublishEntry = { target: PublishTarget; resource: AppPublishPreviewResource };
+
+function toPublishTarget<B extends AppPublishBinding>(
+	port: AppPublishPort<B>,
+	binding: B,
+): PublishTarget {
+	return {
+		canPublish: async (user, projectId) => await port.canPublish(user, projectId, binding),
+		getPublishState: async (projectId) => await port.getPublishState(projectId, binding),
+		publish: async (user, projectId) => await port.publish(user, projectId, binding),
+	};
+}
 
 const PUBLISH_KIND_ORDER: Record<AppPublishBinding['kind'], number> = { workflow: 0, agent: 1 };
 
-/** Workflows come first, because a published agent needs the workflows it uses to be published. */
 function compareByKindAndName(a: PublishEntry, b: PublishEntry) {
 	return (
 		PUBLISH_KIND_ORDER[a.resource.kind] - PUBLISH_KIND_ORDER[b.resource.kind] ||
@@ -165,12 +188,6 @@ export class AppBindingsService {
 		return { resources: entries.map(({ resource }) => resource) };
 	}
 
-	/**
-	 * Publishes the workflows and agents of a version that are unpublished or
-	 * changed since their last publish, one by one, and stops at the first failure.
-	 * It skips resources that the user cannot publish. It does not roll back resources that it already
-	 * published, because a published workflow or agent is valid on its own.
-	 */
 	async publishResources(
 		user: User,
 		projectId: string,
@@ -181,11 +198,11 @@ export class AppBindingsService {
 		const pending = entries.filter(
 			({ resource }) => resource.canPublish && (!resource.published || resource.hasChanges),
 		);
-		for (const { binding, resource } of pending) {
+		for (const { target, resource } of pending) {
 			try {
-				await this.publishResource(user, projectId, binding);
+				await target.publish(user, projectId);
 			} catch (error) {
-				const reason = error instanceof Error ? error.message : 'Unknown error';
+				const reason = scrubSecretsInText(error instanceof Error ? error.message : 'Unknown error');
 				throw new UnprocessableRequestError(`Could not publish "${resource.name}": ${reason}`);
 			}
 		}
@@ -253,59 +270,29 @@ export class AppBindingsService {
 		const entries: PublishEntry[] = [];
 		for (const binding of version.bindings) {
 			if (binding.kind === 'dataTable') continue;
-			const described = await this.describeOne(projectId, binding);
-			if (!described || described.missing || !('published' in described)) continue;
+			const target = this.publishTarget(binding);
+			const state = await target.getPublishState(projectId);
+			if (!state) continue;
 			entries.push({
-				binding,
+				target,
 				resource: {
 					key: binding.key,
 					kind: binding.kind,
 					resourceId: binding.kind === 'workflow' ? binding.workflowId : binding.agentId,
-					name: described.name,
-					published: described.published,
-					hasChanges: described.published && (await this.hasResourceChanges(projectId, binding)),
-					canPublish: await this.canPublishResource(user, projectId, binding),
+					...state,
+					canPublish: await target.canPublish(user, projectId),
 				},
 			});
 		}
 		return entries.sort(compareByKindAndName);
 	}
 
-	private async canPublishResource(
-		user: User,
-		projectId: string,
-		binding: AppPublishBinding,
-	): Promise<boolean> {
+	private publishTarget(binding: AppPublishBinding): PublishTarget {
 		switch (binding.kind) {
 			case 'workflow':
-				return await this.workflows.canPublish(user, projectId, binding);
+				return toPublishTarget(this.workflows, binding);
 			case 'agent':
-				return await this.agents.canPublish(user, projectId, binding);
-		}
-	}
-
-	private async hasResourceChanges(
-		projectId: string,
-		binding: AppPublishBinding,
-	): Promise<boolean> {
-		switch (binding.kind) {
-			case 'workflow':
-				return await this.workflows.hasUnpublishedChanges(projectId, binding);
-			case 'agent':
-				return await this.agents.hasUnpublishedChanges(projectId, binding);
-		}
-	}
-
-	private async publishResource(
-		user: User,
-		projectId: string,
-		binding: AppPublishBinding,
-	): Promise<void> {
-		switch (binding.kind) {
-			case 'workflow':
-				return await this.workflows.publish(user, projectId, binding);
-			case 'agent':
-				return await this.agents.publish(user, projectId, binding);
+				return toPublishTarget(this.agents, binding);
 		}
 	}
 

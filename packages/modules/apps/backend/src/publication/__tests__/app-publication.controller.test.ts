@@ -139,9 +139,12 @@ describe('AppPublicationController.publish', () => {
 		return { controller, publication, bindings };
 	}
 
-	it('publishes the attached resources before the app', async () => {
+	it('checks the app, then publishes the attached resources, then the app', async () => {
 		const { controller, publication, bindings } = setup();
 		const order: string[] = [];
+		publication.assertCanPublish.mockImplementation(async () => {
+			order.push('check');
+		});
 		bindings.publishResources.mockImplementation(async () => {
 			order.push('resources');
 		});
@@ -163,7 +166,19 @@ describe('AppPublicationController.publish', () => {
 			{ label: 'v1' },
 			{ userId: 'user-1' },
 		);
-		expect(order).toEqual(['resources', 'app']);
+		expect(order).toEqual(['check', 'resources', 'app']);
+	});
+
+	it('publishes no resource when the app cannot be published', async () => {
+		const { controller, publication, bindings } = setup();
+		publication.assertCanPublish.mockRejectedValue(new Error('Use a valid app namespace'));
+
+		await expect(
+			controller.publish(req, mock<Response>(), { versionId, label: 'v1', publishResources: true }),
+		).rejects.toThrow('valid app namespace');
+
+		expect(bindings.publishResources).not.toHaveBeenCalled();
+		expect(publication.publish).not.toHaveBeenCalled();
 	});
 
 	it('does not publish the app when a resource fails', async () => {

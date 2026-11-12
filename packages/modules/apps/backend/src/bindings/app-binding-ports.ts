@@ -76,7 +76,19 @@ export abstract class AppDataTablePort {
 	): Promise<AppRow[]>;
 }
 
-export abstract class AppWorkflowPort {
+export interface AppPublishState {
+	name: string;
+	published: boolean;
+	hasChanges: boolean;
+}
+
+export interface AppPublishPort<B extends AppWorkflowBinding | AppAgentBinding> {
+	canPublish(user: User, projectId: string, binding: B): Promise<boolean>;
+	getPublishState(projectId: string, binding: B): Promise<AppPublishState | null>;
+	publish(user: User, projectId: string, binding: B): Promise<void>;
+}
+
+export abstract class AppWorkflowPort implements AppPublishPort<AppWorkflowBinding> {
 	abstract assertCanBind(user: User, projectId: string, binding: AppWorkflowBinding): Promise<void>;
 
 	/** Returns `null` when the workflow is not in the project or cannot run from an app. */
@@ -87,10 +99,11 @@ export abstract class AppWorkflowPort {
 
 	abstract canPublish(user: User, projectId: string, binding: AppWorkflowBinding): Promise<boolean>;
 
-	/** Whether the draft of a published workflow differs from its published version. */
-	abstract hasUnpublishedChanges(projectId: string, binding: AppWorkflowBinding): Promise<boolean>;
+	abstract getPublishState(
+		projectId: string,
+		binding: AppWorkflowBinding,
+	): Promise<AppPublishState | null>;
 
-	/** Publishes the current draft of the workflow. Throws when the workflow cannot be published. */
 	abstract publish(user: User, projectId: string, binding: AppWorkflowBinding): Promise<void>;
 
 	/** Returns status `running` when the run did not finish in time. */
@@ -126,7 +139,7 @@ export abstract class AppBindingAdapters {
 	};
 }
 
-export abstract class AppAgentPort {
+export abstract class AppAgentPort implements AppPublishPort<AppAgentBinding> {
 	abstract assertCanBind(user: User, projectId: string, binding: AppAgentBinding): Promise<void>;
 
 	/** Returns `null` when the agent is not in the project. */
@@ -137,10 +150,11 @@ export abstract class AppAgentPort {
 
 	abstract canPublish(user: User, projectId: string, binding: AppAgentBinding): Promise<boolean>;
 
-	/** Whether the draft of a published agent differs from its published version. */
-	abstract hasUnpublishedChanges(projectId: string, binding: AppAgentBinding): Promise<boolean>;
+	abstract getPublishState(
+		projectId: string,
+		binding: AppAgentBinding,
+	): Promise<AppPublishState | null>;
 
-	/** Publishes the current draft of the agent. Throws when the agent cannot be published. */
 	abstract publish(user: User, projectId: string, binding: AppAgentBinding): Promise<void>;
 
 	/** All refusals throw before the returned stream starts. */

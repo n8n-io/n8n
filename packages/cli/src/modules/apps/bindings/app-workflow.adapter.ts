@@ -165,12 +165,18 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		return workflow !== null;
 	}
 
-	async hasUnpublishedChanges(projectId: string, binding: AppWorkflowBinding) {
+	async getPublishState(projectId: string, binding: AppWorkflowBinding) {
 		const draft = await this.workflowLoader.loadWorkflow(projectId, {
 			workflowId: binding.workflowId,
 			workflowName: '',
 		});
-		return draft !== null && draft.versionId !== draft.activeVersionId;
+		if (!draft) return null;
+		const published = draft.activeVersionId !== null;
+		return {
+			name: draft.name,
+			published,
+			hasChanges: published && draft.versionId !== draft.activeVersionId,
+		};
 	}
 
 	async publish(user: User, _projectId: string, binding: AppWorkflowBinding) {

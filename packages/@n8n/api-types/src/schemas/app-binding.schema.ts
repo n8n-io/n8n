@@ -125,9 +125,7 @@ export type AppPublishPreviewResource = {
 	resourceId: string;
 	name: string;
 	published: boolean;
-	/** The draft of a published resource differs from its published version. */
 	hasChanges: boolean;
-	/** Whether the requesting user has the publish permission for the resource. */
 	canPublish: boolean;
 };
 

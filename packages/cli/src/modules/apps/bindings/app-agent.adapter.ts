@@ -108,11 +108,17 @@ export class AppAgentAdapter extends AppAgentPort {
 		return await userHasScopes(user, ['agent:publish'], false, { projectId });
 	}
 
-	async hasUnpublishedChanges(projectId: string, binding: AppAgentBinding) {
-		if (!this.moduleRegistry.isActive('agents')) return false;
+	async getPublishState(projectId: string, binding: AppAgentBinding) {
+		if (!this.moduleRegistry.isActive('agents')) return null;
 		const { agents } = await agentServices();
 		const agent = await agents.findById(binding.agentId, projectId);
-		return agent !== null && agent.versionId !== agent.activeVersionId;
+		if (!agent) return null;
+		const published = agent.activeVersionId !== null;
+		return {
+			name: agent.name,
+			published,
+			hasChanges: published && agent.versionId !== agent.activeVersionId,
+		};
 	}
 
 	async publish(user: User, projectId: string, binding: AppAgentBinding) {

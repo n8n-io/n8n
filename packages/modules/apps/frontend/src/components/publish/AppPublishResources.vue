@@ -24,6 +24,7 @@ const headers: Array<TableHeader<AppPublishPreviewResource>> = [
 	<N8nDataTableServer
 		:headers="headers"
 		:items="resources"
+		item-value="key"
 		:items-length="resources.length"
 		:page-sizes="[resources.length + 1]"
 		:pagination="false"

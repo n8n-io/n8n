@@ -269,15 +269,43 @@ describe('AppPublishDialog', () => {
 			);
 		});
 
-		it('still publishes when the preview cannot be loaded', async () => {
+		it('warns and still publishes when the preview cannot be loaded', async () => {
 			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
 			vi.mocked(publishApp).mockResolvedValue(testApp());
 			renderComponent();
-			await screen.findByTestId('app-publish-resources');
+
+			expect(await screen.findByTestId('app-publish-resources-error')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
 
 			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
 			await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
+		});
+
+		it('does not warn about the preview when the box is unchecked', async () => {
+			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
+			renderComponent();
+			await screen.findByTestId('app-publish-resources-error');
+
+			await userEvent.click(screen.getByTestId('app-publish-resources'));
+
+			expect(screen.queryByTestId('app-publish-resources-error')).not.toBeInTheDocument();
+		});
+
+		it('reloads the list after a failed publish', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValueOnce({ resources: [sales, support] });
+			vi.mocked(publishApp).mockRejectedValue(new Error('Could not publish "Support": denied'));
+			renderComponent();
+			await screen.findByTestId('app-publish-resource-sales');
+			vi.mocked(getAppPublishPreview).mockResolvedValueOnce({ resources: [support] });
+
+			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument(),
+			);
+			expect(screen.getByTestId('app-publish-resource-support')).toBeInTheDocument();
+			expect(getAppPublishPreview).toHaveBeenCalledTimes(2);
 		});
 	});
 

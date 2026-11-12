@@ -45,6 +45,7 @@ const busy = ref(false);
 const publishResources = ref(true);
 const resources = ref<AppPublishPreviewResource[]>([]);
 const loadingResources = ref(false);
+const resourcesLoadFailed = ref(false);
 const publishError = ref<string | null>(null);
 
 const pendingResources = computed(() =>
@@ -58,6 +59,7 @@ const canPublish = computed(() => appVersionNameSchema.safeParse(label.value).su
 async function loadResources() {
 	const versionId = props.version.id;
 	loadingResources.value = true;
+	resourcesLoadFailed.value = false;
 	try {
 		const preview = await getAppPublishPreview(
 			rootStore.restApiContext,
@@ -67,7 +69,10 @@ async function loadResources() {
 		);
 		if (versionId === props.version.id) resources.value = preview.resources;
 	} catch {
-		resources.value = [];
+		if (versionId === props.version.id) {
+			resources.value = [];
+			resourcesLoadFailed.value = true;
+		}
 	} finally {
 		if (versionId === props.version.id) loadingResources.value = false;
 	}
@@ -101,6 +106,7 @@ async function publish() {
 	} catch (error) {
 		publishError.value =
 			error instanceof Error && error.message ? error.message : i18n.baseText('apps.publish.error');
+		void loadResources();
 	} finally {
 		busy.value = false;
 	}
@@ -165,6 +171,13 @@ watch(open, (isOpen) => isOpen && reset(), { immediate: true });
 				:project-id="app.projectId"
 				:loading="loadingResources"
 			/>
+			<N8nCallout
+				v-if="resourcesLoadFailed && publishResources"
+				theme="warning"
+				data-test-id="app-publish-resources-error"
+			>
+				{{ i18n.baseText('apps.publish.dialog.resources.loadError') }}
+			</N8nCallout>
 			<N8nCallout v-if="publishError" theme="danger" data-test-id="app-publish-error">
 				{{ publishError }}
 			</N8nCallout>

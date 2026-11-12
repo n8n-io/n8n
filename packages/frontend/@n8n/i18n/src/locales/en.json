@@ -362,6 +362,7 @@
 	"apps.publish.dialog.publishResources": "Publish all attached resources",
 	"apps.publish.dialog.resources.column.name": "Resources to be published",
 	"apps.publish.dialog.resources.cannotPublish": "You do not have the permission to publish this resource, it will be skipped. Ask the owner or admin to publish it.",
+	"apps.publish.dialog.resources.loadError": "Could not load the attached resources. n8n still publishes the ones that need it.",
 	"apps.link.label": "Link",
 	"apps.visibility.label": "Who can open it",
 	"apps.visibility.project": "People in this project",

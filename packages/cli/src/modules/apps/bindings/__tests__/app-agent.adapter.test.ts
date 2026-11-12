@@ -24,6 +24,8 @@ vi.mock('@/modules/agents/integrations/n8n-checkpoint-storage', () => ({
 	N8NCheckpointStorage: class {},
 }));
 
+type ProjectAgent = NonNullable<Awaited<ReturnType<AgentsService['findById']>>>;
+
 const SESSION = '0190a8d6-4a2e-4000-8000-000000000001';
 
 const userCtx: AppCallContext = {
@@ -135,21 +137,47 @@ describe('AppAgentAdapter', () => {
 		});
 
 		it.each([
-			['differs from', 'v2', 'v1', true],
-			['matches', 'v1', 'v1', false],
-		])('reports a draft that %s the published version', async (_, draftId, activeId, expected) => {
+			['is not published', null, 'v1', { published: false, hasChanges: false }],
+			[
+				'has a draft that differs from the published version',
+				'v1',
+				'v2',
+				{ published: true, hasChanges: true },
+			],
+			[
+				'has a draft that matches the published version',
+				'v1',
+				'v1',
+				{ published: true, hasChanges: false },
+			],
+		])('reports an agent that %s', async (_, activeId, draftId, expected) => {
 			const { adapter, agents } = setup();
 			agents.findById.mockResolvedValue(
-				mock({ id: 'agent-1', versionId: draftId, activeVersionId: activeId }),
+				mock<ProjectAgent>({
+					id: 'agent-1',
+					name: 'Support',
+					versionId: draftId,
+					activeVersionId: activeId,
+				}),
 			);
 
-			await expect(adapter.hasUnpublishedChanges('project-1', binding)).resolves.toBe(expected);
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
+				name: 'Support',
+				...expected,
+			});
 		});
 
-		it('reports no changes when the agents module is off', async () => {
+		it('reports nothing for an agent that is not in the project', async () => {
+			const { adapter, agents } = setup();
+			agents.findById.mockResolvedValue(null);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
+		});
+
+		it('reports nothing when the agents module is off', async () => {
 			const { adapter, agents } = setup({ active: false });
 
-			await expect(adapter.hasUnpublishedChanges('project-1', binding)).resolves.toBe(false);
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
 			expect(agents.findById).not.toHaveBeenCalled();
 		});
 
