@@ -25,14 +25,18 @@ import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
  */
 function createToolCallIndexer() {
 	const indexById = new Map<string, number>();
-	let currentIndex = 0;
+	let nextIndex = 0;
+	let currentIndex: number | undefined;
 
 	return (id?: string): number => {
-		if (!id) return currentIndex;
+		if (!id) {
+			currentIndex ??= nextIndex++;
+			return currentIndex;
+		}
 
 		let index = indexById.get(id);
 		if (index === undefined) {
-			index = indexById.size;
+			index = nextIndex++;
 			indexById.set(id, index);
 		}
 		currentIndex = index;
@@ -273,8 +277,6 @@ export class LangchainChatModelAdapter<
 		const newModel = this.chatModel.withTools(genericTools);
 		const newAdapter = new LangchainChatModelAdapter<CallOptions>(newModel, this.ctx);
 
-		// Same as LangChain's own models. LangChain agents use a bound runnable as is
-		// and do not bind the tools again without the kwargs.
 		return newAdapter.withConfig(kwargs ?? {});
 	}
 }

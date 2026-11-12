@@ -305,11 +305,11 @@ describe('LangchainAdapter', () => {
 				for await (const chunk of await adapter.stream([new HumanMessage('hi')])) {
 					merged = merged ? merged.concat(chunk) : chunk;
 				}
-				return merged?.tool_calls;
+				return { toolCalls: merged?.tool_calls, invalidToolCalls: merged?.invalid_tool_calls };
 			}
 
 			it('keeps calls apart when continuation deltas have no id', async () => {
-				const toolCalls = await streamToolCalls([
+				const { toolCalls } = await streamToolCalls([
 					{ type: 'tool-call-delta', id: 'tc-1', name: 'search', argumentsDelta: '' },
 					{ type: 'tool-call-delta', argumentsDelta: '{"q":' },
 					{ type: 'tool-call-delta', argumentsDelta: '"cats"}' },
@@ -324,8 +324,23 @@ describe('LangchainAdapter', () => {
 				]);
 			});
 
+			it('keeps a call apart from an earlier call that has no id', async () => {
+				const { toolCalls, invalidToolCalls } = await streamToolCalls([
+					{ type: 'tool-call-delta', name: 'search', argumentsDelta: '{"q":"cats"}' },
+					{ type: 'tool-call-delta', id: 'tc-2', name: 'weather', argumentsDelta: '' },
+					{ type: 'tool-call-delta', argumentsDelta: '{"city":"Berlin"}' },
+				]);
+
+				expect(toolCalls).toEqual([
+					expect.objectContaining({ id: 'tc-2', name: 'weather', args: { city: 'Berlin' } }),
+				]);
+				expect(invalidToolCalls).toEqual([
+					expect.objectContaining({ name: 'search', args: '{"q":"cats"}' }),
+				]);
+			});
+
 			it('keeps interleaved calls apart when every delta has an id', async () => {
-				const toolCalls = await streamToolCalls([
+				const { toolCalls } = await streamToolCalls([
 					{ type: 'tool-call-delta', id: 'tc-1', name: 'search', argumentsDelta: '{"q":' },
 					{ type: 'tool-call-delta', id: 'tc-2', name: 'weather', argumentsDelta: '{"city":' },
 					{ type: 'tool-call-delta', id: 'tc-1', argumentsDelta: '"cats"}' },
