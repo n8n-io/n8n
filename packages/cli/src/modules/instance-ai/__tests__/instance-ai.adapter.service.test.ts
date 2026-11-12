@@ -1964,7 +1964,7 @@ import {
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
@@ -7645,6 +7645,49 @@ describe('getGatewayConfigOrNull', () => {
 
 		await expect(callGet(adapter)).resolves.toBeNull();
 		expect(getGatewayConfig).not.toHaveBeenCalled();
+	});
+});
+
+describe('createCredentialAdapter — getAiGatewayNodeRejection', () => {
+	const geminiType = '@n8n/n8n-nodes-langchain.googleGemini';
+
+	async function getRejection(parameters: NodeJSON['parameters'], options?: { enabled?: boolean }) {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: [geminiType],
+				credentialTypes: ['googlePalmApi'],
+				providerConfig: {},
+				supportedActions: { [geminiType]: { text: ['message'] } },
+			}),
+			{ enabled: options?.enabled },
+		);
+		const description = {
+			properties: [
+				{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
+			],
+		};
+		(adapter as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes = {
+			getByNameAndVersion: vi.fn(
+				() => ({ description }) as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>,
+			),
+		};
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return await adapter.createContext(mockUser).credentialService.getAiGatewayNodeRejection!(
+			{ type: geminiType, typeVersion: 1, parameters },
+			'googlePalmApi',
+		);
+	}
+
+	it.each([
+		[{}, undefined],
+		[{ resource: 'image' }, 'image.message not supported'],
+	])('judges %j by the action it runs with node defaults', async (parameters, expected) => {
+		await expect(getRejection(parameters)).resolves.toBe(expected);
+	});
+
+	it('returns nothing when Gateway credits are off', async () => {
+		await expect(getRejection({ resource: 'image' }, { enabled: false })).resolves.toBeUndefined();
 	});
 });
 
