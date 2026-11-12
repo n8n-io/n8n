@@ -1149,6 +1149,33 @@ watch(
 	{ flush: 'post' },
 );
 
+/**
+ * The scroll area stays mounted when the chat changes. Jump to the bottom so
+ * the scroll state of the previous chat does not apply to the new one.
+ */
+watch(
+	[() => props.projectId, () => props.agentId, () => props.continueSessionId],
+	() => scrollArea.value?.scrollToBottom(),
+	{ flush: 'post' },
+);
+
+/**
+ * The first send moves the composer from the centered empty state into the
+ * scroll area, which mounts a new input. Keep focus on the new input.
+ */
+watch(
+	isCenteredEmpty,
+	async (centered, wasCentered) => {
+		if (centered || !wasCentered) return;
+		const composer: unknown = chatInput.value?.$el;
+		if (!(composer instanceof Element) || !composer.contains(document.activeElement)) return;
+		await nextTick();
+		if (disposed) return;
+		focusInput({ preventScroll: true });
+	},
+	{ flush: 'pre' },
+);
+
 watch(isStreaming, (v) => emit('update:streaming', v));
 watch(
 	() => messages.value.find((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.content,

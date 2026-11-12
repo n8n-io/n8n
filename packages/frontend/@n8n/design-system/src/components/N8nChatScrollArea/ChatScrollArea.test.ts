@@ -32,6 +32,40 @@ class FakeIntersectionObserver {
 	}
 }
 
+/** Callbacks of the fake resize observers, keyed by the observed element. */
+const resizeCallbacks = new Map<Element, () => void>();
+
+class FakeResizeObserver {
+	constructor(private readonly onResize: () => void) {}
+
+	observe(target: Element) {
+		resizeCallbacks.set(target, this.onResize);
+	}
+
+	unobserve(target: Element) {
+		resizeCallbacks.delete(target);
+	}
+
+	disconnect() {}
+}
+
+/** Fires an intersection entry for the bottom sentinel of the viewport. */
+function triggerBottomSentinel(viewport: HTMLElement, isIntersecting: boolean) {
+	const sentinel = viewport.lastElementChild;
+	if (!sentinel) throw new Error('Bottom sentinel not found');
+	const onIntersect = observerCallbacks.get(sentinel);
+	if (!onIntersect) throw new Error('Bottom sentinel is not observed');
+	onIntersect([{ isIntersecting, target: sentinel }]);
+}
+
+/** Fires a resize entry for the content element of the viewport. */
+function triggerContentResize(viewport: HTMLElement) {
+	const content = viewport.children[1];
+	const onResize = content && resizeCallbacks.get(content);
+	if (!onResize) throw new Error('Content is not observed');
+	onResize();
+}
+
 /** Fires an intersection entry for the top sentinel of the viewport. */
 function triggerTopSentinel(viewport: HTMLElement) {
 	const sentinel = viewport.firstElementChild;
@@ -53,6 +87,22 @@ function setScrollTop(element: HTMLElement, value: number) {
 	});
 }
 
+/** Sets fixed scroll metrics on the viewport, because jsdom has no layout. */
+function setScrollMetrics(
+	element: HTMLElement,
+	metrics: { scrollHeight: number; clientHeight: number; scrollTop: number },
+) {
+	Object.defineProperty(element, 'scrollHeight', {
+		configurable: true,
+		value: metrics.scrollHeight,
+	});
+	Object.defineProperty(element, 'clientHeight', {
+		configurable: true,
+		value: metrics.clientHeight,
+	});
+	setScrollTop(element, metrics.scrollTop);
+}
+
 function renderScrollArea(props: { loadingOlder?: boolean } = {}) {
 	return render(N8nChatScrollArea, {
 		props,
@@ -66,10 +116,13 @@ function renderScrollArea(props: { loadingOlder?: boolean } = {}) {
 describe('N8nChatScrollArea', () => {
 	beforeEach(() => {
 		vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+		vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+		Element.prototype.scrollTo = vi.fn();
 	});
 
 	afterEach(() => {
 		observerCallbacks.clear();
+		resizeCallbacks.clear();
 		intersectOnObserve = false;
 		vi.unstubAllGlobals();
 	});
@@ -86,6 +139,52 @@ describe('N8nChatScrollArea', () => {
 		const { html } = renderScrollArea();
 
 		expect(html()).toMatchSnapshot();
+	});
+
+	describe('follow', () => {
+		it('should follow new content while at the bottom', async () => {
+			const { getByTestId } = renderScrollArea();
+			await flushPromises();
+			const viewport = getByTestId('chat-scroll-area-viewport');
+			vi.mocked(viewport.scrollTo).mockClear();
+
+			triggerContentResize(viewport);
+
+			expect(viewport.scrollTo).toHaveBeenCalledTimes(1);
+		});
+
+		it('should stay in place when content grows after the user scrolls up', async () => {
+			const { getByTestId, emitted } = renderScrollArea();
+			await flushPromises();
+			const viewport = getByTestId('chat-scroll-area-viewport');
+
+			triggerBottomSentinel(viewport, false);
+			vi.mocked(viewport.scrollTo).mockClear();
+			triggerContentResize(viewport);
+			triggerContentResize(viewport);
+
+			expect(viewport.scrollTo).not.toHaveBeenCalled();
+			expect(emitted('update:atBottom')).toEqual([[false]]);
+			await flushPromises();
+			expect(getByTestId('chat-scroll-area-scroll-down')).toBeInTheDocument();
+		});
+
+		it('should stop following when a smooth scroll to the bottom is interrupted', async () => {
+			const { getByTestId, emitted } = renderScrollArea();
+			await flushPromises();
+			const viewport = getByTestId('chat-scroll-area-viewport');
+			triggerBottomSentinel(viewport, false);
+			await flushPromises();
+
+			getByTestId('chat-scroll-area-scroll-down').click();
+			setScrollMetrics(viewport, { scrollHeight: 2000, clientHeight: 500, scrollTop: 800 });
+			viewport.dispatchEvent(new Event('scrollend'));
+			vi.mocked(viewport.scrollTo).mockClear();
+			triggerContentResize(viewport);
+
+			expect(emitted('update:atBottom')).toEqual([[false], [true], [false]]);
+			expect(viewport.scrollTo).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('load-older', () => {
