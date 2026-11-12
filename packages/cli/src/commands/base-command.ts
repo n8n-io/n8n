@@ -12,7 +12,7 @@ import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import type { SystemTaskClass } from '@n8n/decorators';
@@ -32,8 +32,10 @@ import { sleep } from '@n8n/utils/sleep';
 import { Expression } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import type { NativeVerifyMismatch } from 'n8n-workflow';
+import type { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 
 import type { AbstractServer } from '@/abstract-server';
+import { ActiveExecutions } from '@/active-executions';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -52,6 +54,8 @@ import { NodeTypes } from '@/node-types';
 import { POLICY_MODULES } from '@/policy/policy-modules';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+
+const SHUTDOWN_DRAIN_BUDGET_SHARE = 0.8;
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -88,6 +92,8 @@ export abstract class BaseCommand<F = never> {
 	protected gracefulShutdownTimeoutInS =
 		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
+	private shutdownStartedAt?: number;
+
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
@@ -122,7 +128,7 @@ export abstract class BaseCommand<F = never> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
-		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
+		process.on('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
@@ -335,6 +341,31 @@ export abstract class BaseCommand<F = never> {
 
 	protected async stopProcess() {
 		// This needs to be overridden
+	}
+
+	protected async drainInFlightWork() {
+		const deadline = this.shutdownDrainDeadline();
+		const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
+		const mcpServer = McpServer.instance(this.logger);
+
+		await Promise.all([
+			Container.get(ActiveExecutions).shutdown(),
+			this.settleRequestsAndToolCalls(mcpServer, deadline),
+		]);
+
+		await mcpServer.closeSessions();
+		this.server?.closeConnections();
+	}
+
+	private async settleRequestsAndToolCalls(mcpServer: McpServer, deadline: number) {
+		await this.server?.waitForRequests(deadline);
+		await mcpServer.settleToolCalls(deadline);
+	}
+
+	private shutdownDrainDeadline() {
+		const startedAt = this.shutdownStartedAt ?? Date.now();
+		const windowMs = this.gracefulShutdownTimeoutInS * Time.seconds.toMilliseconds;
+		return startedAt + windowMs * SHUTDOWN_DRAIN_BUDGET_SHARE;
 	}
 
 	protected async initCommunityPackages() {
@@ -612,6 +643,8 @@ export abstract class BaseCommand<F = never> {
 				return;
 			}
 
+			this.shutdownStartedAt = Date.now();
+
 			const forceShutdownTimer = setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after timeout no matter what
@@ -621,6 +654,7 @@ export abstract class BaseCommand<F = never> {
 			}, this.gracefulShutdownTimeoutInS * 1000);
 
 			this.logger.info(`Received ${signal}. Shutting down...`);
+			this.server?.stopAcceptingRequests();
 			this.shutdownService.shutdown();
 
 			await this.shutdownService.waitForShutdown();

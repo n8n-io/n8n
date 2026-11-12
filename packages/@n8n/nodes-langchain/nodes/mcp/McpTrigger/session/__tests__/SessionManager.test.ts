@@ -138,6 +138,46 @@ describe('SessionManager', () => {
 		});
 	});
 
+	describe('detachSession', () => {
+		it('should drop the session here and keep it registered in the store', async () => {
+			const server = createMockServer();
+			const transport = createMockTransport('session-1', 'streamableHttp');
+			transport.onclose = vi.fn();
+			await manager.registerSession('session-1', server, transport);
+
+			await manager.detachSession('session-1');
+
+			expect(manager.getSession('session-1')).toBeUndefined();
+			expect(mockStore.unregister).not.toHaveBeenCalled();
+			expect(mockStore.clearTools).toHaveBeenCalledWith('session-1');
+			expect(transport.onclose).toBeUndefined();
+			expect(server.close).toHaveBeenCalled();
+		});
+
+		it('should ignore an unknown session', async () => {
+			await expect(manager.detachSession('unknown')).resolves.toBeUndefined();
+
+			expect(mockStore.clearTools).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getSessionIds', () => {
+		it('should list the registered sessions', async () => {
+			await manager.registerSession(
+				'session-1',
+				createMockServer(),
+				createMockTransport('session-1'),
+			);
+			await manager.registerSession(
+				'session-2',
+				createMockServer(),
+				createMockTransport('session-2'),
+			);
+
+			expect(manager.getSessionIds()).toEqual(['session-1', 'session-2']);
+		});
+	});
+
 	describe('getSession', () => {
 		it('should return session info for registered session', async () => {
 			const server = createMockServer();

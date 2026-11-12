@@ -574,6 +574,25 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(https.globalAgent.constructor.name).toBe('Agent');
 		});
 	});
+
+	describe('init - termination signals', () => {
+		it('should keep the running shutdown on a repeated SIGTERM and force quit on a repeated SIGINT', async () => {
+			setupInstanceSettings('main', false, false);
+			const on = vi.spyOn(process, 'on');
+			const once = vi.spyOn(process, 'once');
+
+			try {
+				await start.init();
+
+				expect(on).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+				expect(once).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+				expect(once).not.toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+			} finally {
+				on.mockRestore();
+				once.mockRestore();
+			}
+		});
+	});
 });
 
 describe('Start - stopProcess', () => {
@@ -582,18 +601,20 @@ describe('Start - stopProcess', () => {
 	const publisher = mock<Publisher>();
 	const subscriber = mock<Subscriber>();
 	const messageEventBus = mock<MessageEventBus>();
+	const server = mock<AbstractServer>();
+	const mcpServer = mock<McpServer>();
 	let exitSpy: MockInstance;
 
-	const createStart = (mode: 'queue' | 'regular') => {
-		const start = new Start();
-		// @ts-expect-error - Accessing protected property for testing
-		start.globalConfig = { executions: { mode } };
-		// @ts-expect-error - Accessing protected property for testing
-		start.activeWorkflowManager = mock<ActiveWorkflowManager>();
-		// @ts-expect-error - Accessing protected property for testing
-		start.dbConnection = dbConnection;
-		return start;
-	};
+	const createStart = (mode: 'queue' | 'regular') =>
+		Object.assign(new Start(), {
+			globalConfig: { executions: { mode } },
+			activeWorkflowManager: mock<ActiveWorkflowManager>(),
+			dbConnection,
+			server,
+		});
+
+	const callOrder = (fn: { mock: { invocationCallOrder: number[] } }) =>
+		fn.mock.invocationCallOrder[0];
 
 	const createActiveExecutions = (executionPersistence: ExecutionPersistence) =>
 		new ActiveExecutions(
@@ -617,6 +638,10 @@ describe('Start - stopProcess', () => {
 		Container.set(Subscriber, subscriber);
 		Container.set(MessageEventBus, messageEventBus);
 		Container.set(WaitTracker, mock<WaitTracker>());
+		server.waitForRequests.mockResolvedValue(undefined);
+		mcpServer.settleToolCalls.mockResolvedValue(undefined);
+		mcpServer.closeSessions.mockResolvedValue(undefined);
+		vi.spyOn(McpServer, 'instance').mockReturnValue(mcpServer);
 		exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 	});
 
@@ -649,35 +674,34 @@ describe('Start - stopProcess', () => {
 
 		expect(publisher.shutdown).toHaveBeenCalledOnce();
 		expect(subscriber.shutdown).toHaveBeenCalledOnce();
-		expect(publisher.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
-			messageEventBus.close.mock.invocationCallOrder[0],
-		);
+		expect(callOrder(publisher.shutdown)).toBeLessThan(callOrder(messageEventBus.close));
 		expect(exitSpy).toHaveBeenCalledOnce();
 	});
 
-	it('should keep pubsub connected until queued MCP tool calls have finished', async () => {
+	it('should keep pubsub connected until MCP tool calls have settled', async () => {
 		const activeExecutions = mock<ActiveExecutions>();
 		activeExecutions.shutdown.mockResolvedValue(undefined);
 		Container.set(ActiveExecutions, activeExecutions);
-		const mcpLogger = mock<Logger>();
-		(McpServer as unknown as { instance_?: McpServer }).instance_ = undefined;
-		const pendingToolCalls = McpServer.instance(mcpLogger).getPendingCallsManager();
-		const toolCall = pendingToolCalls.waitForResult('session-1_1', 'slow_tool', {}, 60_000);
+		let settleToolCalls = () => {};
+		mcpServer.settleToolCalls.mockReturnValue(
+			new Promise<void>((resolve) => {
+				settleToolCalls = resolve;
+			}),
+		);
 
 		const stopping = createStart('queue').stopProcess();
 
-		await vi.waitFor(() =>
-			expect(mcpLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...'),
-		);
+		await vi.waitFor(() => expect(mcpServer.settleToolCalls).toHaveBeenCalled());
+		expect(mcpServer.closeSessions).not.toHaveBeenCalled();
 		expect(publisher.shutdown).not.toHaveBeenCalled();
 		expect(subscriber.shutdown).not.toHaveBeenCalled();
 		expect(exitSpy).not.toHaveBeenCalled();
 
-		pendingToolCalls.resolve('session-1_1', { result: 'ok' });
-		await expect(toolCall).resolves.toEqual({ result: 'ok' });
+		settleToolCalls();
 		await stopping;
 
-		expect(publisher.shutdown).toHaveBeenCalledOnce();
+		expect(callOrder(mcpServer.closeSessions)).toBeLessThan(callOrder(server.closeConnections));
+		expect(callOrder(server.closeConnections)).toBeLessThan(callOrder(publisher.shutdown));
 		expect(subscriber.shutdown).toHaveBeenCalledOnce();
 		expect(exitSpy).toHaveBeenCalledOnce();
 	});
@@ -689,12 +713,10 @@ describe('Start - stopProcess', () => {
 
 		await createStart('queue').stopProcess();
 
-		expect(activeExecutions.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
-			publisher.shutdown.mock.invocationCallOrder[0],
-		);
-		expect(activeExecutions.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
-			subscriber.shutdown.mock.invocationCallOrder[0],
-		);
+		expect(callOrder(activeExecutions.shutdown)).toBeLessThan(callOrder(publisher.shutdown));
+		expect(callOrder(activeExecutions.shutdown)).toBeLessThan(callOrder(subscriber.shutdown));
+		expect(callOrder(server.waitForRequests)).toBeLessThan(callOrder(publisher.shutdown));
+		expect(callOrder(server.closeConnections)).toBeLessThan(callOrder(publisher.shutdown));
 		expect(exitSpy).toHaveBeenCalledOnce();
 	});
 

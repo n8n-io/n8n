@@ -44,6 +44,8 @@ import { TransportFactory } from './transport/TransportFactory';
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
 
+const CANCELLED_TOOL_CALL_GRACE_MS = 1_000;
+
 function toolDescriptors(tools: Tool[]) {
 	return tools.map((tool) => ({
 		name: tool.name,
@@ -88,6 +90,9 @@ export class McpServer {
 	private idleTtlMs: number;
 	private sweepIntervalMs: number;
 	private sweepTimer?: ReturnType<typeof setInterval>;
+
+	private activeToolCalls = 0;
+	private toolCallsIdleWaiters: Array<() => void> = [];
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
@@ -467,12 +472,46 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
-	async waitForPendingToolCalls(): Promise<void> {
-		const pendingToolCalls = this.pendingCallsManager.size;
-		if (pendingToolCalls === 0) return;
+	async settleToolCalls(deadline: number): Promise<void> {
+		this.stopSweep();
+		if (this.activeToolCalls === 0) return;
 
-		this.logger.info(`Waiting for ${pendingToolCalls} MCP tool calls to finish...`);
-		await this.pendingCallsManager.waitUntilIdle();
+		this.logger.info(`Waiting for ${this.activeToolCalls} MCP tool calls to finish...`);
+		if (await this.waitForToolCalls(deadline)) return;
+
+		this.logger.warn(
+			`Cancelling ${this.activeToolCalls} MCP tool calls that did not finish before shutdown`,
+		);
+		this.pendingCallsManager.rejectAll(new OperationalError('n8n is shutting down'));
+		await this.waitForToolCalls(Date.now() + CANCELLED_TOOL_CALL_GRACE_MS);
+	}
+
+	async closeSessions(): Promise<void> {
+		for (const sessionId of this.sessionManager.getSessionIds()) {
+			if (this.sessionManager.getTransport(sessionId)?.transportType === 'sse') {
+				await this.releaseSession(sessionId);
+			} else {
+				await this.sessionManager.detachSession(sessionId);
+			}
+		}
+	}
+
+	private async waitForToolCalls(deadline: number): Promise<boolean> {
+		if (this.activeToolCalls === 0) return true;
+
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const settled = await new Promise<boolean>((resolve) => {
+			this.toolCallsIdleWaiters.push(() => resolve(true));
+			timer = setTimeout(() => resolve(false), Math.max(0, deadline - Date.now()));
+		});
+		clearTimeout(timer);
+		return settled;
+	}
+
+	private finishToolCall(): void {
+		this.activeToolCalls--;
+		if (this.activeToolCalls > 0) return;
+		for (const notifyIdle of this.toolCallsIdleWaiters.splice(0)) notifyIdle();
 	}
 
 	private createServer(serverName: string, instructions?: string): Server {
@@ -519,6 +558,8 @@ export class McpServer {
 	}
 
 	private async releaseSession(sessionId: string): Promise<void> {
+		if (!this.hasSession(sessionId)) return;
+
 		try {
 			await this.cleanupSession(sessionId);
 		} catch (error) {
@@ -638,6 +679,7 @@ export class McpServer {
 
 			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
+			this.activeToolCalls++;
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
 					throw new OperationalError('Require a name and arguments for the tool call');
@@ -708,6 +750,7 @@ export class McpServer {
 			} finally {
 				// No-op when already resolved (queue mode, credential gate, non-SSE).
 				this.resolveFunctions[callId]?.();
+				this.finishToolCall();
 			}
 		});
 

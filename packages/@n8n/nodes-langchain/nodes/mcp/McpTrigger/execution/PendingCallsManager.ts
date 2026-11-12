@@ -12,8 +12,6 @@ const belongsToSession = (callId: string, sessionId: string) => callId.startsWit
 export class PendingCallsManager {
 	private pendingCalls: Record<string, PendingCall> = {};
 
-	private idleWaiters: Array<() => void> = [];
-
 	async waitForResult(
 		callId: string,
 		toolName: string,
@@ -42,7 +40,7 @@ export class PendingCallsManager {
 		if (pending) {
 			clearTimeout(pending.timer);
 			pending.resolve(result);
-			this.delete(callId);
+			delete this.pendingCalls[callId];
 			return true;
 		}
 		return false;
@@ -53,10 +51,16 @@ export class PendingCallsManager {
 		if (pending) {
 			clearTimeout(pending.timer);
 			pending.reject(error);
-			this.delete(callId);
+			delete this.pendingCalls[callId];
 			return true;
 		}
 		return false;
+	}
+
+	rejectAll(error: Error): void {
+		for (const callId of Object.keys(this.pendingCalls)) {
+			this.reject(callId, error);
+		}
 	}
 
 	get(callId: string): PendingCall | undefined {
@@ -71,17 +75,8 @@ export class PendingCallsManager {
 		return Object.keys(this.pendingCalls).some((callId) => belongsToSession(callId, sessionId));
 	}
 
-	get size(): number {
-		return Object.keys(this.pendingCalls).length;
-	}
-
-	async waitUntilIdle(): Promise<void> {
-		if (this.size === 0) return;
-		await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
-	}
-
 	remove(callId: string): void {
-		this.delete(callId);
+		delete this.pendingCalls[callId];
 	}
 
 	cleanupBySessionId(sessionId: string): void {
@@ -92,14 +87,8 @@ export class PendingCallsManager {
 					clearTimeout(pending.timer);
 					pending.resolve(undefined);
 				}
-				this.delete(callId);
+				delete this.pendingCalls[callId];
 			}
 		}
-	}
-
-	private delete(callId: string): void {
-		delete this.pendingCalls[callId];
-		if (this.size > 0) return;
-		for (const notifyIdle of this.idleWaiters.splice(0)) notifyIdle();
 	}
 }

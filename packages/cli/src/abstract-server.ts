@@ -2,8 +2,8 @@ import { inDevelopment, inTest, Logger, ModuleRegistry } from '@n8n/backend-comm
 import type { AppsHostingService } from '@n8n/backend-module-apps/hosting';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
-import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import compression from 'compression';
 import express from 'express';
 import { readFile } from 'fs/promises';
@@ -29,6 +29,8 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
+
+const REQUEST_DRAIN_POLL_INTERVAL_MS = 100;
 
 @Service()
 export abstract class AbstractServer {
@@ -86,6 +88,8 @@ export abstract class AbstractServer {
 
 	private isShuttingDown = false;
 
+	private readonly openResponses = new Set<express.Response>();
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -117,8 +121,6 @@ export abstract class AbstractServer {
 		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
-
-		Container.set(AbstractServer, this);
 	}
 
 	async configure(): Promise<void> {
@@ -199,12 +201,14 @@ export abstract class AbstractServer {
 		const { protocol } = this.globalConfig;
 
 		app.use((_req, res, next) => {
-			if (!this.isShuttingDown) {
-				next();
+			if (this.isShuttingDown) {
+				res.setHeader('Connection', 'close');
+				sendErrorResponse(res, new ServiceUnavailableError('n8n is shutting down'));
 				return;
 			}
-			res.setHeader('Connection', 'close');
-			sendErrorResponse(res, new ServiceUnavailableError('n8n is shutting down'));
+			this.openResponses.add(res);
+			res.once('close', () => this.openResponses.delete(res));
+			next();
 		});
 
 		if (protocol === 'https' && sslKey && sslCert) {
@@ -407,8 +411,7 @@ export abstract class AbstractServer {
 	 * connections configured amount of time to finish their work and
 	 * then closes them forcefully.
 	 */
-	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
-	onShutdown(): void {
+	stopAcceptingRequests(): void {
 		this.isShuttingDown = true;
 
 		if (!this.server) {
@@ -426,5 +429,19 @@ export abstract class AbstractServer {
 
 			this.logger.debug(`${protocol} server shut down`);
 		});
+	}
+
+	async waitForRequests(deadline: number): Promise<void> {
+		const unanswered = () => [...this.openResponses].filter((res) => !res.headersSent).length;
+		if (unanswered() === 0) return;
+
+		this.logger.info(`Waiting for ${unanswered()} requests to finish...`);
+		while (unanswered() > 0 && Date.now() < deadline) {
+			await sleep(Math.min(REQUEST_DRAIN_POLL_INTERVAL_MS, deadline - Date.now()));
+		}
+	}
+
+	closeConnections(): void {
+		this.server?.closeAllConnections();
 	}
 }

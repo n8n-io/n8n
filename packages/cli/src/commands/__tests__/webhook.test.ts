@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -74,34 +73,40 @@ describe('Webhook', () => {
 	});
 
 	describe('stopProcess', () => {
-		it('should wait for queued MCP tool calls after the execution drain', async () => {
+		it('should drain in-flight work, then close MCP sessions and open connections', async () => {
 			const activeExecutions = mockInstance(ActiveExecutions);
 			activeExecutions.shutdown.mockResolvedValue(undefined);
-			const mcpLogger = mock<Logger>();
-			(McpServer as unknown as { instance_?: McpServer }).instance_ = undefined;
-			const pendingToolCalls = McpServer.instance(mcpLogger).getPendingCallsManager();
-			const toolCall = pendingToolCalls.waitForResult('session-1_1', 'slow_tool', {}, 60_000);
+			mockWebhookServer.waitForRequests.mockResolvedValue(undefined);
+			const mcpServer = mock<McpServer>();
+			let settleToolCalls = () => {};
+			mcpServer.settleToolCalls.mockReturnValue(
+				new Promise<void>((resolve) => {
+					settleToolCalls = resolve;
+				}),
+			);
+			mcpServer.closeSessions.mockResolvedValue(undefined);
+			const instance = vi.spyOn(McpServer, 'instance').mockReturnValue(mcpServer);
 			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			try {
-				const webhook = new Webhook();
-				// @ts-expect-error - Accessing protected property for testing
-				webhook.dbConnection = dbConnection;
+				const webhook = Object.assign(new Webhook(), { dbConnection });
 				const stopping = webhook.stopProcess();
 
-				await vi.waitFor(() =>
-					expect(mcpLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...'),
-				);
+				await vi.waitFor(() => expect(mcpServer.settleToolCalls).toHaveBeenCalled());
+				expect(mockWebhookServer.waitForRequests).toHaveBeenCalledOnce();
 				expect(activeExecutions.shutdown).toHaveBeenCalledOnce();
+				expect(mcpServer.closeSessions).not.toHaveBeenCalled();
 				expect(exitSpy).not.toHaveBeenCalled();
 
-				pendingToolCalls.resolve('session-1_1', { result: 'ok' });
-				await expect(toolCall).resolves.toEqual({ result: 'ok' });
+				settleToolCalls();
 				await stopping;
 
+				expect(mcpServer.closeSessions).toHaveBeenCalledOnce();
+				expect(mockWebhookServer.closeConnections).toHaveBeenCalledOnce();
 				expect(exitSpy).toHaveBeenCalledOnce();
 			} finally {
 				exitSpy.mockRestore();
+				instance.mockRestore();
 			}
 		});
 	});

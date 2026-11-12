@@ -29,7 +29,6 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
@@ -116,10 +115,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			Container.get(EventService).emit('instance-stopped');
 
-			await Container.get(ActiveExecutions).shutdown();
+			await this.drainInFlightWork();
 
 			if (this.globalConfig.executions.mode === 'queue') {
-				await McpServer.instance(this.logger).waitForPendingToolCalls();
 				Container.get(Publisher).shutdown();
 				Container.get(Subscriber).shutdown();
 			}
