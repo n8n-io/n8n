@@ -1964,7 +1964,7 @@ import {
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
@@ -6393,6 +6393,83 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
 	});
 
+	describe('time-based Wait nodes', () => {
+		const workflowWithWaits = () => ({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+				{
+					id: 'node-2',
+					name: 'Wait Before Retry',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 15, unit: 'seconds' },
+					position: [200, 0],
+				},
+				{
+					id: 'node-3',
+					name: 'Wait For Approval',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'webhook' },
+					position: [400, 0],
+				},
+				{
+					id: 'node-4',
+					name: 'Wait On Other Branch',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 30, unit: 'seconds' },
+					position: [400, 200],
+				},
+			],
+		});
+
+		const waitParameters = (nodes: INode[], name: string) =>
+			nodes.find((node) => node.name === name)?.parameters;
+
+		it('runs time-based waits without the delay in a verification run and reports them', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({
+					status: 'success',
+					runData: {
+						'Schedule Trigger': [makeTaskData([{ ok: true }])],
+						'Wait Before Retry': [makeTaskData([{ ok: true }])],
+					},
+				}),
+			});
+
+			const result = await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 0 });
+			expect(waitParameters(nodes, 'Wait For Approval')).toEqual({ resume: 'webhook' });
+			// The wait on the unreached branch is rewritten too, but the run did not reach it.
+			expect(waitParameters(nodes, 'Wait On Other Branch')).toMatchObject({ amount: 0 });
+			expect(result.executedNodeNames).toContain('Wait Before Retry');
+			expect(result.skippedWaitNodeNames).toEqual(['Wait Before Retry']);
+		});
+
+		it('keeps the real wait duration in a run the user asked for', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			const result = await adapter.run('wf-1');
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 15 });
+			expect(result).not.toHaveProperty('skippedWaitNodeNames');
+		});
+	});
+
 	it('leaves the error workflow enabled for a run the user asked for', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
@@ -7645,6 +7722,49 @@ describe('getGatewayConfigOrNull', () => {
 
 		await expect(callGet(adapter)).resolves.toBeNull();
 		expect(getGatewayConfig).not.toHaveBeenCalled();
+	});
+});
+
+describe('createCredentialAdapter — getAiGatewayNodeRejection', () => {
+	const geminiType = '@n8n/n8n-nodes-langchain.googleGemini';
+
+	async function getRejection(parameters: NodeJSON['parameters'], options?: { enabled?: boolean }) {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: [geminiType],
+				credentialTypes: ['googlePalmApi'],
+				providerConfig: {},
+				supportedActions: { [geminiType]: { text: ['message'] } },
+			}),
+			{ enabled: options?.enabled },
+		);
+		const description = {
+			properties: [
+				{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
+			],
+		};
+		(adapter as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes = {
+			getByNameAndVersion: vi.fn(
+				() => ({ description }) as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>,
+			),
+		};
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return await adapter.createContext(mockUser).credentialService.getAiGatewayNodeRejection!(
+			{ type: geminiType, typeVersion: 1, parameters },
+			'googlePalmApi',
+		);
+	}
+
+	it.each([
+		[{}, undefined],
+		[{ resource: 'image' }, 'image.message not supported'],
+	])('judges %j by the action it runs with node defaults', async (parameters, expected) => {
+		await expect(getRejection(parameters)).resolves.toBe(expected);
+	});
+
+	it('returns nothing when Gateway credits are off', async () => {
+		await expect(getRejection({ resource: 'image' }, { enabled: false })).resolves.toBeUndefined();
 	});
 });
 

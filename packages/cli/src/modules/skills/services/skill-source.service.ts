@@ -52,6 +52,7 @@ import {
 import { skillContentHash } from '../utils/skill-content-hash';
 import { skillPreview } from '../utils/skill-preview';
 import { skillSourceHealth } from '../utils/skill-source-health';
+import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
@@ -269,10 +270,11 @@ export class SkillSourceService {
 		const reviewed = new Set(reviewedSkillKeys);
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
-		let skippedFiles = 0;
+		const skippedPaths: string[] = [];
 		let needsReview = 0;
 		const access = source.auth?.credentialId ? 'credential' : 'public';
-		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
+		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) => {
+			const skipped = countSkippedFiles(skippedPaths);
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
@@ -284,12 +286,15 @@ export class SkillSourceService {
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
 					blocked: failed.filter((failure) => failure.reason === 'blocked_by_check').length,
 					needs_review: needsReview,
-					skipped_files: skippedFiles,
+					skipped_files: skippedPaths.length,
+					skipped_file_extensions: skipped.extensions,
+					skipped_script_files: skipped.scripts,
 					status,
 					...(reason ? { reason } : {}),
 				},
 				user.id,
 			);
+		};
 
 		const sourceId = uuidv7();
 		let discovered: Discovered;
@@ -388,7 +393,7 @@ export class SkillSourceService {
 					);
 					names.push({ skillId, name });
 					imported.push({ key: read.key, skillId, name });
-					skippedFiles += fetched.skippedFiles.length;
+					skippedPaths.push(...fetched.skippedFiles);
 					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
 				if (imported.length === 0) {
@@ -399,7 +404,7 @@ export class SkillSourceService {
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
 			imported.length = 0;
-			skippedFiles = 0;
+			skippedPaths.length = 0;
 			needsReview = 0;
 			await track('failure', telemetryReasonOf(error));
 			throw error;

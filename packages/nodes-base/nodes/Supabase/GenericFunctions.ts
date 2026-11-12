@@ -8,7 +8,8 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, toPathSegment, UserError } from 'n8n-workflow';
+import { NodeApiError, toPathSegment } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 type SupabaseCredentials = {

@@ -32,8 +32,6 @@ import type {
 	StructuredChunk,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
-	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_FOR_SUB_EXECUTION,
@@ -48,6 +46,7 @@ import {
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 	AI_EVENT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { UnexpectedError, OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';

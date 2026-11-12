@@ -175,8 +175,10 @@ export class WaitTracker {
 		try {
 			await this.loadAndRun(executionId, nodeResponse);
 		} catch (error) {
-			// The next poll retries a resume that throws, so it must not count toward the limit
-			await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
+			// A failure that repeats on every poll keeps its attempt, so the limit stops it
+			if (isRetryableResumeError(error)) {
+				await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
+			}
 			throw error;
 		}
 	}

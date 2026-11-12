@@ -29,7 +29,7 @@ function prepare(config: AgentJsonConfig | null): PreparedAgentExport {
 	return {
 		projectId: 'source-project',
 		content: new AgentSerializer().serialize(
-			source,
+			{ ...source, isArchived: false },
 			{
 				schema: config,
 				skills: {},
