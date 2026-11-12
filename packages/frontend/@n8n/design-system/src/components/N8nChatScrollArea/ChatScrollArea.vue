@@ -109,6 +109,11 @@ watch(
 function onScrollToBottom(behavior: ScrollBehavior = 'smooth') {
 	if (!viewport.value) return;
 	scrollToBottom(viewport.value, behavior);
+	/** Follows content that is added in the same tick. The observer confirms the state later. */
+	if (!isAtBottom.value) {
+		isAtBottom.value = true;
+		emit('update:atBottom', true);
+	}
 }
 
 const exposed: ChatScrollAreaExposed = { scrollToBottom: () => onScrollToBottom('auto') };
@@ -238,9 +243,9 @@ onMounted(async () => {
  */
 .scrollDown {
 	position: absolute;
-	right: 0;
-	bottom: 100%;
-	left: 0;
+	left: var(--n8n-chat-scroll-area--x-offset--start, 0);
+	right: var(--n8n-chat-scroll-area--x-offset--end, 0);
+	bottom: var(--n8n-chat-scroll-area--y-offset, 100%);
 	width: fit-content;
 	margin: 0 auto var(--spacing--xs);
 
