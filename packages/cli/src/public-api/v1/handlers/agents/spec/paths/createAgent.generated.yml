@@ -95,6 +95,7 @@ responses:
               type: string
             config:
               type: object
+              nullable: true
             configHash:
               type: string
               nullable: true

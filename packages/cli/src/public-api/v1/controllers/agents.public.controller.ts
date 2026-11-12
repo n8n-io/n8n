@@ -23,6 +23,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
+import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { DeletedAgentSnapshot } from '@/modules/agents/agents.service';
@@ -34,6 +35,7 @@ export class AgentsPublicController {
 		private readonly agentsService: AgentsService,
 		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
+		private readonly agentCustomToolsService: AgentCustomToolsService,
 	) {}
 
 	@Post('/')
@@ -48,6 +50,12 @@ export class AgentsPublicController {
 		_res: Response,
 		@Body body: CreateAgentPublicDto,
 	): Promise<CreatedAgentPublicDto> {
+		// The tools are new input, so enforce the same name rules as the
+		// custom-tool write path before they reach the entity.
+		for (const tool of Object.values(body.tools ?? {})) {
+			this.agentCustomToolsService.validateDescriptor(tool.descriptor);
+		}
+
 		// `projectId` comes from the body, so RBAC is enforced here rather
 		// than through `@ProjectScope`, which only reads path params.
 		const projectId = await this.agentsService.resolveOwningProjectId(req.user, body.projectId);

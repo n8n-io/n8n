@@ -310,6 +310,36 @@ describe('POST /agents', () => {
 		expect(await agentRepository.existsBy({ projectId: teamProject.id })).toBe(false);
 	});
 
+	test('should return 400 for an invalid custom tool name', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Tool Agent',
+				tools: { 'my-tool': { code: 'return []', descriptor: { name: 'my-tool' } } },
+			});
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(400);
+		expect(await agentRepository.count()).toBe(0);
+	});
+
+	test('should accept custom tools with a valid name', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Tool Agent',
+				tools: { myTool: { code: 'return []', descriptor: { name: 'myTool' } } },
+			});
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(201);
+		expect(await agentRepository.count()).toBe(1);
+	});
+
 	test('should return 404 for a non-existing project', async () => {
 		const member = await createMemberWithApiKey();
 

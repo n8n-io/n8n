@@ -5,7 +5,8 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UserError } from '@n8n/errors';
+import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import type { AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
@@ -81,10 +82,12 @@ describe('AgentsPublicController createAgent', () => {
 	const agentsService = mock<AgentsService>();
 	const agentResponseMapper = mock<AgentResponseMapper>();
 	const agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>();
+	const agentCustomToolsService = mock<AgentCustomToolsService>();
 	const controller = new AgentsPublicController(
 		agentsService,
 		agentResponseMapper,
 		agentDefaultModelResolverService,
+		agentCustomToolsService,
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -181,6 +184,9 @@ describe('AgentsPublicController createAgent', () => {
 		};
 		await controller.createAgent(req, res, body);
 
+		expect(agentCustomToolsService.validateDescriptor).toHaveBeenCalledWith(
+			body.tools.myTool.descriptor,
+		);
 		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
 			'project-1',
 			'Configured',
@@ -190,6 +196,24 @@ describe('AgentsPublicController createAgent', () => {
 				availableInMCP: true,
 			}),
 		);
+	});
+
+	it('rejects a custom tool name the custom-tool write path would reject', async () => {
+		mockSuccessfulCreate();
+		agentCustomToolsService.validateDescriptor.mockImplementation(() => {
+			throw new UserError(
+				'Custom tool name "my-tool" contains invalid characters. Only letters, numbers, and underscores are allowed.',
+			);
+		});
+
+		await expect(
+			controller.createAgent(req, res, {
+				name: 'Bad tool name',
+				tools: { 'my-tool': { code: 'return []', descriptor: { name: 'my-tool' } } },
+			}),
+		).rejects.toThrow(UserError);
+
+		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 	});
 });
 
@@ -201,6 +225,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentsService,
 		agentResponseMapper,
 		agentDefaultModelResolverService,
+		mock<AgentCustomToolsService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();

@@ -28,6 +28,7 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { alsoNullable } from '../dto/openapi-nullable';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -313,9 +314,9 @@ function isPlainObject(value: unknown): boolean {
  * Stored configs predate the current write schema. A response check that
  * reused that schema would reject a saved row and turn GET into a 500.
  */
-const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>().openapi({
-	type: 'object',
-});
+const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>().openapi(
+	alsoNullable({ type: 'object' }),
+);
 
 const agentProjectResponseSchema = z
 	.object({
