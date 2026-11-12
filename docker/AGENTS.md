@@ -36,7 +36,7 @@ n8n publishes `n8nio/base` and `n8nio/node-pc`, and the n8n images pin them.
 |---|---|---|
 | `n8nio/base` | `DHI_REF`, `n8n-base/Dockerfile` | `RUNTIME_IMAGE` |
 | `n8nio/base:*-debian` | `DEBIAN_DHI_REF`, `ALPINE_IMAGE`, `n8n-base/Dockerfile.debian` | `DEBIAN_RUNTIME_IMAGE` |
-| `n8nio/node-pc` | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, `node-pc/Dockerfile`, `node-pc/patches/*` | `PC_BUILDER_IMAGE`, `PC_RUNTIME_IMAGE` |
+| `n8nio/node-pc` | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, `node-pc/Dockerfile`, `node-pc/patches/*`, `node-pc/check-v8-patches.js` | `PC_BUILDER_IMAGE`, `PC_RUNTIME_IMAGE` |
 
 - A push to master publishes an image only when its inputs changed. A pin PR
   changes no input of the image that it pins, so the tag stays on the pin.

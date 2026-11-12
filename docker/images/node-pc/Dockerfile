@@ -7,9 +7,9 @@
 # docker-node Alpine recipe with one added configure flag.
 #
 # The build also applies the V8 patches in ./patches: upstream V8 fixes that
-# Node has not backported to this release line yet. Each patch bumps the
-# V8 version suffix, and check-v8-patches.js proves that the compiled Node
-# carries them.
+# Node has not backported to this release line yet. The patch count becomes
+# the -n8n.N suffix of the V8 version, and check-v8-patches.js proves that
+# the compiled Node carries the patches.
 #
 # Two published targets:
 #   runtime (default) - n8nio/base with our compiled Node swapped in
@@ -75,10 +75,12 @@ RUN apk add --no-cache --virtual .build-deps \
     && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xf "node-v$NODE_VERSION.tar.xz" \
     && cd "node-v$NODE_VERSION" \
-    && for p in /patches/*.patch; do patch -p1 -N -d deps/v8 -i "$p"; done \
-    # Mark the patched V8 in process.versions.v8, e.g. 14.6.202.34-node.40-n8n.1
-    && sed -i "s/^\([[:space:]]*'v8_embedder_string': '-node\.[0-9]*\)'/\1-n8n.1'/" common.gypi \
-    && grep -q "n8n\.1'" common.gypi \
+    && for p in /patches/*.patch; do patch -p1 -N -d deps/v8 -i "$p" || exit 1; done \
+    # Mark the patched V8 in process.versions.v8 with the patch count,
+    # e.g. 14.6.202.34-node.40-n8n.1
+    && n=$(ls /patches/*.patch | wc -l) \
+    && sed -i "s/^\([[:space:]]*'v8_embedder_string': '-node\.[0-9]*\)'/\1-n8n.$n'/" common.gypi \
+    && grep -q "n8n\.$n'" common.gypi \
     && ./configure --experimental-enable-pointer-compression \
     && make -j"${MAKE_JOBS:-$(getconf _NPROCESSORS_ONLN)}" V= \
     && make install DESTDIR=/node-install \
