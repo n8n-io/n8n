@@ -100,6 +100,10 @@ export const mainProperties: INodeProperties[] = [
 		placeholder: 'http://example.com/index.html',
 		description: 'The URL to make the request to',
 		required: true,
+		builderHint: {
+			propertyHint:
+				'The node outputs one item for each response, or one item for each page when it paginates. It splits the body into one item for each element only when the body is a top-level JSON array. Most APIs wrap their list in an object (e.g. `{ "records": [...] }`, `{ "data": [...], "has_more": true }`), so each item is a whole response or page, not a record. An empty page is usually an empty wrapped list (e.g. `{ "records": [] }`), not `[]`. Before a step that works on records (a filter, a per-record request, a write, or an Aggregate of records), add a Split Out node on the list field. When you do not know the response shape, do not assume a bare array: assume a wrapped list, use the resource name as the field (e.g. `records` for `/records`), and tell the user this assumption.',
+		},
 	},
 	{
 		displayName: 'Authentication',

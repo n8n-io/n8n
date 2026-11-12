@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import '@/zod-alias-support';
 
 import { Logger } from '@n8n/backend-common';
@@ -22,7 +22,6 @@ import { DatabaseMetricQueryService } from '@/metrics/prometheus/database-metric
 import { PrometheusMetricsService } from '@/metrics/prometheus/prometheus.service';
 import { PrometheusSystemTaskMetricsService } from '@/metrics/prometheus/system-task-metrics.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';

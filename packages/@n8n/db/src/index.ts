@@ -66,6 +66,7 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+export { DbLockUnavailableError } from './services/db-lock-unavailable.error';
 
 export * from './execution-ledger';
 

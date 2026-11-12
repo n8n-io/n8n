@@ -1,4 +1,5 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
+import { isBaseMessage } from '@langchain/core/messages';
 import isObject from 'lodash/isObject';
 import omit from 'lodash/omit';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
@@ -204,6 +205,21 @@ function extractThinkingMetadata(
 }
 
 /**
+ * Returns the text the model wrote in the turn that requested the tool call.
+ * The rebuilt history must replay it, or the model sees a turn it did not write.
+ */
+function extractModelText(
+	toolCall: ToolCallRequest,
+	sharedMessageLog: unknown[] | undefined,
+): string | undefined {
+	const messageLog =
+		toolCall.messageLog && toolCall.messageLog.length > 0 ? toolCall.messageLog : sharedMessageLog;
+	// `text` joins the text blocks only, so thinking and tool_use blocks stay out
+	const text = messageLog?.find(isBaseMessage)?.text;
+	return text?.trim() ? text : undefined;
+}
+
+/**
  * Creates engine requests from tool calls.
  * Maps tool call information to the format expected by the n8n engine
  * for executing tool nodes.
@@ -245,6 +261,7 @@ export function createEngineRequests(
 			const metadata = (foundTool.metadata ?? {}) as ToolMetadata;
 			const toolInput = toolCall.toolInput as IDataObject;
 			const hitlMetadata = extractHitlMetadata(metadata, toolCall.tool, toolInput);
+			const modelText = extractModelText(toolCall, sharedMessageLog);
 
 			let input: IDataObject = toolInput;
 			if (metadata.isFromToolkit) {
@@ -280,6 +297,7 @@ export function createEngineRequests(
 					itemIndex,
 					hitl: hitlMetadata,
 					toolName: toolCall.tool,
+					...(modelText && { modelText }),
 					...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
 				},
 			};

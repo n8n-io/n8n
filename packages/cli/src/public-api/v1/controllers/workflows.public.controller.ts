@@ -6,6 +6,7 @@ import {
 	DependencyListPublicDto,
 	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
+	PUBLIC_API_IGNORED_NODE_FIELDS,
 	ListDependenciesQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -406,6 +407,10 @@ export class WorkflowsPublicController {
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or the update changes a node that uses a credential the caller cannot access.',
+	})
 	@ApiErrorResponse(403, {
 		dto: WorkflowPublishForbiddenErrorPublicDto,
 		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
@@ -440,6 +445,8 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					readOnlyNodeEdits: 'reject',
+					unsentNodeFields: PUBLIC_API_IGNORED_NODE_FIELDS,
 					// A save can publish, so the key's publish scope has to be enforced too
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',

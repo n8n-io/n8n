@@ -16,7 +16,7 @@ import type {
 
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 
@@ -289,7 +289,7 @@ export class LmOpenAi implements INodeType {
 		}
 
 		const model = new OpenAI({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			configuration,
