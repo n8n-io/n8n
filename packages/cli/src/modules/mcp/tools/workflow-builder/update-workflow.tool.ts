@@ -9,7 +9,13 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings, type INodeTypes } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IWorkflowSettings,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -942,6 +948,28 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
+function skipUnresolvableExistingNodeTypes(
+	nodeTypes: INodeTypes,
+	existingNodes: INode[],
+): INodeTypes {
+	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
+
+	return {
+		getByName: (nodeType) => nodeTypes.getByName(nodeType),
+		getKnownTypes: () => nodeTypes.getKnownTypes(),
+		getByNameAndVersion: (nodeType, version) => {
+			try {
+				return nodeTypes.getByNameAndVersion(nodeType, version);
+			} catch (error) {
+				if (existingNodeTypeNames.has(nodeType)) {
+					return undefined as unknown as INodeType;
+				}
+				throw error;
+			}
+		},
+	};
+}
+
 /**
  * Validates the resulting workflow and marks the warnings that were already
  * there before this update.
@@ -966,7 +994,7 @@ async function collectValidationWarnings(
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: nodeTypes,
+		nodeTypesProvider: skipUnresolvableExistingNodeTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({

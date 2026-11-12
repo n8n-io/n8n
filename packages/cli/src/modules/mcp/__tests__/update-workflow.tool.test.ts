@@ -9,6 +9,7 @@ import {
 	type INode,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -49,9 +50,9 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		toolName: 'update_workflow',
 		displayTitle: 'Updating workflow',
 	},
-	ParseValidateHandler: vi.fn().mockImplementation(function () {
+	ParseValidateHandler: vi.fn().mockImplementation(function (config: unknown) {
 		return {
-			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
+			validateJSON: (json: unknown) => mockValidateJSON(json, config) as unknown,
 		};
 	}),
 	// Real key logic (code|nodeName|parameterPath), inlined because the module
@@ -3156,6 +3157,66 @@ describe('update-workflow MCP tool', () => {
 						preExisting: true,
 					},
 				]);
+			});
+
+			describe('a node type the instance does not load', () => {
+				const unloadedType = 'n8n-nodes-base.executeCommand';
+
+				beforeEach(() => {
+					const existing = buildExistingWorkflow();
+					existing.nodes.push(
+						makeNode({ id: 'c', name: 'Run Command', type: unloadedType, position: [400, 0] }),
+					);
+					findWorkflowMock.mockResolvedValue(existing);
+					nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+						if (type.startsWith(unloadedType)) {
+							throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+						}
+						return { description: { group: ['transform'] } };
+					}) as typeof nodeTypes.getByNameAndVersion);
+					mockValidateJSON.mockImplementation(
+						(json: { nodes: INode[] }, config: { nodeTypesProvider: NodeTypes }) => {
+							for (const node of json.nodes) {
+								config.nodeTypesProvider.getByNameAndVersion(node.type, node.typeVersion);
+							}
+							return [];
+						},
+					);
+				});
+
+				test('applies operations that do not touch the node and keeps the node unchanged', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+							{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						],
+					});
+
+					expect(result.isError).toBeUndefined();
+					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+					expect(saved.name).toBe('Renamed');
+					expect(saved.nodes.find((n) => n.name === 'B')?.parameters.url).toBe('https://new');
+					expect(saved.nodes.find((n) => n.name === 'Run Command')).toEqual(
+						makeNode({ id: 'c', name: 'Run Command', type: unloadedType, position: [400, 0] }),
+					);
+				});
+
+				test('still fails when the batch adds a node of a type the instance does not load', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'addNode',
+								node: { name: 'Typo', type: 'n8n-nodes-base.executeCommandd', typeVersion: 1 },
+							},
+						],
+					});
+
+					expect(result.isError).toBe(true);
+					expect(parseResult(result).error).toContain('Unrecognized node type');
+					expect(updateMock).not.toHaveBeenCalled();
+				});
 			});
 
 			test('skips the pre-update validation pass when the post-apply pass is clean', async () => {
