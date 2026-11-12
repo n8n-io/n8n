@@ -95,8 +95,9 @@ comma and a space: `fix(core, editor): ...`.
    each sentence that fails a check:
    1. Each sentence tells the reviewer something that the diff does not
       show. Delete the sentences that only restate the diff.
-   2. Each Summary sentence after the first two describes a surprise (see
-      Summary Section). If not, delete it.
+   2. The length of the Summary matches the complexity of the change. Each
+      sentence after the first two describes a surprise (see Summary
+      Section). If not, delete it.
    3. The first sentence states the area and the nature of the change (bug
       fix, feature, refactor, or tests).
    4. Each sentence uses exact technical terms and plain technical verbs.
