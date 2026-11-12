@@ -7,7 +7,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project, User } from '@n8n/db';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -32,10 +32,10 @@ mockInstance(WorkflowPublicationNotifier);
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
 
-let owner: User;
-let restrictedKeyMember: User;
-let fullKeyMember: User;
-let activateKeyMember: User;
+let owner: Person;
+let restrictedKeyMember: Person;
+let fullKeyMember: Person;
+let activateKeyMember: Person;
 let restrictedKeyAgent: SuperAgentTest;
 let fullKeyAgent: SuperAgentTest;
 let activateKeyAgent: SuperAgentTest;

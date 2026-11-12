@@ -1,6 +1,6 @@
 import {
 	AgentIntegrationConfig,
-	isCredentialAgentIntegration,
+	hasChannelRuntime,
 	isDraftIntegration,
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
@@ -212,8 +212,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
-		// n8n Chat has no runtime connection for peers to reconcile.
-		if (!isCredentialAgentIntegration(integration)) return;
+		// A channel without a platform runtime has no connection for peers to reconcile.
+		if (!hasChannelRuntime(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },
@@ -239,7 +239,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		// Deliberately not `validateConfig`: publishing already validates the whole
 		// configuration, and running it again here would newly reject an agent whose
@@ -257,7 +257,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
@@ -293,7 +293,7 @@ export class ChatIntegrationService {
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const ingress = options.ingressEnabled ?? true;
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
@@ -491,7 +491,7 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
-		if (!isCredentialAgentIntegration(integration)) return;
+		if (!hasChannelRuntime(integration)) return;
 		const { deleteSubscriptions = true } = options;
 
 		try {
@@ -605,8 +605,8 @@ export class ChatIntegrationService {
 		previous: AgentIntegrationConfig[],
 		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const previousExternal = previous.filter(isCredentialAgentIntegration);
-		const nextExternal = next.filter(isCredentialAgentIntegration);
+		const previousExternal = previous.filter(hasChannelRuntime);
+		const nextExternal = next.filter(hasChannelRuntime);
 		const previousKeys = new Set(previousExternal.map(buildIntegrationConnectionId));
 		const nextKeys = new Set(nextExternal.map(buildIntegrationConnectionId));
 

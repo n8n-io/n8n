@@ -21,6 +21,9 @@ const customTelemetryTagPublicSchema = z
 	})
 	.strict();
 
+// The node schema accepts these fields and drops them, so a public update never sends them.
+export const PUBLIC_API_IGNORED_NODE_FIELDS = ['extendsCredential'] as const;
+
 const workflowNodeWritePublicSchema = z
 	.object({
 		id: z.string().optional().openapi(workflowNodeFieldDocs.id),

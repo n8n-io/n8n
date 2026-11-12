@@ -8,6 +8,7 @@ import {
 	type CredentialsRepository,
 	type DbConnection,
 	type IWorkflowDb,
+	type Person,
 	type Project,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
@@ -2401,6 +2402,37 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track on `oauth-client-registered` event', () => {
+			eventService.emit('oauth-client-registered', {
+				userId: 'user123',
+				credentialId: 'cred123',
+				credentialType: 'mcpOAuth2Api',
+				method: 'cimd',
+				success: true,
+				cimdEnabled: true,
+				serverSupportsCimd: true,
+				serverSupportsDcr: false,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				credential_id: 'cred123',
+				credential_type: 'mcpOAuth2Api',
+				method: 'cimd',
+				success: true,
+				cimd_enabled: true,
+				server_supports_cimd: true,
+				server_supports_dcr: false,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track on `private-credential-created` event', () => {
 			const event: RelayEventMap['private-credential-created'] = {
 				user: {
@@ -2803,7 +2835,7 @@ describe('TelemetryEventRelay', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				} as User,
+				} as Person,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -2844,7 +2876,7 @@ describe('TelemetryEventRelay', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				} as User,
+				} as Person,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -3821,7 +3853,7 @@ describe('TelemetryEventRelay', () => {
 					tags: 2,
 				},
 				credentialExportPolicy: 'expression-values-only',
-				includeArchivedWorkflows: true,
+				includeArchived: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);

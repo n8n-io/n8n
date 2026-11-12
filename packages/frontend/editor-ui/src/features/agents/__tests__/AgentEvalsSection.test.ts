@@ -174,6 +174,24 @@ describe('AgentEvalsSection', () => {
 			expect(emitted('generate')).toBeTruthy();
 		});
 
+		it('enables generation only after the agent is saved', async () => {
+			const { getByTestId, emitted, rerender } = await render(
+				{ datasets: [] },
+				{ agentUnsaved: true },
+			);
+			const button = getByTestId('agent-evals-generate-button');
+
+			expect(button).toBeDisabled();
+			await userEvent.click(button);
+			expect(emitted('generate')).toBeUndefined();
+
+			await rerender({ agentUnsaved: false });
+
+			expect(button).toBeEnabled();
+			await userEvent.click(button);
+			expect(emitted('generate')).toHaveLength(1);
+		});
+
 		it('disables the CTA for users who cannot edit the agent', async () => {
 			const { getByTestId } = await render({ datasets: [] }, { disabled: true });
 
