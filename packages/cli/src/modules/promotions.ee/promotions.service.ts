@@ -499,7 +499,7 @@ export class PromotionsService {
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,

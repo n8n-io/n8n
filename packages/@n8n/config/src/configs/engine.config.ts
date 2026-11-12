@@ -110,7 +110,11 @@ export class EngineConfig {
 	 * certificate. It needs the `serverAuth` and `clientAuth` key usages, and its
 	 * subject alternative name must match the host in the URL the other side
 	 * dials. Set it together with `N8N_ENGINE_TLS_KEY_FILE` and
-	 * `N8N_ENGINE_TLS_CA_FILE`.
+	 * `N8N_ENGINE_TLS_CA_FILE`. n8n reads the three files again when they
+	 * change, so a renewed certificate applies to new connections without a
+	 * restart. Mount the directory that holds the files, not single files.
+	 * Kubernetes does not update a Secret mounted with `subPath`, and a Docker
+	 * bind mount of a single file keeps the old file when the host replaces it.
 	 */
 	@Env('N8N_ENGINE_TLS_CERT_FILE')
 	tlsCertFile: string = '';

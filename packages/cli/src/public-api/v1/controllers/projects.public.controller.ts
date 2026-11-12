@@ -171,9 +171,7 @@ export class ProjectsPublicController {
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('user:list')
 	@ApiSummary('List project members')
-	@ApiDescription(
-		'Returns a list of all members of a project including their role. Requires user:list scope.',
-	)
+	@ApiDescription('Returns a list of all members of a project including their role.')
 	@ApiTags(tags)
 	@ApiResponse(200, ProjectMemberListPublicDto)
 	@ApiErrorResponse(404)

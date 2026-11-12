@@ -136,7 +136,7 @@ function forge(path: string) {
 
 test.describe(
 	'Send and wait resume links',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test.beforeEach(async ({ services }) => {
 			await services.proxy.clearAllExpectations();

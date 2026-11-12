@@ -4,6 +4,7 @@ import {
 	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
@@ -16,6 +17,7 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 	type JSONObject,
 	type JSONValue,
 	type Thread,
@@ -192,7 +194,11 @@ function mergeSaveThreadMetadata(
 
 @Service()
 export class TypeORMAgentMemory
-	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+	implements
+		BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore,
+		BuiltObservationResumeStore
 {
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) => {
@@ -624,6 +630,14 @@ export class TypeORMAgentMemory
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		return await this.observationLog.setCursor(cursor);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		return await this.observationLog.getResumeState(observationScopeId);
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		return await this.observationLog.saveResumeState(state);
 	}
 
 	async acquireObservationLogTaskLock(

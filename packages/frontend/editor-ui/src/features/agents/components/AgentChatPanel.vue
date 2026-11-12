@@ -1193,6 +1193,20 @@ async function onSubmit(): Promise<SubmitResult> {
 	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
 }
 
+/** Returns a check that is true while the panel still shows the chat it showed at the call. */
+function captureTarget(): () => boolean {
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	return () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
+}
+
 async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
@@ -1201,16 +1215,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (ownedHandoffPreview) handoffPreview = undefined;
 	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
-	const target = {
-		projectId: props.projectId,
-		agentId: props.agentId,
-		continueSessionId: props.continueSessionId,
-	};
-	const isCurrentTarget = () =>
-		!disposed &&
-		props.projectId === target.projectId &&
-		props.agentId === target.agentId &&
-		props.continueSessionId === target.continueSessionId;
+	const isCurrentTarget = captureTarget();
 
 	const composerResume = text ? getExtensionComposerResume(text) : undefined;
 	if (composerResume) {
@@ -1234,6 +1239,40 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		return result === 'busy' ? 'busy' : 'sent';
 	}
 
+	return await sendRequest({
+		text,
+		files,
+		fromComposer: true,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	});
+}
+
+interface SendRequest {
+	text: string;
+	files: File[];
+	/**
+	 * The composer holds the message: its staged chips go with it, and an accepted
+	 * send clears the composer. A host send leaves the composer to the user.
+	 */
+	fromComposer: boolean;
+	/** The bubble a hand-off installed before it was sent. */
+	handoffPreview?: ChatMessage;
+	/** Sent with this message only, on top of the `clientContext` prop. */
+	clientContext?: Record<string, unknown>;
+}
+
+async function sendRequest(request: SendRequest): Promise<SubmitResult> {
+	const {
+		text,
+		files,
+		fromComposer,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	} = request;
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
+	const isCurrentTarget = captureTarget();
+
 	isPreparingToSend.value = true;
 	try {
 		try {
@@ -1255,7 +1294,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		let accepted = false;
 		// Build the client context after `beforeSend`, so it reflects the host state at
 		// send time. The staged chip patches go on top of it.
-		const sentAttachments = [...composerAttachments.value];
+		const sentAttachments = fromComposer ? [...composerAttachments.value] : [];
 		const hostClientContext = props.clientContext?.();
 		const clientContext = mergeClientContextPatches(
 			sentAttachments,
@@ -1279,15 +1318,16 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 					agentConfig: fingerprint,
 				});
 			}
+			queueExpanded.value = false;
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+			if (!fromComposer) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
 			);
 			externalAttachedFiles = [];
-			queueExpanded.value = false;
 			consumeQueuedExternalMessage(text);
-			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		};
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
@@ -1337,6 +1377,20 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	} finally {
 		budgetIncreasePending.value = false;
 	}
+}
+
+/**
+ * Sends a host message without the composer: the user's draft, files, and staged
+ * chips stay where they are. Unlike `sendMessageFromOutside`, a blocked send is
+ * not queued and does not answer an open card; it returns `'busy'` instead.
+ */
+async function sendHostMessage(
+	text: string,
+	clientContext?: Record<string, unknown>,
+): Promise<SubmitResult> {
+	if (!text) return 'rejected';
+	if (isSubmissionBlocked.value || hasOpenInteraction.value) return 'busy';
+	return await sendRequest({ text, files: [], fromComposer: false, clientContext });
 }
 
 function sendMessageFromOutside(
@@ -1543,6 +1597,7 @@ defineExpose({
 	focusInput,
 	getConversationMarkdown,
 	sendMessageFromOutside,
+	sendHostMessage,
 	clearBudgetStops,
 	isDirty,
 	setDraft,
