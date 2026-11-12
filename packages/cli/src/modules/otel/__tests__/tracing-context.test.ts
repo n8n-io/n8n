@@ -1,8 +1,38 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
+import { propagation } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 
-import { TraceContextService } from '../tracing-context';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/outbound-propagator';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
+
+import { extractTracingContext, TraceContextService } from '../tracing-context';
+
+describe('extractTracingContext', () => {
+	const traceparent = '00-abcdef1234567890abcdef1234567890-1234567890abcdef-01';
+
+	beforeEach(() => propagation.setGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR));
+
+	afterEach(() => propagation.disable());
+
+	it('should read the headers through the global propagator', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' })).toEqual({
+			traceparent,
+			baggage: 'tenant=acme',
+		});
+	});
+
+	it('should drop a malformed traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' })).toBeUndefined();
+	});
+
+	it('should read nothing when outbound headers are off', () => {
+		propagation.disable();
+		propagation.setGlobalPropagator(TRACING_OFF.propagator);
+
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' })).toBeUndefined();
+	});
+});
 
 describe('TraceContextService', () => {
 	describe('persist', () => {
@@ -71,6 +101,16 @@ describe('TraceContextService', () => {
 			const result = await service.get('exec-1');
 
 			expect(result).toEqual(tracingContext);
+		});
+
+		it('should read the row of a soft-deleted execution', async () => {
+			executionRepository.findOne.mockResolvedValueOnce(null);
+
+			await service.get('exec-deleted');
+
+			expect(executionRepository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({ withDeleted: true }),
+			);
 		});
 
 		it('should return undefined when no execution found', async () => {

@@ -57,7 +57,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
-import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -1338,8 +1337,7 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		const tracingContext = extractTracingContext(req.headers, additionalData.otel);
-		if (tracingContext) runData.tracingContext = tracingContext;
+		runData.tracingContext = additionalData.otel?.extractTracingContext(req.headers);
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1842,26 +1840,4 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
-}
-
-export function extractTracingContext(
-	headers: IncomingHttpHeaders,
-	otel: IWorkflowExecuteAdditionalData['otel'],
-): IWorkflowExecutionDataProcess['tracingContext'] {
-	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
-
-	const { traceparent, tracestate } = headers;
-	if (
-		typeof traceparent === 'string' &&
-		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-	) {
-		tracingContext.traceparent = traceparent;
-		tracingContext.tracestate =
-			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
-	}
-
-	const baggage = otel?.extractInboundBaggage(headers.baggage);
-	if (baggage) tracingContext.baggage = baggage;
-
-	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }

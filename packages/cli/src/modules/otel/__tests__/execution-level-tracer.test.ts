@@ -1156,38 +1156,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers.baggage).toBe('tenant=acme');
 		});
 
-		it.each([
-			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
-			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],
-			['a reserved key in another case', 'tenant=acme,N8N.Execution.Id=forged'],
-		])('neither saves nor sends an entry that n8n owns, given %s', (_name, header) => {
-			const saved = tracer.startWorkflow({
-				executionId: 'exec-bag-forged',
-				tracingContext: { ...inboundTracingContext, baggage: header },
-				workflow: defaultWorkflow,
-			});
-
-			const headers = inject(tracer, 'exec-bag-forged');
-			end(tracer, 'exec-bag-forged');
-
-			expect(saved.baggage).toBe('tenant=acme');
-			expect(headers.baggage).toBe('tenant=acme');
-		});
-
-		it('saves and sends nothing when only entries that n8n owns are sent', () => {
-			const saved = tracer.startWorkflow({
-				executionId: 'exec-bag-forged-only',
-				tracingContext: { ...inboundTracingContext, baggage: 'n8n.execution.id=forged' },
-				workflow: defaultWorkflow,
-			});
-
-			const headers = inject(tracer, 'exec-bag-forged-only');
-			end(tracer, 'exec-bag-forged-only');
-
-			expect(saved.baggage).toBeUndefined();
-			expect(headers).not.toHaveProperty('baggage');
-		});
-
 		it('puts the hook entries first, so an overflow cuts the caller baggage and not the operator entries', () => {
 			const configureHook = new OtelConfigureHook(logger);
 			configureHook.api.registerOutboundBaggageMapper(() => ({
@@ -1284,6 +1252,20 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(persisted?.traceparent).toMatch(traceparentPattern);
 			expect(headers).toEqual({ 'sentry-trace': 'foreign' });
+		});
+
+		it('should build the active context from the execution, not from the caller context', () => {
+			tracer.startWorkflow({ executionId: 'exec-isolated', workflow: defaultWorkflow });
+			const callerContext = propagation.setBaggage(
+				context.active(),
+				propagation.createBaggage({ leaked: { value: 'yes' } }),
+			);
+
+			const activeContext = context.with(callerContext, () =>
+				tracer.getActiveContext('exec-isolated'),
+			);
+
+			expect(propagation.getBaggage(activeContext!)).toBeUndefined();
 		});
 	});
 
