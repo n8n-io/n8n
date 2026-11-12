@@ -42,5 +42,6 @@ Docs: <!-- Link the n8n-docs PR or the follow-up ticket, or write "none needed".
 
 <!--
 The author is responsible for all code in this PR, also for code that an AI tool wrote.
-If an AI tool wrote a large part of the code or of this description, add a line here that says so.
+If an AI tool wrote a large part of the code or of this description, add this line:
+🤖 An AI tool wrote a large part of this PR.
 -->
