@@ -3,6 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import nock from 'nock';
 import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
@@ -812,19 +813,30 @@ describe('Promotion reviews in the Inbox', () => {
 
 		it('keeps a review closed when a sync that read it while open writes its older state later', async () => {
 			const reviewId = await insertReview(1);
-			// The sync reads the review as open. GitLab answers slowly, then reports a new state.
-			gitlab(
-				{ 1: { state: 'opened', detailed_merge_status: 'requested_changes' } },
-				{ delayMs: 400 },
-			);
+			// GitLab holds its answer until the test releases it, so the order of the steps is fixed.
+			const requested = createDeferredPromise<undefined>();
+			const release = createDeferredPromise<undefined>();
+			nock(baseUrl)
+				.matchHeader('PRIVATE-TOKEN', token)
+				.get(`/api/v4/projects/${projectId}/merge_requests/1`)
+				.reply((_uri, _body, respond) => {
+					requested.resolve(undefined);
+					void release.promise.then(() =>
+						respond(null, [
+							200,
+							mergeRequest(1, { state: 'opened', detailed_merge_status: 'requested_changes' }),
+						]),
+					);
+				});
 			const admin = await createAdmin();
 			const recordHostState = vi.spyOn(reviewRepository, 'recordHostState');
 			const sync = inbox(admin, { state: 'open' });
 
-			await new Promise((resolve) => setTimeout(resolve, 150));
-			// The user closes the review while the sync waits for GitLab.
+			// The sync has loaded the open review and now waits for GitLab.
+			await requested.promise;
 			const closedAt = new Date();
 			expect(await reviewRepository.closeByUser(reviewId, closedAt, new Date(0), {})).toBe(true);
+			release.resolve(undefined);
 			await sync;
 
 			// The sync tried to record `changes_requested`. The database refused it.
