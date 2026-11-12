@@ -1,8 +1,8 @@
 # Test rig
 
-`@n8n/test-rig` runs a real n8n stack in Docker and gives a test full control over it. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process at the exact moment it matters, then signal, freeze or restart containers, and read Postgres, Redis and the logs to see what happened.
+`@n8n/test-rig` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
 
-The rig needs no change to n8n itself. It works on released images and on images that you build yourself.
+The rig needs no change to n8n. It works on released images and on local builds.
 
 ## Set up
 
@@ -17,15 +17,15 @@ Docker must be running. A stack starts Postgres, Redis, a main and its workers a
 
 ## How it works
 
-The rig builds on the stacks from the `n8n-containers` package. It adds a small preload script to every n8n process through `NODE_OPTIONS`, and the preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container, and it reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
+The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
 
-`RigStack.start` starts a stack with the hooks it declares. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window, so a test that waits for a stalled job takes seconds rather than minutes. It must be 1 or more, and `env` can override any single value. The `workflows` helpers build simple workflows: `chain(name, nodes)` connects the nodes in order, with `nodes.webhook` and `nodes.code`.
+`RigStack.start` starts a stack with its hooks. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window. A test that waits for a stalled job then takes seconds, not minutes. `scale` must be 1 or more. `env` can override any single value. `chain(name, nodes)` builds a workflow that runs the nodes in order, from `nodes.webhook` and `nodes.code`.
 
 Single-main stacks start with an empty licence, so a licence in your shell cannot change their results. A licence that the test sets in `env` still applies.
 
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it, but it can also only log the call. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` checks every spec and fails at once if a hook did not install, so a wrong file or method name shows up before the test starts.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` fails at once if a hook did not install, so a wrong file or method name fails before the test starts.
 
 | Field | Meaning |
 |---|---|
@@ -45,15 +45,15 @@ Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`.
 
 ## Limits
 
-Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can also change between versions.
+Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can change between versions.
 
 The runners image follows `TEST_IMAGE_N8N` with the same tag (`n8nio/runners:<tag>`). The `image` option of `RigStack.start` changes only the n8n image, so use it only with internal runners.
 
-Shortened timeouts keep runs short. A test shows the mechanism of a bug, not its timing in production.
+A test with shortened timeouts shows the mechanism of a bug, not its timing in production.
 
 ## Clean up
 
-A stack stops when its test calls `stopAllStacks`, which the tests do after each test. If a process dies before that, remove what is left:
+The tests call `stopAllStacks` after each test. If a process dies before that, remove what is left:
 
 ```bash
 docker ps -aq --filter 'name=^rig-' | xargs docker rm -f
