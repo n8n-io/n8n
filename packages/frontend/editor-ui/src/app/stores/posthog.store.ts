@@ -10,7 +10,7 @@ import {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	MCP_DISCOVERY_EXPERIMENT,
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
@@ -69,7 +69,7 @@ export const usePostHog = defineStore('posthog', () => {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const mcpDiscoveryEligible = ref(false);
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	// Sales and Marketing respondents only. Stays false until the survey answer is known.
 	const taxonomyInspirationEligible = ref(false);
 	// EOF Experiment cleanup
@@ -104,7 +104,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		mcpDiscoveryEligible.value = false;
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		taxonomyInspirationEligible.value = false;
 		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
@@ -232,7 +232,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		if (
 			name === INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name &&
 			!taxonomyInspirationEligible.value
@@ -260,7 +260,7 @@ export const usePostHog = defineStore('posthog', () => {
 		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
 	};
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	const setTaxonomyInspirationEligible = (eligible: boolean) => {
 		taxonomyInspirationEligible.value = eligible;
 		if (eligible) {
@@ -431,7 +431,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		setMcpDiscoveryEligible,
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		setTaxonomyInspirationEligible,
 		// EOF Experiment cleanup
 		isFeatureEnabled,

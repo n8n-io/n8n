@@ -8,7 +8,7 @@ import {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	MCP_DISCOVERY_EXPERIMENT,
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
@@ -669,7 +669,7 @@ describe('Posthog store', () => {
 			},
 		);
 
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		describe('taxonomy inspiration eligibility', () => {
 			const key = INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name;
 			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;

@@ -1,16 +1,15 @@
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { describe, expect, it } from 'vitest';
 
 import { resolveTaxonomyPromptSuggestions } from './metadata';
-import { INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS } from './prompts';
 
 const salesAndMarketingSuggestionIds = [
-	'v6-taxonomy-sales-and-marketing-1-weekly-ads-and-website-report',
-	'v6-taxonomy-sales-and-marketing-2-keep-crm-updated',
 	'v6-taxonomy-sales-and-marketing-3-qualify-leads-and-book-calls',
-	'v6-taxonomy-sales-and-marketing-4-schedule-linkedin-posts',
-	'v6-taxonomy-sales-and-marketing-5-morning-news-brief',
-	'v6-taxonomy-sales-and-marketing-6-invoices-from-email',
+	'v6-taxonomy-bis-sales-and-marketing-3-research-ideal-customers',
+	'v6-taxonomy-bis-sales-and-marketing-2-form-leads-to-sheet',
+	'v6-taxonomy-sales-and-marketing-2-keep-crm-updated',
+	'v6-taxonomy-bis-sales-and-marketing-6-messages-into-tasks',
+	'v6-taxonomy-bis-sales-and-marketing-5-meeting-summaries',
 ];
 
 describe('instance AI inspiration from taxonomy metadata', () => {
@@ -41,7 +40,7 @@ describe('instance AI inspiration from taxonomy metadata', () => {
 			expect(resolution.suggestions.map((suggestion) => suggestion.id)).toEqual(suggestionIds);
 			expect(resolution.showSeeMore).toBe(false);
 			expect(resolution.telemetryPayload).toEqual({
-				suggestion_catalog_version: 'v6-taxonomy',
+				suggestion_catalog_version: 'v7-taxonomy',
 				suggestion_format: 'list',
 				suggestion_source: 'taxonomy',
 				segment_key: segmentKey,
@@ -70,27 +69,6 @@ describe('instance AI inspiration from taxonomy metadata', () => {
 				metadataLoadState: 'not_cloud',
 			}),
 		).toEqual({ source: 'excluded' });
-	});
-
-	it('returns the variant-bis catalog when that catalog is requested', () => {
-		const resolution = resolveTaxonomyPromptSuggestions({
-			metadata: { what_team_are_you_on: 'Sales' },
-			metadataLoadState: 'loaded',
-			catalog: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS,
-			catalogVersion: 'v6-taxonomy-bis',
-		});
-
-		expect(resolution.source).toBe('taxonomy');
-		if (resolution.source !== 'taxonomy') return;
-		expect(resolution.suggestions.map((suggestion) => suggestion.shortTitle)).toEqual([
-			"Send personal follow-ups to leads who haven't replied",
-			'Save form leads to a Google Sheet, email them and alert me',
-			'Find and research leads that fit my ideal customer',
-			'Draft SEO blog posts and newsletters for my review',
-			'Meeting summaries and action items, sent to me',
-			'Turn requests in emails and messages into tasks',
-		]);
-		expect(resolution.telemetryPayload.suggestion_catalog_version).toBe('v6-taxonomy-bis');
 	});
 
 	it('reports the rows format for the variant layout', () => {

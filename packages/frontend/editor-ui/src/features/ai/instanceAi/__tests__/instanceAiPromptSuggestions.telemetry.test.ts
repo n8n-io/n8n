@@ -163,7 +163,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 			position: 1,
 			telemetryPayload: {
 				variant: 'variant',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
+				'$feature/142_aia_inspiration_from_taxonomy_v3': 'variant',
 			},
 		});
 
@@ -175,7 +175,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 			suggestion_title: 'Weekly report on my ads and website, with what changed',
 			position: 1,
 			variant: 'variant',
-			'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
+			'$feature/142_aia_inspiration_from_taxonomy_v3': 'variant',
 		});
 
 		const selectedPayload = track.mock.calls[0][1];
