@@ -1612,6 +1612,8 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/** A message is sent and the server has not started the reply yet. */
+	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
 	isBusy: computed(
 		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,

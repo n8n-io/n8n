@@ -1,6 +1,6 @@
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { render } from '@testing-library/vue';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, ref, useTemplateRef } from 'vue';
 
 import { postLeftN8nWhileRunning } from '../instanceAi.api';
 import { useAssistantAwayTelemetry } from './useAssistantAwayTelemetry';
@@ -62,6 +62,33 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING, {
 				thread_id: 't-leave',
+			});
+		});
+
+		it('tracks leaving when the running state comes from a child template ref', () => {
+			const Child = defineComponent({
+				setup(_, { expose }) {
+					expose({ isStreaming: ref(true) });
+					return () => h('span');
+				},
+			});
+			const Parent = defineComponent({
+				setup() {
+					const child = useTemplateRef<{ isStreaming: boolean }>('child');
+					useAssistantAwayTelemetry({
+						threadId: () => 't-ref',
+						isRunning: () => child.value?.isStreaming ?? false,
+					});
+					return () => h(Child, { ref: 'child' });
+				},
+			});
+			routeParams.value = { threadId: 't-ref' };
+			const view = render(Parent);
+			routeParams.value = { threadId: 'other' };
+			view.unmount();
+
+			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING, {
+				thread_id: 't-ref',
 			});
 		});
 

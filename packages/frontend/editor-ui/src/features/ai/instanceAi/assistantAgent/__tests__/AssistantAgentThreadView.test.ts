@@ -330,7 +330,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: () => ({ push: routerPush }),
+	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);

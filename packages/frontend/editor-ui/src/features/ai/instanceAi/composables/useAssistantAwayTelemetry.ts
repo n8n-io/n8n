@@ -1,7 +1,7 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { onMounted, onUnmounted } from 'vue';
+import { onBeforeUnmount, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { postLeftN8nWhileRunning } from '../instanceAi.api';
@@ -27,6 +27,7 @@ export function useAssistantAwayTelemetry(options: {
 	const router = useRouter();
 	const rootStore = useRootStore();
 	let tabHiddenAt: number | undefined;
+	let wasRunningBeforeUnmount = false;
 
 	onMounted(() => {
 		const threadId = options.threadId();
@@ -41,12 +42,18 @@ export function useAssistantAwayTelemetry(options: {
 		document.addEventListener('visibilitychange', onVisibilityChange);
 	});
 
+	// Vue clears the template refs of child components while it unmounts them,
+	// before `onUnmounted` runs, so read the running state here.
+	onBeforeUnmount(() => {
+		wasRunningBeforeUnmount = options.isRunning();
+	});
+
 	onUnmounted(() => {
 		document.removeEventListener('visibilitychange', onVisibilityChange);
 		const threadId = options.threadId();
 		// A discarded duplicate view unmounts while the route still points at the thread.
 		if (router.currentRoute.value.params.threadId === threadId) return;
-		if (!options.isRunning()) return;
+		if (!wasRunningBeforeUnmount) return;
 		leftThreadAt.set(threadId, Date.now());
 		telemetry.track(INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING, {
 			thread_id: threadId,
