@@ -32,11 +32,36 @@ export async function findCredentialRefusal(
 		return undefined;
 	} catch (error) {
 		if (!(error instanceof UserError)) return undefined;
-		const node: unknown = Reflect.get(error, 'node');
-		return {
-			message: error.message,
-			...(error.description ? { description: error.description } : {}),
-			...(isNodeLike(node) ? { nodeName: node.name } : {}),
-		};
+		return toCredentialRefusal(error);
 	}
+}
+
+/**
+ * Whether `userId` can use every credential of `nodes` through their own
+ * access. An Owner's or Admin's instance-wide `credential:use` does not count.
+ * Execution redaction asks the same question, so this refuses a run whose data
+ * the user could not see. Other errors are thrown: no later check makes this one.
+ */
+export async function findOwnAccessCredentialRefusal(
+	nodes: INode[],
+	userId: string,
+): Promise<CredentialRefusal | undefined> {
+	try {
+		await Container.get(CredentialsPermissionChecker).checkForUser(userId, nodes, {
+			ignoreGlobalUseScope: true,
+		});
+		return undefined;
+	} catch (error) {
+		if (!(error instanceof UserError)) throw error;
+		return toCredentialRefusal(error);
+	}
+}
+
+function toCredentialRefusal(error: UserError): CredentialRefusal {
+	const node: unknown = Reflect.get(error, 'node');
+	return {
+		message: error.message,
+		...(error.description ? { description: error.description } : {}),
+		...(isNodeLike(node) ? { nodeName: node.name } : {}),
+	};
 }

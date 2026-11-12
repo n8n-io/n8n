@@ -308,30 +308,53 @@ works on an `instance` Promote environment only. The API key also needs
 
 ## `promotion-environment list-changes`
 
-List the workflows that differ between a project and the branch of its
-promotion environment for one direction.
+Preview what Promote or Apply changes in a project: its projects, folders,
+workflows, credentials, data tables, variables, and tags.
 
 ```bash
 n8n-cli promotion-environment list-changes proj-abc promote
-n8n-cli promotion-environment list-changes proj-abc apply
+n8n-cli promotion-environment list-changes proj-abc apply --json
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--search` | List only the workflows whose name matches this text. |
-| `--sort` | Sort by `name`, `updatedAt`, or `status`. The default is `name`. |
-| `--order` | Sort order: `asc` or `desc`. The default is `asc`. |
-
-For `promote` the rows are what a promotion would send to the branch, and the
-API key needs `promotions:promote`. For `apply` the rows are what applying the
+For `promote` the preview is what a promotion would send to the branch, and the
+API key needs `promotions:promote`. For `apply` the preview is what applying the
 branch would change on this instance, and the key needs `promotions:apply`.
-`commitSha` is the commit the rows were read from. Table output shows the rows
-only. Use `--json` to get the rows and `commitSha` together. Connect the
-environment first. Use the `id` of each row as a `-w` value of a selective
-promote or apply. The rows list workflows only. To find folder IDs, list the
-project's folders on the source instance with
-`GET /api/v1/projects/{projectId}/folders`. A folder keeps its ID on every
-instance it is promoted to.
+Connect the environment first.
+
+The table lists each changed resource:
+
+| Column | Description |
+|--------|-------------|
+| `TYPE` | `project`, `folder`, `workflow`, `credential`, `dataTable`, `variable`, or `tag`. |
+| `ID` | The ID of the resource. |
+| `NAME` | The name of the resource. A renamed resource shows its new name. |
+| `CHANGE` | `added`, `modified`, `archived`, or `deleted`. |
+| `FOLDER` | The folder that holds the resource. Empty at the top level of the project. |
+| `USEDBY` | For a credential, data table, variable, or tag: the workflows that send it. The table shows up to three IDs. |
+| `SELECTABLE` | `true` when you can select the resource. |
+
+To select a workflow, pass its ID to `-w`. To select a folder, pass its ID to
+`--folder`. Both flags work in `promote-selection` and `apply-selection`. The
+project is always included. You can't select a credential, data table,
+variable, or tag. To send one, select a workflow from its `USEDBY` column. With
+`--format id-only`, the output lists the IDs of all types. Pass only the
+workflow and folder IDs to `-w` and `--folder`.
+
+When an open review holds the changes of the project, the command names the
+review and lists nothing. You can promote again when the review is merged or
+closed.
+
+Use `--json` to get the full preview:
+
+- `commitSha` and `source`: the commit and branch that the preview read. Pass
+  them to the `--expected-*` flags of Apply.
+- `resources`: every changed resource, and the unchanged resources that give
+  context, such as parent folders.
+- `dependencies`: the resources that each workflow uses. `included: true` means
+  that selecting the workflow sends the resource.
+- `blocker`: the open review that holds the changes, if there is one.
+- `check` and `revision`, for `apply` only: what blocks the Apply, and the value
+  to pass to `--expected-preview-revision`.
 
 ## `promotion-environment promote-selection`
 
@@ -391,6 +414,7 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
+| `preview-changed` | `3` | Only for `apply-selection` and `apply-selection-continue` with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -446,7 +470,7 @@ destructive change or a project deletion blocks the command, and it exits `4`.
 # 1. Review the changes. Take the commit SHA from the same response as the rows:
 #    a second request can read a newer commit.
 n8n-cli promotion-environment list-changes proj-abc apply --json > reviewed-changes.json
-jq '{commitSha, changes}' reviewed-changes.json
+jq '{commitSha, source, resources}' reviewed-changes.json
 
 # 2. Read the branch of the Apply environment.
 n8n-cli promotion-environment get env-2 --jq '.settings.branchName'
@@ -462,14 +486,15 @@ n8n-cli promotion-environment apply env-2 \
 ## `promotion-environment apply-selection`
 
 Apply a chosen set of a project's workflow and folder changes from its Apply
-branch. This is the apply counterpart of `promote-selection`. Use the `id`
-values that `list-changes proj-abc apply` returns as `-w` values. For folder
-IDs, see [`list-changes`](#promotion-environment-list-changes).
+branch. This is the apply counterpart of `promote-selection`. Use the workflow
+and folder IDs that [`list-changes proj-abc apply`](#promotion-environment-list-changes)
+lists.
 
 ```bash
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
-  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --expected-preview-revision=<revision>
 n8n-cli promotion-environment apply-selection proj-abc --folder folder-1
 n8n-cli promotion-environment apply-selection proj-abc
 ```
@@ -481,6 +506,7 @@ n8n-cli promotion-environment apply-selection proj-abc
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
+| `--expected-preview-revision` | `revision` of the Apply preview that you reviewed, from `list-changes proj-abc apply --json`. |
 
 The project's name, icon, description, and telemetry tags always come from the
 branch. Without `-w` and `--folder`, the command applies only the project.
@@ -492,10 +518,11 @@ branch. Other folders stay as they are. A selected workflow, or a folder that th
 branch holds in this project, that the branch and this instance hold in different
 projects is refused before any write. Without the `--expected-*` flags, the command applies the branch tip;
 with them, it applies only the source that you reviewed. Pass all three flags or
-none.
+none. With `--expected-preview-revision`, the command applies only when this
+instance still matches the preview that you reviewed.
 
 The results and exit codes are the same as for `apply`: `applied` (`0`),
-`source-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
+`source-changed` (`3`), `preview-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
 the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same selection. With `--json`, the output is the full result for
 each status.
@@ -514,9 +541,13 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
-Resend the same `-w` and `--folder` flags. The three `--expected-*` flags are required: use
-the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
-reported. The command runs the Apply check again. The results and exit codes are
+Resend the same `-w` and `--folder` flags. The three `--expected-environment-id`,
+`--expected-branch`, and `--expected-commit-sha` flags are required: use the
+`environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
+reported. Setting up bindings changes the preview, so an earlier
+`--expected-preview-revision` no longer matches. To apply only a preview that you
+reviewed, run `list-changes proj-abc apply --json` again and pass its new
+`revision`. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 

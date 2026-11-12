@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
@@ -41,7 +41,7 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 describe('validate-workflow-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let telemetry: Telemetry;
-	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -49,7 +49,7 @@ describe('validate-workflow-code MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: vi.fn(),
 		});
-		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes = mockInstance(NodeTypesProxy);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
 				return { description: { outputs: [NodeConnectionTypes.Main] } };

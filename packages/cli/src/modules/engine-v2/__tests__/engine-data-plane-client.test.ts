@@ -18,8 +18,10 @@ import {
 } from '@/services/engine-data-plane-proxy.service';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
+const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
 const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 describe('EngineDataPlaneClient', () => {
@@ -47,7 +49,10 @@ describe('EngineDataPlaneClient', () => {
 		);
 
 	/** Rebuilds the client so each test can vary the engine config. */
-	const newClient = (config: Partial<EngineConfig> = {}) => {
+	const newClient = (
+		config: Partial<EngineConfig> = {},
+		tlsMaterial: Pick<EngineTlsMaterial, 'tls'> = { tls: undefined },
+	) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
@@ -60,11 +65,24 @@ describe('EngineDataPlaneClient', () => {
 			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
 			mock<InstanceSettings>({ instanceId: 'instance-1' }),
+			tlsMaterial as EngineTlsMaterial,
 		);
 	};
 
 	beforeEach(() => {
 		client = newClient();
+	});
+
+	it('presents the client certificate and verifies the engine against the engine CA alone when TLS is on', () => {
+		newClient({}, { tls });
+
+		expect(clientOptions?.connectionPool).toEqual({
+			agentOptions: { ...tls, rejectUnauthorized: true },
+		});
+	});
+
+	it('uses no connection pool over plain HTTP', () => {
+		expect(clientOptions?.connectionPool).toBeUndefined();
 	});
 
 	it('posts search filters without following redirects', async () => {
