@@ -11,7 +11,7 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
-import { getScimConfig } from '@n8n/rest-api-client/api/scim';
+import { getScimConfig, setScimEnabled } from '@n8n/rest-api-client/api/scim';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -934,31 +934,51 @@ describe('SettingsSso View', () => {
 			);
 		};
 
-		it('shows the SCIM row with the license, the opt-in and the scope', async () => {
+		it('shows the SCIM section with the license, the opt-in and the scope', async () => {
 			setUpScim();
 
 			const { findByTestId } = renderView();
 
-			const row = await findByTestId('sso-scim-row');
-			expect(row).toHaveTextContent('Configure');
+			expect(await findByTestId('sso-scim-section')).toBeInTheDocument();
 		});
 
-		it('shows that SCIM is enabled on its row', async () => {
+		const chooseScimValue = async (getByTestId: (id: string) => HTMLElement, label: string) => {
+			await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());
+			await userEvent.click(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox'));
+			const options = await screen.findAllByTestId('sso-scim-enabled-option');
+			await userEvent.click(options.find((option) => option.textContent?.includes(label))!);
+		};
+
+		it('saves the SCIM select with the save bar', async () => {
 			setUpScim();
-			vi.mocked(getScimConfig).mockResolvedValueOnce({
-				enabled: true,
-				hasToken: true,
-				tokenHint: 'abcd',
-				baseUrl: 'https://n8n.example.com/scim/v2',
-				onDelete: 'disable',
-				dataAction: 'transfer',
-				transferProjectId: null,
-			});
+			ssoStore.isSamlLoginEnabled = true;
+			vi.mocked(setScimEnabled).mockResolvedValueOnce({ enabled: true });
 
-			const { findByTestId } = renderView();
+			const { getByTestId } = renderView();
+			await chooseScimValue(getByTestId, 'Enabled');
 
-			const row = await findByTestId('sso-scim-row');
-			await waitFor(() => expect(row).toHaveTextContent('Enabled'));
+			expect(setScimEnabled).not.toHaveBeenCalled();
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+
+			await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
+			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
+		});
+
+		it('discards the SCIM select change', async () => {
+			setUpScim();
+			ssoStore.isSamlLoginEnabled = true;
+
+			const { getByTestId } = renderView();
+			await chooseScimValue(getByTestId, 'Enabled');
+			await screen.findByTestId(SAVE_BUTTON);
+
+			await userEvent.click(screen.getByTestId('settings-save-bar-discard'));
+
+			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
+			expect(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox')).toHaveValue(
+				'Disabled',
+			);
+			expect(setScimEnabled).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -967,12 +987,12 @@ describe('SettingsSso View', () => {
 			// The backend accepts only 'true' for the opt-in.
 			['the opt-in is not exactly true', { optIn: '1' }],
 			['the user cannot manage SCIM', { canManage: false }],
-		])('hides the SCIM row when %s', async (_, options) => {
+		])('hides the SCIM section when %s', async (_, options) => {
 			setUpScim(options);
 
 			const { queryByTestId } = renderView();
 
-			await waitFor(() => expect(queryByTestId('sso-scim-row')).not.toBeInTheDocument());
+			await waitFor(() => expect(queryByTestId('sso-scim-section')).not.toBeInTheDocument());
 			expect(getScimConfig).not.toHaveBeenCalled();
 		});
 	});

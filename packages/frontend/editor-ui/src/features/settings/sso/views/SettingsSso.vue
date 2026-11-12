@@ -5,8 +5,8 @@ import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { onBeforeRouteLeave, useRouter, type NavigationGuardNext } from 'vue-router';
-import * as scimApi from '@n8n/rest-api-client/api/scim';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	N8nButton,
 	N8nDialog,
@@ -18,23 +18,20 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
-	N8nSettingsRow,
-	N8nSettingsRowConfigure,
-	N8nSettingsRowGroup,
 	N8nSettingsSaveBar,
-	N8nSettingsSection,
 	N8nText,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
+import ScimProvisioningSection from '../components/ScimProvisioningSection.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
-import { isScimAvailable } from '../scim-availability';
 
 const i18n = useI18n();
 const router = useRouter();
 const ssoStore = useSSOStore();
-const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const rbacStore = useRBACStore();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -45,6 +42,7 @@ const isRulesMappingInN8n = computed(
 
 const samlFormRef = useTemplateRef<InstanceType<typeof SamlSettingsForm>>('samlForm');
 const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcForm');
+const scimSectionRef = useTemplateRef<InstanceType<typeof ScimProvisioningSection>>('scimSection');
 
 const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
@@ -68,21 +66,21 @@ const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
 );
 
-const showScimRow = computed(() => isScimAvailable());
-const scimEnabled = ref(false);
+/**
+ * SCIM needs the `feat:scim` license, the pre-GA opt-in `N8N_ENV_FEAT_SCIM`
+ * and the `scim:manage` scope. The backend accepts only `'true'` for the
+ * opt-in, so the page does not use the looser `useEnvFeatureFlag` check.
+ */
+const showScimSection = computed(
+	() =>
+		settingsStore.isModuleActive('scim') &&
+		settingsStore.settings.envFeatureFlags?.N8N_ENV_FEAT_SCIM === 'true' &&
+		rbacStore.hasScope('scim:manage'),
+);
 
-async function loadScimStatus() {
-	if (!showScimRow.value) return;
-	try {
-		scimEnabled.value = (await scimApi.getScimConfig(rootStore.restApiContext)).enabled;
-	} catch {
-		// The row still opens the SCIM page, which shows the load error.
-	}
-}
-
-async function openScim() {
-	await router.push({ name: VIEWS.SCIM_SETTINGS });
-}
+const isSsoLoginEnabled = computed(
+	() => ssoStore.isSamlLoginEnabled || ssoStore.isOidcLoginEnabled,
+);
 
 async function goToAuthentication() {
 	await router.push({ name: VIEWS.AUTHENTICATION_SETTINGS });
@@ -99,20 +97,44 @@ const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 /** A new key remounts the form, which loads the saved values again. */
 const formKey = ref(0);
 
-const showSaveBar = computed(
-	() => Boolean(activeForm.value?.hasUnsavedChanges) || Boolean(activeForm.value?.saving),
+const hasUnsavedChanges = computed(
+	() =>
+		Boolean(activeForm.value?.hasUnsavedChanges) ||
+		Boolean(scimSectionRef.value?.hasUnsavedChanges),
 );
 
+const isSaving = computed(
+	() => Boolean(activeForm.value?.saving) || Boolean(scimSectionRef.value?.saving),
+);
+
+/**
+ * One save for the SSO form and SCIM. SSO goes first, because the backend
+ * accepts SCIM only while SAML or OIDC login is on.
+ */
+async function saveAll(): Promise<boolean> {
+	if (activeForm.value?.hasUnsavedChanges) {
+		const saved = await activeForm.value.onSave();
+		if (!saved) return false;
+	}
+	if (scimSectionRef.value?.hasUnsavedChanges) {
+		return await scimSectionRef.value.save();
+	}
+	return true;
+}
+
 async function onSaveBarSave() {
-	await activeForm.value?.onSave();
+	await saveAll();
 }
 
 function onDiscardChanges() {
-	// The OIDC login switch writes to the store, so put the saved value back first.
-	if (authProtocol.value === SupportedProtocols.OIDC) {
-		ssoStore.isOidcLoginEnabled = ssoStore.oidcConfig?.loginEnabled ?? false;
+	if (activeForm.value?.hasUnsavedChanges) {
+		// The OIDC login switch writes to the store, so put the saved value back first.
+		if (authProtocol.value === SupportedProtocols.OIDC) {
+			ssoStore.isOidcLoginEnabled = ssoStore.oidcConfig?.loginEnabled ?? false;
+		}
+		formKey.value++;
 	}
-	formKey.value++;
+	scimSectionRef.value?.discard();
 }
 
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
@@ -124,7 +146,7 @@ const goToUpgrade = () => {
 };
 
 onBeforeRouteLeave((_to, _from, next) => {
-	if (!activeForm.value?.hasUnsavedChanges) {
+	if (!hasUnsavedChanges.value) {
 		next();
 		return;
 	}
@@ -137,7 +159,7 @@ async function onSaveAndLeave() {
 	const next = pendingNext.value;
 	pendingNext.value = null;
 	showUnsavedChangesDialog.value = false;
-	const saved = await activeForm.value?.onSave();
+	const saved = await saveAll();
 	if (saved) {
 		next?.();
 	} else {
@@ -166,7 +188,6 @@ onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	ssoStore.initializeSelectedProtocol();
 	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
-	void loadScimStatus();
 });
 </script>
 
@@ -246,27 +267,11 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
-		<N8nSettingsSection
-			v-if="showScimRow"
-			:title="i18n.baseText('settings.sso.provisioning.title')"
-			data-test-id="sso-provisioning-section"
-		>
-			<N8nSettingsRowGroup>
-				<N8nSettingsRow
-					clickable
-					:title="i18n.baseText('settings.sso.scim.title')"
-					:description="i18n.baseText('settings.sso.scim.description')"
-					data-test-id="sso-scim-row"
-					@click="openScim"
-				>
-					<template #action>
-						<N8nSettingsRowConfigure
-							:value="scimEnabled ? i18n.baseText('settings.sso.scim.status.enabled') : undefined"
-						/>
-					</template>
-				</N8nSettingsRow>
-			</N8nSettingsRowGroup>
-		</N8nSettingsSection>
+		<ScimProvisioningSection
+			v-if="showScimSection"
+			ref="scimSection"
+			:sso-enabled="isSsoLoginEnabled"
+		/>
 
 		<N8nDialog
 			:open="showUnsavedChangesDialog"
@@ -295,8 +300,8 @@ onMounted(() => {
 		<!-- The save bar must be the last child of the content column to dock at the page end. -->
 		<N8nSettingsSaveBar
 			floating
-			:visible="showSaveBar"
-			:saving="Boolean(activeForm?.saving)"
+			:visible="hasUnsavedChanges || isSaving"
+			:saving="isSaving"
 			:message="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
 			:save-label="i18n.baseText('settings.sso.settings.save')"
 			:discard-label="i18n.baseText('settings.sso.settings.discard')"

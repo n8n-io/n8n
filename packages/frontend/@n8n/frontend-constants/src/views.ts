@@ -59,7 +59,6 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	AUTHENTICATION_SETTINGS = 'AuthenticationSettings',
-	SCIM_SETTINGS = 'ScimSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',

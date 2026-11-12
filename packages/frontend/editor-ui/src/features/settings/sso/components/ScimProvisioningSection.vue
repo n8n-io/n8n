@@ -5,10 +5,14 @@ import {
 	N8nAlertDialog,
 	N8nButton,
 	N8nCopyInput,
+	N8nHeading,
+	N8nOption,
+	N8nPreviewBadge,
+	N8nSelect,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nSwitch2,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as scimApi from '@n8n/rest-api-client/api/scim';
@@ -25,19 +29,22 @@ const rootStore = useRootStore();
 const { showError } = useToast();
 
 const config = ref<ScimConfigResponse | null>(null);
+/** The value in the select. The SSO page saves it with its other settings. */
+const selectedEnabled = ref(false);
 /** The backend returns the full token once. The page shows it until the user leaves. */
 const newToken = ref<string | null>(null);
 const saving = ref(false);
-const showDisableDialog = ref(false);
+const generatingToken = ref(false);
 const showRegenerateDialog = ref(false);
 
-const enabled = computed(() => config.value?.enabled ?? false);
+const hasUnsavedChanges = computed(
+	() => config.value !== null && selectedEnabled.value !== config.value.enabled,
+);
 
-const toggleValue = computed({
-	get: () => enabled.value,
-	set: (value: boolean) => {
-		if (value) void setEnabled(true);
-		else showDisableDialog.value = true;
+const selectValue = computed({
+	get: () => (selectedEnabled.value ? 'enabled' : 'disabled'),
+	set: (value: string) => {
+		selectedEnabled.value = value === 'enabled';
 	},
 });
 
@@ -51,49 +58,62 @@ const tokenDescription = computed(() => {
 	return i18n.baseText('settings.sso.scim.token.none');
 });
 
-async function run(action: () => Promise<void>, errorTitle: string) {
-	saving.value = true;
-	try {
-		await action();
-	} catch (error) {
-		showError(error, errorTitle);
-	} finally {
-		saving.value = false;
-	}
-}
-
 async function load() {
 	try {
 		config.value = await scimApi.getScimConfig(rootStore.restApiContext);
+		selectedEnabled.value = config.value.enabled;
 	} catch (error) {
 		showError(error, i18n.baseText('settings.sso.scim.load.error'));
 	}
 }
 
-// The responses carry the new state, so the page does not load the config again.
-// A failed reload must not look like a failed save.
-async function setEnabled(value: boolean) {
-	showDisableDialog.value = false;
-	await run(async () => {
-		const { enabled: saved } = await scimApi.setScimEnabled(rootStore.restApiContext, value);
-		if (config.value) config.value = { ...config.value, enabled: saved };
-	}, i18n.baseText('settings.sso.scim.enable.error'));
+/** Saves the select value. Returns false when the save fails. */
+async function save(): Promise<boolean> {
+	if (!config.value || !hasUnsavedChanges.value) return true;
+	saving.value = true;
+	try {
+		// The response carries the new state, so the page does not load the config again.
+		const { enabled } = await scimApi.setScimEnabled(
+			rootStore.restApiContext,
+			selectedEnabled.value,
+		);
+		config.value = { ...config.value, enabled };
+		selectedEnabled.value = enabled;
+		return true;
+	} catch (error) {
+		showError(error, i18n.baseText('settings.sso.scim.enable.error'));
+		return false;
+	} finally {
+		saving.value = false;
+	}
+}
+
+function discard() {
+	if (config.value) selectedEnabled.value = config.value.enabled;
 }
 
 async function generateToken() {
 	showRegenerateDialog.value = false;
-	await run(async () => {
+	generatingToken.value = true;
+	try {
 		const { token } = await scimApi.generateScimToken(rootStore.restApiContext);
 		newToken.value = token;
 		if (config.value)
 			config.value = { ...config.value, hasToken: true, tokenHint: token.slice(-4) };
-	}, i18n.baseText('settings.sso.scim.token.error'));
+	} catch (error) {
+		showError(error, i18n.baseText('settings.sso.scim.token.error'));
+	} finally {
+		generatingToken.value = false;
+	}
 }
 
 function onGenerateClick() {
 	if (config.value?.hasToken) showRegenerateDialog.value = true;
 	else void generateToken();
 }
+
+// The SSO page saves and discards SCIM with the SAML and OIDC settings.
+defineExpose({ hasUnsavedChanges, saving, save, discard });
 
 onMounted(load);
 
@@ -105,28 +125,52 @@ watch(
 </script>
 
 <template>
-	<!-- The SCIM page header carries the feature title and description. -->
 	<N8nSettingsSection
-		:title="i18n.baseText('settings.sso.scim.connection.title')"
+		:description="i18n.baseText('settings.sso.scim.description')"
 		data-test-id="sso-scim-section"
 	>
+		<template #title>
+			<div :class="$style.titleRow">
+				<N8nHeading tag="h2" step="md" color="text-dark">
+					{{ i18n.baseText('settings.sso.scim.title') }}
+				</N8nHeading>
+				<N8nPreviewBadge size="xsmall" data-test-id="sso-scim-preview-badge" />
+			</div>
+		</template>
 		<N8nSettingsRowGroup v-if="config">
 			<N8nSettingsRow
 				:title="i18n.baseText('settings.sso.scim.enable.title')"
-				:description="
-					props.ssoEnabled
-						? i18n.baseText('settings.sso.scim.enable.description')
-						: i18n.baseText('settings.sso.scim.enable.needsSso')
-				"
+				:description="i18n.baseText('settings.sso.scim.enable.description')"
 			>
 				<template #action>
-					<N8nSwitch2
-						v-model="toggleValue"
-						size="large"
-						:disabled="saving || (!props.ssoEnabled && !enabled)"
-						:aria-label="i18n.baseText('settings.sso.scim.enable.title')"
-						data-test-id="sso-scim-toggle"
-					/>
+					<N8nTooltip
+						:disabled="props.ssoEnabled"
+						:content="i18n.baseText('settings.sso.scim.enable.needsSso')"
+						placement="top"
+					>
+						<!-- A disabled select gets no pointer events, so the wrapper shows the tooltip. -->
+						<div :class="$style.selectWrapper" data-test-id="sso-scim-enabled-select-wrapper">
+							<N8nSelect
+								v-model="selectValue"
+								size="medium"
+								:class="$style.select"
+								:disabled="saving || !props.ssoEnabled"
+								:aria-label="i18n.baseText('settings.sso.scim.enable.title')"
+								data-test-id="sso-scim-enabled-select"
+							>
+								<N8nOption
+									value="enabled"
+									:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+									data-test-id="sso-scim-enabled-option"
+								/>
+								<N8nOption
+									value="disabled"
+									:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+									data-test-id="sso-scim-enabled-option"
+								/>
+							</N8nSelect>
+						</div>
+					</N8nTooltip>
 				</template>
 			</N8nSettingsRow>
 
@@ -162,7 +206,7 @@ watch(
 						/>
 						<N8nButton
 							:variant="config.hasToken ? 'outline' : 'solid'"
-							:disabled="saving"
+							:disabled="generatingToken"
 							data-test-id="sso-scim-generate-token"
 							@click="onGenerateClick"
 						>
@@ -178,17 +222,6 @@ watch(
 		</N8nSettingsRowGroup>
 
 		<N8nAlertDialog
-			:open="showDisableDialog"
-			:title="i18n.baseText('settings.sso.scim.disable.title')"
-			:description="i18n.baseText('settings.sso.scim.disable.description')"
-			:action-label="i18n.baseText('settings.sso.scim.disable.action')"
-			action-variant="destructive"
-			@action="setEnabled(false)"
-			@cancel="showDisableDialog = false"
-			@update:open="showDisableDialog = $event"
-		/>
-
-		<N8nAlertDialog
 			:open="showRegenerateDialog"
 			:title="i18n.baseText('settings.sso.scim.regenerate.title')"
 			:description="i18n.baseText('settings.sso.scim.regenerate.description')"
@@ -202,6 +235,20 @@ watch(
 </template>
 
 <style lang="scss" module>
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.selectWrapper {
+	display: inline-flex;
+}
+
+.select {
+	width: 200px;
+}
+
 .tokenAction {
 	display: flex;
 	align-items: center;

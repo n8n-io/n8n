@@ -12,7 +12,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { isScimAvailable } from '@/features/settings/sso/scim-availability';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
@@ -80,7 +79,6 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
-const SettingsScim = async () => await import('@/features/settings/sso/views/SettingsScim.vue');
 const SettingsAuthentication = async () =>
 	await import('@/features/settings/sso/views/SettingsAuthenticationView.vue');
 const SettingsEncryptionKeys = async () =>
@@ -1059,29 +1057,6 @@ export const routes: RouteRecordRaw[] = [
 								getProperties() {
 									return {
 										feature: 'sso',
-									};
-								},
-							},
-						},
-					},
-					{
-						// SCIM builds on single sign-on, so its page sits under the SSO page.
-						path: 'sso/scim',
-						name: VIEWS.SCIM_SETTINGS,
-						component: SettingsScim,
-						beforeEnter: () => (isScimAvailable() ? true : { name: VIEWS.SSO_SETTINGS }),
-						meta: {
-							middleware: ['authenticated', 'rbac'],
-							middlewareOptions: {
-								rbac: {
-									scope: 'scim:manage',
-								},
-							},
-							telemetry: {
-								pageCategory: 'settings',
-								getProperties() {
-									return {
-										feature: 'scim',
 									};
 								},
 							},

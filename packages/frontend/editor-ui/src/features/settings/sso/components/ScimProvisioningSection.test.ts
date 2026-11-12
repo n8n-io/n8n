@@ -1,6 +1,6 @@
 import type { ScimConfigResponse } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -72,7 +72,7 @@ describe('ScimProvisioningSection', () => {
 
 	it('loads the config again when single sign-on changes', async () => {
 		const { getByTestId, rerender } = renderComponent({ props: { ssoEnabled: true } });
-		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());
 
 		getScimConfig.mockResolvedValue(baseConfig);
 		await rerender({ ssoEnabled: false });
@@ -101,41 +101,34 @@ describe('ScimProvisioningSection', () => {
 		await waitFor(() => expect(generateScimToken).toHaveBeenCalledTimes(1));
 	});
 
-	it('turns SCIM on', async () => {
-		setScimEnabled.mockResolvedValue({ enabled: true });
+	it('shows the Preview badge next to the title', async () => {
+		const { findByTestId } = renderComponent({ props: { ssoEnabled: true } });
 
+		expect(await findByTestId('sso-scim-preview-badge')).toHaveTextContent('Preview');
+	});
+
+	it('does not save the select value on change', async () => {
 		const { getByTestId } = renderComponent({ props: { ssoEnabled: true } });
-		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());
 
-		await userEvent.click(getByTestId('sso-scim-toggle'));
+		await userEvent.click(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox'));
+		const options = await screen.findAllByTestId('sso-scim-enabled-option');
+		await userEvent.click(options.find((option) => option.textContent?.includes('Enabled'))!);
 
-		await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
-	});
-
-	it('asks for confirmation before it turns SCIM off', async () => {
-		getScimConfig.mockResolvedValue({ ...baseConfig, enabled: true, hasToken: true });
-		setScimEnabled.mockResolvedValue({ enabled: false });
-
-		const { getByTestId, getByRole } = renderComponent({ props: { ssoEnabled: true } });
-		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
-
-		await userEvent.click(getByTestId('sso-scim-toggle'));
-		await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
-		await userEvent.click(getByRole('button', { name: 'Turn off' }));
-
-		await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), false));
-	});
-
-	it('cannot turn SCIM on while single sign-on is off', async () => {
-		const { getByTestId, getByText } = renderComponent({ props: { ssoEnabled: false } });
-		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
-
-		expect(
-			getByText('Turn on SAML or OIDC login first. SCIM works only with single sign-on.'),
-		).toBeVisible();
-		await userEvent.click(getByTestId('sso-scim-toggle'));
-
+		// The SSO page saves SCIM with its save bar.
 		expect(setScimEnabled).not.toHaveBeenCalled();
+	});
+
+	it('disables the select and explains why while single sign-on is off', async () => {
+		const { getByTestId } = renderComponent({ props: { ssoEnabled: false } });
+		await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());
+
+		expect(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox')).toBeDisabled();
+
+		await userEvent.hover(getByTestId('sso-scim-enabled-select-wrapper'));
+		expect(
+			await screen.findByText('SSO needs to be enabled first in order to use SCIM'),
+		).toBeInTheDocument();
 	});
 
 	it('shows an error when the token request fails', async () => {
