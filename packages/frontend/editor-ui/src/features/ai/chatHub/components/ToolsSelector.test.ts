@@ -10,7 +10,10 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ChatHubToolDto } from '@n8n/api-types';
-import { TOOLS_MANAGER_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import { TOOLS_MANAGER_MODAL_KEY, TOOL_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -41,12 +44,16 @@ const TOOL_NODE_TYPE: INodeTypeDescription = {
 	properties: [],
 };
 
-function createMockToolDto(id: string, name: string): ChatHubToolDto {
+function createMockToolDto(
+	id: string,
+	name: string,
+	type = 'n8n-nodes-base.testTool',
+): ChatHubToolDto {
 	return {
 		definition: {
 			id,
 			name,
-			type: 'n8n-nodes-base.testTool',
+			type,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
@@ -251,6 +258,94 @@ describe('ToolsSelector', () => {
 			});
 
 			expect(emitted('toggle')).toBeUndefined();
+		});
+	});
+
+	describe('when a tool node type is restricted', () => {
+		const RESTRICTED_TYPE = 'n8n-nodes-base.restrictedTool';
+
+		beforeEach(() => {
+			mockRestrictedNodeTypes({ [RESTRICTED_TYPE]: 'instance' });
+			chatStore.configuredTools = [
+				createMockToolDto('tool-1', 'Restricted Tool', RESTRICTED_TYPE),
+				createMockToolDto('tool-2', 'Allowed Tool'),
+			];
+		});
+
+		async function openDropdown(checkedToolIds: string[]) {
+			const result = renderComponent({ props: { disabled: false, checkedToolIds } });
+			await userEvent.click(result.getByTestId('chat-tools-button'));
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+			return result;
+		}
+
+		it('loads the policy of the personal project', () => {
+			mockedStore(useProjectsStore).personalProject = { id: 'personal-project-1' } as never;
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderComponent({ props: { disabled: false, checkedToolIds: [] } });
+
+			expect(fetchForProject).toHaveBeenCalledWith('personal-project-1');
+		});
+
+		it('shows the lock only on the restricted tool', async () => {
+			await openDropdown([]);
+
+			const restrictedItem = findMenuItemByText('Restricted Tool')!;
+			const allowedItem = findMenuItemByText('Allowed Tool')!;
+			expect(
+				restrictedItem.querySelector('[data-test-id="node-restricted-icon"]'),
+			).toBeInTheDocument();
+			expect(
+				allowedItem.querySelector('[data-test-id="node-restricted-icon"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it.each([
+			['checked', ['tool-1']],
+			['unchecked', []],
+		])(
+			'does not toggle a restricted tool that is %s, and keeps the menu open',
+			async (_state, checkedToolIds) => {
+				const { emitted } = await openDropdown(checkedToolIds);
+
+				await userEvent.click(findMenuItemByText('Restricted Tool')!);
+
+				expect(emitted('toggle')).toBeUndefined();
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			},
+		);
+
+		it('opens the settings of a restricted tool', async () => {
+			await openDropdown([]);
+
+			const settingsButton = findMenuItemByText('Restricted Tool')!.querySelector<HTMLElement>(
+				'[data-test-id="chat-tool-item-settings"]',
+			)!;
+			await userEvent.click(settingsButton);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: TOOL_SETTINGS_MODAL_KEY,
+					data: expect.objectContaining({
+						node: expect.objectContaining({ id: 'tool-1', type: RESTRICTED_TYPE }),
+					}),
+				}),
+			);
+		});
+
+		it('still checks a tool whose node type is not restricted', async () => {
+			const { emitted } = await openDropdown([]);
+
+			await userEvent.click(findMenuItemByText('Allowed Tool')!);
+
+			await waitFor(() => {
+				expect(emitted('toggle')?.[0]).toEqual(['tool-2']);
+			});
 		});
 	});
 });
