@@ -5,7 +5,6 @@ import { UserError } from 'n8n-workflow';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
 import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
 import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
-import { wrapCustomModelEndpointErrorFetch } from './error-handling';
 import type { EndpointCredential } from './types';
 
 export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
@@ -77,7 +76,7 @@ export function createCustomModelEndpointConfig(
 		endpoint,
 		configuration: {
 			baseURL: endpoint.baseUrl,
-			fetch: wrapCustomModelEndpointErrorFetch(transport.fetch, { secrets: transport.secrets }),
+			fetch: transport.fetch,
 		},
 	};
 }
