@@ -6031,6 +6031,7 @@
 	"workflowReviews.approvalMenu.promoting.lockedBy.project": "Your project admin requires this workflow to be approved before promoting.",
 	"workflowReviews.approvalRequest.publish.title": "Request to publish",
 	"workflowReviews.approvalRequest.promote.title": "Request to promote",
+	"workflowReviews.approvalRequest.success": "Your request was sent.",
 	"workflowReviews.approvalRequest.dependencies": "Submitting along with {count} dependency | Submitting along with {count} dependencies",
 	"workflowReviews.approvalRequest.compareChanges": "Compare changes",
 	"workflowReviews.approvalRequest.description": "Description",

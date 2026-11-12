@@ -16,6 +16,7 @@ import {
 	N8nUserSelect,
 	type IUser,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
@@ -49,6 +50,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
@@ -150,6 +152,10 @@ function close() {
 }
 
 function submit() {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('workflowReviews.approvalRequest.success'),
+	});
 	emit('update:open', false);
 }
 </script>
