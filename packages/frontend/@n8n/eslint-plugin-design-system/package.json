@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "catalog:"
+    "@typescript-eslint/utils": "catalog:",
+    "@vue/compiler-dom": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

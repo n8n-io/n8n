@@ -11,7 +11,7 @@ export class InteractionsPage extends BasePage {
 	async precisionDragToTarget(
 		sourceLocator: Locator,
 		targetLocator: Locator,
-		position: 'top' | 'center' | 'bottom' = 'bottom',
+		position: 'top' | 'center' | 'bottom' | 'leading' = 'bottom',
 	): Promise<void> {
 		await expect(sourceLocator).toBeVisible();
 		await expect(targetLocator).toBeVisible();
@@ -25,6 +25,10 @@ export class InteractionsPage extends BasePage {
 		switch (position) {
 			case 'top':
 				dropPosition = { x: targetBox.x + targetBox.width / 2, y: targetBox.y + 2 };
+				break;
+			case 'leading':
+				// A centered drop sits past a short expression. The editor then inserts at the end.
+				dropPosition = { x: targetBox.x + 8, y: targetBox.y + 8 };
 				break;
 			case 'center':
 				dropPosition = {

@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { mergeCustomHeaders } from '@utils/helpers';
+import { mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import {
@@ -280,7 +280,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			...options,
 			configuration,
 		});

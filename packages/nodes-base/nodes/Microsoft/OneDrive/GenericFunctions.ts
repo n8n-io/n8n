@@ -2,7 +2,6 @@ import { DateTime } from 'luxon';
 import {
 	NodeApiError,
 	NodeOperationError,
-	OperationalError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type IDataObject,
@@ -12,6 +11,7 @@ import {
 	type IRequestOptions,
 	type IPollFunctions,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { validateUserTargetId } from '../GenericFunctions';
 

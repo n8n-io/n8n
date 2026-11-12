@@ -23,7 +23,11 @@ import {
 } from '../build-workflow.tool';
 import { collectHostSdkValidatorWarnings } from '../host-sdk-validation';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
-import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
+import {
+	buildCredentialMap,
+	buildCredentialResolutionNote,
+	resolveCredentials,
+} from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import {
@@ -3337,6 +3341,27 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(result.success).toBe(true);
 		expect((result.warnings ?? []).join('\n')).not.toContain('chat_model_provider_mismatch');
+	});
+
+	it('passes Gateway credits rejections to the credential resolution note', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const gatewayRejectionsByNode = { 'Analyze image': 'image.analyze not supported' };
+		vi.mocked(resolveCredentials).mockResolvedValueOnce({
+			mockedNodeNames: [],
+			mockedCredentialTypes: [],
+			mockedCredentialsByNode: {},
+			heldForNewCredentialTypes: [],
+			resolvedCredentialsByNode: {},
+			gatewayRejectionsByNode,
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+		expect(buildCredentialResolutionNote).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ gatewayRejectionsByNode }),
+		);
 	});
 
 	it('skips supplemental diagnostics on a sandbox failure', async () => {
