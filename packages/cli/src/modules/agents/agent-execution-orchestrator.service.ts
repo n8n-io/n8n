@@ -122,10 +122,7 @@ interface ChatExecutionInput extends AgentExecutionInput {
 	attachments?: StoredAttachmentRef[];
 }
 
-/**
- * Resolves the test-run session of a draft chat thread, or `undefined` for a
- * live run. Set only by `AgentTestRunService`.
- */
+/** Resolves a draft thread's test-run session; `undefined` means a live run. */
 export type DraftSimulationResolver = (threadId: string) => Promise<SimulationSession | undefined>;
 
 interface ChatExecutionCallbacks {
@@ -155,7 +152,6 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	/** Preview chat sends the approaching-budget card. The run continues. */
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
-	/** Makes the draft run a test run when it resolves a session. */
 	simulation?: DraftSimulationResolver;
 }
 
@@ -227,7 +223,6 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
-	/** Makes a draft resume a test run when it resolves a session. */
 	simulation?: DraftSimulationResolver;
 }
 
@@ -2071,10 +2066,7 @@ export class AgentExecutionOrchestratorService {
 	}
 }
 
-/**
- * A test run gets a runtime of its own, with no background jobs: a job would
- * outlive the turn and run without the simulation.
- */
+// No background jobs in a test run: a job would outlive the turn and run unsimulated.
 function simulationRuntimeParams(session: SimulationSession | undefined) {
 	return session ? { simulation: session, allowBackgroundTasks: false } : {};
 }

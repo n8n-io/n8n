@@ -24,10 +24,8 @@ const MAX_SCENARIO_HINT_CHARS = 2_000;
 const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow']);
 
 /**
- * The first simulation backend: the LLM mock that the agent evals use. Every
- * reply is invented by an LLM (`made_up`). It never sends a request to a real
- * service. A world is the scenario seed (shared context and per-tool hints),
- * generated from the test chat's first message, so later turns stay coherent.
+ * Simulation backend on the agent eval LLM mock: every reply is `made_up`. A world is a scenario
+ * seed from the chat's first message, so later replies stay coherent.
  */
 @Service()
 export class LlmMockSimulationBackend implements SimulationBackend {

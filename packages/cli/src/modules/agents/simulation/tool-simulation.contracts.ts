@@ -2,15 +2,9 @@ import type { ToolTestCapability, ToolTestKind } from '@n8n/api-types';
 import type { JsonObject } from 'n8n-workflow';
 
 /**
- * The contract between n8n and a simulation backend.
- *
- * A test run gives each test chat its own simulated world. The agent's own
- * model call stays real. Every request that a tool would send to an outside
- * service goes to the world instead. The world answers the request, or says
- * that it cannot. n8n turns the answers into one route for each tool call.
- *
- * A backend never sends a request to a real service. When a backend cannot
- * answer, n8n blocks the tool call. It never falls back to the real service.
+ * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
+ * tool would send goes to it instead. A backend never sends anything real. When it cannot answer,
+ * n8n blocks the call and never falls back to the real service.
  */
 export interface SimulationBackend {
 	readonly id: SimulationBackendId;
@@ -18,12 +12,7 @@ export interface SimulationBackend {
 	/** Which of the agent's tools this backend can serve. Called before a run. */
 	describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]>;
 
-	/**
-	 * Open the world of one test chat. `saved` is what an earlier
-	 * `SimulationWorld.save()` returned for the same test chat, so the same
-	 * world continues on each turn and after a restart. A new test chat has no
-	 * saved state and gets a new world.
-	 */
+	/** `saved` comes from an earlier `SimulationWorld.save()` for this chat; a new chat has none. */
 	openWorld(input: OpenWorldInput): Promise<SimulationWorld>;
 }
 
@@ -32,7 +21,7 @@ export type SimulationBackendId = 'llm-mock' | 'shared-simulation-layer';
 export interface OpenWorldInput {
 	testChatId: string;
 	agent: SimulatedAgent;
-	/** The first message of the test chat. A backend can use it to seed the world. */
+	/** Can seed the world. */
 	firstMessage: string;
 	saved?: SavedSimulationWorld;
 }
@@ -60,7 +49,6 @@ export interface SimulationWorld {
 	readonly worldId: string;
 	readonly backend: SimulationBackendId;
 
-	/** Answer one request that a tool would have sent. Never send it anywhere real. */
 	handleRequest(request: OutboundRequest, call: ToolCallContext): Promise<SimulatedReply>;
 
 	/** The state to store with the test chat, so that `openWorld` can continue this world. */
@@ -68,20 +56,18 @@ export interface SimulationWorld {
 }
 
 export interface OutboundRequest {
-	/** `http`: a request from a node tool or a workflow tool. */
 	protocol: 'http';
 	method: string;
 	url: string;
-	/** Credentials and auth headers are removed. */
+	/** Auth headers are removed. */
 	headers?: Record<string, string>;
 	body?: unknown;
 }
 
 export interface ToolCallContext {
 	toolCallId?: string;
-	/** The name the model called. */
 	toolName: string;
-	/** The n8n node type that sent the request, for example `n8n-nodes-base.slack`. */
+	/** For example `n8n-nodes-base.slack`. */
 	nodeType?: string;
 }
 
@@ -94,12 +80,12 @@ export type SimulatedReply =
 			headers?: Record<string, string>;
 			body: unknown;
 	  }
-	/** The backend cannot serve this request, for example it returned 501. */
+	/** For example a 501. Shown as a simulator gap, not an agent failure. */
 	| { outcome: 'unsupported'; detail?: string }
-	/** The backend is down, timed out or failed. */
+	/** Down, timed out or failed. */
 	| { outcome: 'unavailable'; detail?: string };
 
-/** What a backend knows about the agent. It holds no credentials. */
+/** No credentials. */
 export interface SimulatedAgent {
 	agentId: string;
 	projectId: string;
@@ -109,7 +95,7 @@ export interface SimulatedAgent {
 }
 
 export interface SimulatedTool {
-	/** The name the model calls. For an MCP server, the server name. */
+	/** For an MCP server, the server name. */
 	toolName: string;
 	kind: ToolTestKind;
 	description?: string;
