@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { messageRLC } from '../../descriptions';
+import { messageRLC, immutableIdsOption } from '../../descriptions';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -198,6 +198,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'Save as Draft',
 				name: 'saveAsDraft',

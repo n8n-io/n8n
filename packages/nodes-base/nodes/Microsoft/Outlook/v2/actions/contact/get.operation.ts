@@ -2,7 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { contactRLC } from '../../descriptions';
+import { contactRLC, immutableIdsCollection } from '../../descriptions';
 import { contactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -41,6 +41,7 @@ export const properties: INodeProperties[] = [
 		options: contactFields,
 		default: [],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

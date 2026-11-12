@@ -3,7 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { folderRLC, messageRLC } from '../../descriptions';
+import { folderRLC, messageRLC, immutableIdsCollection } from '../../descriptions';
 import { createMessage, decodeOutlookId } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -159,6 +159,7 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {
