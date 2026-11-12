@@ -35,7 +35,5 @@ const label = computed(() => {
 <style module lang="scss">
 .badge {
 	flex: none;
-	// The label renders slightly above the vertical center. Push it down by 1px.
-	padding-top: var(--spacing--5xs);
 }
 </style>
