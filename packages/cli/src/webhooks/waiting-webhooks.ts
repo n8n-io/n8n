@@ -90,6 +90,10 @@ const showsNoActionPage = ({ status }: ExecutionSnapshot): boolean =>
  * Puts the waiting node where the v1 resume path expects it. The data plane
  * keeps no stack, so the execution gets one entry. `preserveInputOverride`
  * pops the node's last run, so one must exist.
+ *
+ * SPIKE: a gated tool (HITL) that waits as a spawned step can have several
+ * runs, ordered by round and call. The last run is then not always the
+ * waiting call, so the resume can read another call's `inputOverride`.
  */
 function seedResumingNode(execution: IExecutionResponse, node: INode): void {
 	const { data } = execution;

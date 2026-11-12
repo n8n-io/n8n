@@ -222,7 +222,12 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				workflow.pinData,
+				snapshot.rounds ?? [],
+			),
 		);
 	}
 
