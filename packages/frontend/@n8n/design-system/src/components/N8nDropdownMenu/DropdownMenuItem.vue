@@ -12,7 +12,7 @@ import {
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
 import Icon from '../N8nIcon/Icon.vue';
-import N8nLoading from '../N8nLoading';
+import N8nSpinner from '../N8nSpinner';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
@@ -383,13 +383,7 @@ onBeforeUnmount(() => {
 					>
 						<template #default="searchableContent">
 							<div v-if="loading" :class="$style['loading-container']">
-								<N8nLoading
-									v-for="i in loadingItemCount"
-									:key="i"
-									:rows="1"
-									:class="$style['loading-item']"
-									variant="p"
-								/>
+								<N8nSpinner size="small" />
 							</div>
 							<template v-else-if="hasChildren">
 								<div
@@ -432,13 +426,7 @@ onBeforeUnmount(() => {
 
 					<template v-else>
 						<div v-if="loading" :class="$style['loading-container']">
-							<N8nLoading
-								v-for="i in loadingItemCount"
-								:key="i"
-								:rows="1"
-								:class="$style['loading-item']"
-								variant="p"
-							/>
+							<N8nSpinner size="small" />
 						</div>
 						<template v-else-if="hasChildren">
 							<div ref="childrenContainerRef" :class="$style['children-container']" data-menu-items>
@@ -727,14 +715,9 @@ onBeforeUnmount(() => {
 }
 
 .loading-container {
-	padding: var(--spacing--4xs);
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.loading-item div {
-	height: var(--spacing--xl);
+	justify-content: center;
+	padding: var(--spacing--xs);
 }
 
 .empty-state {

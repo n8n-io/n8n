@@ -32,7 +32,7 @@ describe('AgentSessionHistoryDropdown', () => {
 
 		await userEvent.click(result.getByTestId('history-trigger'));
 
-		await waitFor(() => expect(document.querySelector('.n8n-loading')).toBeInTheDocument());
+		await waitFor(() => expect(document.querySelector('.n8n-spinner')).toBeInTheDocument());
 		expect(result.queryByText('agents.builder.chat.sessionPicker.empty')).not.toBeInTheDocument();
 	});
 

@@ -461,7 +461,7 @@ describe('N8nDropdownMenu', () => {
 	});
 
 	describe('loading state', () => {
-		it('should show loading skeleton when loading is true', async () => {
+		it('should show a spinner when loading is true', async () => {
 			const { container } = render(DropdownMenu, {
 				props: {
 					items: [],
@@ -471,12 +471,12 @@ describe('N8nDropdownMenu', () => {
 			});
 
 			await waitFor(() => {
-				const loadingElements = container.ownerDocument.querySelectorAll('[class*="loading"]');
-				expect(loadingElements.length).toBeGreaterThan(0);
+				expect(container.ownerDocument.querySelector('.n8n-spinner')).toBeVisible();
 			});
+			expect(container.ownerDocument.querySelectorAll('.n8n-loading')).toHaveLength(0);
 		});
 
-		it('should show correct number of loading items', async () => {
+		it('should show one spinner regardless of loading item count', async () => {
 			render(DropdownMenu, {
 				props: {
 					items: [],
@@ -487,10 +487,7 @@ describe('N8nDropdownMenu', () => {
 			});
 
 			await waitFor(() => {
-				const { dropdown } = document.querySelector('[role="menu"]')
-					? { dropdown: document.querySelector('[role="menu"]') }
-					: { dropdown: null };
-				expect(dropdown).toBeInTheDocument();
+				expect(document.querySelectorAll('.n8n-spinner')).toHaveLength(1);
 			});
 		});
 
@@ -519,7 +516,7 @@ describe('N8nDropdownMenu', () => {
 				return menus[1];
 			});
 			expect(subMenu.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('20rem');
-			expect(subMenu.querySelectorAll('.n8n-loading')).toHaveLength(4);
+			expect(subMenu.querySelectorAll('.n8n-spinner')).toHaveLength(1);
 		});
 	});
 

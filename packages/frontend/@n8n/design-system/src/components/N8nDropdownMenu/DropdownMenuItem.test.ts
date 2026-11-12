@@ -428,8 +428,7 @@ describe('N8nDropdownMenuItem', () => {
 			await userEvent.hover(trigger);
 
 			await waitFor(() => {
-				const loadingElements = document.querySelectorAll('[class*="loading"]');
-				expect(loadingElements.length).toBeGreaterThan(0);
+				expect(document.querySelector('.n8n-spinner')).toBeVisible();
 			});
 		});
 
