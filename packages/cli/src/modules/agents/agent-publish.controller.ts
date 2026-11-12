@@ -103,7 +103,7 @@ export class AgentPublishController {
 	) {
 		const { projectId } = req.params;
 		const pushRef = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			pushRef,
 			projectId,
@@ -128,7 +128,7 @@ export class AgentPublishController {
 	) {
 		const { projectId } = req.params;
 		const pushRef = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			pushRef,
 			projectId,

@@ -192,7 +192,7 @@ describe('AgentPublishController archive state', () => {
 		['archive', 'archiveAgent'],
 		['unarchive', 'unarchiveAgent'],
 	] as const)('%s validates the write lock and calls %s', async (handlerName, serviceMethod) => {
-		const { controller, collaborationService, agentPublishService, agentValidationService } =
+		const { controller, agentWriteLockService, agentPublishService, agentValidationService } =
 			makeController();
 		agentPublishService[serviceMethod].mockResolvedValue({
 			id: 'agent-1',
@@ -213,7 +213,7 @@ describe('AgentPublishController archive state', () => {
 			'agent-1',
 		);
 
-		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 			'user-1',
 			'push-ref-1',
 			'project-1',
