@@ -32,9 +32,10 @@ callers. The n8n Agent product (JSON config / builder UI) exposes
 and passes explicit settings to `agent.promptCaching(config.promptCaching)`.
 
 - **On by default in the builder.** For OpenAI, Anthropic, and Claude on
-  OpenRouter or Vertex, the builder agent's write-path normalizer and the model
-  picker write `{ enabled: true, ... }` when the config has no explicit setting.
-  They keep an explicit `{ enabled: false }`. The user turns caching off with
+  OpenRouter, Vertex, or Microsoft Foundry, the builder agent's write-path
+  normalizer and the model picker write `{ enabled: true, ... }` when the config
+  has no explicit setting. They keep an explicit `{ enabled: false }`. A builder
+  write that omits `promptCaching` keeps the stored setting. The user turns caching off with
   the Prompt caching switch in the Advanced panel, for example when a proxy
   rejects the OpenAI `prompt_cache_key` / `prompt_cache_retention` fields. When
   it is off, the runtime sends no cache fields. Other models do not get the
@@ -44,7 +45,8 @@ and passes explicit settings to `agent.promptCaching(config.promptCaching)`.
   the runtime replaces the error with `PromptCacheParamsError`. Its message tells
   the user to turn off Prompt caching. The provider error stays on `cause`.
 - **Existing routed Claude agents get the default on their next run.** When a
-  saved `openrouter/anthropic/claude-*` or `google-vertex/claude-*` agent has no
+  saved `openrouter/anthropic/claude-*`, `google-vertex/claude-*`, or
+  `azure-openai/anthropic/<deployment>` agent has no
   cache config, the JSON loader supplies `{ enabled: true }`. This does not
   change the saved config. Explicit settings, including `enabled: false`, pass
   through unchanged. Standalone SDK use stays opt-in.

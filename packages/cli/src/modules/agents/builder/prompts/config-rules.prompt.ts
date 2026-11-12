@@ -70,8 +70,8 @@ export function getConfigRulesSection(): string {
 - The server turns on \`config.promptCaching\` for every model that supports
   it. Do not write it unless the user asks. A user can turn it off, for example
   when a custom endpoint rejects the prompt cache fields. Then write
-  \`config.promptCaching: { "enabled": false }\`. Never turn it back on unless
-  the user asks. To tune the cache duration for Anthropic models and routed
+  \`config.promptCaching: { "enabled": false }\`. The server keeps the stored
+  setting when a write omits it. Never turn it back on unless the user asks. To tune the cache duration for Anthropic models and routed
   Claude models (OpenRouter, Google Vertex, Microsoft Foundry), write the full
   object, for example
   \`config.promptCaching: { "enabled": true, "anthropic": { "ttl": "5m" } }\`
