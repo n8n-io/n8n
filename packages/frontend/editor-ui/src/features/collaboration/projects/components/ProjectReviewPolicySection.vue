@@ -1,12 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nSettingsRowGroup, N8nText } from '@n8n/design-system';
+import {
+	N8nSelect2,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
-import WorkflowReviewEnforcementRows from '@/features/settings/security/WorkflowReviewEnforcementRows.vue';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
+
+type ApprovalChoice = 'configurable' | 'required';
 
 defineProps<{
 	projectId: string | undefined;
@@ -16,53 +24,138 @@ const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const { isWorkflowReviewsEnabled, isPromotionReviewsEnabled } = useWorkflowReviewsFeature();
 
-const instancePublishing = computed(
-	() => settingsStore.settings.workflowReviews?.publishingNeedsApproval === true,
+const showPublishing = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.workflowReviewsEnabled
+		: isWorkflowReviewsEnabled.value,
 );
-const instancePromoting = computed(
-	() => settingsStore.settings.workflowReviews?.promotingNeedsApproval === true,
+const showPromoting = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.promotionReviewsEnabled
+		: isPromotionReviewsEnabled.value,
 );
-const showPublishing = computed(() => isWorkflowReviewsEnabled.value);
-const showPromoting = computed(() => isPromotionReviewsEnabled.value);
+const instancePublishing = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.publishingNeedsApproval
+		: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true,
+);
+const instancePromoting = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.promotingNeedsApproval
+		: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true,
+);
 const showSection = computed(() => showPublishing.value || showPromoting.value);
 
-function setPublishing(value: boolean) {
-	if (instancePublishing.value) return;
-	reviewPrototypeState.projectPublishing = value;
+const approvalOptions = computed<Array<SelectOptionBase<ApprovalChoice>>>(() => [
+	{
+		value: 'configurable',
+		label: i18n.baseText('settings.security.workflowReviews.approval.option.configurable'),
+	},
+	{
+		value: 'required',
+		label: i18n.baseText('settings.security.workflowReviews.approval.option.required'),
+	},
+]);
+
+const publishingChoice = computed<ApprovalChoice>(() =>
+	instancePublishing.value || reviewPrototypeState.projectPublishing ? 'required' : 'configurable',
+);
+const promotingChoice = computed<ApprovalChoice>(() =>
+	instancePromoting.value || reviewPrototypeState.projectPromoting ? 'required' : 'configurable',
+);
+
+function isApprovalChoice(value: SelectValue | undefined): value is ApprovalChoice {
+	return value === 'configurable' || value === 'required';
 }
 
-function setPromoting(value: boolean) {
-	if (instancePromoting.value) return;
-	reviewPrototypeState.projectPromoting = value;
+function setPublishing(value: SelectValue | undefined) {
+	if (instancePublishing.value || !isApprovalChoice(value)) return;
+	reviewPrototypeState.projectPublishing = value === 'required';
+}
+
+function setPromoting(value: SelectValue | undefined) {
+	if (instancePromoting.value || !isApprovalChoice(value)) return;
+	reviewPrototypeState.projectPromoting = value === 'required';
 }
 </script>
 
 <template>
 	<fieldset v-if="showSection" id="projectReviews" data-test-id="project-review-policy-section">
-		<h3>{{ i18n.baseText('projects.settings.reviews.title') }}</h3>
-		<N8nText size="small" color="text-base" :class="$style.description">
-			{{ i18n.baseText('projects.settings.reviews.description') }}
-		</N8nText>
-		<N8nSettingsRowGroup>
-			<WorkflowReviewEnforcementRows
-				:show-publishing="showPublishing"
-				:show-promoting="showPromoting"
-				:publishing="instancePublishing || reviewPrototypeState.projectPublishing"
-				:promoting="instancePromoting || reviewPrototypeState.projectPromoting"
-				:publishing-locked="instancePublishing"
-				:promoting-locked="instancePromoting"
-				publishing-test-id="project-review-publishing-toggle"
-				promoting-test-id="project-review-promoting-toggle"
-				@update:publishing="setPublishing"
-				@update:promoting="setPromoting"
-			/>
-		</N8nSettingsRowGroup>
+		<N8nSettingsSection
+			heading-tag="h3"
+			:title="i18n.baseText('projects.settings.reviews.title')"
+			:description="i18n.baseText('projects.settings.reviews.description')"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					v-if="showPublishing"
+					:title="i18n.baseText('workflowReviews.enforcement.publishing.title')"
+				>
+					<template #action>
+						<N8nTooltip v-if="instancePublishing" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowReviews.enforcement.lockedByInstance') }}
+							</template>
+							<span :class="$style.lockedControl">
+								<N8nSelect2
+									:model-value="publishingChoice"
+									:items="approvalOptions"
+									size="medium"
+									:disabled="true"
+									data-test-id="project-review-publishing-toggle"
+								/>
+							</span>
+						</N8nTooltip>
+						<N8nSelect2
+							v-else
+							:model-value="publishingChoice"
+							:items="approvalOptions"
+							size="medium"
+							data-test-id="project-review-publishing-toggle"
+							@update:model-value="setPublishing"
+						/>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					v-if="showPromoting"
+					:title="i18n.baseText('workflowReviews.enforcement.promoting.title')"
+				>
+					<template #action>
+						<N8nTooltip v-if="instancePromoting" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowReviews.enforcement.lockedByInstance') }}
+							</template>
+							<span :class="$style.lockedControl">
+								<N8nSelect2
+									:model-value="promotingChoice"
+									:items="approvalOptions"
+									size="medium"
+									:disabled="true"
+									data-test-id="project-review-promoting-toggle"
+								/>
+							</span>
+						</N8nTooltip>
+						<N8nSelect2
+							v-else
+							:model-value="promotingChoice"
+							:items="approvalOptions"
+							size="medium"
+							data-test-id="project-review-promoting-toggle"
+							@update:model-value="setPromoting"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
 	</fieldset>
 </template>
 
 <style module>
-.description {
-	display: block;
-	margin-bottom: var(--spacing--sm);
+.lockedControl {
+	display: inline-flex;
+}
+
+.lockedControl > * {
+	pointer-events: none;
 }
 </style>

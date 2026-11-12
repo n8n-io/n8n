@@ -2,10 +2,10 @@
 import { computed, watch } from 'vue';
 import { N8nDropdownMenuItem, N8nIcon, N8nSwitch, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { ReviewRequirementLock } from '@n8n/api-types';
 
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
 import { useWorkflowReviewPolicyStore } from '@/features/workflow-reviews/workflowReviewPolicy.store';
@@ -19,15 +19,30 @@ const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const policyStore = useWorkflowReviewPolicyStore();
 const { isWorkflowReviewsEnabled, isPromotionReviewsEnabled } = useWorkflowReviewsFeature();
+const { isEnabled: environmentsConfigured } = usePromotionsEnabled();
 
-const showPublishing = computed(() => isWorkflowReviewsEnabled.value);
-const showPromoting = computed(() => isPromotionReviewsEnabled.value);
-
-const instancePublishing = computed(
-	() => settingsStore.settings.workflowReviews?.publishingNeedsApproval === true,
+const showPublishing = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.workflowReviewsEnabled
+		: isWorkflowReviewsEnabled.value,
 );
-const instancePromoting = computed(
-	() => settingsStore.settings.workflowReviews?.promotingNeedsApproval === true,
+const showPromoting = computed(
+	() =>
+		environmentsConfigured.value &&
+		(reviewPrototypeState.initialized
+			? reviewPrototypeState.promotionReviewsEnabled
+			: isPromotionReviewsEnabled.value),
+);
+
+const instancePublishing = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.publishingNeedsApproval
+		: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true,
+);
+const instancePromoting = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.promotingNeedsApproval
+		: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true,
 );
 const publishingLockedBy = computed((): ReviewRequirementLock | null => {
 	if (instancePublishing.value) return 'instance';
@@ -50,23 +65,10 @@ const promotingOn = computed(
 		reviewPrototypeState.workflowPromoting[props.workflowId] === true,
 );
 
-const lockTooltips = {
-	publishing: {
-		instance: 'workflowReviews.approvalMenu.publishing.lockedBy.instance',
-		project: 'workflowReviews.approvalMenu.publishing.lockedBy.project',
-	},
-	promoting: {
-		instance: 'workflowReviews.approvalMenu.promoting.lockedBy.instance',
-		project: 'workflowReviews.approvalMenu.promoting.lockedBy.project',
-	},
-} satisfies Record<'publishing' | 'promoting', Record<ReviewRequirementLock, BaseTextKey>>;
-
-function lockTooltip(
-	kind: 'publishing' | 'promoting',
-	lockedBy: ReviewRequirementLock | null,
-): string {
-	if (!lockedBy) return '';
-	return i18n.baseText(lockTooltips[kind][lockedBy]);
+function lockTooltip(lockedBy: ReviewRequirementLock | null): string {
+	if (lockedBy === 'instance') return i18n.baseText('workflowReviews.enforcement.lockedByInstance');
+	if (lockedBy === 'project') return i18n.baseText('workflowReviews.enforcement.lockedByProject');
+	return '';
 }
 
 watch(
@@ -97,73 +99,77 @@ function togglePromoting() {
 	<div data-test-id="workflow-review-approval-menu">
 		<N8nTooltip v-if="showPublishing" :disabled="!publishingLockedBy" placement="left">
 			<template #content>
-				{{ lockTooltip('publishing', publishingLockedBy) }}
+				{{ lockTooltip(publishingLockedBy) }}
 			</template>
-			<N8nDropdownMenuItem
-				id="publishing-needs-approval"
-				:label="i18n.baseText('workflowReviews.enforcement.publishing.title')"
-				:checked="publishingOn"
-				checkbox
-				:close-on-select="false"
-				:disabled="!canEdit || publishingLockedBy !== null"
-				divided
-				test-id="workflow-review-publishing-approval"
-				@select="togglePublishing"
-			>
-				<template #item-label="{ ui }">
-					<N8nText size="small" :class="ui.class">
-						{{ i18n.baseText('workflowReviews.enforcement.publishing.title') }}
-					</N8nText>
-				</template>
-				<template #item-trailing="{ ui }">
-					<span :class="$style.trailing">
-						<N8nIcon v-if="publishingLockedBy" icon="lock" size="small" />
-						<N8nSwitch
-							:model-value="publishingOn"
-							:disabled="!canEdit || publishingLockedBy !== null"
-							aria-hidden="true"
-							tabindex="-1"
-							data-test-id="workflow-review-publishing-approval-switch"
-							:class="[ui.class, $style.switch]"
-						/>
-					</span>
-				</template>
-			</N8nDropdownMenuItem>
+			<span :class="[$style.item, { [$style.lockedControl]: publishingLockedBy !== null }]">
+				<N8nDropdownMenuItem
+					id="publishing-needs-approval"
+					:label="i18n.baseText('workflowReviews.enforcement.publishing.title')"
+					:checked="publishingOn"
+					checkbox
+					:close-on-select="false"
+					:disabled="!canEdit || publishingLockedBy !== null"
+					divided
+					test-id="workflow-review-publishing-approval"
+					@select="togglePublishing"
+				>
+					<template #item-label="{ ui }">
+						<N8nText size="small" :class="ui.class">
+							{{ i18n.baseText('workflowReviews.enforcement.publishing.title') }}
+						</N8nText>
+					</template>
+					<template #item-trailing="{ ui }">
+						<span :class="$style.trailing">
+							<N8nIcon v-if="publishingLockedBy" icon="lock" size="small" />
+							<N8nSwitch
+								:model-value="publishingOn"
+								:disabled="!canEdit || publishingLockedBy !== null"
+								aria-hidden="true"
+								tabindex="-1"
+								data-test-id="workflow-review-publishing-approval-switch"
+								:class="[ui.class, $style.switch]"
+							/>
+						</span>
+					</template>
+				</N8nDropdownMenuItem>
+			</span>
 		</N8nTooltip>
 		<N8nTooltip v-if="showPromoting" :disabled="!promotingLockedBy" placement="left">
 			<template #content>
-				{{ lockTooltip('promoting', promotingLockedBy) }}
+				{{ lockTooltip(promotingLockedBy) }}
 			</template>
-			<N8nDropdownMenuItem
-				id="promoting-needs-approval"
-				:label="i18n.baseText('workflowReviews.enforcement.promoting.title')"
-				:checked="promotingOn"
-				checkbox
-				:close-on-select="false"
-				:disabled="!canEdit || promotingLockedBy !== null"
-				:divided="!showPublishing"
-				test-id="workflow-review-promoting-approval"
-				@select="togglePromoting"
-			>
-				<template #item-label="{ ui }">
-					<N8nText size="small" :class="ui.class">
-						{{ i18n.baseText('workflowReviews.enforcement.promoting.title') }}
-					</N8nText>
-				</template>
-				<template #item-trailing="{ ui }">
-					<span :class="$style.trailing">
-						<N8nIcon v-if="promotingLockedBy" icon="lock" size="small" />
-						<N8nSwitch
-							:model-value="promotingOn"
-							:disabled="!canEdit || promotingLockedBy !== null"
-							aria-hidden="true"
-							tabindex="-1"
-							data-test-id="workflow-review-promoting-approval-switch"
-							:class="[ui.class, $style.switch]"
-						/>
-					</span>
-				</template>
-			</N8nDropdownMenuItem>
+			<span :class="[$style.item, { [$style.lockedControl]: promotingLockedBy !== null }]">
+				<N8nDropdownMenuItem
+					id="promoting-needs-approval"
+					:label="i18n.baseText('workflowReviews.enforcement.promoting.title')"
+					:checked="promotingOn"
+					checkbox
+					:close-on-select="false"
+					:disabled="!canEdit || promotingLockedBy !== null"
+					:divided="!showPublishing"
+					test-id="workflow-review-promoting-approval"
+					@select="togglePromoting"
+				>
+					<template #item-label="{ ui }">
+						<N8nText size="small" :class="ui.class">
+							{{ i18n.baseText('workflowReviews.enforcement.promoting.title') }}
+						</N8nText>
+					</template>
+					<template #item-trailing="{ ui }">
+						<span :class="$style.trailing">
+							<N8nIcon v-if="promotingLockedBy" icon="lock" size="small" />
+							<N8nSwitch
+								:model-value="promotingOn"
+								:disabled="!canEdit || promotingLockedBy !== null"
+								aria-hidden="true"
+								tabindex="-1"
+								data-test-id="workflow-review-promoting-approval-switch"
+								:class="[ui.class, $style.switch]"
+							/>
+						</span>
+					</template>
+				</N8nDropdownMenuItem>
+			</span>
 		</N8nTooltip>
 	</div>
 </template>
@@ -176,6 +182,14 @@ function togglePromoting() {
 }
 
 .switch {
+	pointer-events: none;
+}
+
+.item {
+	display: block;
+}
+
+.lockedControl > * {
 	pointer-events: none;
 }
 </style>

@@ -17,6 +17,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowReviewsPolicy } from '@n8n/api-types';
 
+import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
+
 type ApprovalChoice = 'configurable' | 'required';
 
 const props = defineProps<{
@@ -33,10 +35,28 @@ const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
-const enabled = ref(props.initialEnabled);
-const publishingNeedsApproval = ref(props.initialPublishingNeedsApproval);
-const promotionReviewsEnabled = ref(props.initialPromotionReviewsEnabled);
-const promotingNeedsApproval = ref(props.initialPromotingNeedsApproval);
+const seeded = reviewPrototypeState.initialized;
+const stored = settingsStore.settings.workflowReviews;
+const enabled = ref(
+	seeded
+		? reviewPrototypeState.workflowReviewsEnabled
+		: props.initialEnabled || stored?.enabled === true,
+);
+const publishingNeedsApproval = ref(
+	seeded
+		? reviewPrototypeState.publishingNeedsApproval
+		: props.initialPublishingNeedsApproval || stored?.publishingNeedsApproval === true,
+);
+const promotionReviewsEnabled = ref(
+	seeded
+		? reviewPrototypeState.promotionReviewsEnabled
+		: props.initialPromotionReviewsEnabled || stored?.promotionReviewsEnabled === true,
+);
+const promotingNeedsApproval = ref(
+	seeded
+		? reviewPrototypeState.promotingNeedsApproval
+		: props.initialPromotingNeedsApproval || stored?.promotingNeedsApproval === true,
+);
 const showDisablePublishingDialog = ref(false);
 const showDisablePromotionDialog = ref(false);
 const isSaving = ref(false);
@@ -96,6 +116,11 @@ function onPromotingApproval(value: SelectValue | undefined) {
 }
 
 function rememberPolicy() {
+	reviewPrototypeState.initialized = true;
+	reviewPrototypeState.workflowReviewsEnabled = enabled.value;
+	reviewPrototypeState.promotionReviewsEnabled = promotionReviewsEnabled.value;
+	reviewPrototypeState.publishingNeedsApproval = publishingNeedsApproval.value;
+	reviewPrototypeState.promotingNeedsApproval = promotingNeedsApproval.value;
 	settingsStore.setWorkflowReviewsPolicy({
 		enabled: enabled.value,
 		publishingNeedsApproval: publishingNeedsApproval.value,
@@ -103,6 +128,8 @@ function rememberPolicy() {
 		promotingNeedsApproval: promotingNeedsApproval.value,
 	});
 }
+
+rememberPolicy();
 
 /** Enable workflow reviews is the only control that saves. Approval choices stay on the page. */
 function holdLocally(patch: Partial<WorkflowReviewsPolicy>) {

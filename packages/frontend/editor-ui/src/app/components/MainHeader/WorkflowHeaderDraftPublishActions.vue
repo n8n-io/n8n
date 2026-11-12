@@ -56,7 +56,6 @@ import { useUnusableWorkflowCredentials } from '@/features/credentials/composabl
 import { PROMOTION_PREVIEW_VIEWS } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
-import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
 import WorkflowApprovalRequestDialog from '@/features/workflow-reviews/components/WorkflowApprovalRequestDialog.vue';
 import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
@@ -112,17 +111,31 @@ const { isEnabled: promotionsEnabled } = usePromotionsEnabled();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 
+const publishingReviewsOn = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.workflowReviewsEnabled
+		: isWorkflowReviewsEnabled.value,
+);
+const promotionReviewsOn = computed(() =>
+	reviewPrototypeState.initialized
+		? reviewPrototypeState.promotionReviewsEnabled
+		: isPromotionReviewsEnabled.value,
+);
 const publishingNeedsApproval = computed(
 	() =>
-		isWorkflowReviewsEnabled.value &&
-		(settingsStore.settings.workflowReviews?.publishingNeedsApproval === true ||
+		publishingReviewsOn.value &&
+		((reviewPrototypeState.initialized
+			? reviewPrototypeState.publishingNeedsApproval
+			: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true) ||
 			reviewPrototypeState.projectPublishing ||
 			reviewPrototypeState.workflowPublishing[props.id] === true),
 );
 const promotingNeedsApproval = computed(
 	() =>
-		isPromotionReviewsEnabled.value &&
-		(settingsStore.settings.workflowReviews?.promotingNeedsApproval === true ||
+		promotionReviewsOn.value &&
+		((reviewPrototypeState.initialized
+			? reviewPrototypeState.promotingNeedsApproval
+			: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true) ||
 			reviewPrototypeState.projectPromoting ||
 			reviewPrototypeState.workflowPromoting[props.id] === true),
 );
@@ -134,13 +147,10 @@ const isNamedVersionsEnabled = computed(
 const showWorkflowReviewControls = computed(
 	() =>
 		!props.isNewWorkflow &&
-		(isWorkflowReviewsEnabled.value ||
-			(isPromotionReviewsEnabled.value && promotionsEnabled.value)),
+		(publishingReviewsOn.value || (promotionReviewsOn.value && promotionsEnabled.value)),
 );
 
-const showReviewDialogs = computed(
-	() => isWorkflowReviewsEnabled.value || isPromotionReviewsEnabled.value,
-);
+const showReviewDialogs = computed(() => publishingReviewsOn.value || promotionReviewsOn.value);
 
 const showApprovalDialog = ref(false);
 const approvalIntent = ref<'publish' | 'promote'>('publish');
@@ -985,7 +995,6 @@ onBeforeUnmount(() => {
 				</N8nTooltip>
 				<N8nActionDropdown
 					:items="versionMenuActions"
-					:width="showWorkflowReviewControls ? '230px' : undefined"
 					placement="bottom-end"
 					data-test-id="version-menu"
 					@select="onDropdownMenuSelect"
@@ -998,12 +1007,6 @@ onBeforeUnmount(() => {
 							:disabled="shouldDisableActionDropdown"
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
-						/>
-					</template>
-					<template v-if="showWorkflowReviewControls" #footer>
-						<WorkflowReviewRequiredToggle
-							:workflow-id="props.id"
-							:can-edit="hasUpdatePermission && !collaborationReadOnly"
 						/>
 					</template>
 				</N8nActionDropdown>

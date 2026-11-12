@@ -68,6 +68,7 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import WorkflowReviewSettingsToggles from '@/features/workflow-reviews/components/WorkflowReviewSettingsToggles.vue';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -604,24 +605,29 @@ const loadTimezones = async () => {
 		return;
 	}
 
-	const timezonesData = await settingsStore.getTimezones();
+	try {
+		const timezonesData = await settingsStore.getTimezones();
 
-	let defaultTimezoneValue = timezonesData[defaultValues.value.timezone] as string | undefined;
-	if (defaultTimezoneValue === undefined) {
-		defaultTimezoneValue = i18n.baseText('workflowSettings.defaultTimezoneNotValid');
-	}
+		let defaultTimezoneValue = timezonesData[defaultValues.value.timezone] as string | undefined;
+		if (defaultTimezoneValue === undefined) {
+			defaultTimezoneValue = i18n.baseText('workflowSettings.defaultTimezoneNotValid');
+		}
 
-	timezones.value.push({
-		key: 'DEFAULT',
-		value: i18n.baseText('workflowSettings.defaultTimezone', {
-			interpolate: { defaultTimezoneValue },
-		}),
-	});
-	for (const timezone of Object.keys(timezonesData)) {
 		timezones.value.push({
-			key: timezone,
-			value: timezonesData[timezone] as string,
+			key: 'DEFAULT',
+			value: i18n.baseText('workflowSettings.defaultTimezone', {
+				interpolate: { defaultTimezoneValue },
+			}),
 		});
+		for (const timezone of Object.keys(timezonesData)) {
+			timezones.value.push({
+				key: timezone,
+				value: timezonesData[timezone] as string,
+			});
+		}
+	} catch {
+		// This options route answers 404 on the current server. The dialog still
+		// opens, and the timezone stays on its saved value.
 	}
 };
 
@@ -1912,6 +1918,10 @@ onBeforeUnmount(() => {
 					:is-read-only="isWorkflowSettingsReadOnly"
 					:save-tags="saveCustomTelemetryTags"
 					@validity-change="hasCustomTelemetryTagErrors = $event"
+				/>
+				<WorkflowReviewSettingsToggles
+					:workflow-id="workflowId"
+					:can-edit="!isWorkflowSettingsReadOnly"
 				/>
 			</div>
 		</template>

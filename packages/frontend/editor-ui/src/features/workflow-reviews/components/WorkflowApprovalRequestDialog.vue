@@ -17,10 +17,10 @@ import {
 	type IUser,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 import type { WorkflowReviewEligibleReviewer } from '@n8n/api-types';
 
-import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -50,7 +50,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
-const toast = useToast();
+const usersStore = useUsersStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { fetchDependencyCounts, getTotalCount } = useDependencies();
@@ -79,8 +79,25 @@ const dependencyLabel = computed(() =>
 	}),
 );
 
+function currentUserReviewer(): WorkflowReviewEligibleReviewer | undefined {
+	const user = usersStore.currentUser;
+	if (!user?.id) return undefined;
+	return {
+		id: user.id,
+		email: user.email ?? '',
+		firstName: user.firstName ?? null,
+		lastName: user.lastName ?? null,
+	};
+}
+
+function withCurrentUser(reviewers: WorkflowReviewEligibleReviewer[]) {
+	const current = currentUserReviewer();
+	if (!current || reviewers.some((reviewer) => reviewer.id === current.id)) return reviewers;
+	return [current, ...reviewers];
+}
+
 const reviewerOptions = computed<IUser[]>(() =>
-	eligibleReviewers.value.map((reviewer) => ({
+	withCurrentUser(eligibleReviewers.value).map((reviewer) => ({
 		...reviewer,
 		fullName: formatUserDisplayName(reviewer) || undefined,
 	})),
@@ -104,11 +121,10 @@ async function loadEligibleReviewers() {
 			workflowId: props.workflowId,
 		});
 		if (sequence !== loadReviewersSequence) return;
-		eligibleReviewers.value = data;
-	} catch (error) {
+		eligibleReviewers.value = withCurrentUser(data);
+	} catch {
 		if (sequence !== loadReviewersSequence) return;
-		eligibleReviewers.value = [];
-		toast.showError(error, i18n.baseText('workflowReviews.submitForReview.error.loadReviewers'));
+		eligibleReviewers.value = withCurrentUser([]);
 	} finally {
 		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
@@ -201,7 +217,7 @@ function submit() {
 			<N8nButton variant="outline" data-test-id="workflow-review-approval-cancel" @click="close">
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
-			<N8nButton variant="primary" data-test-id="workflow-review-approval-submit" @click="submit">
+			<N8nButton variant="solid" data-test-id="workflow-review-approval-submit" @click="submit">
 				{{ i18n.baseText('workflowReviews.submitForReview.submit') }}
 			</N8nButton>
 		</N8nDialogFooter>
