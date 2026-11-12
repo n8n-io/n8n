@@ -91,6 +91,24 @@ export interface ToolContext {
 	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
+/** One tool call that a {@link ToolCallInterceptor} receives. */
+export interface ToolCallInterception {
+	/** The tool that runs. For a `call_tool` dispatch, this is the dispatched tool. */
+	tool: BuiltTool;
+	toolCallId: string;
+	input: unknown;
+}
+
+/**
+ * Runs around every tool handler of a runtime, including MCP tools and the
+ * tools of inline sub-agents. Call `run` to execute the tool. Throw to fail the
+ * call without running it: the model receives the error as the tool result.
+ */
+export type ToolCallInterceptor = (
+	call: ToolCallInterception,
+	run: () => Promise<unknown>,
+) => Promise<unknown>;
+
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**

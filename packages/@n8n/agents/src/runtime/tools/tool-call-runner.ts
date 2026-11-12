@@ -426,8 +426,8 @@ export class ToolCallRunner {
 			input,
 			resolvedTelemetry,
 			async () =>
-				await raceWithAbort(
-					async () =>
+				await raceWithAbort(async () => {
+					const run = async () =>
 						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
@@ -441,9 +441,11 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						}),
-					abortSignal,
-				),
+						});
+					const interceptor = this.deps.toolCallInterceptor;
+					if (!interceptor) return await run();
+					return await interceptor({ tool: builtTool, toolCallId, input }, run);
+				}, abortSignal),
 		);
 	}
 

@@ -16,7 +16,12 @@ import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
-import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
+import type {
+	CheckpointStore,
+	ModelConfig,
+	SerializableAgentState,
+	ToolCallInterceptor,
+} from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
@@ -12726,5 +12731,68 @@ describe('AgentRuntime — tool output files', () => {
 		expect(load).toHaveBeenCalledTimes(2);
 		expect(saved.join()).toContain('"fileRef":{"id":"file-0"}');
 		expect(saved.join()).not.toContain('"data"');
+	});
+});
+
+describe('AgentRuntime — tool call interceptor', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function createInterceptedRuntime(tools: BuiltTool[], interceptor: ToolCallInterceptor) {
+		return new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools,
+			eventBus: new AgentEventBus(),
+			toolCallInterceptor: interceptor,
+		});
+	}
+
+	it('runs the tool through the interceptor with its call id and input', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const seen: Array<{ name: string; toolCallId: string; input: unknown }> = [];
+		const runtime = createInterceptedRuntime([tool], async (call, run) => {
+			seen.push({ name: call.tool.name, toolCallId: call.toolCallId, input: call.input });
+			return await run();
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('send it');
+
+		expect(seen).toEqual([{ name: 'send_message', toolCallId: 'tc-1', input: { text: 'hi' } }]);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(result.toolCalls?.[0]?.output).toEqual({ sent: true });
+	});
+
+	it('fails the call without running the tool when the interceptor throws', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const runtime = createInterceptedRuntime([tool], async () => {
+			throw new Error('Blocked in a test run');
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('send it');
+
+		expect(handler).not.toHaveBeenCalled();
+		const secondCall = generateText.mock.calls[1][0] as { messages: Array<{ content: unknown }> };
+		expect(JSON.stringify(secondCall.messages)).toContain('Blocked in a test run');
 	});
 });
