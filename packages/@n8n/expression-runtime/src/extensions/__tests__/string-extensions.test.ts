@@ -9,6 +9,12 @@ const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: stri
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
 
+const isEmail = stringExtensions.functions.isEmail as (value: string) => boolean;
+
+const extractDomain = stringExtensions.functions.extractDomain as (
+	value: string,
+) => string | undefined;
+
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
 		['https://example.com/path', '/path'],
@@ -78,5 +84,40 @@ describe('toFloat', () => {
 
 	it('should not accept a symbol that is not in the list', () => {
 		expect(() => toFloat('Rb5')).toThrow();
+	});
+});
+
+describe('isEmail', () => {
+	it.each([['test@example.com'], ['first.last@example.co.uk'], ['name+tag@example.com']])(
+		'should accept %s',
+		(input) => {
+			expect(isEmail(input)).toBe(true);
+		},
+	);
+
+	it.each([
+		['https://medium.com/@jane.doe'],
+		['https://example.com/?ref=a@b.com'],
+		['x,me@example.com'],
+		['<me@example.com>'],
+		['mailto:me@example.com'],
+	])('should reject %s, which only contains an address', (input) => {
+		expect(isEmail(input)).toBe(false);
+	});
+});
+
+describe('extractDomain', () => {
+	it.each([
+		['https://medium.com/@jane.doe', 'medium.com'],
+		['https://example.com/contact?email=a@b.com', 'example.com'],
+		['mailto:john.doe@example.com', 'example.com'],
+		['MAILTO:john.doe@example.com', 'example.com'],
+		['jane.doe@example.org', 'example.org'],
+		['mailto:john.doe@example.com?subject=Hi', 'example.com'],
+		['mailto:a@example.com,b@example.org', 'example.com'],
+		['https://user:pass@example.com/path', 'example.com'],
+		['https://@example.com/path', 'example.com'],
+	])('should extract the domain of %s', (input, expected) => {
+		expect(extractDomain(input)).toBe(expected);
 	});
 });
