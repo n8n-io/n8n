@@ -164,6 +164,55 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 		},
 	);
 
+	it.each<[number, INodeParameters]>([
+		[1.2, {}],
+		[1.3, { responsesApiEnabled: false }],
+	])(
+		'keeps automatic Responses API routing with the option off on model node v%s',
+		async (version, parameters) => {
+			// AGENT-1569: Preserve LangChain's automatic API selection when the option is off.
+			const modelId = 'gpt-5-codex';
+			const { context, model } = await setup(
+				modelId,
+				{ ...parameters, options: { maxRetries: 0 } },
+				credentials,
+				version,
+			);
+			expect(model).toMatchObject({ useResponsesApi: false });
+			const gateway = nock(credentials.url, {
+				reqheaders: { authorization: `Bearer ${credentials.apiKey}` },
+			})
+				.post('/responses', (body: unknown) => {
+					expect(body).toMatchObject({ model: modelId });
+					return true;
+				})
+				.twice()
+				.reply(200, {
+					id: 'resp-test',
+					object: 'response',
+					created_at: 1700000000,
+					model: modelId,
+					status: 'completed',
+					output: [
+						{
+							id: 'msg-test',
+							type: 'message',
+							role: 'assistant',
+							status: 'completed',
+							content: [{ type: 'output_text', text: 'Gateway response', annotations: [] }],
+						},
+					],
+					usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
+				});
+
+			const response = await model.invoke('Hello');
+
+			expect(response.text).toBe('Gateway response');
+			await expect(toolsAgentExecute.call(context)).resolves.toEqual(expectedOutput);
+			expect(gateway.isDone()).toBe(true);
+		},
+	);
+
 	it('uses the legacy Base URL override before the credential URL', async () => {
 		const modelId = 'auto/balanced';
 		const { context } = await setup(
