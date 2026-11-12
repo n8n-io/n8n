@@ -699,6 +699,9 @@ const MAX_HINT_ATTEMPTS = 2;
 
 const START_TRIGGER_VOTES = 3;
 
+/** A vote answers with one trigger name, so it gets far less time than a hint call. */
+const START_TRIGGER_TIMEOUT_MS = 30_000;
+
 const START_TRIGGER_PROMPT =
 	"You pick which trigger starts one test run of an n8n workflow. The workflow has several triggers, and nodes can branch on which trigger fired (for example an IF on $('<trigger>').isExecuted). Pick the trigger whose firing starts the run the scenario describes, and whose path reaches the nodes that run needs. Match the scenario's event to the trigger's type and settings: a recurring or timed run is a Schedule Trigger, an incoming request is a Webhook, a new email or row is that service's trigger. A Manual Trigger runs only when a person clicks \"Execute workflow\": pick it only when the scenario describes a person starting the run by hand. Answer with the trigger's exact name and nothing else.";
 
@@ -725,33 +728,45 @@ async function voteStartTrigger(
 		...triggerLines(workflow, triggerNodeNames),
 	].join('\n');
 
-	const answers = await Promise.allSettled(
-		Array.from({ length: START_TRIGGER_VOTES }, async () => {
-			const agent = createEvalAgent('eval-start-trigger', { instructions: START_TRIGGER_PROMPT });
-			const result = await agent.generate(prompt, {
-				abortSignal: AbortSignal.timeout(HINT_LLM_TIMEOUT_MS),
-			});
-			// The model sometimes reasons before the name, so the last trigger it names is its answer.
-			const text = extractText(result);
-			const end = (name: string) => text.lastIndexOf(name) + name.length;
-			return triggerNodeNames
-				.filter((name) => text.includes(name))
-				.sort((a, b) => end(b) - end(a) || b.length - a.length)[0];
-		}),
-	);
 	const votes = new Map<string, number>();
-	for (const answer of answers) {
-		if (answer.status === 'fulfilled' && answer.value) {
-			votes.set(answer.value, (votes.get(answer.value) ?? 0) + 1);
+	const majority = await new Promise<string | undefined>((resolve) => {
+		let settled = 0;
+		const count = (name: string | undefined) => {
+			if (name) votes.set(name, (votes.get(name) ?? 0) + 1);
+			if (name && votes.get(name)! * 2 > START_TRIGGER_VOTES) resolve(name);
+			if (++settled === START_TRIGGER_VOTES) resolve(undefined);
+		};
+		for (let i = 0; i < START_TRIGGER_VOTES; i++) {
+			const agent = createEvalAgent('eval-start-trigger', { instructions: START_TRIGGER_PROMPT });
+			agent
+				.generate(prompt, { abortSignal: AbortSignal.timeout(START_TRIGGER_TIMEOUT_MS) })
+				.then((result) => count(triggerInAnswer(extractText(result), triggerNodeNames)))
+				.catch(() => count(undefined));
 		}
-	}
+	});
 	Container.get(Logger).debug(
 		`[EvalMock] Start trigger votes: ${JSON.stringify(Object.fromEntries(votes))}`,
 	);
-	for (const [name, count] of votes) {
-		if (count * 2 > START_TRIGGER_VOTES) return name;
-	}
-	return undefined;
+	return majority;
+}
+
+/** The trigger an answer names: the whole answer, else the last name it mentions as a word. */
+function triggerInAnswer(text: string, triggerNodeNames: string[]): string | undefined {
+	const exact = triggerNodeNames.find((name) => name === text.trim());
+	if (exact) return exact;
+	// The model sometimes reasons before the name, so the last trigger it names is its answer.
+	const isWordChar = (char: string | undefined) => char !== undefined && /[\p{L}\p{N}]/u.test(char);
+	// End of the last mention as a whole word, not inside a longer one ("Run" in "Running").
+	const end = (name: string) => {
+		for (let i = text.lastIndexOf(name); i >= 0; i = text.lastIndexOf(name, i - 1)) {
+			if (!isWordChar(text[i - 1]) && !isWordChar(text[i + name.length])) return i + name.length;
+			if (i === 0) break;
+		}
+		return -1;
+	};
+	return triggerNodeNames
+		.filter((name) => end(name) >= 0)
+		.sort((a, b) => end(b) - end(a) || b.length - a.length)[0];
 }
 
 /**

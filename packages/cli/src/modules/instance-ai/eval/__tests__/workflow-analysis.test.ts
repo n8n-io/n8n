@@ -1377,6 +1377,42 @@ describe('generateMockHints', () => {
 			expect(result.startNodeName).toBe('Monthly');
 		});
 
+		it('does not count a trigger name inside a longer word', async () => {
+			const answer = 'Monthly. Running it by hand is not described';
+			mockAgentResponses(answer, answer, 'Run', hintsAnswer);
+
+			const result = await generateMockHints(options);
+
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('does not wait for the third vote once two votes agree', async () => {
+			const generate = vi
+				.fn()
+				.mockResolvedValueOnce({ __raw: 'Monthly' })
+				.mockResolvedValueOnce({ __raw: 'Monthly' })
+				.mockReturnValueOnce(new Promise(() => {}))
+				.mockResolvedValueOnce({ __raw: hintsAnswer });
+			mockedCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockedExtractText.mockImplementation((r: unknown) => (r as { __raw: string }).__raw);
+
+			const result = await generateMockHints(options);
+
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('gives each vote a short timeout of its own', async () => {
+			const timeout = vi.spyOn(AbortSignal, 'timeout');
+			mockAgentResponses('Monthly', 'Monthly', 'Monthly', hintsAnswer);
+
+			await generateMockHints(options);
+
+			expect(timeout.mock.calls[0][0]).toBeLessThanOrEqual(60_000);
+			timeout.mockRestore();
+		});
+
 		it('counts the longer name when one trigger name ends another', async () => {
 			mockAgentResponses('Monthly Schedule', 'Monthly Schedule', 'Schedule', hintsAnswer);
 

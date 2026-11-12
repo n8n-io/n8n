@@ -43,6 +43,7 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	type IWorkflowIssues,
+	isTriggerNode,
 } from 'n8n-workflow';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
@@ -868,9 +869,8 @@ export class EvalExecutionService {
 	private asTriggerNode(node: INode | undefined): INode | undefined {
 		if (!node || node.disabled) return undefined;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (!nodeType) return undefined;
-		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
-		return isTriggerCapable ? node : undefined;
+		// Not `'webhook' in nodeType`: Slack, Gmail, Wait and Form have one for send-and-wait.
+		return nodeType && isTriggerNode(nodeType.description) ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {
