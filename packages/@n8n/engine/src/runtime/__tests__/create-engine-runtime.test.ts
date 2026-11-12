@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import type { EngineStores } from '../../database';
+import { TypeOrmStepStore, type EngineStores } from '../../database';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
@@ -110,6 +110,50 @@ describe('createEngineRuntime', () => {
 
 		await expect(engine.stop()).resolves.toBeUndefined();
 		expect(flushOnStop).toHaveBeenCalledOnce();
+	});
+
+	it('runs up to the configured number of steps at once', async () => {
+		// The wait sweeper is the one way into the step queue that needs no
+		// database: it announces the steps that the store says are due.
+		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
+		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
+			.mockResolvedValueOnce(
+				Array.from({ length: 6 }, (_, index) => ({ id: `step-${index}`, executionId: 'exec-1' })),
+			)
+			.mockResolvedValue([]);
+		let inFlight = 0;
+		let maxInFlight = 0;
+		const gates: Array<() => void> = [];
+		vi.spyOn(TypeOrmStepStore.prototype, 'claimStep').mockImplementation(async () => {
+			inFlight += 1;
+			maxInFlight = Math.max(maxInFlight, inFlight);
+			await new Promise<void>((resolve) => gates.push(resolve));
+			inFlight -= 1;
+			// Nothing to claim, so the handler ends here.
+			return null;
+		});
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			waitSweepIntervalMs: 1,
+			concurrency: { step: 3 },
+		});
+		engine.start();
+
+		await vi.waitFor(() => expect(inFlight).toBe(3));
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(maxInFlight).toBe(3);
+
+		for (const release of gates.splice(0)) release();
+		await vi.waitFor(() => {
+			for (const release of gates.splice(0)) release();
+			expect(TypeOrmStepStore.prototype.claimStep).toHaveBeenCalledTimes(6);
+			expect(inFlight).toBe(0);
+		});
+		expect(maxInFlight).toBe(3);
+		await engine.stop();
 	});
 
 	it('starts and stops both workers', async () => {
