@@ -176,6 +176,7 @@ function renderModal({
 		| 'scopeOptions'
 		| 'initialScope'
 		| 'projectType'
+		| 'projectIcon'
 		| 'scopeLockedReason'
 		| 'getDefaultName'
 		| 'availableToAssistant'
