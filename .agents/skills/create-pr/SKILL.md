@@ -6,7 +6,8 @@ allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep, Glob
 
 # Create Pull Request
 
-Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
+Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation
+and short descriptions that tell the reviewer what the diff does not show.
 
 ## PR Title Format
 
@@ -43,13 +44,15 @@ name as the scope (for example `instance-ai`, `cli`, `evals` or `docker`).
 If no scope fits, omit the scope. To give two scopes, separate them with a
 comma and a space: `fix(core, editor): ...`.
 
-### Summary Rules
+### Title Summary Rules
 
 - Use imperative present tense: "Add" not "Added"
 - Capitalize first letter
 - No period at the end
-- No ticket IDs (e.g., N8N-1234)
-- Add `(no-changelog)` suffix to exclude from changelog, unless the type already excludes it
+- No ticket IDs (e.g., N8N-1234) and no PR numbers (e.g., #12345)
+- Add `(no-changelog)` as the last part to exclude the PR from the changelog,
+  unless the type already excludes it
+- Put the exclamation mark for a breaking change before the colon
 
 ## Steps
 
@@ -73,7 +76,7 @@ comma and a space: `fix(core, editor): ...`.
 4. **Analyze changes** to determine:
    - Type: What kind of change is this?
    - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
-   - Summary: What does the change do? Start it with a capital letter.
+   - Title summary: What does the change do?
    - Insights: What did the session (debugging, measurements, user
      discussion) find that a reviewer would otherwise miss?
 
@@ -93,21 +96,12 @@ comma and a space: `fix(core, editor): ...`.
    - **How to test**: the steps that a person follows in the product to see the change work, and the command that runs the tests
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`), any GitHub issue links, and the docs link
 
-   Before you create the PR, proofread the body with these checks. Rewrite
-   each sentence that fails a check:
-   1. Each sentence tells the reviewer something that the diff does not
-      show. Delete the sentences that only restate the diff.
-   2. The length of the Summary matches the complexity of the change. Each
-      sentence after the first two describes a surprise (see Summary
-      Section). If not, delete it.
-   3. The first sentence is in the imperative mood ("Fix ...", not "This PR
-      fixes ...") and states the area and the nature of the change (bug fix,
-      feature, refactor, or tests).
-   4. Each sentence uses exact technical terms and plain technical verbs.
-   5. Each sentence is true for the diff.
+   Before you create the PR, proofread the Summary against the Summary
+   Section rules. Delete each sentence that restates the diff, or that is
+   neither part of the first two sentences nor a surprise. Make sure that
+   each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
-   If step 5 found new flags, include their test settings in **How to test**.
 
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
@@ -154,8 +148,8 @@ Based on `.github/pull_request_template.md`.
 Keep the description short. The reviewer reads the diff for the details. The
 description gives only what the diff cannot show: why the change exists, and
 what could surprise the reviewer. Keep the length in proportion to the
-complexity of the change. A simple change with no surprises needs one or two
-sentences and nothing more.
+complexity of the change: a complex change usually has more surprises. A
+change with no surprises needs one or two sentences and nothing more.
 
 Write for an engineer. Use exact technical terms, and do not simplify them.
 Use ASD-STE100 Simplified Technical English: short sentences, active voice,
@@ -167,8 +161,8 @@ plain technical verbs, no metaphors.
    ...", "Change the ..."). Do not start with "This PR". State the area
    of the product or code (for example, the RabbitMQ Trigger node, workflow
    history, or the CI pipeline) and the nature of the change: a bug fix, a
-   feature, a refactor, or tests. Do not name functions or fields here. The
-   diff shows them.
+   feature, a refactor, or tests. Do not name functions or fields in these
+   sentences. The diff shows them.
 2. Add more only when the change has one of these surprises. For each surprise
    that applies, add one short paragraph:
    - **Unexpected behaviour:** a change in behaviour for users or for other
@@ -224,7 +218,7 @@ Examples of a complete Summary for a change with no surprises:
 Backport bugs with urgent or high priority and regression fixes. Add the
 labels that `.github/backport_conventions.md` gives.
 
-## Examples
+## Title Examples
 
 ### Feature in editor
 ```
@@ -263,18 +257,8 @@ The PR title must match this pattern:
 ^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
-Key validation rules:
-- Type must be one of the allowed types
-- Scope is optional, but if present it must be in parentheses and in the Scopes list (or `<display name> Node`)
-- Exclamation mark for breaking changes goes before the colon
-- Summary must start with capital letter
-- Summary must not start with a past-tense verb (`Added`)
-- Summary must not end with a period
-- No ticket number (`N8N-1234`) and no PR number (`#12345`)
-- `(no-changelog)`, if used, must be the last part of the summary
-
-Check the title against these rules before you run `gh pr create`. The two
-most frequent failures are a package name as the scope and a lowercase first
+Check the title against this pattern and the Title Summary Rules before you
+run `gh pr create`. The two most frequent failures are a package name as the scope and a lowercase first
 letter in the summary.
 
 ## Plan Section
