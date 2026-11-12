@@ -221,7 +221,9 @@ const hasImagePreview = computed(
 				/>
 			</div>
 			<component :is="href ? 'div' : 'figcaption'" :class="$style.caption" :title="fileName">
-				<span :class="$style.srOnly">{{ fileName }}</span>
+				<span :class="$style.srOnly">
+					{{ fileName }}{{ sizeBytes !== undefined ? ` • ${formatBytes(sizeBytes)}` : '' }}
+				</span>
 				<span
 					ref="captionViewport"
 					:class="[
@@ -239,8 +241,7 @@ const hasImagePreview = computed(
 						:class="[$style.fileName, { [$style.scrolling]: isHovered && marqueeDistance > 0 }]"
 						@transitionend="finishReturn"
 					>
-						{{ fileName }}
-						{{ sizeBytes ? ` • ${formatBytes(sizeBytes)}` : null }}
+						{{ fileName }}{{ sizeBytes !== undefined ? ` • ${formatBytes(sizeBytes)}` : '' }}
 					</N8nText>
 				</span>
 			</component>
