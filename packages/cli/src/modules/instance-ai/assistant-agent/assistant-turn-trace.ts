@@ -189,7 +189,7 @@ export class AssistantTurnTrace {
 
 	private steeredMessageCount = 0;
 
-	private readonly hostInstructionReasons: string[] = [];
+	private hostInstructionCount = 0;
 
 	constructor(
 		readonly context: InstanceAiTraceContext,
@@ -360,7 +360,7 @@ export class AssistantTurnTrace {
 	 * The model gets one more step in this turn, so it is not a new turn.
 	 */
 	recordHostInstruction(instruction: SystemAgentHostInstruction): void {
-		this.hostInstructionReasons.push(instruction.reason);
+		this.hostInstructionCount++;
 		const { context } = this;
 		const recorded = { reason: instruction.reason, content: instruction.content };
 		const record = async () => {
@@ -450,8 +450,8 @@ export class AssistantTurnTrace {
 		if (this.steeredMessageCount > 0) {
 			rootMetadata = { ...rootMetadata, steered_message_count: this.steeredMessageCount };
 		}
-		if (this.hostInstructionReasons.length > 0) {
-			rootMetadata = { ...rootMetadata, host_instructions: this.hostInstructionReasons };
+		if (this.hostInstructionCount > 0) {
+			rootMetadata = { ...rootMetadata, host_instruction_count: this.hostInstructionCount };
 		}
 
 		try {

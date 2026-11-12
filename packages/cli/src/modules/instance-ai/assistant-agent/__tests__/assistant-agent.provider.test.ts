@@ -36,6 +36,7 @@ import type {
 	AssistantSandboxLease,
 	AssistantSandboxWorkspaceSource,
 } from '../assistant-workspace-source';
+import { createMemory, outcome, routedAt, saveBuild } from './workflow-loop-memory';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -634,6 +635,56 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					}),
 				).resolves.toBeUndefined();
+			});
+		});
+
+		describe('workflow setup route', () => {
+			async function turnWithBuild() {
+				const memory = createMemory();
+				await saveBuild(memory, outcome());
+				return { memory, turn: startTurn({ memory }) };
+			}
+
+			it('adds a setup instruction when the agent stops before setup', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				const handle = await provider.prepareTurn(turn);
+				const instruction = await handle.onCompletingBoundary?.();
+
+				expect(instruction).toMatchObject({ reason: 'workflow_setup' });
+				expect(instruction?.content).toContain('"workflowId": "wf-1"');
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+			});
+
+			it('marks the build when its setup card suspends the turn', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.({
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					toolName: 'setup_workflow',
+					suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+				});
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+				const resumed = await provider.prepareTurn(startTurn({ memory }));
+				expect(await resumed.onCompletingBoundary?.()).toBeUndefined();
+			});
+
+			it('marks the build when the setup panel announces its checklist', async () => {
+				const { provider, turnEnvironment } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				await provider.prepareTurn(turn);
+				const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+				await runtime.markWorkflowSetupHandled?.('wf-1');
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
 			});
 		});
 

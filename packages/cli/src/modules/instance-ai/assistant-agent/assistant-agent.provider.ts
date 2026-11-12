@@ -230,7 +230,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const { user, thread } = turn;
 		const { runId, request } = options;
 		const { trace, errorReporting, experimentGates, contextAttachments, proxyRunConfig } = setup;
-		const runtime = this.createTurnRuntime(turn, options, trace);
+		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger, {
+			setupPanelEnabled: experimentGates.setupPanelEnabled,
+		});
+		const runtime = this.createTurnRuntime(turn, options, trace, setupRoute);
 		const environment = await this.turnEnvironment.create(
 			{
 				user,
@@ -294,7 +297,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		});
 		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
-		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger);
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
 		// The model stream reports these errors. Other errors of the turn were thrown.
@@ -397,6 +399,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		turn: SystemAgentTurn<AssistantSandboxLease>,
 		options: AssistantTurnOptions,
 		trace: AssistantTurnTrace | undefined,
+		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
 		const { request } = options;
 		const lease = turn.workspace;
@@ -439,6 +442,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				}
 			},
 			readSetupItemsSnapshots: async () => [],
+			// The setup panel announces the checklist without suspending the turn.
+			markWorkflowSetupHandled: async (workflowId) =>
+				await setupRoute.markWorkflowSetupHandled(workflowId),
 			sandbox: {
 				resolveConfig: async () =>
 					lease?.config ?? {

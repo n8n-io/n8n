@@ -4,6 +4,7 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { OperationalError } from '@n8n/errors';
 import {
 	deriveWorkflowVerificationObligation,
 	WorkflowLoopStorage,
@@ -81,6 +82,7 @@ export class AssistantWorkflowSetupRoute {
 		memory: AssistantTurnMemory,
 		private readonly threadId: string,
 		private readonly logger: Logger,
+		private readonly options: { setupPanelEnabled: boolean },
 	) {
 		this.storage = new WorkflowLoopStorage(memory);
 	}
@@ -98,27 +100,25 @@ export class AssistantWorkflowSetupRoute {
 	 */
 	async markSuspendedSetupsRouted(): Promise<void> {
 		if (this.suspendedSetupWorkflowIds.size === 0) return;
-		let records: WorkflowLoopWorkItemRecord[];
+		const workflowIds = new Set(this.suspendedSetupWorkflowIds);
+		this.suspendedSetupWorkflowIds.clear();
 		try {
-			records = await this.storage.listWorkItems(this.threadId);
+			await this.markRouted(workflowIds);
 		} catch (error) {
-			this.logger.warn('Failed to read the Assistant builds to mark their setup as routed', {
+			this.logger.warn('Failed to mark the setup of suspended Assistant builds as routed', {
 				threadId: this.threadId,
 				error: getErrorMessage(error),
 			});
-			return;
 		}
-		for (const record of records) {
-			const obligation = this.obligationOf(record);
-			if (!obligation.workflowId || !this.suspendedSetupWorkflowIds.has(obligation.workflowId)) {
-				continue;
-			}
-			if (record.state.setupRoutedAt || obligation.setupRequirement?.status !== 'required') {
-				continue;
-			}
-			await this.claimAndMark(record);
-		}
-		this.suspendedSetupWorkflowIds.clear();
+	}
+
+	/**
+	 * Marks the builds of a workflow as routed after the setup tool announced
+	 * its checklist in the setup panel, which does not suspend the turn. Throws
+	 * when a marker is not stored, so that the tool can retry.
+	 */
+	async markWorkflowSetupHandled(workflowId: string): Promise<void> {
+		await this.markRouted(new Set([workflowId]));
 	}
 
 	/**
@@ -133,7 +133,7 @@ export class AssistantWorkflowSetupRoute {
 			const obligation = this.obligationOf(record);
 			if (!CONCLUDED_VERIFICATION_STATUSES.has(obligation.status)) continue;
 			if (obligation.setupRequirement?.status !== 'required' || !obligation.workflowId) continue;
-			if (!(await this.claimAndMark(record))) continue;
+			if ((await this.claimAndMark(record)) !== 'marked') continue;
 			return {
 				reason: WORKFLOW_SETUP_INSTRUCTION_REASON,
 				content: buildSetupInstruction(obligation),
@@ -142,35 +142,52 @@ export class AssistantWorkflowSetupRoute {
 		return undefined;
 	}
 
+	private async markRouted(workflowIds: Set<string>): Promise<void> {
+		const records = await this.storage.listWorkItems(this.threadId);
+		let failed = false;
+		for (const record of records) {
+			if (record.state.setupRoutedAt) continue;
+			const obligation = this.obligationOf(record);
+			if (!obligation.workflowId || !workflowIds.has(obligation.workflowId)) continue;
+			if (obligation.setupRequirement?.status !== 'required') continue;
+			if ((await this.claimAndMark(record)) === 'failed') failed = true;
+		}
+		if (failed) throw new OperationalError('The workflow setup route was not stored');
+	}
+
 	private obligationOf(record: WorkflowLoopWorkItemRecord): WorkflowVerificationObligation {
-		// The setup panel is part of the current runtime only.
 		return deriveWorkflowVerificationObligation(this.threadId, record, {
-			setupPanelEnabled: false,
+			setupPanelEnabled: this.options.setupPanelEnabled,
 		});
 	}
 
-	/** Gives true only when this call stored the `setupRoutedAt` marker. */
-	private async claimAndMark(record: WorkflowLoopWorkItemRecord): Promise<boolean> {
+	/**
+	 * Stores the `setupRoutedAt` marker. `taken` means that another call holds
+	 * the claim or routed the build already.
+	 */
+	private async claimAndMark(
+		record: WorkflowLoopWorkItemRecord,
+	): Promise<'marked' | 'taken' | 'failed'> {
 		const { workItemId } = record.state;
 		const claim = this.createClaim();
 		try {
-			if (!(await this.storage.claimSetupRouting(this.threadId, workItemId, claim))) return false;
+			if (!(await this.storage.claimSetupRouting(this.threadId, workItemId, claim))) return 'taken';
 			const marked = await this.storage.markSetupRouted(
 				this.threadId,
 				workItemId,
 				claim.claimId,
 				new Date().toISOString(),
 			);
-			if (!marked)
-				await this.storage.releaseSetupRoutingClaim(this.threadId, workItemId, claim.claimId);
-			return marked;
+			if (marked) return 'marked';
+			await this.storage.releaseSetupRoutingClaim(this.threadId, workItemId, claim.claimId);
+			return 'failed';
 		} catch (error) {
 			this.logger.warn('Failed to store the workflow setup route of an Assistant build', {
 				threadId: this.threadId,
 				workItemId,
 				error: getErrorMessage(error),
 			});
-			return false;
+			return 'failed';
 		}
 	}
 

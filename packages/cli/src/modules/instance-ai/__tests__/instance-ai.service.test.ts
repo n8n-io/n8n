@@ -5143,7 +5143,7 @@ describe('InstanceAiService run input gates', () => {
 				context?: InstanceAiHandoffContext,
 				messageGroupId?: string,
 				timeZone?: string,
-				resumeReason?: 'background_task_completed',
+				resumeReason?: 'workflow_setup',
 			) => Promise<void>;
 		};
 		attachTurnInput(service);
@@ -5180,7 +5180,7 @@ describe('InstanceAiService run input gates', () => {
 			undefined,
 			undefined,
 			undefined,
-			'background_task_completed',
+			'workflow_setup',
 		);
 
 		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
