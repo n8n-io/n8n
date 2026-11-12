@@ -993,6 +993,31 @@ describe('Test MySql V2, operations', () => {
 			]);
 			expect(pool.query).toHaveBeenCalledTimes(1);
 		});
+
+		it('should match the cursor column to the index case-insensitively', async () => {
+			const pool = createCatalogPool();
+			const mockRunQueries = vi.fn(async () => []);
+			const fakeExecuteFunction = createMockExecuteFunction(
+				{ ...baseParameters, startAfter: { values: { column: 'ID', value: '5' } } },
+				mySqlMockNode,
+			);
+
+			await select.execute.call(
+				fakeExecuteFunction,
+				emptyInputItems,
+				mockRunQueries as unknown as QueryRunner,
+				baseParameters.options as IDataObject,
+				pool,
+			);
+
+			expect(mockRunQueries).toHaveBeenCalledWith([
+				{
+					query: 'SELECT * FROM `test_table` WHERE `ID` > ? ORDER BY `ID` ASC LIMIT ?',
+					values: ['5', 2],
+					itemIndex: 0,
+				},
+			]);
+		});
 	});
 
 	it('insert, should call runQueries with', async () => {

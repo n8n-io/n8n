@@ -152,6 +152,8 @@ export async function execute(
 					}
 
 					if (value !== '') {
+						// addWhereClauses prepends ' WHERE '. Wrap its body so an OR chain
+						// stays grouped under the cursor AND.
 						const where = query.slice(base.length);
 						const predicate = `${escapeSqlIdentifier(column)} > ?`;
 						query = where
@@ -160,7 +162,8 @@ export async function execute(
 						values.push(value);
 					}
 
-					// ponytail: the walk is only correct with no Sort rules or Sort = cursor column ASC
+					// The walk is only correct with no Sort rules, or with Sort = cursor column ASC.
+					// The node does not guard this; the user owns the Sort rules.
 					rules = sortRules.some((rule) => rule.column.toLowerCase() === column.toLowerCase())
 						? sortRules
 						: [...sortRules, { column, direction: 'ASC' }];

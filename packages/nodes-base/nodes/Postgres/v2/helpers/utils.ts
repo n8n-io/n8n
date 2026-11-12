@@ -619,6 +619,7 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
+// Stricter than uniqueColumns: only single-column, full, valid unique indexes qualify as a keyset cursor.
 export async function getUniqueKeyColumns(
 	db: PgpDatabase,
 	schema: string,

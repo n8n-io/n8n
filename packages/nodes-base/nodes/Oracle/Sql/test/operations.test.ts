@@ -1808,6 +1808,36 @@ VALUES (
 				expect(mockConnection.execute.mock.calls.some(isCatalogQuery)).toBe(false);
 			});
 
+			it('should query the catalog once per table across items', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'ID', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+				const twoItems = [{ json: {} }, { json: {} }];
+
+				await select.execute.call(mockThis, runQueries, twoItems, nodeOptions, pool);
+
+				expect(mockConnection.execute.mock.calls.filter(isCatalogQuery)).toHaveLength(1);
+			});
+
+			it('should throw when the cursor column is unique but has no column metadata', async () => {
+				mockConnection.execute.mockImplementation((sql: string = '') =>
+					isCatalogQuery([sql]) ? { rows: [{ COLUMN_NAME: 'GHOST' }] } : defaultImpl(sql),
+				);
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'GHOST', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				const promise = select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				await expect(promise).rejects.toThrow(NodeOperationError);
+				await expect(promise).rejects.toThrow(`Column "GHOST" was not found in table "${table}"`);
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
 			it('pre-12c: should keep the cursor ORDER BY inside the ROWNUM wrapper', async () => {
 				const legacyPool = createFakePool({ ...mockConnection, oracleServerVersion: 1102000000 });
 				const mockThis = createMockExecuteFunction({

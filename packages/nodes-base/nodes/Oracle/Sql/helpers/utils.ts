@@ -379,6 +379,8 @@ ORDER BY atc.COLUMN_NAME`;
 	}
 }
 
+// Reads all_indexes, not constraint_types from getColumnMetaData: that field is aggregated per column
+// and marks every member of a composite constraint as unique.
 export async function getUniqueKeyColumns(
 	pool: oracledb.Pool,
 	schema: string,

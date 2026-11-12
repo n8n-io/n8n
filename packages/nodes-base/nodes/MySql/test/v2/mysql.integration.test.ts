@@ -158,6 +158,7 @@ describe('MySQL Integration - Select Start After', () => {
 		);
 
 	beforeAll(async () => {
+		await executeQuery('DROP TABLE IF EXISTS paging_test');
 		await executeQuery(
 			'CREATE TABLE paging_test (id INT PRIMARY KEY, code VARCHAR(8) UNIQUE, grp INT, INDEX (grp))',
 		);
