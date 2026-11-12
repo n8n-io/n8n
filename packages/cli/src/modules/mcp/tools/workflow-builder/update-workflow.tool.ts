@@ -977,6 +977,27 @@ function skipUnrecognizedExistingNodeTypes(
 	};
 }
 
+function buildUnloadedNodeTypeWarnings(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+): Array<ValidationWarning & { preExisting: true }> {
+	const isUnloaded = (node: INode) => {
+		try {
+			nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			return false;
+		} catch (error) {
+			return error instanceof UnrecognizedNodeTypeError;
+		}
+	};
+
+	return nodes.filter(isUnloaded).map((node) => ({
+		code: 'UNLOADED_NODE_TYPE',
+		message: `[pre-existing] This instance does not load the node type '${node.type}'. The node was kept unchanged, but the workflow cannot run it. Tell the user; an administrator of this instance must enable the node type or the node must be replaced.`,
+		nodeName: node.name,
+		preExisting: true,
+	}));
+}
+
 /**
  * Validates the resulting workflow and marks the warnings that were already
  * there before this update.
@@ -1332,6 +1353,7 @@ export const createUpdateWorkflowTool = (
 						options.findUninstalledNodeTypes,
 						options.installToolAvailable,
 					)),
+					...buildUnloadedNodeTypeWarnings(workflowUpdateData.nodes, nodeTypes),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);

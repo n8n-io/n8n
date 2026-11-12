@@ -3214,6 +3214,22 @@ describe('update-workflow MCP tool', () => {
 					expect(saved.nodes.find((n) => n.name === 'Run Command')).toEqual(unloadedNode);
 				});
 
+				test('warns that the instance does not load the node type', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+					});
+
+					expect(parseResult(result).validationWarnings).toEqual([
+						expect.objectContaining({
+							code: 'UNLOADED_NODE_TYPE',
+							nodeName: 'Run Command',
+							preExisting: true,
+							message: expect.stringContaining(`'${unloadedType}'`),
+						}),
+					]);
+				});
+
 				test.each([
 					{ name: 'Typo', type: 'n8n-nodes-base.executeCommandd' },
 					{ name: 'Run Command 2', type: unloadedType },
@@ -3242,6 +3258,7 @@ describe('update-workflow MCP tool', () => {
 					expect(result.isError).toBeUndefined();
 					expect(parseResult(result).validationWarnings).toEqual([
 						{ code: 'UNKNOWN_NODE_VERSION', nodeName: 'C' },
+						expect.objectContaining({ code: 'UNLOADED_NODE_TYPE', nodeName: 'Run Command' }),
 					]);
 				});
 			});
