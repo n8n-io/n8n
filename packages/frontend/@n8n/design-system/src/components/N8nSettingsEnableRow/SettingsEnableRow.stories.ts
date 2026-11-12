@@ -85,6 +85,24 @@ export const WithBadges: Story = {
 	}),
 };
 
+export const LongDescription: Story = {
+	args: {
+		title: 'Enable Agents',
+		description:
+			'Allow users to build and run agents on this instance. Agents can call tools, read workflow data, and reply in chat. Turn this on for the whole instance.',
+	},
+	render: (args) => ({
+		components: { N8nSettingsEnableRow, N8nSettingsRowGroup },
+		setup() {
+			const enabled = ref(true);
+			return { args, enabled };
+		},
+		template: frame(
+			'<N8nSettingsRowGroup><N8nSettingsEnableRow v-bind="args" v-model="enabled" /></N8nSettingsRowGroup>',
+		),
+	}),
+};
+
 export const Disabled: Story = {
 	args: {
 		title: 'Enable Chat',

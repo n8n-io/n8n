@@ -79,12 +79,10 @@ const settingsSwitchProps = {
 			v-bind="settingsSwitchProps"
 			:id="switchId"
 			v-model="enabled"
-			:class="$style.switch"
 			:disabled="disabled"
 			:aria-label="title"
 			:data-test-id="switchTestId"
 		/>
-		<!-- The group hides this divider on the last row. -->
 		<span :class="$style.divider" data-test-id="settings-row-divider" aria-hidden="true" />
 	</div>
 </template>
@@ -103,8 +101,6 @@ const settingsSwitchProps = {
 	row-gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
 
-	// Wrap uses the text's full line width, so a long description drops the switch
-	// on a wide card. Keep the switch beside the text until the small breakpoint.
 	@include breakpoints.breakpoint('xs-only') {
 		flex-wrap: wrap;
 	}
@@ -112,25 +108,11 @@ const settingsSwitchProps = {
 
 .text {
 	display: flex;
-	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	min-width: 0;
-
-	@include breakpoints.breakpoint('xs-only') {
-		flex-basis: 100%;
-	}
 
 	&.withBadges {
 		gap: var(--spacing--2xs);
-	}
-}
-
-.switch {
-	flex: none;
-
-	@include breakpoints.breakpoint('xs-only') {
-		margin-inline-start: auto;
 	}
 }
 
