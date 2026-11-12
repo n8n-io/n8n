@@ -1,9 +1,13 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { BinaryDataConfig } from 'n8n-core';
 import type { Mock, MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -66,6 +70,39 @@ describe('Webhook', () => {
 			await new Webhook().initOrchestration();
 
 			expect(initSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopProcess', () => {
+		it('should wait for queued MCP tool calls after the execution drain', async () => {
+			const activeExecutions = mockInstance(ActiveExecutions);
+			activeExecutions.shutdown.mockResolvedValue(undefined);
+			const mcpLogger = mock<Logger>();
+			(McpServer as unknown as { instance_?: McpServer }).instance_ = undefined;
+			const pendingToolCalls = McpServer.instance(mcpLogger).getPendingCallsManager();
+			const toolCall = pendingToolCalls.waitForResult('session-1_1', 'slow_tool', {}, 60_000);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+			try {
+				const webhook = new Webhook();
+				// @ts-expect-error - Accessing protected property for testing
+				webhook.dbConnection = dbConnection;
+				const stopping = webhook.stopProcess();
+
+				await vi.waitFor(() =>
+					expect(mcpLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...'),
+				);
+				expect(activeExecutions.shutdown).toHaveBeenCalledOnce();
+				expect(exitSpy).not.toHaveBeenCalled();
+
+				pendingToolCalls.resolve('session-1_1', { result: 'ok' });
+				await expect(toolCall).resolves.toEqual({ result: 'ok' });
+				await stopping;
+
+				expect(exitSpy).toHaveBeenCalledOnce();
+			} finally {
+				exitSpy.mockRestore();
+			}
 		});
 	});
 

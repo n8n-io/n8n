@@ -1,11 +1,20 @@
 // Import zod alias support before importing Start command
 import '@/zod-alias-support';
 
+import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import type { ExecutionsConfig } from '@n8n/config';
+import {
+	AuthRolesService,
+	DbConnection,
+	DeploymentKeyRepository,
+	type ExecutionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 
@@ -16,8 +25,10 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AbstractServer } from '@/abstract-server';
+import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -25,6 +36,8 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -32,7 +45,15 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, NodeTypesProxy, PostHogClient, RoleCacheService } from '@n8n/backend-services';
+import {
+	type EventService,
+	JwtService,
+	NodeTypesProxy,
+	PostHogClient,
+	Publisher,
+	RoleCacheService,
+	Subscriber,
+} from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -552,6 +573,139 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(http.globalAgent.constructor.name).toBe('Agent');
 			expect(https.globalAgent.constructor.name).toBe('Agent');
 		});
+	});
+});
+
+describe('Start - stopProcess', () => {
+	const DRAIN_POLL_INTERVAL_MS = 500;
+
+	const publisher = mock<Publisher>();
+	const subscriber = mock<Subscriber>();
+	const messageEventBus = mock<MessageEventBus>();
+	let exitSpy: MockInstance;
+
+	const createStart = (mode: 'queue' | 'regular') => {
+		const start = new Start();
+		// @ts-expect-error - Accessing protected property for testing
+		start.globalConfig = { executions: { mode } };
+		// @ts-expect-error - Accessing protected property for testing
+		start.activeWorkflowManager = mock<ActiveWorkflowManager>();
+		// @ts-expect-error - Accessing protected property for testing
+		start.dbConnection = dbConnection;
+		return start;
+	};
+
+	const createActiveExecutions = (executionPersistence: ExecutionPersistence) =>
+		new ActiveExecutions(
+			mock<Logger>(),
+			mock<ExecutionRepository>(),
+			executionPersistence,
+			mock<ConcurrencyControlService>(),
+			mock<EventService>(),
+			mock<ExecutionsConfig>({ mode: 'queue' }),
+			mock<InstanceSettings>({ instanceType: 'main', isWorker: false }),
+			mock<UnsavedManualExecutionService>(),
+		);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		Object.defineProperty(instanceSettings, 'isMultiMain', {
+			get: () => false,
+			configurable: true,
+		});
+		Container.set(Publisher, publisher);
+		Container.set(Subscriber, subscriber);
+		Container.set(MessageEventBus, messageEventBus);
+		Container.set(WaitTracker, mock<WaitTracker>());
+		exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+	});
+
+	afterEach(() => {
+		exitSpy.mockRestore();
+	});
+
+	it('should keep pubsub connected until in-flight executions have drained', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.create.mockResolvedValue('in-flight');
+		const activeExecutions = createActiveExecutions(executionPersistence);
+		Container.set(ActiveExecutions, activeExecutions);
+		const executionId = await activeExecutions.add(mock<IWorkflowExecutionDataProcess>());
+
+		vi.useFakeTimers();
+		try {
+			const stopping = createStart('queue').stopProcess();
+
+			await vi.advanceTimersByTimeAsync(DRAIN_POLL_INTERVAL_MS * 3);
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+			expect(publisher.shutdown).not.toHaveBeenCalled();
+			expect(subscriber.shutdown).not.toHaveBeenCalled();
+
+			activeExecutions.finalizeExecution(executionId);
+			await vi.advanceTimersByTimeAsync(DRAIN_POLL_INTERVAL_MS);
+			await stopping;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(publisher.shutdown).toHaveBeenCalledOnce();
+		expect(subscriber.shutdown).toHaveBeenCalledOnce();
+		expect(publisher.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
+			messageEventBus.close.mock.invocationCallOrder[0],
+		);
+		expect(exitSpy).toHaveBeenCalledOnce();
+	});
+
+	it('should keep pubsub connected until queued MCP tool calls have finished', async () => {
+		const activeExecutions = mock<ActiveExecutions>();
+		activeExecutions.shutdown.mockResolvedValue(undefined);
+		Container.set(ActiveExecutions, activeExecutions);
+		const mcpLogger = mock<Logger>();
+		(McpServer as unknown as { instance_?: McpServer }).instance_ = undefined;
+		const pendingToolCalls = McpServer.instance(mcpLogger).getPendingCallsManager();
+		const toolCall = pendingToolCalls.waitForResult('session-1_1', 'slow_tool', {}, 60_000);
+
+		const stopping = createStart('queue').stopProcess();
+
+		await vi.waitFor(() =>
+			expect(mcpLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...'),
+		);
+		expect(publisher.shutdown).not.toHaveBeenCalled();
+		expect(subscriber.shutdown).not.toHaveBeenCalled();
+		expect(exitSpy).not.toHaveBeenCalled();
+
+		pendingToolCalls.resolve('session-1_1', { result: 'ok' });
+		await expect(toolCall).resolves.toEqual({ result: 'ok' });
+		await stopping;
+
+		expect(publisher.shutdown).toHaveBeenCalledOnce();
+		expect(subscriber.shutdown).toHaveBeenCalledOnce();
+		expect(exitSpy).toHaveBeenCalledOnce();
+	});
+
+	it('should disconnect pubsub only after the drain when nothing is running', async () => {
+		const activeExecutions = mock<ActiveExecutions>();
+		activeExecutions.shutdown.mockResolvedValue(undefined);
+		Container.set(ActiveExecutions, activeExecutions);
+
+		await createStart('queue').stopProcess();
+
+		expect(activeExecutions.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
+			publisher.shutdown.mock.invocationCallOrder[0],
+		);
+		expect(activeExecutions.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
+			subscriber.shutdown.mock.invocationCallOrder[0],
+		);
+		expect(exitSpy).toHaveBeenCalledOnce();
+	});
+
+	it('should leave pubsub alone in regular mode', async () => {
+		Container.set(ActiveExecutions, mock<ActiveExecutions>());
+
+		await createStart('regular').stopProcess();
+
+		expect(publisher.shutdown).not.toHaveBeenCalled();
+		expect(subscriber.shutdown).not.toHaveBeenCalled();
+		expect(exitSpy).toHaveBeenCalledOnce();
 	});
 });
 

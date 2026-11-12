@@ -1122,4 +1122,69 @@ describe('McpServer', () => {
 			expect(result.content[0].text).toContain('Header Auth (httpHeaderAuth): not connected');
 		});
 	});
+
+	describe('waitForPendingToolCalls', () => {
+		it('should wait for a queued tool call until the worker result arrives', async () => {
+			const pendingCalls = mcpServer.getPendingCallsManager();
+			mcpServer.setExecutionStrategy(new QueuedExecutionStrategy(pendingCalls));
+			const toolCall = pendingCalls.waitForResult('session-1_msg-1', 'slow_tool', {}, 60_000);
+			let drained = false;
+			const draining = mcpServer.waitForPendingToolCalls().then(() => {
+				drained = true;
+			});
+
+			await Promise.resolve();
+			expect(drained).toBe(false);
+			expect(mockLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...');
+
+			mcpServer.handleWorkerResponse('session-1', 'msg-1', { result: 'ok' });
+
+			await expect(toolCall).resolves.toEqual({ result: 'ok' });
+			await draining;
+			expect(drained).toBe(true);
+		});
+
+		it('should return at once when no tool call is pending', async () => {
+			await mcpServer.waitForPendingToolCalls();
+
+			expect(mockLogger.info).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('session release on connection close', () => {
+		it('should drop an SSE session without rejecting when its store cleanup fails', async () => {
+			const store = {
+				register: vi.fn().mockResolvedValue(undefined),
+				validate: vi.fn().mockResolvedValue(true),
+				unregister: vi.fn().mockRejectedValue(new Error('Connection is closed.')),
+				getTools: vi.fn(),
+				setTools: vi.fn(),
+				clearTools: vi.fn(),
+			};
+			mcpServer.setSessionStore(store);
+			const resp = createMockResponse();
+
+			await mcpServer.handleSetupRequest(
+				createMockRequest({ method: 'GET' }),
+				resp,
+				'test-server',
+				'/mcp/test',
+				[createMockTool('test-tool')],
+			);
+
+			const [sessionId] = store.register.mock.calls[0] as [string];
+			expect(mcpServer.getTransport(sessionId)).toBeDefined();
+			const onClose = resp.on.mock.calls.find(([event]) => event === 'close')?.[1] as
+				| (() => Promise<void>)
+				| undefined;
+
+			await expect(onClose?.()).resolves.toBeUndefined();
+
+			expect(store.unregister).toHaveBeenCalledWith(sessionId);
+			expect(mcpServer.getTransport(sessionId)).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				`Failed to release MCP session ${sessionId}: Connection is closed.`,
+			);
+		});
+	});
 });

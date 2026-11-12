@@ -114,14 +114,15 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await Container.get(MultiMainSetup).shutdown();
 			}
 
-			if (this.globalConfig.executions.mode === 'queue') {
-				Container.get(Publisher).shutdown();
-				Container.get(Subscriber).shutdown();
-			}
-
 			Container.get(EventService).emit('instance-stopped');
 
 			await Container.get(ActiveExecutions).shutdown();
+
+			if (this.globalConfig.executions.mode === 'queue') {
+				await McpServer.instance(this.logger).waitForPendingToolCalls();
+				Container.get(Publisher).shutdown();
+				Container.get(Subscriber).shutdown();
+			}
 
 			// Finally shut down Event Bus
 			await Container.get(MessageEventBus).close();

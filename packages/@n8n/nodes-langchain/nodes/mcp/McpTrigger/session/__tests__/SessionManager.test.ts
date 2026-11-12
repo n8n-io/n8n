@@ -106,6 +106,17 @@ describe('SessionManager', () => {
 			expect(server.close).toHaveBeenCalled();
 		});
 
+		it('should drop the session and close its server when the store fails to unregister it', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+			mockStore.unregister.mockRejectedValueOnce(new Error('Connection is closed.'));
+
+			await expect(manager.destroySession('session-1')).rejects.toThrow('Connection is closed.');
+
+			expect(manager.getSession('session-1')).toBeUndefined();
+			expect(server.close).toHaveBeenCalled();
+		});
+
 		it('should not recurse when closing the server re-enters destroySession', async () => {
 			const server = createMockServer();
 			// Production wires transport.onclose -> cleanupSession -> destroySession, so

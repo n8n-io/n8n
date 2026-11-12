@@ -248,4 +248,72 @@ describe('PendingCallsManager', () => {
 			expect(() => manager.remove('non-existent')).not.toThrow();
 		});
 	});
+
+	describe('waitUntilIdle', () => {
+		const trackIdle = () => {
+			const state = { idle: false };
+			const promise = manager.waitUntilIdle().then(() => {
+				state.idle = true;
+			});
+			return { state, promise };
+		};
+
+		it('should resolve at once when no call is pending', async () => {
+			await expect(manager.waitUntilIdle()).resolves.toBeUndefined();
+			expect(manager.size).toBe(0);
+		});
+
+		it('should resolve only after every pending call has settled', async () => {
+			const first = manager.waitForResult('session-1_1', 'tool', {}, 5000);
+			const second = manager.waitForResult('session-1_2', 'tool', {}, 5000);
+			const { state, promise } = trackIdle();
+
+			manager.resolve('session-1_1', 'done');
+			await expect(first).resolves.toBe('done');
+			expect(manager.size).toBe(1);
+			expect(state.idle).toBe(false);
+
+			manager.reject('session-1_2', new Error('failed'));
+			await expect(second).rejects.toThrow('failed');
+			await promise;
+			expect(state.idle).toBe(true);
+		});
+
+		it('should resolve when the last pending call times out', async () => {
+			const call = manager.waitForResult('session-1_1', 'tool', {}, 1000);
+			const { state, promise } = trackIdle();
+
+			vi.advanceTimersByTime(1000);
+
+			await expect(call).rejects.toThrow('Worker tool execution timeout');
+			await promise;
+			expect(state.idle).toBe(true);
+		});
+
+		it('should resolve when the session of the last pending call is cleaned up', async () => {
+			const call = manager.waitForResult('session-1_1', 'tool', {}, 5000);
+			const { state, promise } = trackIdle();
+
+			manager.cleanupBySessionId('session-1');
+
+			await expect(call).resolves.toBeUndefined();
+			await promise;
+			expect(state.idle).toBe(true);
+		});
+
+		it('should keep waiting for calls that start while it waits', async () => {
+			const first = manager.waitForResult('session-1_1', 'tool', {}, 5000);
+			const { state, promise } = trackIdle();
+			const second = manager.waitForResult('session-2_1', 'tool', {}, 5000);
+
+			manager.resolve('session-1_1', 'done');
+			await first;
+			expect(state.idle).toBe(false);
+
+			manager.resolve('session-2_1', 'done');
+			await second;
+			await promise;
+			expect(state.idle).toBe(true);
+		});
+	});
 });

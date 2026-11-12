@@ -1,9 +1,11 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { type Logger, ModuleRegistry } from '@n8n/backend-common';
 import { AppsHostingService } from '@n8n/backend-module-apps/hosting';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { HIGHEST_SHUTDOWN_PRIORITY, ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type express from 'express';
+import type { ErrorReporter } from 'n8n-core';
 import { IncomingMessage, type Server } from 'node:http';
 import { Socket } from 'node:net';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import { AbstractServer } from '@/abstract-server';
 import { ControllerRegistry } from '@/controller.registry';
 import { ExternalHooks } from '@/external-hooks';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
@@ -172,7 +175,7 @@ describe('AbstractServer', () => {
 
 			await testServer.init();
 
-			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(mockApp.use).toHaveBeenNthCalledWith(2, hosting.dispatch);
 
 			await testServer.start();
 
@@ -223,7 +226,7 @@ describe('AbstractServer', () => {
 			await testServer.init();
 			await testServer.start();
 
-			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(mockApp.use).toHaveBeenNthCalledWith(2, hosting.dispatch);
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
 			expect(router.use).toHaveBeenCalledOnce();
 			expect(controllers.activate).not.toHaveBeenCalled();
@@ -288,6 +291,71 @@ describe('AbstractServer', () => {
 
 			expect(res.status).toHaveBeenCalledWith(503);
 			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+	});
+
+	describe('shutdown', () => {
+		const shutDownApp = async () => {
+			const serverHooks = new ShutdownMetadata();
+			Container.get(ShutdownMetadata)
+				.getHandlersByPriority()
+				.forEach((handlers, priority) => {
+					for (const handler of handlers) {
+						if (Object.is(handler.serviceClass, AbstractServer)) {
+							serverHooks.register(priority, handler);
+						}
+					}
+				});
+			const shutdownService = new ShutdownService(
+				mock<Logger>(),
+				mock<ErrorReporter>(),
+				serverHooks,
+			);
+			shutdownService.shutdown();
+			await shutdownService.waitForShutdown();
+		};
+
+		const firstMiddleware = () =>
+			mockApp.use.mock.calls[0][0] as unknown as (
+				req: express.Request,
+				res: express.Response,
+				next: express.NextFunction,
+			) => void;
+
+		it('should stop the running server from accepting connections when the app shuts down', async () => {
+			await testServer.init();
+
+			await shutDownApp();
+
+			expect(mockServer.close).toHaveBeenCalledOnce();
+		});
+
+		it('should stop accepting connections in the first shutdown group', () => {
+			const firstGroup =
+				Container.get(ShutdownMetadata).getHandlersByPriority()[HIGHEST_SHUTDOWN_PRIORITY];
+
+			expect(firstGroup).toContainEqual({ serviceClass: AbstractServer, methodName: 'onShutdown' });
+		});
+
+		it('should reject requests on open connections with 503 once shutdown starts', async () => {
+			await testServer.init();
+			const gate = firstMiddleware();
+			const res = mock<express.Response>({ headersSent: false });
+			res.status.mockReturnValue(res);
+			const next = vi.fn();
+
+			gate(mock<express.Request>(), res, next);
+			expect(next).toHaveBeenCalledOnce();
+
+			await shutDownApp();
+			gate(mock<express.Request>(), res, next);
+
+			expect(next).toHaveBeenCalledOnce();
+			expect(res.setHeader).toHaveBeenCalledWith('Connection', 'close');
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'n8n is shutting down' }),
+			);
 		});
 	});
 });

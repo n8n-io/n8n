@@ -140,7 +140,7 @@ export class McpServer {
 					await this.sessionManager.registerSession(sessionId, server, transport, tools);
 					transport.onclose = async () => {
 						this.logger.debug(`Deleting transport for ${sessionId}`);
-						await this.cleanupSession(sessionId);
+						await this.releaseSession(sessionId);
 					};
 				},
 			},
@@ -467,6 +467,14 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
+	async waitForPendingToolCalls(): Promise<void> {
+		const pendingToolCalls = this.pendingCallsManager.size;
+		if (pendingToolCalls === 0) return;
+
+		this.logger.info(`Waiting for ${pendingToolCalls} MCP tool calls to finish...`);
+		await this.pendingCallsManager.waitUntilIdle();
+	}
+
 	private createServer(serverName: string, instructions?: string): Server {
 		return new Server(
 			{ name: serverName, version: '0.1.0' },
@@ -487,7 +495,7 @@ export class McpServer {
 
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
-			await this.cleanupSession(sessionId);
+			await this.releaseSession(sessionId);
 		});
 
 		await server.connect(transport);
@@ -510,6 +518,16 @@ export class McpServer {
 		await this.sessionManager.destroySession(sessionId);
 	}
 
+	private async releaseSession(sessionId: string): Promise<void> {
+		try {
+			await this.cleanupSession(sessionId);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to release MCP session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
 	private async recreateStreamableHttpTransport(
 		sessionId: string,
 		serverName: string,
@@ -530,7 +548,7 @@ export class McpServer {
 
 		transport.onclose = async () => {
 			this.logger.debug(`Deleting recreated transport for ${sessionId}`);
-			await this.cleanupSession(sessionId);
+			await this.releaseSession(sessionId);
 		};
 
 		this.setupHandlers(server);

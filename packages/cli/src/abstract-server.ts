@@ -2,7 +2,7 @@ import { inDevelopment, inTest, Logger, ModuleRegistry } from '@n8n/backend-comm
 import type { AppsHostingService } from '@n8n/backend-module-apps/hosting';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
@@ -84,6 +84,8 @@ export abstract class AbstractServer {
 
 	private fullyReady = false;
 
+	private isShuttingDown = false;
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -115,6 +117,8 @@ export abstract class AbstractServer {
 		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
+
+		Container.set(AbstractServer, this);
 	}
 
 	async configure(): Promise<void> {
@@ -193,6 +197,15 @@ export abstract class AbstractServer {
 	async init(): Promise<void> {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
+
+		app.use((_req, res, next) => {
+			if (!this.isShuttingDown) {
+				next();
+				return;
+			}
+			res.setHeader('Connection', 'close');
+			sendErrorResponse(res, new ServiceUnavailableError('n8n is shutting down'));
+		});
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -394,8 +407,10 @@ export abstract class AbstractServer {
 	 * connections configured amount of time to finish their work and
 	 * then closes them forcefully.
 	 */
-	@OnShutdown()
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	onShutdown(): void {
+		this.isShuttingDown = true;
+
 		if (!this.server) {
 			return;
 		}

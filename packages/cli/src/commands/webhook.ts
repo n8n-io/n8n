@@ -39,6 +39,9 @@ export class Webhook extends BaseCommand {
 			await this.externalHooks?.run('n8n.stop');
 
 			await Container.get(ActiveExecutions).shutdown();
+
+			const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
+			await McpServer.instance(this.logger).waitForPendingToolCalls();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

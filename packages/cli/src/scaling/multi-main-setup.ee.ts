@@ -76,6 +76,8 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			if (!result.ok) {
 				this.logger.warn('Failed to clear leader key from Redis', { error: result.error });
 			}
+
+			this.instanceSettings.markAsFollower();
 		}
 
 		this.client.destroy();

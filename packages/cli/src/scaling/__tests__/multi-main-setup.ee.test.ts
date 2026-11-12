@@ -286,4 +286,43 @@ describe('MultiMainSetup', () => {
 			expect(emit).not.toHaveBeenCalledWith('leader-takeover');
 		});
 	});
+
+	describe('shutdown', () => {
+		it('should release the leader key and act as a follower while the main drains', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.clearLeader.mockResolvedValue(createResultOk(undefined));
+			await multiMainSetup.init();
+			const emit = vi.spyOn(multiMainSetup, 'emit');
+
+			await multiMainSetup.shutdown();
+
+			expect(client.clearLeader).toHaveBeenCalledOnce();
+			expect(instanceSettings.isLeader).toBe(false);
+			expect(emit).not.toHaveBeenCalledWith('leader-stepdown');
+			expect(client.destroy).toHaveBeenCalledOnce();
+		});
+
+		it('should act as a follower even when the leader key cannot be released', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.clearLeader.mockResolvedValue(createResultError(new Error('Command timed out')));
+			await multiMainSetup.init();
+
+			await multiMainSetup.shutdown();
+
+			expect(instanceSettings.isLeader).toBe(false);
+			expect(client.destroy).toHaveBeenCalledOnce();
+		});
+
+		it('should not touch the leader key as a follower', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			await multiMainSetup.init();
+			vi.clearAllMocks();
+
+			await multiMainSetup.shutdown();
+
+			expect(client.clearLeader).not.toHaveBeenCalled();
+			expect(instanceSettings.markAsFollower).not.toHaveBeenCalled();
+			expect(client.destroy).toHaveBeenCalledOnce();
+		});
+	});
 });
