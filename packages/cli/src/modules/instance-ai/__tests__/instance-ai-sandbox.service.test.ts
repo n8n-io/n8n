@@ -1,5 +1,9 @@
 import type { Mock } from 'vitest';
-import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
+import {
+	SandboxAcquisitionError,
+	SandboxNameConflictError,
+	SandboxNotReadyError,
+} from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -547,6 +551,22 @@ describe('InstanceAiSandboxService', () => {
 					notReady,
 				);
 				expect(quickStartArg(2)).toBeUndefined();
+			});
+
+			it.each([
+				['a name conflict', new SandboxNameConflictError('name conflict')],
+				['an unknown error', new Error('unexpected')],
+			])('keeps %s from a quick check unchanged', async (_name, quickError) => {
+				const { service, workspace } = setup('daytona', { current: 'run-1' });
+
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					notReady,
+				);
+				workspace.init.mockRejectedValueOnce(quickError);
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					quickError,
+				);
+				expect(quickStartArg(1)).toBe(true);
 			});
 
 			it('does a full start again after the sandbox started', async () => {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
 import { getN8nVersion } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -569,11 +569,10 @@ export class InstanceAiSandboxService {
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
-			// A failed quick check is expected while the sandbox starts, so it is not reported.
-			if (quickStart) {
-				const reason = error instanceof Error ? error.message : String(error);
+			// A quick check that finds the sandbox still starting is expected, so it is not reported.
+			if (quickStart && error instanceof SandboxNotReadyError) {
 				throw new OperationalError(
-					`The sandbox is not ready yet. It can still be starting, so try again shortly. Reason: ${reason}`,
+					`The sandbox is not ready yet. It can still be starting, so try again shortly. Reason: ${error.message}`,
 					{ cause: error },
 				);
 			}
