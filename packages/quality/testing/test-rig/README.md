@@ -110,7 +110,7 @@ When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts
 
 ## How it works
 
-The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` from a short-lived sidecar container that shares the network of the sender container; the rig builds the small `n8n-test-rig/netem` image the first time it needs it.
+The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` in a short-lived sidecar that shares the network of the sender container. The rig builds the `n8n-test-rig/netem` image on first use.
 
 `RigStack.start` starts a stack with its hooks. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window. A test that waits for a stalled job then takes seconds, not minutes. `scale` must be 1 or more. `env` can override any single value. `chain(name, nodes)` builds a workflow that runs the nodes in order, from `nodes.webhook` and `nodes.code`.
 
@@ -140,7 +140,7 @@ Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`.
 
 ### Network faults
 
-`network.delay(from, to, ms)` delays the traffic that one container sends to another, and `network.cut(from, to)` drops it. `network.restore(from)` removes the fault. A container has one fault at a time, so a new fault replaces the one before it. Traffic to other containers is not changed.
+`network.delay(from, to, ms)` delays the traffic that one container sends to another, and `network.cut(from, to)` drops it. `network.restore(from)` removes the fault. A new fault replaces the previous one from the same container. Traffic to other containers does not change.
 
 ## Limits
 
