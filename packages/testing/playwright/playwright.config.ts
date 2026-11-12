@@ -61,6 +61,8 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 					N8N_USER_FOLDER: USER_FOLDER,
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',
+					// Live banners from the remote endpoint change the page layout under test.
+					N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 					...getTestEnv(),
 				},
 			}
