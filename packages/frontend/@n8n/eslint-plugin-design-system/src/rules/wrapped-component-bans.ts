@@ -67,6 +67,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['FocusScope'],
+		allowedFolders: ['components/FocusScope'],
+		replacement: 'FocusScope',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['HoverCard'],
 		allowedFolders: ['components/N8nHoverCard'],
 		replacement: 'N8nHoverCard',

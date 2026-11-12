@@ -327,8 +327,8 @@ catalogs:
       specifier: 1.3.2
       version: 1.3.2
     '@modelcontextprotocol/node':
-      specifier: 2.0.0
-      version: 2.0.0
+      specifier: 2.1.0
+      version: 2.1.0
     '@modelcontextprotocol/sdk':
       specifier: 1.32.0
       version: 1.32.0
@@ -893,8 +893,8 @@ catalogs:
       specifier: ^3.5.13
       version: 3.5.26
     vue-i18n:
-      specifier: ^11.4.4
-      version: 11.4.5
+      specifier: 11.4.14
+      version: 11.4.14
     vue-markdown-render:
       specifier: ^2.2.1
       version: 2.2.1
@@ -1001,13 +1001,13 @@ overrides:
   pdf-parse: 2.4.5
   pdfjs-dist: 6.3.289
   tmp: 0.2.7
-  nodemailer: 10.0.14
+  nodemailer: 10.1.4
   validator: 13.15.26
   zod: 3.25.76
   knip>zod: ^4.4.3
   js-yaml: 4.3.2
   katex: 0.18.2
-  body-parser: 2.3.0
+  body-parser: 2.4.0
   glob@10: 10.5.0
   js-beautify@<1.15.4: 1.15.4
   module-lookup-amd@9.0.5: 9.1.3
@@ -1031,7 +1031,7 @@ overrides:
   minimatch@9.0.1: 9.0.9
   minimatch@10: 10.2.3
   '@hono/node-server': 1.19.15
-  follow-redirects: 1.16.1
+  follow-redirects: 1.16.2
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   flatted: 3.4.2
@@ -1050,7 +1050,7 @@ overrides:
   postcss@<=8.5.22: 8.5.23
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
-  fast-uri: 3.1.8
+  fast-uri: 3.1.9
   cjs-module-lexer@<2.2.0: 2.2.0
   protobufjs: 7.6.5
   shell-quote: 1.11.0
@@ -1095,7 +1095,7 @@ overrides:
   prosemirror-view@<1.42.3: 1.42.3
   pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
-  toml@<4.2.0: 4.2.0
+  toml@<5.0.1: 5.0.1
   '@langchain/langgraph': 1.4.21
   '@langchain/langgraph-checkpoint': 1.1.6
 
@@ -3368,7 +3368,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -4788,7 +4788,7 @@ importers:
         version: 1.5.0(supports-color@8.1.1)
       '@modelcontextprotocol/node':
         specifier: 'catalog:'
-        version: 2.0.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
+        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.32.0(supports-color@8.1.1)(zod@3.25.76)
@@ -4922,8 +4922,8 @@ importers:
         specifier: 'catalog:'
         version: 1.27.0
       '@n8n_io/license-sdk':
-        specifier: 3.3.0
-        version: 3.3.0
+        specifier: 4.0.0
+        version: 4.0.0
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -5120,8 +5120,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.18
       nodemailer:
-        specifier: 10.0.14
-        version: 10.0.14
+        specifier: 10.1.4
+        version: 10.1.4
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -6285,7 +6285,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -7031,7 +7031,7 @@ importers:
         version: 2.2.12
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-json-pretty:
         specifier: 2.6.0
         version: 2.6.0(vue@3.5.26(typescript@6.0.2))
@@ -7137,6 +7137,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
       tar:
         specifier: 7.5.21
         version: 7.5.21
@@ -7168,6 +7171,9 @@ importers:
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       jsdom:
         specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -7410,9 +7416,15 @@ importers:
 
   packages/modules/execution-ledger/backend:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
       '@n8n/config':
         specifier: workspace:*
         version: link:../../../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../../../@n8n/db
@@ -7425,6 +7437,12 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -7459,6 +7477,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/modules/execution-limits/backend:
     dependencies:
@@ -7540,7 +7561,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -7773,7 +7794,7 @@ importers:
         version: 5.2.0(chart.js@4.4.0)(vue@3.5.26(typescript@6.0.2))
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -7988,7 +8009,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -8242,7 +8263,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-i18n:
         specifier: catalog:frontend
-        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -8913,8 +8934,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 10.0.14
-        version: 10.0.14
+        specifier: 10.1.4
+        version: 10.1.4
       oracledb:
         specifier: 'catalog:'
         version: 6.10.0
@@ -11636,20 +11657,20 @@ packages:
   '@internationalized/number@3.6.2':
     resolution: {integrity: sha512-E5QTOlMg9wo5OrKdHD6edo1JJlIoOsylh0+mbf0evi1tHJwMZfJSaBpGtnJV9N7w3jeiioox9EG/EWRWPh82vg==}
 
-  '@intlify/core-base@11.4.5':
-    resolution: {integrity: sha512-lja3F/iKVIvTa48mIwmrIeDcQUFZ0F0drvFvT8AwINOvbwnAzl/S/p8p2DxILZpWEUHRi1qewfWNIkMvhD3kKA==}
+  '@intlify/core-base@11.4.14':
+    resolution: {integrity: sha512-Lox+qRGBLnEYfNz4iajqKpw1zuvSAWl4PtzEk654bEM+0NT1GBy9AbOecxzSh7krsyqn9mGKhgmvtuyBsqS6oQ==}
     engines: {node: '>= 22'}
 
-  '@intlify/devtools-types@11.4.5':
-    resolution: {integrity: sha512-W5vydP9Yq3t82IyWqCM6aR0BTWCZrN5RAwjZEPpH8I2OQWp2RLy03Evh2ANZlSMhcvGAoyDg25k0so85Kwncpw==}
+  '@intlify/devtools-types@11.4.14':
+    resolution: {integrity: sha512-EQHRYveQg6yHQ51kePfsFyaW2WW+0hk3FdVxSpLDyuKtqFtsRFoyQR2QzASZPmY767ujs9ipuxc2DiGJARkuiQ==}
     engines: {node: '>= 22'}
 
-  '@intlify/message-compiler@11.4.5':
-    resolution: {integrity: sha512-IEOZiHtbQopyPc/Dz2M869lOlZYX1SdcniNJwphATDYHhovvIneEKf1EFF37DE7NAABZtza1FNtnwwqZWInfpw==}
+  '@intlify/message-compiler@11.4.14':
+    resolution: {integrity: sha512-y79GatHfMhN672Vooxw0v6mgX/vclFHggO1ENL6aH/QubLXiV529WXu/+FhVUbYF+HLTeDDkQpmnpfvSJddBCg==}
     engines: {node: '>= 22'}
 
-  '@intlify/shared@11.4.5':
-    resolution: {integrity: sha512-g/i5mtdUa9ia/8BaJ4w6ZRHgAXYQd9XyCaQPRMvsd8d5qmZwkjoTmHrNsI28Q/7I8h+2ijUkI4uEnnMCziKupQ==}
+  '@intlify/shared@11.4.14':
+    resolution: {integrity: sha512-f8zSlPs4+Yd9za3CPQfW9OHxAJBOeRQzB/hhOhkbGA7hlqWk0W0bUtSV/LmyrGNwdl8JriBnFtJqZyF140bjGg==}
     engines: {node: '>= 22'}
 
   '@ioredis/as-callback@3.0.0':
@@ -12505,11 +12526,11 @@ packages:
       react-dom:
         optional: true
 
-  '@modelcontextprotocol/node@2.0.0':
-    resolution: {integrity: sha512-Y4hAC2XdGDUdDOCbLDOCA4+aL3NUldjsOWlDL/YwpAxrPhRm1xHd7lZ+mLacvZ9t3PaH28wgNoaLQGrIk1P2pg==}
+  '@modelcontextprotocol/node@2.1.0':
+    resolution: {integrity: sha512-6xg3iWVcOfiL8Y7rI6xUqXD0lI2AY5q3djsa/cOi1IJUSwx06t0gvhSwU/6mIIohrFlt40/ANUG56DQ0HLhILQ==}
     engines: {node: '>=20'}
     peerDependencies:
-      '@modelcontextprotocol/server': ^2.0.0
+      '@modelcontextprotocol/server': ^2.1.0
       hono: 4.13.11
     peerDependenciesMeta:
       hono:
@@ -12602,9 +12623,9 @@ packages:
     resolution: {integrity: sha512-xCELByG49K24I1rVx6o3FueAH1+cu66d7ojoQepkbfsphIK0HLZisTCZ3/MmgtZUjvXMUI0Ekg46NWHvMMcJtQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@3.3.0':
-    resolution: {integrity: sha512-067T0HncCKaqQmgA0hc/Bad+ztL67ZYyePnc263kEX0PfxQaAXRIofHPYLVrKxPbZlxgB5+SmuDlDeDtXAiZKg==}
-    engines: {node: '>=20'}
+  '@n8n_io/license-sdk@4.0.0':
+    resolution: {integrity: sha512-z+PR1mkPodwprsnZQZ4iJh5XjKdEQZJMKh/ox5ceTqriXuvXd3tgcE++9kEoUAws1YdSOPkIj1IoE9YQO0IvmQ==}
+    engines: {node: '>=22.19.0'}
 
   '@napi-rs/canvas-android-arm64@1.0.11':
     resolution: {integrity: sha512-dtJS4FQEfH9OwSYLtMrEnj7T8DzBbJc/97LI/OkiWOYpW/iW5t6R/gcxVrUXS8l45gCVpwMufgucRe/pe0ISqA==}
@@ -17349,8 +17370,8 @@ packages:
   bn.js@5.2.3:
     resolution: {integrity: sha512-EAcmnPkxpntVL+DS7bO1zhcZNvCkxqtkd0ZY53h06GNQ3DEkkGZ/gKgmDv6DdZQGj9BgfSPKtJJ7Dp1GPP8f7w==}
 
-  body-parser@2.3.0:
-    resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
+  body-parser@2.4.0:
+    resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
     engines: {node: '>=18'}
 
   boolbase@1.0.0:
@@ -17900,6 +17921,10 @@ packages:
 
   content-type@2.0.0:
     resolution: {integrity: sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ==}
+    engines: {node: '>=18'}
+
+  content-type@2.1.0:
+    resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
     engines: {node: '>=18'}
 
   convert-source-map@2.0.0:
@@ -19119,8 +19144,8 @@ packages:
     resolution: {integrity: sha512-nDA9ADeINN8SA2u2wCtU+siWFTTDqQR37XvgPIDDmboWQeExz7X0mImxuaN+kJddliIqy2FpVRmnvRZ+j8i1/A==}
     engines: {node: '>=18.2.0'}
 
-  fast-uri@3.1.8:
-    resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
+  fast-uri@3.1.9:
+    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
 
   fast-wrap-ansi@0.2.0:
     resolution: {integrity: sha512-rLV8JHxTyhVmFYhBJuMujcrHqOT2cnO5Zxj37qROj23CP39GXubJRBUFF0z8KFK77Uc0SukZUf7JZhsVEQ6n8w==}
@@ -19245,8 +19270,8 @@ packages:
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
 
-  follow-redirects@1.16.1:
-    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
+  follow-redirects@1.16.2:
+    resolution: {integrity: sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -21718,8 +21743,8 @@ packages:
     resolution: {integrity: sha512-7vsKR2Bbs66th6IWCy/7SN4MSwlVt+G6QrHB631BjRUM8/LmvDugtYhi0uAmgvHS/+PVurfNBOmELf30rm0MZg==}
     engines: {node: '>= 10'}
 
-  nodemailer@10.0.14:
-    resolution: {integrity: sha512-eJoLFKg55fesSlzUekmfOv/SBXh4KUYT8oiQc2RLP0tfG0rbNMJBK7wgHJwXTJwqyKlSJMz9UzDZ4v+aHEvo8g==}
+  nodemailer@10.1.4:
+    resolution: {integrity: sha512-EsMnOR2oRv4LGnWvHgcVYkkQ4O2j8KO4WTw6l+PHR4sOXo8SAgIraxtEnGDmotjbhv0hDsu3IuDIFZm8iXwO4A==}
     engines: {node: '>=20.0.0'}
 
   nodemon@3.0.1:
@@ -23988,8 +24013,8 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
-  toml@4.2.0:
-    resolution: {integrity: sha512-TvAJjbHZlYmI323+srtqHQFyJsoWy6mI09ppkuj9+iRsqsVKG9fvTcOP7FHF2UCb0QSYtjEavffrKzdd0XgClg==}
+  toml@5.0.1:
+    resolution: {integrity: sha512-EqYNA/YvUNndrA2B3O2ojzLQoTQrBxeZ9UIjQwk8t10oe6n7dwclBwd9IdZQTOKwe6vWX+AXtl6IntXRbepdxQ==}
     engines: {node: '>=20'}
 
   toposort@2.0.2:
@@ -24383,6 +24408,10 @@ packages:
   undici@7.30.1:
     resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
+
+  undici@8.12.3:
+    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+    engines: {node: '>=22.19.0'}
 
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
@@ -24789,8 +24818,8 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
 
-  vue-i18n@11.4.5:
-    resolution: {integrity: sha512-rm8YJ6RpjOrkcgS2GLrZwLvs/VbhxbTSuEspbyXDo233+fPK0OMFNLOj3fdQYVKdOgcpSfLW91JhbqgpkkcBWA==}
+  vue-i18n@11.4.14:
+    resolution: {integrity: sha512-oRFZtQjRDRQtfxu7tFlsZlnCa5gPkg/KX89kJDKdC9bz4GIYgo3cAMaD0XFeUx/WHuKoVbDMRTIo9Hvg67HnPw==}
     engines: {node: '>= 22'}
     peerDependencies:
       vue: ^3.0.0
@@ -28652,23 +28681,23 @@ snapshots:
     dependencies:
       '@swc/helpers': 0.5.17
 
-  '@intlify/core-base@11.4.5':
+  '@intlify/core-base@11.4.14':
     dependencies:
-      '@intlify/devtools-types': 11.4.5
-      '@intlify/message-compiler': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/devtools-types': 11.4.14
+      '@intlify/message-compiler': 11.4.14
+      '@intlify/shared': 11.4.14
 
-  '@intlify/devtools-types@11.4.5':
+  '@intlify/devtools-types@11.4.14':
     dependencies:
-      '@intlify/core-base': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/core-base': 11.4.14
+      '@intlify/shared': 11.4.14
 
-  '@intlify/message-compiler@11.4.5':
+  '@intlify/message-compiler@11.4.14':
     dependencies:
-      '@intlify/shared': 11.4.5
+      '@intlify/shared': 11.4.14
       source-map-js: 1.2.2
 
-  '@intlify/shared@11.4.5': {}
+  '@intlify/shared@11.4.14': {}
 
   '@ioredis/as-callback@3.0.0': {}
 
@@ -29558,7 +29587,7 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
 
-  '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)':
+  '@modelcontextprotocol/node@2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)':
     dependencies:
       '@hono/node-server': 1.19.15(hono@4.13.11)
       '@modelcontextprotocol/server': 2.3.0
@@ -29659,12 +29688,12 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.27.0': {}
 
-  '@n8n_io/license-sdk@3.3.0':
+  '@n8n_io/license-sdk@4.0.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 2.0.0
-      undici: 7.30.1
+      undici: 8.12.3
 
   '@napi-rs/canvas-android-arm64@1.0.11':
     optional: true
@@ -34085,7 +34114,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.8
+      fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -34408,7 +34437,7 @@ snapshots:
 
   axios@1.20.0(debug@4.3.4(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      follow-redirects: 1.16.1(debug@4.3.4(supports-color@8.1.1))
+      follow-redirects: 1.16.2(debug@4.3.4(supports-color@8.1.1))
       form-data: 4.0.6
       https-proxy-agent: 5.0.1(supports-color@8.1.1)
       proxy-from-env: 2.1.0
@@ -34418,7 +34447,7 @@ snapshots:
 
   axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      follow-redirects: 1.16.1(debug@4.4.3(supports-color@8.1.1))
+      follow-redirects: 1.16.2(debug@4.4.3(supports-color@8.1.1))
       form-data: 4.0.6
       https-proxy-agent: 5.0.1(supports-color@8.1.1)
       proxy-from-env: 2.1.0
@@ -34509,10 +34538,10 @@ snapshots:
 
   bn.js@5.2.3: {}
 
-  body-parser@2.3.0(supports-color@8.1.1):
+  body-parser@2.4.0(supports-color@8.1.1):
     dependencies:
       bytes: 3.1.2
-      content-type: 2.0.0
+      content-type: 2.1.0
       debug: 4.4.3(supports-color@8.1.1)
       http-errors: 2.0.1
       iconv-lite: 0.7.3
@@ -35078,6 +35107,8 @@ snapshots:
   content-type@1.0.5: {}
 
   content-type@2.0.0: {}
+
+  content-type@2.1.0: {}
 
   convert-source-map@2.0.0: {}
 
@@ -36585,7 +36616,7 @@ snapshots:
   express@5.1.0(supports-color@8.1.1):
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0(supports-color@8.1.1)
+      body-parser: 2.4.0(supports-color@8.1.1)
       content-disposition: 1.0.0
       content-type: 1.0.5
       cookie: 0.7.2
@@ -36617,7 +36648,7 @@ snapshots:
   express@5.2.1(supports-color@8.1.1):
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0(supports-color@8.1.1)
+      body-parser: 2.4.0(supports-color@8.1.1)
       content-disposition: 1.0.0
       content-type: 1.0.5
       cookie: 0.7.2
@@ -36712,7 +36743,7 @@ snapshots:
       '@babel/runtime': 7.29.7
       tslib: 2.8.1
 
-  fast-uri@3.1.8: {}
+  fast-uri@3.1.9: {}
 
   fast-wrap-ansi@0.2.0:
     dependencies:
@@ -36857,11 +36888,11 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.16.1(debug@4.3.4(supports-color@8.1.1)):
+  follow-redirects@1.16.2(debug@4.3.4(supports-color@8.1.1)):
     optionalDependencies:
       debug: 4.3.4(supports-color@8.1.1)
 
-  follow-redirects@1.16.1(debug@4.4.3(supports-color@8.1.1)):
+  follow-redirects@1.16.2(debug@4.4.3(supports-color@8.1.1)):
     optionalDependencies:
       debug: 4.4.3(supports-color@8.1.1)
 
@@ -37463,7 +37494,7 @@ snapshots:
   http-proxy@1.18.1(debug@4.4.3(supports-color@8.1.1)):
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.16.1(debug@4.4.3(supports-color@8.1.1))
+      follow-redirects: 1.16.2(debug@4.4.3(supports-color@8.1.1))
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -38681,7 +38712,7 @@ snapshots:
       iconv-lite: 0.7.2
       libmime: 5.3.7
       linkify-it: 5.0.2
-      nodemailer: 10.0.14
+      nodemailer: 10.1.4
       punycode.js: 2.3.1
       tlds: 1.261.0
 
@@ -39821,7 +39852,7 @@ snapshots:
       shell-escape: 0.2.0
       ssh2: 1.16.0
 
-  nodemailer@10.0.14: {}
+  nodemailer@10.1.4: {}
 
   nodemon@3.0.1:
     dependencies:
@@ -41999,7 +42030,7 @@ snapshots:
       oauth4webapi: 3.8.6
       open: 7.4.2
       simple-lru-cache: 0.0.2
-      toml: 4.2.0
+      toml: 5.0.1
       winston: 3.14.2
     transitivePeerDependencies:
       - debug
@@ -42763,7 +42794,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
-  toml@4.2.0: {}
+  toml@5.0.1: {}
 
   toposort@2.0.2: {}
 
@@ -43234,6 +43265,8 @@ snapshots:
 
   undici@7.30.1: {}
 
+  undici@8.12.3: {}
+
   unicorn-magic@0.3.0: {}
 
   unified@11.0.5:
@@ -43668,11 +43701,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vue-i18n@11.4.5(vue@3.5.26(typescript@6.0.2)):
+  vue-i18n@11.4.14(vue@3.5.26(typescript@6.0.2)):
     dependencies:
-      '@intlify/core-base': 11.4.5
-      '@intlify/devtools-types': 11.4.5
-      '@intlify/shared': 11.4.5
+      '@intlify/core-base': 11.4.14
+      '@intlify/devtools-types': 11.4.14
+      '@intlify/shared': 11.4.14
       '@vue/devtools-api': 6.6.4
       vue: 3.5.26(typescript@6.0.2)
 

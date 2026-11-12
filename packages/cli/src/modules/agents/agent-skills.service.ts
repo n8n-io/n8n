@@ -306,7 +306,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.saveTrusted(
+			const result = await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,
@@ -318,6 +318,10 @@ export class AgentSkillsService {
 				context.user.id,
 				ctx,
 			);
+			if (pinned) {
+				await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
+			}
+			return result;
 		});
 
 		await this.skillService.refreshFollowingAgents(

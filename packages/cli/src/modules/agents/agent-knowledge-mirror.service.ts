@@ -30,7 +30,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
-} from './agent-knowledge-commands';
+} from '@/modules/knowledge/retrieval/commands';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -45,7 +45,8 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
-} from './agent-knowledge-retrieval';
+} from '@/modules/knowledge/retrieval/retrieval-schemas';
+
 import {
 	type AgentSandboxRuntime,
 	AgentSandboxRuntimeService,

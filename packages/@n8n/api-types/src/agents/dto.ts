@@ -54,6 +54,7 @@ export const AGENT_SESSION_STATUSES = [
 	'error',
 	'cancelled',
 	'interrupted',
+	'awaiting',
 ] as const;
 
 export const AGENT_SESSION_ORIGINS = [
@@ -459,6 +460,11 @@ export class AgentChatQueueReorderDto extends Z.class({
 	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
 }) {}
 
+export class AgentTaskApprovalDto extends Z.class({
+	toolCallId: z.string().min(1),
+	resumeData: z.unknown(),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
@@ -567,6 +573,13 @@ export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
 export class PublishAgentDto extends Z.class({
 	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
+	/** The draft shown before confirmation. Omit when publishing a saved version. */
+	draft: z
+		.object({
+			versionId: z.string().min(1),
+			skillVersions: z.record(z.string(), z.number().int().positive()),
+		})
+		.optional(),
 }) {}
 
 export class RevertAgentToVersionDto extends Z.class({
