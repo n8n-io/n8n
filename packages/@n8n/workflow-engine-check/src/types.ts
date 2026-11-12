@@ -35,7 +35,11 @@ export type EngineV2ReasonCode =
 	| 'LOOP_MULTIPLE_RETURNS'
 	| 'NESTED_LOOP'
 	| 'LOOP_EXITS_MID_BODY'
-	| 'INPUT_SLOT_CONVERGENCE';
+	| 'INPUT_SLOT_CONVERGENCE'
+	| 'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE'
+	| 'LOOP_DONE_OUTPUT_FEEDS_BODY'
+	| 'LOOP_INPUT_NOT_FIRST'
+	| 'LOOP_WITHOUT_RETURN';
 
 /**
  * - `temporary`: engine v2 will support this later. The message tells the user to run

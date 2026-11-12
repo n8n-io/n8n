@@ -59,7 +59,8 @@ function findReasonsForTrigger(
 	const returns = new Set<Edge>();
 
 	// Like the converter: mark each loop's returns, cut them, and look again for the loops inside.
-	for (let remaining = edges; ; remaining = remaining.filter((edge) => !returns.has(edge))) {
+	let remaining = edges;
+	for (let outermost = true; ; outermost = false) {
 		const successors = new Map<string, string[]>();
 		for (const e of remaining) {
 			const list = successors.get(e.from);
@@ -83,10 +84,14 @@ function findReasonsForTrigger(
 			const entries = entered.size > 0 ? [...entered] : loopNodes;
 
 			if (loopNodes.length === 0) {
+				const [first] = memberList
+					.map((name) => nodesByName.get(name)!)
+					.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
 				reasons.push(
 					reason(
 						'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
-						`The nodes ${quote(memberList)} form a cycle. Engine v2 runs only cycles through a Split In Batches node.`,
+						`"${first.name}" is part of a cycle without a Split In Batches node. Engine v2 runs only cycles through a Split In Batches node.`,
+						first.name,
 					),
 				);
 			} else if (midBodyEntry !== undefined) {
@@ -108,17 +113,27 @@ function findReasonsForTrigger(
 			} else {
 				const loopReturns = remaining.filter((e) => e.to === entries[0] && members.has(e.from));
 				for (const edge of loopReturns) returns.add(edge);
-				if (remaining === edges) {
-					loops.push({ loopNode: entries[0], members, returns: loopReturns });
-				}
+				if (outermost) loops.push({ loopNode: entries[0], members, returns: loopReturns });
 			}
 		}
 		// The converter stops at the first loop it cannot read, so the rules below would guess.
 		if (reasons.length > 0) return reasons;
+		remaining = remaining.filter((edge) => !returns.has(edge));
 	}
 
+	const returnedTo = new Set([...returns].map((edge) => edge.to));
+	const withoutReturn = liveNodes.filter((name) => isLoopNode(name) && !returnedTo.has(name));
+
 	return [
-		...loops.flatMap((loop) => findLoopShapeReasons(loop, edges, isLoopNode, reason)),
+		...withoutReturn.map((name) =>
+			reason(
+				'LOOP_WITHOUT_RETURN',
+				`No connection returns to "${name}". Engine v2 runs a Split In Batches node only as a loop, so connect the end of the loop back to it.`,
+				name,
+			),
+		),
+		...loops.flatMap((loop) => findLoopShapeReasons(loop, edges, returnedTo, reason)),
+		...findCutOffReasons(trigger.name, edges, reason),
 		...findInputSlotReasons(edges, returns, new Set(loops.map((loop) => loop.loopNode)), reason),
 	];
 }
@@ -127,12 +142,13 @@ function findReasonsForTrigger(
 function findLoopShapeReasons(
 	{ loopNode, members, returns }: Loop,
 	edges: Edge[],
-	isLoopNode: (name: string) => boolean,
+	returnedTo: Set<string>,
 	reason: MakeReason,
 ): EngineV2Reason[] {
 	const reasons: EngineV2Reason[] = [];
 
-	for (const inner of [...members].filter((name) => name !== loopNode && isLoopNode(name))) {
+	// An inner Split In Batches node without a return gets LOOP_WITHOUT_RETURN instead.
+	for (const inner of [...members].filter((name) => name !== loopNode && returnedTo.has(name))) {
 		reasons.push(
 			reason(
 				'NESTED_LOOP',
@@ -146,7 +162,7 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_MULTIPLE_RETURNS',
-				`${returns.length} connections return to "${loopNode}". Engine v2 supports only one return connection for each loop yet.`,
+				`${returns.length} connections return to "${loopNode}". Engine v2 does not support more than one return connection for a loop yet.`,
 				loopNode,
 			),
 		);
@@ -157,7 +173,27 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_MULTIPLE_ENTRIES',
-				`${entries.length} connections enter the loop of "${loopNode}". Engine v2 supports only one connection into a loop yet.`,
+				`${entries.length} connections enter the loop of "${loopNode}". Engine v2 does not support more than one connection into a loop yet.`,
+				loopNode,
+			),
+		);
+	}
+
+	if (edges.some((e) => e.to === loopNode && e.inputIndex !== 0)) {
+		reasons.push(
+			reason(
+				'LOOP_INPUT_NOT_FIRST',
+				`A connection goes into an input of "${loopNode}" other than the first. Engine v2 needs every connection into a Split In Batches node to use its first input.`,
+				loopNode,
+			),
+		);
+	}
+
+	if (edges.some((e) => e.from === loopNode && e.outputIndex === 0 && members.has(e.to))) {
+		reasons.push(
+			reason(
+				'LOOP_DONE_OUTPUT_FEEDS_BODY',
+				`The done output of "${loopNode}" connects to a node inside its own loop. A node cannot run both in each pass and after the loop.`,
 				loopNode,
 			),
 		);
@@ -171,13 +207,43 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_EXITS_MID_BODY',
-				`"${from}" connects to a node outside the loop of "${loopNode}". Engine v2 supports only the done output of "${loopNode}" as the way out of the loop yet.`,
+				`"${from}" connects to a node outside the loop of "${loopNode}". Engine v2 does not support a way out of the loop other than the done output of "${loopNode}" yet.`,
 				from,
 			),
 		);
 	}
 
 	return reasons;
+}
+
+/**
+ * A node that the trigger reaches only through a later input of a disabled node loses
+ * its way in when the disabled node is bypassed. Engine v2 then waits for it forever.
+ */
+function findCutOffReasons(
+	triggerName: string,
+	edges: Edge[],
+	reason: MakeReason,
+): EngineV2Reason[] {
+	const reached = new Set([triggerName]);
+	for (let grew = true; grew; ) {
+		grew = false;
+		for (const edge of edges) {
+			if (reached.has(edge.from) && !reached.has(edge.to)) {
+				reached.add(edge.to);
+				grew = true;
+			}
+		}
+	}
+
+	const cutOff = edges.filter((e) => reached.has(e.to) && !reached.has(e.from));
+	return [...new Set(cutOff.map((e) => e.from))].map((name) =>
+		reason(
+			'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE',
+			`"${name}" gets data only through an input of a disabled node other than the first. Engine v2 would wait for it forever. Enable the disabled node, or connect "${name}" another way.`,
+			name,
+		),
+	);
 }
 
 /** Entries into a loop node are left to `LOOP_MULTIPLE_ENTRIES`, so one shape gives one reason. */

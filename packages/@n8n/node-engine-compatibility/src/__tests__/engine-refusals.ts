@@ -201,6 +201,47 @@ export const engineRefusals: EngineRefusal[] = [
 		engineError: 'more than one edge into input slot 0',
 		check: { code: 'INPUT_SLOT_CONVERGENCE' },
 	},
+	{
+		name: 'a Split In Batches node has no return edge',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
+			Loop: outputs([to('After')], [to('Body')]),
+		}),
+		engineError: 'has no back-edge returning to it',
+		check: { code: 'LOOP_WITHOUT_RETURN' },
+	},
+	{
+		name: 'a return edge feeds an input of the Split In Batches node other than the first',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
+			Loop: outputs([to('After')], [to('Body')]),
+			Body: outputs([to('Loop', 1)]),
+		}),
+		engineError: "returns feed the batch node's slot 0",
+		check: { code: 'LOOP_INPUT_NOT_FIRST' },
+	},
+	{
+		name: 'the done output of a Split In Batches node feeds its own loop',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body')], {
+			Loop: outputs([to('Body', 1)], [to('Body')]),
+			Body: outputs([to('Loop')]),
+		}),
+		engineError: 'a member of its own loop',
+		check: { code: 'LOOP_DONE_OUTPUT_FEEDS_BODY' },
+	},
+	{
+		// Only the first input of a disabled node passes data on, so Side loses its way in.
+		name: 'a node is reached only through a later input of a disabled node',
+		workflow: v1Workflow(
+			[TRIGGER, noOp('A'), { ...noOp('Disabled'), disabled: true }, noOp('Side'), noOp('Join')],
+			{
+				[TRIGGER.name]: mainTo('A'),
+				A: outputs([to('Disabled', 1), to('Join')]),
+				Disabled: outputs([to('Side')]),
+				Side: outputs([to('Join', 1)]),
+			},
+		),
+		engineError: 'feeds a node the trigger reaches from one it cannot reach',
+		check: { code: 'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE' },
+	},
 ];
 
 /*
