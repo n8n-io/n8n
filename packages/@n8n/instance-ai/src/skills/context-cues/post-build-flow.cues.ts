@@ -1,15 +1,15 @@
-import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
+import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
 
 /**
- * Context cues for the `post-build-flow` skill. The build tool activates
- * the skill after a direct build, and it stays active through verification,
+ * Context cues for the `post-build-flow` skill. The build tool tells
+ * the agent to load the skill after a direct build, and it stays loaded through verification,
  * setup, live tests, cleanup, publishing and the final summary. Each phase
  * looks different in the step text, so retrieval scores these cues on
  * every step and each one matches in its own phase.
  */
 export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 	id: 'post-build-flow',
-	isActive: whileSkillActive('post-build-flow'),
+	isActive: whileSkillLoaded('post-build-flow'),
 	cues: [
 		// Verification
 		{

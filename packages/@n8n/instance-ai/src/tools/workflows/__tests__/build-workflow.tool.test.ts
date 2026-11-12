@@ -11,7 +11,6 @@ import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
-import { loadInstanceAiSkills } from '../../../skills/skills';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
@@ -661,23 +660,22 @@ describe('createBuildWorkflowTool', () => {
 	it.each([
 		['reusable', 'post-build-flow'],
 		['one-off', 'one-off-operations'],
-	] as const)('activates the selected skill for a %s build', async (executionIntent, skillId) => {
-		const loadSkill = vi.fn(loadInstanceAiSkills().loadSkill);
-		const { context, filePath } = makeContext({ source: 'workflow source' });
-		const result = await executeTool<BuildToolOutput>(
-			createBuildWorkflowTool(context),
-			{ filePath, name: 'Request tracker', executionIntent },
-			{ loadSkill },
-		);
-		expect(result.success).toBe(true);
-		expect(loadSkill).toHaveBeenCalledWith(skillId);
-		expect(result.postBuildFlow?.instructions).toBe(
-			`Follow the active ${skillId} skill instructions.`,
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			`Follow the active ${skillId} skill instructions now`,
-		);
-	});
+	] as const)(
+		'tells the agent to load the %s follow-up skill',
+		async (executionIntent, skillId) => {
+			const { context, filePath } = makeContext({ source: 'workflow source' });
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Request tracker',
+				executionIntent,
+			});
+			expect(result.success).toBe(true);
+			expect(result.postBuildFlow?.instructions).toBe(`Load the ${skillId} skill with load_skill.`);
+			expect(result.postBuildFlow?.guidance).toContain(
+				`Load the ${skillId} skill with load_skill now and follow it`,
+			);
+		},
+	);
 
 	it('hands one-off builds to the one-off-operations skill', async () => {
 		const source = 'workflow source from workspace';

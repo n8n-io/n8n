@@ -16,12 +16,7 @@ The collector counts each main load or reference read once per tool-call ID.
 Model retries and repeated delivery of the same tool event do not add attempts.
 A new tool call is a new attempt, even when it retries a failed load. Checkpoints
 retain the counters and operation IDs across process restart and resume. SSE
-history replay does not enter the collector. A resume does not count a skill
-first loaded in that run as carry-forward.
-
-Revocations are recorded after the runtime saves the updated active selections.
-They remain measurable if cancellation prevents the next model call. Delivery
-metrics wait until the runtime prepares an allowed model call.
+history replay does not enter the collector.
 
 ## Meanings
 
@@ -30,10 +25,6 @@ metrics wait until the runtime prepares an allowed model call.
 | `attempt_count`, `attempted_ids` | Main skill calls, including failures and pending calls. This measures Assistant selection intent. |
 | `load_count`, `loaded_ids` | Main instructions returned successfully. This does not prove that the model followed them. |
 | `failure_count` | Main calls that failed. Derive pending calls as `attempt_count - load_count - failure_count`. |
-| `carried_count`, `carried_ids` | Eligible, unchanged active skills included in a later turn's model context. Historical mentions alone do not count. |
-| `refresh_count`, `refreshed_ids` | Changed active skill versions included in model context. |
-| `revocation_count` | Active selections removed by the runtime as non-retryable unavailability. |
-| `unavailable_count` | Active skill versions unavailable temporarily. Their selections remain recoverable. These do not count as delivery or revocation. |
 | `reference_attempt_count`, `reference_read_count`, `reference_failure_count` | Reference operations, separate from main skill loads. |
 | `failures` | Counts by main/reference operation and a bounded reason: `temporarily_unavailable`, `unavailable`, `invalid_reference`, or `tool_error`. |
 
@@ -57,6 +48,6 @@ additive fields.
 The Assistant service tests capture the actual call to `Telemetry.track` for
 completed, suspended, and errored runs after a failed skill load. They validate
 the captured payload against the registry and check checkpoint state. Collector
-and runtime tests cover successful loads, carry-forward, edits, compaction
-recovery, revocation, temporary failures, references, and duplicate prevention.
+tests cover successful loads, temporary failures, references, and duplicate
+prevention.
 These checks use local mocks; they do not send analytics to production.

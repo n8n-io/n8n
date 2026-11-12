@@ -21,7 +21,6 @@ import {
 	type JSONObject,
 	type JSONValue,
 	type Thread,
-	type RuntimeSkillStateStore,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -32,7 +31,6 @@ import {
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { z } from 'zod';
 
 import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 
@@ -52,20 +50,6 @@ function parseJsonSafe(text: string): unknown {
 	} catch {
 		return undefined;
 	}
-}
-
-const activeSkillStatesSchema = z.array(
-	z.object({
-		agentName: z.string(),
-		resourceId: z.string(),
-		skillIds: z.array(z.string()),
-		versions: z.record(z.string().nullable()).optional(),
-	}),
-);
-
-function activeSkillStates(metadata: Thread['metadata']) {
-	const parsed = activeSkillStatesSchema.safeParse(metadata?.activeSkillStates);
-	return parsed.success ? parsed.data : [];
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -165,7 +149,6 @@ function workingMemoryKey(params: {
 }
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
-	'activeSkillStates',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -200,35 +183,6 @@ export class TypeORMAgentMemory
 		BuiltObservationLogTaskLockStore,
 		BuiltObservationResumeStore
 {
-	readonly skillState: RuntimeSkillStateStore = {
-		load: async ({ threadId, resourceId, agentName }) => {
-			const thread = await this.getThread(threadId);
-			const state = activeSkillStates(thread?.metadata).find(
-				(state) => state.resourceId === resourceId && state.agentName === agentName,
-			);
-			return state
-				? { skillIds: state.skillIds, ...(state.versions ? { versions: state.versions } : {}) }
-				: undefined;
-		},
-		save: async ({ threadId, resourceId, agentName }, state) => {
-			const updated = await this.patchThread({
-				threadId,
-				update: (thread) => ({
-					metadata: {
-						...thread.metadata,
-						activeSkillStates: [
-							...activeSkillStates(thread.metadata).filter(
-								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
-							),
-							{ resourceId, agentName, ...state },
-						],
-					},
-				}),
-			});
-			if (!updated) throw new UnexpectedError('Cannot save active skills for a missing thread');
-		},
-	};
-
 	private readonly threadMutationQueues = new Map<string, Promise<unknown>>();
 	private readonly observationLog: TypeORMObservationLogStore;
 

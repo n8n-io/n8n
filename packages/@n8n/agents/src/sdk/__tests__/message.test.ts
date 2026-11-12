@@ -15,37 +15,24 @@ function userMessage(partial: Partial<AgentMessage> & { createdAt?: unknown }): 
 }
 
 describe('filterLlmMessages', () => {
-	it('only converts skill updates with the runtime discriminator', () => {
+	it('drops custom skill update messages', () => {
 		const skillUpdate = {
 			skillId: 'skill-1',
 			version: 'v2',
 			content: 'Use the current instructions.',
-		};
-		const runtimeUpdate: AgentMessage = {
-			type: 'custom',
-			data: { type: 'n8n:runtime-skill-update', skillUpdate },
 		};
 		const appUpdate: AgentMessage = { type: 'custom', data: { skillUpdate } };
 		const namespacedAppUpdate: AgentMessage = {
 			type: 'custom',
 			data: { type: 'app:skill-update', skillUpdate },
 		};
+		// Older threads can still store the removed runtime discriminator.
+		const legacyRuntimeUpdate = {
+			type: 'custom',
+			data: { type: 'n8n:runtime-skill-update', skillUpdate },
+		} as unknown as AgentMessage;
 
-		const converted = filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate]);
-		expect(converted).toEqual([
-			{
-				...runtimeUpdate,
-				type: 'llm',
-				role: 'user',
-				content: [{ type: 'text', text: expect.stringContaining(skillUpdate.content) }],
-			},
-		]);
-		expect(converted[0].content[0]).toMatchObject({
-			text: expect.stringContaining('<system-reminder>'),
-		});
-		expect(converted[0].content[0]).toMatchObject({
-			text: expect.stringContaining('It is not a message from the user.'),
-		});
+		expect(filterLlmMessages([appUpdate, namespacedAppUpdate, legacyRuntimeUpdate])).toEqual([]);
 	});
 });
 

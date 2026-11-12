@@ -118,14 +118,13 @@ export async function executeTool(
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
 
-	const loadSkill = anchorSkillLoader(executionContext.loadSkill, toolCallId);
 	if (builtTool.suspendSchema) {
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
 			suspend: createSuspendHandler(executionContext),
 			resumeData: isCancelled ? undefined : resumeData,
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
-			...createToolContext(builtTool, executionContext, parentTelemetry, toolCallId, loadSkill),
+			...createToolContext(builtTool, executionContext, parentTelemetry, toolCallId),
 			suspendPayload: executionContext.suspendPayload,
 			continuation: executionContext.continuation,
 			resumeSchema: executionContext.resumeSchema,
@@ -133,24 +132,8 @@ export async function executeTool(
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx = createToolContext(
-		builtTool,
-		executionContext,
-		parentTelemetry,
-		toolCallId,
-		loadSkill,
-	);
+	const ctx = createToolContext(builtTool, executionContext, parentTelemetry, toolCallId);
 	return await builtTool.handler(args, ctx);
-}
-
-function anchorSkillLoader(
-	loadSkill: ToolExecutionContext['loadSkill'],
-	toolCallId: string | undefined,
-): ToolExecutionContext['loadSkill'] {
-	if (!loadSkill) return undefined;
-	// Keep skill content on the tool result. An explicit anchor takes precedence.
-	return async (skillId, anchor) =>
-		await loadSkill(skillId, anchor ?? (toolCallId ? { toolCallId } : undefined));
 }
 
 function createToolContext(
@@ -158,14 +141,12 @@ function createToolContext(
 	executionContext: ToolExecutionContext,
 	parentTelemetry: BuiltTelemetry | undefined,
 	toolCallId: string | undefined,
-	loadSkill: ToolExecutionContext['loadSkill'],
 ): ToolContext {
 	return {
 		parentTelemetry,
 		toolCallId,
 		toolName: builtTool.name,
 		runId: executionContext.runId,
-		...(loadSkill ? { loadSkill } : {}),
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,

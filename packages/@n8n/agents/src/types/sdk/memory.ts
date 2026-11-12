@@ -12,7 +12,6 @@ import type {
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
 } from './observation-log';
-import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -38,8 +37,6 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
-	/** Retains active skills across separate runs, including compacted conversations. */
-	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;

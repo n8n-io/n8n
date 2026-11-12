@@ -134,11 +134,7 @@
 							"content": [
 								{
 									"type": "text",
-									"text": "{\"skillId\":\"summary-marker\",\"active\":true}"
-								},
-								{
-									"type": "text",
-									"text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+									"text": "[Skill: \"Summary marker\"]\n[Skill id: \"summary-marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
 								}
 							]
 						}

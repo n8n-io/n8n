@@ -149,11 +149,7 @@
 							"content": [
 								{
 									"type": "text",
-									"text": "{\"skillId\":\"engineering-status\",\"active\":true}"
-								},
-								{
-									"type": "text",
-									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill id: \"engineering-status\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
 								}
 							]
 						}
@@ -285,11 +281,7 @@
 							"content": [
 								{
 									"type": "text",
-									"text": "{\"skillId\":\"engineering-status\",\"active\":true}"
-								},
-								{
-									"type": "text",
-									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill id: \"engineering-status\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
 								}
 							]
 						}

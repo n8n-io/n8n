@@ -9,7 +9,6 @@ import {
 	workflowSetupNodeSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
-	skillUpdatePayloadSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
@@ -447,11 +446,6 @@ function mapMessageChunk(
 	base: EventBase,
 ): InstanceAiEvent | null {
 	const message = getRecordProperty(chunk, 'message');
-	const data = getRecordProperty(message, 'data');
-	if (message?.type === 'custom' && data?.type === 'n8n:runtime-skill-update') {
-		const update = skillUpdatePayloadSchema.safeParse(data.skillUpdate);
-		return update.success ? { type: 'skill-update', ...base, payload: update.data } : null;
-	}
 	if (message?.role !== 'tool') return null;
 
 	const content = getArrayProperty(message, 'content');

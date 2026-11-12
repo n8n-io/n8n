@@ -145,7 +145,6 @@ export function extendRuntimeSkillSource(
 
 	const extended: RuntimeSkillSource = {
 		...source,
-		onContext: (usage) => source.onContext?.(usage),
 		registry: mergeRegistry(source.registry),
 		loadSkill: async (skillId) =>
 			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
