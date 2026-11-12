@@ -350,7 +350,7 @@ export function randomString(minLength: number, maxLength?: number): string {
  * Checks if a value is an object with a specific key and provides a type guard for the key.
  */
 export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is Record<T, unknown> {
-	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
+	return value !== null && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 /**
