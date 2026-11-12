@@ -245,6 +245,45 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedInstructions);
 	});
 
+	it.each([
+		'Use C:\\reports\\daily, an unmatched `, github_*, [metric_id], a~b, <x> & > 0',
+		'Use **detect_anomalies(as_of)** for github_* and custom:<metric_id> & report results',
+		'Use `github_* &lt;metric_id&gt;`\n\n```text\nC:\\reports\\daily github_* <metric_id> &lt; &\n```\n\nFinish',
+	])('keeps literal characters and code after repeated edits: %s', async (instructions) => {
+		const { wrapper, editor } = await renderEditor(instructions);
+
+		for (const suffix of ['.', '..']) {
+			editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
+			const updatedInstructions = `${instructions}${suffix}`;
+			expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedInstructions);
+			await wrapper.rerender({ modelValue: updatedInstructions, showToolbar: 'never' });
+			editor.commands.setContent(updatedInstructions, {
+				contentType: 'markdown',
+				emitUpdate: false,
+			});
+			expect(editor.getMarkdown()).toBe(updatedInstructions);
+		}
+	});
+
+	it.each([
+		'Use \\*literal\\* and \\`ticks\\` with identifier_a',
+		'**github_\\*** and identifier_a',
+		'**github_\\*\\*** and identifier_a',
+		'Use [run_bigquery](https://example.com/run_bigquery) with identifier_a',
+		'\\> literal quote with identifier_a',
+		'Use <metric>**literal**</metric> with identifier_a',
+		'| Key | Value |\n| --- | --- |\n| metric_id | A & <metric_id> |\n\nFinish identifier_a',
+	])('keeps Markdown structure after saving and loading: %s', async (instructions) => {
+		const { editor } = await renderEditor(instructions);
+		editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
+		const document = editor.getJSON();
+
+		editor.commands.setContent(editor.getMarkdown(), { contentType: 'markdown' });
+
+		expect(editor.getJSON()).toEqual(document);
+		expect(editor.getMarkdown()).toContain('identifier_a.');
+	});
+
 	it('does not show the collapse control by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {

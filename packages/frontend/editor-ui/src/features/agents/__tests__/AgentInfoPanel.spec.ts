@@ -8,6 +8,10 @@ import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
+vi.mock('@tiptap/vue-3/menus', () => ({
+	BubbleMenu: { template: '<div><slot /></div>' },
+}));
+
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
 // Reactive holder mirroring the real composable, whose verified-default cache
@@ -281,6 +285,34 @@ describe('AgentInfoPanel', () => {
 		wrapper.getComponent({ name: 'N8nMarkdownEditor' }).vm.$emit('update:modelValue', 'Crisp.');
 
 		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
+	it('keeps identifiers and placeholders in an instructions config update', async () => {
+		const { N8nMarkdownEditor } =
+			await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+		const instructions =
+			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
+		const wrapper = mount(AgentInfoPanel, {
+			props: {
+				config: { name: 'Research agent', model: 'anthropic/claude-sonnet-4-5', instructions },
+				showModel: false,
+			},
+			global: { stubs: { N8nMarkdownEditor } },
+		});
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-test-id="n8n-markdown-editor-content"] p').exists()).toBe(true);
+		});
+		const paragraph = wrapper.get('[data-test-id="n8n-markdown-editor-content"] p');
+		expect(paragraph.text()).toBe(instructions);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+
+		paragraph.element.textContent = `${instructions}.`;
+
+		await vi.waitFor(() => {
+			expect(wrapper.emitted('update:config')?.at(-1)).toEqual([
+				{ instructions: `${instructions}.` },
+			]);
+		});
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
