@@ -2344,6 +2344,28 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('does not run the agent when the test chat marker cannot be stored', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const session = mock<SimulationSession>();
+		session.markTestChat.mockRejectedValue(new Error('Could not mark the test chat'));
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				message: 'hello',
+				user,
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				simulation: vi.fn().mockResolvedValue(session),
+			}),
+		).catch(() => undefined);
+
+		expect(session.markTestChat).toHaveBeenCalled();
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+	});
+
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
 			service,
