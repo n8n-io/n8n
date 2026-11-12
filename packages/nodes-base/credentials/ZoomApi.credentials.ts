@@ -15,7 +15,7 @@ export class ZoomApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName:
-				'On 1 June, 2023 Zoom will remove JWT App support. You will have to connect to Zoom using the Oauth2 auth method. <a target="_blank" href="https://developers.zoom.us/docs/integrations/oauth/">More details (zoom.us)</a>',
+				'On 1 June, 2023 Zoom will remove JWT App support. You will have to connect to Zoom using the Oauth2 auth method. <a target="_blank" href="https://developers.zoom.us/docs/integrations/create/">More details (zoom.us)</a>',
 			name: 'notice',
 			type: 'notice',
 			default: '',
