@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_b242f9c6b78e37::t_2276fff5feb3ff 137-138
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_b242f9c6b78e37::t_0770da561ed869 90-95
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleGemini/EmbeddingsGoogleGemini.node.ts
+  s_b242f9c6b78e37::t_2276fff5feb3ff 132-133
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleGemini/test/EmbeddingsGoogleGemini.node.test.ts
+  s_b242f9c6b78e37::t_cab7d11e1a46d3 63-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1d0dfbf39f25058455462268d05dd14ab2d730ea",
+  "prompts": {},
+  "sessions": {
+    "s_b242f9c6b78e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c47c8ce-9dd8-4b9f-b5c7-7cd4ea9db2a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
