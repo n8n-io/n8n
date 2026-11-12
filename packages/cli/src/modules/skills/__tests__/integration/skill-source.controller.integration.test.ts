@@ -306,6 +306,7 @@ describe('SkillSourceController', () => {
 				sourceId: data.sourceId,
 				type: 'github',
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
 				canStopSyncing: true,
 			});

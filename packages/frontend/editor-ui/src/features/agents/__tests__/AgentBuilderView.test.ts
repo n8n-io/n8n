@@ -6151,7 +6151,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			await wrapper.setProps({ artifactAgentPending: false });
 			await nextTick();
 
-			expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+			expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 			expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 
 			finishHydrating();
@@ -6839,7 +6839,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		// initialize() hasn't resolved yet → spinner visible, content hidden.
 		await nextTick();
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 
 		// Let initialize() complete.
@@ -6847,7 +6847,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// Spinner gone, content rendered.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
@@ -6859,7 +6859,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// initialized is set in the `finally` block, so the spinner must be gone.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		// The catch block must have surfaced the error to the user.
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
