@@ -9,15 +9,9 @@ https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 ## Summary
 
 <!--
-Add a concise summary what the PR does in full sentences.
+Add a concise summary what the PR does and why, in full sentences.
+Keep the length in proportion to the complexity of the problem that the PR solves. A small fix needs one or two sentences.
 Add screenshots or videos for UI changes.
--->
-
-## Why
-
-<!--
-State the problem or the constraint that makes the current code unfit. Do not repeat the Summary.
-Add a rejected alternative only when a reviewer would ask about it, in one or two sentences.
 -->
 
 ## How to test

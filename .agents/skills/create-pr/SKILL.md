@@ -87,8 +87,7 @@ comma and a space: `fix(core, editor): ...`.
 7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
-   - **Summary**: describe what the PR does
-   - **Why**: explain why the change is needed (see Why below)
+   - **Summary**: describe what the PR does and why (see Summary below)
    - **How to test**: write the steps that a person follows in the product to see the change work. Include an example workflow if appropriate
    - **Test command**: give the command that runs the tests for the change (see How to test below)
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
@@ -96,9 +95,8 @@ comma and a space: `fix(core, editor): ...`.
 
    Before you create the PR, proofread the body with these checks. Rewrite
    each sentence that fails a check:
-   1. The Summary and the Why together are under the word budget. If not,
-      first remove the details that the reviewer reads in the diff, then
-      shorten the Why.
+   1. The length of the Summary matches the complexity of the problem. If
+      not, first remove the details that the reviewer reads in the diff.
    2. Each sentence names who does what: a component, a process, or a person
       as the subject, with a plain technical verb.
    3. Each domain term has a plain definition where it first appears.
@@ -152,8 +150,9 @@ Based on `.github/pull_request_template.md`:
 Write for a reviewer who does not know this area of the code. The reviewer
 must understand the change before they open the diff. Use ASD-STE100
 Simplified Technical English: short sentences, active voice.
-1. Keep the Summary and the Why together under about 200 words. A small PR
-   needs much less.
+1. Keep the length of the Summary in proportion to the complexity of the
+   problem that the PR solves. A small fix needs one or two sentences. A
+   large PR rarely needs more than about 200 words.
 2. Define each domain term in plain words where it first appears. Do not use
    a ticket ID or an internal name as an explanation.
 3. Leave out details that the reviewer reads in the diff: error cases, status
@@ -163,29 +162,23 @@ Simplified Technical English: short sentences, active voice.
 4. Use plain technical verbs, not metaphors ("passes the value", not
    "hands the value" or "lets the value through").
 
-### Summary: what the PR does
-1. Start with one to three sentences of background for a reader who is new to
-   the area. Then state what the PR does.
+### Summary: what the PR does and why
+1. If the reader needs background, start with one to three sentences of it.
+   Then state what the PR does.
 2. Write **prose** about behaviour, not a list of code edits. Name a class or
    a function when it represents an essential/core concept and it helps
    the reader to navigate the change.
 3. If the PR changes no product code, say so in the first sentence
    (for example: "This PR only adds tests.").
-4. Do not justify the change here. The justification goes in the Why.
-5. Include screenshots or videos for UI changes.
-
-### Why: the reasoning
-Always fill the `## Why` section. The Summary and the core of the
-Why are what the reviewer needs most. Keep the core short:
-1. Do not repeat the Summary.
-2. State the problem or the constraint that makes the pre-existing code unfit.
-3. If there are accepted gaps, or changes for existing code paths, state them
+4. State why the change is needed: the problem or the constraint that makes
+   the pre-existing code unfit.
+5. If there are accepted gaps, or changes for existing code paths, state them
    in a separate short paragraph.
+6. Include screenshots or videos for UI changes.
 
-Add rejected alternatives only when a reviewer would otherwise ask about them,
-if any. Use one or two sentences for each alternative: state the concrete
-reason it fails. Write an alternative that was never built in the conditional.
-Together, the alternatives must be shorter than the core Why section.
+Add rejected alternatives only when a reviewer would otherwise ask about them.
+Use one or two sentences for each alternative: state the concrete reason it
+fails. Write an alternative that was never built in the conditional.
 
 ### How to test Section
 - Write steps for a person who tests the product change by hand: what to set
