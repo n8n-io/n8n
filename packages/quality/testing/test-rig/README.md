@@ -1,8 +1,8 @@
 # Test rig
 
-`@n8n/test-rig` runs a real n8n stack in Docker and gives a test full control over it. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process at the exact moment it matters, then signal, freeze or restart containers, and read Postgres, Redis and the logs to see what happened.
+`@n8n/test-rig` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
 
-The rig needs no change to n8n itself. It works on released images and on images that you build yourself.
+The rig needs no change to n8n. It works on released images and on local builds.
 
 ## Set up
 
@@ -15,11 +15,11 @@ pnpm turbo build --filter='@n8n/test-rig^...' > build.log 2>&1
 
 ## How it works
 
-The rig builds on the stacks from the `n8n-containers` package. It adds a small preload script to every n8n process through `NODE_OPTIONS`, and the preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container, and it reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
+The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
 
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it, but it can also only log the call. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`.
 
 | Field | Meaning |
 |---|---|
@@ -39,4 +39,4 @@ Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`.
 
 ## Limits
 
-Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can also change between versions.
+Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can change between versions.
