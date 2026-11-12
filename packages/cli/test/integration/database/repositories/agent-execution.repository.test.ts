@@ -1155,6 +1155,85 @@ describe('AgentExecutionRepository', () => {
 		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
 	});
 
+	it('deletes descendant sessions and execution history only in the same project', async () => {
+		// AGENT-993: Session deletion must follow parentThreadId links across agents.
+		const otherProject = await createTeamProject();
+		const childAgent = await agentRepo.save(
+			agentRepo.create({
+				id: uuid(),
+				name: 'Child Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+			}),
+		);
+		const otherProjectAgent = await agentRepo.save(
+			agentRepo.create({
+				id: uuid(),
+				name: 'Other Project Agent',
+				projectId: otherProject.id,
+				integrations: [],
+				tools: {},
+			}),
+		);
+		const parent = await createThread();
+		const child = await createThread({
+			agentId: childAgent.id,
+			agentName: childAgent.name,
+			parentThreadId: parent.id,
+			parentAgentId: parent.agentId,
+		});
+		const grandchild = await createThread({
+			parentThreadId: child.id,
+			parentAgentId: child.agentId,
+		});
+		const sibling = await createThread({
+			agentId: childAgent.id,
+			agentName: childAgent.name,
+			parentThreadId: parent.id,
+			parentAgentId: parent.agentId,
+		});
+		const unrelated = await createThread({
+			agentId: childAgent.id,
+			agentName: childAgent.name,
+		});
+		const otherProjectThread = await createThread({
+			agentId: otherProjectAgent.id,
+			agentName: otherProjectAgent.name,
+			projectId: otherProject.id,
+			parentThreadId: parent.id,
+			parentAgentId: parent.agentId,
+		});
+		const descendants = [child, grandchild, sibling];
+		const preserved = [unrelated, otherProjectThread];
+		for (const thread of [parent, ...descendants, ...preserved]) {
+			await createExecution({ threadId: thread.id });
+		}
+		const preservedExecutions = await Promise.all(
+			preserved.map(async ({ id }) => await repository.findByThreadIdOrdered(id)),
+		);
+		const { executionService } = recordingServices();
+
+		expect(await executionService.deleteThread(projectId, agentId, parent.id, viewerId)).toBe(true);
+
+		expect(await threadRepo.findOneBy({ id: parent.id })).toBeNull();
+		expect(await repository.findByThreadIdOrdered(parent.id)).toEqual([]);
+		for (const thread of preserved) {
+			expect(await threadRepo.findOneBy({ id: thread.id })).toEqual(thread);
+		}
+		expect(
+			await Promise.all(
+				preserved.map(async ({ id }) => await repository.findByThreadIdOrdered(id)),
+			),
+		).toEqual(preservedExecutions);
+		expect(
+			(await threadRepo.findManyByIds(descendants.map(({ id }) => id))).map(({ id }) => id),
+		).toEqual([]);
+		for (const thread of descendants) {
+			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([]);
+		}
+	});
+
 	it('removes a large batch of delegated checkpoints', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
 		const { executionService } = recordingServices();
