@@ -144,7 +144,7 @@ describe('AgentsPublicController createAgent', () => {
 		mockSuccessfulCreate();
 		agentDefaultModelResolverService.resolve.mockResolvedValue({
 			model: 'anthropic/claude-sonnet-4-5',
-			credentialId: 'credential-1',
+			credential: 'credential-1',
 		});
 
 		await controller.createAgent(req, res, { name: 'No model' });
@@ -153,7 +153,7 @@ describe('AgentsPublicController createAgent', () => {
 			'project-1',
 			'No model',
 			expect.objectContaining({
-				defaultModel: { model: 'anthropic/claude-sonnet-4-5', credentialId: 'credential-1' },
+				defaultModel: { model: 'anthropic/claude-sonnet-4-5', credential: 'credential-1' },
 			}),
 		);
 
