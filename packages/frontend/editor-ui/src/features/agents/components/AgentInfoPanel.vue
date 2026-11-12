@@ -6,7 +6,7 @@ import AgentPanel from './AgentPanel.vue';
  * credential field.
  */
 import { computed, ref, useId, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -34,6 +34,7 @@ import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
+import AgentModelPicker from './model-picker/AgentModelPicker.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -71,6 +72,11 @@ const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isL
 	useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
+
+// ponytail: a local opt-in shows the model picker prototype. It lists a fake
+// catalog and keeps the selection in the browser, so it does not change the
+// agent. Replace the opt-in with a feature flag when the picker saves the model.
+const isModelPickerPrototype = useLocalStorage('N8N_AGENT_MODEL_PICKER_PROTOTYPE', false);
 
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
@@ -237,6 +243,7 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 const instructions = ref(props.config?.instructions ?? '');
 const instructionsEditor = ref<InstanceType<typeof N8nMarkdownEditor>>();
 const modelSelector = ref<InstanceType<typeof AgentModelSelector>>();
+const modelPicker = ref<InstanceType<typeof AgentModelPicker>>();
 
 // Keep the local editor stable while external config updates arrive.
 watch(
@@ -255,7 +262,7 @@ function focusInstructions() {
 }
 
 function focusModel() {
-	modelSelector.value?.open();
+	(modelPicker.value ?? modelSelector.value)?.open();
 }
 
 function onInstructionsInput(value: string) {
@@ -288,7 +295,13 @@ defineExpose({ focusInstructions, focusModel });
 							{{ i18n.baseText('agents.builder.agent.model.description') }}
 						</N8nText>
 					</div>
+					<AgentModelPicker
+						v-if="isModelPickerPrototype"
+						ref="modelPicker"
+						:disabled="props.disabled"
+					/>
 					<AgentModelSelector
+						v-else
 						ref="modelSelector"
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
