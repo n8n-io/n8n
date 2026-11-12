@@ -237,6 +237,15 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	describe('GET /roles/:slug/assignments/:projectId/members', () => {
+		// Accounts a single test creates. The file shares one database, and some
+		// global role listings still fail for a service account (IAM-1888).
+		const scratchUserIds: string[] = [];
+
+		afterEach(async () => {
+			if (scratchUserIds.length === 0) return;
+			await Container.get(UserRepository).delete(scratchUserIds.splice(0));
+		});
+
 		it('should return only members with the specified role', async () => {
 			const project = await createTeamProject('Members Test', owner);
 			await linkUserToProject(member, project, 'project:editor');
@@ -255,6 +264,7 @@ describe('RoleController - Integration Tests', () => {
 		it('should list a service account with its name and kind', async () => {
 			const project = await createTeamProject('Service Account Members Test', owner);
 			const serviceAccount = await createServiceAccountWithProject(GLOBAL_AGENT_ROLE);
+			scratchUserIds.push(serviceAccount.id);
 			await linkUserToProject(member, project, 'project:editor');
 			await linkUserToProject(serviceAccount, project, 'project:editor');
 
@@ -283,14 +293,12 @@ describe('RoleController - Integration Tests', () => {
 					},
 				]),
 			);
-
-			// The file shares one database, and some global role listings still fail for a service account (IAM-1888).
-			await Container.get(UserRepository).delete({ id: serviceAccount.id });
 		});
 
 		it('should list a person without an email or a name', async () => {
 			const project = await createTeamProject('Person Without Email Test', owner);
 			const person = await createUser();
+			scratchUserIds.push(person.id);
 			await Container.get(DataSource).manager.update(Person, person.id, {
 				email: null,
 				firstName: null,
@@ -312,8 +320,6 @@ describe('RoleController - Integration Tests', () => {
 					kind: 'person',
 				},
 			]);
-
-			await Container.get(UserRepository).delete({ id: person.id });
 		});
 
 		it('should require role:manage scope (deny member)', async () => {
