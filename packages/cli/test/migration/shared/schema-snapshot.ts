@@ -75,6 +75,9 @@ async function snapshotSqlite(queryRunner: QueryRunner, tablePrefix: string): Pr
 	const checks = await query(
 		`SELECT m.name AS tbl, m.sql FROM sqlite_master m WHERE ${tables} AND m.sql LIKE '%CHECK%'`,
 	);
+	const triggers = await query(
+		"SELECT m.tbl_name AS tbl, m.name, m.sql FROM sqlite_master m WHERE m.type = 'trigger' AND m.tbl_name != :migrations",
+	);
 
 	return [
 		...columns.map(
@@ -91,6 +94,10 @@ async function snapshotSqlite(queryRunner: QueryRunner, tablePrefix: string): Pr
 		),
 		...foreignKeys.map(
 			(r) => `fk ${line(r, ['tbl', 'target', 'from', 'to', 'on_update', 'on_delete'])}`,
+		),
+		// SQLite keeps trigger SQL as written, so quotes around identifiers can differ.
+		...triggers.map(
+			(r) => `trigger ${line(r, ['tbl', 'name'])} | ${normalizeSql(r.sql).replace(/"/g, '')}`,
 		),
 		...checks.flatMap((r) =>
 			extractChecks(String(r.sql)).map((check) => `check ${String(r.tbl)} | ${check}`),
@@ -120,6 +127,18 @@ async function snapshotPostgres(queryRunner: QueryRunner, tablePrefix: string): 
 		 JOIN pg_namespace n ON n.oid = t.relnamespace
 		 WHERE n.nspname = $1 AND t.relname != $2`,
 	);
+	const triggers = await query(
+		`SELECT c.relname AS tbl, t.tgname AS name, pg_get_triggerdef(t.oid) AS def
+		 FROM pg_trigger t
+		 JOIN pg_class c ON c.oid = t.tgrelid
+		 JOIN pg_namespace n ON n.oid = c.relnamespace
+		 WHERE n.nspname = $1 AND c.relname != $2 AND NOT t.tgisinternal`,
+	);
+	const functions = await query(
+		`SELECT p.proname AS name, pg_get_functiondef(p.oid) AS def
+		 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		 WHERE n.nspname = $1 AND p.proname != $2 AND p.prokind = 'f'`,
+	);
 	const enums = await query(
 		`SELECT t.typname AS name, string_agg(e.enumlabel, ',' ORDER BY e.enumsortorder) AS labels
 		 FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
@@ -135,6 +154,8 @@ async function snapshotPostgres(queryRunner: QueryRunner, tablePrefix: string): 
 		...indexes.map((r) => `index ${line(r, ['tbl', 'name', 'def'])}`),
 		...constraints.map((r) => `constraint ${line(r, ['tbl', 'name', 'kind', 'def'])}`),
 		...enums.map((r) => `enum ${line(r, ['name', 'labels'])}`),
+		...triggers.map((r) => `trigger ${line(r, ['tbl', 'name', 'def'])}`),
+		...functions.map((r) => `function ${String(r.name)} | ${String(r.def).replace(/\s+/g, ' ')}`),
 	].sort();
 }
 
@@ -149,12 +170,22 @@ export async function snapshotSchema(
 		: await snapshotPostgres(queryRunner, tablePrefix);
 }
 
-/** Lists the lines that only one of two snapshots has. */
+const countLines = (lines: string[]) => {
+	const counts = new Map<string, number>();
+	for (const l of lines) counts.set(l, (counts.get(l) ?? 0) + 1);
+	return counts;
+};
+
+/** Lists the lines that one snapshot has more often than the other. Two lines can be equal. */
 export function diffSnapshots(before: string[], after: string[]): string[] {
-	const beforeSet = new Set(before);
-	const afterSet = new Set(after);
-	return [
-		...before.filter((l) => !afterSet.has(l)).map((l) => `- ${l}`),
-		...after.filter((l) => !beforeSet.has(l)).map((l) => `+ ${l}`),
-	];
+	const beforeCounts = countLines(before);
+	const afterCounts = countLines(after);
+	const diff: string[] = [];
+	for (const [l, count] of beforeCounts) {
+		for (let i = afterCounts.get(l) ?? 0; i < count; i++) diff.push(`- ${l}`);
+	}
+	for (const [l, count] of afterCounts) {
+		for (let i = beforeCounts.get(l) ?? 0; i < count; i++) diff.push(`+ ${l}`);
+	}
+	return diff;
 }

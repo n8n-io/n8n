@@ -548,10 +548,12 @@ await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 
 CI checks every `ReversibleMigration` on an empty database with `packages/cli/test/migration/down-round-trip.test.ts`, on SQLite and on Postgres with a table prefix:
 
-1. It runs `up`, then `down`. The schema must be the same as before `up`: columns, indexes, foreign keys, constraints and their names.
+1. It runs `up`, then `down`. The schema must be the same as before `up`: columns, indexes, foreign keys, constraints, triggers and functions. On Postgres the names must also agree. SQLite does not report the names of foreign keys and constraints, so on SQLite only index and trigger names are compared.
 2. It runs `up` again. The schema must be the same as after the first `up`.
 
-The test does not check data, so a data migration still needs its own test. Known failures are in `packages/@n8n/db/src/migrations/down-round-trip.baseline.json`. Do not add new entries to this file. Fix the `down`, or make the migration an `IrreversibleMigration`. When you fix a known failure, remove its entry. To regenerate the file, run the test with `UPDATE_ROUND_TRIP_BASELINE=true`, once for each database:
+The test does not check data, so a data migration still needs its own test. Known failures are in `packages/@n8n/db/src/migrations/down-round-trip.baseline.json`. If the test finds a new failure, fix the `down`, or make the migration an `IrreversibleMigration`. Do not add it to this file. When you fix a known failure, remove its entry. The test fails until you do.
+
+The command below rewrites the file with all current failures, new ones included. Use it only to remove fixed entries, or for a change that the migrations-review team approved. Check the diff of the file before you commit it. Run it once for each database:
 
 ```bash
 cd packages/cli
