@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -10,6 +10,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsCompactionService } from '../insights-compaction.service';
+import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsController } from '../insights.controller';
 
 function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
@@ -17,16 +19,14 @@ function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
 	expect(Math.abs(actual.getTime() - expected.getTime())).toBeLessThanOrEqual(maxDrift);
 }
 
-beforeAll(async () => {
-	await testDb.init();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
+afterAll(() => {
+	Container.reset();
 });
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
+	mockInstance(InsightsCompactionService);
+	mockInstance(InsightsPruningService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
