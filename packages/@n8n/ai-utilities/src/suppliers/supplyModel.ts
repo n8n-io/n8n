@@ -89,7 +89,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 
 // `Symbol.for` resolves to the same key from the ESM and the CJS build, so the
 // source is found even when both copies of this package are loaded.
-const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
+const SUPPLIED_MODEL_SOURCE = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
 
 function isSupplyModelOptions(value: unknown): value is SupplyModelOptions {
 	if (typeof value !== 'object' || value === null) return false;
@@ -114,8 +114,7 @@ function recordSource(response: object, source: SupplyModelOptions) {
  */
 export function getSuppliedModelSource(response: unknown): SupplyModelOptions | undefined {
 	if (typeof response !== 'object' || response === null) return undefined;
-	if (!(SUPPLIED_MODEL_SOURCE in response)) return undefined;
-	const source = response[SUPPLIED_MODEL_SOURCE];
+	const source: unknown = Object.getOwnPropertyDescriptor(response, SUPPLIED_MODEL_SOURCE)?.value;
 	return isSupplyModelOptions(source) ? source : undefined;
 }
 

@@ -145,6 +145,13 @@ describe('getSuppliedModelSource', () => {
 		expect(getSuppliedModelSource(response.bindTools([]))).toBeUndefined();
 	});
 
+	it('returns undefined for an object that inherits from a supplied model', () => {
+		const { response } = supplyModel(ctx, integratorConfig());
+		if (!(response instanceof ChatOpenAI)) throw new Error('Expected ChatOpenAI');
+
+		expect(getSuppliedModelSource(Object.create(response))).toBeUndefined();
+	});
+
 	it('keeps the source when a consumer replaces callbacks or patches methods', () => {
 		const config = integratorConfig();
 		const { response } = supplyModel(ctx, config);
