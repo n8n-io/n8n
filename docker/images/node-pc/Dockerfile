@@ -6,6 +6,11 @@
 # GPG-verified source tarball, following the source-build path of the official
 # docker-node Alpine recipe with one added configure flag.
 #
+# The build also applies the V8 patches in ./patches: upstream V8 fixes that
+# Node has not backported to this release line yet. Each patch bumps the
+# V8 version suffix, and check-v8-patches.js proves that the compiled Node
+# carries them.
+#
 # Two published targets:
 #   runtime (default) - n8nio/base with our compiled Node swapped in
 #   dev               - plain Alpine with apk usable, for the n8n builder
@@ -25,6 +30,7 @@ FROM ${ALPINE_IMAGE} AS builder
 ARG NODE_VERSION
 ARG MAKE_JOBS
 
+COPY docker/images/node-pc/patches/ /patches/
 RUN apk add --no-cache --virtual .build-deps \
         binutils-gold \
         curl \
@@ -34,6 +40,7 @@ RUN apk add --no-cache --virtual .build-deps \
         libgcc \
         linux-headers \
         make \
+        patch \
         python3 \
         py-setuptools \
         rust \
@@ -68,6 +75,10 @@ RUN apk add --no-cache --virtual .build-deps \
     && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xf "node-v$NODE_VERSION.tar.xz" \
     && cd "node-v$NODE_VERSION" \
+    && for p in /patches/*.patch; do patch -p1 -N -d deps/v8 -i "$p"; done \
+    # Mark the patched V8 in process.versions.v8, e.g. 14.6.202.34-node.40-n8n.1
+    && sed -i "s/^\([[:space:]]*'v8_embedder_string': '-node\.[0-9]*\)'/\1-n8n.1'/" common.gypi \
+    && grep -q "n8n\.1'" common.gypi \
     && ./configure --experimental-enable-pointer-compression \
     && make -j"${MAKE_JOBS:-$(getconf _NPROCESSORS_ONLN)}" V= \
     && make install DESTDIR=/node-install \
@@ -80,8 +91,10 @@ RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
     && apk add --no-cache libstdc++
 COPY --from=builder /node-install/usr/local /usr/local
+COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
 RUN node --version && npm --version \
-    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }"
+    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }" \
+    && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
 
 FROM base AS dev
 # node-gyp must compile native addons against this build's headers so they pick
@@ -96,8 +109,10 @@ FROM ${RUNTIME_IMAGE} AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
+COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
 RUN node --version \
-    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }"
+    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }" \
+    && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
 
 # The compiled build lives at /usr/local/bin, which is what the cloud launch
 # and AppArmor profile expect. Keep the stock /usr/bin path working for
