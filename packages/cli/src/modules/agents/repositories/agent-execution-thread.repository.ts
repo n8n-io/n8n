@@ -91,6 +91,8 @@ function accessibleSessionWhere(
 }
 
 interface AgentSessionDeletionRefs {
+	agentId: string;
+	threadId: string;
 	attachmentBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
 }
@@ -778,7 +780,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		threadId: string,
 		userId: string,
 		ctx: OperationContext,
-	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
+	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs[] } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
 			where: accessibleSessionWhere(projectId, agentId, threadId, userId),
@@ -791,6 +793,46 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 		if (hasRunningWork) return { status: 'busy' };
 
+		const sessions = await this.findSessionTree(manager, thread);
+		const refs: AgentSessionDeletionRefs[] = [];
+		for (const session of sessions) {
+			refs.push(await this.deleteSessionData(manager, projectId, session.agentId, session.id));
+		}
+		return { status: 'deleted', refs };
+	}
+
+	private async findSessionTree(
+		manager: EntityManager,
+		root: AgentExecutionThread,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId'>>> {
+		const sessions: Array<Pick<AgentExecutionThread, 'id' | 'agentId'>> = [root];
+		const visited = new Set([root.id]);
+		let parents = [root.id];
+		while (parents.length > 0) {
+			const next: string[] = [];
+			for (const batch of chunk(parents, CHECKPOINT_BATCH_SIZE)) {
+				const children = await manager.find(AgentExecutionThread, {
+					select: ['id', 'agentId'],
+					where: { projectId: root.projectId, parentThreadId: In(batch) },
+				});
+				for (const child of children) {
+					if (visited.has(child.id)) continue;
+					visited.add(child.id);
+					sessions.push(child);
+					next.push(child.id);
+				}
+			}
+			parents = next;
+		}
+		return sessions;
+	}
+
+	private async deleteSessionData(
+		manager: EntityManager,
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentSessionDeletionRefs> {
 		const { attachments, executionLogs } = await this.findExternalRefs(
 			manager,
 			projectId,
@@ -809,11 +851,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		await manager.delete(AgentExecutionThread, { id: threadId });
 
 		return {
-			status: 'deleted',
-			refs: {
-				executionLogs,
-				attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
-			},
+			agentId,
+			threadId,
+			executionLogs,
+			attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
 		};
 	}
 

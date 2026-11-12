@@ -90,7 +90,7 @@ import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoi
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
-import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
+import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
@@ -284,6 +284,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			attachmentService,
 			executionLogStore,
+			memory,
 			turns: new AgentTurnExecutionService(
 				mockLogger(),
 				executionService,
@@ -344,6 +345,82 @@ describe('AgentExecutionRepository', () => {
 			fileSizeBytes: 1,
 			source: 'chat',
 		});
+	}
+
+	async function createSessionData(thread: AgentExecutionThread) {
+		const memory = Container.get(N8nMemory).getImplementation(thread.agentId);
+		const resourceId = `session:${thread.id}`;
+		const memoryThread = await memory.saveThread({ id: thread.id, resourceId });
+		await memory.saveMessages({
+			threadId: thread.id,
+			resourceId,
+			messages: [
+				{
+					id: uuid(),
+					createdAt: new Date(),
+					role: 'user',
+					content: [{ type: 'text', text: 'Session input' }],
+				},
+			],
+		});
+		const observations = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: thread.id,
+				marker: 'important',
+				text: 'Session note',
+				tokenCount: 2,
+				createdAt: new Date(),
+			},
+		]);
+		const checkpoints = await Container.get(AgentCheckpointRepository).save(
+			[false, true].map((expired) => ({
+				runId: uuid(),
+				agentId: thread.agentId,
+				threadId: thread.id,
+				expired,
+				state: '{}',
+			})),
+		);
+		const attachment = await attachmentTable.save({
+			...buildAttachment(thread.id),
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+		});
+		const execution = await createExecution({ threadId: thread.id, storedAt: 'fs' });
+		return {
+			thread,
+			memory,
+			memoryThread,
+			messages: await memory.getMessages(thread.id),
+			observations,
+			checkpoints,
+			attachment,
+			execution,
+		};
+	}
+
+	async function expectSessionDataRetained(data: Awaited<ReturnType<typeof createSessionData>>) {
+		const {
+			thread,
+			memory,
+			memoryThread,
+			messages,
+			observations,
+			checkpoints,
+			attachment,
+			execution,
+		} = data;
+		expect(await threadRepo.findOneBy({ id: thread.id })).toEqual(thread);
+		expect(await repository.findOneBy({ id: execution.id })).toEqual(execution);
+		expect(await memory.getThread(thread.id)).toEqual(memoryThread);
+		expect(await memory.getMessages(thread.id)).toEqual(messages);
+		expect(await memory.getObservationLog({ observationScopeId: thread.id })).toEqual(observations);
+		expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
+		for (const checkpoint of checkpoints) {
+			expect(await Container.get(AgentCheckpointRepository).findByRunId(checkpoint.runId)).toEqual(
+				checkpoint,
+			);
+		}
 	}
 
 	function insertAttachmentAfterSnapshot(attachment: AgentChatAttachment) {
@@ -1064,7 +1141,7 @@ describe('AgentExecutionRepository', () => {
 		}
 	});
 
-	it('removes retained and delegated checkpoints without deleting child history', async () => {
+	it('removes retained and delegated checkpoints with descendant session history', async () => {
 		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
 		const { executionService } = recordingServices();
 		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
@@ -1145,13 +1222,8 @@ describe('AgentExecutionRepository', () => {
 		}
 		expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
 		expect(await repository.findByThreadIdOrdered(threadId)).toEqual([]);
-		expect(await threadRepo.findOneBy({ id: childThread.id })).toMatchObject({
-			id: childThread.id,
-		});
-		expect(await repository.findOneBy({ id: childExecution.id })).toMatchObject({
-			id: childExecution.id,
-			threadId: childThread.id,
-		});
+		expect(await threadRepo.findOneBy({ id: childThread.id })).toBeNull();
+		expect(await repository.findOneBy({ id: childExecution.id })).toBeNull();
 		expect(await storage.getStatus(suspension.runId, agentId)).toEqual({ status: 'not-found' });
 	});
 
@@ -1204,35 +1276,96 @@ describe('AgentExecutionRepository', () => {
 			parentThreadId: parent.id,
 			parentAgentId: parent.agentId,
 		});
+		const beyondProjectBoundary = await createThread({
+			parentThreadId: otherProjectThread.id,
+			parentAgentId: otherProjectThread.agentId,
+		});
 		const descendants = [child, grandchild, sibling];
-		const preserved = [unrelated, otherProjectThread];
-		for (const thread of [parent, ...descendants, ...preserved]) {
-			await createExecution({ threadId: thread.id });
+		const preserved = [unrelated, otherProjectThread, beyondProjectBoundary];
+		const deleted = [parent, ...descendants];
+		const deletedData = [];
+		const preservedData = [];
+		for (const thread of deleted) {
+			deletedData.push(await createSessionData(thread));
 		}
-		const preservedExecutions = await Promise.all(
-			preserved.map(async ({ id }) => await repository.findByThreadIdOrdered(id)),
+		for (const thread of preserved) {
+			preservedData.push(await createSessionData(thread));
+		}
+		const { executionService, memory, attachmentService, executionLogStore } = recordingServices();
+		memory.getImplementation.mockImplementation((id) =>
+			Container.get(N8nMemory).getImplementation(id),
 		);
-		const { executionService } = recordingServices();
+		const expectCommitted = async () => {
+			for (const thread of deleted) {
+				expect(await peer.manager.findOneBy(AgentExecutionThread, { id: thread.id })).toBeNull();
+			}
+		};
+		attachmentService.deleteStoredData.mockImplementation(expectCommitted);
+		executionLogStore.delete.mockImplementation(expectCommitted);
 
 		expect(await executionService.deleteThread(projectId, agentId, parent.id, viewerId)).toBe(true);
 
-		expect(await threadRepo.findOneBy({ id: parent.id })).toBeNull();
-		expect(await repository.findByThreadIdOrdered(parent.id)).toEqual([]);
-		for (const thread of preserved) {
-			expect(await threadRepo.findOneBy({ id: thread.id })).toEqual(thread);
+		for (const thread of [unrelated, beyondProjectBoundary]) {
+			const page = await executionService.getThreads(projectId, thread.agentId, viewerId, 10);
+			expect(page.threads.map(({ id }) => id)).toEqual([thread.id]);
 		}
-		expect(
-			await Promise.all(
-				preserved.map(async ({ id }) => await repository.findByThreadIdOrdered(id)),
-			),
-		).toEqual(preservedExecutions);
-		expect(
-			(await threadRepo.findManyByIds(descendants.map(({ id }) => id))).map(({ id }) => id),
-		).toEqual([]);
-		for (const thread of descendants) {
+		for (const data of preservedData) {
+			await expectSessionDataRetained(data);
+		}
+		for (const { thread, memory: store, attachment, execution, checkpoints } of deletedData) {
+			expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
 			expect(await repository.findByThreadIdOrdered(thread.id)).toEqual([]);
+			expect(
+				await executionService.getThreadDetail(thread.id, projectId, thread.agentId, viewerId),
+			).toBeNull();
+			expect(await store.getThread(thread.id)).toBeNull();
+			expect(await store.getMessages(thread.id)).toEqual([]);
+			expect(await store.getObservationLog({ observationScopeId: thread.id })).toEqual([]);
+			expect(await attachmentTable.findOneBy({ id: attachment.id })).toBeNull();
+			for (const checkpoint of checkpoints) {
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(checkpoint.runId),
+				).toBeNull();
+			}
+			expect(attachmentService.deleteStoredData).toHaveBeenCalledWith([attachment.binaryDataId], {
+				threadId: thread.id,
+			});
+			expect(executionLogStore.delete).toHaveBeenCalledWith([
+				{
+					agentId: thread.agentId,
+					threadId: thread.id,
+					executionId: execution.id,
+					storedAt: 'fs',
+				},
+			]);
 		}
+		expect(memory.getImplementation).toHaveBeenCalledTimes(deleted.length);
+		expect(attachmentService.deleteStoredData).toHaveBeenCalledTimes(deleted.length);
+		expect(executionLogStore.delete).toHaveBeenCalledTimes(deleted.length);
 	});
+
+	it.each([false, true])(
+		'deletes cyclic sessions once (self-reference: %s)',
+		async (selfReference) => {
+			const parent = await createThread();
+			const child = await createThread({ parentThreadId: parent.id, parentAgentId: agentId });
+			const grandchild = await createThread({ parentThreadId: child.id, parentAgentId: agentId });
+			await threadRepo.update(parent.id, {
+				parentThreadId: selfReference ? parent.id : grandchild.id,
+				parentAgentId: agentId,
+			});
+			const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
+			const { executionService } = recordingServices(memoryBackend);
+
+			expect(await executionService.deleteThread(projectId, agentId, parent.id, viewerId)).toBe(
+				true,
+			);
+
+			const ids = [parent.id, child.id, grandchild.id];
+			expect(await threadRepo.findManyByIds(ids)).toEqual([]);
+			expect(memoryBackend.deleteThread.mock.calls.map(([id]) => id).sort()).toEqual(ids.sort());
+		},
+	);
 
 	it('removes a large batch of delegated checkpoints', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
@@ -1291,11 +1424,19 @@ describe('AgentExecutionRepository', () => {
 		);
 	});
 
-	it('rolls back session database cleanup when memory cleanup fails', async () => {
+	it('rolls back the entire session tree when descendant memory cleanup fails', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
 		const attachment = await attachmentTable.save(buildAttachment(threadId));
+		const child = await createThread({ parentThreadId: threadId, parentAgentId: agentId });
+		const childData = await createSessionData(child);
+		const store = Container.get(N8nMemory).getImplementation(agentId);
+		const memoryBefore = await store.getThread(threadId);
+		const messagesBefore = await store.getMessages(threadId);
 		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
-		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
+		memoryBackend.deleteThread.mockImplementation(async (id, ctx) => {
+			await store.deleteThread(id, ctx);
+			if (id === child.id) throw new Error('Memory cleanup failed');
+		});
 		const { executionService, attachmentService, executionLogStore } =
 			recordingServices(memoryBackend);
 		const executionsBefore = await repository.findByThreadIdOrdered(threadId);
@@ -1308,6 +1449,9 @@ describe('AgentExecutionRepository', () => {
 		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
 		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
 		expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
+		expect(await store.getThread(threadId)).toEqual(memoryBefore);
+		expect(await store.getMessages(threadId)).toEqual(messagesBefore);
+		await expectSessionDataRetained(childData);
 		expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
 		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
