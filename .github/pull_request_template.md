@@ -9,7 +9,7 @@ https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 ## Summary
 
 <!--
-Start with 1 to 3 sentences of background for a new reader. Then describe what the PR does, in prose, not as a list of edits.
+Add a concise summary what the PR does in full sentences.
 Add screenshots or videos for UI changes.
 -->
 
