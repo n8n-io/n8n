@@ -1,7 +1,12 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
+
+const observationLogPlacementSchema = z.enum(['system', 'message']);
+const observationFailurePolicySchema = z.enum(['disableForRun', 'retry']);
+const observationReflectionModeSchema = z.enum(['background', 'afterObserve']);
 
 @Config
 export class InstanceAiConfig {
@@ -75,7 +80,11 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
-	/** Token threshold for Observer to trigger compression of message history. */
+	/**
+	 * Token threshold for Observer to trigger compression of message history.
+	 * Applies only when `N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS` is `0` and n8n can't find the model's context window.
+	 * Otherwise, thresholds are shares of the model's window or of the max window, whichever is smaller.
+	 */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
@@ -87,17 +96,59 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_UTILITY_MODEL')
 	utilityModel: string = '';
 
-	/** Token threshold for Reflector to condense observations. */
+	/**
+	 * Token threshold for the Reflector to condense observations.
+	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When set, this fixed value replaces that share.
+	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
-	reflectorObservationTokens: number = 40_000;
+	reflectorObservationTokens?: number;
 
 	/**
-	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
-	 * Observer runs only after the turn, which keeps the prompt prefix stable
-	 * within a turn and improves provider prompt-cache reuse.
+	 * Whether n8n Assistant summarizes the conversation into memory during a long turn, between tool calls.
+	 * When false, it summarizes only after the turn ends. This keeps the prompt stable within a turn and can improve prompt-cache reuse, but a long turn can then fill the model's context window.
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
-	midRunObservation: boolean = false;
+	midRunObservation: boolean = true;
+
+	/**
+	 * Largest context window, in tokens, that n8n Assistant uses to set its memory thresholds.
+	 * When the model's window is larger, n8n uses this value, so memory starts summarizing earlier on models with very large windows.
+	 * Set to 0 to use the model's full window.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS')
+	observationMaxWindowTokens: number = 200_000;
+
+	/**
+	 * Where n8n Assistant puts its memory summary. One of `system` or `message`.
+	 * With `message`, summary updates don't change the system prompt, which improves prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT', observationLogPlacementSchema)
+	observationLogPlacement: z.infer<typeof observationLogPlacementSchema> = 'message';
+
+	/**
+	 * What n8n Assistant does when a memory summary call fails during a turn. One of `disableForRun` or `retry`.
+	 * With `retry`, it tries again at the next step.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY', observationFailurePolicySchema)
+	observationFailurePolicy: z.infer<typeof observationFailurePolicySchema> = 'retry';
+
+	/** Maximum memory summary calls after one turn. Each call reads one batch. Set to 0 for no limit. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES')
+	observerMaxBatches: number = 5;
+
+	/**
+	 * When n8n Assistant condenses its memory summary. One of `background` or `afterObserve`.
+	 * With `afterObserve`, it condenses only after a turn that added to the summary.
+	 */
+	@Env('N8N_INSTANCE_AI_REFLECTION_MODE', observationReflectionModeSchema)
+	reflectionMode: z.infer<typeof observationReflectionModeSchema> = 'background';
+
+	/**
+	 * Whether n8n Assistant can read earlier messages of a conversation that its memory summary replaced.
+	 */
+	@Env('N8N_INSTANCE_AI_HISTORY_RECALL')
+	historyRecall: boolean = true;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;

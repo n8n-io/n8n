@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { InstanceRegistryProxyService } from '@n8n/backend-services';
+import { InstanceRegistryProxyService, PostHogClient } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -8,7 +8,7 @@ import {
 	WorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -17,7 +17,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type {
 	AgentRunTelemetryType,
 	IAgentConfigurationTelemetryProperties,
@@ -26,7 +26,6 @@ import type {
 	IExecutionTrackProperties,
 } from '@/interfaces';
 import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';

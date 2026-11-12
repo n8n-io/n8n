@@ -1,18 +1,25 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { AgentCreationResource } from '@/features/agents/types';
 import type { persistPendingAgent } from '../instanceAi.memory.api';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
+import { provideArtifactAgentTargets, type ArtifactAgentTargets } from '../artifactAgentTargets';
+import { provideArtifactThread, type ArtifactThread } from '../artifactThread';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 
+const useThreadMock = vi.fn();
 const threadState = reactive({
 	id: 'thread-1',
 	messages: [] as InstanceAiMessage[],
+	get artifactTurns() {
+		return toArtifactTurns(this.messages);
+	},
 	activeArtifactId: undefined as string | undefined,
 	isSendingMessage: false,
 	isStreaming: false,
@@ -25,7 +32,10 @@ const updateThreadMetadataMock = vi.fn(
 );
 
 vi.mock('../instanceAi.store', () => ({
-	useThread: () => threadState,
+	useThread: () => {
+		useThreadMock();
+		return threadState;
+	},
 	useInstanceAiStore: () => ({
 		getThreadMetadata: () => metadataState.value,
 		updateThreadMetadata: updateThreadMetadataMock,
@@ -76,24 +86,19 @@ function makeBuildingMessage(targetAgentId: string): InstanceAiMessage {
 			status: 'active',
 			textContent: '',
 			reasoning: '',
-			toolCalls: [],
-			timeline: [],
-			children: [
+			toolCalls: [
 				{
-					agentId: 'builder-1',
-					kind: 'agent-builder',
-					role: 'agent-builder',
-					status: 'active',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [],
-					timeline: [],
-					children: [],
-					targetResource: { type: 'agent', id: targetAgentId },
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: {},
+					result: { ok: true, agentId: targetAgentId },
+					isLoading: false,
 				},
 			],
+			timeline: [],
+			children: [],
 		},
-	} as InstanceAiMessage;
+	};
 }
 
 describe('InstanceAiAgentPreview', () => {
@@ -110,6 +115,7 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.isStreaming = false;
 		updateThreadMetadataMock.mockClear();
 		persistPendingAgentMock.mockReset();
+		useThreadMock.mockClear();
 	});
 
 	it('forwards preview dock state and Assistant handoffs from Agent Builder', async () => {
@@ -292,5 +298,57 @@ describe('InstanceAiAgentPreview', () => {
 			agentId: 'agent-2',
 		});
 		wrapper.unmount();
+	});
+
+	it('reads and binds through the thread and agent bindings that its host provides', async () => {
+		const hostThread = reactive({
+			id: 'host-thread',
+			artifactTurns: toArtifactTurns([makeBuildingMessage('agent-1')]),
+			activeArtifactId: undefined,
+			isSendingMessage: false,
+			isStreaming: false,
+		}) as unknown as ArtifactThread;
+		const commit = vi.fn();
+		const hostTargets: ArtifactAgentTargets = {
+			bind: vi.fn(async () => {}),
+			persistPendingAgent: vi.fn(async () => ({ agent: persistedAgent, commit })),
+		};
+		const Host = defineComponent({
+			setup() {
+				provideArtifactThread(hostThread);
+				provideArtifactAgentTargets(hostTargets);
+				return () =>
+					h(InstanceAiAgentPreview, {
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						previewOpen: false,
+						pending: true,
+					});
+			},
+		});
+
+		const wrapper = mount(Host, { global: { stubs: { AgentBuilderView: AgentBuilderViewStub } } });
+		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
+
+		expect(builder.props('artifactEditingLocked')).toBe(true);
+		const persist = builder.props('artifactPersistAgent') as (
+			target: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+		await expect(
+			persist({ projectId: 'project-1', agentId: 'agent-1', name: 'Support Agent' }),
+		).resolves.toBe(persistedAgent);
+		expect(commit).toHaveBeenCalled();
+
+		builder.vm.$emit('name-saved', 'Renamed');
+		await flushPromises();
+		expect(hostTargets.bind).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			name: 'Renamed',
+		});
+
+		expect(useThreadMock).not.toHaveBeenCalled();
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 	});
 });

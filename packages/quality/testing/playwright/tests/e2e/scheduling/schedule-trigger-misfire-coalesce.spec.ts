@@ -23,7 +23,7 @@ test.use({
 test.describe(
 	'Schedule Trigger misfire policy: coalesce',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('collapses a backlog into a single catch-up run instead of firing every missed tick', async ({

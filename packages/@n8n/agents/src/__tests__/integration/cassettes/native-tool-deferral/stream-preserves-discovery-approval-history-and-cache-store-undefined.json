@@ -54,7 +54,7 @@
 				},
 				{
 					"name": "issue_invoice",
-					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval. (issue invoice)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -73,7 +73,7 @@
 				},
 				{
 					"name": "lookup_warehouse_stock",
-					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"description": "Read the available stock quantity for a product SKU in a warehouse. (lookup warehouse stock)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -238,7 +238,7 @@
 				},
 				{
 					"name": "issue_invoice",
-					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval. (issue invoice)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -257,7 +257,7 @@
 				},
 				{
 					"name": "lookup_warehouse_stock",
-					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"description": "Read the available stock quantity for a product SKU in a warehouse. (lookup warehouse stock)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -440,7 +440,7 @@
 				},
 				{
 					"name": "issue_invoice",
-					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval. (issue invoice)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -459,7 +459,7 @@
 				},
 				{
 					"name": "lookup_warehouse_stock",
-					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"description": "Read the available stock quantity for a product SKU in a warehouse. (lookup warehouse stock)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -690,7 +690,7 @@
 				},
 				{
 					"name": "issue_invoice",
-					"description": "Issue an invoice from a unit price and quantity. Requires user approval.",
+					"description": "Issue an invoice from a unit price and quantity. Requires user approval. (issue invoice)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -709,7 +709,7 @@
 				},
 				{
 					"name": "lookup_warehouse_stock",
-					"description": "Read the available stock quantity for a product SKU in a warehouse.",
+					"description": "Read the available stock quantity for a product SKU in a warehouse. (lookup warehouse stock)",
 					"input_schema": {
 						"type": "object",
 						"properties": {
