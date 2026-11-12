@@ -657,7 +657,7 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectIds: ['project-a', 'project-b'],
-					includeAgents: true,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
@@ -1273,6 +1273,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					projectIds: ['p1'],
 					projectWorkflowIds: ['w1', 'w2'],
+					includeAgents: false,
 					includeArchived: true,
 					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
@@ -1968,7 +1969,6 @@ describe('PromotionsService', () => {
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 					pathspecs: [
 						'n8n/projects/',
-						'n8n/skills/',
 						'n8n/credentials/',
 						'n8n/data-tables/',
 						'n8n/variables/',

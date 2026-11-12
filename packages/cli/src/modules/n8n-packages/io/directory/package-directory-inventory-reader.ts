@@ -18,7 +18,6 @@ import type { z } from 'zod';
 import { ZodError } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { serializedAgentSchema, type SerializedAgent } from '../../spec/serialized/agent.schema';
 
 import { dropUnconfirmedCredentialData } from '../../entities/credential/credential-display-controllers';
 import {
@@ -42,12 +41,6 @@ export interface InventoryWorkflow {
 	id: string;
 	name: string;
 	content: WorkflowPackageContent;
-}
-
-export interface InventoryAgent {
-	path: string;
-	projectId: string;
-	agent: SerializedAgent;
 }
 
 export interface InventoryFolder {
@@ -76,7 +69,6 @@ export interface InventoryDataTable {
 }
 
 export interface PackageDirectoryInventory {
-	agents?: InventoryAgent[];
 	projects: InventoryProject[];
 	workflows: InventoryWorkflow[];
 	folders: InventoryFolder[];
@@ -85,17 +77,9 @@ export interface PackageDirectoryInventory {
 	dataTables: InventoryDataTable[];
 }
 
-type EntityKind =
-	| 'agents'
-	| 'projects'
-	| 'workflows'
-	| 'folders'
-	| 'credentials'
-	| 'variables'
-	| 'dataTables';
+type EntityKind = 'projects' | 'workflows' | 'folders' | 'credentials' | 'variables' | 'dataTables';
 
 const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
-	[PACKAGE_ENTITY_LAYOUT.agents.fileName]: 'agents',
 	[PACKAGE_ENTITY_LAYOUT.projects.fileName]: 'projects',
 	[PACKAGE_ENTITY_LAYOUT.workflows.fileName]: 'workflows',
 	[PACKAGE_ENTITY_LAYOUT.folders.fileName]: 'folders',
@@ -105,7 +89,6 @@ const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 };
 
 const LABELS: Record<EntityKind, string> = {
-	agents: 'Agent',
 	projects: 'project',
 	workflows: 'workflow',
 	folders: 'folder',
@@ -155,7 +138,6 @@ export class PackageDirectoryInventoryReader {
 
 		return {
 			projects,
-			agents: await this.readAgents(source, files, projectIdOf),
 			workflows: await this.readWorkflows(source, files, projectIdOf),
 			folders: await this.readFolders(source, files, projectIdOf),
 			credentials: await this.readCredentials(source, files, projectIdOf),
@@ -210,33 +192,6 @@ export class PackageDirectoryInventoryReader {
 		}
 
 		return workflows;
-	}
-
-	private async readAgents(
-		source: PackageFileSource,
-		files: EntityFile[],
-		projectIdOf: (file: EntityFile) => string | null,
-	): Promise<InventoryAgent[]> {
-		const agents: InventoryAgent[] = [];
-		const seenIds = new Set<string>();
-
-		for (const file of files.filter((item) => item.kind === 'agents')) {
-			if (!isResourceLocation(file.segments, 'agents')) {
-				throw unsupportedLocation(file);
-			}
-
-			const projectId = projectIdOf(file);
-
-			if (projectId === null) {
-				throw new UserError(`Package Agent file at ${file.path} is not inside a project.`);
-			}
-
-			const agent = await this.readEntity(source, file, serializedAgentSchema);
-			assertUnseen(seenIds, agent.id, 'Agent id');
-			agents.push({ path: file.path, projectId, agent });
-		}
-
-		return agents;
 	}
 
 	private async readFolders(
@@ -379,11 +334,7 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 
 /** `workflows/<entry>/workflow.json`, at the root or under a `folders/<a>/<b>/…` chain of bare slugs. */
 function isWorkflowLocation(segments: string[]): boolean {
-	return isResourceLocation(segments, 'workflows');
-}
-
-function isResourceLocation(segments: string[], kind: 'workflows' | 'agents'): boolean {
-	if (!isCollectionLocation(segments.slice(-3), kind)) return false;
+	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
 	const container = segments.slice(0, -3);
 	if (container.length === 0) return true; // root workflow
 	// A folder chain needs a slug after `folders/`.

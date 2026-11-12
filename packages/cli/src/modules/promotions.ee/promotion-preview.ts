@@ -48,7 +48,6 @@ const RESOURCE_TYPES = {
 	projects: 'project',
 	folders: 'folder',
 	workflows: 'workflow',
-	agents: 'agent',
 	credentials: 'credential',
 	dataTables: 'dataTable',
 	variables: 'variable',
@@ -59,7 +58,6 @@ const TYPE_ORDER: PromotionResourceType[] = [
 	'project',
 	'folder',
 	'workflow',
-	'agent',
 	'credential',
 	'dataTable',
 	'variable',
@@ -137,10 +135,6 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 		add('workflows', workflow, resourceKey('workflow', workflow.id));
 	}
 
-	for (const agent of (manifest.agents ?? []).filter(inProject)) {
-		add('agents', agent, resourceKey('agent', agent.id));
-	}
-
 	const requirements = manifest.requirements;
 	for (const collection of ['credentials', 'dataTables', 'tags'] as const) {
 		const entries = new Map(manifest[collection]?.map((entry) => [entry.id, entry]));
@@ -193,8 +187,6 @@ export function scopeManifestToProject(
 		projectTarget !== undefined && target.startsWith(`${projectTarget}/`);
 	const workflows = (manifest.workflows ?? []).filter(inProject);
 	const workflowIds = new Set(workflows.map(({ id }) => id));
-	const agents = (manifest.agents ?? []).filter(inProject);
-	const agentIds = new Set(agents.map(({ id }) => id));
 	// Variables resolve by name, and the project's own variable shadows the global one.
 	const variables = new Map<string, ManifestEntry>();
 	for (const entry of manifest.variables ?? []) {
@@ -207,10 +199,7 @@ export function scopeManifestToProject(
 		const kept = rows
 			?.map((row) => ({
 				...row,
-				usedBy: row.usedBy.filter(
-					({ kind, id }) =>
-						(kind === 'workflow' && workflowIds.has(id)) || (kind === 'agent' && agentIds.has(id)),
-				),
+				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
 			}))
 			.filter((row) => row.usedBy.length > 0);
 		return kept?.length ? kept : undefined;
@@ -219,7 +208,6 @@ export function scopeManifestToProject(
 	return {
 		...manifest,
 		workflows,
-		agents,
 		variables: [...variables.values()],
 		requirements: requirements && {
 			credentials: scopeRows(requirements.credentials),

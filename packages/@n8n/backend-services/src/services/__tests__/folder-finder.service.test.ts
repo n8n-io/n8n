@@ -216,7 +216,13 @@ describe('FolderFinderService', () => {
 		const ctx = mock<OperationContext>();
 		accessRepository.findFolderIdsInProject.mockResolvedValue(['folder-1']);
 
-		await expect(service.findFolderIdsInProject('project-1', ctx)).resolves.toEqual(['folder-1']);
-		expect(accessRepository.findFolderIdsInProject).toHaveBeenCalledWith('project-1', ctx);
+		await expect(service.findFolderIdsInProject('project-1', 'workflow', ctx)).resolves.toEqual([
+			'folder-1',
+		]);
+		expect(accessRepository.findFolderIdsInProject).toHaveBeenCalledWith(
+			'project-1',
+			'workflow',
+			ctx,
+		);
 	});
 });

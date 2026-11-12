@@ -33,7 +33,7 @@ export function instancePromotionExportRequest({
 	return {
 		user,
 		projectIds,
-		includeAgents: true,
+		includeAgents: false,
 		includeVariableValues: true,
 		canExportVariableValues,
 		includeTags: true,
@@ -58,7 +58,7 @@ export async function exportInstancePackage(
 		{
 			user,
 			projectIds: [projectId],
-			includeAgents: true,
+			includeAgents: false,
 			includeArchived: true,
 			includeTags: true,
 			includeVariableValues: true,

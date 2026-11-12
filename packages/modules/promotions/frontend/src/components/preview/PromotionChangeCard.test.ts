@@ -57,8 +57,8 @@ const cases: Case[] = [
 		detail: {
 			key: 'folder:f3',
 			type: 'folder',
-			before: { id: 'f3', name: 'Archive', parentFolderId: 'f1', resourceType: 'workflow' },
-			after: { id: 'f3', name: 'Old invoices', parentFolderId: 'f2', resourceType: 'workflow' },
+			before: { id: 'f3', name: 'Archive', parentFolderId: 'f1' },
+			after: { id: 'f3', name: 'Old invoices', parentFolderId: 'f2' },
 			revision,
 		},
 		shows: ['Name', 'Archive', 'Old invoices', 'Location', 'Payments', 'Reports'],

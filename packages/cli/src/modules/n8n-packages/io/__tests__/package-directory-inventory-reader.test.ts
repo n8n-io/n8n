@@ -191,7 +191,6 @@ describe('PackageDirectoryInventoryReader', () => {
 	it('returns an empty inventory for a directory without entity files', async () => {
 		expect(await reader.read(sourceOf({ 'manifest.json': '{}' }))).toEqual({
 			projects: [],
-			agents: [],
 			workflows: [],
 			folders: [],
 			credentials: [],

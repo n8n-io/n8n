@@ -8,7 +8,6 @@ properties:
       - project
       - folder
       - workflow
-      - agent
       - credential
       - dataTable
       - variable

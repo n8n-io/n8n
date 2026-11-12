@@ -1,3 +1,4 @@
+import type { FolderResourceType } from '@n8n/api-types';
 import type { Folder, OperationContext, User } from '@n8n/db';
 import { FolderAccessRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -147,10 +148,12 @@ export class FolderFinderService {
 		return chainsByFolderId;
 	}
 
-	/**
-	 * List all folder ids in a project
-	 */
-	async findFolderIdsInProject(projectId: string, ctx: OperationContext = {}): Promise<string[]> {
-		return await this.folderAccessRepository.findFolderIdsInProject(projectId, ctx);
+	/** Lists project folder IDs, optionally restricted to a resource type. */
+	async findFolderIdsInProject(
+		projectId: string,
+		resourceType?: FolderResourceType,
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		return await this.folderAccessRepository.findFolderIdsInProject(projectId, resourceType, ctx);
 	}
 }

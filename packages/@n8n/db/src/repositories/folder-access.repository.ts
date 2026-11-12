@@ -1,3 +1,4 @@
+import type { FolderResourceType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
@@ -102,10 +103,14 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 		return [...folders.values()];
 	}
 
-	async findFolderIdsInProject(projectId: string, ctx: OperationContext = {}): Promise<string[]> {
+	async findFolderIdsInProject(
+		projectId: string,
+		resourceType?: FolderResourceType,
+		ctx: OperationContext = {},
+	): Promise<string[]> {
 		const rows = await this.managerFor(ctx).find(Folder, {
 			select: { id: true },
-			where: { homeProject: { id: projectId } },
+			where: { homeProject: { id: projectId }, ...(resourceType ? { resourceType } : {}) },
 		});
 		return rows.map((row) => row.id);
 	}

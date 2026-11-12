@@ -489,9 +489,11 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
-		it('keeps an unselected Agent and its metadata when its folder moves', async () => {
+		it('keeps Agent folders and metadata when the project is renamed', async () => {
 			const agentFile = JSON.stringify({ id: 'a1', name: 'Agent' });
 			const metadata = JSON.stringify({ versionId: 'v1', publishedVersionId: 'v1' });
+			const agentFolder = JSON.stringify({ id: 'f1', name: 'Sales', resourceType: 'agent' });
+			const renamed = { ...alpha, name: 'Renamed', target: 'projects/renamed' };
 			await apply(
 				{
 					manifest: makeManifest({
@@ -501,32 +503,30 @@ describe('WorkingCopyUpdater', () => {
 					}),
 					files: {
 						'projects/alpha/project.json': projectFile,
-						'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+						'projects/alpha/folders/sales/folder.json': agentFolder,
 						'projects/alpha/folders/sales/agents/a1/agent.json': agentFile,
 						'projects/alpha/folders/sales/agents/a1/agent-metadata.json': metadata,
 					},
 				},
 				{
 					manifest: makeManifest({
-						projects: [alpha],
-						folders: [folder('f1', 'Revenue', 'revenue')],
+						projects: [renamed],
 					}),
 					files: {
-						'projects/alpha/project.json': projectFile,
-						'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
+						'projects/renamed/project.json': JSON.stringify({ id: alpha.id, name: renamed.name }),
 					},
 				},
-				{ folderIds: ['f1'] },
 			);
 
-			expect(await readExported('projects/alpha/folders/revenue/agents/a1/agent.json')).toBe(
+			expect(await readExported('projects/renamed/folders/sales/folder.json')).toBe(agentFolder);
+			expect(await readExported('projects/renamed/folders/sales/agents/a1/agent.json')).toBe(
 				agentFile,
 			);
 			expect(
-				await readExported('projects/alpha/folders/revenue/agents/a1/agent-metadata.json'),
+				await readExported('projects/renamed/folders/sales/agents/a1/agent-metadata.json'),
 			).toBe(metadata);
 			expect((await readWrittenManifest()).agents).toEqual([
-				{ id: 'a1', name: 'Agent', target: 'projects/alpha/folders/revenue/agents/a1' },
+				{ id: 'a1', name: 'Agent', target: 'projects/renamed/folders/sales/agents/a1' },
 			]);
 		});
 

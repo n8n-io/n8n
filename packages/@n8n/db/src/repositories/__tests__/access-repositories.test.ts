@@ -468,6 +468,7 @@ describe('access repositories', () => {
 			const query = mock<SelectQueryBuilder<Folder>>();
 			for (const builder of [baseQuery, recursiveQuery, query]) {
 				builder.select.mockReturnValue(builder);
+				builder.addSelect.mockReturnValue(builder);
 				builder.where.mockReturnValue(builder);
 				builder.innerJoin.mockReturnValue(builder);
 				builder.addCommonTableExpression.mockReturnValue(builder);

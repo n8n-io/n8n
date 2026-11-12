@@ -463,6 +463,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -493,6 +494,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -603,17 +605,31 @@ export class N8nPackagesService {
 
 	private async readImportManifest(
 		reader: PackageReader,
-		{ allowAgents = true } = {},
+		{ allowAgents = false } = {},
 	): Promise<PackageManifest> {
 		const manifest = await this.packageParser.getManifest(reader);
 		if (manifest.agents?.length) {
 			if (!allowAgents) {
 				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
 			}
+
 			if (!this.moduleRegistry.isActive('agents')) {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
+
+		if (!allowAgents && manifest.folders?.length) {
+			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
+
+			for (const prefix of prefixes) {
+				const folders = await this.packageParser.getFolders(reader, prefix);
+
+				if (folders.some((folder) => folder.resourceType === 'agent')) {
+					throw new BadRequestError('Agent folders require the ordinary archive import endpoint.');
+				}
+			}
+		}
+
 		return manifest;
 	}
 

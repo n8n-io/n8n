@@ -273,7 +273,7 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
 	projectFolderIds?: string[];
-	/** Internal opt-out for callers that cannot import Agents yet. */
+	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;

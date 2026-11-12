@@ -25,6 +25,7 @@ export interface ProjectExportRequest {
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
 	includeArchived: boolean;
+	includeAgentFolders?: boolean;
 	/**
 	 * Export only these workflows from the projects, with the folders on the
 	 * path to them. Omit to export whole projects. An empty array writes the
@@ -142,7 +143,10 @@ export class ProjectExporter {
 		request: ProjectExportRequest,
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<FolderExportResult> {
-		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
+		const folderIds = await this.folderFinder.findFolderIdsInProject(
+			projectId,
+			request.includeAgentFolders === false ? 'workflow' : undefined,
+		);
 		if (folderIds.length === 0) {
 			return {
 				entries: [],
@@ -158,6 +162,7 @@ export class ProjectExporter {
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
 			includeArchived: request.includeArchived,
+			includeAgentFolders: request.includeAgentFolders,
 			basePrefix: target,
 			selectedWorkflowIds,
 			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,

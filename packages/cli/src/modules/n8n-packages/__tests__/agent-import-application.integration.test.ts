@@ -65,6 +65,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -86,6 +87,7 @@ import { WorkflowPackageImporter } from '../engine/workflow-package-importer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../n8n-packages.config';
+import { N8nPackagesService } from '../n8n-packages.service';
 import type { ResolvedImportRequest } from '../n8n-packages.types';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
 
@@ -1499,4 +1501,50 @@ it('imports Agent placement and empty folders and preserves additional Agent res
 	});
 	expect(await folders.existsBy({ id: 'additional-agent-folder' })).toBe(true);
 	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+});
+
+it('round-trips nested Agent placement and empty folders through the archive API', async () => {
+	const parent = await createFolder(project, { name: 'Team', resourceType: 'agent' });
+	const child = await createFolder(project, {
+		name: 'Support',
+		resourceType: 'agent',
+		parentFolder: parent,
+	});
+	const empty = await createFolder(project, { name: 'Empty', resourceType: 'agent' });
+	const agent = await agents.save({
+		id: 'roundtrip-agent',
+		name: 'Support Agent',
+		projectId: project.id,
+		parentFolderId: child.id,
+		schema: null,
+	});
+	const service = Container.get(N8nPackagesService);
+	const exported = await service.exportPackage({ user: owner, projectIds: [project.id] });
+	const packageBuffer = await streamToBuffer(exported.stream);
+	await agents.delete({ id: agent.id });
+	const folders = Container.get(FolderRepository);
+	await folders.delete({ id: parent.id });
+	await folders.delete({ id: empty.id });
+
+	const imported = await service.importPackage(
+		importPackageRequest({ user: owner, packageBuffer }),
+	);
+
+	for (const [folder, parentFolderId] of [
+		[parent, null],
+		[child, parent.id],
+		[empty, null],
+	] as const) {
+		expect(await folders.findOneByOrFail({ id: folder.id })).toMatchObject({
+			name: folder.name,
+			resourceType: 'agent',
+			parentFolderId,
+		});
+	}
+
+	expect(await agents.findById(agent.id)).toMatchObject({
+		name: agent.name,
+		parentFolderId: child.id,
+	});
+	expect(imported.counts.agents).toMatchObject({ created: 1 });
 });

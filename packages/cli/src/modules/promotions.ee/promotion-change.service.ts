@@ -21,7 +21,6 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import type { z } from 'zod';
-import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
@@ -390,9 +389,6 @@ export function toDetail({
 			return { type, ...parseSides(serializedProjectSchema) };
 		case 'folder':
 			return { type, ...parseSides(serializedFolderSchema) };
-		case 'agent':
-			return { type, ...parseSides(serializedAgentSchema) };
-
 		case 'workflow':
 			return { type, ...parseSides(serializedWorkflowSchema) };
 		case 'credential':
