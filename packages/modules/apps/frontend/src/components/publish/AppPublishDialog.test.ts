@@ -157,7 +157,7 @@ describe('AppPublishDialog', () => {
 		});
 
 		it('shows the list while the preview loads', async () => {
-			let resolve: (value: { resources: (typeof sales)[] }) => void = () => {};
+			let resolve: (value: { resources: Array<typeof sales> }) => void = () => {};
 			vi.mocked(getAppPublishPreview).mockReturnValue(
 				new Promise((done) => {
 					resolve = done;
