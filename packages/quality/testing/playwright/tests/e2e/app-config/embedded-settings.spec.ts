@@ -34,7 +34,7 @@ function recordDeniedResponses(page: Page) {
 test.describe(
 	'Embedded settings',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test.skip(
