@@ -13,10 +13,10 @@ import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreato
 import { useChatToolPolicy } from '@/features/ai/chatHub/composables/useChatToolRestriction';
 import {
 	ContactAdminModal,
+	RestrictedMenuItemMarker,
 	type ContactAudience,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
-import ToolsSelectorRestrictedMarker from './ToolsSelectorRestrictedMarker.vue';
 
 const props = defineProps<{
 	disabled: boolean;
@@ -282,7 +282,7 @@ onMounted(async () => {
 
 				<template #item-trailing="{ item }">
 					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
-						<ToolsSelectorRestrictedMarker
+						<RestrictedMenuItemMarker
 							v-if="item.data?.restriction"
 							:node-type-name="restrictedTypeName(item)"
 							:restriction="item.data.restriction"

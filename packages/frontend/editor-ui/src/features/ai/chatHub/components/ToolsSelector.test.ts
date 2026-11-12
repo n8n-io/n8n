@@ -11,7 +11,10 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ChatHubToolDto } from '@n8n/api-types';
 import { TOOLS_MANAGER_MODAL_KEY, TOOL_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
-import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import {
+	contactAdminModalStub,
+	mockRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -336,6 +339,39 @@ describe('ToolsSelector', () => {
 					}),
 				}),
 			);
+		});
+
+		it('closes the menu and opens the contact-admin dialog from the lock', async () => {
+			const { getByTestId } = renderComponent({
+				props: { disabled: false, checkedToolIds: [] },
+				global: {
+					stubs: {
+						ContactAdminModal: contactAdminModalStub,
+						RestrictedMenuItemMarker: {
+							props: ['nodeTypeName', 'restriction'],
+							emits: ['contactAdmin'],
+							template:
+								'<button data-test-id="restricted-marker" @click.stop="$emit(\'contactAdmin\', \'instance\')" />',
+						},
+					},
+				},
+			});
+			await userEvent.click(getByTestId('chat-tools-button'));
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			const marker = findMenuItemByText('Restricted Tool')!.querySelector<HTMLElement>(
+				'[data-test-id="restricted-marker"]',
+			)!;
+			await userEvent.click(marker);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+			});
+			const modal = getByTestId('contact-admin-modal');
+			expect(modal.textContent).toContain('Test Tool');
+			expect(modal.dataset.audience).toBe('instance');
 		});
 
 		it('still checks a tool whose node type is not restricted', async () => {
