@@ -1,4 +1,4 @@
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatOpenAI, ChatOpenAICompletions } from '@langchain/openai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -17,6 +17,7 @@ vi.mock('@utils/custom-model-endpoint/gateway-config', async (importOriginal) =>
 }));
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const MockedChatOpenAICompletions = vi.mocked(ChatOpenAICompletions);
 
 const nodeDef: INode = {
 	id: '1',
@@ -29,6 +30,8 @@ const nodeDef: INode = {
 };
 
 type Params = Record<string, unknown>;
+
+const RESPONSES: Params = { apiFormat: 'responses' };
 
 /** Built rather than written, so the node-param lint rule does not read it as a display name. */
 const BLANK = ' '.repeat(2);
@@ -54,7 +57,7 @@ const contextWith = (params: Params = {}) => {
 };
 
 const constructorArgs = () => {
-	const args = MockedChatOpenAI.mock.calls[0]?.[0];
+	const args = (MockedChatOpenAICompletions.mock.calls[0] ?? MockedChatOpenAI.mock.calls[0])?.[0];
 	if (!args) throw new Error('the chat client was never constructed');
 	return args;
 };
@@ -183,5 +186,99 @@ describe('LmChatCustomEndpoint', () => {
 
 		expect(configOptions()).toMatchObject({ timeout: 5_000 });
 		expect(constructorArgs()).toMatchObject({ timeout: 5_000 });
+	});
+
+	describe('the API format it calls', () => {
+		it('offers both formats and leaves a saved node on Chat Completions', () => {
+			const field = node.description.properties.find(({ name }) => name === 'apiFormat');
+
+			expect(field).toMatchObject({
+				type: 'options',
+				default: 'chatCompletions',
+				options: [
+					{ name: 'Chat Completions', value: 'chatCompletions' },
+					{ name: 'Responses', value: 'responses' },
+				],
+			});
+		});
+
+		it('keeps a model named after a Responses-preferring one on Chat Completions', async () => {
+			await node.supplyData.call(contextWith({ model: 'codex-mini' }), 0);
+
+			expect(MockedChatOpenAICompletions).toHaveBeenCalledTimes(1);
+			expect(MockedChatOpenAI).not.toHaveBeenCalled();
+		});
+
+		it('asks the client for Responses, so the Agent can tell the two protocols apart', async () => {
+			await node.supplyData.call(contextWith(RESPONSES), 0);
+
+			expect(MockedChatOpenAICompletions).not.toHaveBeenCalled();
+			expect(constructorArgs()).toMatchObject({ useResponsesApi: true });
+		});
+
+		it.each([['chatCompletions'], ['responses']])(
+			'reads the same credential and model on %s',
+			async (apiFormat) => {
+				await node.supplyData.call(contextWith({ apiFormat, model: 'llama-3.1-70b' }), 0);
+
+				expect(constructorArgs()).toMatchObject({
+					model: 'llama-3.1-70b',
+					configuration: { baseURL: 'https://gateway.example.com/v1' },
+				});
+			},
+		);
+
+		it('leaves a Responses model unwrapped, as the message wrapper reshapes Chat Completions', async () => {
+			const { response } = await node.supplyData.call(contextWith(RESPONSES), 0);
+
+			const marked = Object.getOwnPropertySymbols(response).some(
+				(symbol) => symbol.description === 'wrappedChatModelMessageInput',
+			);
+
+			expect(marked).toBe(false);
+		});
+	});
+
+	describe('the Responses options it sends', () => {
+		it.each<[string, Params, Record<string, unknown>]>([
+			[
+				'the reasoning summary, nested as the API takes it',
+				{ reasoningSummary: 'concise' },
+				{ reasoning: { summary: 'concise' } },
+			],
+			[
+				'the store flag, including when it is turned off',
+				{ storeResponse: false },
+				{ store: false },
+			],
+			['the truncation strategy', { truncation: 'disabled' }, { truncation: 'disabled' }],
+		])('sends %s', async (_name, options, expected) => {
+			await node.supplyData.call(contextWith({ ...RESPONSES, options }), 0);
+
+			expect(constructorArgs().modelKwargs).toEqual(expected);
+		});
+
+		it('sends the Max Output Tokens field rather than the Chat Completions one', async () => {
+			await node.supplyData.call(
+				contextWith({ ...RESPONSES, options: { maxOutputTokens: 512, maxTokens: 256 } }),
+				0,
+			);
+
+			expect(constructorArgs()).toMatchObject({ maxTokens: 512 });
+		});
+
+		it.each<[string, Params]>([
+			['the seed', { seed: 7 }],
+			['the frequency penalty', { frequencyPenalty: 1 }],
+			['the presence penalty', { presencePenalty: 1 }],
+			['the stop sequences', { stop: 'END' }],
+		])('leaves out %s, which the hidden Chat Completions field holds', async (_name, options) => {
+			await node.supplyData.call(contextWith({ ...RESPONSES, options }), 0);
+
+			expect(constructorArgs().modelKwargs).toBeUndefined();
+			expect(constructorArgs()).not.toHaveProperty('frequencyPenalty');
+			expect(constructorArgs()).not.toHaveProperty('presencePenalty');
+			expect(constructorArgs()).not.toHaveProperty('stop');
+		});
 	});
 });
