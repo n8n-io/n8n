@@ -15,7 +15,7 @@ import {
 } from '@n8n/backend-module-apps';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -58,6 +58,11 @@ async function agentServices() {
 	};
 }
 
+async function agentPublishService() {
+	const { AgentPublishService } = await import('@/modules/agents/agent-publish.service.js');
+	return Container.get(AgentPublishService);
+}
+
 /**
  * Agent chat for app bindings. Runs act as the app project. Memory is scoped to
  * the app and the visitor, so a visitor never reads another visitor's thread.
@@ -97,6 +102,28 @@ export class AppAgentAdapter extends AppAgentPort {
 		const agent = await agents.findById(binding.agentId, projectId);
 		if (!agent) return null;
 		return { ...binding, name: agent.name, published: agent.activeVersionId !== null };
+	}
+
+	async canPublish(user: User, projectId: string, _binding: AppAgentBinding) {
+		return await userHasScopes(user, ['agent:publish'], false, { projectId });
+	}
+
+	async hasUnpublishedChanges(projectId: string, binding: AppAgentBinding) {
+		if (!this.moduleRegistry.isActive('agents')) return false;
+		const { agents } = await agentServices();
+		const agent = await agents.findById(binding.agentId, projectId);
+		return agent !== null && agent.versionId !== agent.activeVersionId;
+	}
+
+	async publish(user: User, projectId: string, binding: AppAgentBinding) {
+		if (!(await this.canPublish(user, projectId, binding))) {
+			throw new ForbiddenError('You do not have the permission to publish this agent.');
+		}
+		const publishService = await agentPublishService();
+		await publishService.publishAgent(binding.agentId, projectId, user, {
+			by: 'user',
+			trigger: 'explicit',
+		});
 	}
 
 	async chat(

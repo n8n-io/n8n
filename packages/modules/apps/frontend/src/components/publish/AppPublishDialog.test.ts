@@ -3,18 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 
 import { PUBLISHED_URL, testApp, testVersion } from '../../__tests__/fixtures';
-import { publishApp } from '../../apps.api';
+import { getAppPublishPreview, publishApp } from '../../apps.api';
 import AppPublishDialog from './AppPublishDialog.vue';
 
 vi.mock('../../apps.api');
-
-const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 
 const renderComponent = createComponentRenderer(AppPublishDialog, {
 	props: { open: true, app: testApp(), version: testVersion },
 	global: {
 		stubs: {
+			RouterLink: {
+				props: ['to'],
+				template: '<a :data-route="JSON.stringify(to)"><slot /></a>',
+			},
 			AppLinkField: { props: ['url'], template: '<span data-test-id="link">{{ url }}</span>' },
 			AppVisibilitySelect: {
 				props: ['modelValue'],
@@ -45,6 +46,7 @@ describe('AppPublishDialog', () => {
 			label: 'Expense tracker',
 			description: '',
 			visibility: undefined,
+			publishResources: true,
 		});
 		expect(emitted('updated')).toEqual([[published]]);
 	});
@@ -66,6 +68,7 @@ describe('AppPublishDialog', () => {
 			label: 'Launch',
 			description: 'Adds charts',
 			visibility: 'instance',
+			publishResources: true,
 		});
 	});
 
@@ -87,16 +90,195 @@ describe('AppPublishDialog', () => {
 		expect(screen.getByText('0/128')).toBeInTheDocument();
 	});
 
-	it('stays open and shows an error toast when the publish fails', async () => {
-		vi.mocked(publishApp).mockRejectedValue(new Error('denied'));
+	it('stays open and shows the error when the publish fails', async () => {
+		vi.mocked(publishApp).mockRejectedValue(
+			new Error('Could not publish "Sales": Credential is missing'),
+		);
 		const { emitted } = renderComponent();
 
 		await userEvent.click(await screen.findByTestId('app-publish-dialog-confirm'));
 
-		await waitFor(() =>
-			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not publish the app'),
+		expect(await screen.findByTestId('app-publish-error')).toHaveTextContent(
+			'Could not publish "Sales": Credential is missing',
 		);
 		expect(emitted('update:open')).toBeUndefined();
+	});
+
+	describe('attached resources', () => {
+		const sales = {
+			key: 'sales',
+			kind: 'workflow' as const,
+			resourceId: 'workflow-1',
+			name: 'Sales',
+			published: false,
+			hasChanges: false,
+			canPublish: true,
+		};
+		const support = {
+			key: 'support',
+			kind: 'agent' as const,
+			resourceId: 'agent-1',
+			name: 'Support',
+			published: false,
+			hasChanges: false,
+			canPublish: true,
+		};
+
+		it('checks the publish-all checkbox by default and lists the resources with a type icon', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
+			renderComponent();
+
+			const list = await screen.findByTestId('app-publish-resources-list');
+
+			expect(list).toHaveTextContent('Resources to be published');
+			expect(list).toHaveTextContent('Sales');
+			expect(list).toHaveTextContent('Support');
+			expect(screen.getByTestId('app-publish-resource-sales-icon')).toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-resource-support-icon')).toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-resources')).toBeChecked();
+			expect(getAppPublishPreview).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'app-1',
+				'v2',
+			);
+		});
+
+		it('hides the list when the box is unchecked and shows it again when checked', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales] });
+			renderComponent();
+			await screen.findByTestId('app-publish-resources-list');
+
+			await userEvent.click(screen.getByTestId('app-publish-resources'));
+			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('app-publish-resources'));
+			expect(screen.getByTestId('app-publish-resources-list')).toBeInTheDocument();
+		});
+
+		it('shows the list while the preview loads', async () => {
+			let resolve: (value: { resources: (typeof sales)[] }) => void = () => {};
+			vi.mocked(getAppPublishPreview).mockReturnValue(
+				new Promise((done) => {
+					resolve = done;
+				}),
+			);
+			renderComponent();
+
+			expect(await screen.findByTestId('app-publish-resources-list')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-resource-sales')).not.toBeInTheDocument();
+
+			resolve({ resources: [sales] });
+
+			expect(await screen.findByTestId('app-publish-resource-sales')).toBeInTheDocument();
+		});
+
+		it('lists the resources in the order that the server returns them', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
+			renderComponent();
+			await screen.findByTestId('app-publish-resources-list');
+
+			const rows = screen.getAllByTestId(/^app-publish-resource-[a-z]+$/);
+
+			expect(rows.map((row) => row.textContent)).toEqual(['Sales', 'Support']);
+		});
+
+		it('links each resource to its page in a new tab', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales, support] });
+			renderComponent();
+
+			const workflowLink = await screen.findByTestId('app-publish-resource-sales');
+			const agentLink = screen.getByTestId('app-publish-resource-support');
+
+			expect(workflowLink).toHaveAttribute('target', '_blank');
+			expect(workflowLink).toHaveAttribute('data-route', expect.stringContaining('workflow-1'));
+			expect(agentLink).toHaveAttribute('target', '_blank');
+			expect(agentLink).toHaveAttribute('data-route', expect.stringContaining('agent-1'));
+		});
+
+		it('lists a published resource with changes', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, published: true, hasChanges: true }],
+			});
+			renderComponent();
+
+			expect(await screen.findByTestId('app-publish-resources-list')).toHaveTextContent('Sales');
+		});
+
+		it('lists only the resources that need a publish', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, published: true }, support],
+			});
+			renderComponent();
+
+			const list = await screen.findByTestId('app-publish-resources-list');
+
+			expect(list).not.toHaveTextContent('Sales');
+			expect(list).toHaveTextContent('Support');
+		});
+
+		it('hides the list when all resources are published and unchanged', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, published: true }],
+			});
+			renderComponent();
+			await screen.findByTestId('app-publish-resources');
+
+			expect(screen.queryByTestId('app-publish-resources-list')).not.toBeInTheDocument();
+		});
+
+		it('sends publishResources false when the box is unchecked', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({ resources: [sales] });
+			vi.mocked(publishApp).mockResolvedValue(testApp());
+			renderComponent();
+			await screen.findByTestId('app-publish-resources-list');
+
+			await userEvent.click(screen.getByTestId('app-publish-resources'));
+			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+			await waitFor(() =>
+				expect(publishApp).toHaveBeenCalledWith(
+					expect.anything(),
+					'project-1',
+					'app-1',
+					expect.objectContaining({ publishResources: false }),
+				),
+			);
+		});
+
+		it('marks a resource that the user cannot publish and still allows the publish', async () => {
+			vi.mocked(getAppPublishPreview).mockResolvedValue({
+				resources: [{ ...sales, canPublish: false }, support],
+			});
+			vi.mocked(publishApp).mockResolvedValue(testApp());
+			renderComponent();
+
+			expect(await screen.findByTestId('app-publish-resource-sales-warning')).toBeInTheDocument();
+			expect(screen.queryByTestId('app-publish-resource-support-warning')).not.toBeInTheDocument();
+			expect(screen.getByTestId('app-publish-dialog-confirm')).toBeEnabled();
+
+			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+			await waitFor(() =>
+				expect(publishApp).toHaveBeenCalledWith(
+					expect.anything(),
+					'project-1',
+					'app-1',
+					expect.objectContaining({ publishResources: true }),
+				),
+			);
+		});
+
+		it('still publishes when the preview cannot be loaded', async () => {
+			vi.mocked(getAppPublishPreview).mockRejectedValue(new Error('offline'));
+			vi.mocked(publishApp).mockResolvedValue(testApp());
+			renderComponent();
+			await screen.findByTestId('app-publish-resources');
+
+			await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+			await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
+		});
 	});
 
 	it('shows the link only for a published app', async () => {

@@ -119,6 +119,22 @@ export type AppBindingsResponse = {
 	warnings: AppBindingWarning[];
 };
 
+export type AppPublishPreviewResource = {
+	key: string;
+	kind: 'workflow' | 'agent';
+	resourceId: string;
+	name: string;
+	published: boolean;
+	/** The draft of a published resource differs from its published version. */
+	hasChanges: boolean;
+	/** Whether the requesting user has the publish permission for the resource. */
+	canPublish: boolean;
+};
+
+export type AppPublishPreviewResponse = {
+	resources: AppPublishPreviewResource[];
+};
+
 /** What the app frontend can learn about its bindings. Resource IDs stay on the server. */
 export type AppRuntimeBinding =
 	| { key: string; kind: 'workflow' }

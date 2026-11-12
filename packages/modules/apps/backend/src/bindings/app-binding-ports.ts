@@ -85,6 +85,14 @@ export abstract class AppWorkflowPort {
 		binding: AppWorkflowBinding,
 	): Promise<AppDescribedWorkflowBinding | null>;
 
+	abstract canPublish(user: User, projectId: string, binding: AppWorkflowBinding): Promise<boolean>;
+
+	/** Whether the draft of a published workflow differs from its published version. */
+	abstract hasUnpublishedChanges(projectId: string, binding: AppWorkflowBinding): Promise<boolean>;
+
+	/** Publishes the current draft of the workflow. Throws when the workflow cannot be published. */
+	abstract publish(user: User, projectId: string, binding: AppWorkflowBinding): Promise<void>;
+
 	/** Returns status `running` when the run did not finish in time. */
 	abstract run(
 		ctx: AppCallContext,
@@ -126,6 +134,14 @@ export abstract class AppAgentPort {
 		projectId: string,
 		binding: AppAgentBinding,
 	): Promise<AppDescribedAgentBinding | null>;
+
+	abstract canPublish(user: User, projectId: string, binding: AppAgentBinding): Promise<boolean>;
+
+	/** Whether the draft of a published agent differs from its published version. */
+	abstract hasUnpublishedChanges(projectId: string, binding: AppAgentBinding): Promise<boolean>;
+
+	/** Publishes the current draft of the agent. Throws when the agent cannot be published. */
+	abstract publish(user: User, projectId: string, binding: AppAgentBinding): Promise<void>;
 
 	/** All refusals throw before the returned stream starts. */
 	abstract chat(
