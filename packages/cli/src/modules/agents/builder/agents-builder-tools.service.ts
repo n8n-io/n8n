@@ -31,7 +31,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
-	isCredentialAgentIntegration,
+	integrationNeedsCredential,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -48,6 +48,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -448,10 +449,20 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
-/** Enable caching for supported models and preserve an explicit cache TTL. */
-function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+/**
+ * Enable caching for supported models and preserve an explicit setting. A
+ * write replaces the whole config, so a write that omits `promptCaching` keeps
+ * the stored setting instead of turning caching back on.
+ */
+function applyPromptCachingBuilderDefaults(
+	config: AgentJsonConfig,
+	currentConfig: AgentJsonConfig | null,
+): AgentJsonConfig {
 	const capability = getModelPromptCachingCapability(config.model);
-	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+	const resolved = resolvePromptCaching(
+		config.config?.promptCaching ?? currentConfig?.config?.promptCaching,
+		capability,
+	);
 
 	if (!resolved) {
 		if (!config.config || !('promptCaching' in config.config)) return config;
@@ -520,6 +531,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -814,7 +826,7 @@ export class AgentsBuilderToolsService {
 		return (agent?.integrations ?? [])
 			.filter(
 				(integration) =>
-					isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					integrationNeedsCredential(integration) && !isDraftIntegration(integration),
 			)
 			.map((integration) => integration.credentialId);
 	}
@@ -826,7 +838,16 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 	): BuiltTool {
 		return buildResolveLlmTool({
-			credentialProvider,
+			// The model picker offers only credentials the user can use through their
+			// own access. Validation and test runs keep the full provider.
+			credentialProvider: {
+				resolve: async (credentialId) => await credentialProvider.resolve(credentialId),
+				list: async () =>
+					await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+						user,
+						await credentialProvider.list(),
+					),
+			},
 			modelLookup,
 			isProviderServedByGateway: async (provider) => {
 				try {
@@ -1450,6 +1471,7 @@ export class AgentsBuilderToolsService {
 
 		const configWithDefaults = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(zodResult.data),
+			snapshot.config,
 		);
 
 		const saved = await this.agentConfigService.updateConfig(
@@ -1584,6 +1606,7 @@ export class AgentsBuilderToolsService {
 		// Save defaults explicitly so the write and read paths agree.
 		const config = applyPromptCachingBuilderDefaults(
 			applyNativeWebSearchDefaultOn(applyFreshAgentMemoryDefault(parsed.data, currentConfig)),
+			currentConfig,
 		);
 		return { ok: true, config };
 	}

@@ -60,6 +60,7 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -127,6 +128,11 @@ export function isAuthorizationResponseIssuerValid(
 	return iss === flowState.issuer;
 }
 
+type ClientRegistrationResult = Pick<
+	RelayEventMap['oauth-client-registered'],
+	'method' | 'serverSupportsCimd' | 'serverSupportsDcr'
+>;
+
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
 const OFFLINE_ACCESS_SCOPE = 'offline_access';
@@ -140,6 +146,25 @@ export interface OAuth2CredentialRefreshResult {
 export interface OAuth2CredentialTokenRevision {
 	accessToken?: string;
 	expiresAt?: number;
+}
+
+function getOAuth2AccessToken(tokenData: unknown): string | undefined {
+	if (!isRecord(tokenData)) return undefined;
+	const accessToken = tokenData.access_token ?? tokenData.accessToken;
+	return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
+}
+
+/**
+ * The access token and expiry of stored OAuth2 token data. `refreshOAuth2CredentialById`
+ * compares them, so it does not repeat a refresh that another caller already finished.
+ */
+export function getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
+	const accessToken = getOAuth2AccessToken(tokenData);
+	const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
+	return {
+		...(accessToken ? { accessToken } : {}),
+		...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+	};
 }
 
 export function shouldSkipAuthOnOAuthCallback() {
@@ -907,26 +932,11 @@ export class OauthService {
 			: merged;
 	}
 
-	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
-		if (!isRecord(tokenData)) return undefined;
-		const accessToken = tokenData.access_token ?? tokenData.accessToken;
-		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
-	}
-
-	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
-		const accessToken = this.getOAuth2AccessToken(tokenData);
-		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
-		return {
-			...(accessToken ? { accessToken } : {}),
-			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
-		};
-	}
-
 	private oauth2TokenRevisionChanged(
 		initial: OAuth2CredentialTokenRevision,
 		current: ClientOAuth2TokenData,
 	): boolean {
-		const currentRevision = this.getOAuth2TokenRevision(current);
+		const currentRevision = getOAuth2TokenRevision(current);
 		return (
 			initial.accessToken !== currentRevision.accessToken ||
 			initial.expiresAt !== currentRevision.expiresAt
@@ -935,7 +945,7 @@ export class OauthService {
 
 	private buildOAuth2RefreshResult(
 		tokenData: ClientOAuth2TokenData,
-		accessToken = this.getOAuth2AccessToken(tokenData),
+		accessToken = getOAuth2AccessToken(tokenData),
 	): OAuth2CredentialRefreshResult | null {
 		if (!accessToken) return null;
 
@@ -973,7 +983,7 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
-		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
+		const tokenRevision = knownTokenRevision ?? getOAuth2TokenRevision(oauthTokenData);
 
 		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
 			const currentCredential = await this.credentialsRepository.findOne({
@@ -1219,14 +1229,29 @@ export class OauthService {
 		// Automatic registration returns the server metadata. The callback checks `iss` against its issuer.
 		let authorizationServerMetadata: OAuthAuthorizationServerMetadata | undefined;
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			authorizationServerMetadata = await this.registerClient(
-				oauthCredentials,
-				authorizationServerUrl!,
-				toUpdate,
-				toDelete,
-				discoveredScopes,
-				this.getDeclaredScope(credential.type),
-			);
+			const registration: ClientRegistrationResult = {};
+			let success = false;
+			try {
+				authorizationServerMetadata = await this.registerClient(
+					oauthCredentials,
+					authorizationServerUrl!,
+					toUpdate,
+					toDelete,
+					discoveredScopes,
+					this.getDeclaredScope(credential.type),
+					registration,
+				);
+				success = true;
+			} finally {
+				this.eventService.emit('oauth-client-registered', {
+					userId: csrfUserId(csrfData),
+					credentialId: credential.id,
+					credentialType: credential.type,
+					...registration,
+					success,
+					cimdEnabled: this.globalConfig.auth.oauthCimdEnabled,
+				});
+			}
 		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
@@ -1302,6 +1327,7 @@ export class OauthService {
 		toDelete: string[],
 		discoveredResourceScopes?: string[],
 		declaredScope?: string,
+		registration: ClientRegistrationResult = {},
 	): Promise<OAuthAuthorizationServerMetadata> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
@@ -1393,7 +1419,10 @@ export class OauthService {
 		}
 
 		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
+		registration.serverSupportsCimd = metadata.client_id_metadata_document_supported === true;
+		registration.serverSupportsDcr = registration_endpoint !== undefined;
 		if (clientMetadataUrl) {
+			registration.method = 'cimd';
 			// With CIMD the metadata document URL is the client ID, so no registration request is sent.
 			this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
 				authUrl: authorization_endpoint,
@@ -1408,10 +1437,12 @@ export class OauthService {
 		}
 
 		if (!registration_endpoint) {
+			registration.method = 'none_available';
 			throw new BadRequestError(
 				'The OAuth2 server does not support automatic client registration. Enter the client ID of your own OAuth app instead.',
 			);
 		}
+		registration.method = 'dcr';
 
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
 			metadata.grant_types_supported ?? ['authorization_code', 'implicit'],

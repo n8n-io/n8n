@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { assertValidFoldStepName } from './fold-step';
 import { FoldTransactionLostError } from './fold-transaction-lost.error';

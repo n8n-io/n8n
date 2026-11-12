@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
+import {
+	N8nHoverCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+	N8nTabsList,
+	N8nTabsTrigger,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -7,13 +14,12 @@ import {
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	TabsList,
-	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -55,6 +61,7 @@ const i18n = useI18n();
 const clipboard = useClipboard();
 const { artifactUrl, openArtifactInNewTab } = useArtifactLinks();
 const toast = useToast();
+const skillsStore = useSkillsStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -123,9 +130,13 @@ type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const {
 	getSummary,
-	displayName: tabName,
+	displayName,
 	refresh: refreshSummaries,
 } = useArtifactTabSummaries(() => props.tabs);
+
+function tabName(tab: ArtifactTab): string {
+	return tab.type === 'skill' ? (skillsStore.skillNames.get(tab.id) ?? tab.name) : displayName(tab);
+}
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -252,7 +263,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 			data-test-id="instance-ai-artifacts-preview-toggle"
 			@click="emit('togglePreview')"
 		/>
-		<TabsList
+		<N8nTabsList
 			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
@@ -276,7 +287,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 						@mousedown.middle.prevent
 						@auxclick.middle.prevent="emit('closeTab', tab.id)"
 					>
-						<TabsTrigger
+						<N8nTabsTrigger
 							:value="tab.id"
 							:data-tab-id="tab.id"
 							:class="$style.tabTrigger"
@@ -292,7 +303,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 							/>
 							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
 							<span :class="$style.label">{{ tabName(tab) }}</span>
-						</TabsTrigger>
+						</N8nTabsTrigger>
 						<span :class="$style.closeSlot">
 							<N8nIconButton
 								icon="x"
@@ -315,7 +326,13 @@ async function handleCopyLink(tab: ArtifactTab) {
 					<ContextMenuContent :class="$style.contextMenu">
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
 							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
+							<span>{{
+								i18n.baseText(
+									tab.type === 'skill'
+										? 'instanceAi.previewTabBar.openInSkillHub'
+										: 'instanceAi.previewTabBar.openInEditor',
+								)
+							}}</span>
 						</ContextMenuItem>
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
 							<N8nIcon icon="link" size="small" />
@@ -341,7 +358,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 					/>
 				</template>
 			</InstanceAiResourcePicker>
-		</TabsList>
+		</N8nTabsList>
 		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
 		<N8nHoverCard
 			:open="!!hoveredTab"

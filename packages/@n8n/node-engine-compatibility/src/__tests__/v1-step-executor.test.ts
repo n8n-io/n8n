@@ -16,10 +16,10 @@ import {
 	Expression,
 	ExpressionError,
 	NodeOperationError,
-	UserError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

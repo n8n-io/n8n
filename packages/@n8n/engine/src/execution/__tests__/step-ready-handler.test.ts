@@ -1216,6 +1216,24 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(subExecutionStarter.start).not.toHaveBeenCalled();
 	});
 
+	it('announces no step:waiting while the step waits on an awaited sub-execution', async () => {
+		// As in v1, the calling node keeps showing as running while its sub-execution runs.
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			publisher,
+		);
+
+		await handler.handle(event);
+
+		expect(publisher.publish).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ type: 'step:started' }),
+		);
+	});
+
 	it('fails the waiting step and reports it when the sub-execution cannot start', async () => {
 		const stepStore = makeStepStore();
 		const subExecutionStarter: SubExecutionStarter = {
@@ -1476,6 +1494,47 @@ describe('StepReadyHandler lifecycle events', () => {
 		await handler.handle(event);
 
 		expect(order).toEqual(['step:started', 'step:completed', 'queue:step:settled']);
+	});
+
+	it('announces step:waiting and no outcome when the step suspends on a wait', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: { resumeBinding: 'execution' } }) },
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(2);
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(1, {
+			type: 'step:started',
+			...stepFields,
+		});
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
+			type: 'step:waiting',
+			...stepFields,
+		});
+	});
+
+	it('announces no step:waiting for a suspension it did not record', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) }),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: { resumeBinding: 'execution' } }) },
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:started',
+			...stepFields,
+		});
 	});
 
 	it('announces nothing when the step cannot be claimed', async () => {

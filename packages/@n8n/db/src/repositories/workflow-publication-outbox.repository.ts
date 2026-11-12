@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import {

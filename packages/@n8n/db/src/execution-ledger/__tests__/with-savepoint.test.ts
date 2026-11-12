@@ -1,5 +1,5 @@
 import type { EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { Transaction } from '../../services/transaction';

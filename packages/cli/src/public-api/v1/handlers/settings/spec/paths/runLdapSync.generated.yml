@@ -2,7 +2,10 @@ operationId: runLdapSync
 tags:
   - SettingsLdap
 summary: Trigger an LDAP synchronization
-description: Manually trigger an LDAP synchronization. The response returns the new sync history record. Requires the `ldap:sync` scope and the LDAP feature to be licensed.
+description: |-
+  Manually trigger an LDAP synchronization. The response returns the new sync history record. Requires the LDAP feature to be licensed.
+
+  Requires the `ldap:sync` API key scope.
 x-required-scope: ldap:sync
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

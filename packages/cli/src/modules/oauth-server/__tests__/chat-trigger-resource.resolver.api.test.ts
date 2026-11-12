@@ -5,7 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -27,7 +27,7 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 /** Root-level (no `/rest` prefix) agent authenticated as `user` — `authAgentFor` always
  * prefixes `/rest`, which 404s against root-level routes like `/oauth/authorize`. */
-const rootAgentFor = (user: User) => {
+const rootAgentFor = (user: Person) => {
 	const agent = request.agent(testServer.app);
 	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled);
 	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -37,13 +37,15 @@ const rootAgentFor = (user: User) => {
 import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
+// The OAuth server owns chat metadata. Loading instance MCP also loads its tool graph
+// in the setup hook and can exceed the hook timeout under CI load.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let webhookEndpoint: string;
 
 /** The path a chat trigger registers under: `{webhookId}/chat`. */

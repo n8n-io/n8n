@@ -2,7 +2,10 @@ operationId: getFolder
 tags:
   - Folders
 summary: Get folder details
-description: Get folder details including sub-folder and workflow counts.
+description: |-
+  Get folder details including sub-folder and workflow counts.
+
+  Requires the `folder:read` API key scope.
 x-required-scope: folder:read
 parameters:
   - schema:

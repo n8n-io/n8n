@@ -469,7 +469,7 @@ export interface ICredentialType {
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
-	test?: ICredentialTestRequest;
+	test?: ICredentialTestRequest | ICredentialTestFunction;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
@@ -4388,6 +4388,8 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	agent_source?: 'inline' | 'referenced'; // n8n-nodes-base.messageAnAgent(Tool)
+	agent_id?: string; // n8n-nodes-base.messageAnAgent(Tool), referenced agent with a fixed id
 	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
 	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;

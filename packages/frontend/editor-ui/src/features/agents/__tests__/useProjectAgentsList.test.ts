@@ -100,6 +100,65 @@ describe('useProjectAgentsList', () => {
 		]);
 	});
 
+	it('projects a full agent into a list item on upsert', async () => {
+		listAgents.mockResolvedValueOnce([{ id: 'a1', name: 'Agent One' }]);
+		const { list, ensureLoaded } = useProjectAgentsList(ref('p1'));
+
+		await ensureLoaded();
+		upsertProjectAgentsListCache('p1', {
+			id: 'a1',
+			name: 'Agent One',
+			projectId: 'p1',
+			project: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'v1',
+			activeVersionId: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-02T00:00:00.000Z',
+			config: {
+				name: 'Agent One',
+				model: '',
+				instructions: '',
+				personalisation: {
+					icon: 'zap',
+					gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+			isRunnable: true,
+			hasPublishHistory: false,
+			hasVersionHistory: false,
+			skills: {},
+			skillHashes: {},
+			outdatedSkillIds: [],
+			skillVersions: {},
+		});
+
+		expect(list.value).toEqual([
+			{
+				id: 'a1',
+				name: 'Agent One',
+				projectId: 'p1',
+				project: null,
+				availableInMCP: false,
+				isArchived: false,
+				versionId: 'v1',
+				activeVersionId: null,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				personalisation: {
+					icon: 'zap',
+					gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+				},
+				hasConfig: true,
+				skillVersions: {},
+			},
+		]);
+	});
+
 	it('reactively removes cached agents after delete', async () => {
 		listAgents.mockResolvedValueOnce([
 			{ id: 'a1', name: 'Agent One' },

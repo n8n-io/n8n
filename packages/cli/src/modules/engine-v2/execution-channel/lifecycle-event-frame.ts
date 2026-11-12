@@ -7,7 +7,7 @@ import {
 	type LifecycleEvent,
 } from '@n8n/engine';
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * The codec of the `lifecycle` topic. Each frame holds one event.
@@ -43,15 +43,16 @@ function serializeLifecycleEvent(
 	if (bytes <= maxFrameBytes) return { ok: true, frame: serialized.result };
 
 	// An event over the limit sheds what the host can read from the data plane
-	// instead: a failed step's details, then its stack. An event whose name and
-	// message alone are over the limit is still dropped.
+	// instead: a completed step's outputs, or a failed step's details, then its
+	// stack. An event that is still over the limit without them is dropped.
 	for (const slimmer of slimmerForms(event)) {
 		const frame = JSON.stringify(slimmer);
 		if (Buffer.byteLength(frame) > maxFrameBytes) continue;
-		logger.info(
-			'Sent a lifecycle event without part of its error: it exceeds the frame size limit',
+		logger.debug(
+			'Sent a lifecycle event without its largest part: it exceeds the frame size limit',
 			{
 				executionId: event.executionId,
+				stepId: slimmer.stepId,
 				type: event.type,
 				bytes,
 			},
@@ -64,7 +65,16 @@ function serializeLifecycleEvent(
 	});
 }
 
-function* slimmerForms(event: LifecycleEvent): Generator<LifecycleEvent> {
+/** A step's event without its largest part, then without the next one. Other events have none. */
+function* slimmerForms(
+	event: LifecycleEvent,
+): Generator<Extract<LifecycleEvent, { stepId: string }>> {
+	if (event.type === 'step:completed') {
+		if (event.outputs === undefined) return;
+		const { outputs: _outputs, ...withoutOutputs } = event;
+		yield withoutOutputs;
+		return;
+	}
 	if (event.type !== 'step:failed') return;
 	const { details: _details, ...withoutDetails } = event.error;
 	yield { ...event, error: withoutDetails };
