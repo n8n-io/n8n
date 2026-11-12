@@ -20,6 +20,7 @@ export type StartAfterColumnInfo = {
 	data_type: string | null;
 	is_timestamp: boolean | null;
 	outputs_object: boolean | null;
+	is_numeric: boolean | null;
 	is_unique: boolean;
 	has_child_tables: boolean;
 };

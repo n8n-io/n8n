@@ -361,6 +361,9 @@ export const sortFixedCollection: INodeProperties = {
 	],
 };
 
+// From 2.7 the node outputs DATE columns as text, so a date can be the Start After value
+export const START_AFTER_MIN_VERSION = 2.7;
+
 export const startAfterFixedCollection: INodeProperties = {
 	displayName: 'Start After',
 	name: 'startAfter',
@@ -372,8 +375,7 @@ export const startAfterFixedCollection: INodeProperties = {
 	displayOptions: {
 		show: {
 			returnAll: [false],
-			// From 2.7 the node outputs DATE columns as text, so a date can be the value
-			'@version': [{ _cnd: { gte: 2.7 } }],
+			'@version': [{ _cnd: { gte: START_AFTER_MIN_VERSION } }],
 		},
 	},
 	options: [

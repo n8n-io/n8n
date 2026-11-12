@@ -1263,6 +1263,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		data_type: 'integer',
 		is_timestamp: false,
 		outputs_object: false,
+		is_numeric: false,
 		is_unique: true,
 		has_child_tables: false,
 	};
@@ -1724,6 +1725,89 @@ describe('Test PostgresV2, select operation with Start After', () => {
 
 		expect(oneOrNone).toHaveBeenCalledTimes(2);
 		expect(oneOrNone.mock.calls[1][0].values).toEqual(['public', 'customers', 'id']);
+	});
+
+	it('should throw when the node version is older than 2.7', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await expect(
+			runSelect(
+				selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.6 } }),
+				db,
+			),
+		).rejects.toThrow('Start After needs version 2.7 or later of the Postgres node');
+		expect(oneOrNone).not.toHaveBeenCalled();
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page from node version 2.7', async () => {
+		await runSelect(
+			selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.7 } }),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+					values: ['public', 'orders', 'id', '5', 'id', 100],
+				},
+			],
+			{ nodeVersion: 2.7 },
+		);
+	});
+
+	it('should build the same SQL as before on an old node version without Start After', async () => {
+		await runSelect(selectParameters({}, { startAfter: {}, options: { nodeVersion: 2.6 } }));
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'SELECT * FROM $1:name.$2:name LIMIT $3', values: ['public', 'orders', 100] }],
+			{ nodeVersion: 2.6 },
+		);
+	});
+
+	it('should throw for a numeric column when large numbers come back as numbers', async () => {
+		const { db } = createColumnInfoDb({
+			...uniqueColumnInfo,
+			is_numeric: true,
+			data_type: 'numeric',
+		});
+
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'amount', value: '' },
+					{ options: { largeNumbersOutput: 'numbers' } },
+				),
+				db,
+			),
+		).rejects.toThrow('Set Output Large-Format Numbers As to Text to page by "amount"');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page by a numeric column when large numbers come back as text', async () => {
+		const { db } = createColumnInfoDb({
+			...uniqueColumnInfo,
+			is_numeric: true,
+			data_type: 'numeric',
+		});
+
+		await runSelect(
+			selectParameters(
+				{ column: 'amount', value: '0.12345678901234567' },
+				{ options: { largeNumbersOutput: 'text' } },
+			),
+			db,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+					values: ['public', 'orders', 'amount', '0.12345678901234567', 'amount', 100],
+				},
+			],
+			{ largeNumbersOutput: 'text' },
+		);
 	});
 
 	it('should throw when Column is empty', async () => {

@@ -25,7 +25,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
-import { operatorOptions } from '../actions/common.descriptions';
+import { START_AFTER_MIN_VERSION, operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -229,10 +229,26 @@ export function addStartAfterClause(
 	];
 }
 
-export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
+export function getStartAfter(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	nodeVersion?: number,
+): StartAfter | undefined {
 	const startAfter = ctx.getNodeParameter('startAfter.values', itemIndex, null);
 	if (typeof startAfter !== 'object' || startAfter === null || Array.isArray(startAfter)) {
 		return undefined;
+	}
+
+	// The editor shows Start After from this version, but an imported workflow can still have it
+	if (nodeVersion !== undefined && nodeVersion < START_AFTER_MIN_VERSION) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Start After needs version ${START_AFTER_MIN_VERSION} or later of the Postgres node`,
+			{
+				itemIndex,
+				description: `This node has version ${nodeVersion}. Add a new Postgres node to get the latest version.`,
+			},
+		);
 	}
 
 	const column = 'column' in startAfter ? startAfter.column : undefined;
@@ -311,6 +327,8 @@ SELECT
 		'pg_catalog.array_out'::pg_catalog.regproc::pg_catalog.oid,
 		'pg_catalog.record_out'::pg_catalog.regproc::pg_catalog.oid
 	) AS outputs_object,
+	t.typoutput::pg_catalog.oid = 'pg_catalog.numeric_out'::pg_catalog.regproc::pg_catalog.oid
+		AS is_numeric,
 	EXISTS (
 		SELECT 1
 		FROM pg_catalog.pg_index i
@@ -341,6 +359,7 @@ export function getStartAfterColumnProblem(
 	schema: string,
 	table: string,
 	column: string,
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'] = 'text',
 ): { message: string; description: string } | undefined {
 	const tableName = `${schema}.${table}`;
 
@@ -387,6 +406,12 @@ export function getStartAfterColumnProblem(
 				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
 		};
 	}
+	if (info.is_numeric && largeNumbersOutput === 'numbers') {
+		return {
+			message: `Set Output Large-Format Numbers As to Text to page by "${column}"`,
+			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+		};
+	}
 	if (!info.is_unique) {
 		return {
 			message: `Column "${column}" has no unique index that Start After can use`,
@@ -417,6 +442,7 @@ export async function checkStartAfterColumn(
 	schema: string,
 	table: string,
 	column: string,
+	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
 ) {
 	const info = await db.oneOrNone<StartAfterColumnInfo>(
 		new pgPromise.ParameterizedQuery({
@@ -424,7 +450,7 @@ export async function checkStartAfterColumn(
 			values: [schema, table, column],
 		}),
 	);
-	const problem = getStartAfterColumnProblem(info, schema, table, column);
+	const problem = getStartAfterColumnProblem(info, schema, table, column, largeNumbersOutput);
 	if (problem) {
 		throw new NodeOperationError(node, problem.message, {
 			itemIndex,

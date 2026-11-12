@@ -44,6 +44,9 @@ CREATE TABLE skus (code text PRIMARY KEY);
 INSERT INTO skus VALUES ('1'), ('10'), ('2'), ('9'), ('abc');
 CREATE TABLE around_zero (id integer PRIMARY KEY);
 INSERT INTO around_zero SELECT generate_series(-2, 2);
+-- These values have more digits than a JavaScript number keeps
+CREATE TABLE amounts (amount numeric PRIMARY KEY);
+INSERT INTO amounts VALUES (0.12345678901234567), (0.12345678901234568), (0.12345678901234569), (1.5);
 
 CREATE TABLE pairs (a integer NOT NULL, b integer NOT NULL, UNIQUE (a, b));
 CREATE TABLE partial (a integer NOT NULL, deleted boolean NOT NULL);
@@ -227,6 +230,21 @@ describe('Postgres Select with Start After on a real database', () => {
 		});
 
 		expect(rows.map((row) => row.id)).toEqual([1, 2]);
+	});
+
+	test('reads a numeric key exactly when large numbers come back as text', async () => {
+		expect(await walk({ table: table('amounts'), limit: 1 }, 'amount')).toEqual([
+			'0.12345678901234567',
+			'0.12345678901234568',
+			'0.12345678901234569',
+			'1.5',
+		]);
+	});
+
+	test('rejects a numeric key when large numbers come back as numbers', async () => {
+		await expect(
+			checkStartAfterColumn(db, node, 0, SCHEMA, 'amounts', 'amount', 'numbers'),
+		).rejects.toThrow('Set Output Large-Format Numbers As to Text to page by "amount"');
 	});
 
 	test.each([

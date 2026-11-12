@@ -124,7 +124,7 @@ export async function execute(
 		let sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
 
-		const startAfter = getStartAfter(this, i);
+		const startAfter = getStartAfter(this, i, nodeOptions.nodeVersion);
 
 		if (startAfter) {
 			const { column } = startAfter;
@@ -144,7 +144,15 @@ export async function execute(
 
 			const columnKey = JSON.stringify([schema, table, column]);
 			if (!checkedStartAfterColumns.has(columnKey)) {
-				await checkStartAfterColumn(db, this.getNode(), i, schema, table, column);
+				await checkStartAfterColumn(
+					db,
+					this.getNode(),
+					i,
+					schema,
+					table,
+					column,
+					nodeOptions.largeNumbersOutput,
+				);
 				checkedStartAfterColumns.add(columnKey);
 			}
 		}
