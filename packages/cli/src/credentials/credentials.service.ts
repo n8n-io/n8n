@@ -17,6 +17,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import type {
+	CredentialUsageScope,
 	ListQueryDb,
 	SlimProject,
 	User,
@@ -35,6 +36,8 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -60,6 +63,7 @@ import {
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -277,6 +281,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -617,6 +622,17 @@ export class CredentialsService {
 		);
 	}
 
+	/** The usage scope of each credential in `ids` that exists. Does not check access. */
+	async findUsageScopes(ids: string[]): Promise<Map<string, CredentialUsageScope>> {
+		if (ids.length === 0) return new Map();
+		const [existingIds, nonProject] = await Promise.all([
+			this.credentialsRepository.findExistingIds(ids),
+			this.credentialsRepository.findNonProjectCredentialsByIds(ids),
+		]);
+		const instanceIds = new Set(nonProject.map(({ id }) => id));
+		return new Map(existingIds.map((id) => [id, instanceIds.has(id) ? 'instance' : 'project']));
+	}
+
 	/**
 	 * Returns credentials the user can use in this workflow or project: shared
 	 * with it directly, global, or owned by the user's own personal project while
@@ -632,11 +648,13 @@ export class CredentialsService {
 	 * member of. Agents set this because they do not support it yet. The
 	 * instance-wide shortcut for owners and admins in their personal project
 	 * stays in place.
+	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
+			excludeResolvable?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -662,7 +680,8 @@ export class CredentialsService {
 		// workflow or project
 		const usableCredentials = allCredentials.filter(
 			(c) =>
-				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
+				(!options.excludeResolvable || !c.isResolvable) &&
+				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
 
 		if (usableCredentials.length > 0) {
@@ -706,6 +725,20 @@ export class CredentialsService {
 
 		await this.populateConnectedByMe(result, user);
 		return result;
+	}
+
+	/**
+	 * The credentials the user can use in this workflow or project through their
+	 * own access. The n8n Assistant offers only these.
+	 */
+	async getCredentialsAUserCanUseThemselves(
+		user: User,
+		options: Parameters<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>[1],
+	): Promise<WorkflowCredentialResult[]> {
+		return await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+			user,
+			await this.getCredentialsAUserCanUseInAWorkflow(user, options),
+		);
 	}
 
 	/**
@@ -898,12 +931,11 @@ export class CredentialsService {
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
 			if (
 				decryptedData.oauthTokenData &&
-				!this.reissuesClientCredentialsToken(
-					updateData.data as unknown as ICredentialDataDecryptedObject,
-					decryptedData,
-				)
+				!this.reissuesClientCredentialsToken(dataToSave, decryptedData) &&
+				!this.changesOAuthApp(dataToSave, decryptedData)
 			) {
 				// @ts-expect-error data is typed as encrypted string
 				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
@@ -944,6 +976,21 @@ export class CredentialsService {
 			(field) =>
 				comparableCredentialField(dataToSave[field]) !==
 				comparableCredentialField(storedData[field]),
+		);
+	}
+
+	/**
+	 * Whether the update points the credential at another OAuth app, for example
+	 * from a custom app to the managed one. The stored token does not refresh with
+	 * another app, so the user must connect again. A new secret alone keeps the app.
+	 */
+	private changesOAuthApp(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		return (
+			comparableCredentialField(dataToSave.clientId) !==
+			comparableCredentialField(storedData.clientId)
 		);
 	}
 
@@ -1099,6 +1146,70 @@ export class CredentialsService {
 		return await createCredentialsFromCredentialsEntity(credential).getData();
 	}
 
+	async updateDescription(
+		user: User,
+		credentialId: string,
+		description: string | null,
+	): Promise<void> {
+		if (!(await this.credentialDescriptions.isEnabled())) {
+			throw new BadRequestError('Credential descriptions are not enabled');
+		}
+		const normalizedDescription = parseCredentialDescription(description);
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:update'],
+			{ includeInstanceCredentials: true },
+		);
+		if (!credential) throw new CredentialNotFoundError(credentialId);
+
+		const owningProject =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+		const policyCleared = await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credentialId, type: credential.type },
+				storedCredential: { id: credentialId, type: credential.type },
+				projectId: owningProject?.id ?? null,
+			},
+			{ kind: 'user', user },
+		);
+
+		// Keep the encrypted hook contract without allowing a metadata edit to change other fields.
+		const hookPayload: ICredentialsDb = {
+			...cloneDeep(credential),
+			description: normalizedDescription,
+		};
+		const baseline = { ...credential, description: undefined };
+		await this.externalHooks.run('credentials.update', [hookPayload]);
+		if (!isEqual({ ...hookPayload, description: undefined }, baseline)) {
+			throw new BadRequestError(
+				'Credential update hooks can only change the description for this operation',
+			);
+		}
+		if (hookPayload.description === undefined) {
+			throw new BadRequestError(
+				'Credential update hooks must keep the description field. Use null to clear it.',
+			);
+		}
+		const savedDescription = parseCredentialDescription(hookPayload.description);
+		const updated = await this.credentialsRepository.updateDescription(
+			credentialId,
+			savedDescription,
+			{ policyCleared },
+		);
+		if (!updated) throw new CredentialNotFoundError(credentialId);
+
+		this.eventService.emit('credentials-updated', {
+			user,
+			credentialId,
+			credentialName: credential.name,
+			credentialType: credential.type,
+			credentialDescriptionLength: savedDescription?.length ?? 0,
+			isDynamic: credential.isResolvable,
+			descriptionOnly: true,
+		});
+	}
+
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
@@ -1106,9 +1217,12 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		// One flag lookup for the whole update, reused for the write payload and the response.
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		// The hook can set the field, so filter again before the write. This reuses the cached flag.
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
@@ -1161,7 +1275,7 @@ export class CredentialsService {
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
-		if (result) await this.credentialDescriptions.stripIfDisabled(result);
+		if (result && !descriptionsEnabled) this.credentialDescriptions.strip(result);
 		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
@@ -1528,17 +1642,24 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
+	}
+
 	/**
 	 * Tests a stored credential by id. Takes the user rather than a user id: testing
 	 * makes a live call with the secret, so it has to go through the finder, which
 	 * requires `credential:use` for a caller who is not a member of the credential's
-	 * project. The route's `credential:read` scope decorator cannot express that.
+	 * project and drops project or sharing roles that only hold see-rights. The
+	 * route's `credential:read` scope decorator cannot express either.
 	 */
 	async testById(user: User, credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
@@ -1555,7 +1676,7 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
-			{ includeInstanceCredentials: true },
+			{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {
@@ -1588,6 +1709,7 @@ export class CredentialsService {
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {

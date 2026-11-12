@@ -10,8 +10,8 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig, NodesConfig } from '@n8n/config';
-import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
+import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
+import type { Person, Project, TagEntity, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
 	ProjectRepository,
@@ -54,8 +54,8 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -120,7 +120,7 @@ beforeEach(async () => {
 
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -164,13 +164,6 @@ afterEach(async () => {
 	}
 });
 
-const testWithAPIKey =
-	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-		const response = await authOwnerAgent[method](url);
-		expect(response.statusCode).toBe(401);
-	};
-
 // Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
 // derived from those role scopes. Proves the public-API bypass is scope-driven.
 // Created users are reset to global:member in afterEach so cleanupRolesAndScopes
@@ -185,9 +178,17 @@ const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
 };
 
 describe('GET /workflows', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
@@ -881,9 +882,17 @@ describe('GET /workflows', () => {
 });
 
 describe('GET /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/2');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows/2');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/2');
@@ -1153,15 +1162,21 @@ describe('GET /workflows/:id', () => {
 });
 
 describe('GET /workflows/:id/:versionId', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('get', '/workflows/123/version-123', null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get('/workflows/123/version-123');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', '/workflows/123/version-123', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/workflows/123/version-123');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
@@ -1350,12 +1365,19 @@ describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
 });
 
 describe('GET /workflows/:id/history', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/123/history', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/123/history');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', '/workflows/123/history', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/workflows/123/history');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/history');
@@ -1443,9 +1465,17 @@ describe('GET /workflows/:id/history', () => {
 });
 
 describe('DELETE /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('delete', '/workflows/2', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().delete('/workflows/2');
 
-	test('should fail due to invalid API Key', testWithAPIKey('delete', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').delete('/workflows/2');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.delete('/workflows/2');
@@ -1594,15 +1624,19 @@ describe('DELETE /workflows/:id', () => {
 
 // `/publish` is a canonical alias of `/activate` sharing the exact same handler
 describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('post', `/workflows/2/${action}`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post(`/workflows/2/${action}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', `/workflows/2/${action}`, 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/workflows/2/${action}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
@@ -1791,15 +1825,19 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 
 // `/unpublish` is a canonical alias of `/deactivate` sharing the exact same handler
 describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('post', `/workflows/2/${action}`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post(`/workflows/2/${action}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', `/workflows/2/${action}`, 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/workflows/2/${action}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
@@ -2044,12 +2082,19 @@ describe('Deprecation header on legacy paths', () => {
 });
 
 describe('POST /workflows/:id/archive', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/archive', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows/2/archive');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/archive', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/workflows/2/archive');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const response = await authOwnerAgent.post(
@@ -2103,15 +2148,19 @@ describe('POST /workflows/:id/archive', () => {
 });
 
 describe('POST /workflows/:id/unarchive', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('post', '/workflows/2/unarchive', null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows/2/unarchive');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/unarchive', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/workflows/2/unarchive');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const response = await authOwnerAgent.post(
@@ -2181,9 +2230,17 @@ describe('POST /workflows', () => {
 		settings: { executionOrder: 'v1' },
 	});
 
-	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows');
 
-	test('should fail due to invalid API Key', testWithAPIKey('post', '/workflows', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/workflows');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to invalid body', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({});
@@ -2214,6 +2271,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			nodes: [
@@ -2315,8 +2373,10 @@ describe('POST /workflows', () => {
 
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			settings: {
@@ -2941,9 +3001,17 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 });
 
 describe('PUT /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/1', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/1');
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/1', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/workflows/1');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.put('/workflows/1').send({
@@ -3320,8 +3388,32 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test('should accept the settings that GET returned and keep the stored engine', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			member,
+		);
+		const getResponse = await authMemberAgent.get(`/workflows/${workflow.id}`);
+		expect(getResponse.body.settings.engineType).toBe('v2');
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: getResponse.body.name,
+			nodes: getResponse.body.nodes,
+			connections: getResponse.body.connections,
+			settings: getResponse.body.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.engineType).toBe('v2');
+
+		const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(workflowAfter?.settings?.engineType).toBe('v2');
+	});
+
 	test.each([
 		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{ key: 'engineType', original: 'v2', attempted: 'v1' },
 		{
 			key: 'credentialResolverId',
 			original: 'original-resolver-id',
@@ -3564,6 +3656,24 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	describe('credential access on shared workflows', () => {
+		// The shared httpRequest stub declares no parameters, so the guard cannot see a
+		// parameter edit. Declare the URL for this block only.
+		beforeAll(async () => {
+			const defaultNodes = utils.buildDefaultNodes();
+			const customHttpRequestNode = utils.minimalNodeType('n8n-nodes-base.httpRequest', [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			]);
+
+			await utils.initNodeTypes({
+				...defaultNodes,
+				'n8n-nodes-base.httpRequest': customHttpRequestNode,
+			});
+		});
+
+		afterAll(async () => {
+			await utils.initNodeTypes();
+		});
+
 		const ownerCredentialPayload = {
 			name: 'Owner Header Auth',
 			type: 'httpHeaderAuth',
@@ -3696,7 +3806,7 @@ describe('PUT /workflows/:id', () => {
 			expect(httpNode?.credentials?.httpHeaderAuth?.name).toBe(ownerCredential.name);
 		});
 
-		test('should revert edits to a read-only credential node when a sharee updates the workflow', async () => {
+		test('should reject an edit to a node whose credential the sharee cannot use', async () => {
 			license.enable('feat:sharing');
 
 			const ownerCredential = await saveCredential(ownerCredentialPayload, {
@@ -3721,9 +3831,8 @@ describe('PUT /workflows/:id', () => {
 			const historyCountBeforeUpdate = await workflowHistoryRepository.count({
 				where: { workflowId: workflow.id },
 			});
+			const storedBeforeUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
 
-			// Sharee renames the workflow (allowed) and changes the
-			// owner-credential node URL (must be reverted).
 			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
 				name: 'renamed by sharee',
 				nodes: [
@@ -3738,21 +3847,17 @@ describe('PUT /workflows/:id', () => {
 				settings: {},
 			});
 
-			expect(response.statusCode).toBe(200);
-			const { name, nodes, versionId } = response.body as {
-				name: string;
-				nodes: INode[];
-				versionId: string;
-			};
-			// The sharee can still edit the workflow...
-			expect(name).toBe('renamed by sharee');
-			const httpNode = nodes.find((node) => node.id === 'http-node');
-			// ...but parameter edits to the read-only credential node are reverted
-			expect(httpNode?.parameters?.url).toBe(originalUrl);
-			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				"You don't have access to the credentials in the 'HTTP Request' node. Ask the owner to share them with you.",
+			);
 
-			// Reverted node edits should not create a new workflow version
-			expect(versionId).toBe(workflow.versionId);
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(storedAfterUpdate.name).toBe(storedBeforeUpdate.name);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(storedAfterUpdate.versionId).toBe(storedBeforeUpdate.versionId);
+			expect(storedAfterUpdate.updatedAt).toEqual(storedBeforeUpdate.updatedAt);
 			await expect(
 				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
 			).resolves.toBe(historyCountBeforeUpdate);
@@ -3877,9 +3982,17 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/2/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows/2/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -3933,9 +4046,17 @@ describe('GET /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/2/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/workflows/2/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -4189,12 +4310,19 @@ describe('PUT /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/transfer', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/transfer', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/2/transfer');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('put', '/workflows/2/transfer', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.put('/workflows/2/transfer');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 when workflow does not exist', async () => {
 		const destinationProject = await createTeamProject('destination-project-404', member);

@@ -1,4 +1,4 @@
-import type { InboxCounts, InboxState } from '@n8n/api-types';
+import type { InboxCounts, InboxState, SelfHealingReviewState } from '@n8n/api-types';
 import {
 	BaseRepository,
 	SharedWorkflow,
@@ -10,14 +10,12 @@ import {
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, IsNull } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
-import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
+import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
+import { whereReviewer } from './self-healing-configuration.repository';
+import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
-
-const inboxState = `CASE WHEN result.dismissedAt IS NULL
-	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
-	THEN 'open' ELSE 'closed' END`;
 
 export type CreateSelfHealingResult = Pick<
 	SelfHealingResult,
@@ -30,7 +28,6 @@ export type CreateSelfHealingResult = Pick<
 	| 'report'
 	| 'completedAt'
 	| 'executionId'
-	| 'suggestionId'
 	| 'usage'
 >;
 
@@ -52,6 +49,14 @@ type SelfHealingInboxQuery = {
 	boundary?: SelfHealingInboxBoundary;
 };
 
+const INBOX_STATE = "CASE WHEN result.reviewState = 'open' THEN 'open' ELSE 'closed' END";
+
+type CooldownQuery = {
+	workflowId: string;
+	projectId: string;
+	completedAfter: Date;
+};
+
 @Service()
 export class SelfHealingResultRepository extends BaseRepository<SelfHealingResult> {
 	constructor(
@@ -64,8 +69,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
 		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
-		return this.createQueryBuilder('result')
-			.leftJoin('result.suggestion', 'suggestion')
+		const query = this.createQueryBuilder('result')
 			.innerJoin(
 				SharedWorkflow,
 				'owner',
@@ -73,24 +77,82 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				{ resultOwnerRole: 'workflow:owner' },
 			)
 			.innerJoin('result.configuration', 'configuration')
-			.innerJoin(
-				SelfHealingConfigurationReviewer,
-				'reviewer',
-				'reviewer.configurationId = configuration.id AND reviewer.userId = :reviewerId',
-				{ reviewerId: user.id },
-			)
 			.where(`result.workflowId IN (${accessible.getQuery()})`)
 			.setParameters(accessible.getParameters());
+		const inaccessibleSuggestion = query
+			.subQuery()
+			.select('1')
+			.from(WorkflowSuggestion, 'target')
+			.leftJoin(
+				SharedWorkflow,
+				'targetOwner',
+				'targetOwner.workflowId = target.workflowId AND targetOwner.projectId = result.projectId AND targetOwner.role = :resultOwnerRole',
+			)
+			.where('target.selfHealingResultId = result.id')
+			.andWhere(
+				`(target.workflowId NOT IN (${accessible.getQuery()}) OR targetOwner.workflowId IS NULL)`,
+			)
+			.getQuery();
+		query.andWhere(`NOT EXISTS ${inaccessibleSuggestion}`).setParameter('reviewerId', user.id);
+		return whereReviewer(query, 'configuration', ':reviewerId');
+	}
+
+	private openResultsForWorkflowQuery(
+		workflowId: string,
+		projectId: string | undefined,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		const triggered = manager
+			.createQueryBuilder(SelfHealingResult, 'result')
+			.select('result.id', 'id')
+			.where('result.workflowId = :workflowId')
+			.andWhere("result.reviewState = 'open'");
+		const targeted = manager
+			.createQueryBuilder(WorkflowSuggestion, 'suggestion')
+			.select('suggestion.selfHealingResultId', 'id')
+			.innerJoin('suggestion.selfHealingResult', 'result')
+			.where('suggestion.workflowId = :workflowId')
+			.andWhere("suggestion.state = 'pending'")
+			.andWhere("result.reviewState = 'open'");
+		if (projectId !== undefined) {
+			triggered.andWhere('result.projectId = :projectId');
+			targeted.andWhere('result.projectId = :projectId');
+		}
+		return manager
+			.createQueryBuilder()
+			.select('open_result.id', 'id')
+			.from(`(${triggered.getQuery()} UNION ${targeted.getQuery()})`, 'open_result')
+			.setParameters({ workflowId, projectId });
 	}
 
 	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {
+		return (
+			(await this.openResultsForWorkflowQuery(workflowId, projectId, ctx)
+				.limit(1)
+				.getRawOne<{ id: string }>()) ?? null
+		);
+	}
+
+	async getOpenResultIds(workflowId: string, ctx: OperationContext) {
+		const results = await this.openResultsForWorkflowQuery(workflowId, undefined, ctx).getRawMany<{
+			id: string;
+		}>();
+		return results.map(({ id }) => id);
+	}
+
+	async isInCooldown(
+		{ workflowId, projectId, completedAfter }: CooldownQuery,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
 		return await this.managerFor(ctx)
 			.createQueryBuilder(SelfHealingResult, 'result')
-			.select('result.id')
-			.leftJoin('result.suggestion', 'suggestion')
-			.where({ workflowId, projectId })
-			.andWhere(`(${inboxState}) = :state`, { state: 'open' })
-			.getOne();
+			.innerJoin(SelfHealingInvestigation, 'investigation', 'investigation.resultId = result.id')
+			.innerJoin('result.workflow', 'workflow')
+			.where({ workflowId, projectId, outcome: 'could_not_fix' })
+			.andWhere('result.completedAt > :completedAfter', { completedAfter })
+			.andWhere('investigation.publishedVersionId = workflow.activeVersionId')
+			.getExists();
 	}
 
 	async listForInbox(
@@ -110,7 +172,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				'result.completedAt',
 				'workflow.name',
 			])
-			.andWhere(`(${inboxState}) = :state`, { state })
+			.andWhere(`(${INBOX_STATE}) = :state`, { state })
 			.orderBy('result.updatedAt', 'DESC')
 			.addOrderBy('result.id', 'ASC');
 
@@ -141,9 +203,9 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 
 	async countForInbox(access: SelfHealingInboxAccess): Promise<InboxCounts> {
 		const counts = await this.inboxQuery(access)
-			.select(inboxState, 'state')
+			.select(INBOX_STATE, 'state')
 			.addSelect('COUNT(*)', 'count')
-			.groupBy(inboxState)
+			.groupBy(INBOX_STATE)
 			.getRawMany<{ state: InboxState; count: number | string }>();
 		return {
 			open: Number(counts.find((row) => row.state === 'open')?.count ?? 0),
@@ -170,17 +232,20 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return await manager.save(
 			manager.create(SelfHealingResult, {
 				...input,
-				dismissedAt: null,
-				dismissedById: null,
+				reviewState: input.outcome === 'could_not_fix' ? 'closed' : 'open',
 			}),
 		);
 	}
 
-	async dismissResult(id: string, userId: string, ctx: OperationContext) {
+	async closeResult(
+		id: string,
+		reviewState: Exclude<SelfHealingReviewState, 'open'>,
+		ctx: OperationContext,
+	) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
-			{ id, dismissedAt: IsNull() },
-			{ dismissedAt: new Date(), dismissedById: userId },
+			{ id, reviewState: 'open' },
+			{ reviewState },
 		);
 		return result.affected === 1;
 	}

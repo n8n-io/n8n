@@ -1,18 +1,25 @@
-export { StartExecutionService } from './start-execution.service';
+export { InvalidParentLinkError, StartExecutionService } from './start-execution.service';
 export { CancelExecutionService } from './cancel-execution.service';
 export type { CancelExecutionResult } from './cancel-execution.service';
 export type {
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	SubExecutionOutcome,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
+	ExecutorWaitDeclaration,
+	ParentLink,
 	StepError,
 	StepKey,
 	StepKeyId,
+	ResumeBinding,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -44,3 +51,10 @@ export {
 	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 } from './wait-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
+export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
+export type {
+	ResumeHold,
+	ResumeLocation,
+	ResumeRejection,
+	ResumeTarget,
+} from './resume-request.service';

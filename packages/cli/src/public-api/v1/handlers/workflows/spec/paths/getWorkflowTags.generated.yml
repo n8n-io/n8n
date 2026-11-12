@@ -2,7 +2,10 @@ operationId: getWorkflowTags
 tags:
   - Workflow
 summary: Get workflow tags
-description: Get workflow tags.
+description: |-
+  Get workflow tags.
+
+  Requires the `workflowTags:list` API key scope.
 x-required-scope: workflowTags:list
 parameters:
   - schema:
@@ -26,3 +29,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

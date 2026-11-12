@@ -55,8 +55,10 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope

@@ -403,6 +403,7 @@ function onRenameNode(value: string) {
 		data-test-id="focus-panel"
 		:class="[
 			$style.content,
+			'ph-no-capture',
 			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
 		]"
 	>
@@ -586,7 +587,7 @@ function onRenameNode(value: string) {
 						size="large"
 					/>
 				</div>
-				<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+				<N8nIcon icon="ellipsis" size="small" color="text-base" />
 				<N8nSegmentControl
 					size="small"
 					:model-value="'expression'"

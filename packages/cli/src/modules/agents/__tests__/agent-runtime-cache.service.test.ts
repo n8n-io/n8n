@@ -4,10 +4,10 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';

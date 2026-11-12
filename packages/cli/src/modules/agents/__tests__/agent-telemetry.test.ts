@@ -1,10 +1,13 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 
 import {
+	buildAgentCapabilityTelemetryProperties,
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
+	buildAgentTurnMetrics,
 } from '../agent-telemetry';
 import type { ProjectAgent } from '../entities/agent.entity';
+import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import { storedRunSource } from './test-utils/stored-agent-config';
 
 function makeAgent(
@@ -81,6 +84,113 @@ describe('agent telemetry', () => {
 			tool_count: 0,
 			num_skills: 0,
 			memory_type: 'none',
+		});
+	});
+
+	it('reports the ids of the attached skills on the capability profile', () => {
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Be helpful',
+			skills: [
+				{ type: 'skill', id: 'skill_b' },
+				{ type: 'skill', id: 'skill_a' },
+			],
+		};
+
+		expect(buildAgentCapabilityTelemetryProperties(config, [])).toEqual(
+			expect.objectContaining({ skill_count: 2, skill_ids: ['skill_a', 'skill_b'] }),
+		);
+		expect(buildAgentCapabilityTelemetryProperties(null, [])).toEqual(
+			expect.objectContaining({ skill_count: 0, skill_ids: [] }),
+		);
+	});
+
+	describe('buildAgentTurnMetrics', () => {
+		const toolCall = (
+			name: string,
+			input: unknown,
+			output: unknown,
+			success = true,
+		): TimelineEvent => ({
+			type: 'tool-call',
+			kind: 'tool',
+			name,
+			toolCallId: `call-${name}`,
+			input,
+			output,
+			startTime: 0,
+			endTime: 1,
+			success,
+		});
+
+		const metricsFor = (timeline: TimelineEvent[]) =>
+			buildAgentTurnMetrics({
+				duration: 100,
+				totalCost: 1,
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				timeline,
+			} as MessageRecord);
+
+		it('counts each load_skill call that activated a skill', () => {
+			expect(
+				metricsFor([
+					toolCall('load_skill', { skillId: 'skill_a' }, { success: true, skillId: 'skill_a' }),
+					toolCall('load_skill', { name: 'Billing' }, { success: true, skillId: 'skill_b' }),
+					toolCall('load_skill', { skillId: 'skill_a' }, { success: true, skillId: 'skill_a' }),
+					toolCall('search', { query: 'x' }, { ok: true }),
+				]),
+			).toEqual({
+				latency_ms: 100,
+				cost: 1,
+				token_count: 15,
+				tool_call_count: 4,
+				skill_load_count: 3,
+				loaded_skill_ids: ['skill_a', 'skill_b'],
+			});
+		});
+
+		it('takes the id from the input when the result is the skill text', () => {
+			expect(
+				metricsFor([
+					toolCall(
+						'load_skill',
+						{ skillId: 'skill_a' },
+						{ type: 'content', value: [{ type: 'text', text: 'Skill text' }] },
+					),
+				]),
+			).toEqual(expect.objectContaining({ skill_load_count: 1, loaded_skill_ids: ['skill_a'] }));
+		});
+
+		it('counts a load of the main skill file, and a load by name without an id', () => {
+			expect(
+				metricsFor([
+					toolCall(
+						'load_skill',
+						{ skillId: 'skill_a', filePath: 'SKILL.md' },
+						{ success: true, skillId: 'skill_a' },
+					),
+					toolCall(
+						'load_skill',
+						{ name: 'Billing' },
+						{ type: 'content', value: [{ type: 'text', text: 'Skill text' }] },
+					),
+				]),
+			).toEqual(expect.objectContaining({ skill_load_count: 2, loaded_skill_ids: ['skill_a'] }));
+		});
+
+		it('does not count failed loads or linked file reads', () => {
+			expect(
+				metricsFor([
+					toolCall('load_skill', { skillId: 'missing' }, { ok: false, success: false }),
+					toolCall('load_skill', { skillId: 'skill_a' }, { success: true }, false),
+					toolCall(
+						'load_skill',
+						{ skillId: 'skill_a', filePath: 'references/api.md' },
+						{ ok: true, success: true, skillId: 'skill_a', filePath: 'references/api.md' },
+					),
+				]),
+			).toEqual(expect.objectContaining({ skill_load_count: 0, loaded_skill_ids: [] }));
 		});
 	});
 });

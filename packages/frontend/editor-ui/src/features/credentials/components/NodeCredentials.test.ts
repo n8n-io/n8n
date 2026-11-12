@@ -3,12 +3,14 @@ import { describe, it, vi, beforeEach, afterEach } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
+import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import NodeCredentials from './NodeCredentials.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -271,6 +273,54 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it.each([false, true])(
+		'offers end-user credentials only outside agents (forAgent=%s)',
+		async (forAgent) => {
+			credentialsStore.state.credentials = {
+				fixed: createCredential({ id: 'fixed' }),
+				'end-user': createCredential({
+					id: 'end-user',
+					name: 'End-user account',
+					isResolvable: true,
+				}),
+			};
+			renderComponent({ props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true } });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+			expect(screen.queryByText('End-user account') !== null).toBe(!forAgent);
+		},
+	);
+
+	it.each([false, true])(
+		'auto-selects a fixed credential with an end-user credential present: %s',
+		(hasFixed) => {
+			credentialsStore.state.credentials = {
+				...(hasFixed ? { fixed: createCredential({ id: 'fixed' }) } : {}),
+				'end-user': createCredential({
+					id: 'end-user',
+					name: 'End-user account',
+					isResolvable: true,
+				}),
+			};
+			const { emitted } = renderComponent({
+				props: { node: { ...httpNode, credentials: {} }, forAgent: true },
+			});
+			if (hasFixed) {
+				expect(emitted('credentialSelected')).toEqual([
+					[
+						{
+							name: httpNode.name,
+							properties: { credentials: { openAiApi: { id: 'fixed', name: 'OpenAi account' } } },
+						},
+					],
+				]);
+			} else {
+				expect(emitted('credentialSelected')).toBeUndefined();
+			}
+		},
+	);
+
 	it('should not offer a credential the scoped fetch left out of the usable slice', async () => {
 		// An unscoped fetchAllCredentials from anywhere in the app can fill the flat
 		// map with credentials from other projects while the NDV is open (IAM-1241).
@@ -473,6 +523,18 @@ describe('NodeCredentials', () => {
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'project-1',
 			forAgent: true,
+		});
+	});
+
+	it('keeps the Assistant scope in the credentials fetch', () => {
+		renderComponent(
+			{ props: { node: httpNode, standalone: true, workflowId: 'wf-setup', forAssistant: true } },
+			{ merge: true },
+		);
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf-setup',
+			forAssistant: true,
 		});
 	});
 
@@ -683,6 +745,49 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('onCredentialSelected', () => {
+		it.each([
+			{ forAgent: true, isResolvable: true, shouldSelect: false },
+			{ forAgent: true, isResolvable: false, shouldSelect: true },
+			{ forAgent: false, isResolvable: true, shouldSelect: true },
+		])(
+			'selects newly created credentials only when supported (forAgent=$forAgent, isResolvable=$isResolvable)',
+			async ({ forAgent, isResolvable, shouldSelect }) => {
+				const credential = createCredential({ id: 'new-credential', isResolvable });
+				vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(credential);
+				const { emitted } = renderComponent({
+					props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true },
+				});
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
+				);
+				await credentialsStore.createNewCredential({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					isResolvable,
+				});
+				await flushPromises();
+
+				if (shouldSelect) {
+					expect(emitted('credentialSelected')).toEqual([
+						[
+							{
+								name: openAiNodeNoCreds.name,
+								properties: {
+									credentials: {
+										openAiApi: { id: credential.id, name: credential.name },
+									},
+								},
+							},
+						],
+					]);
+				} else {
+					expect(emitted('credentialSelected')).toBeUndefined();
+				}
+			},
+		);
+
 		it.each([
 			{
 				format: 'a credential without an ID',
@@ -1135,6 +1240,23 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+		});
+
+		it('falls back to the standard empty state when a policy blocks the quick-connect type', () => {
+			setupQuickConnectStores();
+			mockRestrictedCredentialTypes({ slackOAuth2Api: 'instance' });
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{ props: { node: slackNode, overrideCredType: 'slackOAuth2Api' } },
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
+			const emptyState = screen.getByTestId('node-credentials-empty-state');
+			expect(within(emptyState).getByRole('button')).toBeDisabled();
+			expect(screen.getByTestId('node-credentials-type-restricted')).toBeInTheDocument();
 		});
 
 		it('should also show quick-connect-empty-state in standalone mode (NODE-5115)', () => {
@@ -3982,6 +4104,55 @@ describe('NodeCredentials', () => {
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
 			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+		});
+	});
+
+	describe('restricted credential types', () => {
+		it('marks the selected credential and blocks creating one when its type is restricted', async () => {
+			mockRestrictedCredentialTypes({ openAiApi: 'instance' });
+			credentialsStore.state.credentials = { c8vqdPpPClh4TgIO: createCredential() };
+
+			renderComponent({ props: { node: openAiNode } });
+
+			expect(screen.getByTestId('node-credentials-selected-restricted')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(screen.getByTestId('node-credentials-select-item-new')).toBeDisabled();
+			expect(screen.getByTestId('node-credentials-select-item-new-restricted')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credentials-select-item-c8vqdPpPClh4TgIO')).toHaveClass(
+				'is-disabled',
+			);
+		});
+
+		it('keeps the list and creation open when the type is not restricted', async () => {
+			mockRestrictedCredentialTypes({});
+			credentialsStore.state.credentials = { c8vqdPpPClh4TgIO: createCredential() };
+
+			renderComponent({ props: { node: openAiNode } });
+
+			expect(screen.queryByTestId('node-credentials-selected-restricted')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(screen.getByTestId('node-credentials-select-item-new')).toBeEnabled();
+			expect(
+				screen.queryByTestId('node-credentials-select-item-new-restricted'),
+			).not.toBeInTheDocument();
+			expect(screen.getByTestId('node-credentials-select-item-c8vqdPpPClh4TgIO')).not.toHaveClass(
+				'is-disabled',
+			);
+		});
+
+		it('disables the empty-state create button and explains why', () => {
+			mockRestrictedCredentialTypes({ openAiApi: 'project' });
+			credentialsStore.state.credentials = {};
+
+			renderComponent({ props: { node: openAiNodeNoCreds } });
+
+			const emptyState = screen.getByTestId('node-credentials-empty-state');
+			expect(within(emptyState).getByRole('button')).toBeDisabled();
+			expect(screen.getByTestId('node-credentials-type-restricted')).toBeInTheDocument();
 		});
 	});
 });

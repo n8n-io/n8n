@@ -4,23 +4,25 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
+	GitError,
 	GitPluginError,
 	simpleGit,
 	type SimpleGit,
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError, UnexpectedError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
 	GIT_READ_CONCURRENCY,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -285,9 +287,7 @@ export class PromotionsGitService {
 									).trim()
 								: undefined;
 							try {
-								// Scope staging to the package while including removed entities.
-								await git.add(['--all', '--', stagePathspec]);
-								await git.commit(commitMessage);
+								await this.commitPackage(git, stagePathspec, commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
 								if (force) {
@@ -328,12 +328,32 @@ export class PromotionsGitService {
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+	/** Whether the remote holds the branch. Throws when the remote can't be reached. */
+	async hasRemoteBranch(operation: GitOperation): Promise<boolean> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				await this.withGit(
+			// The lock also covers SSH, which can write known_hosts in sshDir.
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
+				);
+				return refs.trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reset the checkout to the latest base branch before one promotion. Returns the commit it
+	 * reset to, so later reads of the base need no second fetch.
+	 */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
 						const branchRefs = await git.listRemote([
@@ -351,12 +371,24 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
 		}
+	}
+
+	/** Stages the package, including removed files, and commits it. */
+	private async commitPackage(git: SimpleGit, stagePathspec: string, commitMessage: string) {
+		await git.add(['--all', '--', stagePathspec]);
+		// `git commit` fails when nothing is staged. Report that as a user error, not a Git failure.
+		const staged = await git.diff(['--cached', '--name-only', '--', stagePathspec]);
+		if (!staged.trim()) {
+			throw new BadRequestError('Nothing to promote. The branch already matches the selection.');
+		}
+		await git.commit(commitMessage);
 	}
 
 	/** Push one commit to a new branch and restore the local base branch. */
@@ -384,8 +416,7 @@ export class PromotionsGitService {
 		}
 
 		try {
-			await git.add(['--all', '--', stagePathspec]);
-			await git.commit(commitMessage);
+			await this.commitPackage(git, stagePathspec, commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
@@ -642,9 +673,7 @@ export class PromotionsGitService {
 			throw new UnexpectedError('The commit SHA is not a Git object name');
 		}
 		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
-		const missingCommits = new BadRequestError(
-			'The remote no longer has the commits of this review. Open the review on the Git host.',
-		);
+		const missingCommits = new PromotionReviewCommitsMissingError();
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
@@ -810,6 +839,8 @@ export class PromotionsGitService {
 					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_TERMINAL_PROMPT', '0')
+					// Git translates its messages. The failure explanations match the English text.
+					.env('LC_ALL', 'C')
 					.env('N8N_GIT_USERNAME', credentials.username)
 					.env('N8N_GIT_PASSWORD', credentials.password);
 			} else {
@@ -829,7 +860,8 @@ export class PromotionsGitService {
 					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)
-					.env('GIT_TERMINAL_PROMPT', '0');
+					.env('GIT_TERMINAL_PROMPT', '0')
+					.env('LC_ALL', 'C');
 			}
 			return await operation(git);
 		} finally {
@@ -837,7 +869,7 @@ export class PromotionsGitService {
 		}
 	}
 
-	// Timeouts are retryable; all other Git errors are redacted because output may contain secrets.
+	// Timeouts are retryable. Other Git output can hold secrets, so the response only gets fixed text.
 	private mapGitError(error: unknown, ctx: { environmentId: string; branchName: string }): Error {
 		if (error instanceof BadRequestError || error instanceof ServiceUnavailableError) return error;
 
@@ -847,8 +879,79 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		return new BadRequestError('Could not complete the Git operation');
+		if (!isRemoteGitError(error)) return new PromotionLocalGitError(GIT_FAILURE_MESSAGE);
+		return new PromotionGitError(explainRemoteGitFailure(error.message) ?? GIT_FAILURE_MESSAGE);
 	}
+}
+
+const GIT_FAILURE_MESSAGE = 'Could not complete the Git operation';
+
+// Each pattern matches a whole line that Git or OpenSSH prints, so `remote:` lines and text
+// inside a URL cannot match. SSH server text has no prefix, so it is not filtered.
+// Checked with Git 2.55 and OpenSSH 10.3.
+const REMOTE_GIT_FAILURES: ReadonlyArray<{ message: string; lines: RegExp[] }> = [
+	{
+		message: 'Git authentication failed. Check the provider credentials.',
+		// Git: HTTP 401 after the credentials were sent
+		lines: [/^fatal: Authentication failed for '.*'$/],
+	},
+	{
+		message: "SSH authentication failed. Check that the Git host has the provider's public key.",
+		// OpenSSH: the server rejected every offered method
+		lines: [/^(?:\S+@\S+: )?Permission denied \([\w,-]+\)\.$/],
+	},
+	{
+		message:
+			"The Git repository is unavailable or access was denied. Check the repository URL and the provider's permissions.",
+		// Git: HTTP 404, then HTTP 403 through libcurl
+		lines: [
+			/^fatal: repository '.*' not found$/,
+			/^fatal: unable to access '.*': The requested URL returned error: 403$/,
+		],
+	},
+	{
+		message: 'Could not reach the Git host. Check the repository hostname and network connection.',
+		// libcurl, then OpenSSH: DNS lookup or connection failed
+		lines: [
+			/^fatal: unable to access '.*': Could not resolve host: \S+$/,
+			/^fatal: unable to access '.*': Failed to connect to \S+ port \d+(?: after \d+ ms)?: [^:]+$/,
+			/^ssh: Could not resolve hostname \S+: .+$/,
+			/^ssh: connect to host \S+ port \d+: .+$/,
+		],
+	},
+	{
+		message:
+			"Could not verify the Git host's SSH key. Ask your administrator to check the trusted host key.",
+		// OpenSSH: the host key is not the pinned one
+		lines: [/^Host key verification failed\.$/],
+	},
+];
+
+/** Returns fixed text only for one clear cause. Several causes mean the evidence is unclear. */
+function explainRemoteGitFailure(output: string): string | undefined {
+	const lines = output.split(/\r?\n|\r/);
+	const matches = REMOTE_GIT_FAILURES.filter((failure) =>
+		lines.some((line) => failure.lines.some((pattern) => pattern.test(line))),
+	);
+	return matches.length === 1 ? matches[0].message : undefined;
+}
+
+const REMOTE_GIT_COMMANDS = new Set(['clone', 'fetch', 'push', 'pull', 'ls-remote']);
+
+/** The subcommand decides remote or local. The message is read only to pick fixed text. */
+function isRemoteGitError(error: unknown): error is GitError {
+	if (!(error instanceof GitError)) return false;
+	const commands = error.task?.commands ?? [];
+	for (let index = 0; index < commands.length; index++) {
+		// `-c key=value` passes config before the subcommand.
+		if (commands[index] === '-c') {
+			index++;
+			continue;
+		}
+		if (commands[index].startsWith('-')) continue;
+		return REMOTE_GIT_COMMANDS.has(commands[index]);
+	}
+	return false;
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

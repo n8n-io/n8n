@@ -5,7 +5,6 @@ import {
 	isNodeTypeClass,
 	findObjectProperty,
 	getStringLiteralValue,
-	isFileType,
 	isTriggerNode,
 	isAiOnlyNode,
 	findNodeDescriptionObject,
@@ -29,10 +28,6 @@ export const ResourceOperationPatternRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!isFileType(context.filename, '.node.ts')) {
-			return {};
-		}
-
 		const analyzeNodeDescription = (
 			descriptionValue: TSESTree.ObjectExpression,
 			checkActions: boolean,

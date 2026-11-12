@@ -3,6 +3,7 @@ import {
 	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
+import { resolveToolCallTarget, resolveToolForCall } from './tool-adapter';
 import { ToolCallRunner } from './tool-call-runner';
 import type { BuiltTool, PendingToolCall } from '../../types';
 import type {
@@ -18,7 +19,7 @@ import type {
 	ToolCallSuccess,
 	ToolCallSuspension,
 } from '../../types/runtime/tool-execution';
-import type { JSONObject } from '../../types/utils/json';
+import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -67,13 +68,13 @@ export class ToolCallExecutor {
 		toolMap: Map<string, BuiltTool>,
 	): boolean {
 		if (call.input.mode === 'background') return false;
-		const tool = toolMap.get(call.toolName);
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
 	private getToolCallBatchSize(call: RuntimeToolCall, toolMap: Map<string, BuiltTool>): number {
 		if (!this.isForegroundDelegateCall(call, toolMap)) return this.concurrency;
-		const tool = toolMap.get(call.toolName);
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
@@ -310,6 +311,7 @@ export class ToolCallExecutor {
 		if (outcome.outcome === 'success') {
 			result.customMessage = outcome.customMessage;
 			if (outcome.mcpServerName !== undefined) result.mcpServerName = outcome.mcpServerName;
+			if (outcome.traceOutput !== undefined) result.traceOutput = outcome.traceOutput;
 		}
 		results.push(result);
 	}
@@ -435,8 +437,10 @@ export class ToolCallExecutor {
 		for (const id of Object.keys(ctx.pendingResume.pendingToolCalls)) {
 			if (id === ctx.pendingResume.resumeToolCallId) continue;
 			const entry = ctx.pendingResume.pendingToolCalls[id];
-			const tool = ctx.toolMap.get(entry.toolName);
+			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input);
+			const tool = target?.tool;
 			const params = this.pendingToolCallParams(entry, ctx, ctx.pendingResume.resumeData);
+			if (target?.dispatchedBy) params.input = target.input as JSONValue;
 			if (entry.suspended && tool?.onCancellation) {
 				try {
 					await this.runner.runCancellationCleanup(params, tool, userMessage);
@@ -491,14 +495,13 @@ export class ToolCallExecutor {
 	): Promise<void> {
 		for (const entry of Object.values(pending)) {
 			if (!entry.suspended) continue;
-			const tool = ctx.toolMap.get(entry.toolName);
-			if (!tool?.onCancellation) continue;
+			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input);
+			if (!target?.tool.onCancellation) continue;
+			const tool = target.tool;
+			const params = this.pendingToolCallParams(entry, ctx);
+			if (target.dispatchedBy) params.input = target.input as JSONValue;
 			try {
-				await this.runner.runCancellationCleanup(
-					this.pendingToolCallParams(entry, ctx),
-					tool,
-					message,
-				);
+				await this.runner.runCancellationCleanup(params, tool, message);
 			} catch {
 				// Parent shutdown must continue; persistent stores will prune stale child checkpoints.
 			}

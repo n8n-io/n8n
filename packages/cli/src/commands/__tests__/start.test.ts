@@ -31,9 +31,8 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, RoleCacheService } from '@n8n/backend-services';
+import { JwtService, NodeTypesProxy, PostHogClient, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -87,17 +86,30 @@ const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
 
-const { FakeRunDataTracker, FakeMemoryGuardService } = vi.hoisted(() => ({
+const {
+	FakeRunDataTracker,
+	FakeMemoryGuardService,
+	FakeMemoryGuardMetricsService,
+	removeMemoryGuardJournal,
+} = vi.hoisted(() => ({
 	FakeRunDataTracker: class {},
 	FakeMemoryGuardService: class {
 		init = vi.fn();
 	},
+	FakeMemoryGuardMetricsService: class {
+		init = vi.fn();
+	},
+	removeMemoryGuardJournal: vi.fn(),
 }));
 vi.mock('@/memory-guard/run-data-tracker', () => ({
 	RunDataTracker: FakeRunDataTracker,
 }));
 vi.mock('@/memory-guard/memory-guard.service', () => ({
 	MemoryGuardService: FakeMemoryGuardService,
+}));
+vi.mock('@/memory-guard/memory-guard-journal', () => ({ removeMemoryGuardJournal }));
+vi.mock('@/metrics/prometheus/memory-guard-metrics.service', () => ({
+	PrometheusMemoryGuardMetricsService: FakeMemoryGuardMetricsService,
 }));
 
 describe('Start - AuthRolesService initialization', () => {
@@ -174,7 +186,7 @@ describe('Start - AuthRolesService initialization', () => {
 				backendDsn: '',
 				environment: 'test',
 				deploymentName: 'test',
-				profilesSampleRate: 0,
+				profilingEnabled: false,
 				tracesSampleRate: 0,
 				eventLoopBlockThreshold: 0,
 			},
@@ -223,6 +235,25 @@ describe('Start - AuthRolesService initialization', () => {
 			);
 		});
 
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const nodeTypes = Container.get(NodeTypes);
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const initModules = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeGreaterThan(
+				loadNodesAndCredentials.init.mock.invocationCallOrder[0],
+			);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
 			setupInstanceSettings('main', true, true);
 			// @ts-expect-error - Accessing protected property for testing
@@ -236,7 +267,7 @@ describe('Start - AuthRolesService initialization', () => {
 					backendDsn: '',
 					environment: 'test',
 					deploymentName: 'test',
-					profilesSampleRate: 0,
+					profilingEnabled: false,
 					tracesSampleRate: 0,
 					eventLoopBlockThreshold: 0,
 				},
@@ -275,7 +306,7 @@ describe('Start - AuthRolesService initialization', () => {
 					backendDsn: '',
 					environment: 'test',
 					deploymentName: 'test',
-					profilesSampleRate: 0,
+					profilingEnabled: false,
 					tracesSampleRate: 0,
 					eventLoopBlockThreshold: 0,
 				},
@@ -324,7 +355,7 @@ describe('Start - AuthRolesService initialization', () => {
 				backendDsn: '',
 				environment: 'test',
 				deploymentName: 'test',
-				profilesSampleRate: 0,
+				profilingEnabled: false,
 				tracesSampleRate: 0,
 				eventLoopBlockThreshold: 0,
 			},
@@ -431,12 +462,32 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(containerGet).toHaveBeenCalledWith(FakeRunDataTracker);
 			expect(guard.init).toHaveBeenCalled();
+			expect(removeMemoryGuardJournal).not.toHaveBeenCalled();
+		});
+
+		it('should start the guard metrics before the guard when metrics are enabled', async () => {
+			const guard = new FakeMemoryGuardService();
+			const metrics = new FakeMemoryGuardMetricsService();
+			Container.set(FakeMemoryGuardService, guard);
+			Container.set(FakeMemoryGuardMetricsService, metrics);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.memoryGuard = { enabled: true };
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.endpoints.metrics.enable = true;
+
+			await start.init();
+
+			expect(metrics.init).toHaveBeenCalled();
+			expect(metrics.init.mock.invocationCallOrder[0]).toBeLessThan(
+				guard.init.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should not start the run data tracker when the guard is disabled', async () => {
 			await start.init();
 
 			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
+			expect(removeMemoryGuardJournal).toHaveBeenCalled();
 		});
 
 		it('should not start the run data tracker in queue mode, and should warn', async () => {
@@ -451,6 +502,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(containerGet).not.toHaveBeenCalledWith(FakeRunDataTracker);
 			expect(warn).toHaveBeenCalledWith('Memory guard supports only regular mode, so it stays off');
+			expect(removeMemoryGuardJournal).toHaveBeenCalled();
 		});
 	});
 

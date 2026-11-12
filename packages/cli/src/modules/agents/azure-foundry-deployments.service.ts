@@ -17,14 +17,14 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 /** A redeployed model shows up within this time. */
 const UNDERLYING_MODEL_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
 
-import { mapCredentialForProvider } from './json-config/credential-field-mapping';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 
 /** A deployment as the model picker offers it, plus the model it serves. */
 export interface FoundryDeployment extends ProviderModel {

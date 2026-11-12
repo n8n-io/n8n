@@ -2,6 +2,12 @@ export { createEngineServer } from './create-engine-server';
 export type { EngineServerDeps } from './create-engine-server';
 export type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from './api.types';
 export type {
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeLocateRequest,
+	ResumeTargetResponse,
+} from './api.types';
+export type {
 	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
@@ -9,3 +15,4 @@ export type {
 } from './api.types';
 export { fail } from './error-response';
 export type { EngineErrorResponse } from './error-response';
+export { triggerOutputsSchema, workflowGraphSchema } from './start-execution.schema';

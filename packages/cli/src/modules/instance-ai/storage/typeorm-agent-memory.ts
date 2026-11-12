@@ -4,6 +4,7 @@ import {
 	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
@@ -16,6 +17,7 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 	type JSONObject,
 	type JSONValue,
 	type Thread,
@@ -30,10 +32,9 @@ import {
 	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -58,6 +59,7 @@ const activeSkillStatesSchema = z.array(
 		agentName: z.string(),
 		resourceId: z.string(),
 		skillIds: z.array(z.string()),
+		versions: z.record(z.string().nullable()).optional(),
 	}),
 );
 
@@ -164,8 +166,6 @@ function workingMemoryKey(params: {
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
 	'activeSkillStates',
-	'instanceAiIterationLog',
-	'instanceAiPlannedTasks',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -194,16 +194,23 @@ function mergeSaveThreadMetadata(
 
 @Service()
 export class TypeORMAgentMemory
-	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+	implements
+		BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationLogTaskLockStore,
+		BuiltObservationResumeStore
 {
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) => {
 			const thread = await this.getThread(threadId);
-			return activeSkillStates(thread?.metadata).find(
+			const state = activeSkillStates(thread?.metadata).find(
 				(state) => state.resourceId === resourceId && state.agentName === agentName,
-			)?.skillIds;
+			);
+			return state
+				? { skillIds: state.skillIds, ...(state.versions ? { versions: state.versions } : {}) }
+				: undefined;
 		},
-		save: async ({ threadId, resourceId, agentName }, skillIds) => {
+		save: async ({ threadId, resourceId, agentName }, state) => {
 			const updated = await this.patchThread({
 				threadId,
 				update: (thread) => ({
@@ -213,7 +220,7 @@ export class TypeORMAgentMemory
 							...activeSkillStates(thread.metadata).filter(
 								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
 							),
-							{ resourceId, agentName, skillIds },
+							{ resourceId, agentName, ...state },
 						],
 					},
 				}),
@@ -415,7 +422,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, thread tabs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.
@@ -618,6 +625,14 @@ export class TypeORMAgentMemory
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		return await this.observationLog.setCursor(cursor);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		return await this.observationLog.getResumeState(observationScopeId);
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		return await this.observationLog.saveResumeState(state);
 	}
 
 	async acquireObservationLogTaskLock(

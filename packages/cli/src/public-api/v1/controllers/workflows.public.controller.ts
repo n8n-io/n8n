@@ -3,8 +3,11 @@ import {
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	DeletedWorkflowPublicDto,
+	DependencyListPublicDto,
 	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
+	PUBLIC_API_IGNORED_NODE_FIELDS,
+	ListDependenciesQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
@@ -62,7 +65,9 @@ import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
 import {
 	decodeCursor,
@@ -219,6 +224,7 @@ export class WorkflowsPublicController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -401,6 +407,10 @@ export class WorkflowsPublicController {
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or the update changes a node that uses a credential the caller cannot access.',
+	})
 	@ApiErrorResponse(403, {
 		dto: WorkflowPublishForbiddenErrorPublicDto,
 		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
@@ -435,6 +445,8 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					readOnlyNodeEdits: 'reject',
+					unsentNodeFields: PUBLIC_API_IGNORED_NODE_FIELDS,
 					// A save can publish, so the key's publish scope has to be enforced too
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
@@ -845,6 +857,42 @@ export class WorkflowsPublicController {
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
 		return tags.map(toPublicTag);
+	}
+
+	@Get('/:workflowId/dependencies')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('List workflow dependencies')
+	@ApiDescription(
+		'List the credentials, data tables, sub-workflows and error workflow that the workflow uses, ' +
+			'and the workflows and agents that use the workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflowDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		const workflow = await this.workflowFinderService.findWorkflowHeadForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[workflowId],
+			'workflow',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[workflowId], pagination);
 	}
 
 	/**

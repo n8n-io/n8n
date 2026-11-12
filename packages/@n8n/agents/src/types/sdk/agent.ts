@@ -113,6 +113,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
+		| { type: 'usage'; usage: TokenUsage; model: string }
 		| { type: 'text-start'; id: string }
 		| { type: 'text-delta'; id: string; delta: string }
 		| { type: 'text-end'; id: string }
@@ -158,6 +159,8 @@ export type StreamChunk = ContentMetadata &
 				canceled?: boolean;
 				/** Configured name of the MCP server the tool belongs to; absent for non-MCP tools. */
 				mcpServerName?: string;
+				/** Host-only trace data from the tool's `toTraceOutput`. The model never sees it. */
+				traceOutput?: unknown;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -242,8 +245,15 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
-	/** Expose local and provider tools to the model. Defaults to true. */
+	/** Allow tool calls. Defaults to true. Keep tool definitions for history replay when false. */
 	toolsEnabled?: boolean;
+	/**
+	 * The text that title generation titles a new thread from. Set it when the
+	 * run input carries host context next to the user's own words, so that the
+	 * title describes what the user asked. An empty string generates no title on
+	 * this turn. Defaults to the text of the first user message of the turn.
+	 */
+	titleText?: string;
 	/** Request a cooperative pause before the next model step. */
 	shouldPause?: () => Promise<boolean>;
 	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
@@ -308,6 +318,13 @@ export interface ExecutionOptions {
 	 */
 	stepCheckpoints?: boolean;
 	guardrails?: GuardrailsOptions;
+	/**
+	 * Map a model-call failure to a guardrail stop (e.g. a gateway `402`
+	 * depleted-credits rejection). The run then ends with `finishReason
+	 * 'guardrail'` and the returned code, instead of `finishReason 'error'`.
+	 * Return `undefined` to keep the default error finish.
+	 */
+	classifyModelError?: (error: unknown) => GuardrailStop | undefined;
 }
 
 export interface PersistedExecutionOptions {
@@ -317,6 +334,21 @@ export interface PersistedExecutionOptions {
 export interface NativeToolDeferralConfig {
 	/** Local tools that stay available without provider tool search. */
 	eagerToolNames: readonly string[];
+}
+
+/**
+ * How the runtime exposes tools added with `.deferredTool()`.
+ *
+ * - `provider` (default): the provider's own tool search (Anthropic, OpenAI).
+ *   When the model or endpoint does not support it, the runtime uses `tool-catalog`.
+ * - `tool-catalog`: the prompt lists deferred tool names by tool group. The model
+ *   reads schemas with `find_tools` and runs a tool with `call_tool`. The tool
+ *   list never changes, so the prompt cache stays valid.
+ */
+export type ToolDeferralMode = 'provider' | 'tool-catalog';
+
+export interface ToolDeferralConfig {
+	mode: ToolDeferralMode;
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -537,4 +569,10 @@ export type AgentPersistenceOptions = {
 	 * exactly instead of guessing by recency.
 	 */
 	hostRunId?: string;
+	/**
+	 * Set only when the host starts a fresh run only after every suspension in the
+	 * thread has ended. The runtime then writes back the tool calls that it settles
+	 * as abandoned when it loads history. A stored pending call stops the Observer.
+	 */
+	persistSettledSuspensions?: true;
 };

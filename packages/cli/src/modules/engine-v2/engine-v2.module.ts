@@ -3,8 +3,7 @@ import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseSender } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomBytes } from 'node:crypto';
 
 /**
@@ -14,62 +13,93 @@ import { randomBytes } from 'node:crypto';
  * Not a default module: enable it with `N8N_ENABLED_MODULES=engine-v2`. When it
  * is off, nothing here loads and no data plane connection is opened.
  *
- * Main-only, and regular mode only. The in-process engine uses
+ * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
  * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server, the client that dials the engine, and a Redis
- * receiver for execution responses.
+ * only the control plane server, the client that dials the engine, and the Redis
+ * subscriber of the execution channel.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
-	private responseSender?: ExecutionResponseSender;
+	private channelPublisher?: { stop(): Promise<void> };
 
-	private responseReceiver?: { stop(): Promise<void> };
+	private channelSubscriber?: { stop(): Promise<void> };
 
 	async init() {
-		if (Container.get(ExecutionsConfig).mode === 'queue') {
-			throw new UserError('The engine-v2 module does not support queue mode.');
-		}
-
 		const engineConfig = Container.get(EngineConfig);
+		const logger = Container.get(Logger).scoped('engine-v2');
+		const { EngineMtls } = await import('./engine-mtls.js');
+		const mtls = Container.get(EngineMtls);
+
+		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
+			throw new UserError('The in-process engine does not support queue mode.');
+		}
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);
+			mtls.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl });
+		} else if (mtls.enabled) {
+			throw new UserError(
+				'N8N_ENGINE_TLS_* applies only to N8N_ENGINE_MODE=remote. Both planes run in this process and talk over loopback, so remove the TLS settings.',
+			);
 		} else if (!engineConfig.authSecret) {
 			// Both planes live in this process, so a generated secret is enough and the
 			// integrated engine is never unauthenticated. A separate DP must be given one.
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
-		// Before the engine, so nothing is reported with no server to receive it.
+		// Before the engine, so its first step can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
-		const logger = Container.get(Logger).scoped('engine-v2');
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
-
+		const { EngineV2LifecycleSubscriptions } = await import(
+			'./engine-lifecycle-event-subscriptions.js'
+		);
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
-			// before `startExecution` returns, and responses are not replayed.
-			const { responseSender, responseReceiver } = await this.initInMemoryResponseChannel(logger);
+			// before `startExecution` returns, and frames are not replayed.
+			const {
+				publisher,
+				subscriber,
+				responseSender,
+				responseReceiver,
+				lifecycleEventSender,
+				lifecycleEventReceiver,
+			} = await this.initInMemoryExecutionChannel(logger);
+			this.channelPublisher = publisher;
+			this.channelSubscriber = subscriber;
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
-			this.responseSender = responseSender;
-			this.responseReceiver = responseReceiver;
+			Container.get(EngineV2LifecycleSubscriptions).useReceiver(lifecycleEventReceiver);
 
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init(responseSender);
+			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender });
 		} else {
-			// The remote data plane publishes responses over Redis, so only the
-			// receiving end runs here.
-			const { startRedisExecutionResponseReceiver } = await import(
-				'./response-channel/redis-execution-response-channel.js'
+			// The remote data plane publishes over Redis, so only the subscribing end
+			// runs here.
+			const { startRedisExecutionChannelSubscriber } = await import(
+				'./execution-channel/redis-execution-channel.js'
 			);
-			const responseReceiver = await startRedisExecutionResponseReceiver(logger);
-			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
-			this.responseReceiver = responseReceiver;
+			const { ExecutionChannelReceiver } = await import(
+				'./execution-channel/execution-channel-receiver.js'
+			);
+			const { createExecutionResponseCodec } = await import(
+				'./execution-channel/execution-response-frame.js'
+			);
+			const { createLifecycleEventCodec } = await import(
+				'./execution-channel/lifecycle-event-frame.js'
+			);
+			const subscriber = await startRedisExecutionChannelSubscriber(logger);
+			this.channelSubscriber = subscriber;
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
+				new ExecutionChannelReceiver(subscriber, createExecutionResponseCodec(logger), logger),
+			);
+			Container.get(EngineV2LifecycleSubscriptions).useReceiver(
+				new ExecutionChannelReceiver(subscriber, createLifecycleEventCodec(logger), logger),
+			);
 		}
 
 		const { EngineDataPlaneClient } = await import('./engine-data-plane-client.js');
@@ -81,21 +111,39 @@ export class EngineV2Module implements ModuleInterface {
 		);
 	}
 
-	private async initInMemoryResponseChannel(logger: Logger) {
-		const { InMemoryExecutionResponseChannel } = await import(
-			'./response-channel/in-memory-execution-response-channel.js'
+	private async initInMemoryExecutionChannel(logger: Logger) {
+		const { createInMemoryExecutionChannel } = await import(
+			'./execution-channel/in-memory-execution-channel.js'
 		);
-		const { InMemoryExecutionResponseSender } = await import(
-			'./response-channel/in-memory-execution-response-sender.js'
+		const { ExecutionChannelSender } = await import(
+			'./execution-channel/execution-channel-sender.js'
 		);
-		const { InMemoryExecutionResponseReceiver } = await import(
-			'./response-channel/in-memory-execution-response-receiver.js'
+		const { ExecutionChannelReceiver } = await import(
+			'./execution-channel/execution-channel-receiver.js'
 		);
-		const responseChannel = new InMemoryExecutionResponseChannel();
+		const { createExecutionResponseCodec } = await import(
+			'./execution-channel/execution-response-frame.js'
+		);
+		const { createLifecycleEventCodec } = await import(
+			'./execution-channel/lifecycle-event-frame.js'
+		);
+		const { LifecycleEventChannelSender } = await import(
+			'./execution-channel/lifecycle-event-sender.js'
+		);
+		const { publisher, subscriber } = createInMemoryExecutionChannel();
+		const responseCodec = createExecutionResponseCodec(logger);
 
 		return {
-			responseSender: new InMemoryExecutionResponseSender(responseChannel, logger),
-			responseReceiver: new InMemoryExecutionResponseReceiver(responseChannel, logger),
+			publisher,
+			subscriber,
+			responseSender: new ExecutionChannelSender(publisher, responseCodec),
+			responseReceiver: new ExecutionChannelReceiver(subscriber, responseCodec, logger),
+			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
+			lifecycleEventReceiver: new ExecutionChannelReceiver(
+				subscriber,
+				createLifecycleEventCodec(logger),
+				logger,
+			),
 		};
 	}
 
@@ -109,12 +157,15 @@ export class EngineV2Module implements ModuleInterface {
 		} finally {
 			// After the engine, so a final response still has somewhere to go.
 			// A failed runtime shutdown must still release both endpoints.
-			await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
+			await Promise.all([this.channelPublisher?.stop(), this.channelSubscriber?.stop()]);
 		}
 
-		// After the engine, so its final flush still has somewhere to land.
+		// After the engine, so a step that still runs can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
+
+		const { EngineMtls } = await import('./engine-mtls.js');
+		Container.get(EngineMtls).close();
 	}
 }
 
@@ -129,6 +180,12 @@ function assertRemoteConfig(config: EngineConfig): void {
 	if (!config.baseUrl) {
 		throw new UserError(
 			'N8N_ENGINE_MODE=remote needs N8N_ENGINE_BASE_URL. The default points at this process, which does not run the data plane.',
+		);
+	}
+
+	if (config.resumeSecret) {
+		throw new UserError(
+			'N8N_ENGINE_MODE=remote must not set N8N_ENGINE_RESUME_SECRET on this main. The data plane runs elsewhere; set the secret in its environment only.',
 		);
 	}
 }

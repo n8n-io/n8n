@@ -1,9 +1,15 @@
 import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
-import { REMOVED_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
+import type { ArtifactTurn } from '../artifactTurns';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 
 export interface SetupPanelRow {
@@ -18,6 +24,7 @@ export interface SetupPanelRow {
  */
 export interface SetupPanelThreadSource {
 	messages: ReadonlyArray<{ agentTree?: InstanceAiAgentNode }>;
+	artifactTurns: readonly ArtifactTurn[];
 	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
 }
 
@@ -63,9 +70,7 @@ export function useSetupPanelState(options: {
 	const isAgentBuilding = computed(() => {
 		const id = toValue(options.workflowId);
 		if (!id) return false;
-		return thread.messages.some(
-			(message) => message.agentTree && isAgentEditingWorkflow(message.agentTree, id),
-		);
+		return isAgentEditingWorkflow(thread.artifactTurns, id);
 	});
 
 	const derivation = useWorkflowSetupItems(options.workflowId, {
@@ -80,6 +85,8 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	// Reads the agent tree, not the artifact turns: it compares `completedAt`,
+	// and only the current runtime mounts this panel.
 	const isAwaitingFirstBuild = computed(() => {
 		const id = toValue(options.workflowId);
 		let pending = false;
@@ -89,9 +96,8 @@ export function useSetupPanelState(options: {
 				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
 					continue;
 				const earlySetup =
-					call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS &&
-					call.args.action === 'setup' &&
-					call.result.preBuild === true;
+					resolveBuilderToolName(call.toolName, call.args.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS && call.result.preBuild === true;
 				if (
 					!earlySetup &&
 					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&

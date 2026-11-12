@@ -14,6 +14,7 @@ export const frontendConfig = tseslint.config(
 	baseConfig,
 	VuePlugin.configs['flat/recommended'],
 	designSystemConfigs.recommended,
+	designSystemConfigs.componentImports,
 	{
 		rules: {
 			'no-console': 'warn',
@@ -24,7 +25,6 @@ export const frontendConfig = tseslint.config(
 
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
-			'n8n-local-rules/no-reka-ui-pagination': 'error',
 		},
 	},
 	{

@@ -183,24 +183,16 @@ export class DatabaseConfig {
 	pingTimeoutMs: number = readLegacyPingTimeoutMs();
 
 	/**
-	 * How many consecutive health-check ping failures must occur before the
-	 * connection is considered lost and the DataSource is torn down and
-	 * reinitialized (full pool recovery).
-	 *
-	 * Postgres-only: sqlite never runs pool recovery (a failed ping on a local
-	 * file means a busy pool, not a lost connection), so this has no effect there.
-	 * (Postgres-only environment variables should ideally move to `PostgresConfig`)
-	 *
-	 * Recovery is disruptive (it destroys and recreates the connection pool),
-	 * so this guards against a single transient blip triggering it. With the
-	 * default `DB_PING_INTERVAL_SECONDS=2`, the default of 3 means recovery
-	 * fires only after roughly 6s of sustained ping failures.
-	 *
-	 * Raise this if you see recovery triggering on brief network hiccups
-	 * (false positives); lower it to react faster to genuinely dead connections.
-	 *
-	 * Must be >= 1: recovery fires only after at least one failed ping.
+	 * Number of consecutive failed health-check pings before n8n rebuilds the
+	 * Postgres connection pool. A failed ping counts only when a pooled connection
+	 * was free and did not answer, while a new connection opened outside the pool
+	 * still answers within the ping timeout. A ping that found every pooled
+	 * connection busy, or that failed while the database was unreachable, does not
+	 * count, so n8n keeps the pool and waits for the next ping. Raise this if n8n rebuilds the pool on
+	 * brief network hiccups. Lower it to react faster to dead connections. Must be
+	 * at least 1. Has no effect on SQLite.
 	 */
+	// Postgres-only; this setting should ideally move to `PostgresConfig`.
 	@Env('DB_PING_MAX_FAILURES_BEFORE_RECOVERY', z.coerce.number().int().gte(1))
 	pingMaxFailuresBeforeRecovery: number = 3;
 

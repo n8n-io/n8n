@@ -1,11 +1,12 @@
 import type {
 	AuthenticatedRequest,
 	SettingsRepository,
-	User,
 	CredentialsRepository,
 	WorkflowRepository,
-	UserRepository,
+	Person,
+	PersonRepository,
 } from '@n8n/db';
+import type { Repository } from '@n8n/typeorm';
 import { IsNull, Not } from '@n8n/typeorm';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
@@ -19,10 +20,12 @@ import type { UserService } from '@/services/user.service';
 vi.mock('@rudderstack/rudder-sdk-node');
 
 describe('HooksService', () => {
-	const mockedUser = mock<User>();
+	const mockedPerson = mock<Person>();
 	const userService = mock<UserService>();
 	const authService = mock<AuthService>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
+	const personCollection = mock<Repository<Person>>();
+	personRepository.forCloudHooks.mockReturnValue(personCollection);
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -34,7 +37,7 @@ describe('HooksService', () => {
 	const hooksService = new HooksService(
 		userService,
 		authService,
-		userRepository,
+		personRepository,
 		settingsRepository,
 		workflowRepository,
 		credentialsRepository,
@@ -49,25 +52,25 @@ describe('HooksService', () => {
 		const usersToInvite: Invitation[] = [{ email: 'test@n8n.io', role: 'global:member' }];
 
 		// ACT
-		await hooksService.inviteUsers(mockedUser, usersToInvite);
+		await hooksService.inviteUsers(mockedPerson, usersToInvite);
 
 		// ASSERT
-		expect(userService.inviteUsers).toHaveBeenCalledWith(mockedUser, usersToInvite);
+		expect(userService.inviteUsers).toHaveBeenCalledWith(mockedPerson, usersToInvite);
 	});
 
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
 		// ARRANGE
 		const res = mock<Response>();
-		mockedUser.mfaEnabled = false; // Mock mfaEnabled property
+		mockedPerson.mfaEnabled = false; // Mock mfaEnabled property
 
 		// ACT
-		hooksService.issueCookie(res, mockedUser);
+		hooksService.issueCookie(res, mockedPerson);
 
 		// ASSERT
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser, false);
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedPerson, false);
 	});
 
-	it('hooksService.findOneUser should call userRepository.findOne', async () => {
+	it('hooksService.findOneUser should search people only', async () => {
 		// ARRANGE
 		const filter = { where: { id: '1' } };
 
@@ -75,16 +78,16 @@ describe('HooksService', () => {
 		await hooksService.findOneUser(filter);
 
 		// ASSERT
-		expect(userRepository.findOne).toHaveBeenCalledWith(filter);
+		expect(personCollection.findOne).toHaveBeenCalledWith(filter);
 	});
 
-	it('hooksService.saveUser should call userRepository.save', async () => {
+	it('hooksService.saveUser should save through the people collection', async () => {
 		// ACT
-		await hooksService.saveUser(mockedUser);
+		await hooksService.saveUser(mockedPerson);
 
 		// ASSERT
 
-		expect(userRepository.save).toHaveBeenCalledWith(mockedUser);
+		expect(personCollection.save).toHaveBeenCalledWith(mockedPerson);
 	});
 
 	it('hooksService.updateSettings should call settingRepository.update', async () => {
@@ -152,7 +155,7 @@ describe('HooksService', () => {
 		const collections = hooksService.dbCollections();
 
 		// ASSERT
-		expect(collections).toHaveProperty('User');
+		expect(collections.User).toBe(personCollection);
 		expect(collections).toHaveProperty('Settings');
 		expect(collections).toHaveProperty('Credentials');
 		expect(collections).toHaveProperty('Workflow');

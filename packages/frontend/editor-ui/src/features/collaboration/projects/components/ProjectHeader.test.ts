@@ -9,16 +9,23 @@ import { useProjectsStore } from '../projects.store';
 import type { Project, ProjectListItem } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import {
+	PERSONAL_SELF_HEALING_VIEW,
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
+import { computed } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 const mockPush = vi.fn();
+const createAppMock = vi.fn();
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -66,6 +73,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
+			<button data-test-id="action-app" @click="$emit('action', 'app')">App</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
@@ -109,6 +117,12 @@ describe('ProjectHeader', () => {
 			overview: {},
 			project: {},
 		};
+		capabilityRegistry.clear();
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			available: computed(() => true),
+			openApp: vi.fn(),
+			createApp: createAppMock,
+		}));
 	});
 
 	afterEach(() => {
@@ -582,6 +596,85 @@ describe('ProjectHeader', () => {
 		});
 	});
 
+	describe('personal self-healing tab', () => {
+		const selfHealingTab = {
+			label: 'Self-healing',
+			value: PERSONAL_SELF_HEALING_VIEW,
+			to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: 'project' } },
+		};
+
+		beforeEach(() => {
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+			route.params.projectId = 'project';
+			usersStore.currentUserId = 'user';
+		});
+
+		afterEach(() => {
+			delete route.params.projectId;
+		});
+
+		function setProject(type: Project['type'], enabled: boolean) {
+			settingsStore.moduleSettings = {
+				'instance-ai': { workflowSuggestionsEnabled: enabled },
+			} as typeof settingsStore.moduleSettings;
+			projectsStore.currentProject = {
+				id: 'project',
+				type,
+				relations: [
+					{ id: 'user', role: type === 'personal' ? 'project:personalOwner' : 'project:admin' },
+				],
+				scopes: type === 'personal' ? ['project:read'] : ['project:read', 'project:update'],
+			} as Project;
+		}
+
+		it('adds the tab to the personal project when self-healing is enabled', () => {
+			setProject(ProjectTypes.Personal, true);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': [selfHealingTab] }),
+				null,
+			);
+		});
+
+		it('opens a personal configuration from the header and keeps workflow creation in the menu', async () => {
+			setProject(ProjectTypes.Personal, true);
+			const { getByRole, getByTestId } = renderComponent({ props: { mainButton: 'selfHealing' } });
+
+			await userEvent.click(getByRole('button', { name: 'Add configuration' }));
+
+			expect(mockPush).toHaveBeenCalledWith({
+				name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+				params: { projectId: 'project', configurationId: 'new' },
+			});
+			expect(getByTestId('menu-workflow')).toBeInTheDocument();
+		});
+
+		it('disables configuration creation when the current project does not match the route', () => {
+			setProject(ProjectTypes.Personal, true);
+			route.params.projectId = 'another-project';
+			const { getByRole } = renderComponent({ props: { mainButton: 'selfHealing' } });
+
+			expect(getByRole('button', { name: 'Add configuration' })).toBeDisabled();
+		});
+
+		it.each([
+			{ type: ProjectTypes.Personal, enabled: false },
+			{ type: ProjectTypes.Team, enabled: true },
+		])('does not add the tab to a $type project when enabled=$enabled', ({ type, enabled }) => {
+			setProject(type, enabled);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': [] }),
+				null,
+			);
+		});
+	});
+
 	describe('ProjectCreateResource', () => {
 		it('should render menu items', () => {
 			const { getByTestId } = renderComponent();
@@ -600,6 +693,20 @@ describe('ProjectHeader', () => {
 	});
 
 	describe('mainButton prop', () => {
+		it('creates an app when app is the main action', async () => {
+			settingsStore.isAppsEnabled = true;
+			const project = createTestProject({ scopes: ['app:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.personalProject = project;
+			const { getByTestId } = renderComponent({ props: { mainButton: 'app' } });
+
+			await userEvent.click(getByTestId('add-resource-app'));
+
+			const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
+			expect(appId).toEqual(expect.any(String));
+			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
+		});
+
 		it('should render workflow button as main by default', () => {
 			const project = createTestProject({
 				scopes: ['workflow:create'],

@@ -3,9 +3,19 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	getDataTableCallAction,
+	getExecutionCallAction,
+	isFormerWorkflowsTool,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+
+import {
+	artifactToolCalls,
+	findLatestInTurns,
+	type ArtifactToolCall,
+	type ArtifactTurn,
+} from './artifactTurns';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -36,12 +46,6 @@ export interface BuildResult {
 	toolCallId: string;
 }
 
-export interface BuilderTarget {
-	/** Unique per spawn — changes even when a new builder targets the same workflow. */
-	agentId: string;
-	workflowId: string;
-}
-
 export interface WorkflowSetupResult {
 	workflowId: string;
 	/** Unique per operation — changes even when the same workflow is set up again. */
@@ -65,96 +69,29 @@ export interface AgentArtifactResult {
 
 type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
-/**
- * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful workflow_builder_build_workflow / submit-workflow tool result.
- */
-export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestBuildResult(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		if (
-			(tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW ||
-				tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			if (result.success === true && typeof result.workflowId === 'string') {
-				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
-			}
-		}
-	}
-	return undefined;
+function successResultOf(tc: ArtifactToolCall): Record<string, unknown> | undefined {
+	if (tc.isLoading || !isRecord(tc.result) || tc.result.success !== true) return undefined;
+	return tc.result;
 }
 
-/** A workflow-builder sub-agent node, identified by kind or role. */
-function isBuilderNode(node: InstanceAiAgentNode): boolean {
-	return node.kind === 'builder' || node.role === 'workflow-builder';
+function getBuildResult(tc: ArtifactToolCall): BuildResult | undefined {
+	if (
+		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+	) {
+		return undefined;
+	}
+	const result = successResultOf(tc);
+	if (typeof result?.workflowId !== 'string') return undefined;
+	return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
 }
 
 /**
- * Walks an agent tree depth-first (most recent last) and returns the agentId
- * and workflowId of the latest workflow-builder sub-agent that was spawned
- * with a concrete `targetResource.id` — i.e. an edit-mode builder that
- * already knows which existing workflow it is modifying. Used to open the
- * canvas preview at spawn time, before the first workflow_builder_build_workflow tool call
- * returns a result.
+ * The workflowId and toolCallId of the latest successful
+ * workflow_builder_build_workflow / submit-workflow tool result.
  */
-export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const child = node.children[i];
-		const nested = getLatestBuilderTarget(child);
-		if (nested) return nested;
-		if (
-			isBuilderNode(child) &&
-			child.targetResource?.type === 'workflow' &&
-			typeof child.targetResource.id === 'string'
-		) {
-			return { agentId: child.agentId, workflowId: child.targetResource.id };
-		}
-	}
-	return undefined;
-}
-
-export interface AgentBuilderTarget {
-	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
-	agentId: string;
-	targetAgentId: string;
-	activity?: InstanceAiAgentNode['activity'];
-}
-
-/**
- * Walks an agent tree depth-first (most recent last) and returns the agentId
- * (node id) and targetAgentId of the latest agent-builder sub-agent that was
- * spawned with a concrete `targetResource.id`. Used to open the canvas
- * preview at spawn time in threads from before the builder ran inline —
- * mirrors getLatestBuilderTarget for workflows.
- */
-export function getLatestAgentBuilderTarget(
-	node: InstanceAiAgentNode,
-): AgentBuilderTarget | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const child = node.children[i];
-		const nested = getLatestAgentBuilderTarget(child);
-		if (nested) return nested;
-		if (
-			child.kind === 'agent-builder' &&
-			child.targetResource?.type === 'agent' &&
-			typeof child.targetResource.id === 'string'
-		) {
-			return {
-				agentId: child.agentId,
-				targetAgentId: child.targetResource.id,
-				activity: child.activity,
-			};
-		}
-	}
-	return undefined;
+export function getLatestBuildResult(turns: readonly ArtifactTurn[]): BuildResult | undefined {
+	return findLatestInTurns(turns, getBuildResult);
 }
 
 const WORKFLOW_SETUP_TOOLS = new Set<string>([
@@ -162,75 +99,55 @@ const WORKFLOW_SETUP_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 ]);
 
-/**
- * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful setup-workflow /
- * workflow_builder_apply_workflow_credentials tool result. These tools modify the workflow
- * (credentials, parameters) but don't return workflowId in the result.
- */
-export function getLatestWorkflowSetupResult(
-	node: InstanceAiAgentNode,
-): WorkflowSetupResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestWorkflowSetupResult(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		if (
-			WORKFLOW_SETUP_TOOLS.has(tc.toolName) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown> | undefined;
-			if (result.success === true && typeof args?.workflowId === 'string') {
-				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
-			}
-		}
-	}
-	return undefined;
+function getWorkflowSetupResult(tc: ArtifactToolCall): WorkflowSetupResult | undefined {
+	if (!WORKFLOW_SETUP_TOOLS.has(tc.toolName) || !successResultOf(tc)) return undefined;
+	const workflowId = tc.args?.workflowId;
+	return typeof workflowId === 'string' ? { workflowId, toolCallId: tc.toolCallId } : undefined;
 }
 
-const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+/**
+ * The workflowId (from args) and toolCallId of the latest successful
+ * setup-workflow / workflow_builder_apply_workflow_credentials tool result.
+ * These tools modify the workflow (credentials, parameters) but don't return
+ * workflowId in the result.
+ */
+export function getLatestWorkflowSetupResult(
+	turns: readonly ArtifactTurn[],
+): WorkflowSetupResult | undefined {
+	return findLatestInTurns(turns, getWorkflowSetupResult);
+}
+
+const WORKFLOW_MUTATING_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+]);
+
+/** Stored calls of the former multi-action workflows tool also count, including its removed `update`. */
+function isWorkflowMutatingCall(tc: ArtifactToolCall): boolean {
+	if (isFormerWorkflowsTool(tc.toolName) && tc.args?.action === 'update') return true;
+	return WORKFLOW_MUTATING_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action));
+}
+
+function getWorkflowUpdateResult(tc: ArtifactToolCall): WorkflowSetupResult | undefined {
+	if (!isWorkflowMutatingCall(tc) || !successResultOf(tc)) return undefined;
+	const workflowId = tc.args?.workflowId;
+	return typeof workflowId === 'string' ? { workflowId, toolCallId: tc.toolCallId } : undefined;
+}
 
 /**
- * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful `workflows` tool call
- * that mutated the workflow definition (action=update / restore-version / setup).
- * These modify an existing workflow but surface under tool name 'workflows' —
- * invisible to getLatestBuildResult — and don't reliably return the workflowId in
- * the result, so it is read from the call args. `setup` is the current path for
- * credential/parameter configuration (the inline setup card); the legacy
- * setup-workflow / workflow_builder_apply_workflow_credentials tools are handled by
- * getLatestWorkflowSetupResult.
+ * The workflowId (from args) and toolCallId of the latest successful tool call
+ * that mutated the workflow definition (restore_workflow_version /
+ * setup_workflow). These modify an existing workflow but are invisible to
+ * getLatestBuildResult, and don't reliably return the workflowId in the
+ * result, so it is read from the call args. `setup_workflow` is the current
+ * path for credential/parameter configuration (the inline setup card); the
+ * legacy setup-workflow / workflow_builder_apply_workflow_credentials tools
+ * are handled by getLatestWorkflowSetupResult.
  */
 export function getLatestWorkflowUpdateResult(
-	node: InstanceAiAgentNode,
+	turns: readonly ArtifactTurn[],
 ): WorkflowSetupResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestWorkflowUpdateResult(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		const args = tc.args as Record<string, unknown> | undefined;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			if (result.success === true && typeof args?.workflowId === 'string') {
-				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
-			}
-		}
-	}
-	return undefined;
+	return findLatestInTurns(turns, getWorkflowUpdateResult);
 }
 
 const WORKFLOW_LOCKING_TOOLS = new Set<string>([
@@ -242,152 +159,111 @@ const WORKFLOW_LOCKING_TOOLS = new Set<string>([
 ]);
 
 /**
- * Whether the agent is actively working on `workflowId` somewhere in this agent
- * tree — used to lock the artifact canvas while a build/edit/verification is in
- * flight so the user can't execute or edit into a mid-stream conflict. Any
- * of these signals is enough:
- *   1. The active agent tree has already built/updated/setup this workflow.
- *      This covers short gaps between tool calls while the agent run is still
- *      ongoing.
- *   2. An active workflow-builder sub-agent targeting the workflow (covers the
- *      whole build window: read file → edit → submit-workflow → verify).
- *   3. An in-flight workflow-affecting tool call targeting the workflow — the
- *      build/setup/verify tools, `executions.run`, or a `workflows` update /
- *      restore-version / setup action. Read-only `workflows` actions (including
- *      historical get-json events, get, list, …) don't lock.
+ * An in-flight build of a new workflow in a turn that announced `workflowId`.
+ * The build saves the workflow and announces its setup before it returns.
  */
-export function isAgentEditingWorkflow(
-	node: InstanceAiAgentNode,
-	workflowId: string,
-	announcement = node.latestSetupAnnouncement,
-): boolean {
-	const announcedBuild =
-		announcement?.workflowId === workflowId &&
-		node.toolCalls.some(
-			(call) =>
-				call.isLoading &&
-				call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
-				!call.args?.workflowId &&
-				announcement.agentId === node.agentId &&
-				call.startedAt &&
-				announcement.timestamp >= call.startedAt,
-		);
+function isAnnouncedBuild(turn: ArtifactTurn, workflowId: string): boolean {
+	if (turn.announcedWorkflowId !== workflowId) return false;
+	return turn.toolCalls.some(
+		(call) =>
+			call.isLoading &&
+			call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+			!call.args?.workflowId,
+	);
+}
+
+function isTurnEditingWorkflow(turn: ArtifactTurn, workflowId: string): boolean {
+	const turns = [turn];
 	if (
-		node.status === 'active' &&
-		(getLatestBuildResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
-			node.toolCalls.some(
+		turn.isLive &&
+		(getLatestBuildResult(turns)?.workflowId === workflowId ||
+			getLatestWorkflowSetupResult(turns)?.workflowId === workflowId ||
+			getLatestWorkflowUpdateResult(turns)?.workflowId === workflowId ||
+			turn.toolCalls.some(
 				(call) =>
-					call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS &&
-					call.args?.action === 'setup' &&
+					resolveBuilderToolName(call.toolName, call.args?.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS &&
 					isRecord(call.result) &&
 					call.result.announced === true &&
 					call.result.preBuild === true &&
 					call.result.workflowId === workflowId,
 			) ||
-			announcedBuild)
+			isAnnouncedBuild(turn, workflowId))
 	) {
 		return true;
 	}
 
-	// Signal 2: workflow-builder sub-agent active with our workflow id
-	if (
-		isBuilderNode(node) &&
-		node.status === 'active' &&
-		node.targetResource?.type === 'workflow' &&
-		node.targetResource.id === workflowId
-	) {
-		return true;
-	}
-
-	// Signal 3: in-flight workflow-affecting tool call targeting our workflow id
-	for (const tc of node.toolCalls) {
-		if (!tc.isLoading) continue;
-		const args = tc.args as { workflowId?: string; action?: string } | undefined;
-		if (args?.workflowId !== workflowId) continue;
+	for (const tc of turn.toolCalls) {
+		if (!tc.isLoading || tc.args?.workflowId !== workflowId) continue;
 		if (WORKFLOW_LOCKING_TOOLS.has(tc.toolName)) return true;
-		if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && args.action === 'run')
-			return true;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action)
-		) {
-			return true;
-		}
-	}
-
-	for (const child of node.children) {
-		if (isAgentEditingWorkflow(child, workflowId, announcement)) return true;
+		if (getExecutionCallAction(tc.toolName, tc.args.action) === 'run') return true;
+		if (isWorkflowMutatingCall(tc)) return true;
 	}
 	return false;
 }
 
+/**
+ * Whether the agent is actively working on `workflowId` — used to lock the
+ * artifact canvas while a build/edit/verification is in flight so the user
+ * can't execute or edit into a mid-stream conflict. Either signal is enough:
+ *   1. A live turn has already built/updated/set up this workflow, or the
+ *      setup flow announced it for an in-flight build. This covers short gaps
+ *      between tool calls while the turn is still running.
+ *   2. An in-flight workflow-affecting tool call targets the workflow — the
+ *      build/setup/verify tools, `executions.run`, `restore_workflow_version`
+ *      or `setup_workflow`. Read-only workflow tools (including historical
+ *      get-json events, get, list, …) don't lock.
+ */
+export function isAgentEditingWorkflow(
+	turns: readonly ArtifactTurn[],
+	workflowId: string,
+): boolean {
+	return turns.some((turn) => isTurnEditingWorkflow(turn, workflowId));
+}
+
 /** The agent a successful `agent_builder_select_agent` call selected, if any. */
-function getSelectedAgentId(tc: InstanceAiToolCallState): string | undefined {
+function getSelectedAgentId(tc: ArtifactToolCall): string | undefined {
 	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT || tc.isLoading) return undefined;
 	if (!isRecord(tc.result) || tc.result.ok !== true) return undefined;
 	return typeof tc.result.agentId === 'string' ? tc.result.agentId : undefined;
 }
 
 /**
- * The agent the node's latest successful `agent_builder_select_agent` call
- * selected. An earlier selection no longer counts once the node selects another agent.
+ * The agent the turn's latest successful `agent_builder_select_agent` call
+ * selected. An earlier selection no longer counts once the turn selects another agent.
  */
-function getLatestSelectedAgentId(node: InstanceAiAgentNode): string | undefined {
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const agentId = getSelectedAgentId(node.toolCalls[i]);
-		if (agentId) return agentId;
-	}
-	return undefined;
+function getLatestSelectedAgentId(turn: ArtifactTurn): string | undefined {
+	return findLatestInTurns([turn], getSelectedAgentId);
 }
 
-/** Ids of the agents that active nodes selected last with `agent_builder_select_agent`. */
-export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string> {
+/** Ids of the agents that live turns selected last with `agent_builder_select_agent`. */
+export function getActiveSelectedAgentIds(turns: readonly ArtifactTurn[]): Set<string> {
 	const ids = new Set<string>();
-	const visit = (current: InstanceAiAgentNode) => {
-		if (current.status === 'active') {
-			const agentId = getLatestSelectedAgentId(current);
-			if (agentId) ids.add(agentId);
-		}
-		for (const child of current.children) visit(child);
-	};
-	visit(node);
+	for (const turn of turns) {
+		if (!turn.isLive) continue;
+		const agentId = getLatestSelectedAgentId(turn);
+		if (agentId) ids.add(agentId);
+	}
 	return ids;
 }
 
 /**
- * Whether the AI is actively working on agent `agentId` somewhere in this
- * agent tree — used to lock the agent artifact editor while a build is in
- * flight so user edits can't race builder config writes (the post-build
- * refetch would clobber them). Any signal is enough:
- *   1. The active run selected this agent last with `agent_builder_select_agent` —
- *      covers the whole orchestrator build, including the reads and questions
- *      before the first config write.
- *   2. The active agent tree has already created/mutated this agent.
- *   3. An active agent-builder sub-agent targeting the agent — threads from
- *      before the builder ran in the orchestrator.
+ * Whether the AI is actively working on agent `agentId` — used to lock the
+ * agent artifact editor while a build is in flight so user edits can't race
+ * builder config writes (the post-build refetch would clobber them). A live
+ * turn counts when either:
+ *   1. It selected this agent last with `agent_builder_select_agent` — covers
+ *      the whole build, including the reads and questions before the first
+ *      config write.
+ *   2. It has already created/mutated this agent.
  */
-export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
-	if (node.status === 'active') {
-		if (getLatestSelectedAgentId(node) === agentId) return true;
-		if (getLatestAgentArtifactResult(node)?.agentId === agentId) return true;
-	}
-
-	if (
-		node.kind === 'agent-builder' &&
-		node.status === 'active' &&
-		node.targetResource?.type === 'agent' &&
-		node.targetResource.id === agentId
-	) {
-		return true;
-	}
-
-	for (const child of node.children) {
-		if (isAgentEditingAgent(child, agentId)) return true;
-	}
-	return false;
+export function isAgentEditingAgent(turns: readonly ArtifactTurn[], agentId: string): boolean {
+	return turns.some(
+		(turn) =>
+			turn.isLive &&
+			(getLatestSelectedAgentId(turn) === agentId ||
+				getLatestAgentArtifactResult([turn])?.agentId === agentId),
+	);
 }
 
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
@@ -436,171 +312,174 @@ function extractDataTableId(
 	return undefined;
 }
 
-/**
- * Walks an agent tree depth-first (most recent last) and returns the dataTableId
- * from the latest successful delete-data-table tool result.
- */
-export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestDeletedDataTableId(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		const args = tc.args as Record<string, unknown> | undefined;
-		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			args?.action === 'delete' &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			if (result.success === true && typeof args?.dataTableId === 'string') {
-				return args.dataTableId;
-			}
-		}
-	}
-	return undefined;
+function getDeletedDataTableId(tc: ArtifactToolCall): string | undefined {
+	if (getDataTableCallAction(tc.toolName, tc.args?.action) !== 'delete') return undefined;
+	if (!successResultOf(tc)) return undefined;
+	return typeof tc.args?.dataTableId === 'string' ? tc.args.dataTableId : undefined;
 }
 
-export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestDataTableResult(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		const args = tc.args as Record<string, unknown> | undefined;
-		const action = typeof args?.action === 'string' ? args.action : '';
-		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			const dataTableId = extractDataTableId(action, result, args);
-			if (dataTableId) {
-				return { dataTableId, toolCallId: tc.toolCallId };
-			}
-		}
-	}
-	return undefined;
+/** The dataTableId of the latest successful delete-data-table tool result. */
+export function getLatestDeletedDataTableId(turns: readonly ArtifactTurn[]): string | undefined {
+	return findLatestInTurns(turns, getDeletedDataTableId);
 }
 
-function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
-	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
+function getDataTableResult(tc: ArtifactToolCall): DataTableResult | undefined {
+	const action = getDataTableCallAction(tc.toolName, tc.args?.action) ?? '';
+	if (!DATA_TABLE_PREVIEW_ACTIONS.has(action) || tc.isLoading || !isRecord(tc.result)) {
 		return undefined;
 	}
-	return {
-		agentId: node.targetResource.id,
-		...(typeof node.targetResource.projectId === 'string'
-			? { projectId: node.targetResource.projectId }
-			: {}),
-	};
+	const dataTableId = extractDataTableId(action, tc.result, tc.args);
+	return dataTableId ? { dataTableId, toolCallId: tc.toolCallId } : undefined;
 }
 
-interface AgentTargetedWalk<T> {
-	result?: T;
-	/**
-	 * Most specific agent target found in this subtree: this node's own
-	 * targetResource, or one bubbled up from a child. Lets an orchestrator's
-	 * own tool call (which carries no agentId in its result) resolve identity
-	 * from the builder sub-agent it just spawned, whose targetResource
-	 * carries the agentId via the `agent-spawned` event.
-	 */
-	target?: AgentArtifactTarget;
+export function getLatestDataTableResult(
+	turns: readonly ArtifactTurn[],
+): DataTableResult | undefined {
+	return findLatestInTurns(turns, getDataTableResult);
 }
+
+/** Name of the n8n Assistant tool that manages skills in the skills hub. */
+export const SKILLS_TOOL_NAME = 'skills';
+
+const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
+
+const UNTRUSTED_DATA_PATTERN = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/;
+
+function unwrapUntrustedToolResult(result: unknown): unknown {
+	if (!isRecord(result) || result.type !== 'content' || !Array.isArray(result.value)) {
+		return result;
+	}
+	const [part]: unknown[] = result.value;
+	if (!isRecord(part) || part.type !== 'text' || typeof part.text !== 'string') return result;
+	const json = UNTRUSTED_DATA_PATTERN.exec(part.text)?.[1];
+	if (json === undefined) return result;
+	try {
+		const parsed: unknown = JSON.parse(json);
+		return parsed;
+	} catch {
+		return result;
+	}
+}
+
+export interface SkillArtifact {
+	skillId: string;
+	name?: string;
+}
+
+export type SkillArtifactResult = ToolArtifactResult<SkillArtifact>;
 
 /**
- * Walks an agent tree depth-first (most recent last), threading the nearest
- * agent target down to descendants and back up to callers, and returns the
- * first `match` hit among a node's own tool calls (also most recent last).
- * Shared by artifact discovery and config-mutation preview refresh so their
- * identical target-resolution/traversal logic can't drift between the two.
+ * The skill that a finished `skills` call created or saved. Only a successful
+ * create or update counts: a list, a get, a delete, a denied or a refused call
+ * does not make the skill an artifact.
  */
-function walkAgentTargetedResult<T>(
-	node: InstanceAiAgentNode,
-	fallbackTarget: AgentArtifactTarget | undefined,
-	match: (
-		toolCall: InstanceAiToolCallState,
-		callTarget: AgentArtifactTarget | undefined,
-	) => T | undefined,
-): AgentTargetedWalk<T> {
-	const ownTarget = getAgentTarget(node);
-	const target = ownTarget ?? fallbackTarget;
+export function getSkillArtifactFromToolCall(tc: ArtifactToolCall): SkillArtifact | undefined {
+	if (tc.toolName !== SKILLS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !SKILL_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || result.success !== true) return undefined;
 
-	let childTarget: AgentArtifactTarget | undefined;
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childWalk = walkAgentTargetedResult(node.children[i], target, match);
-		if (childWalk.result) return childWalk;
-		if (childTarget === undefined) childTarget = childWalk.target;
-	}
-
-	// Identity for this node's own tool calls: prefer its own targetResource,
-	// then one discovered on a child (e.g. a builder sub-agent it spawned),
-	// then the fallback threaded down from an ancestor.
-	const callTarget = ownTarget ?? childTarget ?? fallbackTarget;
-
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const result = match(node.toolCalls[i], callTarget);
-		if (result !== undefined) return { result, target: callTarget };
-	}
-
-	return { target: callTarget };
+	// create: { success, skill: { id, name, ... } }. update: { success, saved: { id, name? } }.
+	const written = action === 'create' ? result.skill : result.saved;
+	if (!isRecord(written)) return undefined;
+	const skillId =
+		typeof written.id === 'string'
+			? written.id
+			: typeof tc.args?.skillId === 'string'
+				? tc.args.skillId
+				: undefined;
+	if (!skillId) return undefined;
+	const name =
+		typeof written.name === 'string' && written.name.trim() !== '' ? written.name : undefined;
+	return { skillId, ...(name ? { name } : {}) };
 }
 
-function matchAgentArtifactToolCall(
-	tc: InstanceAiToolCallState,
-	callTarget: AgentArtifactTarget | undefined,
-): AgentArtifactResult | undefined {
+export type ToolArtifactResult<T> = T & {
+	/** Unique per operation — changes even when the same artifact is saved again. */
+	toolCallId: string;
+};
+
+/** The latest artifact that `extract` finds in a tool call. */
+function getLatestToolArtifactResult<T extends object>(
+	turns: readonly ArtifactTurn[],
+	extract: (tc: ArtifactToolCall) => T | undefined,
+): ToolArtifactResult<T> | undefined {
+	return findLatestInTurns(turns, (tc) => {
+		const artifact = extract(tc);
+		return artifact ? { ...artifact, toolCallId: tc.toolCallId } : undefined;
+	});
+}
+
+/** The latest skill that the assistant created or saved with the `skills` tool. */
+export function getLatestSkillArtifactResult(
+	turns: readonly ArtifactTurn[],
+): SkillArtifactResult | undefined {
+	return getLatestToolArtifactResult(turns, getSkillArtifactFromToolCall);
+}
+
+/** Name of the n8n Assistant tool that builds n8n Apps. */
+export const APPS_TOOL_NAME = 'apps';
+
+/** `get` and `open` only read the app. */
+const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+
+export interface AppArtifact {
+	appId: string;
+	name: string;
+	projectId: string;
+}
+
+/** The app that a finished `apps` call created or committed. */
+export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | undefined {
+	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || !isRecord(result.app)) return undefined;
+	const { id, name, projectId } = result.app;
+	if (typeof id !== 'string' || typeof name !== 'string' || typeof projectId !== 'string') {
+		return undefined;
+	}
+	return { appId: id, name, projectId };
+}
+
+/** The latest app that the assistant created or committed with the `apps` tool. */
+export function getLatestAppArtifactResult(
+	turns: readonly ArtifactTurn[],
+): ToolArtifactResult<AppArtifact> | undefined {
+	return getLatestToolArtifactResult(turns, getAppArtifactFromToolCall);
+}
+
+function getAgentArtifactResult(tc: ArtifactToolCall): AgentArtifactResult | undefined {
 	if (tc.isLoading || !isRecord(tc.result)) return undefined;
 	const result = tc.result;
+	if (typeof result.agentId !== 'string') return undefined;
 
-	// The orchestrator runs the builder tools itself, so their results carry the agent identity.
-	if (typeof result.agentId === 'string') {
-		const ownTarget: AgentArtifactTarget = {
-			agentId: result.agentId,
-			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+	// The agent runs the builder tools itself, so their results carry the agent identity.
+	const target: AgentArtifactTarget = {
+		agentId: result.agentId,
+		...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+	};
+	if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
+		if (result.ok !== true) return undefined;
+		return {
+			...target,
+			toolCallId: tc.toolCallId,
+			kind: result.agentChange === 'created' ? 'created' : 'selected',
 		};
-		if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
-			if (result.ok !== true) return undefined;
-			return {
-				...ownTarget,
-				toolCallId: tc.toolCallId,
-				kind: result.agentChange === 'created' ? 'created' : 'selected',
-			};
-		}
-		if (result.configMutated === true) {
-			return { ...ownTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
-		}
 	}
-
-	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT || !callTarget) return undefined;
-	if (result.agentChange === 'created') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
-	}
-	if (result.agentChange === 'updated') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
-	}
-	// Keep old stored threads working until all results include agentChange.
-	const args = tc.args as Record<string, unknown> | undefined;
-	if (result.agentChange === undefined && result.ok === true && typeof args?.name === 'string') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
-	}
-	if (result.agentChange === undefined && result.configUpdated === true) {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	if (result.configMutated === true) {
+		return { ...target, toolCallId: tc.toolCallId, kind: 'mutated' };
 	}
 	return undefined;
 }
 
+/** The latest Agent that a tool call created, selected or changed. */
 export function getLatestAgentArtifactResult(
-	node: InstanceAiAgentNode,
-	fallbackTarget?: AgentArtifactTarget,
+	turns: readonly ArtifactTurn[],
 ): AgentArtifactResult | undefined {
-	return walkAgentTargetedResult(node, fallbackTarget, matchAgentArtifactToolCall).result;
+	return findLatestInTurns(turns, getAgentArtifactResult);
 }
 
 /** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
@@ -610,81 +489,49 @@ export interface AgentConfigMutationResult {
 	toolCallId: string;
 }
 
-/**
- * Walks an agent tree depth-first (most recent last) and returns the latest
- * resolved tool call stamped with `configMutated: true` by the backend.
- */
+function getAgentConfigMutation(tc: ArtifactToolCall): AgentConfigMutationResult | undefined {
+	if (tc.isLoading || !isRecord(tc.result) || tc.result.configMutated !== true) return undefined;
+	const { agentId } = tc.result;
+	return typeof agentId === 'string' ? { agentId, toolCallId: tc.toolCallId } : undefined;
+}
+
+/** The latest resolved tool call stamped with `configMutated: true` by the backend. */
 export function getLatestAgentConfigMutation(
-	node: InstanceAiAgentNode,
+	turns: readonly ArtifactTurn[],
 ): AgentConfigMutationResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAgentConfigMutation(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		if (
-			!tc.isLoading &&
-			isRecord(tc.result) &&
-			tc.result.configMutated === true &&
-			typeof tc.result.agentId === 'string'
-		) {
-			return { agentId: tc.result.agentId, toolCallId: tc.toolCallId };
-		}
-	}
-	return undefined;
+	return findLatestInTurns(turns, getAgentConfigMutation);
 }
 
 /**
- * Walks an agent tree and collects the latest completed run-workflow result
- * per workflowId. Used to restore execution status from historical messages
- * after page refresh.
+ * The latest completed run-workflow result per workflowId. Used to restore
+ * execution status from historical messages after page refresh.
  */
 export function getExecutionResultsByWorkflow(
-	node: InstanceAiAgentNode,
+	turns: readonly ArtifactTurn[],
 ): Map<string, ExecutionResult> {
 	const results = new Map<string, ExecutionResult>();
-	collectExecutionResults(node, results);
-	return results;
-}
-
-function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string, ExecutionResult>) {
-	// Process parent's own toolCalls first, then children — children's results
-	// are more recent (the orchestrator delegates to children) and should win.
-	for (const tc of node.toolCalls) {
-		const tcArgs = tc.args as Record<string, unknown> | undefined;
-		const isExecutionRun =
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && tcArgs?.action === 'run';
+	for (const tc of artifactToolCalls(turns)) {
+		const isExecutionRun = getExecutionCallAction(tc.toolName, tc.args?.action) === 'run';
 		const isVerificationRun = tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW;
 		if ((!isExecutionRun && !isVerificationRun) || tc.isLoading) continue;
 		const result = tc.result;
-		const args = tc.args;
+		const workflowId = tc.args?.workflowId;
 		if (
-			typeof result === 'object' &&
-			result !== null &&
-			typeof args === 'object' &&
-			args !== null &&
-			'workflowId' in args &&
-			typeof args.workflowId === 'string' &&
-			'executionId' in result &&
+			isRecord(result) &&
+			typeof workflowId === 'string' &&
 			typeof result.executionId === 'string' &&
-			'status' in result &&
 			(result.status === 'success' || result.status === 'error')
 		) {
 			const simulatedNodeNames = getSimulatedNodeNames(result);
-			results.set(args.workflowId, {
+			results.set(workflowId, {
 				executionId: result.executionId,
 				status: result.status,
-				...('finishedAt' in result && typeof result.finishedAt === 'string'
-					? { finishedAt: result.finishedAt }
-					: {}),
+				...(typeof result.finishedAt === 'string' ? { finishedAt: result.finishedAt } : {}),
 				...(simulatedNodeNames.length > 0 ? { simulatedNodeNames } : {}),
 			});
 		}
 	}
-	for (const child of node.children) {
-		collectExecutionResults(child, results);
-	}
+	return results;
 }
 
 /** Simulated node names from a workflow_builder_verify_built_workflow result (`simulatedNodes: [{nodeName, reason}]`). */

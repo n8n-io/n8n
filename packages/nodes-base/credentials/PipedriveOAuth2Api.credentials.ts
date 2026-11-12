@@ -9,7 +9,15 @@ export class PipedriveOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'pipedrive';
 
+	dynamicClientRegistration = true;
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'hidden',
+			default: 'https://oauth.pipedrive.com',
+		},
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',

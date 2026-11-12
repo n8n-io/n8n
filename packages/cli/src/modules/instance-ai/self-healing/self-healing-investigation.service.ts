@@ -1,6 +1,7 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -17,8 +18,10 @@ import { DurableEventLog } from '../event-bus/durable-event-log';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
+import { hasGraphChanges } from '../workflow-suggestions/workflow-suggestion-graph';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
@@ -29,6 +32,8 @@ import {
 	SelfHealingResultService,
 	type SelfHealingResultInput,
 } from './self-healing-result.service';
+
+export const SELF_HEALING_CANNOT_FIX_COOLDOWN_MS = Time.days.toMilliseconds;
 
 type StartInvestigation = {
 	workflowId: string;
@@ -90,6 +95,8 @@ export class SelfHealingInvestigationService {
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
 
+		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
+
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
 			if (baseline.projectId !== input.projectId) {
@@ -101,7 +108,7 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, actor).catch((error: unknown) => {
+			void this.run(claimed, baseline, actor, configuration).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,
@@ -175,6 +182,8 @@ export class SelfHealingInvestigationService {
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
+			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) return null;
+
 			return await this.investigations.createInvestigation(
 				{
 					baseline,
@@ -188,19 +197,31 @@ export class SelfHealingInvestigationService {
 		});
 	}
 
-	private async run(investigation: SelfHealingInvestigation, user: User) {
+	private cooldownQuery({ workflowId, projectId }: StartInvestigation) {
+		const completedAfter = new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
+		return { workflowId, projectId, completedAfter };
+	}
+
+	private async run(
+		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
+		user: User,
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'includeSubWorkflows'>,
+	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
-					baseline: investigation.baseline,
+					baseline,
+					configurationId: configuration.id,
+					includeSubWorkflows: configuration.includeSubWorkflows,
 					executionId: investigation.executionId,
 				},
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
 					onComplete: async (run, signal) =>
-						await this.handleRunCompletion(investigation, run, signal),
+						await this.handleRunCompletion(investigation, baseline, run, signal),
 				},
 			);
 		} catch (error) {
@@ -219,6 +240,7 @@ export class SelfHealingInvestigationService {
 
 	private async handleRunCompletion(
 		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
 		run: SelfHealingRunResult,
 		signal: AbortSignal,
 	) {
@@ -235,28 +257,31 @@ export class SelfHealingInvestigationService {
 			completedAt: new Date().toISOString(),
 		};
 
-		if (output.candidateFilePath) {
-			if (!run.candidate || run.candidate.filePath !== output.candidateFilePath) {
-				throw new BadRequestError('The candidate file is unavailable.');
+		if (output.candidateWorkflowIds.length > 0) {
+			if (!run.candidates) throw new BadRequestError('The candidate files are unavailable.');
+
+			const missingSetup: string[] = [];
+			result.candidates = [];
+			for (const { baseline, compile } of run.candidates) {
+				const candidate = await compile();
+				if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+				const { nodes, connections } = candidate.workflow;
+				if (!hasGraphChanges(baseline.original, { nodes, connections })) continue;
+
+				const workflowName = baseline.original.name;
+				missingSetup.push(
+					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
+						([node, types]) =>
+							`- Connect credentials for ${node} in "${workflowName}": ${types.join(', ')}`,
+					),
+					...candidate.warnings
+						.filter(({ code }) => code === 'unresolved_placeholders')
+						.map(({ message }) => `- In "${workflowName}": ${message}`),
+				);
+				result.candidates.push({ baseline, graph: { nodes, connections } });
 			}
 
-			const candidate = await run.candidate.compile();
-			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
-
-			const placeholderWarnings = candidate.warnings.filter(
-				({ code }) => code === 'unresolved_placeholders',
-			);
-			if (
-				output.outcome === 'fix_ready' &&
-				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
-					placeholderWarnings.length > 0)
-			) {
-				const missingSetup = [
-					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
-						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
-					),
-					...placeholderWarnings.map(({ message }) => `- ${message}`),
-				];
+			if (output.outcome === 'fix_ready' && missingSetup.length > 0) {
 				result.output = {
 					...output,
 					outcome: 'needs_you',
@@ -270,10 +295,6 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
-
-			result.candidate = {
-				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-			};
 		}
 
 		const outputFields = selfHealingOutputSchema.innerType().shape;
@@ -286,9 +307,9 @@ export class SelfHealingInvestigationService {
 			),
 		};
 
-		await this.suggestions.requireCurrentBaseline(investigation.baseline);
+		await this.suggestions.requireCurrentBaseline(baseline);
 		signal.throwIfAborted();
-		await this.results.complete({ investigationId: investigation.id, ...result, signal });
+		await this.results.complete({ investigationId: investigation.id, baseline, ...result, signal });
 	}
 
 	async reconcile(signal?: AbortSignal) {

@@ -1,5 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { getN8nVersion, type Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	continueInstanceAiTraceContext,
@@ -17,7 +17,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
@@ -47,10 +47,7 @@ export type OrchestratorResumeReason =
 	| 'approval'
 	| 'background_task_completed'
 	| 'workflow_verification'
-	| 'workflow_setup'
-	| 'planned_checkpoint'
-	| 'replan'
-	| 'synthesize';
+	| 'workflow_setup';
 
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
@@ -222,7 +219,7 @@ export class InstanceAiTracingService {
 				agent_id: orchestratorAgentId(options.runId),
 				...options.metadata,
 			},
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			browserExtension: options.browserExtension,
 		});
@@ -475,7 +472,6 @@ export class InstanceAiTracingService {
 			},
 			...(status === 'failed' && task.error ? { error: task.error } : {}),
 			metadata: {
-				...(task.plannedTaskId ? { planned_task_id: task.plannedTaskId } : {}),
 				...(task.workItemId ? { work_item_id: task.workItemId } : {}),
 			},
 		});

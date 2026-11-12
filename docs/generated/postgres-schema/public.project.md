@@ -9,7 +9,7 @@
 | customTelemetryTags | json | '[]'::json | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | json |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.app](public.app.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_environment_project](public.promotion_environment_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.skill](public.skill.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.app](public.app.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_environment_project](public.promotion_environment_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.self_healing_configuration](public.self_healing_configuration.md) [public.self_healing_configuration_workflow](public.self_healing_configuration_workflow.md) [public.self_healing_investigation](public.self_healing_investigation.md) [public.self_healing_result](public.self_healing_result.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.skill](public.skill.md) [public.skill_source](public.skill_source.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -61,6 +61,7 @@ erDiagram
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.skill_source" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.type_availability_policy_scope" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.variables" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.workflow_review_request" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -111,7 +112,9 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -150,8 +153,10 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -249,6 +254,8 @@ erDiagram
   boolean enabled
   uuid enabledById FK
   integer id
+  boolean includeAllProjectMembers
+  boolean includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
@@ -260,13 +267,13 @@ erDiagram
 }
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -278,14 +285,12 @@ erDiagram
   timestamp_3__with_time_zone completedAt
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone dismissedAt
-  uuid dismissedById FK
   varchar_36_ executionId
   varchar_36_ id
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage
@@ -306,13 +311,28 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_source" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ credentialId FK
+  uuid id
+  varchar_255_ identityKey
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_32_ lastErrorReason
+  json locator
+  text probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.type_availability_policy_scope" {
@@ -360,6 +380,7 @@ erDiagram
   json payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

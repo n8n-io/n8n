@@ -180,5 +180,8 @@ export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
 /** Longest accepted `ownerId`. */
 export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
 
-/** Longest accepted `ownerMemberId`: a workflow node id, or an agent task id (32 characters). */
+/** Longest accepted `ownerMemberId`:
+ * - a workflow node id (64 characters - see NODE_ID_MAX_LENGTH),
+ * - or an agent task id (32 characters - see AGENT_TASK_ID_MAX_LENGTH).
+ */
 export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = NODE_ID_MAX_LENGTH;

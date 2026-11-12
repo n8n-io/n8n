@@ -291,6 +291,55 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			errors: [{ messageId: 'missingActions' }],
 		},
 		{
+			name: 'imported node class with a missing action',
+			filename: '/tmp/nodes/TestNode/v1/TestNodeV1.ts',
+			code: nodeWithProperties(
+				"{ name: 'operation', type: 'options', options: [{ name: 'Send', value: 'send' }] }",
+			),
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			// CE-2873: The .node.ts entry can import its node class from another TypeScript file.
+			name: 'imported node class with six operations and no resources',
+			filename: '/tmp/nodes/TestNode/v1/TestNodeV1.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNodeV1 implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{ name: 'Get', value: 'get', action: 'Get a user' },
+									{ name: 'Create', value: 'create', action: 'Create a user' },
+									{ name: 'Update', value: 'update', action: 'Update a user' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a user' },
+									{ name: 'List', value: 'list', action: 'List users' },
+									{ name: 'Search', value: 'search', action: 'Search users' },
+								],
+								default: 'get',
+							},
+						],
+					};
+				}
+			`,
+			errors: [
+				{
+					messageId: 'tooManyOperationsWithoutResources',
+					data: { operationCount: '6' },
+				},
+			],
+		},
+		{
 			name: 'node with exactly 6 operations without resources (error)',
 			filename: '/tmp/TestNode.node.ts',
 			code: `

@@ -51,7 +51,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 			basePrefix: 'projects/team-ligo',
 		});
 
@@ -70,7 +70,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: true,
+			includeArchived: true,
 		});
 
 		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld_1'], {
@@ -82,7 +82,14 @@ describe('FolderExporter', () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld_1', ['w1']]]));
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' }],
+			entries: [
+				{
+					id: 'w1',
+					name: 'W1',
+					target: 'folders/toproduction-fld_1/workflows/w1',
+					isArchived: false,
+				},
+			],
 			requirements: {
 				credentials: [
 					{
@@ -105,7 +112,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
@@ -117,7 +124,12 @@ describe('FolderExporter', () => {
 			}),
 		);
 		expect(result.workflowEntries).toEqual([
-			{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' },
+			{
+				id: 'w1',
+				name: 'W1',
+				target: 'folders/toproduction-fld_1/workflows/w1',
+				isArchived: false,
+			},
 		]);
 		expect(result.requirements.credentials).toEqual([
 			{
@@ -141,7 +153,14 @@ describe('FolderExporter', () => {
 			]),
 		);
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w-n2', name: 'N2', target: 'folders/ops-ops_b/nested-nested/workflows/n2' }],
+			entries: [
+				{
+					id: 'w-n2',
+					name: 'N2',
+					target: 'folders/ops-ops_b/nested-nested/workflows/n2',
+					isArchived: false,
+				},
+			],
 			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
 		});
 		const writer = new CapturingWriter();
@@ -153,7 +172,7 @@ describe('FolderExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(result.entries.map((e) => e.target)).toEqual([
@@ -184,7 +203,12 @@ describe('FolderExporter', () => {
 		);
 		workflowExporter.export.mockResolvedValue({
 			entries: [
-				{ id: 'w-selected', name: 'Selected', target: 'folders/parent-parent/nested-nested/x' },
+				{
+					id: 'w-selected',
+					name: 'Selected',
+					target: 'folders/parent-parent/nested-nested/x',
+					isArchived: false,
+				},
 			],
 			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
 		});
@@ -196,7 +220,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
@@ -219,7 +243,7 @@ describe('FolderExporter', () => {
 				writer: new CapturingWriter(),
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			}),
 		).rejects.toThrow(/not found or not accessible/);
 	});

@@ -150,7 +150,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			}
 		}),
 	'aws-bedrock': z.object({
-		region: z.string().min(1, 'AWS region is required'),
+		region: z
+			.string()
+			.min(1, 'AWS region is required')
+			.regex(/^[a-z]{2}(-[a-z]+)+-\d+$/, 'Use an AWS region such as us-east-1'),
 		accessKeyId: z.string().min(1, 'AWS accessKeyId is required'),
 		secretAccessKey: z.string().min(1, 'AWS secretAccessKey is required'),
 		sessionToken: z.string().optional(),

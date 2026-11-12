@@ -14,7 +14,6 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	McpToolPermissions,
@@ -35,7 +34,7 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
@@ -43,7 +42,13 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
+import {
+	ConflictError,
+	ForbiddenError,
+	UnprocessableRequestError,
+	UnexpectedError,
+} from '@n8n/errors';
+import { License } from '@/license';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -54,6 +59,7 @@ import {
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
 import { withModelName } from './model-config-name';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -282,8 +288,8 @@ export class InstanceAiSettingsService {
 
 	private sandboxProviderOverride?: InstanceAiSandboxProvider;
 
-	/** Whether n8n Agent is enabled for this instance. */
-	private enabled = true;
+	/** The saved on/off choice. Unset means the env var or the license plan decides. */
+	private enabled?: boolean;
 
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
@@ -309,6 +315,8 @@ export class InstanceAiSettingsService {
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
+		private readonly license: License,
+		private readonly threadRepository: InstanceAiThreadRepository,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -351,6 +359,29 @@ export class InstanceAiSettingsService {
 		if (sandboxStatus.unavailableReason) {
 			logger.warn(`Sandbox unavailable: ${sandboxStatus.unavailableReason}`);
 		}
+		await this.keepEnabledIfInUse();
+	}
+
+	/**
+	 * Runs at startup. Enterprise defaults to off, but an instance that already uses the
+	 * Assistant stays on.
+	 * Threads are deleted with their user, so save the choice instead of re-checking them.
+	 */
+	private async keepEnabledIfInUse(): Promise<void> {
+		if (this.enabled !== undefined || this.config.enabled !== undefined) return;
+		if (!this.license.isEnterprisePlan() || !(await this.threadRepository.exists())) return;
+		await this.withPersistedAdminSettings(async (ctx, persisted) => {
+			if (persisted.enabled === undefined) {
+				persisted.enabled = true;
+				await this.settingsRepository.upsertByKey(
+					ADMIN_SETTINGS_KEY,
+					JSON.stringify(persisted),
+					true,
+					ctx,
+				);
+			}
+			this.enabled = persisted.enabled;
+		});
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -425,7 +456,7 @@ export class InstanceAiSettingsService {
 				: c.sandboxProvider,
 		);
 		return {
-			enabled: this.enabled,
+			enabled: this.isInstanceAiEnabled(),
 			permissions: { ...this.permissions },
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
@@ -1026,33 +1057,6 @@ export class InstanceAiSettingsService {
 		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
 	}
 
-	// ── User preferences ──────────────────────────────────────────────────
-
-	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = this.readUserPreferences(user);
-		const credentialId = prefs.credentialId ?? null;
-
-		let credentialType: string | null = null;
-		let credentialName: string | null = null;
-
-		if (credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
-			if (cred) {
-				credentialType = cred.type;
-				credentialName = cred.name;
-			}
-		}
-
-		return {
-			credentialId,
-			credentialType,
-			credentialName,
-			modelName: prefs.modelName || this.extractModelName(this.config.model),
-		};
-	}
-
 	// ── Shared accessors ──────────────────────────────────────────────────
 
 	/** Restores redacted fields from the assigned credential without sending them to the client. */
@@ -1237,9 +1241,9 @@ export class InstanceAiSettingsService {
 		return this.mcpAccessEnabled;
 	}
 
-	/** Whether the n8n Agent is enabled by the admin. */
+	/** Whether the n8n Agent is enabled for this instance. */
 	isAgentEnabled(): boolean {
-		return this.enabled;
+		return this.isInstanceAiEnabled();
 	}
 
 	isBrowserUseEnabled(): boolean {
@@ -1264,7 +1268,8 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.enabled;
+		// Resolved on every read because the license plan can change at runtime.
+		return this.enabled ?? this.config.enabled ?? !this.license.isEnterprisePlan();
 	}
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
@@ -1443,6 +1448,7 @@ export class InstanceAiSettingsService {
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
 		return {
+			kind: 'endpoint',
 			id,
 			url: baseUrl,
 			...(apiKey ? { apiKey } : {}),
@@ -1623,6 +1629,7 @@ export class InstanceAiSettingsService {
 
 		if (modelUrl) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: modelUrl,
 				...(modelApiKey ? { apiKey: modelApiKey } : {}),
@@ -1632,6 +1639,7 @@ export class InstanceAiSettingsService {
 
 		if (modelApiKey) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: '',
 				apiKey: modelApiKey,
@@ -1667,6 +1675,7 @@ export class InstanceAiSettingsService {
 		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
 
 		return {
+			kind: 'vertex-anthropic',
 			id,
 			project: this.resolveVertexProjectId(),
 			location: this.resolveVertexLocation(),

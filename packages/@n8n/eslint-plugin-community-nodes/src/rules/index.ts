@@ -32,6 +32,8 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
+import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
+import { OperationStandardActionRule } from './operation-standard-action.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -39,6 +41,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { SingleCredentialPerNodeRule } from './single-credential-per-node.js';
 import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
@@ -73,6 +76,7 @@ export const rules = {
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'single-credential-per-node': SingleCredentialPerNodeRule,
 	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
@@ -94,4 +98,6 @@ export const rules = {
 	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
+	'operation-name-repeats-resource': OperationNameRepeatsResourceRule,
+	'operation-standard-action': OperationStandardActionRule,
 } satisfies Record<string, AnyRuleModule>;

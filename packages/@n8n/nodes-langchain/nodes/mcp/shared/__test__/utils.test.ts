@@ -49,6 +49,9 @@ const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateRedirectSync: vi.fn(),
 });
 
+/** Every credential type that drives the OAuth2 bearer flow. */
+const oauth2AuthOptions = ['mcpOAuth2Api', 'oAuth2Api'] as McpAuthenticationOption[];
+
 describe('utils', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -94,35 +97,42 @@ describe('utils', () => {
 	});
 
 	describe('tryRefreshOAuth2Token', () => {
-		it('should refresh an OAuth2 token without headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(oauth2AuthOptions)(
+			'should refresh an OAuth2 token without headers for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toEqual({ Authorization: 'Bearer new-access-token' });
-		});
+				expect(headers).toEqual({ Authorization: 'Bearer new-access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith(authentication);
+			},
+		);
 
-		it('should refresh an OAuth2 token with headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(oauth2AuthOptions)(
+			'should refresh an OAuth2 token with headers for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api', {
-				Foo: 'bar',
-				authorization: 'Bearer old-access-token',
-			});
+				const headers = await tryRefreshOAuth2Token(ctx, authentication, {
+					Foo: 'bar',
+					authorization: 'Bearer old-access-token',
+				});
 
-			expect(headers).toEqual({
-				Foo: 'bar',
-				Authorization: 'Bearer new-access-token',
-			});
-		});
+				expect(headers).toEqual({
+					Foo: 'bar',
+					Authorization: 'Bearer new-access-token',
+				});
+			},
+		);
 
-		it('should return null if the authentication method is not oAuth2Api', async () => {
+		it('should return null if the authentication method is not an OAuth2 credential', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 
 			const headers = await tryRefreshOAuth2Token(ctx, 'headerAuth');
@@ -130,146 +140,171 @@ describe('utils', () => {
 			expect(headers).toBeNull();
 		});
 
-		it('should return null if the refreshOAuth2Token returns no access_token', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: null,
-			});
+		it.each(oauth2AuthOptions)(
+			'should return null for %s if the refreshOAuth2Token returns no access_token',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: null,
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toBeNull();
-		});
+				expect(headers).toBeNull();
+			},
+		);
 
-		it('should return null if the refreshOAuth2Token throws an error', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockRejectedValue(new Error('Failed to refresh OAuth2 token'));
+		it.each(oauth2AuthOptions)(
+			'should return null for %s if the refreshOAuth2Token throws an error',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockRejectedValue(
+					new Error('Failed to refresh OAuth2 token'),
+				);
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toBeNull();
-		});
+				expect(headers).toBeNull();
+			},
+		);
 	});
 
 	describe('getAuthHeaders', () => {
-		it('should return the headers and credentials for mcpOAuth2Api', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should return the headers and credentials for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result).toEqual({
-				headers: { Authorization: 'Bearer access-token' },
-				credentials,
-			});
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(ctx.getCredentials).toHaveBeenCalledWith(authentication);
+				expect(result).toEqual({
+					headers: { Authorization: 'Bearer access-token' },
+					credentials,
+				});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not send an undefined bearer token when mcpOAuth2Api token data is empty', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				clientId: 'client-id',
-				clientSecret: 'client-secret',
-				accessTokenUrl: 'https://auth.example.com/token',
-				grantType: 'clientCredentials',
-				authentication: 'header',
-				useDynamicClientRegistration: false,
-				resourceUrl: 'https://mcp.example.com/',
-				oauthTokenData: {},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should not send an undefined bearer token when %s token data is empty',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'clientCredentials',
+					authentication: 'header',
+					useDynamicClientRegistration: false,
+					oauthTokenData: {},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-			expect(result).toEqual({ credentials });
-			expect(result.headers?.Authorization).not.toBe('Bearer undefined');
-		});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+				expect(result).toEqual({ credentials });
+				expect(result.headers?.Authorization).not.toBe('Bearer undefined');
+			},
+		);
 
-		it('should not set headers when mcpOAuth2Api token data is undefined', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				clientId: 'client-id',
-				clientSecret: 'client-secret',
-				accessTokenUrl: 'https://auth.example.com/token',
-				grantType: 'clientCredentials',
-				authentication: 'header',
-				useDynamicClientRegistration: false,
-				resourceUrl: 'https://mcp.example.com/',
-				oauthTokenData: undefined,
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should not set headers when %s token data is undefined',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'clientCredentials',
+					authentication: 'header',
+					useDynamicClientRegistration: false,
+					oauthTokenData: undefined,
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-			expect(result).toEqual({ credentials });
-			expect(result.headers).toBeUndefined();
-		});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+				expect(result).toEqual({ credentials });
+				expect(result.headers).toBeUndefined();
+			},
+		);
 
-		it('should ignore a provider expiry field when the internal expiry is unknown', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_at: '1700000060',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should ignore a provider expiry field for %s when the internal expiry is unknown',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_at: '1700000060',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result).toEqual({
-				headers: { Authorization: 'Bearer access-token' },
-				credentials,
-			});
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result).toEqual({
+					headers: { Authorization: 'Bearer access-token' },
+					credentials,
+				});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not proactively refresh legacy credentials without an absolute expiry', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_in: '3600',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should not proactively refresh legacy %s credentials without an absolute expiry',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_in: '3600',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should refresh mcpOAuth2Api credentials before the access token expires', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					n8n_expires_at: String(now + 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(oauth2AuthOptions)(
+			'should refresh %s credentials before the access token expires',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						n8n_expires_at: String(now + 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith(authentication);
+			},
+		);
 
 		it('should refresh an expiring client credentials token without a refresh token', async () => {
 			const now = 1_700_000_000_000;
@@ -291,44 +326,50 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
 		});
 
-		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					n8n_expires_at: String(now + 10 * 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should not refresh %s credentials when the access token is still valid',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						n8n_expires_at: String(now + 10 * 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not immediately refresh a short-lived token', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_in: '60',
-					n8n_expires_at: String(now + 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(oauth2AuthOptions)(
+			'should not immediately refresh a short-lived %s token',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_in: '60',
+						n8n_expires_at: String(now + 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should return the headers and credentials for headerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
@@ -432,6 +473,7 @@ describe('utils', () => {
 			'headerAuth',
 			'bearerAuth',
 			'mcpOAuth2Api',
+			'oAuth2Api',
 			'multipleHeadersAuth',
 		] as McpAuthenticationOption[])(
 			'should return an empty object for %s when it fails',
@@ -1045,6 +1087,171 @@ describe('utils', () => {
 				expect(egressFilter.validateUrl).toHaveBeenCalledWith('https://mcp.example.com/');
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
+
+			describe('trace context', () => {
+				const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+				const connectTraced = async (getTraceHeaders: () => Record<string, string>) => {
+					mockClient.connect.mockResolvedValue(undefined);
+					mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+					await connectMcpClient({
+						serverTransport: transport,
+						secureEgressFilter: createTestEgressFilter(),
+						endpointUrl: 'https://example.com',
+						name: 'test-client',
+						version: 1,
+						getTraceHeaders,
+						logger,
+					});
+
+					const [, opts] = (TransportClass as Mock).mock.calls[0];
+					return opts;
+				};
+
+				const sentHeaders = (callIndex: number) =>
+					new Headers(mockedProxyFetch.mock.calls[callIndex][0].init?.headers);
+
+				it('should read the trace context for each request, not once at connect', async () => {
+					const getTraceHeaders = vi
+						.fn()
+						.mockReturnValueOnce({ traceparent: 'span-a', tracestate: 'vendor=opaque' })
+						.mockReturnValueOnce({ traceparent: 'span-b', tracestate: 'vendor=opaque' });
+
+					const opts = await connectTraced(getTraceHeaders);
+					expect(getTraceHeaders).not.toHaveBeenCalled();
+
+					await opts.fetch('https://example.com/mcp', {});
+					await opts.fetch('https://example.com/mcp', {});
+
+					expect(sentHeaders(0).get('traceparent')).toBe('span-a');
+					expect(sentHeaders(0).get('tracestate')).toBe('vendor=opaque');
+					expect(sentHeaders(1).get('traceparent')).toBe('span-b');
+				});
+
+				it('should keep the auth header next to the trace context', async () => {
+					mockClient.connect.mockResolvedValue(undefined);
+					mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+					await connectMcpClient({
+						serverTransport: transport,
+						secureEgressFilter: createTestEgressFilter(),
+						endpointUrl: 'https://example.com',
+						headers: { Authorization: 'Bearer my-token' },
+						name: 'test-client',
+						version: 1,
+						getTraceHeaders: () => ({ traceparent: 'span-a' }),
+					});
+
+					const [, opts] = (TransportClass as Mock).mock.calls[0];
+					await opts.fetch('https://example.com/mcp', {});
+
+					expect(sentHeaders(0).get('authorization')).toBe('Bearer my-token');
+					expect(sentHeaders(0).get('traceparent')).toBe('span-a');
+				});
+
+				it('should send the trace context to a cross-origin redirect target', async () => {
+					mockClient.connect.mockResolvedValue(undefined);
+					mockedProxyFetch
+						.mockResolvedValueOnce(
+							new Response(null, {
+								status: 307,
+								headers: { location: 'https://other.example.com/moved' },
+							}),
+						)
+						.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+					await connectMcpClient({
+						serverTransport: transport,
+						secureEgressFilter: createTestEgressFilter(),
+						endpointUrl: 'https://example.com',
+						headers: { Authorization: 'Bearer my-token' },
+						name: 'test-client',
+						version: 1,
+						getTraceHeaders: () => ({ traceparent: 'span-a' }),
+					});
+
+					const [, opts] = (TransportClass as Mock).mock.calls[0];
+					await opts.fetch('https://example.com/mcp', {});
+
+					expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
+					expect(sentHeaders(1).get('traceparent')).toBe('span-a');
+					expect(sentHeaders(1).get('authorization')).toBeNull();
+				});
+
+				it('should add no header when there is no trace context', async () => {
+					const opts = await connectTraced(() => ({}));
+
+					await opts.fetch('https://example.com/mcp', { method: 'POST' });
+
+					expect(sentHeaders(0).get('traceparent')).toBeNull();
+					expect(sentHeaders(0).get('tracestate')).toBeNull();
+				});
+
+				it('should send the request and log when the trace helper throws', async () => {
+					const opts = await connectTraced(() => {
+						throw new Error('tracer failed');
+					});
+
+					await opts.fetch('https://example.com/mcp', { method: 'POST' });
+
+					expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
+					expect(sentHeaders(0).get('traceparent')).toBeNull();
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to add the trace context to an MCP request',
+						{ error: 'tracer failed' },
+					);
+				});
+			});
+		});
+
+		describe('trace context, as reached through connectMcpClientForCredential', () => {
+			beforeEach(() => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+			});
+
+			it('should trace the sse stream request, not only the posted messages', async () => {
+				await connectMcpClient({
+					serverTransport: 'sse',
+					secureEgressFilter: createTestEgressFilter(),
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					getTraceHeaders: () => ({ traceparent: 'span-a' }),
+				});
+
+				const [, opts] = (SSEClientTransport as unknown as Mock).mock.calls[0];
+				await opts.eventSourceInit.fetch('https://example.com/sse', {});
+
+				const headers = new Headers(mockedProxyFetch.mock.calls[0][0].init?.headers);
+				expect(headers.get('traceparent')).toBe('span-a');
+				expect(headers.get('accept')).toBe('text/event-stream');
+			});
+
+			it('should take the trace context from the execution context', async () => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.getNode.mockReturnValue({
+					type: 'mcpClientTool',
+					typeVersion: 1.4,
+				} as unknown as INode);
+				ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
+				ctx.helpers.getTraceHeaders.mockReturnValue({ traceparent: 'span-from-ctx' });
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication: 'none',
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://example.com/mcp',
+					surface: 'MCP Client Tool',
+				});
+				expect(result.ok).toBe(true);
+
+				const [, opts] = (MockedStreamableHTTPClientTransport as unknown as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
+
+				const headers = new Headers(mockedProxyFetch.mock.calls[0][0].init?.headers);
+				expect(headers.get('traceparent')).toBe('span-from-ctx');
+			});
 		});
 
 		describe('httpStreamable session cleanup', () => {
@@ -1136,6 +1343,90 @@ describe('utils', () => {
 				expect(originalClose).toHaveBeenCalledTimes(1);
 			});
 		});
+	});
+
+	describe('connectMcpClientForCredential', () => {
+		const mockClient = {
+			connect: vi.fn(),
+			close: vi.fn(),
+		};
+
+		const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			vi.restoreAllMocks();
+			mockClient.connect.mockResolvedValue(undefined);
+			mockClient.close = vi.fn();
+			mockClient.close.mockResolvedValue(undefined);
+
+			MockedClient.mockImplementation(function () {
+				return mockClient as unknown as Client;
+			});
+		});
+
+		function createCtx() {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getNode.mockReturnValue({ type: 'test-client', typeVersion: 1 } as unknown as INode);
+			ctx.helpers.getSecureEgressFilter.mockReturnValue(createTestEgressFilter());
+			ctx.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'access-token' },
+			});
+			return ctx;
+		}
+
+		it.each(oauth2AuthOptions)(
+			'should send the %s access token as a bearer header',
+			async (authentication) => {
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+				const ctx = createCtx();
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication,
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.example.com/',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+				expect(ctx.getCredentials).toHaveBeenCalledWith(authentication);
+
+				const [, opts] = (MockedStreamableHTTPClientTransport as unknown as Mock).mock.calls[0];
+				await opts.fetch('https://mcp.example.com/', {});
+
+				const headers = new Headers(mockedProxyFetch.mock.calls[0][0].init?.headers);
+				expect(headers.get('authorization')).toBe('Bearer access-token');
+			},
+		);
+
+		it.each(oauth2AuthOptions)(
+			'should refresh the %s token and retry when the server responds with 401',
+			async (authentication) => {
+				mockedProxyFetch
+					.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+				const ctx = createCtx();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({ access_token: 'new-access-token' });
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication,
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.example.com/',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+
+				const [, opts] = (MockedStreamableHTTPClientTransport as unknown as Mock).mock.calls[0];
+				const response = await opts.fetch('https://mcp.example.com/', {});
+
+				expect(response.status).toBe(200);
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith(authentication);
+
+				const retryHeaders = new Headers(mockedProxyFetch.mock.calls[1][0].init?.headers);
+				expect(retryHeaders.get('authorization')).toBe('Bearer new-access-token');
+			},
+		);
 	});
 
 	describe('mapToNodeOperationError', () => {

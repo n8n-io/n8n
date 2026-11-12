@@ -1,5 +1,7 @@
 import { z, type ZodError } from 'zod';
 
+import { parseRegexLiteral } from 'n8n-workflow';
+
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
@@ -52,6 +54,18 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
+export const EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH = 100;
+
+const EpisodicMemoryGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
+
+const EpisodicMemoryGuidanceSchema = z.object({
+	include: EpisodicMemoryGuidanceTopicsSchema.optional(),
+	exclude: EpisodicMemoryGuidanceTopicsSchema.optional(),
+});
+
 const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(false),
@@ -62,6 +76,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+		guidance: EpisodicMemoryGuidanceSchema.optional(),
 	}),
 ]);
 
@@ -259,7 +274,7 @@ export const McpServerConfigSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+				'Credential id from setup_credentials(target: "agent"). Required when authentication is not "none"',
 			),
 		metadata: z
 			.object({
@@ -454,6 +469,155 @@ export const BudgetGuardrailConfigSchema = z
 	});
 
 /**
+ * PII entity set for `pii` tool guardrails. Mirrors `PIIEntity` in
+ * `@n8n/ai-utilities` (`src/guardrails/checks/pii.ts`) — api-types cannot
+ * depend on that package (it depends on api-types). Keep in sync.
+ */
+export const TOOL_GUARDRAIL_PII_ENTITIES = [
+	// Global
+	'CREDIT_CARD',
+	'CRYPTO',
+	'DATE_TIME',
+	'EMAIL_ADDRESS',
+	'IBAN_CODE',
+	'IP_ADDRESS',
+	'LOCATION',
+	'PHONE_NUMBER',
+	'MEDICAL_LICENSE',
+	// USA
+	'US_BANK_NUMBER',
+	'US_DRIVER_LICENSE',
+	'US_ITIN',
+	'US_PASSPORT',
+	'US_SSN',
+	// UK
+	'UK_NHS',
+	'UK_NINO',
+	// Spain
+	'ES_NIF',
+	'ES_NIE',
+	// Italy
+	'IT_FISCAL_CODE',
+	'IT_DRIVER_LICENSE',
+	'IT_VAT_CODE',
+	'IT_PASSPORT',
+	'IT_IDENTITY_CARD',
+	// Poland
+	'PL_PESEL',
+	// Singapore
+	'SG_NRIC_FIN',
+	'SG_UEN',
+	// Australia
+	'AU_ABN',
+	'AU_ACN',
+	'AU_TFN',
+	'AU_MEDICARE',
+	// India
+	'IN_PAN',
+	'IN_AADHAAR',
+	'IN_VEHICLE_REGISTRATION',
+	'IN_VOTER',
+	'IN_PASSPORT',
+	// Finland
+	'FI_PERSONAL_IDENTITY_CODE',
+] as const;
+
+export type ToolGuardrailPiiEntity = (typeof TOOL_GUARDRAIL_PII_ENTITIES)[number];
+
+const ParseableRegexSchema = z
+	.string()
+	.min(1)
+	.refine((value) => {
+		try {
+			const { source, flags } = parseRegexLiteral(value);
+			new RegExp(source, flags);
+			return true;
+		} catch {
+			return false;
+		}
+	}, 'Enter a valid regular expression');
+
+/**
+ * A typed ref to a tool configured on the agent, resolving to a runtime tool
+ * name at reconstruction.
+ */
+export const ToolGuardrailToolRefSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('workflow'), workflowId: z.string().min(1) }),
+	z.object({ type: z.literal('node'), name: z.string().min(1) }),
+]);
+
+const toolGuardrailBaseShape = {
+	id: z
+		.string()
+		.min(1)
+		.regex(
+			/^[A-Za-z0-9_-]+$/,
+			'Guardrail id can only contain letters, numbers, hyphens, and underscores',
+		),
+	name: z.string().trim().min(1).optional(),
+	stage: z.enum(['before', 'after']),
+	tools: z.array(ToolGuardrailToolRefSchema).min(1),
+};
+
+const modelToolGuardrailShape = {
+	prompt: z.string().min(1).optional(),
+	threshold: z.number().min(0).max(1).optional(),
+};
+
+/**
+ * A guardrail running before or after the referenced tools. Pattern kinds
+ * run locally; model kinds call a model with an optional prompt and
+ * threshold.
+ */
+export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('keywords'),
+		...toolGuardrailBaseShape,
+		keywords: z.array(z.string().min(1)).min(1),
+	}),
+	z.object({
+		kind: z.literal('pii'),
+		...toolGuardrailBaseShape,
+		type: z.enum(['all', 'selected']),
+		entities: z.array(z.enum(TOOL_GUARDRAIL_PII_ENTITIES)).min(1).optional(),
+	}),
+	z.object({
+		kind: z.literal('secretKeys'),
+		...toolGuardrailBaseShape,
+		permissiveness: z.enum(['strict', 'balanced', 'permissive']),
+	}),
+	z.object({
+		kind: z.literal('urls'),
+		...toolGuardrailBaseShape,
+		allowedUrls: z.array(z.string().min(1)).optional(),
+		allowedSchemes: z.array(z.string().min(1)).optional(),
+		blockUserinfo: z.boolean().optional(),
+		allowSubdomains: z.boolean().optional(),
+	}),
+	z.object({
+		kind: z.literal('customRegex'),
+		...toolGuardrailBaseShape,
+		regex: z.array(z.object({ name: z.string().min(1), value: ParseableRegexSchema })).min(1),
+	}),
+	z.object({
+		kind: z.literal('jailbreak'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+	z.object({ kind: z.literal('nsfw'), ...toolGuardrailBaseShape, ...modelToolGuardrailShape }),
+	z.object({
+		kind: z.literal('topicalAlignment'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+	z.object({
+		kind: z.literal('customPrompt'),
+		...toolGuardrailBaseShape,
+		...modelToolGuardrailShape,
+	}),
+]);
+
+/**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
@@ -547,6 +711,34 @@ export const AgentJsonConfigBaseSchema = z.object({
 			guardrails: z
 				.object({
 					budget: BudgetGuardrailConfigSchema.optional(),
+					tools: z
+						.array(ToolGuardrailConfigSchema)
+						.superRefine((guardrails, ctx) => {
+							const seen = new Set<string>();
+							for (let index = 0; index < guardrails.length; index++) {
+								const guardrail = guardrails[index];
+								if (seen.has(guardrail.id)) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'id'],
+										message: `Duplicate tool guardrail id: "${guardrail.id}"`,
+									});
+								}
+								seen.add(guardrail.id);
+								if (
+									guardrail.kind === 'pii' &&
+									guardrail.type === 'selected' &&
+									!guardrail.entities?.length
+								) {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'entities'],
+										message: 'Select at least one PII entity or set type to "all"',
+									});
+								}
+							}
+						})
+						.optional(),
 				})
 				.optional(),
 		})
@@ -576,7 +768,7 @@ declare const storedSkillRefsBrand: unique symbol;
 
 /**
  * Opaque type of the legacy `skills` key in a stored config. Nothing reads
- * or writes this key: the skill refs live in the skills hub tables. The data
+ * or writes this key: the skill refs live in the skill tables. The data
  * migration removes the key from stored configs.
  */
 export interface OpaqueStoredSkillRefs {
@@ -596,6 +788,9 @@ export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
 	readonly skills?: OpaqueStoredSkillRefs;
 };
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
+export type AgentToolGuardrailToolRef = z.infer<typeof ToolGuardrailToolRefSchema>;
+export type AgentToolGuardrailConfig = z.infer<typeof ToolGuardrailConfigSchema>;
+export type AgentToolGuardrailKind = AgentToolGuardrailConfig['kind'];
 
 /** In-memory monthly spend for one agent. This process only. */
 export interface AgentBudgetSpend {
@@ -670,6 +865,49 @@ export function findVectorStoreToolNameCollisions(
 	return config.vectorStores
 		.map((store) => `search_${store.name.replace(/-/g, '_')}`)
 		.filter((toolName) => toolNames.has(toolName));
+}
+
+export interface ToolGuardrailRefIssue {
+	guardrailIndex: number;
+	toolIndex: number;
+	ref: AgentToolGuardrailToolRef;
+}
+
+/**
+ * Flags tool guardrail refs that point at no configured tool. Disabled tools
+ * still count as configured: a disabled tool keeps its guardrail. A workflow
+ * tool without a `workflowId` (legacy name-only configs) matches no
+ * `workflow` ref. Draft save tolerates dangling refs; the validation service
+ * surfaces them at publish and run.
+ */
+export function findToolGuardrailRefIssues(
+	config: Pick<AgentJsonConfig, 'config' | 'tools'>,
+): ToolGuardrailRefIssue[] {
+	const guardrails = config.config?.guardrails?.tools;
+	if (!guardrails?.length) return [];
+
+	const workflowIds = new Set<string>();
+	const nodeNames = new Set<string>();
+	for (const tool of config.tools ?? []) {
+		if (tool.type === 'workflow' && tool.workflowId !== undefined) {
+			workflowIds.add(tool.workflowId);
+		} else if (tool.type === 'node') {
+			nodeNames.add(tool.name);
+		}
+	}
+
+	const issues: ToolGuardrailRefIssue[] = [];
+	for (let guardrailIndex = 0; guardrailIndex < guardrails.length; guardrailIndex++) {
+		const refs = guardrails[guardrailIndex].tools;
+		for (let toolIndex = 0; toolIndex < refs.length; toolIndex++) {
+			const ref = refs[toolIndex];
+			const matches =
+				(ref.type === 'workflow' && workflowIds.has(ref.workflowId)) ||
+				(ref.type === 'node' && nodeNames.has(ref.name));
+			if (!matches) issues.push({ guardrailIndex, toolIndex, ref });
+		}
+	}
+	return issues;
 }
 
 export function formatZodErrors(error: ZodError): ConfigValidationError[] {

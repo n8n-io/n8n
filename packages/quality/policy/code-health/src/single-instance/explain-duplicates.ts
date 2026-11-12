@@ -212,6 +212,7 @@ export function describeFailureCount(count: number): string {
 
 const LIBS_FILE = 'packages/quality/policy/code-health/src/single-instance/libs.ts';
 const ALLOWLIST_FILE = 'packages/quality/policy/code-health/src/single-instance/collect-copies.ts';
+const ALLOWLIST_NAME = 'EXPECTED_DUPLICATES';
 
 interface Requirer {
 	lib: string;
@@ -250,7 +251,17 @@ function bucketFor(requirer: Requirer, exemptPackages: Set<string>): Bucket {
  */
 export function formatRemediation(
 	explained: ExplainedDuplicate[],
-	{ exemptPackages, scratch }: { exemptPackages: Set<string>; scratch?: string },
+	{
+		exemptPackages,
+		scratch,
+		allowlistFile = ALLOWLIST_FILE,
+		allowlistName = ALLOWLIST_NAME,
+	}: {
+		exemptPackages: Set<string>;
+		scratch?: string;
+		allowlistFile?: string;
+		allowlistName?: string;
+	},
 ): string[] {
 	// Keyed, not per copy: npm installs the same requirer at several nesting depths, and the fix is
 	// one manifest edit however many copies it produced.
@@ -330,8 +341,8 @@ export function formatRemediation(
 		);
 	}
 	lines.push(
-		`  ${++step}. If the split cannot be removed yet, add an EXPECTED_DUPLICATES entry in`,
-		`     ${ALLOWLIST_FILE} documenting why it is tolerated and what removes it.`,
+		`  ${++step}. If the split cannot be removed yet, add an ${allowlistName} entry in`,
+		`     ${allowlistFile} documenting why it is tolerated and what removes it.`,
 		'',
 		'  Reproduce locally (packs + installs the same closure, no CI needed):',
 		'     pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install <pkgName>...',
@@ -367,7 +378,15 @@ export function formatStepSummary(
 		reportOnly,
 		exemptPackages,
 		scratch,
-	}: { reportOnly: boolean; exemptPackages: Set<string>; scratch?: string },
+		allowlistFile,
+		allowlistName,
+	}: {
+		reportOnly: boolean;
+		exemptPackages: Set<string>;
+		scratch?: string;
+		allowlistFile?: string;
+		allowlistName?: string;
+	},
 ): string {
 	const rows = explained.flatMap((dup) =>
 		dup.copies.map(
@@ -387,7 +406,7 @@ export function formatStepSummary(
 		'<details><summary>How to fix</summary>',
 		'',
 		FENCE,
-		...formatRemediation(explained, { exemptPackages, scratch }),
+		...formatRemediation(explained, { exemptPackages, scratch, allowlistFile, allowlistName }),
 		FENCE,
 		'',
 		'</details>',

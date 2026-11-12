@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@n8n/backend-services';
+import { type CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
@@ -27,6 +27,7 @@ let roleService: RoleService;
 let projectService: ProjectService;
 
 const credentialsService = mock<CredentialsService>();
+const credentialsFinderService = mock<CredentialsFinderService>();
 const nodeTypes = mock<INodeTypes>();
 const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
@@ -54,6 +55,7 @@ const detailsFor = async (workflowId: string, user: User = owner) =>
 		'https://example.test',
 		workflowFinderService,
 		credentialsService,
+		credentialsFinderService,
 		nodeTypes,
 		endpoints,
 		roleService,

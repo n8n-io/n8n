@@ -1,4 +1,4 @@
-import { Agent, Memory, Tool } from '@n8n/agents';
+import { Agent, Memory, Tool, type FetchFn } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
@@ -10,12 +10,12 @@ import {
 } from '../self-healing';
 import { SELF_HEALING_PROMPT } from '../self-healing/self-healing.prompt';
 import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registry';
-import { createDataTablesTool } from '../tools/data-tables.tool';
-import { createExecutionsTool } from '../tools/executions.tool';
+import { createDataTableTools } from '../tools/data-tables.tool';
+import { createExecutionTools } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
-import { createNodesTool } from '../tools/nodes.tool';
+import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
 import { createResearchTool } from '../tools/research.tool';
-import { createWorkflowsTool } from '../tools/workflows.tool';
+import { createWorkflowTools } from '../tools/workflows.tool';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
@@ -33,13 +33,16 @@ export interface CreateSelfHealingAgentOptions {
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
+	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
 
 const SOURCE_GUIDANCE =
-	'Read workflow source for context. Keep edits in the supplied self-healing candidate file. ' +
+	'Open a workflow as source before you edit it. ' +
+	'Reads of a workflow that you can change return its captured baseline. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'Reads of the target workflow return its captured baseline. ' +
-	'You can read other accessible workflows for context, including sub-workflows.';
+	'Use other workflows for context only. Do not edit them.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,
@@ -47,23 +50,19 @@ function createSelfHealingTools(
 	abortSignal?: AbortSignal,
 ) {
 	return createToolRegistryFromTools([
-		createWorkflowsTool(context, {
+		...createWorkflowTools(context, {
 			allowedActions: ['get', 'get-as-code'],
-			descriptionPrefix: 'Read workflows',
 			sourceGuidance: SOURCE_GUIDANCE,
 		}),
-		createExecutionsTool(context, {
+		...createExecutionTools(context, {
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
-			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
 		}),
-		createDataTablesTool(context, {
+		...createDataTableTools(context, {
 			allowedActions: ['list', 'schema', 'query'],
-			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
+			skillGuidance: false,
 		}),
-		createNodesTool(context, {
-			allowedActions: ['list', 'search', 'describe', 'type-definition', 'suggested'],
-			description: 'Read node metadata. Use type-definition before changing node parameters.',
-		}),
+		createSearchNodesTool(context),
+		createGetNodeTypesTool(context),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')
@@ -111,7 +110,7 @@ export async function createSelfHealingAgent(
 		}) ?? tools;
 
 	const systemPrompt = [
-		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
+		'Investigate the supplied failed execution. Prepare candidate workflows for review.',
 		'Work without user interaction. Report blockers in the structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
 		SELF_HEALING_PROMPT,
@@ -131,11 +130,14 @@ export async function createSelfHealingAgent(
 		.memory(new Memory().storage('memory'));
 
 	if (workspace) agent.workspace(workspace);
+	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	if (options.requestLabels) agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

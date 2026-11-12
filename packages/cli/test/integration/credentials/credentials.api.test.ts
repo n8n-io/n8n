@@ -1,4 +1,4 @@
-import { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -9,6 +9,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, ListQueryDb } from '@n8n/db';
 import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
@@ -108,6 +109,43 @@ type GetAllResponse = { body: { data: ListQueryDb.Credentials.WithOwnedByAndShar
 // GET /credentials - fetch all credentials
 // ----------------------------------------
 describe('GET /credentials', () => {
+	test('should emit one `credentials-list-data-read` only when the data was requested', async () => {
+		const first = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const second = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const listEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'credentials-list-data-read');
+
+		try {
+			await authOwnerAgent.get('/credentials').expect(200);
+			expect(listEvents()).toHaveLength(0);
+
+			await authOwnerAgent.get('/credentials').query({ includeData: true }).expect(200);
+			expect(listEvents()).toHaveLength(1);
+			const [, payload] = listEvents()[0] as [
+				string,
+				{
+					user: { id: string };
+					credentialIds: string[];
+					credentialCount: number;
+					publicApi: boolean;
+				},
+			];
+			expect(payload.user.id).toBe(owner.id);
+			expect(payload.credentialIds).toEqual(expect.arrayContaining([first.id, second.id]));
+			expect(payload.credentialCount).toBe(payload.credentialIds.length);
+			expect(payload).toMatchObject({ chunk: 1, chunkCount: 1, publicApi: false });
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
@@ -1987,6 +2025,39 @@ describe('GET /credentials/new', () => {
 });
 
 describe('GET /credentials/:id', () => {
+	test('should emit `credentials-data-read` only when the decrypted data is returned', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const readEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'credentials-data-read');
+
+		try {
+			await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
+			expect(readEvents()).toHaveLength(0);
+
+			await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+			expect(readEvents()).toEqual([
+				[
+					'credentials-data-read',
+					{
+						user: expect.objectContaining({ id: owner.id }),
+						credentialType: savedCredential.type,
+						credentialId: savedCredential.id,
+						publicApi: false,
+					},
+				],
+			]);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,

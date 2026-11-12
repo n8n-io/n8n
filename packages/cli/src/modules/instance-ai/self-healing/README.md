@@ -36,7 +36,10 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
+It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
+The run keeps the captured baseline in memory. The investigation stores only the published version
+ID, which the cooldown reads.
 The workflow must be fully published. The failure must belong to its current published version.
 Manual and evaluation executions are ineligible.
 Credential and network failures can still need investigation.
@@ -52,6 +55,8 @@ The call returns `{ kind: 'investigation', investigationId }` or
 A workflow can have one unfinished investigation or open result.
 An unfinished investigation blocks the workflow across projects and configurations.
 An open result blocks investigations only in the workflow's current project.
+An open result also blocks investigations of each workflow that has a pending suggestion in it.
+This also applies when the result belongs to another configuration, whose reviewers are the only ones who see it.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
@@ -64,15 +69,22 @@ Re-enablement does not change the background user recorded on an existing invest
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
 
-The backend binds `verify_candidate({ filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
+The backend binds `verify_candidate({ workflowId, filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
 It checks current access before it reads and compiles the candidate against the captured baseline.
+The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
+A workflow that the run cannot admit fails validation. The error gives the reason.
+The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
 
-`SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
-It uses the same workflow converter as ordinary workflow reads.
-Workflow reads return the captured baseline. The agent cannot select another workflow or version.
+`SelfHealingAgentService` does not write workflow files. The starting message gives the name and ID
+of the triggering workflow. The agent opens a workflow with the `get_workflow_as_code` tool.
+This tool writes the source to a workspace file. All files use one sandbox.
+Reads of a target return its captured baseline. The agent cannot select another version.
+The triggering workflow is always a target. Sub-workflows become targets when the agent reads or verifies them.
+See [Sub-workflows](#sub-workflows). Reads of other workflows are for context only.
+The agent edits the workflow that causes the failure. This can be a sub-workflow.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
@@ -82,13 +94,21 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePath`.
-Set `candidateFilePath` to `null` when there is no candidate.
-`fix_ready` requires a candidate path. `could_not_fix` excludes one.
-The result includes a candidate compiler when validated output names a candidate file.
-If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.
-It keeps the candidate and replaces the report with credential setup instructions.
-An unchanged `needs_you` candidate produces a report without a workflow suggestion.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateWorkflowIds`.
+`candidateWorkflowIds` lists the IDs of the changed workflows. It is empty when there is no candidate.
+`fix_ready` requires at least one ID. `could_not_fix` excludes them.
+The run remembers the last file of each target that passed validation in `verify_candidate`.
+It returns a candidate compiler for each listed ID with that file and the baseline of the target.
+The run removes duplicate IDs. An ID without such a file returns no candidates. The investigation then fails and stores no result.
+Final compilation compiles every candidate. One failure fails the whole investigation.
+If a candidate has mocked credentials or placeholders, the producer changes `fix_ready` to `needs_you`.
+It keeps the candidates and replaces the report with setup instructions for all of them.
+Each changed candidate becomes one suggestion of the result. Unchanged candidates are omitted
+and do not add setup instructions.
+A `fix_ready` result without a changed candidate is rejected.
+Before it saves the result, completion locks every target workflow in ID order.
+It rechecks each baseline and edit access in the same transaction.
+A stale member or a pending suggestion of another result rolls back the whole group.
 Unknown usage measurements stay null. The invocation claims measured credits once.
 Callers must not claim those credits again.
 
@@ -121,17 +141,30 @@ There is no public launch endpoint.
 
 ## Investigate again
 
-Admission uses the same Open and Closed states as Inbox. An undismissed result stays open
-when it has no suggestion or its suggestion is pending. This includes Fix ready,
-Needs attention, and Could not fix reports.
+Admission blocks new investigations while a Fix ready or Needs attention result is Open.
+The result stores its `reviewState`. A Fix ready or Needs attention result starts `open`. A Could
+not fix result starts `closed`. When the first suggestion of a result closes, the result gets the
+same state: `applied`, `outdated`, or `dismissed` for a discarded suggestion. The state stays when a
+workflow deletion removes the suggestions.
 
-Dismissal, discard, or outdated reconciliation permits another eligible production failure
-on the same published version. Apply saves a draft. Another investigation requires successful
-publication and a new eligible failure. Closing a result, opening the editor, changing a
-configuration, and publishing do not start an investigation.
+For a Fix ready or Needs attention result, dismissal, discard, or outdated reconciliation permits
+another eligible production failure on the same published version. Apply saves a draft.
+Another investigation requires successful publication and a new eligible failure. Closing a
+result, opening the editor, changing a configuration, and publishing do not start an investigation.
 
-A report without a suggestion stays open until dismissed, even after a new publication.
-Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
+A Needs attention report without a suggestion stays Open until dismissed, even after a new publication.
+
+A Could not fix result blocks investigations for 24 hours after its completion. The block applies
+to the workflow, its owning project, and the investigated published version. Admission checks
+the workflow's current published version before it captures a baseline. A saved draft does not
+change that version, so admission skips the failure without an error. The claim transaction checks
+again after it confirms that the captured version is still published. Skipped failures do not
+extend the cooldown.
+Another accepted Could not fix result starts a new cooldown. A different successfully published
+version becomes eligible immediately. Both cases require another eligible production failure.
+Republishing the same version does not reset the cooldown. No background job clears it.
+
+Pause, resume, and configuration edits do not clear either block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 
 Crashes, interruptions, and turn limits without an accepted result release the running claim.
@@ -140,15 +173,68 @@ deduplicated. There is no retry cap for runs that finish without a result.
 
 ## Configure self-healing
 
-Project Settings provides configuration management under the existing `project:update` permission.
+Project Settings provides configuration management for team projects under the existing `project:update` permission.
+Only the owner of a personal project can manage the configurations of that project. `project:update` from a global role does not give access.
+This check uses the current `project:personalOwner` relation. Chat users have only the viewer role on their personal project, so they cannot manage its configurations.
+Personal configurations use `includeAllProjectMembers` with no individual reviewers.
+The owner is the only member of a personal project. The shared reviewer rules require current membership and workflow edit access.
+Instance owners and admins do not review, list, or open results of another user's personal project. A saved reviewer row for another user has no effect there.
+This exception applies only to self-healing configurations. It does not grant `project:update`.
+Personal projects show the configurations on their own Self-healing tab, not in Project Settings.
 The same rollout flag controls settings, investigations, and reviews.
 Each project can have one all-workflows configuration and multiple selected-workflow configurations.
 Explicit workflow selections cannot overlap, including when configurations are paused.
 Moving a workflow to another project removes its explicit selections. The destination project's
 configuration applies to later failures. Moving between folders in the same project keeps selections.
 New configurations created in Project Settings start enabled.
-The form selects the creator as the initial reviewer.
+The form selects the creator as the initial reviewer when the creator can be selected.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
+
+### Sub-workflows
+
+`includeSubWorkflows` lets investigations repair sub-workflows of covered workflows. It does not
+start investigations for sub-workflow failures. It defaults to `false`.
+When it is set, the agent run tries to admit a sub-workflow when the agent reads its current version
+or calls `verify_candidate` for it. Historical version reads do not admit a workflow. The run admits
+a workflow only when all of these conditions are true:
+
+- The published version of a target calls it. The run reads `workflowCall` rows of the dependency index.
+  Sub-workflows of admitted sub-workflows can also become targets.
+- It has no pending suggestion.
+- The actor has the same workflow and execution access to it as to the triggering workflow.
+- A reviewer can edit it and all current targets, so a reviewer can always see the result.
+- The baseline capture succeeds. The workflow must have edit access and no unpublished changes.
+- It is in the project of the triggering workflow.
+- The run has fewer than `MAX_SUB_WORKFLOW_TARGETS` sub-workflow targets.
+
+The run captures the baseline of an admitted workflow and serves all its later reads from it.
+Reads of a workflow that is not admitted return the live workflow. The agent cannot verify it.
+`get_workflow_as_code` returns its source inline without a file, with the reason in the note.
+The run admits one workflow at a time. It checks a workflow that is not admitted again on each
+read, because a new target can make it eligible.
+Sub-workflows get no admission reservation.
+
+### Reviewers
+
+Only current members of the configuration's project are reviewers.
+In team projects, instance owners and admins are implicit members, as Project Settings shows.
+They do not need a project relation. Other global roles do not make a user a member.
+Personal projects have no implicit members.
+A configuration can select individual members, the project members group, or both.
+The group stores the `includeAllProjectMembers` flag, not a list of users.
+Each check reads current project membership and global roles. A user who joins the project, or who
+becomes an instance owner or admin, joins the group. A reviewer who loses one membership source
+stays a member while the other source remains. A user with no explicit or implicit membership
+stops being a reviewer, also when selected individually.
+The individual picker offers enabled members who can edit a project workflow. The access can come
+from a project role, a global role, or a workflow share. Save accepts the same members, so a
+selected reviewer stays valid after a role change while a share still gives edit access.
+Existing permissions still apply. A reviewer reviews a result only with edit access to its
+workflow, from a project role, a global role, or a workflow share.
+Admins can manage and enable a team configuration without being selected as a reviewer.
+The configuration must have at least one enabled reviewer with edit access to a covered workflow.
+Save and enable reject the configuration otherwise. When an access check finds no
+such reviewer, the configuration pauses.
 
 Pause stops new investigations and prevents results from being saved while paused.
 After an explicit pause commits, the service requests cancellation of its unfinished investigations.
@@ -156,9 +242,9 @@ The Assistant runtime routes cancellation to local runs and runs on other main p
 Re-enabling permits future investigations. It does not resume canceled agents.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
-A result can reference one independent suggestion. Reports without changes have no suggestion.
-Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
-cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
+A result groups its suggestions, one for each changed workflow. Reports without changes have no suggestion.
+Removal deletes the configuration. Foreign keys cascade deletion to selections, reviewers,
+investigations, results, their suggestions, and suggestion activity.
 Removal collects unfinished thread IDs before deletion and requests cancellation after commit.
 Cancellation is best-effort. A failed request does not fail a committed pause or removal.
 A rolled-back pause or removal does not request cancellation.
@@ -193,16 +279,17 @@ No suggestion row is created by verification.
 
 ## Store a result
 
-The runtime validates final output. The producer compiles the named workspace file.
+The runtime validates final output. The producer compiles the current content of the file that last passed validation for each listed workflow.
 It applies the shared text filter to the final summary and report before storage.
 It keeps both fields within their output limits after replacement.
 It passes the report, runtime usage, and compiled graph directly to the result service.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
-`SelfHealingResultService.complete(...)` prepares the optional suggestion through
-`WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
-suggestion, submission activity, and investigation completion in one transaction.
-Cancellation before acceptance rolls back the result and suggestion.
+`SelfHealingResultService.complete(...)` receives the captured baseline from the run and prepares
+the optional suggestion through `WorkflowSuggestionService`. It rejects a baseline from another
+investigation. It rechecks access and the captured baseline, then saves the result, its
+suggestions with `selfHealingResultId`, submission activity, and investigation completion in one
+transaction. Cancellation before acceptance rolls back the result and its suggestions.
 Once the completion commits, a later cancellation does not change it to a canceled run.
 A repeated completion returns the saved result.
 A failed transaction releases the investigation claim. The report is not saved for retry.
@@ -221,11 +308,11 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                      |
-| --------------- | ---------- | -------------------------------------------- |
-| `fix_ready`     | Required   | Approve and publish, Open in editor, Discard |
-| `needs_you`     | Optional   | Continue in chat, Dismiss                    |
-| `could_not_fix` | None       | Continue in chat, Dismiss                    |
+| Outcome         | Suggestion | Actions                                                    |
+| --------------- | ---------- | ---------------------------------------------------------- |
+| `fix_ready`     | Required   | Apply and publish, Continue in Assistant or editor, Discard |
+| `needs_you`     | Optional   | Continue in Assistant or editor, Discard                    |
+| `could_not_fix` | None       | None. The result closes automatically                       |
 
 The summary is a plain-language title with at most 80 characters.
 The agent writes the report as one Markdown string with two sections: **What happened**
@@ -246,7 +333,7 @@ Credit billing still uses token counts from the existing runtime billing path.
 Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
 Configuration, workflow, original-project, and background-user deletion cascade to the result.
-Suggestion deletion cascades to its referencing result. Result deletion alone keeps the suggestion.
+Result deletion cascades to its suggestions. Suggestion deletion keeps the result.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references
@@ -262,29 +349,57 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/apply`
 - `POST /:resultId/dismiss`
 
-Assigned reviewers with current workflow edit access can review results. Approval also requires
-publish access. Reviewer filtering applies to Inbox lists, counts, details, and actions.
-Each action resolves its suggestion from the result and returns the updated review.
+Project members who are assigned reviewers or, when selected, part of the project members group
+can review results with current edit access to the triggering workflow and every suggestion
+workflow. Approval also requires publish access. Approval accepts only Fix ready results. Apply
+accepts Fix ready and Needs attention results that have a suggestion. Apply and approval save every
+suggestion of the result in one transaction. Approval then requests publication of each saved
+workflow, sub-workflows first. Reviewer filtering applies to Inbox lists, counts, details,
+and actions. Each action resolves its suggestions from the result and returns the updated review.
+The detail lists the suggestions with the triggering workflow first.
+The detail and action responses also return `workflows` and `calls` for the call hierarchy.
+`workflows` contains the triggering workflow, each changed workflow, and each unchanged workflow on a
+call path between them. `calls` contains the calls between these workflows.
+The calls come from the workflow dependency index, so they show the current draft and published
+calls, not the versions that the agent read. The walk starts at the triggering workflow. It stays in
+the project of the result and stops after 10 levels or 100 workflows. Unchanged workflows that the
+reviewer cannot read are left out. A changed workflow without a path to the triggering workflow is
+listed without a caller.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
+The first successful action closes the result. Later Apply, approval, and dismissal requests return
+a conflict and do not save or publish again. An outdated suggestion returns `outdated`.
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
-check the current workflow before writing. If Apply fails, keep the review open and show the error.
+check the current workflow before writing. When one suggestion becomes outdated, every pending
+suggestion of its result closes as outdated. When a sub-workflow with a pending suggestion is deleted,
+the result and its other pending suggestions also close as outdated. Deletion of the triggering
+workflow removes the result. When the triggering workflow or a
+workflow with a pending suggestion moves to another project, the open result closes as outdated. If Apply fails, keep the review open and show the error.
 
-Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
-Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
-from the suggestion; informational results also record dismissal in the same transaction.
+The Discard and close button calls `POST /:resultId/dismiss`.
+Dismissal discards every pending suggestion of the result in one transaction, and the result gets the
+`dismissed` state. If one suggestion is outdated, dismissal closes all of them as outdated and
+discards none, and the result gets the `outdated` state. An open result without a suggestion gets the
+`dismissed` state directly.
+Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
 Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
-returns an error. `publishError` describes that request only. The response includes the workflow
-ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery. Repeating a review action does not save or publish again.
+returns an error. After the first publication request error, approval stops. For a result with
+more than one suggestion, it requests the previous published version of each workflow whose active
+version is still the applied version. The first restoration request error stops restoration.
+`publishError` describes the first error. `restorationError` describes the restoration request
+that returned an error. The response
+includes the workflow ID and the recorded applied version of each suggestion. Open the normal editor
+for publication status and recovery.
 
-For Continue in chat, fetch the result detail again to check current access.
-Pass `report` to the normal Assistant handoff. Build a workflow attachment from `workflowId`.
-Include `execution.id` only when `execution.status` is `available`.
-Offer this action for `needs_you` and `could_not_fix` results.
+Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
+It opens the destination only when the result becomes `applied` or `dismissed`.
+For the Assistant, pass `report` to the normal Assistant handoff. Build a workflow attachment
+from `workflowId`. Include `execution.id` only when `execution.status` is `available`.
 The normal handoff opens a new chat in the clicking user's personal project.
+Use the reviewer's personal project, not the result's `projectId`, for this chat.
+Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 
 ## Availability
@@ -296,8 +411,10 @@ Saved review services do not require Assistant model availability. Recovery of e
 investigations remains available when the flag is off.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
-It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
+It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership of every
+suggestion workflow.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result dismissal and suggestion closure. Inbox reads do not change either state.
+Open and Closed derive from `reviewState`.
+Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.

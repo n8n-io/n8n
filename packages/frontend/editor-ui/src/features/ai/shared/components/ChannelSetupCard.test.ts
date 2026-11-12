@@ -30,11 +30,19 @@ const mocks = vi.hoisted(() => {
 		icon: 'teams',
 		credentialTypes: ['microsoftEntraOAuth2Api'],
 	};
+	const webhookIntegration = {
+		type: 'webhook',
+		label: 'Webhook',
+		icon: 'webhook',
+		credentialTypes: ['httpHeaderAuth', 'jwtAuth'],
+	};
 	return {
 		slackIntegration,
 		linearIntegration,
 		teamsIntegration,
+		webhookIntegration,
 		teamsKeepOpenAfterConnect: false,
+		webhookCredentialRequired: false as boolean | undefined,
 		connectedCredentials: {} as Record<string, string>,
 		ensureLoaded: vi.fn(),
 		reloadCatalog: vi.fn(),
@@ -45,6 +53,9 @@ const mocks = vi.hoisted(() => {
 		isConnected: vi.fn(),
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
+		getAgentConfig: vi.fn(),
+		updateAgentConfig: vi.fn(),
+		n8nChatEnabled: true,
 		createSlackAgentApp: vi.fn(),
 		createSlackManagerCredential: vi.fn(),
 		finalizeSlackManagerCredential: vi.fn(),
@@ -111,6 +122,25 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+	getAgentConfig: mocks.getAgentConfig,
+	updateAgentConfig: mocks.updateAgentConfig,
+}));
+
+vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', async () => {
+	const { computed } = await import('vue');
+	return { useAgentsN8nChatFlag: () => computed(() => mocks.n8nChatEnabled) };
+});
+
+vi.mock('@/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue', () => ({
+	default: {
+		props: ['savedDescription'],
+		setup(props: { savedDescription?: string }, { expose }: { expose: (e: object) => void }) {
+			const description = ref(props.savedDescription ?? '');
+			expose({ description });
+			return { description };
+		},
+		template: '<textarea data-testid="mock-n8n-chat-description" v-model="description" />',
+	},
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -263,6 +293,22 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async
 	};
 });
 
+vi.mock('@/features/agents/channels/webhook/AgentChannelWebhookSetup.vue', () => ({
+	default: {
+		emits: ['connect'],
+		setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
+			expose({
+				currentSettings: { authentication: 'none' },
+				get credentialRequired() {
+					return mocks.webhookCredentialRequired;
+				},
+			});
+		},
+		template:
+			'<div data-testid="mock-webhook-setup"><button data-testid="mock-webhook-connect" @click="$emit(\'connect\')">Connect</button></div>',
+	},
+}));
+
 vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
 		props: ['connectedDescription'],
@@ -317,6 +363,12 @@ describe('ChannelSetupCard', () => {
 		mocks.connectedCredentials = {};
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
+		mocks.n8nChatEnabled = true;
+		mocks.getAgentConfig.mockResolvedValue({
+			config: { name: 'Agent', description: 'Answers billing questions' },
+			configHash: 'hash-1',
+		});
+		mocks.updateAgentConfig.mockResolvedValue({});
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
 		mocks.createSlackManagerCredential.mockResolvedValue({
 			id: 'manager-credential',
@@ -856,6 +908,112 @@ describe('ChannelSetupCard', () => {
 			await flushPromises();
 
 			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+	});
+
+	describe('Webhook', () => {
+		beforeEach(() => {
+			const integrations = [mocks.slackIntegration, mocks.webhookIntegration];
+			mocks.setCatalog(integrations);
+			mocks.ensureLoaded.mockResolvedValue(integrations);
+			mocks.reloadCatalog.mockResolvedValue(integrations);
+			mocks.webhookCredentialRequired = false;
+		});
+
+		it('saves the channel without a credential when the view needs none', async () => {
+			const wrapper = mountCard({ integrationType: 'webhook' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-webhook-connect"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith('webhook', '', { authentication: 'none' }, {});
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('does not save the channel without a credential when the view does not opt out', async () => {
+			mocks.webhookCredentialRequired = undefined;
+			const wrapper = mountCard({ integrationType: 'webhook' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-webhook-connect"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+		});
+	});
+
+	describe('n8n Chat', () => {
+		it('seeds the saved description, saves an edit, connects without a credential and resolves', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			expect(mocks.fetchStatus).toHaveBeenCalledWith(expect.arrayContaining(['n8n_chat']));
+			const textarea = wrapper.find('[data-testid="mock-n8n-chat-description"]');
+			expect((textarea.element as HTMLTextAreaElement).value).toBe('Answers billing questions');
+
+			await textarea.setValue('Answers billing and refund questions');
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.updateAgentConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				{ name: 'Agent', description: 'Answers billing and refund questions' },
+				'hash-1',
+			);
+			expect(mocks.connect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(mocks.updateAgentConfig.mock.invocationCallOrder[0]).toBeLessThan(
+				mocks.connect.mock.invocationCallOrder[0],
+			);
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('skips the config write when the description is unchanged', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.updateAgentConfig).not.toHaveBeenCalled();
+			expect(mocks.connect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('keeps setup pending and shows an error when saving fails', async () => {
+			mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showError).toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+		});
+
+		it('resolves with approved: false on skip', async () => {
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		});
+
+		it('shows the load error when the n8n Chat flag is off', async () => {
+			mocks.n8nChatEnabled = false;
+			const wrapper = mountCard({ integrationType: 'n8n_chat' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="channel-setup-card-n8n-chat-save"]').exists()).toBe(false);
 		});
 	});
 });

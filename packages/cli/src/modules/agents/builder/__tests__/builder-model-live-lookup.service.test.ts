@@ -116,6 +116,11 @@ describe('BuilderModelLiveLookupService', () => {
 
 			const result = await service.lookupAzureFoundryDeployments(user, projectId, 'cred-1');
 
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId,
+				excludePersonalRoute: true,
+				excludeResolvable: true,
+			});
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'endpoint-only',
@@ -173,7 +178,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'curated',
-				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+				models: [{ name: 'gpt-6.1-terra', value: 'gpt-6.1-terra' }],
 			});
 			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
 			expect(getBaseMock).not.toHaveBeenCalled();
@@ -196,7 +201,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'managed',
-				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+				models: [{ name: 'gpt-6.1-terra', value: 'gpt-6.1-terra' }],
 			});
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
@@ -433,6 +438,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(

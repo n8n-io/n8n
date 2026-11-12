@@ -8,6 +8,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -125,11 +126,11 @@ describe('WorkflowPublicationApplier', () => {
 
 	const abort = { signal: new AbortController().signal, onDetached: vi.fn() };
 
-	/** Drives the trigger diff: first call returns old triggers, second returns new. */
+	/** Drives the trigger diff: `oldVersion` (or none) returns old triggers, any other version returns new. */
 	function setTriggerSets(oldTriggers: INode[], newTriggers: INode[]) {
-		workflowTriggerActivator.getEnabledTriggerNodes
-			.mockReturnValueOnce(oldTriggers)
-			.mockReturnValueOnce(newTriggers);
+		workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation((version) =>
+			version === null || version === oldVersion ? oldTriggers : newTriggers,
+		);
 	}
 
 	beforeEach(() => {
@@ -1471,6 +1472,134 @@ describe('WorkflowPublicationApplier', () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+		});
+	});
+
+	describe('trigger node ids longer than the column width', () => {
+		const longId = 'x'.repeat(NODE_ID_MAX_LENGTH + 1);
+		const fittingId = 'y'.repeat(NODE_ID_MAX_LENGTH);
+		const setNode = (id: string): INode =>
+			triggerNode(id, { name: 'Set', type: 'n8n-nodes-base.set' });
+		const versionWith = (nodes: INode[]): WorkflowHistory =>
+			({ ...makeVersion('v-2'), nodes }) as WorkflowHistory;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'n8n-nodes-base.executeCommand') {
+					throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+				}
+				return type.toLowerCase().includes('trigger')
+					? ({ trigger: async () => ({}) } as unknown as INodeType)
+					: ({} as INodeType);
+			});
+		});
+
+		afterEach(() => {
+			nodeTypes.getByNameAndVersion.mockReset();
+		});
+
+		test('fails before touching triggers, and reports only the triggers whose id fits', async () => {
+			const longTrigger = triggerNode(longId, { name: 'Long' });
+			const fittingTrigger = triggerNode(fittingId, { name: 'Fitting' });
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([longTrigger, fittingTrigger]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([
+				longTrigger,
+				fittingTrigger,
+			]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			const message = `Cannot publish workflow: trigger "Long" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`;
+			expect(result).toEqual({
+				type: 'failed',
+				error: expect.objectContaining({
+					message,
+					affectedNodes: [{ id: longId, name: 'Long' }],
+				}),
+				triggerStatuses: [
+					{
+						nodeId: fittingId,
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: message,
+					},
+				],
+			});
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
+		});
+
+		test('counts node id length in characters, not UTF-16 code units', async () => {
+			const astralId = '😀'.repeat(NODE_ID_MAX_LENGTH);
+			const longTrigger = triggerNode(longId, { name: 'Long' });
+			const astralTrigger = triggerNode(astralId, { name: 'Astral' });
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([longTrigger, astralTrigger]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([longTrigger, astralTrigger]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: { affectedNodes: [{ id: longId, name: 'Long' }] },
+				triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+			});
+		});
+
+		test('names every trigger whose id is too long', async () => {
+			const triggers = [
+				triggerNode(longId, { name: 'First' }),
+				triggerNode(`${longId}z`, { name: 'Second' }),
+			];
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith(triggers));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue(triggers);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: expect.objectContaining({
+					message: expect.stringContaining('triggers "First", "Second" have node IDs longer than'),
+					affectedNodes: [
+						{ id: longId, name: 'First' },
+						{ id: `${longId}z`, name: 'Second' },
+					],
+				}),
+			});
+		});
+
+		test('fails when a node whose type cannot load has a long id, since it gets its own row', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([
+					triggerNode(longId, { name: 'Execute Command', type: 'n8n-nodes-base.executeCommand' }),
+				]),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed', triggerStatuses: [] });
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['a non-trigger node', setNode(longId)],
+			['a disabled trigger', triggerNode(longId, { disabled: true })],
+		])('publishes a version where only %s has a long id', async (_, node) => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([node]));
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
 		});
 	});
 });

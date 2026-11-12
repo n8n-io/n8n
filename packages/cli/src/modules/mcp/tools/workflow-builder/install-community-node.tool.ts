@@ -1,10 +1,11 @@
+import { packagePolicyRestrictionsSchema, type PackagePolicyRestrictions } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
-import type { NodeTypes } from '@/node-types';
+import type { INodeTypes } from 'n8n-workflow';
 import type { Telemetry } from '@/telemetry';
 
 import { INSTALL_COMMUNITY_NODE_TOOL, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -46,6 +47,11 @@ const outputSchema = {
 		.describe(
 			'Credential types the installed nodes require. These only exist now that the package is installed, so the user must create one in n8n before the workflow can run. Tell them which.',
 		),
+	policyRestrictions: packagePolicyRestrictionsSchema
+		.optional()
+		.describe(
+			'Node types from the package that a node type policy restricts. The package is installed either way. blockedOn "instance": a workflow that uses the node type cannot be saved, unless optInAvailable is true and the project of the workflow allows it. Do not build with these node types: tell the user which nodes are restricted and that an admin manages node type policies. blockedOn "projects": the instance allows the node type, but some projects block it, and this result does not say which. You can build with it. If saving the workflow fails because of a policy, tell the user that the project of the workflow blocks the node type. Absent when no policy was evaluated.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -55,7 +61,7 @@ const outputSchema = {
  * registry payload does not carry credential declarations for any vetted
  * package, so anything derived from it would silently always be empty.
  */
-function credentialTypesOf(nodeTypeNames: string[], nodeTypes: NodeTypes): string[] {
+function credentialTypesOf(nodeTypeNames: string[], nodeTypes: INodeTypes): string[] {
 	const types = new Set<string>();
 	for (const name of nodeTypeNames) {
 		try {
@@ -88,7 +94,7 @@ export const createInstallCommunityNodeTool = (
 	user: User,
 	communityNodeTypesService: CommunityNodeTypesService,
 	communityPackagesLifecycleService: CommunityPackagesLifecycleService,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: INSTALL_COMMUNITY_NODE_TOOL.toolName,
@@ -221,6 +227,8 @@ export const createInstallCommunityNodeTool = (
 			// Credential types ship with the package and only exist once it is
 			// installed, so this is the first moment the user can create one.
 			const credentialTypes = credentialTypesOf(installedNodeTypes, nodeTypes);
+			const policyRestrictions =
+				await communityPackagesLifecycleService.describePolicyRestrictions(installedPackage);
 
 			const payload: {
 				installed: boolean;
@@ -228,12 +236,14 @@ export const createInstallCommunityNodeTool = (
 				version: string;
 				nodeTypes: string[];
 				credentialTypes?: string[];
+				policyRestrictions?: PackagePolicyRestrictions;
 			} = {
 				installed: true,
 				packageName: installedPackage.packageName,
 				version: installedPackage.installedVersion,
 				nodeTypes: installedNodeTypes,
 				...(credentialTypes.length > 0 ? { credentialTypes } : {}),
+				...(policyRestrictions ? { policyRestrictions } : {}),
 			};
 
 			telemetryPayload.results = {

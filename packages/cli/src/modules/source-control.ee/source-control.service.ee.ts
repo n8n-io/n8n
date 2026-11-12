@@ -5,18 +5,16 @@ import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
-import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
-	SOURCE_CONTROL_DEFAULT_EMAIL,
-	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
@@ -27,6 +25,7 @@ import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
+	gitAuthor,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
@@ -258,9 +257,12 @@ export class SourceControlService {
 				}
 			}
 		}
+		// A first connect moves the instance to Environments v1, also while the promotions flag is off.
+		const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
 		await this.sourceControlPreferencesService.setPreferences({
 			branchName: getBranchesResult.currentBranch,
 			connected: true,
+			...(wasConnected ? {} : { environmentsVersion: 'v1' }),
 		});
 		return getBranchesResult;
 	}
@@ -475,12 +477,8 @@ export class SourceControlService {
 			// repo-wide git config between staging and this commit. Fall back to defaults when the
 			// user has no full profile, matching repo initialization, so the commit can't fail on an
 			// empty git identity.
-			await this.gitService.setGitUserDetails(
-				user.firstName && user.lastName
-					? `${user.firstName} ${user.lastName}`
-					: SOURCE_CONTROL_DEFAULT_NAME,
-				user.email || SOURCE_CONTROL_DEFAULT_EMAIL,
-			);
+			const author = gitAuthor(user);
+			await this.gitService.setGitUserDetails(author.name, author.email);
 
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 		} catch (error) {

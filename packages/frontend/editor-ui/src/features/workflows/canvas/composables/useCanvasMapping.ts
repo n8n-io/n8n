@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -114,6 +115,8 @@ export function useCanvasMapping({
 		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
 	});
 
+	const groupMemberIds = computed(() => new Set(allGroups.value.flatMap((group) => group.nodeIds)));
+
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
 	// their own width/height parameters are read by the group mapper directly.
@@ -194,6 +197,7 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
@@ -201,7 +205,11 @@ export function useCanvasMapping({
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...additionalProperties[node.id],
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

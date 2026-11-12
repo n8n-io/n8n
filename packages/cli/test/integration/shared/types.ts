@@ -15,6 +15,7 @@ type EndpointGroup =
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'oauth-server'
 	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
@@ -88,7 +89,8 @@ type ModuleName =
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
 	| 'type-availability-policies'
-	| 'inbound-auth-core';
+	| 'inbound-auth-core'
+	| 'scim';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -97,6 +99,8 @@ export interface SetupProps {
 	modules?: ModuleName[];
 	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
 	setupTimeout?: number;
+	/** Reuse the bound HTTP server across agents. */
+	reuseServer?: boolean;
 }
 
 export type SuperAgentTest = TestAgent;

@@ -57,7 +57,10 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import {
+	useTypeAvailability,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -160,6 +163,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+useTypeAvailability(() => props.data.projectId);
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
@@ -347,6 +351,10 @@ onMounted(() => {
 		void loadRegistryCatalog();
 		void loadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -367,14 +375,6 @@ credentialListeners.run(() => {
 	});
 });
 onBeforeUnmount(() => credentialListeners.stop());
-
-watch(
-	() => props.data.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
 
 function makeUniqueName(
 	baseName: string,

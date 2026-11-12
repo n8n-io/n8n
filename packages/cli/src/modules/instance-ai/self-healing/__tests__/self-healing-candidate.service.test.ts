@@ -102,6 +102,7 @@ describe('SelfHealingCandidateService', () => {
 		input = {
 			user,
 			baseline: structuredClone(baseline),
+			workflowId: baseline.workflowId,
 			filePath: 'self-healing/candidate.json',
 			abortSignal: new AbortController().signal,
 			context: mock<InstanceAiContext>({
@@ -175,7 +176,7 @@ describe('SelfHealingCandidateService', () => {
 			license.isSharingEnabled.mockReturnValue(true);
 			const edited = structuredClone(baseline.original);
 			edited.nodes[1].parameters = { value: 'edited' };
-			source = JSON.stringify(edited);
+			source = JSON.stringify({ ...edited, id: baseline.workflowId });
 			enterpriseWorkflows.preventTampering.mockImplementationOnce(async (workflow) => {
 				workflow.nodes[1].parameters = {};
 				return workflow;
@@ -266,6 +267,16 @@ describe('SelfHealingCandidateService', () => {
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
 	});
 
+	it('passes the context model transport to simulation planning', async () => {
+		const plan = vi.spyOn(instanceAi, 'planVerificationSimulation');
+		const modelFetch = vi.fn();
+		input.context.modelFetch = modelFetch;
+
+		await service.verify(input);
+
+		expect(plan).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+	});
+
 	it('cleans up the temporary workflow when verification throws', async () => {
 		executionService.run.mockRejectedValue(new Error('Execution failed'));
 
@@ -303,7 +314,7 @@ describe('SelfHealingCandidateService', () => {
 		workflow.connections['Incoming Order'] = {
 			main: [[{ node: 'Process Order', type: 'main', index: 0 }]],
 		};
-		source = JSON.stringify(workflow);
+		source = JSON.stringify({ ...workflow, id: baseline.workflowId });
 		const inputData = {
 			body: { price: '12' },
 			query: { currency: 'EUR' },

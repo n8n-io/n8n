@@ -1,13 +1,21 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep, mock reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
-const { deleteAgentMock, openAgentConfirmationModalMock } = vi.hoisted(() => ({
-	deleteAgentMock: vi.fn().mockResolvedValue(undefined),
-	openAgentConfirmationModalMock: vi.fn(),
+const { deleteAgentMock, openAgentConfirmationModalMock, archiveMock, unarchiveMock } = vi.hoisted(
+	() => ({
+		deleteAgentMock: vi.fn().mockResolvedValue(undefined),
+		openAgentConfirmationModalMock: vi.fn(),
+		archiveMock: vi.fn(),
+		unarchiveMock: vi.fn(),
+	}),
+);
+
+vi.mock('../composables/useAgentArchive', () => ({
+	useAgentArchive: () => ({ archive: archiveMock, unarchive: unarchiveMock }),
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -195,11 +203,14 @@ describe('AgentCard', () => {
 		expect(badge.text()).toBe('agents.list.readonly');
 	});
 
-	it('starts a new chat from the dedicated button', async () => {
+	it('starts a new test from the dedicated flask button', async () => {
 		const wrapper = await renderComponent();
 
 		expect(wrapper.find('[data-action="newChat"]').exists()).toBe(false);
-		await wrapper.find('[data-test-id="agent-card-new-chat"]').trigger('click');
+		const button = wrapper.find('[data-test-id="agent-card-new-chat"]');
+		expect(button.attributes('aria-label')).toBe('agents.list.actions.newTest');
+		expect(button.find('[data-icon="flask-conical"]').exists()).toBe(true);
+		await button.trigger('click');
 
 		expect(wrapper.emitted('new-chat')).toEqual([['agent-1', 'project-1']]);
 	});
@@ -214,31 +225,72 @@ describe('AgentCard', () => {
 		expect(wrapper.find('[data-action="toggleFavorite"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
-		expect(wrapper.find('[data-action="delete"]').exists()).toBe(false);
+		expect(wrapper.find('[data-action="archive"]').exists()).toBe(false);
 	});
 
-	it('shows Publish + Delete on an unpublished agent with full scopes', async () => {
+	it('shows Publish + Archive on an unpublished agent with full scopes', async () => {
 		const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
 
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(true);
-		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="archive"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="delete"]').exists()).toBe(false);
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
 	});
 
-	it('shows Unpublish + Delete on a published agent with full scopes', async () => {
+	it('shows Unpublish + Archive on a published agent with full scopes', async () => {
 		const wrapper = await renderComponent(createAgent({ activeVersionId: 'v1', activeVersion }));
 
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
-		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="archive"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 	});
 
-	it('shows only Delete (no leading divider) when only canDelete is granted', async () => {
+	it('shows only favorite, Delete and Unarchive on an archived agent', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ isArchived: true }));
+
+		const actions = wrapper.findAll('[data-action]').map((a) => a.attributes('data-action'));
+		expect(actions).toEqual(['toggleFavorite', 'delete', 'unarchive']);
+		expect(wrapper.find('[data-test-id="agent-card-archived"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-card-new-chat"]').exists()).toBe(false);
+	});
+
+	it('hides Delete and Unarchive on an archived agent without the delete scope', async () => {
+		agentPermissionsMock.canDelete.value = false;
+		const wrapper = await renderComponent(createAgent({ isArchived: true }));
+
+		const actions = wrapper.findAll('[data-action]').map((a) => a.attributes('data-action'));
+		expect(actions).toEqual(['toggleFavorite']);
+	});
+
+	it('emits archived with the updated agent after a successful archive', async () => {
+		const updated = createAgent({ isArchived: true });
+		archiveMock.mockResolvedValueOnce(updated);
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-action="archive"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.emitted('archived')).toEqual([[updated]]);
+	});
+
+	it('emits unarchived with the updated agent after a successful unarchive', async () => {
+		const updated = createAgent();
+		unarchiveMock.mockResolvedValueOnce(updated);
+		const wrapper = await renderComponent(createAgent({ isArchived: true }));
+
+		await wrapper.find('[data-action="unarchive"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.emitted('unarchived')).toEqual([[updated]]);
+	});
+
+	it('shows only Archive (no leading divider) when only canDelete is granted', async () => {
 		agentPermissionsMock.canPublish.value = false;
 		agentPermissionsMock.canUnpublish.value = false;
 		const wrapper = await renderComponent();
 
-		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="archive"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
 	});
@@ -248,7 +300,7 @@ describe('AgentCard', () => {
 		const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
 
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
-		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="archive"]').exists()).toBe(true);
 	});
 
 	it('shows the favorite toggle action labeled "add" when the agent is not favorited', async () => {
@@ -281,7 +333,7 @@ describe('AgentCard', () => {
 
 	it('removes the agent from local favorites after a successful delete', async () => {
 		openAgentConfirmationModalMock.mockResolvedValue('confirm');
-		const wrapper = await renderComponent();
+		const wrapper = await renderComponent(createAgent({ isArchived: true }));
 
 		await wrapper.find('[data-action="delete"]').trigger('click');
 
@@ -312,6 +364,15 @@ describe('AgentCard', () => {
 		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
 			'agents.list.actions.disableMCPAccess',
 		);
+	});
+
+	it('shows the MCP indicator only when the agent is not archived', async () => {
+		enableMcp();
+		const available = await renderComponent(createAgent({ availableInMCP: true }));
+		expect(available.find('[data-test-id="agent-card-mcp"]').exists()).toBe(true);
+
+		const archived = await renderComponent(createAgent({ availableInMCP: true, isArchived: true }));
+		expect(archived.find('[data-test-id="agent-card-mcp"]').exists()).toBe(false);
 	});
 
 	it('hides the MCP action without agent update permission', async () => {
@@ -392,6 +453,18 @@ describe('AgentCard', () => {
 			const indicator = findIndicator(wrapper);
 			expect(indicator.text()).toBe('agents.list.published');
 			expect(indicator.attributes('data-variant')).toBe('success');
+		});
+
+		it('shows skill-only changes without a new agent version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({
+					versionId: 'v1',
+					activeVersionId: 'v1',
+					activeVersion,
+					skillVersions: { tone: { draft: 2, published: 1, latest: 2, pinned: false } },
+				}),
+			);
+			expect(findIndicator(wrapper).attributes('data-state')).toBe('changes-to-publish');
 		});
 	});
 });

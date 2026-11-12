@@ -100,8 +100,10 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -202,6 +204,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   timestamp_3__with_time_zone createdAt
+  text description
+  text name
   uuid publishedById FK
   json schema
   json skills

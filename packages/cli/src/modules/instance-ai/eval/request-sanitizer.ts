@@ -141,3 +141,22 @@ export function isSecretKey(key: string): boolean {
 	if (SECRET_KEY_PATTERN.test(key)) return true;
 	return false;
 }
+
+/**
+ * Redact the values of secret-named query parameters in a URL path with its
+ * query (`/path?a=1`), by the same key rules as `redactSecretKeys`. Returned
+ * unchanged when no parameter is secret.
+ */
+export function redactSecretSearchParams(endpoint: string): string {
+	const queryStart = endpoint.indexOf('?');
+	if (queryStart === -1) return endpoint;
+	const params = [...new URLSearchParams(endpoint.slice(queryStart + 1))];
+	if (!params.some(([key]) => isSecretKey(key))) return endpoint;
+	const query = params
+		.map(([key, value]) => {
+			const shown = isSecretKey(key) ? REDACTED : encodeURIComponent(value);
+			return `${encodeURIComponent(key)}=${shown}`;
+		})
+		.join('&');
+	return `${endpoint.slice(0, queryStart)}?${query}`;
+}

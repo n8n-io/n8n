@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentTaskService } from '../agent-task.service';
 import { AGENT_TASK_TASK_TYPE, isAgentTaskJobPayload } from './agent-task-job';

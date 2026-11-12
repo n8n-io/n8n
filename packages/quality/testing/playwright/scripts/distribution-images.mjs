@@ -11,6 +11,7 @@ const CAPABILITY_SERVICES = {
 	oidc: ['keycloak'],
 	proxy: ['proxy'],
 	'source-control': ['gitea'],
+	'trusted-sources': ['keycloak'],
 };
 
 const SERVICE_IMAGES = {
@@ -20,6 +21,7 @@ const SERVICE_IMAGES = {
 	kafka: ['kafka'],
 	kent: [],
 	keycloak: ['keycloak'],
+	litellm: ['litellm', 'caddy'],
 	loadBalancer: ['caddy'],
 	localstack: ['localstack'],
 	mailpit: ['mailpit'],
@@ -27,6 +29,7 @@ const SERVICE_IMAGES = {
 	ngrok: ['ngrok'],
 	npmRegistry: ['verdaccio'],
 	enginePostgres: ['postgres'],
+	engineTaskRunner: ['taskRunner'],
 	postgres: ['postgres'],
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],

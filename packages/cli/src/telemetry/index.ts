@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { InstanceRegistryProxyService } from '@n8n/backend-services';
+import { InstanceRegistryProxyService, PostHogClient } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -8,7 +8,7 @@ import {
 	WorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -17,7 +17,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type {
 	AgentRunTelemetryType,
 	IAgentConfigurationTelemetryProperties,
@@ -26,7 +26,7 @@ import type {
 	IExecutionTrackProperties,
 } from '@/interfaces';
 import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -39,7 +39,8 @@ type ExecutionTrackDataKey =
 	| 'prod_success'
 	| 'manual_crashed'
 	| 'prod_crashed'
-	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`
+	| `personal_credentials_${'manual' | 'prod'}`;
 
 interface IExecutionTrackData {
 	count: number;
@@ -60,13 +61,16 @@ interface IApiInvocationProperties {
 	method: string;
 	api_version: string;
 	user_agent?: string;
+	client: PublicApiClient;
 }
 
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
+	endpoints_by_client: { editor_ui: Record<string, number> };
 	user_agents: Record<string, number>;
+	clients: Record<PublicApiClient, number>;
 }
 
 interface IApiInvocationsBuffer {
@@ -96,6 +100,8 @@ interface IAgentSessionMetrics {
 	tool_call_count: number;
 	num_skills: number;
 	turn_count: number;
+	skill_load_count: number;
+	loaded_skill_ids: Set<string>;
 }
 
 interface IAgentSessionMetricsBuffer {
@@ -256,7 +262,7 @@ export class Telemetry {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
 			usage: await this.workflowRepository.getActiveTriggerCount(),
-			role_count: await Container.get(UserRepository).countUsersByRole(),
+			role_count: await Container.get(UserRepository).countUsersByRole('person'),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
@@ -277,7 +283,9 @@ export class Telemetry {
 					total_calls: entry.total_calls,
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
+					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
 					user_agents: JSON.stringify(entry.user_agents),
+					clients: JSON.stringify(entry.clients),
 				});
 			}
 		}
@@ -385,6 +393,13 @@ export class Telemetry {
 			token_count_sum: sessions.reduce((total, session) => total + session.token_count, 0),
 			tool_call_count_sum: sessions.reduce((total, session) => total + session.tool_call_count, 0),
 			num_skills_sum: sessions.reduce((total, session) => total + session.num_skills, 0),
+			skill_load_count_sum: sessions.reduce(
+				(total, session) => total + session.skill_load_count,
+				0,
+			),
+			loaded_skill_ids: [
+				...new Set(sessions.flatMap((session) => [...session.loaded_skill_ids])),
+			].sort(),
 		};
 	}
 
@@ -419,6 +434,11 @@ export class Telemetry {
 				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
 				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
+			}
+
+			// Counted in the per-workflow aggregate, not as an event for each run.
+			if (properties.personal_credentials_count) {
+				this.addExecutionTrackData(workflowId, `personal_credentials_${executionMode}`, execTime);
 			}
 
 			if (properties.used_end_user_credentials) {
@@ -517,12 +537,18 @@ export class Telemetry {
 				tool_call_count: 0,
 				num_skills: properties.configuration.num_skills,
 				turn_count: 0,
+				skill_load_count: 0,
+				loaded_skill_ids: new Set<string>(),
 			};
 
 			session.latency_ms += properties.latency_ms;
 			session.cost += properties.cost;
 			session.token_count += properties.token_count;
 			session.tool_call_count += properties.tool_call_count;
+			session.skill_load_count += properties.skill_load_count ?? 0;
+			for (const skillId of properties.loaded_skill_ids ?? []) {
+				session.loaded_skill_ids.add(skillId);
+			}
 			session.turn_count++;
 			sessions[properties.thread_id] = session;
 		}
@@ -531,24 +557,36 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent } = properties;
+		const { user_id, path, method, user_agent, client } = properties;
 
-		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
+			endpoints_by_client: { editor_ui: {} },
 			user_agents: {},
-		};
-
-		const entry = this.apiInvocationsBuffer[user_id];
+			clients: { editor_ui: 0, other: 0 },
+		});
 		entry.total_calls++;
+		entry.clients[client]++;
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
 
+		// Only editor UI calls are counted per endpoint for now to help keep event size down.
+		if (client === 'editor_ui') {
+			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
+			editorUiEndpoints[endpointKey] = (editorUiEndpoints[endpointKey] ?? 0) + 1;
+		}
+
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
+	}
+
+	/** Sends the queued events now, instead of at the next flush interval. */
+	async flushQueue(): Promise<void> {
+		await this.rudderStack?.flush();
 	}
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)

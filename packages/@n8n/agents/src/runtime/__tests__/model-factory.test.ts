@@ -1,3 +1,4 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
@@ -7,6 +8,7 @@ import {
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
+	usesOfficialAnthropicApi,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
@@ -41,7 +43,7 @@ vi.mock('@ai-sdk/openai', () => {
 	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
 	const buildModel =
 		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
-			const callEndpoint = async () => {
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
 				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
 				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
 				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
@@ -51,7 +53,7 @@ vi.mock('@ai-sdk/openai', () => {
 						url,
 					});
 				}
-				return { api, url };
+				return { api, url, providerOptions: options?.providerOptions };
 			};
 			return {
 				provider: 'openai',
@@ -61,7 +63,8 @@ vi.mock('@ai-sdk/openai', () => {
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
-				specificationVersion: 'v3',
+				// Match the real provider: `ai` adapts a v3 model and reads its result content.
+				specificationVersion: 'v4',
 				supportedUrls: {},
 				doGenerate: callEndpoint,
 				doStream: callEndpoint,
@@ -222,17 +225,43 @@ vi.mock('@n8n/client-oauth2', () => ({
 }));
 
 vi.mock('@ai-sdk/openai-compatible', () => ({
-	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
-		provider: opts.name,
-		modelId: model,
-		apiKey: opts.apiKey,
-		baseURL: opts.baseURL,
-		headers: opts.headers,
-		fetch: opts.fetch,
-		includeUsage: opts.includeUsage,
-		supportsStructuredOutputs: opts.supportsStructuredOutputs,
-		specificationVersion: 'v3',
-	}),
+	createOpenAICompatible:
+		(opts: ProviderOpts & { name: string; supportedUrls?: () => unknown }) => (model: string) => {
+			// Like the OpenAI stub: a call really POSTs to /chat/completions through the
+			// injected fetch, and reports what the adapter was built with.
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
+				const url = `${(opts.baseURL ?? '').replace(/\/+$/, '')}/chat/completions`;
+				const response = await (opts.fetch ?? globalThis.fetch)(url, { method: 'POST' });
+				if (!response.ok) {
+					throw Object.assign(new Error(`Endpoint returned ${response.status}`), {
+						statusCode: response.status,
+						url,
+					});
+				}
+				return {
+					api: 'chat-completions',
+					adapter: opts.name,
+					url,
+					includeUsage: opts.includeUsage,
+					supportsStructuredOutputs: opts.supportsStructuredOutputs,
+					providerOptions: options?.providerOptions,
+				};
+			};
+			return {
+				provider: opts.name,
+				modelId: model,
+				apiKey: opts.apiKey,
+				baseURL: opts.baseURL,
+				headers: opts.headers,
+				fetch: opts.fetch,
+				includeUsage: opts.includeUsage,
+				supportsStructuredOutputs: opts.supportsStructuredOutputs,
+				specificationVersion: 'v4',
+				supportedUrls: opts.supportedUrls?.() ?? {},
+				doGenerate: callEndpoint,
+				doStream: callEndpoint,
+			};
+		},
 }));
 
 vi.mock('@ai-sdk/moonshotai', () => ({
@@ -274,6 +303,7 @@ vi.mock('@ai-sdk/minimax', () => ({
 vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
+			apiKey?: string;
 			region?: string;
 			accessKeyId?: string;
 			secretAccessKey?: string;
@@ -282,6 +312,7 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 		(model: string) => ({
 			provider: 'aws-bedrock',
 			modelId: model,
+			apiKey: opts?.apiKey,
 			region: opts?.region,
 			accessKeyId: opts?.accessKeyId,
 			secretAccessKey: opts?.secretAccessKey,
@@ -315,7 +346,9 @@ vi.mock('undici', () => ({
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
-	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doGenerate: (
+		options: unknown,
+	) => Promise<{ api?: string; url: string; providerOptions?: unknown }>;
 	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
 };
 
@@ -351,30 +384,41 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('uses the Responses API when a baseURL explicitly serves it', () => {
+	it('uses the Responses API when a baseURL explicitly serves it', async () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
 		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
-		const model = createModel({
-			id: 'openai/gpt-5-mini',
-			apiKey: 'gateway-jwt',
-			baseURL: 'https://gw.example/v1/gateway/openai/v1',
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
-		expect(model.api).toBeUndefined();
+		const { fetchFn, paths } = fakeEndpoint({ '/v1/gateway/openai/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/gpt-5-mini',
+				apiKey: 'gateway-jwt',
+				baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'https://gw.example/v1/gateway/openai/v1/responses',
+		});
+		expect(paths).toEqual(['/v1/gateway/openai/v1/responses']);
 	});
 
-	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
-		const model = createModel({
-			id: 'openai/mock-model',
-			apiKey: 'sk-test',
-			url: 'http://127.0.0.1:1234/v1',
-			// Pinned, so the alias is asserted on the adapter itself instead of on the
-			// wrapper the automatic choice returns.
-			apiStyle: 'chat',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
-		expect(model.api).toBe('chat-completions');
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', async () => {
+		const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/mock-model',
+				apiKey: 'sk-test',
+				url: 'http://127.0.0.1:1234/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'http://127.0.0.1:1234/v1/responses',
+		});
 	});
 
 	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
@@ -419,6 +463,22 @@ describe('createModel', () => {
 			expect(paths).toEqual(['/v1/responses']);
 		});
 
+		it('sends Responses calls to a custom endpoint with store disabled', async () => {
+			// Reported failure: LiteLLM serves /responses without storing items, so the
+			// SDK default `store: true` replayed history as unresolvable item_reference.
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://litellm.example/v1' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: { openai: { reasoningEffort: 'low' } },
+			});
+			// A requested effort is forced through, as the SDK cannot tell from a proxy's model id.
+			expect(result.providerOptions).toEqual({
+				openai: { store: false, reasoningEffort: 'low', forceReasoning: true },
+			});
+		});
+
 		it('moves to chat completions when the endpoint has no /responses route', async () => {
 			// OpenAI-COMPATIBLE servers (LM Studio, vLLM, Ollama) must keep working.
 			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
@@ -426,9 +486,34 @@ describe('createModel', () => {
 
 			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
 				api: 'chat-completions',
+				adapter: 'openai',
 				url: 'http://127.0.0.1:1234/v1/chat/completions',
+				includeUsage: true,
+				supportsStructuredOutputs: true,
 			});
 			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('passes the openai options the chat adapter reads, and drops the others', async () => {
+			const { fetchFn } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1', apiStyle: 'chat' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: {
+					openai: {
+						reasoningEffort: 'high',
+						reasoningSummary: null,
+						promptCacheKey: 'agent-key',
+						strictJsonSchema: false,
+					},
+					other: { kept: true },
+				},
+			});
+			expect(result.providerOptions).toEqual({
+				openai: { reasoningEffort: 'high', strictJsonSchema: false },
+				other: { kept: true },
+			});
 		});
 
 		it('moves to chat completions on a streaming call too', async () => {
@@ -477,7 +562,9 @@ describe('createModel', () => {
 			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
 			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'chat' }, fetchFn);
 
-			await model.doGenerate({ prompt: [] });
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				adapter: 'openai',
+			});
 			expect(paths).toEqual(['/v1/chat/completions']);
 		});
 
@@ -1198,6 +1285,16 @@ describe('createModel', () => {
 			expect(model.accessKeyId).toBe('AKIAIOSFODNN7EXAMPLE');
 		});
 
+		it('should pin an empty apiKey so the SDK ignores AWS_BEARER_TOKEN_BEDROCK', () => {
+			const model = createModel({
+				id: 'aws-bedrock/amazon.titan-text-lite-v1',
+				region: 'us-east-1',
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+			}) as unknown as Record<string, unknown>;
+			expect(model.apiKey).toBe('');
+		});
+
 		it('should throw if region is missing', () => {
 			expect(() =>
 				createModel({
@@ -1371,6 +1468,43 @@ describe('supportsSplitSystemMessages', () => {
 		['azure-openai/my-chat', false],
 	] as const)('checks split system messages for %s', (model, expected) => {
 		expect(supportsSplitSystemMessages(model)).toBe(expected);
+	});
+});
+
+describe('usesOfficialAnthropicApi', () => {
+	it.each([
+		['a model id string', 'anthropic/claude-sonnet-5', true],
+		['a config with no base URL', { id: 'anthropic/claude-sonnet-5', apiKey: 'k' }, true],
+		[
+			'a config with the Anthropic base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://api.anthropic.com' },
+			true,
+		],
+		[
+			'a config with a custom base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://gateway.example.com/v1' },
+			false,
+		],
+		[
+			'a config with a custom url alias',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: 'https://gateway.example.com' },
+			false,
+		],
+		['a config with an empty url', { id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: '' }, true],
+		[
+			'a config with an unparsable base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'not a url' },
+			false,
+		],
+		[
+			'a pre-built model',
+			createAnthropic({ apiKey: 'k', baseURL: 'https://proxy.example.com/anthropic/v1' })(
+				'claude-haiku-5-5',
+			),
+			false,
+		],
+	] as const)('returns the expected value for %s', (_name, model, expected) => {
+		expect(usesOfficialAnthropicApi(model)).toBe(expected);
 	});
 });
 

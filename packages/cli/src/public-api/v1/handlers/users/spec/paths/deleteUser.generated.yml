@@ -2,7 +2,10 @@ operationId: deleteUser
 tags:
   - User
 summary: Delete user
-description: Delete a user from your instance.
+description: |-
+  Delete a user from your instance.
+
+  Requires the `user:delete` API key scope.
 x-required-scope: user:delete
 parameters:
   - schema:
@@ -28,3 +31,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

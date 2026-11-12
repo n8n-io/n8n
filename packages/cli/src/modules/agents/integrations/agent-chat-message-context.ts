@@ -90,6 +90,20 @@ export class AgentChatMessageContextBridge {
 		}
 	}
 
+	async resolveSentMessage(threadId: string, messageId: string): Promise<SessionBinding | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSentMessage(threadId, messageId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve the session of a sent message', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
 	/**
 	 * Clears a task-run binding on `threadId` (see {@link resolveSession}), so
 	 * a fresh session actually starts fresh instead of the next message being
