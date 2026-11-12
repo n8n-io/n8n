@@ -6554,6 +6554,35 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('refuses a run the user cannot make through their own access, before it starts', async () => {
+		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests({ id: 'wf-1', nodes: [node] }, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		const message = 'Node "Send" uses the credential "Bot", which you cannot use';
+		const description = 'Ask an admin of the project "Team" to share this credential with you.';
+		checker.checkForUser.mockRejectedValue(new UserError(message, { description }));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		await expect(adapter.run('wf-1')).resolves.toEqual({
+			executionId: '',
+			status: 'error',
+			error: `${message}. ${description}`,
+		});
+		expect(checker.checkForUser).toHaveBeenCalledWith('user-1', [node], {
+			ignoreGlobalUseScope: true,
+		});
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		// The description names the project, so telemetry gets the message only.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error', error: message }),
+		);
+	});
+
 	it('wraps manual metadata into executionData in queue mode so the worker can run it', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
 			{
