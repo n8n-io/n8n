@@ -8,6 +8,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { AgentMessageList, OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
+import { isContentToolResultOutput } from '../model/messages';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -697,69 +698,104 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(JSON.stringify(list.messages())).toContain(path);
 	});
 
-	it('keeps a readable offloaded result path in the model window after a mid-run observation', async () => {
-		const filesystem = new InMemoryFilesystem();
-		const output = { content: 'Search result text. '.repeat(15_000) };
-		const guarded = await guardToolResultForModel(output, (text) => Math.ceil(text.length / 4), {
-			filesystem,
-			runId: 'run-1',
-			toolCallId: 'search-call',
-		});
-		expect(guarded).toMatchObject({ offloaded: true, truncated: false });
-		const { path } = guarded.historyOutput as { path: string };
-		const store = new InMemoryMemory();
-		const observe = vi.fn(async () => await Promise.resolve('* IMPORTANT Search completed.'));
-		const { orchestrator } = buildOrchestrator(store, {
-			observerThresholdTokens: 10,
-			observe,
-		});
-		const list = new AgentMessageList();
-		list.addInput([userMsg('Search the documents and compare the results.')]);
-		list.addResponse([
-			assistantMsg('I will compare the search results next.'),
-			{
-				id: 'search-result',
-				role: 'assistant',
+	it.each([false, true])(
+		'keeps a readable offloaded result path after observations (untrusted: %s)',
+		async (untrusted) => {
+			const filesystem = new InMemoryFilesystem();
+			const output = { content: 'Search result text. '.repeat(15_000) };
+			const modelOutput = untrusted
+				? protectUntrustedToolResult(output, { name: 'search' })
+				: output;
+			const guarded = await guardToolResultForModel(
+				modelOutput,
+				(text) => Math.ceil(text.length / 4),
+				{
+					filesystem,
+					runId: 'run-1',
+					toolCallId: 'search-call',
+				},
+			);
+			expect(guarded).toMatchObject({ offloaded: true, truncated: false });
+			const envelope = isContentToolResultOutput(guarded.historyOutput)
+				? (JSON.parse(
+						guarded.historyOutput.value.filter((part) => part.type === 'text')[0].text,
+					) as { path: string })
+				: (guarded.historyOutput as { path: string });
+			const { path } = envelope;
+			const store = new InMemoryMemory();
+			const observe = vi.fn(async () => await Promise.resolve('* IMPORTANT Search completed.'));
+			const { orchestrator, tracker } = buildOrchestrator(store, {
+				observerThresholdTokens: 10,
+				observe,
+			});
+			const list = new AgentMessageList();
+			await orchestrator.loadInto(list, runOptions());
+			list.addInput([userMsg('Search the documents and compare the results.')]);
+			list.addResponse([
+				assistantMsg('I will compare the search results next.'),
+				{
+					id: 'search-result',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'search-call',
+							toolName: 'search',
+							input: {},
+							state: 'resolved',
+							output: guarded.historyOutput,
+						},
+					],
+				},
+			]);
+			expect(JSON.stringify(list.forLlm('base'))).toContain(path);
+
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+
+			expect(observe).toHaveBeenCalledTimes(1);
+			expect(await store.getCursor(THREAD_ID)).toMatchObject({
+				lastObservedMessageId: 'search-result',
+			});
+			expect(list.observationLogMemory).toContain('Search completed.');
+			const persisted = await store.getMessagesForObservationScope(THREAD_ID);
+			expect(JSON.stringify(persisted)).not.toContain(path);
+			expect(persisted.at(-1)).toMatchObject({
 				content: [
 					{
 						type: 'tool-call',
-						toolCallId: 'search-call',
-						toolName: 'search',
-						input: {},
-						state: 'resolved',
-						output: guarded.historyOutput,
+						output: untrusted
+							? {
+									type: 'content',
+									value: [{ type: 'text', text: expect.stringContaining('"runScoped":true') }],
+								}
+							: { _offloaded: true, runScoped: true },
 					},
 				],
-			},
-		]);
-		expect(JSON.stringify(list.forLlm('base'))).toContain(path);
+			});
+			await expect(filesystem.readFile(path, { encoding: 'utf8' })).resolves.toBe(
+				JSON.stringify(isContentToolResultOutput(modelOutput) ? modelOutput.value : output),
+			);
+			expect(JSON.stringify(list.messages())).toContain(path);
+			const context = JSON.stringify(list.forLlm('base'));
+			expect(context).not.toContain('I will compare the search results next.');
+			// AGENT-1536: The model still needs the path while the run can read the file.
+			expect(context).toContain(path);
 
-		await orchestrator.maybeObserveMidRun(list, runOptions());
+			list.addResponse([assistantMsg('Compare the remaining search results.')]);
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+			expect(observe).toHaveBeenCalledTimes(2);
+			const nextContext = JSON.stringify(list.forLlm('base'));
+			expect(nextContext).toContain(path);
+			expect(nextContext).not.toContain('Compare the remaining search results.');
 
-		expect(observe).toHaveBeenCalledTimes(1);
-		expect(await store.getCursor(THREAD_ID)).toMatchObject({
-			lastObservedMessageId: 'search-result',
-		});
-		expect(list.observationLogMemory).toContain('Search completed.');
-		const persisted = await store.getMessagesForObservationScope(THREAD_ID);
-		expect(JSON.stringify(persisted)).not.toContain(path);
-		expect(persisted.at(-1)).toMatchObject({
-			content: [
-				{
-					type: 'tool-call',
-					output: { _offloaded: true, runScoped: true },
-				},
-			],
-		});
-		await expect(filesystem.readFile(path, { encoding: 'utf8' })).resolves.toBe(
-			JSON.stringify(output),
-		);
-		expect(JSON.stringify(list.messages())).toContain(path);
-		const context = JSON.stringify(list.forLlm('base'));
-		expect(context).not.toContain('I will compare the search results next.');
-		// AGENT-1536: The model still needs the path while the run can read the file.
-		expect(context).toContain(path);
-	});
+			await orchestrator.saveToMemory(list, runOptions());
+			await tracker.flush();
+			const nextRun = new AgentMessageList();
+			await orchestrator.loadInto(nextRun, runOptions());
+			expect(JSON.stringify(nextRun.messages())).not.toContain(path);
+			expect(JSON.stringify(nextRun.forLlm('base'))).not.toContain(path);
+		},
+	);
 });
 
 describe('MemoryOrchestrator.saveToMemory observer gating', () => {
