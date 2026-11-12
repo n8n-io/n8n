@@ -777,9 +777,9 @@ async function startExecution(
 			runExecutionData,
 			Container.get(StorageConfig).modeTag,
 		);
-		// From here the engine marks its own early failures.
-		blockedReason = undefined;
 		const execution = workflowExecute.processRunExecutionData(workflow);
+		// The engine marks its own early failures once it has started.
+		blockedReason = undefined;
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {

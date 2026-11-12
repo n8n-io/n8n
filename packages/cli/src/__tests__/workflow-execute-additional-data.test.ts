@@ -776,6 +776,25 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 			});
 
+			it('marks the run as start failed when the engine throws before it starts', async () => {
+				processRunExecutionData.mockImplementationOnce(() => {
+					throw new Error('setup failed');
+				});
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await vi.waitFor(() =>
+					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
+						EXECUTION_ID,
+						expect.objectContaining({
+							data: expect.objectContaining({
+								resultData: expect.objectContaining({ failedBeforeStart: 'startFailed' }),
+							}),
+						}),
+					),
+				);
+			});
+
 			it('starts the sub-workflow error workflow when the caller does not wait', async () => {
 				failCredentialCheck();
 

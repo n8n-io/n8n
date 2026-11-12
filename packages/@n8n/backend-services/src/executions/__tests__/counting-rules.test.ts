@@ -326,15 +326,18 @@ describe('toLedgerOutcome', () => {
 		});
 	});
 
-	test.each<ExecutionStatus>(['success', 'canceled', 'running', 'waiting'])(
-		'keeps status %s when the run carries a reason',
-		(status) => {
-			const data = { resultData: { failedBeforeStart: 'policy' as const } };
-			const result = toLedgerOutcome({ mode: 'webhook', status, startedAt, data });
-			expect(result.blockedBy).toBe('none');
-			expect(result.outcome).not.toBe('blocked');
-		},
-	);
+	test.each<[ExecutionStatus, LedgerOutcome]>([
+		['success', 'success'],
+		['canceled', 'canceled'],
+		['running', 'none'],
+		['waiting', 'none'],
+	])('maps status %s to outcome %s when the run carries a reason', (status, outcome) => {
+		const data = { resultData: { failedBeforeStart: 'policy' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt, data })).toEqual({
+			outcome,
+			blockedBy: 'none',
+		});
+	});
 
 	test.each([() => true, 'unknown-reason', 1, false])(
 		'does not block on a marker value that is not a reason (%s)',
