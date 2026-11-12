@@ -225,6 +225,26 @@ describe('components/N8nMarkdownEditor', () => {
 		},
 	);
 
+	it('preserves instruction text after a one-character edit', async () => {
+		// AGENT-1109: A UI edit must not change identifiers or placeholders.
+		const instructions =
+			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
+		const { wrapper } = await renderEditor(instructions);
+		const paragraph = getEditorElement(wrapper.container)!.querySelector('p')!;
+		const updatedInstructions = `${instructions}.`;
+
+		expect(paragraph).toHaveTextContent(instructions);
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+
+		// Browser typing changes the DOM before ProseMirror reads the new text.
+		paragraph.textContent = updatedInstructions;
+
+		await waitFor(() => expect(wrapper.emitted('update:modelValue')).toBeDefined());
+
+		expect(paragraph).toHaveTextContent(updatedInstructions);
+		expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedInstructions);
+	});
+
 	it('does not show the collapse control by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
