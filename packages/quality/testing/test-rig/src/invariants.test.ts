@@ -73,6 +73,19 @@ describe('workload invariants', () => {
 		]);
 	});
 
+	it('flag requests whose effects another execution wrote', () => {
+		const swapped = {
+			...healthy,
+			effects: [
+				{ requestId: 'a', executionId: '2' },
+				{ requestId: 'b', executionId: '1' },
+			],
+		};
+		expect(noAcceptedRequestLost(swapped)).toEqual([
+			{ invariant: 'no accepted request lost', detail: { missing: ['a', 'b'] } },
+		]);
+	});
+
 	it('flag a request or execution that wrote its effect twice', () => {
 		const twice = {
 			...healthy,
