@@ -5,6 +5,7 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
@@ -67,13 +68,18 @@ import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
 	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import {
+	areAgentToolsAvailable,
+	canReadMigrationReport,
+	isCommunityNodeInstallAvailable,
+} from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -112,6 +118,7 @@ import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import type { ReadWorkflowMigrationFindings } from './tools/migration-report/migration-report.utils';
 import {
 	createExpandInstanceActivityTool,
 	createGetInstanceActivityTool,
@@ -524,6 +531,12 @@ export class McpService {
 		// other tool. No RBAC check: a user's own preferences need no scope.
 		const userPreferencesInstructionsEnabled =
 			allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true;
+		// The same rationale again: only a caller whose role and grant reach the report is
+		// pointed at it.
+		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
+		const migrationReportInstructionsEnabled =
+			migrationReportReadable &&
+			(allowedToolNames?.has(MCP_GET_MIGRATION_REPORT_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -539,6 +552,9 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					migrationReportTargetVersion: migrationReportInstructionsEnabled
+						? (MIGRATION_REPORT_TARGET_VERSION ?? undefined)
+						: undefined,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
@@ -870,6 +886,21 @@ export class McpService {
 			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 		);
 
+		// Not builder-gated: reading the report and running its built-in fixes need no builder.
+		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.
+		// update_workflow reports the findings of a saved workflow only to a caller the report
+		// instructions are for: one whose role and grant reach the report.
+		let readMigrationFindings: ReadWorkflowMigrationFindings | undefined;
+		if (migrationReportReadable && MIGRATION_REPORT_TARGET_VERSION) {
+			const { registerMigrationReportTools } = await import('./tools/migration-report/index.js');
+			const reader = registerMigrationReportTools(
+				registerIfAllowed,
+				user,
+				MIGRATION_REPORT_TARGET_VERSION,
+			);
+			if (migrationReportInstructionsEnabled) readMigrationFindings = reader;
+		}
+
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
 			await this.registerBuilderTools(
@@ -880,6 +911,7 @@ export class McpService {
 				registerIfAllowed,
 				registerResource,
 				allowedToolNames,
+				readMigrationFindings,
 				clientInfo,
 			);
 		}
@@ -982,6 +1014,7 @@ export class McpService {
 		registerIfAllowed: RegisterToolFn,
 		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
+		readMigrationFindings: ReadWorkflowMigrationFindings | undefined,
 		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
@@ -1147,7 +1180,10 @@ export class McpService {
 			this.globalConfig,
 			this.errorWorkflowValidationService,
 			this.aiGatewayService,
-			uninstalledNodeOptions,
+			{
+				...uninstalledNodeOptions,
+				readMigrationFindings,
+			},
 			this.logger,
 			this.postSaveMetrics,
 		);
