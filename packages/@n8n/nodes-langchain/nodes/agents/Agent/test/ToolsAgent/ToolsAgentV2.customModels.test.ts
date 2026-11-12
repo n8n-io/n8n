@@ -144,6 +144,7 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 		'provider/team/model',
 		'custom-alias',
 		'combo/codex-fallback',
+		'gpt-5-codex',
 	])('accepts the custom model ID %s with the default chat-model settings', async (modelId) => {
 		const { context } = await setup(modelId);
 		const gateway = gatewayRequest(modelId).reply(200, completionResponse(modelId));
@@ -164,12 +165,14 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 		},
 	);
 
-	it.each<[number, INodeParameters]>([
-		[1.2, {}],
-		[1.3, { responsesApiEnabled: false }],
+	it.each<[number, boolean, INodeParameters]>([
+		[1.2, false, {}],
+		[1.3, false, { responsesApiEnabled: false }],
+		[1.2, true, {}],
+		[1.3, true, { responsesApiEnabled: false }],
 	])(
-		'keeps automatic Responses API routing with the option off on model node v%s',
-		async (version, parameters) => {
+		'keeps automatic Responses API routing with the option off on model node v%s (fallback: %s)',
+		async (version, needsFallback, parameters) => {
 			// AGENT-1569: Preserve LangChain's automatic API selection when the option is off.
 			const modelId = 'gpt-5-codex';
 			const { context, model } = await setup(
@@ -179,6 +182,22 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 				version,
 			);
 			expect(model).toMatchObject({ useResponsesApi: false });
+			let primaryGateway: nock.Scope | undefined;
+			if (needsFallback) {
+				const primaryId = 'auto/balanced';
+				const { model: primary } = await setup(primaryId, { options: { maxRetries: 0 } });
+				context.getInputConnectionData.mockImplementation(async (type) =>
+					type === NodeConnectionTypes.AiLanguageModel ? [model, primary] : undefined,
+				);
+				context.getNodeParameter.mockImplementation((name, _index, fallback) => {
+					if (name === 'needsFallback') return true;
+					if (name === 'text') return 'Hello';
+					return fallback;
+				});
+				primaryGateway = gatewayRequest(primaryId).reply(404, {
+					error: { message: 'Model unavailable' },
+				});
+			}
 			const gateway = nock(credentials.url, {
 				reqheaders: { authorization: `Bearer ${credentials.apiKey}` },
 			})
@@ -210,6 +229,7 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 			expect(response.text).toBe('Gateway response');
 			await expect(toolsAgentExecute.call(context)).resolves.toEqual(expectedOutput);
 			expect(gateway.isDone()).toBe(true);
+			if (primaryGateway) expect(primaryGateway.isDone()).toBe(true);
 		},
 	);
 
