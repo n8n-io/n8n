@@ -5,6 +5,7 @@ import { SecurityConfig } from '@n8n/config';
 import { EMBEDDED_SETTINGS_GLOBAL, HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,7 +13,6 @@ import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
