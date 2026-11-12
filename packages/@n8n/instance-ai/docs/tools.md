@@ -966,13 +966,13 @@ returns `nodes`.
 
 ### `get_node_types`
 
-Get TypeScript definitions for one to ten node types, including exact
+Get TypeScript definitions for one or more node types, including exact
 parameters, credentials, display conditions, builder annotations, Gateway
 credits metadata, and webhook or trigger details.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to ten node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
+| `nodeTypes` | array | yes | One or more node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
 **Returns**: `{ definitions }`. A definition that cannot load carries an
 `error` field.
