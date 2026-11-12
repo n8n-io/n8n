@@ -12834,4 +12834,27 @@ describe('AgentRuntime — tool call interceptor', () => {
 		expect(seen).toEqual(['send_message']);
 		expect(handler).not.toHaveBeenCalled();
 	});
+
+	it('gives the model the interceptor result without running the tool', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const runtime = createInterceptedRuntime([tool], async () => {
+			return await Promise.resolve({ simulated: true, ts: '1700000000.1' });
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('send it');
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(result.toolCalls?.[0]?.output).toEqual({ simulated: true, ts: '1700000000.1' });
+		const secondCall = generateText.mock.calls[1][0] as { messages: unknown };
+		expect(JSON.stringify(secondCall.messages)).toContain('1700000000.1');
+	});
 });
