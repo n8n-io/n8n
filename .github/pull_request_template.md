@@ -9,8 +9,8 @@ https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 ## Summary
 
 <!--
-Add a concise summary what the PR does and why, in full sentences.
-Keep the length in proportion to the complexity of the problem that the PR solves. A small fix needs one or two sentences.
+Add a concise summary of what the PR does and why, in full sentences.
+Keep the length in proportion to the complexity of the change. A small fix needs one or two sentences.
 Add screenshots or videos for UI changes.
 -->
 

@@ -581,7 +581,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
 #### **3. General Requirements**
 
 - **Describe Your Change:**
-  - Every PR needs a concise description of what you changed and why. Keep its length in proportion to the complexity of the problem. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
+  - Every PR needs a concise description of what you changed and why. Keep its length in proportion to the complexity of the change. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
   - Where possible try to include a short video or screenshots. This is useful if you are working on a feature or updating a node.
 - **Follow the Style Guide:**
   - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
