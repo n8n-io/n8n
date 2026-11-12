@@ -57,9 +57,21 @@ context.
    `resourceLocator` parameter, call `get_node_parameter_options` when a
    credential is available. For new model choices, follow `model-selection`.
 4. **Announce credentials early.** When the `setup_credentials` schema offers
-   `filePath`, call it with the complete list of known credential types right
-   after the first node definitions, as the only tool call in that response.
-   Wait for `preBuild: true`, then continue. Otherwise use the post-build setup.
+   `filePath`, announce each explicitly requested service as soon as node
+   definitions or credential type search give its exact credential type. Do
+   this before detailed planning or SDK research; do not wait to identify every
+   service. Call it with `filePath`, `workflowName` and `credentials` as the
+   only tool call in that response, never batched with workspace writes or the
+   build. Pick the source `filePath` now and reuse it for the whole build. Pass
+   `workflowId` for an existing workflow and `folderPath` for a known folder.
+   - Announce only supported service-specific types. Leave ambiguous services
+     and generic authentication to build-time discovery.
+   - When the plan changes, pass the complete list again, including an empty
+     list when every requirement is dropped.
+   - Wait for `preBuild: true`, then continue writing the source with the
+     announced credential types. Do not wait for the user to connect, do not
+     end your turn, and omit `folderPath` from the build call.
+   Without `filePath` in the schema, use the post-build setup.
 5. **Write the source.** Decide node groups now (see [Node Groups](#node-groups)).
    When a live or nondeterministic node feeds IF/Switch logic whose branches
    need verification, declare `output` fixtures on it.

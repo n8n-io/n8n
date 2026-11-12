@@ -5,15 +5,32 @@ import {
 	parseAblatedContextCues,
 } from '@n8n/agents';
 
+import { AGENT_BUILDER_CUES } from './agent-builder.cues';
+import { DATA_TABLE_MANAGER_CUES } from './data-table-manager.cues';
+import { DEBUGGING_EXECUTIONS_CUES, MODEL_SELECTION_CUES } from './debugging-executions.cues';
 import { INTENT_RECOGNITION_CUES } from './intent-recognition.cues';
+import { ORCHESTRATOR_CUES } from './orchestrator.cues';
 import { POST_BUILD_FLOW_CUES } from './post-build-flow.cues';
 import { WORKFLOW_BUILDER_CUES } from './workflow-builder.cues';
+import {
+	CREDENTIAL_CHOICES_CUES,
+	ONE_OFF_OPERATIONS_CUES,
+	SERVICE_SELECTION_CUES,
+} from './workflow-references.cues';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../tools/tool-ids';
 
 export const INSTANCE_AI_CONTEXT_CUE_SETS = [
 	WORKFLOW_BUILDER_CUES,
 	INTENT_RECOGNITION_CUES,
 	POST_BUILD_FLOW_CUES,
+	AGENT_BUILDER_CUES,
+	DATA_TABLE_MANAGER_CUES,
+	DEBUGGING_EXECUTIONS_CUES,
+	MODEL_SELECTION_CUES,
+	ONE_OFF_OPERATIONS_CUES,
+	SERVICE_SELECTION_CUES,
+	CREDENTIAL_CHOICES_CUES,
+	ORCHESTRATOR_CUES,
 ];
 
 /**

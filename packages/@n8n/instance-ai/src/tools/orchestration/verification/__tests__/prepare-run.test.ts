@@ -65,15 +65,16 @@ describe('prepareVerificationRun — halted wait gates', () => {
 		expect(result.prepared.haltedGateNames).toEqual([]);
 	});
 
-	it('blocks fixture overrides that target a halted gate', () => {
+	it('runs without fixture overrides that target a halted gate, and notes it', () => {
 		const result = prepareVerificationRun(makeBuildOutcome({ nodeSimulationPlan: [gateVerdict] }), {
 			fixtureOverrides: { 'Email Approval': [{ data: { Decision: 'Request changes' } }] },
 		});
 
-		expect(result.kind).toBe('blocked');
-		if (result.kind !== 'blocked') return;
-		expect(result.result.guidance).toContain('human decision');
-		expect(result.result.remediation?.category).toBe('blocked');
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Email Approval']).toEqual([]);
+		expect(result.prepared.ignoredGateOverrideNote).toContain('Email Approval');
+		expect(result.prepared.ignoredGateOverrideNote).toContain('do not verify again');
 	});
 
 	it('keeps applying overrides to ordinary simulated nodes', () => {

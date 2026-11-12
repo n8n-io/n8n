@@ -32,23 +32,7 @@ The `categories` list and search *rank* don't prioritize Gateway credits coverag
 they have no usable credential for, search that
 capability — or run `search_nodes` through `call_tool` with `gatewayCreditsOnly: true` — before
 committing, and prefer a covered result.
-
-Respect the constraints it reports:
-  - Set `typeVersion >= aiGateway.minVersion` when present.
-  - Constrain `resource` / `operation` to entries in `aiGateway.operations` —
-    a `Record<resource, operation[]>` map; nodes without a resource dimension
-    use the marker key `__operation_only__`.
-  - Do not set parameters listed in `aiGateway.hiddenProperties`.
-
-**Enumeration (answering "what does Gateway credits support?"):**
-  - All supported nodes: run `search_nodes` through `call_tool` with
-    `gatewayCreditsOnly: true` — each
-    result carries the full `aiGateway` field (minVersion, operations,
-    hiddenProperties).
-  - All supported credential types:
-    `search_credential_types(gatewayCreditsOnly=true)`.
-  - Operations for a specific supported node: `get_node_types`
-    → `aiGateway.operations`.
+Respect the constraints that `aiGateway` reports.
 
 **Preference rule:** When adding a new node that has no credential assigned
 yet, prefer Gateway credits over stored credentials if the credential type is
@@ -57,34 +41,13 @@ API quota. The synthetic entry in `list_credentials(type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
-
-If `credentialResolutionNote` on the build result says Gateway credits are
-depleted, follow that note: tell the user they must top up Gateway credits
-or add their own key on the node. Do not say the workflow works out of the
-box, and do not offer a live test.
-
-- If the user explicitly specified their own credential (by name or by
-  choosing one from a list), use that credential and do not substitute
-  Gateway credits.
-- When speaking to the user in chat, always refer to this feature as
-  "Gateway credits" — never "n8n credits", "n8n Connect", "AI Gateway", or "gateway". Those are
-  internal names only, including the `aiGateway` field on node/credential
-  results: read it to make decisions, but never surface that name to the user.
+If the user explicitly specified their own credential, use it and do not
+substitute Gateway credits.
 
 ## Credential Setup Preference
 
-Discovery results can include a `setupPreference` array. Each entry has:
-
-- `type`, the credential type
-- `setupCompletionPercent`, a percentage from 0 to 100 rounded to the nearest
-  5 percentage points, or `null`
-- `popularityScore`, a relative adoption score from 0 to 1 rounded to one
-  decimal place, or `null`
-
-Setup completion measures completion of an Instance AI setup step containing
-the credential; it is not an activation or validity rate. For either metric,
-`null` means there was not enough data. Popularity is relative recent adoption,
-not a percentage. Treat both as coarse signals and ignore small differences.
+Discovery results can include a `setupPreference` array with
+`setupCompletionPercent` and `popularityScore` for each credential type.
 
 When choosing a service:
 
@@ -102,7 +65,3 @@ When choosing a service:
   the user's requested scope.
 - When the user explicitly asks you to choose, make a sensible choice and
   continue without asking.
-
-Use judgment instead of calculating a combined score or applying a fixed
-threshold. Never let this metadata override stronger semantic relevance or use
-it to choose between authentication methods for the same service.

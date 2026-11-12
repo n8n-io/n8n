@@ -102,11 +102,7 @@ by running `list_executions` through `call_tool` instead: `list_executions` can 
 manual run that n8n did not save.
 
 When saving manual executions is turned off, n8n can keep a finished manual run
-for a short time, only for the user who ran it. You act as that user, so you can
-read it by its id in that time. When the id is not found, tell the user that you
-cannot read that run. Ask the user to run it again, or offer to run it yourself:
-n8n saves every run you start. A new run repeats what its nodes do, so check for
-write nodes first (see below).
+for a short time, only for the user who ran it. n8n saves every run you start.
 
 ## Failed execution
 
@@ -114,11 +110,7 @@ write nodes first (see below).
 start there. That bundle has `parameters` (raw, with expressions intact),
 `resolved` (substituted), `failedExpressions` (those that threw), and
 `emptyResolutions` (those that resolved to `null`/`undefined`/`""` silently).
-The offending expression is usually visible without a follow-up call. Entries in
-either list tagged with `reason: "unreconstructable-context"` are NOT real bugs —
-they reference variables we don't reconstruct in replay (`$vars`, `$secrets`,
-`$response`, `$request`, `$pageCount`, `$ai`). The value existed at execution
-time; we just don't have it here.
+The offending expression is usually visible without a follow-up call.
 
 ## Confirming a fix on the node that failed
 
@@ -134,10 +126,6 @@ that node, so the fix meets the same input that broke it. This is the right
 first move whenever the user is debugging a **read** node that already failed a
 real execution: the node ran for real once already, and a mock-only check is
 what sends the user back for a second session.
-
-The tool refuses a replay that would re-run a node above the target: an
-unpinned one the execution never reached, one that failed there, or a loop
-that did not finish. Pick another execution, or tell the user which node would run again.
 
 ### Decide whether the node is safe to run first
 
@@ -166,10 +154,7 @@ node will do to the user's data, and let the user choose. The approval prompt
 alone is not consent: the user sees a node name, not "this posts to your
 #general channel".
 
-**"It already ran anyway" is not a reason.** It holds only for a node that
-errored outright and changed nothing. A node that partly succeeded before it
-failed — a send that delivered some messages and then hit a rate limit — will
-deliver them again.
+**"It already ran anyway" is not a reason** to re-run a write node.
 
 ### Studying a node on its own with `mockInput`
 
@@ -186,34 +171,11 @@ debugging:
 Reach for it whenever the question is about the node. Use `reuseExecutionId` or
 a chain run when the question is about the workflow.
 
-Keep the claim at the level of the evidence. A mocked run shows the node
-handles the input you gave it; it shows nothing about what the chain really
-produces. The result carries `inputMode: "mocked"` and a `mockedNodeNames`
-list — report the node's behaviour, not the workflow's.
-
-Mocked input does **not** make a write node safe. The node still runs for real
-against the user's systems; only its input is invented, which makes the effect
-less predictable, not more.
-
 ### Running a tool
 
-A tool never runs on its own. n8n runs it through the node that owns it —
-usually the Agent. A step run on a tool therefore behaves like a step run on
-that Agent:
-
-- `mockInput` feeds the **Agent's** input, not the tool's arguments.
-- `reuseExecutionId` replays the nodes above the **Agent**.
-- A chain run (neither option) runs every node above the Agent for real. Give
-  one of the two options when a node up there writes.
-- `ranThroughNodeNames` lists **every** node that can run the tool, not the one
-  that ran it. A tool on several agents lists them all: the engine picks one,
-  and it does not report which. Do not name a single Agent to the user when
-  this field holds more than one.
-- A tool on two Agents where one runs above the other is refused. Run the
-  upper Agent, then read the tool by running `get_execution_node_output` through `call_tool`.
-
-The tool's own arguments come from `toolArguments` — the values the agent would
-normally decide:
+A tool never runs on its own. n8n runs it through the node that owns it,
+usually the Agent, so a step run on a tool behaves like a step run on that
+Agent. The tool's own arguments come from `toolArguments`:
 
 ```
 run_workflow_step(workflowId, nodeName="Search Tickets Tool",
@@ -225,24 +187,6 @@ The example targets a **read** tool on purpose. The write rule above holds here
 too, and a tool hides the write behind a friendly name: a step run on a "Create
 Ticket" tool creates the ticket again, and `toolArguments` does not change that.
 Only run one when the user has accepted a second write.
-
-Use the argument names from the node's `$fromAI` calls, which
-`get_workflow_as_code` shows. Pass a plain string instead for a tool
-that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
-tool).
-
-A tool that declares `$fromAI` arguments is refused without them: it would
-otherwise fail for a reason that has nothing to do with the user's problem, and
-you would report that as the defect. A node that holds several tools is refused
-outright, because nothing here can name one of its tools the way the agent
-does: the "MCP Client Tool" node, and every node the MCP registry added, whose
-type is `@n8n/mcp-registry.<server slug>`. Run the Agent for those, and read
-the node's output from that execution.
-
-A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
-way at all. Run the Agent, and read the sub-node with
-`get_execution_node_output` on **that** execution: n8n records every
-call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 
