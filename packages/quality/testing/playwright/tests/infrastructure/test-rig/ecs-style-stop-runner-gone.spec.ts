@@ -17,7 +17,6 @@ import {
 	webhookPath,
 } from '@n8n/test-rig';
 
-const WORKER_GRACE_S = 25;
 const STOP_TIMEOUT_S = 30;
 
 test.afterEach(async () => await stopAllStacks());
@@ -34,7 +33,7 @@ test(
 			runners: 'external',
 			scale: 6,
 			env: {
-				N8N_GRACEFUL_SHUTDOWN_TIMEOUT: String(WORKER_GRACE_S),
+				N8N_GRACEFUL_SHUTDOWN_TIMEOUT: '25',
 				N8N_RUNNERS_TASK_REQUEST_TIMEOUT: '60',
 			},
 			hooks: [

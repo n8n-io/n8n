@@ -67,9 +67,7 @@ test(
 			await s.step('webhook', async () => await rig.api.webhook(path));
 			const { container: draining, detail } = await hit;
 			await job.disarm(draining);
-			const other = workers.find((w) => w !== draining);
 			const executionId = String(detail.executionId);
-			const jobId = String(detail.jobId);
 			s.mark('job-fetched', detail);
 
 			const stop = hook([draining], 'queues-before-pause');
@@ -80,17 +78,14 @@ test(
 			await stopBegan;
 			s.mark('stop-began');
 
+			const started = `started execution ${executionId} `;
 			const handled = waitForLog(
 				[draining],
-				[
-					`for execution ${executionId} after it began to stop`,
-					`started execution ${executionId} `,
-				],
+				[`for execution ${executionId} after it began to stop`, started],
 				30_000,
 			);
 			await job.release(draining);
-			const handledLine = (await handled).line;
-			const handedBack = handledLine.includes('after it began to stop');
+			const handedBack = (await handled).line.includes('after it began to stop');
 			s.mark('handler-ran', handedBack ? 'handed-back' : 'started');
 			await stop.release(draining);
 
@@ -99,12 +94,11 @@ test(
 			const execution = await rig.db.waitForExecution(executionId, 90_000);
 			const logs = await s.collectLogs();
 			const drainingName = `worker-${workers.indexOf(draining) + 1}`;
-			const otherName = `worker-${workers.indexOf(other!) + 1}`;
-			const started = `started execution ${executionId} `;
+			const otherName = `worker-${workers.findIndex((w) => w !== draining) + 1}`;
 
 			s.set({
 				executionId,
-				jobId,
+				jobId: String(detail.jobId),
 				handedBack,
 				execution,
 				startedOnDraining: logs[drainingName].includes(started),

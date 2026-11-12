@@ -61,8 +61,7 @@ test(
 			});
 
 			const worker = rig.worker(1);
-			const point = hook([worker], 'task-requested');
-			const hit = point.waitHit(30_000);
+			const hit = hook([worker], 'task-requested').waitHit(30_000);
 			await s.step('webhook', async () => await rig.api.webhook(path));
 			s.mark('task-requested', (await hit).detail);
 			const [executionId] = await rig.db.executionsOf(workflowId);
