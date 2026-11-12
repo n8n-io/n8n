@@ -34,6 +34,7 @@ import { UnexpectedError } from '@n8n/errors';
 import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
+import { validateCodeExecutionConfig } from '@/code-execution/validate-code-execution-config';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -204,6 +205,9 @@ export abstract class BaseCommand<F = never> {
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
 		if (this.needsTaskRunner) {
+			// TODO: Move this to the code sandbox backend module (CET-688)
+			validateCodeExecutionConfig(this.globalConfig.codeExecution);
+
 			if (taskRunnersConfig.insecureMode) {
 				this.logger.warn(
 					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
