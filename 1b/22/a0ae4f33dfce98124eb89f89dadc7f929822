@@ -1,0 +1,26 @@
+packages/@n8n/nodes-langchain/utils/tests/require-api-key-nodes.test.ts
+  s_68cef6f734a187::t_350d47b938b82b 62
+  s_68cef6f734a187::t_dc477feea726d1 40,51-61,63-66,95-98,102-109
+  s_68cef6f734a187::t_3a719750f28e28 6-12,99-101
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.ts
+  s_68cef6f734a187::t_b2026e29189d1d 7,18-19,59-88,101,148,199
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.cloud.test.ts
+  s_68cef6f734a187::t_3a719750f28e28 31-35
+  s_68cef6f734a187::t_815882fa48e6f6 1-30,36-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b22a0ae4f33dfce98124eb89f89dadc7f929822",
+  "prompts": {},
+  "sessions": {
+    "s_68cef6f734a187": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6adbebee-d82d-4355-a3c5-182bcd59ce1a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
