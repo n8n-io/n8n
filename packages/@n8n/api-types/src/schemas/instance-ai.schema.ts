@@ -1782,7 +1782,6 @@ export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
 
 // Shared by the send-message request and the eval overrides of an Assistant agent thread.
 const instanceAiPromptVersionSchema = z.string().trim().min(1).max(128);
-const instanceAiObserverThresholdTokensSchema = z.number().int().min(1000).max(1_000_000);
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
@@ -1805,7 +1804,7 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
-	observerThresholdTokens: instanceAiObserverThresholdTokensSchema.optional(),
+	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -3121,7 +3120,6 @@ export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
 export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
 	mode: instanceAiBuildModeSchema.optional(),
 	promptVersion: instanceAiPromptVersionSchema.optional(),
-	observerThresholdTokens: instanceAiObserverThresholdTokensSchema.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

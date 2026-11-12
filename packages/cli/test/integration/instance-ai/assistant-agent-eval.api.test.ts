@@ -3,8 +3,6 @@ import { ProjectRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
-import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 import { AssistantTurnOverrides } from '@/modules/instance-ai/assistant-agent/assistant-turn-overrides';
@@ -59,7 +57,7 @@ describe('Assistant agent eval routes', () => {
 			.id;
 	});
 
-	it('creates a thread, sets it up, reads its memory and deletes it', async () => {
+	it('creates a thread, sets it up and deletes it', async () => {
 		const threadId = randomUUID();
 
 		const created = await ownerAgent
@@ -72,14 +70,14 @@ describe('Assistant agent eval routes', () => {
 
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ mode: 'progressive', promptVersion: 'v2', observerThresholdTokens: 5_000 })
+			.send({ mode: 'progressive', promptVersion: 'v2' })
 			.expect(200);
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ observerThresholdTokens: 2_000 })
+			.send({ promptVersion: 'v3' })
 			.expect(200);
 		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBeUndefined();
-		expect(Container.get(AssistantTurnOverrides).getObserverThresholdTokens(threadId)).toBe(2_000);
+		expect(Container.get(AssistantTurnOverrides).getPromptVersion(threadId)).toBe('v3');
 
 		await ownerAgent
 			.post('/assistant/eval/thread-credential-allowlist')
@@ -89,48 +87,13 @@ describe('Assistant agent eval routes', () => {
 			'cred-1',
 		]);
 
-		const emptyMemory = await ownerAgent
-			.get(`/assistant/eval/threads/${threadId}/memory`)
-			.expect(200);
-		expect(emptyMemory.body.data).toEqual({ observations: [], cursor: null });
-
-		const memory = Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
-		const observedAt = new Date('2026-01-02T00:00:00.000Z');
-		// The first message creates the memory thread that the observations belong to.
-		await memory.saveThread({
-			id: threadId,
-			resourceId: Container.get(SystemAgentExecutionService).resourceIdFor(owner),
-		});
-		await memory.appendObservationLogEntries([
-			{
-				observationScopeId: threadId,
-				marker: 'important',
-				text: 'User builds a Slack bot',
-				tokenCount: 7,
-				createdAt: observedAt,
-			},
-		]);
-		await memory.setCursor({
-			observationScopeId: threadId,
-			lastObservedMessageId: 'msg-1',
-			lastObservedAt: observedAt,
-			updatedAt: observedAt,
-		});
-		const observed = await ownerAgent.get(`/assistant/eval/threads/${threadId}/memory`).expect(200);
-		expect(observed.body.data).toEqual({
-			observations: [{ marker: 'important', text: 'User builds a Slack bot', tokenCount: 7 }],
-			cursor: { lastObservedMessageId: 'msg-1', lastObservedAt: observedAt.toISOString() },
-		});
-
 		const deleted = await ownerAgent.delete(`/assistant/eval/threads/${threadId}`).expect(200);
 		expect(deleted.body.data).toEqual({ ok: true });
 		expect(
 			Container.get(AssistantTurnOverrides).getCredentialIdAllowlist(threadId),
 		).toBeUndefined();
-		expect(
-			Container.get(AssistantTurnOverrides).getObserverThresholdTokens(threadId),
-		).toBeUndefined();
-		await ownerAgent.get(`/assistant/eval/threads/${threadId}/memory`).expect(404);
+		expect(Container.get(AssistantTurnOverrides).getPromptVersion(threadId)).toBeUndefined();
+		await ownerAgent.put(`/assistant/eval/threads/${threadId}/overrides`).send({}).expect(404);
 	});
 
 	it('rejects a thread of another user', async () => {
@@ -145,11 +108,11 @@ describe('Assistant agent eval routes', () => {
 			.post('/assistant/eval/thread-credential-allowlist')
 			.send({ threadId, credentialIds: [] })
 			.expect(404);
-		await otherAgent.get(`/assistant/eval/threads/${threadId}/memory`).expect(404);
 		await otherAgent.delete(`/assistant/eval/threads/${threadId}`).expect(404);
 
 		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBeUndefined();
-		await ownerAgent.get(`/assistant/eval/threads/${threadId}/memory`).expect(200);
+		// The thread still exists for its owner.
+		await ownerAgent.put(`/assistant/eval/threads/${threadId}/overrides`).send({}).expect(200);
 	});
 
 	it('rejects a caller without the instanceAi:manage scope', async () => {
@@ -159,13 +122,15 @@ describe('Assistant agent eval routes', () => {
 			.expect(403);
 	});
 
-	it('rejects an observer threshold outside the allowed range', async () => {
+	it('ignores unknown override fields', async () => {
 		const threadId = randomUUID();
 		await ownerAgent.post('/assistant/eval/threads').send({ threadId, projectId }).expect(200);
 
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ observerThresholdTokens: 999 })
-			.expect(400);
+			.send({ mode: 'progressive', observerThresholdTokens: 5_000 })
+			.expect(200);
+
+		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBe('progressive');
 	});
 });

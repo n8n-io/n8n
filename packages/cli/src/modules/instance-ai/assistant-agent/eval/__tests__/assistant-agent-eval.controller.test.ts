@@ -2,7 +2,6 @@ import type {
 	InstanceAiEvalExportExecutionRequest,
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	InstanceAiEvalThreadMemoryResponse,
 } from '@n8n/api-types';
 import {
 	InstanceAiAssistantEvalCreateThreadRequest,
@@ -22,7 +21,6 @@ import { EvalThreadCredentialAllowlistService } from '../../../eval/thread-crede
 import type { EvalThreadRestoreService } from '../../../eval/thread-restore.service';
 import type { InstanceAiSettingsService } from '../../../instance-ai-settings.service';
 import { AssistantAgentEvalController } from '../assistant-agent-eval.controller';
-import type { AssistantEvalThreadMemoryService } from '../assistant-eval-thread-memory.service';
 import { EvalAssistantTurnOverrides } from '../eval-assistant-turn-overrides';
 
 const THREAD_ID = '6b1f0f5e-3c43-4a59-9e0c-2f6f4f3f9b11';
@@ -41,7 +39,6 @@ describe('AssistantAgentEvalController', () => {
 		systemAgents.createThread.mockResolvedValue(thread);
 		const allowlists = new EvalThreadCredentialAllowlistService();
 		const overrides = new EvalAssistantTurnOverrides(allowlists);
-		const memory = mock<AssistantEvalThreadMemoryService>();
 		const restore = mock<EvalThreadRestoreService>();
 		const portability = mock<FailedExecutionPortabilityService>();
 		const controller = new AssistantAgentEvalController(
@@ -49,7 +46,6 @@ describe('AssistantAgentEvalController', () => {
 			systemAgents,
 			overrides,
 			allowlists,
-			memory,
 			restore,
 			portability,
 		);
@@ -61,7 +57,6 @@ describe('AssistantAgentEvalController', () => {
 			systemAgents,
 			allowlists,
 			overrides,
-			memory,
 			restore,
 			portability,
 			controller,
@@ -77,7 +72,6 @@ describe('AssistantAgentEvalController', () => {
 			deleteThread: async () => await controller.deleteThread(req, res, THREAD_ID),
 			setThreadOverrides: async () =>
 				await controller.setThreadOverrides(req, res, THREAD_ID, { mode: 'progressive' }),
-			getThreadMemory: async () => await controller.getThreadMemory(req, res, THREAD_ID),
 			setThreadCredentialAllowlist: async () =>
 				await controller.setThreadCredentialAllowlist(req, res, {
 					threadId: THREAD_ID,
@@ -118,7 +112,6 @@ describe('AssistantAgentEvalController', () => {
 			['createThread', 'post', '/eval/threads'],
 			['deleteThread', 'delete', '/eval/threads/:threadId'],
 			['setThreadOverrides', 'put', '/eval/threads/:threadId/overrides'],
-			['getThreadMemory', 'get', '/eval/threads/:threadId/memory'],
 			['setThreadCredentialAllowlist', 'post', '/eval/thread-credential-allowlist'],
 			['setThreadCredentialTestTarget', 'post', '/eval/thread-credential-test-target'],
 			['exportExecution', 'post', '/eval/export-execution'],
@@ -162,7 +155,6 @@ describe('AssistantAgentEvalController', () => {
 			expect(ctx.overrides.getBuildMode(THREAD_ID)).toBeUndefined();
 			expect(ctx.allowlists.get(THREAD_ID)).toBeUndefined();
 			expect(ctx.allowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
-			expect(ctx.memory.getThreadMemory).not.toHaveBeenCalled();
 			expect(ctx.portability.exportExecution).not.toHaveBeenCalled();
 			expect(ctx.portability.restoreExecution).not.toHaveBeenCalled();
 			expect(ctx.restore.reseedDataTableRows).not.toHaveBeenCalled();
@@ -223,28 +215,14 @@ describe('AssistantAgentEvalController', () => {
 		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
 			mode: 'progressive',
 			promptVersion: 'v2',
-			observerThresholdTokens: 5_000,
 		});
 		const result = await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
-			observerThresholdTokens: 2_000,
+			promptVersion: 'v3',
 		});
 
 		expect(result).toEqual({ ok: true });
 		expect(ctx.overrides.getBuildMode(THREAD_ID)).toBeUndefined();
-		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
-		expect(ctx.overrides.getObserverThresholdTokens(THREAD_ID)).toBe(2_000);
-	});
-
-	it('returns the observational memory of the thread', async () => {
-		const ctx = setup();
-		const memory: InstanceAiEvalThreadMemoryResponse = {
-			observations: [{ marker: 'important', text: 'User builds a Slack bot', tokenCount: 7 }],
-			cursor: { lastObservedMessageId: 'msg-1', lastObservedAt: '2026-01-01T00:00:00.000Z' },
-		} as InstanceAiEvalThreadMemoryResponse;
-		ctx.memory.getThreadMemory.mockResolvedValue(memory);
-
-		await expect(routes(ctx).getThreadMemory()).resolves.toBe(memory);
-		expect(ctx.memory.getThreadMemory).toHaveBeenCalledWith(THREAD_ID);
+		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBe('v3');
 	});
 
 	it('pins the credential view of the thread', async () => {
@@ -319,11 +297,7 @@ describe('AssistantAgentEvalController', () => {
 
 		it.each([
 			[{}, true],
-			[{ mode: 'progressive', promptVersion: 'v2', observerThresholdTokens: 1000 }, true],
-			[{ observerThresholdTokens: 1_000_000 }, true],
-			[{ observerThresholdTokens: 999 }, false],
-			[{ observerThresholdTokens: 1_000_001 }, false],
-			[{ observerThresholdTokens: 1500.5 }, false],
+			[{ mode: 'progressive', promptVersion: 'v2' }, true],
 			[{ mode: 'fast' }, false],
 			[{ promptVersion: '   ' }, false],
 			[{ promptVersion: 'x'.repeat(129) }, false],

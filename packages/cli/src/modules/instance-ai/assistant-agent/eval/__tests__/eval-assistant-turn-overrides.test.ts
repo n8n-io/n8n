@@ -13,7 +13,6 @@ describe('EvalAssistantTurnOverrides', () => {
 		expect(overrides.getCredentialIdAllowlist('thread-1')).toBeUndefined();
 		expect(overrides.shouldBypassCredentialTest('thread-1', 'cred-1')).toBe(false);
 		expect(overrides.getCredentialTestTarget('thread-1', 'slackApi')).toBeUndefined();
-		expect(overrides.getObserverThresholdTokens('thread-1')).toBeUndefined();
 		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
 		expect(overrides.getPromptVersion('thread-1')).toBeUndefined();
 	});
@@ -33,31 +32,21 @@ describe('EvalAssistantTurnOverrides', () => {
 
 	it('keeps the turn overrides for each thread', () => {
 		const { overrides } = setup();
-		overrides.setThreadOverrides('thread-1', {
-			mode: 'progressive',
-			promptVersion: 'v2',
-			observerThresholdTokens: 5_000,
-		});
+		overrides.setThreadOverrides('thread-1', { mode: 'progressive', promptVersion: 'v2' });
 
 		expect(overrides.getBuildMode('thread-1')).toBe('progressive');
 		expect(overrides.getPromptVersion('thread-1')).toBe('v2');
-		expect(overrides.getObserverThresholdTokens('thread-1')).toBe(5_000);
 		expect(overrides.getBuildMode('thread-2')).toBeUndefined();
 	});
 
 	it('replaces all turn overrides, so an omitted field has no override', () => {
 		const { overrides } = setup();
-		overrides.setThreadOverrides('thread-1', {
-			mode: 'progressive',
-			promptVersion: 'v2',
-			observerThresholdTokens: 5_000,
-		});
+		overrides.setThreadOverrides('thread-1', { mode: 'progressive', promptVersion: 'v2' });
 
 		overrides.setThreadOverrides('thread-1', { promptVersion: 'v3' });
 
 		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
 		expect(overrides.getPromptVersion('thread-1')).toBe('v3');
-		expect(overrides.getObserverThresholdTokens('thread-1')).toBeUndefined();
 	});
 
 	it('clears the turn overrides and the credential settings of the thread', () => {

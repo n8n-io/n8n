@@ -3,7 +3,6 @@ import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
-import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import { SystemAgentEvalService } from '../system-agent-eval.service';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
 
@@ -19,11 +18,8 @@ describe('SystemAgentEvalService', () => {
 		const thread = mock<AgentExecutionThread>({ id: THREAD_ID, projectId: PROJECT_ID });
 		systemAgents.createThread.mockResolvedValue(thread);
 		systemAgents.getUsableThread.mockResolvedValue(thread);
-		const impl = mock<N8nMemoryImpl>();
-		const n8nMemory = mock<N8nMemory>();
-		n8nMemory.getImplementation.mockReturnValue(impl);
-		const service = new SystemAgentEvalService(systemAgents, n8nMemory);
-		return { service, systemAgents, n8nMemory, impl };
+		const service = new SystemAgentEvalService(systemAgents);
+		return { service, systemAgents };
 	}
 
 	describe('threads', () => {
@@ -71,58 +67,6 @@ describe('SystemAgentEvalService', () => {
 			await expect(service.getUsableThread(AGENT_ID, user, THREAD_ID)).rejects.toThrow(
 				NotFoundError,
 			);
-		});
-	});
-
-	describe('getThreadMemory', () => {
-		it('reads the active observations and the cursor of the thread', async () => {
-			const { service, n8nMemory, impl } = setup();
-			impl.getActiveObservationLog.mockResolvedValue([
-				{
-					id: 'obs-1',
-					observationScopeId: THREAD_ID,
-					marker: 'important',
-					text: 'User builds a Slack bot',
-					tokenCount: 7,
-					parentId: null,
-					status: 'active',
-					supersededBy: null,
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-			]);
-			impl.getCursor.mockResolvedValue({
-				observationScopeId: THREAD_ID,
-				lastObservedMessageId: 'msg-1',
-				lastObservedAt: new Date('2026-01-02T00:00:00.000Z'),
-				updatedAt: new Date('2026-01-03T00:00:00.000Z'),
-			});
-
-			const result = await service.getThreadMemory(AGENT_ID, THREAD_ID);
-
-			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
-			expect(impl.getActiveObservationLog).toHaveBeenCalledWith({
-				observationScopeId: THREAD_ID,
-				order: 'asc',
-			});
-			expect(impl.getCursor).toHaveBeenCalledWith(THREAD_ID);
-			expect(result).toEqual({
-				observations: [{ marker: 'important', text: 'User builds a Slack bot', tokenCount: 7 }],
-				cursor: {
-					lastObservedMessageId: 'msg-1',
-					lastObservedAt: new Date('2026-01-02T00:00:00.000Z'),
-				},
-			});
-		});
-
-		it('returns no cursor before the observer runs', async () => {
-			const { service, impl } = setup();
-			impl.getActiveObservationLog.mockResolvedValue([]);
-			impl.getCursor.mockResolvedValue(null);
-
-			await expect(service.getThreadMemory(AGENT_ID, THREAD_ID)).resolves.toEqual({
-				observations: [],
-				cursor: null,
-			});
 		});
 	});
 });

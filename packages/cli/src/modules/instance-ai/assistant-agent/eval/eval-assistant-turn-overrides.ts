@@ -8,7 +8,6 @@ import type { AssistantCredentialTestTarget } from '../../turn-setup/assistant-t
 export interface EvalAssistantThreadOverrides {
 	mode?: InstanceAiBuildMode;
 	promptVersion?: string;
-	observerThresholdTokens?: number;
 }
 
 /**
@@ -26,8 +25,8 @@ export class EvalAssistantTurnOverrides extends AssistantTurnOverrides {
 
 	/** Replace all overrides of the thread. An omitted field has no override. */
 	setThreadOverrides(threadId: string, overrides: EvalAssistantThreadOverrides): void {
-		const { mode, promptVersion, observerThresholdTokens } = overrides;
-		this.byThread.set(threadId, { mode, promptVersion, observerThresholdTokens });
+		const { mode, promptVersion } = overrides;
+		this.byThread.set(threadId, { mode, promptVersion });
 	}
 
 	/** Remove the overrides and the credential settings of the thread. */
@@ -49,10 +48,6 @@ export class EvalAssistantTurnOverrides extends AssistantTurnOverrides {
 		credentialType: string,
 	): AssistantCredentialTestTarget | undefined {
 		return this.credentialAllowlists.getTestTarget(threadId, credentialType);
-	}
-
-	override getObserverThresholdTokens(threadId: string): number | undefined {
-		return this.byThread.get(threadId)?.observerThresholdTokens;
 	}
 
 	override getBuildMode(threadId: string): InstanceAiBuildMode | undefined {

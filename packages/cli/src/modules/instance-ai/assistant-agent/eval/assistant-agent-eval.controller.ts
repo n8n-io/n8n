@@ -7,15 +7,13 @@ import {
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 } from '@n8n/api-types';
-import type { InstanceAiEvalThreadMemoryResponse } from '@n8n/api-types';
 import { AuthenticatedRequest, type User } from '@n8n/db';
-import { Body, Delete, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
+import { Body, Delete, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 
-import { AssistantEvalThreadMemoryService } from './assistant-eval-thread-memory.service';
 import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
 import { FailedExecutionPortabilityService } from '../../eval/failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../../eval/thread-credential-allowlist.service';
@@ -38,7 +36,6 @@ export class AssistantAgentEvalController {
 		private readonly systemAgentEval: SystemAgentEvalService,
 		private readonly turnOverrides: EvalAssistantTurnOverrides,
 		private readonly credentialAllowlists: EvalThreadCredentialAllowlistService,
-		private readonly threadMemory: AssistantEvalThreadMemoryService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly failedExecutionPortability: FailedExecutionPortabilityService,
 	) {}
@@ -88,18 +85,6 @@ export class AssistantAgentEvalController {
 		await this.getThread(req.user, threadId);
 		this.turnOverrides.setThreadOverrides(threadId, payload);
 		return { ok: true };
-	}
-
-	@Get('/eval/threads/:threadId/memory')
-	@GlobalScope('instanceAi:manage')
-	async getThreadMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	): Promise<InstanceAiEvalThreadMemoryResponse> {
-		this.requireInstanceAiEnabled();
-		await this.getThread(req.user, threadId);
-		return await this.threadMemory.getThreadMemory(threadId);
 	}
 
 	/**
