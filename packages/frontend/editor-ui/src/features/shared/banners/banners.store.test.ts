@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as dynamicBannersApi from '@n8n/rest-api-client/api/dynamic-banners';
+import * as restApiClient from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 let bannersStore: ReturnType<typeof useBannersStore>;
@@ -301,5 +302,64 @@ describe('Banners store', () => {
 		expect(localStorage.getItem('N8N_DISMISSED_DYNAMIC_BANNERS_user-d')).toBe(
 			JSON.stringify(['dynamic-banner-1']),
 		);
+	});
+
+	it.each([['invalid json'], ['{"a":1}'], ['[1,"dynamic-banner-1"]']])(
+		'should ignore unusable stored dismissals: %s',
+		async (stored) => {
+			vi.spyOn(dynamicBannersApi, 'getDynamicBanners').mockResolvedValue([
+				{
+					id: '1',
+					content: 'Test',
+					isDismissible: true,
+					dismissPermanently: true,
+					theme: 'info' as const,
+					priority: 1,
+				},
+			]);
+			settingsStore.settings.dynamicBanners.enabled = true;
+			usersStore.addUsers([{ id: 'user-6' } as never]);
+			usersStore.currentUserId = 'user-6';
+			localStorage.setItem('N8N_DISMISSED_DYNAMIC_BANNERS_user-6', stored);
+
+			await bannersStore.loadDynamicBanners();
+
+			// Only a valid string entry can hide a banner.
+			expect(bannersStore.bannerStack).toEqual(
+				stored.includes('dynamic-banner-1') ? [] : ['dynamic-banner-1'],
+			);
+		},
+	);
+
+	it('should not fetch dynamic banners when they are disabled', async () => {
+		const getDynamicBannersSpy = vi.spyOn(dynamicBannersApi, 'getDynamicBanners');
+
+		await bannersStore.loadDynamicBanners();
+
+		expect(getDynamicBannersSpy).not.toHaveBeenCalled();
+		expect(bannersStore.bannerStack).toEqual([]);
+	});
+
+	it('should save a permanent dismissal of a static banner on the server', async () => {
+		const dismissSpy = vi.spyOn(restApiClient, 'dismissBannerPermanently').mockResolvedValue();
+		bannersStore.loadStaticBanners({ banners: ['V1'] });
+
+		await bannersStore.dismissBanner('V1', 'permanent');
+
+		expect(dismissSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ bannerName: 'V1' }),
+		);
+		expect(bannersStore.bannerStack).not.toContain('V1');
+	});
+
+	it('should only remove a banner from the stack on a temporary dismissal', async () => {
+		const dismissSpy = vi.spyOn(restApiClient, 'dismissBannerPermanently');
+		bannersStore.loadStaticBanners({ banners: ['V1'] });
+
+		await bannersStore.dismissBanner('V1');
+
+		expect(dismissSpy).not.toHaveBeenCalled();
+		expect(bannersStore.bannerStack).not.toContain('V1');
 	});
 });
