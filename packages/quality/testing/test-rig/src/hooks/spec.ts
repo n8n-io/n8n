@@ -49,7 +49,11 @@ export const hookSpecSchema = methodRef
 		/** Set when the patched file loads only on first use, so the install check skips it. */
 		lazy: z.boolean().optional(),
 	})
-	.strict();
+	.strict()
+	.refine((spec) => spec.kind !== 'drop' || spec.phase !== 'after', {
+		message: 'a drop hook runs before the call',
+		path: ['phase'],
+	});
 
 /** One hook point for the preload. Paths in `detail` and `where` start at `args`, `this`, `scope` or `result`. */
 export type HookSpec = z.infer<typeof hookSpecSchema>;
