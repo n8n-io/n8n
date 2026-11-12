@@ -1,12 +1,11 @@
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { CodeExecutionBackend, EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
 
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import type {
 	DataTableProxyProvider,
 	ICredentialsHelper,
@@ -90,7 +89,7 @@ export class EngineAdditionalDataBuilder {
 		private readonly eventService: EventService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
-		private readonly taskRequester: TaskRequester,
+		private readonly codeExecutionBackend: CodeExecutionBackend,
 	) {}
 
 	build(
@@ -132,9 +131,44 @@ export class EngineAdditionalDataBuilder {
 			logHitlResponse: (payload) => {
 				eventService.emit('hitl-response-actioned', payload);
 			},
-			// The Code node's work goes to the task broker this process hosts, as on v1.
-			getRunnerStatus: (taskType) => this.taskRequester.getRunnerStatus(taskType),
-			startRunnerTask: async (...args) => await this.taskRequester.startTask(...args),
+			// The Code node's work goes to the code execution backend of this process, as on v1.
+			getRunnerStatus: (taskType) => this.codeExecutionBackend.getStatus(taskType),
+			startRunnerTask: async (
+				additionalData,
+				jobType,
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				envProviderState,
+				executeData,
+			) =>
+				await this.codeExecutionBackend.runTask({
+					additionalData,
+					jobType,
+					settings,
+					executeFunctions,
+					inputData,
+					node,
+					workflow,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					siblingParameters,
+					mode,
+					envProviderState,
+					executeData,
+				}),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),

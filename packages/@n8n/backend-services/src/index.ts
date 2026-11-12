@@ -21,6 +21,11 @@ export {
 	CREDENTIAL_USABILITY_SCOPES,
 	type UnusableCredential,
 } from './credentials/credentials-finder.service';
+export {
+	CodeExecutionBackend,
+	type CodeExecutionBackendStatus,
+	type CodeTaskRequest,
+} from './code-execution/code-execution-backend';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';

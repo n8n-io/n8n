@@ -4,6 +4,7 @@ import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import {
+	CodeExecutionBackend,
 	EventService,
 	UrlService,
 	RuntimeCredentialProxyService,
@@ -82,7 +83,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -1028,7 +1028,7 @@ export async function getBase({
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			return await Container.get(TaskRequester).startTask(
+			return await Container.get(CodeExecutionBackend).runTask({
 				additionalData,
 				jobType,
 				settings,
@@ -1045,7 +1045,7 @@ export async function getBase({
 				mode,
 				envProviderState,
 				executeData,
-			);
+			});
 		},
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
@@ -1053,7 +1053,7 @@ export async function getBase({
 		logHitlResponse: (payload) => {
 			eventService.emit('hitl-response-actioned', payload);
 		},
-		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		getRunnerStatus: (taskType: string) => Container.get(CodeExecutionBackend).getStatus(taskType),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);
