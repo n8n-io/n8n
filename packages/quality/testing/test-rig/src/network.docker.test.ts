@@ -9,9 +9,9 @@ socket.on('connect', () => { console.log(Date.now() - started); process.exit(0);
 socket.on('error', () => { console.log('error'); process.exit(0); });
 setTimeout(() => { console.log('timeout'); process.exit(0); }, 2000);`;
 
-async function connectMs(container: Container): Promise<string> {
+async function connectMs(container: Container) {
 	const { output } = await container.exec(['node', '-e', CONNECT]);
-	return output.trim().split('\n').at(-1) ?? '';
+	return output.trim().split('\n').at(-1);
 }
 
 afterEach(async () => await stopAllStacks());
@@ -24,21 +24,17 @@ describe('network faults', () => {
 			runners: 'internal',
 			scale: 1,
 		});
-		try {
-			const main = rig.main();
-			const postgres = rig.container(/-postgres$/);
-			expect(Number(await connectMs(main))).toBeLessThan(200);
+		const main = rig.main();
+		const postgres = rig.container(/-postgres$/);
+		expect(Number(await connectMs(main))).toBeLessThan(200);
 
-			await network.delay(main, postgres, 400);
-			expect(Number(await connectMs(main))).toBeGreaterThanOrEqual(400);
+		await network.delay(main, postgres, 400);
+		expect(Number(await connectMs(main))).toBeGreaterThanOrEqual(400);
 
-			await network.cut(main, postgres);
-			expect(await connectMs(main)).toBe('timeout');
+		await network.cut(main, postgres);
+		expect(await connectMs(main)).toBe('timeout');
 
-			await network.restore(main);
-			expect(Number(await connectMs(main))).toBeLessThan(200);
-		} finally {
-			await rig.stop();
-		}
+		await network.restore(main);
+		expect(Number(await connectMs(main))).toBeLessThan(200);
 	});
 });
