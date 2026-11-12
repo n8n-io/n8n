@@ -334,4 +334,17 @@ describe('parseCliArgs --assistant-runtime', () => {
 			/--assistant-runtime applies to Assistant builds/,
 		);
 	});
+
+	it('rejects the agents runtime with --prebuilt-workflows', () => {
+		expect(() =>
+			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'agents']),
+		).toThrow(/--prebuilt-workflows grades existing workflows/);
+	});
+
+	it('accepts the v1 runtime with --prebuilt-workflows', () => {
+		expect(
+			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'v1'])
+				.assistantRuntime,
+		).toBe('v1');
+	});
 });

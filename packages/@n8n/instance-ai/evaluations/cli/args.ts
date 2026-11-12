@@ -217,6 +217,12 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--assistant-runtime applies to Assistant builds. --build-via-mcp builds through the MCP server instead.',
 		);
 	}
+	// Prebuilt runs only fetch existing workflows, so the runtime would be silently ignored.
+	if (validated.prebuiltWorkflows && validated.assistantRuntime !== 'v1') {
+		throw new Error(
+			'--assistant-runtime applies to Assistant builds. --prebuilt-workflows grades existing workflows instead.',
+		);
+	}
 	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
 		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
 	}

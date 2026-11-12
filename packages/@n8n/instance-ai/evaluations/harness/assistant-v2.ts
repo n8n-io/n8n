@@ -120,7 +120,7 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 		if (busy) {
 			sawActivity = true;
 			quiet = 0;
-		} else if (sawActivity || turnStartedSince(history.messages, config.sentAt)) {
+		} else if (sawActivity || executionMessagesSince(history.messages, config.sentAt).length > 0) {
 			quiet++;
 			if (quiet >= quietPolls) {
 				config.log(`[v2] Thread ${config.threadId} is quiet`);
@@ -158,8 +158,7 @@ export function failedTurnWithoutOutput(
 			(message) =>
 				message.role === 'assistant' &&
 				message.executionStatus !== undefined &&
-				message.createdAt !== undefined &&
-				Date.parse(message.createdAt) >= since,
+				createdSince(message, since),
 		)
 		.at(-1);
 	if (latest?.executionStatus !== 'error') return undefined;
@@ -169,16 +168,20 @@ export function failedTurnWithoutOutput(
 	return hasOutput ? undefined : (latest.executionError ?? 'unknown error');
 }
 
+function createdSince(message: AgentPersistedMessageDto, since: number): boolean {
+	return message.createdAt !== undefined && Date.parse(message.createdAt) >= since;
+}
+
 /**
- * Whether a turn started since `since`. An execution takes the user message,
- * so its id is on the user message also when the turn writes no reply.
+ * The messages of the turns that started since `since`. An execution takes the
+ * user message, so its id is on the user message also when the turn writes no reply.
  */
-function turnStartedSince(messages: AgentPersistedMessageDto[], since: number): boolean {
-	return messages.some(
-		(message) =>
-			message.executionId !== undefined &&
-			message.createdAt !== undefined &&
-			Date.parse(message.createdAt) >= since,
+function executionMessagesSince(
+	messages: AgentPersistedMessageDto[],
+	since: number,
+): AgentPersistedMessageDto[] {
+	return messages.filter(
+		(message) => message.executionId !== undefined && createdSince(message, since),
 	);
 }
 
@@ -191,14 +194,7 @@ async function failedTurnWithoutMessage(
 	config: AssistantV2WaitConfig,
 	messages: AgentPersistedMessageDto[],
 ): Promise<string | undefined> {
-	const latestExecutionId = messages
-		.filter(
-			(message) =>
-				message.executionId !== undefined &&
-				message.createdAt !== undefined &&
-				Date.parse(message.createdAt) >= config.sentAt,
-		)
-		.at(-1)?.executionId;
+	const latestExecutionId = executionMessagesSince(messages, config.sentAt).at(-1)?.executionId;
 	if (latestExecutionId === undefined) return undefined;
 	const hasReply = messages.some(
 		(message) => message.role === 'assistant' && message.executionId === latestExecutionId,
