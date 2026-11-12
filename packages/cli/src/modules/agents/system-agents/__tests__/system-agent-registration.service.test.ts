@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentServiceAccountService } from '../../agent-service-account.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SystemAgentRegistrationService } from '../system-agent-registration.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -9,14 +10,19 @@ describe('SystemAgentRegistrationService', () => {
 	function setup() {
 		const registry = new SystemAgentRegistry();
 		const agentRepository = mock<AgentRepository>();
-		const service = new SystemAgentRegistrationService(registry, agentRepository);
+		const agentServiceAccount = mock<AgentServiceAccountService>();
+		const service = new SystemAgentRegistrationService(
+			registry,
+			agentRepository,
+			agentServiceAccount,
+		);
 		const provider = {
 			agentId: 'other-agent',
 			name: 'Other Agent',
 			authorize: vi.fn(async () => true),
 			prepareTurn: vi.fn(),
 		} satisfies SystemAgentProvider;
-		return { service, registry, agentRepository, provider };
+		return { service, registry, agentRepository, agentServiceAccount, provider };
 	}
 
 	it('seeds the instance agent row before it registers the provider', async () => {
@@ -25,6 +31,18 @@ describe('SystemAgentRegistrationService', () => {
 		await service.register(provider);
 
 		expect(agentRepository.ensureInstanceAgent).toHaveBeenCalledWith('other-agent', 'Other Agent');
+		expect(registry.get('other-agent')).toBe(provider);
+	});
+
+	it('gives the instance agent an identity before it registers the provider', async () => {
+		const { service, agentServiceAccount, registry, provider } = setup();
+
+		await service.register(provider);
+
+		expect(agentServiceAccount.assignToInstanceAgent).toHaveBeenCalledWith(
+			'other-agent',
+			'Other Agent',
+		);
 		expect(registry.get('other-agent')).toBe(provider);
 	});
 
