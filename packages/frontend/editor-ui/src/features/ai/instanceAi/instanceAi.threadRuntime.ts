@@ -634,7 +634,6 @@ export function createThreadRuntime(
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
 	let hydrationPromise: Promise<HistoricalHydrationStatus> | null = null;
-	let olderMessagesPromise: Promise<void> | null = null;
 
 	// --- Computeds ---
 	const isStreaming = computed(() => activeRunId.value !== null);
@@ -1339,7 +1338,6 @@ export function createThreadRuntime(
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
 		olderMessagesCursor.value = undefined;
-		olderMessagesPromise = null;
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
@@ -1442,60 +1440,49 @@ export function createThreadRuntime(
 
 	/** Prepends the history page before the oldest loaded message. Throws when the request fails. */
 	async function loadOlderMessages(): Promise<void> {
-		if (olderMessagesPromise) return await olderMessagesPromise;
 		const cursor = olderMessagesCursor.value;
 		if (cursor === undefined) return;
 		const capturedHydrationGeneration = hydrationGeneration;
 
-		const promise = (async () => {
-			try {
-				const result = await fetchThreadMessagesApi(
-					rootStore.restApiContext,
-					threadId,
-					HISTORY_PAGE_SIZE,
-					undefined,
-					cursor,
-				);
-				if (capturedHydrationGeneration !== hydrationGeneration) return;
-				// A message group can show on both sides of a page edge, for example when a
-				// background run outlives its turn. The loaded copy is newer, so it wins.
-				const loadedIds = new Set(messages.value.map((msg) => msg.id));
-				const loadedGroupIds = new Set(messages.value.map((msg) => msg.messageGroupId));
-				const older = result.messages.filter(
-					(msg) =>
-						!loadedIds.has(msg.id) &&
-						!(msg.messageGroupId && loadedGroupIds.has(msg.messageGroupId)),
-				);
-				for (const msg of older) {
-					if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
-				}
-				// The older page holds past builds and agent changes. The watchers that open
-				// the preview or send events for new ones run synchronously and skip them
-				// while the thread hydrates.
-				hydrationStatus.value = 'hydrating';
-				try {
-					messages.value = [...older, ...messages.value];
-				} finally {
-					hydrationStatus.value = 'ready';
-				}
-				olderMessagesCursor.value = result.nextCursor;
+		const result = await fetchThreadMessagesApi(
+			rootStore.restApiContext,
+			threadId,
+			HISTORY_PAGE_SIZE,
+			undefined,
+			cursor,
+		);
+		if (capturedHydrationGeneration !== hydrationGeneration) return;
+		// A message group can show on both sides of a page edge, for example when a
+		// background run outlives its turn. The loaded copy is newer, so it wins.
+		const loadedIds = new Set(messages.value.map((msg) => msg.id));
+		const loadedGroupIds = new Set(messages.value.map((msg) => msg.messageGroupId));
+		const older = result.messages.filter(
+			(msg) =>
+				!loadedIds.has(msg.id) && !(msg.messageGroupId && loadedGroupIds.has(msg.messageGroupId)),
+		);
+		for (const msg of older) {
+			if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+		}
+		// The older page holds past builds and agent changes. The watchers that open
+		// the preview or send events for new ones run synchronously and skip them
+		// while the thread hydrates.
+		hydrationStatus.value = 'hydrating';
+		try {
+			messages.value = [...older, ...messages.value];
+		} finally {
+			hydrationStatus.value = 'ready';
+		}
+		olderMessagesCursor.value = result.nextCursor;
 
-				// Same routing rebuild as the first page, so a resumed older run (an old
-				// confirmation the user approves now) reduces into its existing state.
-				const routing = buildRoutingFromMessages(older);
-				routing.runStateByGroupId.forEach((value, key) => {
-					if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
-				});
-				routing.groupIdByRunId.forEach((value, key) => {
-					if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
-				});
-			} finally {
-				if (capturedHydrationGeneration === hydrationGeneration) olderMessagesPromise = null;
-			}
-		})();
-
-		olderMessagesPromise = promise;
-		return await promise;
+		// Same routing rebuild as the first page, so a resumed older run (an old
+		// confirmation the user approves now) reduces into its existing state.
+		const routing = buildRoutingFromMessages(older);
+		routing.runStateByGroupId.forEach((value, key) => {
+			if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
+		});
+		routing.groupIdByRunId.forEach((value, key) => {
+			if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
+		});
 	}
 
 	async function loadThreadStatus(): Promise<void> {

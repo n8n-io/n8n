@@ -3882,7 +3882,7 @@ describe('createThreadRuntime - older history pages', () => {
 		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
 	});
 
-	test('shares one request between concurrent calls and drops a page that returns after a reset', async () => {
+	test('drops a page that returns after a reset', async () => {
 		const runtime = await hydratedRuntime();
 		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
 		mockFetchThreadMessages.mockReturnValueOnce(
@@ -3891,8 +3891,7 @@ describe('createThreadRuntime - older history pages', () => {
 			}),
 		);
 
-		const first = runtime.loadOlderMessages();
-		const second = runtime.loadOlderMessages();
+		const loading = runtime.loadOlderMessages();
 		runtime.resetState();
 		resolveOlder({
 			threadId,
@@ -3900,7 +3899,7 @@ describe('createThreadRuntime - older history pages', () => {
 			nextCursor: 'cursor-0',
 			nextEventId: 0,
 		});
-		await Promise.all([first, second]);
+		await loading;
 
 		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
 		expect(runtime.messages).toEqual([]);

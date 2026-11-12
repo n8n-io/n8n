@@ -122,7 +122,7 @@ const messageCursorSchema = z.object({
 	id: z.string().min(1).max(256),
 });
 
-function encodeMessageCursor(message: { id: string; createdAt: string }): string {
+function encodeMessageCursor(message: { id: string; createdAt: string | Date }): string {
 	return Buffer.from(JSON.stringify({ createdAt: message.createdAt, id: message.id })).toString(
 		'base64url',
 	);
@@ -558,11 +558,7 @@ export class InstanceAiMemoryService {
 				messages = messages.slice(firstUserIndex);
 				nextCursor = encodeMessageCursor(messages[0]);
 			} else if (result.messages[0]) {
-				const oldest = result.messages[0];
-				nextCursor = encodeMessageCursor({
-					id: oldest.id,
-					createdAt: oldest.createdAt.toISOString(),
-				});
+				nextCursor = encodeMessageCursor(result.messages[0]);
 			}
 		}
 		await this.flagExpiredConfirmations(messages);
