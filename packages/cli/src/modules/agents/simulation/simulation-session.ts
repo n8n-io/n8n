@@ -19,6 +19,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import { nodeSimulationGap } from './non-http-node-types';
+import { OutboundRedactor } from './outbound-redaction';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -121,6 +122,8 @@ export class SimulationSession {
 
 	private readonly activeCalls = new AsyncLocalStorage<ActiveToolCall>();
 
+	private readonly redactor = new OutboundRedactor();
+
 	private readonly decisions = new Map<string, ToolCallSimulation>();
 
 	constructor(init: SimulationSessionInit) {
@@ -206,6 +209,7 @@ export class SimulationSession {
 			toolCallInterceptor: this.interceptor,
 			mcpFetch: this.mcpFetch,
 			configureToolAdditionalData: (additionalData, context) => {
+				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
 				additionalData.evalNodeMockHandler = this.nodeGuard;
 			},
@@ -273,16 +277,14 @@ export class SimulationSession {
 	// Never return `undefined`: core would then send the request to the real service.
 	private createHttpHandler(toolName: string): EvalLlmMockHandler {
 		return async (options: IHttpRequestOptions, node): Promise<EvalMockHttpResponse> => {
-			const reply = await this.ask(
-				{
-					protocol: 'http',
-					method: options.method ?? 'GET',
-					url: requestUrl(options),
-					headers: stripAuthHeaders(options.headers),
-					body: options.body,
-				},
-				{ nodeType: node.type },
-			);
+			const request = this.redactor.redact({
+				protocol: 'http',
+				method: options.method ?? 'GET',
+				url: requestUrl(options),
+				headers: stringHeaders(options.headers),
+				body: options.body,
+			});
+			const reply = await this.ask(request, { nodeType: node.type });
 			if (reply.outcome !== 'served') throw new Error(`Unexpected reply for ${toolName}`);
 			return { body: reply.body, headers: reply.headers ?? {}, statusCode: reply.status };
 		};
@@ -322,6 +324,7 @@ function classifyTool(tool: BuiltTool): ToolClassification {
 		};
 	}
 	if (metadata?.kind === 'workflow') return { type: 'simulated', key: tool.name, kind: 'workflow' };
+	if (metadata?.customTool === true) return { type: 'simulated', key: tool.name, kind: 'custom' };
 	if (tool.name === WEB_SEARCH_TOOL_NAME) {
 		return { type: 'simulated', key: WEB_SEARCH_TOOL_NAME, kind: 'web_search' };
 	}
@@ -349,12 +352,9 @@ function requestUrl(options: IHttpRequestOptions): string {
 	}
 }
 
-const AUTH_HEADER = /^(authorization|proxy-authorization|cookie|x-api-key|api-key)$/i;
-
-function stripAuthHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
+function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
 	const result: Record<string, string> = {};
 	for (const [name, value] of Object.entries(headers ?? {})) {
-		if (AUTH_HEADER.test(name)) continue;
 		if (typeof value === 'string') result[name] = value;
 		else if (typeof value === 'number' || typeof value === 'boolean') result[name] = `${value}`;
 		else if (Array.isArray(value))
