@@ -258,8 +258,8 @@ The PR title must match this pattern:
 ```
 
 Check the title against this pattern and the Title Summary Rules before you
-run `gh pr create`. The two most frequent failures are a package name as the scope and a lowercase first
-letter in the summary.
+run `gh pr create`. The two most frequent failures are a package name as the
+scope and a lowercase first letter in the summary.
 
 ## Plan Section
 
