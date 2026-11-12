@@ -25,12 +25,18 @@ vi.mock('../composables/useAgentPermissions', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: true }),
+}));
 vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => ({ isFavorite: () => false, fetchFavorites: mocks.fetchFavorites }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: mocks.push }),
+	useRouter: () => ({
+		push: mocks.push,
+		resolve: () => ({ href: '/projects/project/agents?folderId=parent' }),
+	}),
 	useRoute: () => ({ query: {} }),
 }));
 vi.mock('../components/AgentFolderDialog.vue', () => ({ default: { template: '<div />' } }));
@@ -180,7 +186,13 @@ describe('AgentFolderBrowser', () => {
 	it('clears the previous folder breadcrumbs when navigating to root', async () => {
 		const wrapper = render();
 		await flushPromises();
-		expect(wrapper.vm.breadcrumbs).toEqual([{ id: 'parent', label: 'Support' }]);
+		expect(wrapper.vm.breadcrumbs).toEqual([
+			{
+				id: 'parent',
+				label: 'Support',
+				href: '/projects/project/agents?folderId=parent',
+			},
+		]);
 
 		await wrapper.setProps({ folderId: null, folders: [] });
 

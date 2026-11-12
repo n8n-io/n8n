@@ -10,7 +10,6 @@ import {
 	createFolder,
 	deleteFolder,
 	getFolderContent,
-	getProjectFolders,
 	moveFolder,
 	renameFolder,
 } from '@/features/core/folders/folders.api';
@@ -46,12 +45,14 @@ const loadFailed = ref(false);
 const error = ref('');
 const count = ref(0);
 let generation = 0;
-const destinations = ref<Array<{ id: string; label: string }>>([]);
 const selectedLocation = ref<ChangeLocationSearchResult | null>(null);
 const isNaming = computed(() => props.action?.mode === 'create' || props.action?.mode === 'rename');
 const isDelete = computed(() => props.action?.mode === 'delete');
 const isMoving = computed(
 	() => props.action?.mode === 'moveAgent' || props.action?.mode === 'moveFolder',
+);
+const requiresDestination = computed(
+	() => isMoving.value || (isDelete.value && removal.value === 'relocate'),
 );
 const moveLabel = computed(() =>
 	props.action?.mode === 'moveAgent'
@@ -87,7 +88,6 @@ watch(
 	() => props.action,
 	async (action) => {
 		const requestGeneration = ++generation;
-		destinations.value = [];
 		loading.value = false;
 		loadFailed.value = false;
 		selectedLocation.value = null;
@@ -100,47 +100,16 @@ watch(
 		error.value = '';
 		count.value = 0;
 
-		if (isNaming.value || isMoving.value) return;
+		if (action.mode !== 'delete' || !action.id) return;
 
 		loading.value = true;
 
 		try {
-			const folders: Array<{ id: string; label: string }> = [];
-			let skip = 0;
-			let total = 0;
+			const contents = await getFolderContent(rootStore.restApiContext, props.projectId, action.id);
 
-			do {
-				const page = await getProjectFolders(
-					rootStore.restApiContext,
-					props.projectId,
-					{ resourceType: 'agent', skip, take: 100, sortBy: 'name:asc' },
-					action.mode !== 'moveAgent' ? { excludeFolderIdAndDescendants: action.id } : {},
-					['id', 'name', 'path', 'updatedAt'],
-				);
-				if (generation !== requestGeneration) return;
+			if (generation !== requestGeneration) return;
 
-				folders.push(
-					...page.data.map((folder) => ({ id: folder.id, label: folder.path.join(' / ') })),
-				);
-				total = page.count;
-				skip += page.data.length;
-
-				if (page.data.length === 0) break;
-			} while (skip < total);
-
-			destinations.value = folders;
-
-			if (action.mode === 'delete' && action.id) {
-				const contents = await getFolderContent(
-					rootStore.restApiContext,
-					props.projectId,
-					action.id,
-				);
-				if (generation !== requestGeneration) return;
-
-				count.value = contents.totalAgents;
-				target.value = PROJECT_ROOT;
-			}
+			count.value = contents.totalAgents;
 		} catch (cause) {
 			if (generation !== requestGeneration) return;
 
@@ -156,11 +125,10 @@ watch(
 function onLocationSelected(location: ChangeLocationSearchResult) {
 	selectedLocation.value = location;
 	target.value = location.resource === 'project' ? PROJECT_ROOT : location.id;
-	loadFailed.value = false;
 }
 
 function onDestinationError(cause: unknown) {
-	loadFailed.value = true;
+	selectedLocation.value = null;
 	toast.showError(cause, i18n.baseText('agents.folders.error'));
 }
 
@@ -169,7 +137,7 @@ async function save() {
 
 	if (!action || loading.value || loadFailed.value || busy.value) return;
 
-	if (isMoving.value && !selectedLocation.value) return;
+	if (requiresDestination.value && !selectedLocation.value) return;
 
 	if (isNaming.value) {
 		const result = folderNameSchema.safeParse(name.value);
@@ -312,20 +280,19 @@ async function save() {
 				</N8nText>
 				<template v-else>
 					<label for="agent-folder-target">{{ i18n.baseText('agents.folders.destination') }}</label>
-					<N8nSelect
-						id="agent-folder-target"
-						v-model="target"
+					<MoveToFolderDropdown
+						:key="action?.id"
+						input-id="agent-folder-target"
+						:selected-location="selectedLocation"
+						:selected-project-id="projectId"
+						:current-project-id="projectId"
+						:current-folder-id="action?.id"
+						resource-type="agent"
 						:teleported="false"
 						data-testid="agent-folder-target"
-					>
-						<N8nOption :value="PROJECT_ROOT" :label="i18n.baseText('agents.folders.root')" />
-						<N8nOption
-							v-for="folder in destinations"
-							:key="folder.id"
-							:value="folder.id"
-							:label="folder.label"
-						/>
-					</N8nSelect>
+						@location:selected="onLocationSelected"
+						@load:error="onDestinationError"
+					/>
 				</template>
 			</template>
 		</form>
@@ -333,7 +300,7 @@ async function save() {
 			<N8nButton
 				:variant="isDelete ? 'destructive' : 'solid'"
 				:loading="busy"
-				:disabled="loading || loadFailed || (isMoving && !selectedLocation)"
+				:disabled="loading || loadFailed || (requiresDestination && !selectedLocation)"
 				data-testid="agent-folder-save"
 				@click="save"
 			>

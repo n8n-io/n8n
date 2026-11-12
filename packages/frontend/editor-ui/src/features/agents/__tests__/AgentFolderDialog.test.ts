@@ -8,7 +8,6 @@ const api = vi.hoisted(() => ({
 	createFolder: vi.fn(),
 	deleteFolder: vi.fn(),
 	getFolderContent: vi.fn(),
-	getProjectFolders: vi.fn(),
 	moveFolder: vi.fn(),
 	renameFolder: vi.fn(),
 	moveAgent: vi.fn(),
@@ -100,7 +99,6 @@ function render(action: NonNullable<InstanceType<typeof AgentFolderDialog>['$pro
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	api.getProjectFolders.mockResolvedValue({ data: [], count: 0 });
 	api.getFolderContent.mockResolvedValue({ totalAgents: 3 });
 });
 
@@ -213,18 +211,61 @@ describe('AgentFolderDialog', () => {
 	it('relocates contents to root by default and excludes the deleted subtree', async () => {
 		const wrapper = render({ mode: 'delete', id: 'folder' });
 		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+
+		expect(picker.props()).toMatchObject({
+			currentFolderId: 'folder',
+			resourceType: 'agent',
+			selectedProjectId: 'project',
+			teleported: false,
+		});
+		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
+
+		picker.vm.$emit('location:selected', { ...destination, id: 'project', resource: 'project' });
+		await flushPromises();
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
 		await flushPromises();
 
-		expect(api.getProjectFolders.mock.calls[0]?.[3]).toEqual({
-			excludeFolderIdAndDescendants: 'folder',
-		});
 		expect(api.deleteFolder).toHaveBeenCalledWith(
 			{ baseUrl: '/rest' },
 			'project',
 			'folder',
 			PROJECT_ROOT,
 		);
+	});
+
+	it('allows relocation to the parent folder through the shared picker', async () => {
+		const wrapper = render({ mode: 'delete', id: 'folder', parentFolderId: 'parent' });
+		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+
+		expect(picker.props('parentFolderId')).toBeUndefined();
+
+		picker.vm.$emit('location:selected', { ...destination, id: 'parent' });
+		await flushPromises();
+		await wrapper.get('form').trigger('submit');
+		await flushPromises();
+
+		expect(api.deleteFolder).toHaveBeenCalledWith(
+			{ baseUrl: '/rest' },
+			'project',
+			'folder',
+			'parent',
+		);
+	});
+
+	it('blocks relocation after a folder-picker failure', async () => {
+		const wrapper = render({ mode: 'delete', id: 'folder' });
+		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+		picker.vm.$emit('location:selected', destination);
+		await flushPromises();
+		picker.vm.$emit('load:error', new Error('Could not load folders'));
+		await flushPromises();
+		await wrapper.get('form').trigger('submit');
+
+		expect(api.deleteFolder).not.toHaveBeenCalled();
+		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
 	});
 
 	it('offers archival when the user cannot relocate contents', async () => {
@@ -248,10 +289,13 @@ describe('AgentFolderDialog', () => {
 		);
 	});
 
-	it('lets the user choose archival instead of relocating contents', async () => {
+	it('lets the user choose archival after a folder-picker failure', async () => {
 		api.getFolderContent.mockResolvedValue({ totalAgents: 1 });
 		const wrapper = render({ mode: 'delete', id: 'folder' });
 		await flushPromises();
+		wrapper
+			.findComponent({ name: 'MoveToFolderDropdown' })
+			.vm.$emit('load:error', new Error('Could not load folders'));
 		await wrapper.get('[data-testid="agent-folder-removal"]').setValue('archive');
 
 		expect(wrapper.text()).toContain('It archives 1 Agent and moves it to the project root.');
@@ -285,12 +329,17 @@ describe('AgentFolderDialog', () => {
 				rejectRead = reject;
 			}),
 		);
-		const wrapper = render({ mode: 'delete', id: 'folder', canRelocate: false });
+		const wrapper = render({ mode: 'delete', id: 'folder' });
+		await flushPromises();
+		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
+		picker.vm.$emit('location:selected', destination);
 		await flushPromises();
 
 		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
 
 		rejectRead(new Error('Could not read folder contents'));
+		await flushPromises();
+		picker.vm.$emit('location:selected', destination);
 		await flushPromises();
 		await wrapper.get('form').trigger('submit');
 

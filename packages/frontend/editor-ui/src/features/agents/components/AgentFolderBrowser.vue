@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionToggle, N8nCard, N8nIcon, N8nText, type PathItem } from '@n8n/design-system';
+import { N8nActionToggle, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import FolderCardSubtitle from '@/features/core/folders/components/FolderCardSubtitle.vue';
-import { getFolderPath, moveFolder } from '@/features/core/folders/folders.api';
+import { moveFolder } from '@/features/core/folders/folders.api';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { invalidateProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { moveAgent } from '../composables/useAgentApi';
 import { PROJECT_AGENTS } from '../constants';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
 import AgentFolderDialog, { type AgentFolderAction } from './AgentFolderDialog.vue';
 
 const props = defineProps<{
@@ -31,42 +32,9 @@ const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const { canUpdate, canDelete } = useAgentPermissions(() => props.projectId);
-const path = ref<PathItem[]>([]);
+const path = useAgentFolderBreadcrumb(toRef(props, 'projectId'), toRef(props, 'folderId'));
 const action = ref<AgentFolderAction | null>(null);
 const dragged = ref<{ type: 'agent' | 'folder'; id: string } | null>(null);
-let generation = 0;
-
-async function refresh() {
-	const requestGeneration = ++generation;
-	path.value = [];
-
-	try {
-		const tree = props.folderId
-			? await getFolderPath(rootStore.restApiContext, props.projectId, props.folderId)
-			: [];
-		const items: PathItem[] = [];
-		let node = tree[0];
-
-		while (node) {
-			items.push({ id: node.id, label: node.name });
-			node = node.children[0];
-		}
-
-		if (requestGeneration === generation) path.value = items;
-	} catch (cause) {
-		if (requestGeneration === generation) {
-			toast.showError(cause, i18n.baseText('agents.folders.error'));
-		}
-	}
-}
-
-watch(
-	() => [props.projectId, props.folderId],
-	() => {
-		void refresh();
-	},
-	{ immediate: true },
-);
 
 function navigate(id: string) {
 	void router.push({
@@ -121,7 +89,6 @@ function onAction(value: string, folder: ChangeLocationSearchResponseItem) {
 
 function changed() {
 	invalidateProjectAgentsListCache(props.projectId);
-	void refresh();
 	void favorites.fetchFavorites(true);
 	emit('changed');
 }
@@ -163,7 +130,6 @@ defineExpose({
 	endDrag: () => {
 		dragged.value = null;
 	},
-	refresh,
 });
 </script>
 
