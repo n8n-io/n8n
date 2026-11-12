@@ -5,6 +5,11 @@ import type { ChatMessage } from '@n8n/chat/types/messages';
 
 import type { SendMessageResponse } from './webhook';
 
+export interface WebsocketSetupPayload {
+	executionId: string;
+	resumeToken?: string;
+}
+
 export interface Chat {
 	initialMessages: Ref<ChatMessage[]>;
 	messages: Ref<ChatMessage[]>;
