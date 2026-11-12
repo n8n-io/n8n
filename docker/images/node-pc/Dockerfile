@@ -38,7 +38,8 @@ ARG MAKE_JOBS
 ARG ENABLE_POINTER_COMPRESSION
 
 COPY docker/images/node-pc/patches/ /patches/
-RUN apk add --no-cache --virtual .build-deps \
+RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER_COMPRESSION must be true or false, got '$ENABLE_POINTER_COMPRESSION'" && exit 1;; esac \
+    && apk add --no-cache --virtual .build-deps \
         binutils-gold \
         curl \
         g++ \

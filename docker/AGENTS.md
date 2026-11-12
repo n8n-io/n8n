@@ -34,6 +34,8 @@ its `docker/images/n8n/Dockerfile`.
 | `DEBIAN_RUNTIME_IMAGE` | `n8nio/base:<version>-debian-<commit>` |
 | `PC_RUNTIME_IMAGE` | `n8nio/node-pc:<version>-<commit>` |
 | `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
+| `RUNTIME_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>` |
+| `BUILDER_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>-dev` |
 
 | Image | Inputs (PR 1) | Pins (PR 2) |
 |---|---|---|

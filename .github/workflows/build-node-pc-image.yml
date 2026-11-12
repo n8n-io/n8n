@@ -33,15 +33,20 @@ on:
 
 jobs:
   # A rebuild compiles Node and moves the tags to new digests. So master builds
-  # only when the inputs (the node-pc and node-patched-24 bake targets) changed.
+  # an image only when its own inputs (its bake target, the Dockerfile and the
+  # files it copies in) changed. `images` lists the images to build.
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.gate.outputs.changed }}
+      changed: ${{ steps.images.outputs.changed }}
+      images: ${{ steps.images.outputs.images }}
       node_version_node_pc: ${{ steps.resolve.outputs.node_version_node_pc }}
       build_args_node_pc: ${{ steps.resolve.outputs.build_args_node_pc }}
       node_version_node_patched_24: ${{ steps.resolve.outputs.node_version_node_patched_24 }}
       build_args_node_patched_24: ${{ steps.resolve.outputs.build_args_node_patched_24 }}
+    env:
+      EVENT: ${{ github.event_name }}
+      BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       # A pin must point at an image that master built. See docker/AGENTS.md.
       - name: Publish from master only
@@ -52,19 +57,39 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check whether the inputs changed
-        id: gate
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      - name: Check whether the node-pc inputs changed
+        id: gate-node-pc
         run: |
           node .github/scripts/docker/bake-inputs-changed.mjs --event "$EVENT" --base "$BASE_COMMIT" \
-            --targets node-pc,node-patched-24 --paths docker/images/node-pc --pr-paths .github/workflows/build-node-pc-image.yml
+            --targets node-pc --paths docker/images/node-pc --pr-paths .github/workflows/build-node-pc-image.yml
+
+      - name: Check whether the node-patched-24 inputs changed
+        id: gate-node-patched-24
+        run: |
+          node .github/scripts/docker/bake-inputs-changed.mjs --event "$EVENT" --base "$BASE_COMMIT" \
+            --targets node-patched-24 --paths docker/images/node-pc --pr-paths .github/workflows/build-node-pc-image.yml
+
+      # The build matrix. key: the prepare output suffix; repo: the image name
+      # in each registry.
+      - name: List the images to build
+        id: images
+        env:
+          NODE_PC: ${{ steps.gate-node-pc.outputs.changed }}
+          NODE_PATCHED_24: ${{ steps.gate-node-patched-24.outputs.changed }}
+        run: |
+          set -euo pipefail
+          images=$(jq -cn --arg pc "$NODE_PC" --arg p24 "$NODE_PATCHED_24" '[
+            (if $pc == "true" then { target: "node-pc", key: "node_pc", repo: "node-pc" } else empty end),
+            (if $p24 == "true" then { target: "node-patched-24", key: "node_patched_24", repo: "node-patched" } else empty end)
+          ]')
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          if [ "$images" = "[]" ]; then echo "changed=false"; else echo "changed=true"; fi >> "$GITHUB_OUTPUT"
+          echo "Images to build: $images"
 
       # One output pair per target, named after the target with `-` as `_`.
       - name: Read the build args from docker-bake.hcl
         id: resolve
-        if: steps.gate.outputs.changed == 'true'
+        if: steps.images.outputs.changed == 'true'
         run: |
           set -euo pipefail
           plan=$(docker buildx bake -f docker/docker-bake.hcl --print node-pc node-patched-24)
@@ -86,10 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          # key: the prepare output suffix; repo: the image name in each registry
-          - { target: node-pc, key: node_pc, repo: node-pc }
-          - { target: node-patched-24, key: node_patched_24, repo: node-patched }
+        image: ${{ fromJSON(needs.prepare.outputs.images) }}
         platform:
           - { name: linux/amd64, runner: blacksmith-32vcpu-ubuntu-2204, arch: amd64 }
           - { name: linux/arm64, runner: blacksmith-32vcpu-ubuntu-2204-arm, arch: arm64 }
@@ -149,15 +171,17 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
 
+  # Runs even when a build leg failed, so one image's failure does not hold
+  # back the manifests of the other. A missing per-arch image fails only its
+  # own image's manifest.
   create-multi-arch-manifest:
     needs: [prepare, build]
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+    if: always() && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        image:
-          - { key: node_pc, repo: node-pc }
-          - { key: node_patched_24, repo: node-patched }
+        image: ${{ fromJSON(needs.prepare.outputs.images) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

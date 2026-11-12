@@ -47,11 +47,12 @@ variable "PC_RUNTIME_IMAGE" {
 
 # Inputs of n8nio/node-patched, the Node 24 runtime of the 1.x image, which
 # pins it in docker/images/n8n/Dockerfile on the 1.x branch. NODE_24_RUNTIME_IMAGE
-# is the base that the 1.x image runs on today; keep it on the pin of that
-# Dockerfile. build-node-pc-image.yml publishes node-patched on master.
+# is the base that the 1.x image runs on today, published by the 1.x branch;
+# keep it on the RUNTIME_IMAGE pin of that Dockerfile. build-node-pc-image.yml
+# publishes node-patched on master.
 variable "NODE_24_VERSION" { default = "24.22.3" }
 variable "NODE_24_RUNTIME_IMAGE" {
-  default = "n8nio/base:24.22.1@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2"
+  default = "n8nio/base:24.22.1-c4188d049e9d3b3e9ed6337439fa1cb134979925@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2"
 }
 
 # Other base images. The runners take their Python version from the image tag.
