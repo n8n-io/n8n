@@ -162,4 +162,17 @@ describe('SimulationSessionService', () => {
 			service.openForDraftRun({ ...openInput, testChatId: 'other-chat' }),
 		).resolves.toBeUndefined();
 	});
+
+	it('opens one world when two turns of a new chat start together', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend });
+
+		const [first, second] = await Promise.all([
+			service.openForDraftRun(openInput),
+			service.openForDraftRun({ ...openInput, message: 'and this' }),
+		]);
+
+		expect(second).toBe(first);
+		expect(backend.openWorld).toHaveBeenCalledTimes(1);
+	});
 });

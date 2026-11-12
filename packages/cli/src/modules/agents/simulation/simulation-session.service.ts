@@ -37,6 +37,8 @@ export class SimulationSessionService {
 		30 * Time.minutes.toMilliseconds,
 	);
 
+	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly flagGate: SafeTestingFlagGate,
@@ -54,6 +56,15 @@ export class SimulationSessionService {
 			this.sessions.touch(input.testChatId);
 			return cached;
 		}
+		// Overlapping turns of a new chat share one open, so the chat gets one world.
+		const opening = this.opening.get(input.testChatId);
+		if (opening) return await opening;
+		const open = this.openNew(input).finally(() => this.opening.delete(input.testChatId));
+		this.opening.set(input.testChatId, open);
+		return await open;
+	}
+
+	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 
 		const backend = this.registry.get();
