@@ -2,7 +2,6 @@ import { parseHookLine } from './hooks/control';
 import type { HookSpec } from './hooks/spec';
 import { FILES } from './hooks/spec';
 import type { LeadershipEvent } from './invariants';
-import type { Container } from './process';
 import { logs, until } from './process';
 import type { RigStack } from './stack';
 
@@ -23,57 +22,45 @@ export const LEADER_HOOKS: HookSpec[] = [
 ];
 
 /** Leader check timings, in seconds, short enough for a test to wait through a handover. */
-export const fastLeaderElection = (ttlS = 4, intervalS = 1) => ({
+export const fastLeaderElection = (ttlS: number, intervalS: number) => ({
 	N8N_MULTI_MAIN_SETUP_ENABLED: 'true',
 	N8N_MULTI_MAIN_SETUP_KEY_TTL: String(ttlS),
 	N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL: String(intervalS),
 });
 
-/** Parses leadership events from the log of one main. */
-function parseLeadershipEvents(instance: string, log: string): LeadershipEvent[] {
-	return log.split('\n').flatMap((line): LeadershipEvent[] => {
-		const parsed = parseHookLine(line);
-		if (parsed?.event !== 'hit') return [];
-		if (parsed.point === 'leader-takeover')
-			return [{ instance, at: parsed.at, role: 'leader' as const }];
-		if (parsed.point === 'leader-stepdown')
-			return [{ instance, at: parsed.at, role: 'follower' as const }];
-		return [];
-	});
-}
+const ROLES = new Map<string, LeadershipEvent['role']>([
+	['leader-takeover', 'leader'],
+	['leader-stepdown', 'follower'],
+]);
+
+const mains = (rig: RigStack) => rig.n8nContainers().filter(({ name }) => name.startsWith('main'));
 
 /** Leadership events of every main, read from their logs. */
-export async function leadershipEvents(
-	rig: Pick<RigStack, 'n8nContainers'>,
-): Promise<LeadershipEvent[]> {
-	const mains = rig.n8nContainers().filter(({ name }) => name.startsWith('main'));
+export async function leadershipEvents(rig: RigStack): Promise<LeadershipEvent[]> {
 	const all = await Promise.all(
-		mains.map(async ({ name, container }) => parseLeadershipEvents(name, await logs(container))),
+		mains(rig).map(async ({ name, container }) =>
+			(await logs(container)).split('\n').flatMap((line): LeadershipEvent[] => {
+				const hit = parseHookLine(line);
+				const role = hit?.event === 'hit' ? ROLES.get(hit.point) : undefined;
+				return hit && role ? [{ instance: name, at: hit.at, role }] : [];
+			}),
+		),
 	);
 	return all.flat().sort((a, b) => a.at - b.at);
 }
 
-export interface NamedContainer {
-	name: string;
-	container: Container;
-}
-
-export async function currentLeader(
-	rig: Pick<RigStack, 'n8nContainers'>,
-	timeoutMs = 30_000,
-): Promise<{ leader: NamedContainer; followers: NamedContainer[] }> {
-	const mains = () => rig.n8nContainers().filter(({ name }) => name.startsWith('main'));
-	let leaders: NamedContainer[] = [];
+export async function currentLeader(rig: RigStack) {
+	let leaders: ReturnType<typeof mains> = [];
 	await until(
 		'one leader',
 		async () => {
 			const latest = new Map<string, LeadershipEvent['role']>();
 			for (const event of await leadershipEvents(rig)) latest.set(event.instance, event.role);
-			leaders = mains().filter(({ name }) => latest.get(name) === 'leader');
+			leaders = mains(rig).filter(({ name }) => latest.get(name) === 'leader');
 			return leaders.length === 1;
 		},
-		timeoutMs,
+		30_000,
 	);
 	const [leader] = leaders;
-	return { leader, followers: mains().filter(({ name }) => name !== leader.name) };
+	return { leader, followers: mains(rig).filter(({ name }) => name !== leader.name) };
 }

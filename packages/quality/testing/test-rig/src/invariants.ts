@@ -37,19 +37,14 @@ export function leaderOverlaps(
 			const [a, b] = [terms[i], terms[j]];
 			const from = Math.max(a.from, b.from);
 			const to = Math.min(a.to, b.to);
-			if (a.instance !== b.instance && from < to)
-				overlaps.push({ instances: [a.instance, b.instance], from, to });
+			if (from < to) overlaps.push({ instances: [a.instance, b.instance], from, to });
 		}
 	}
 	return overlaps;
 }
 
 /** At most one leader at a time, allowing overlaps up to `toleranceMs`. */
-export function oneLeaderAtATime(
-	events: LeadershipEvent[],
-	toleranceMs = 0,
-	until?: number,
-): Violation[] {
-	const long = leaderOverlaps(events, until).filter((o) => o.to - o.from > toleranceMs);
+export function oneLeaderAtATime(events: LeadershipEvent[], toleranceMs = 0): Violation[] {
+	const long = leaderOverlaps(events).filter((o) => o.to - o.from > toleranceMs);
 	return long.length ? [{ invariant: 'one leader at a time', detail: long }] : [];
 }

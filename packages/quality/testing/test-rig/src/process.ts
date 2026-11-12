@@ -158,8 +158,7 @@ export async function msUntilLog(
 	timeoutMs: number,
 	from: () => number,
 ): Promise<number | undefined> {
-	const match = waitForLog(containers, snippet, timeoutMs);
-	return await match.then(
+	return await waitForLog(containers, snippet, timeoutMs).then(
 		({ at }) => at - from(),
 		() => undefined,
 	);
