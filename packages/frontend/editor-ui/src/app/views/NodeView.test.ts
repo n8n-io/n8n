@@ -963,6 +963,40 @@ describe('NodeView', () => {
 		});
 	});
 
+	describe('Replace node from outside the canvas', () => {
+		const trigger = createTestNode({ id: 'trigger-1', type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([trigger]);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+		});
+
+		it('opens the replace flow on an editable canvas', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			await waitFor(() => expect(useNodeCreatorStore().openingContext).toBe('replacement'));
+		});
+
+		it('ignores the request on a read-only canvas', async () => {
+			routeMock.name = VIEWS.DEMO;
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			expect(useNodeCreatorStore().openingContext).toBeNull();
+		});
+	});
+
 	describe('Canvas-only mode', () => {
 		it('shows the n8n logo on the canvas when canvas-only mode is enabled', async () => {
 			useSettingsStore().settings.canvasOnly = true;

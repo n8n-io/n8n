@@ -9,6 +9,14 @@ import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import NodeCreator from './NodeCreator.vue';
 
 const mockFetchConfig = vi.fn();
+const mockNodeCreatorState = vi.hoisted(() => ({
+	openingContext: null as null | 'replacement',
+}));
+const mockFocusPanel = vi.hoisted(() => ({ focusPanelActive: false, focusPanelWidth: 0 }));
+
+vi.mock('@/app/stores/focusPanel.store', () => ({
+	useFocusPanelStore: vi.fn(() => mockFocusPanel),
+}));
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
@@ -46,6 +54,9 @@ vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		setActions: vi.fn(),
 		setMergeNodes: vi.fn(),
+		get openingContext() {
+			return mockNodeCreatorState.openingContext;
+		},
 	})),
 }));
 
@@ -91,6 +102,9 @@ const renderComponent = createComponentRenderer(NodeCreator, {
 describe('NodeCreator', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockNodeCreatorState.openingContext = null;
+		mockFocusPanel.focusPanelActive = false;
+		mockFocusPanel.focusPanelWidth = 0;
 	});
 
 	it('calls fetchConfig from useAiGateway composable on mount', async () => {
@@ -153,5 +167,24 @@ describe('NodeCreator', () => {
 		});
 
 		await waitFor(() => expect(getByTestId('node-creator')).toHaveStyle({ top: '120px' }));
+	});
+
+	it('opens a replacement beside the open focus panel', () => {
+		mockNodeCreatorState.openingContext = 'replacement';
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator')).toHaveStyle({ right: '420px' });
+	});
+
+	it('keeps the right edge when it adds a node while the focus panel is open', () => {
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator')).toHaveStyle({ right: '0px' });
 	});
 });

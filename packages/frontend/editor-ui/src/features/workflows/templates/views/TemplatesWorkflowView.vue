@@ -17,6 +17,9 @@ import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
+import { useTemplateRestrictedNodeTypes } from '../composables/useTemplateRestrictedNodeTypes';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { RestrictedTemplateNodesCallout } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client';
@@ -24,6 +27,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client';
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
+const projectsStore = useProjectsStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -45,6 +49,12 @@ const templateId = computed(() =>
 );
 
 const template = computed(() => templatesStore.getFullTemplateById(templateId.value));
+
+const targetProjectId = computed(
+	() => projectsStore.currentProject?.id ?? projectsStore.personalProject?.id,
+);
+const { restrictedNodeTypes } = useTemplateRestrictedNodeTypes(template, targetProjectId);
+const restrictedTypeNames = computed(() => restrictedNodeTypes.value.map(({ name }) => name));
 
 const openTemplateSetup = async (id: string, e: PointerEvent) => {
 	await useTemplateWorkflow({
@@ -190,9 +200,19 @@ const previewDocumentId = computed(() =>
 				</div>
 			</div>
 			<div :class="$style.contentContainer">
+				<RestrictedTemplateNodesCallout
+					v-if="restrictedNodeTypes.length > 0"
+					:class="$style.restrictedCallout"
+					:restricted="restrictedNodeTypes"
+				/>
 				<div :class="$style.content">
 					<div :class="$style.templateCard">
-						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
+						<RecommendedTemplateCard
+							v-if="template"
+							:template="template"
+							:show-details="true"
+							:restricted-node-types="restrictedTypeNames"
+						>
 							<template #belowContent>
 								<div :class="$style.templateActions">
 									<N8nButton
@@ -262,6 +282,10 @@ const previewDocumentId = computed(() =>
 	max-width: var(--content-container--width);
 	margin: var(--spacing--lg) auto 0;
 	padding: 0 var(--spacing--2xl);
+}
+
+.restrictedCallout {
+	margin-bottom: var(--spacing--lg);
 }
 
 .content {

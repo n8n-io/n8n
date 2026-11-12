@@ -20,9 +20,11 @@ const props = withDefaults(
 		tileNumber?: number;
 		showDetails?: boolean;
 		clickable?: boolean;
+		restrictedNodeTypes?: string[];
 	}>(),
 	{
 		clickable: false,
+		restrictedNodeTypes: () => [],
 	},
 );
 
@@ -35,12 +37,16 @@ const router = useRouter();
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
 
-	const uniqueNodeTypes = uniqBy(props.template.nodes, (node) => node.icon).map(
-		(node) => node.name,
-	);
-	const nodeTypesArray = Array.from(uniqueNodeTypes).slice(0, 2);
+	const restricted = new Set(props.restrictedNodeTypes);
+	const nodeTypeNames = uniqBy(props.template.nodes, (node) => node.icon)
+		.map((node) => node.name)
+		.sort((a, b) => Number(restricted.has(b)) - Number(restricted.has(a)))
+		.slice(0, 2);
 
-	return nodeTypesArray.map((nodeType) => nodeTypesStore.getNodeType(nodeType)).filter(Boolean);
+	return nodeTypeNames.flatMap((name) => {
+		const nodeType = nodeTypesStore.getNodeType(name);
+		return nodeType ? [{ nodeType, isRestricted: restricted.has(name) }] : [];
+	});
 });
 
 const credentialsCount = computed(() => {
@@ -184,10 +190,12 @@ onBeforeUnmount(() => {
 				</div>
 				<div v-if="templateNodes.length > 0" :class="$style.nodes">
 					<NodeIcon
-						v-for="nodeType in templateNodes"
-						:key="nodeType!.name"
+						v-for="{ nodeType, isRestricted } in templateNodes"
+						:key="nodeType.name"
 						:size="20"
 						:node-type="nodeType"
+						:disabled="isRestricted"
+						:data-test-id="isRestricted ? 'template-card-restricted-node' : undefined"
 					/>
 				</div>
 			</div>

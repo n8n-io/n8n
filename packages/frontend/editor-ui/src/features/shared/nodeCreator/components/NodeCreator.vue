@@ -15,6 +15,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
@@ -45,9 +46,11 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
+const focusPanelStore = useFocusPanelStore();
 const settingsStore = useSettingsStore();
 
-const { setActions, setMergeNodes, consumePendingInitialViewStack } = useNodeCreatorStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const { setActions, setMergeNodes, consumePendingInitialViewStack } = nodeCreatorStore;
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -79,11 +82,15 @@ function getTopOffset() {
 }
 
 function getRightOffset() {
-	if (chatPanelStore.isOpen) {
-		return chatPanelStore.width;
-	}
+	const chatOffset = chatPanelStore.isOpen ? chatPanelStore.width : 0;
 
-	return 0;
+	// A replacement opens beside the focus panel, so the setup card that started it stays in view.
+	const isReplacingBesideFocusPanel =
+		!embeddedCanvas.value &&
+		nodeCreatorStore.openingContext === 'replacement' &&
+		focusPanelStore.focusPanelActive;
+
+	return isReplacingBesideFocusPanel ? chatOffset + focusPanelStore.focusPanelWidth : chatOffset;
 }
 
 function onMouseUpOutside() {

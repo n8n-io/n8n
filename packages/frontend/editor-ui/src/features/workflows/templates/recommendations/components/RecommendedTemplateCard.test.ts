@@ -23,9 +23,11 @@ vi.mock('../recommendedTemplates.store', () => ({
 	}),
 }));
 
+const mockGetNodeType = vi.hoisted(() => vi.fn());
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
-		getNodeType: vi.fn(),
+		getNodeType: mockGetNodeType,
 	}),
 }));
 
@@ -59,11 +61,14 @@ const makeTemplateNodeWithCredentials = (
 		credentials,
 	});
 
-const makeTemplate = (workflowNodes: IWorkflowTemplateNode[]): ITemplatesWorkflowFull =>
+const makeTemplate = (
+	workflowNodes: IWorkflowTemplateNode[],
+	nodeTypeNames: string[] = [],
+): ITemplatesWorkflowFull =>
 	mock<ITemplatesWorkflowFull>({
 		id: 1,
 		name: 'Test template',
-		nodes: [],
+		nodes: nodeTypeNames.map((name) => ({ name, icon: name })),
 		workflow: { nodes: workflowNodes },
 		full: true,
 	});
@@ -71,6 +76,7 @@ const makeTemplate = (workflowNodes: IWorkflowTemplateNode[]): ITemplatesWorkflo
 describe('RecommendedTemplateCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetNodeType.mockReturnValue(undefined);
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue(REQUIRED_CREDENTIALS);
 	});
 
@@ -110,5 +116,32 @@ describe('RecommendedTemplateCard', () => {
 
 		// BASE_TIME (2) + 2 unique credentials * CREDENTIAL_TIME (3) = 8
 		expect(screen.getByText('8 min setup')).toBeInTheDocument();
+	});
+
+	describe('restricted node types', () => {
+		beforeEach(() => {
+			mockGetNodeType.mockImplementation((name: string) => ({ name }));
+		});
+
+		it('shows a restricted node type first and greys its icon', () => {
+			renderComponent({
+				props: {
+					template: makeTemplate([], ['openAi', 'sheets', 'gmailTrigger']),
+					restrictedNodeTypes: ['gmailTrigger'],
+				},
+			});
+
+			const restricted = screen.getAllByTestId('template-card-restricted-node');
+			expect(restricted).toHaveLength(1);
+			expect(mockGetNodeType.mock.calls.map(([name]) => name)).toEqual(['gmailTrigger', 'openAi']);
+		});
+
+		it('greys no icon without restricted node types', () => {
+			renderComponent({
+				props: { template: makeTemplate([], ['openAi', 'gmailTrigger']) },
+			});
+
+			expect(screen.queryByTestId('template-card-restricted-node')).not.toBeInTheDocument();
+		});
 	});
 });

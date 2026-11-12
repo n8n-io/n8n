@@ -3,6 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import NodeGroupSetupCard from '@/features/setupPanel/components/cards/NodeGroupSetupCard.vue';
+import RestrictedNodeSetupCard from '@/features/setupPanel/components/cards/RestrictedNodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -26,7 +27,7 @@ const telemetry = useTelemetry();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState();
+	useWorkflowSetupState(undefined, { includeRestricted: true });
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -212,6 +213,14 @@ watch(
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
+				/>
+				<RestrictedNodeSetupCard
+					v-else-if="card.state.restriction"
+					:node="card.state.node"
+					:restriction="card.state.restriction"
+					:is-trigger="card.state.isTrigger"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				/>
 				<NodeSetupCard
 					v-else

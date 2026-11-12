@@ -126,7 +126,7 @@ export function describeNodeTypeRestriction(
 }
 
 /** A restricted node type, named as the user sees it in the node panel. */
-type RestrictedNodeTypeName = RestrictionVerdict & { displayName: string };
+export type RestrictedNodeTypeName = RestrictionVerdict & { displayName: string };
 
 const RESTRICTED_SCOPES: Array<[NodeTypeAvailabilityScope | undefined, BaseTextKey]> = [
 	['instance', SCOPE_LABEL_KEY.instance],
@@ -144,11 +144,41 @@ export function sharedRestrictionContact(contacts: RestrictionContact[]): Restri
 		: 'instance';
 }
 
-/** Why these node types block a publish, with one scope on each line when there are several. */
-export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]): string {
+/** The contact copy for several restrictions at once. */
+export function sharedContactCopy(verdicts: OptionalVerdict[]) {
+	return RESTRICTION_CONTACT_COPY[
+		sharedRestrictionContact(verdicts.map((verdict) => getRestrictionContact(verdict)))
+	];
+}
+
+/**
+ * The restricted types among `nodeTypes`, one entry for each type, named as the user sees them.
+ * `restrictionOf` lets a surface judge a project other than the open one.
+ */
+export function collectRestrictedNodeTypes(
+	nodeTypes: Iterable<string>,
+	displayNameOf: (nodeType: string) => string,
+	restrictionOf: (nodeType: string) => TypeRestriction | null = getNodeTypeRestriction,
+): Array<TypeRestriction & { displayName: string }> {
+	return [...new Set(nodeTypes)].flatMap((nodeType) => {
+		const restriction = restrictionOf(nodeType);
+		return restriction ? [{ ...restriction, displayName: displayNameOf(nodeType) }] : [];
+	});
+}
+
+/**
+ * Why these node types block a publish, with one scope on each line when there are several.
+ * A `surface` takes its sentence for one type and its last line for several from `CALLOUT_COPY`.
+ */
+export function describeRestrictedNodeTypes(
+	restricted: RestrictedNodeTypeName[],
+	surface?: RestrictedCalloutSurface,
+): string {
 	if (restricted.length === 1) {
 		const [{ displayName, ...verdict }] = restricted;
-		return describeNodeTypeRestriction(displayName, verdict, 'replace');
+		return surface
+			? describeTypeRestriction(surface, displayName, verdict)
+			: describeNodeTypeRestriction(displayName, verdict, 'replace');
 	}
 
 	const i18n = useI18n();
@@ -170,9 +200,8 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
 		...scopeLines,
 		i18n.baseText(
-			RESTRICTION_CONTACT_COPY[
-				sharedRestrictionContact(restricted.map((verdict) => getRestrictionContact(verdict)))
-			].severalNextStep,
+			(surface && CALLOUT_COPY[surface].severalNextStep) ??
+				sharedContactCopy(restricted).severalNextStep,
 		),
 	].join('\n');
 }
@@ -187,11 +216,15 @@ export function getRestrictionMessage(
 	return verdict?.scope ?? 'generic';
 }
 
-export type RestrictedCalloutSurface = 'tool' | 'credential';
+export type RestrictedCalloutSurface = 'tool' | 'credential' | 'replaceToSave' | 'template';
 
 const CALLOUT_COPY: Record<
 	RestrictedCalloutSurface,
-	{ keys: Record<RestrictionMessage, BaseTextKey>; interpolationKey: 'nodeType' | 'credentialType' }
+	{
+		keys: Record<RestrictionMessage, BaseTextKey>;
+		interpolationKey: 'nodeType' | 'credentialType';
+		severalNextStep?: BaseTextKey;
+	}
 > = {
 	tool: {
 		keys: {
@@ -210,6 +243,25 @@ const CALLOUT_COPY: Record<
 			generic: 'typeAvailabilityPolicies.restrictedCredentialType.callout.generic',
 		},
 		interpolationKey: 'credentialType',
+	},
+	replaceToSave: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
+	template: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.template.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.template.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.template.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.template.generic',
+		},
+		interpolationKey: 'nodeType',
+		severalNextStep: 'typeAvailabilityPolicies.restrictedNodes.template.nextStep',
 	},
 };
 
