@@ -5,7 +5,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 test.describe(
 	'Debug mode',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		// Manual Trigger -> `Error` Code node (disabled) -> `Code`. Toggling the `Error`

@@ -110,7 +110,7 @@ test.describe(
 	'Dev-server boot smoke',
 	{
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Application' },
 			{
 				type: 'description',
 				description:

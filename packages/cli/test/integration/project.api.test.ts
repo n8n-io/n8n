@@ -634,6 +634,49 @@ describe('Project members endpoints', () => {
 				hasScopes: false,
 			});
 		});
+
+		test('GET /projects/:projectId shows the kind of each member', async () => {
+			const [admin, member, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createMember(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.relations).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: member.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
+		});
+
+		test('GET /projects/:projectId shows the kind of an implicit member', async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(GLOBAL_ADMIN_ROLE),
+			]);
+			const project = await createTeamProject('Team Project');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.implicitMembers).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: admin.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
+		});
 	});
 
 	describe('project:update and project:manageMembers are independent', () => {
@@ -1390,6 +1433,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser1.email,
 			firstName: testUser1.firstName,
 			lastName: testUser1.lastName,
+			kind: 'person',
 			role: 'project:editor',
 		});
 		expect(resp.body.data.relations).toContainEqual({
@@ -1397,6 +1441,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser2.email,
 			firstName: testUser2.firstName,
 			lastName: testUser2.lastName,
+			kind: 'person',
 			role: 'project:admin',
 		});
 	});
@@ -1428,6 +1473,7 @@ describe('GET /project/:projectId', () => {
 					email: ownerUser.email,
 					firstName: ownerUser.firstName,
 					lastName: ownerUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:owner', displayName: 'Owner' },
 				},
 				{
@@ -1435,6 +1481,7 @@ describe('GET /project/:projectId', () => {
 					email: adminUser.email,
 					firstName: adminUser.firstName,
 					lastName: adminUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:admin', displayName: 'Admin' },
 				},
 			]),

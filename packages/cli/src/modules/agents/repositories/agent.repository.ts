@@ -5,7 +5,9 @@ import type {
 	AgentVectorStoreProvider,
 	ListAgentsQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import {
+	AgentTagMapping,
 	BaseRepository,
 	chunkIds,
 	escapeLike,
@@ -68,8 +70,17 @@ export type AgentSummaryFilters = {
 
 @Service()
 export class AgentRepository extends BaseRepository<Agent> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(Agent, dataSource.manager, transactionRunner);
+	}
+
+	/** Whether tags are readable on agents: reads join `agent.tags` only then. */
+	private get tagsEnabled(): boolean {
+		return !this.globalConfig.tags.disabled;
 	}
 
 	/**
@@ -81,6 +92,24 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	/**
+	 * Replaces the tag mappings of one agent with the given tag ids, in a
+	 * single transaction: a delete followed by the inserts, so a failure
+	 * leaves the previous mappings in place. An empty list clears the tags.
+	 */
+	async overwriteTagMappings(agentId: string, tagIds: string[], ctx: OperationContext = {}) {
+		// Duplicates would collide on the composite primary key.
+		const uniqueTagIds = [...new Set(tagIds)];
+		return await this.runInTransaction(ctx, async (tx) => {
+			await tx.delete(AgentTagMapping, { agentId });
+			if (uniqueTagIds.length === 0) return;
+			await tx.insert(
+				AgentTagMapping,
+				uniqueTagIds.map((tagId) => ({ agentId, tagId })),
+			);
+		});
 	}
 
 	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
@@ -142,10 +171,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.sort((left, right) => left.id.localeCompare(right.id));
 	}
 
-	async findIdsInProjectsForExport(projectIds: string[]): Promise<string[]> {
+	async findIdsInProjectsForExport(
+		projectIds: string[],
+		{ includeArchived = false }: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const ids: string[] = [];
+		const archivedFilter = includeArchived ? {} : { isArchived: false };
 		for (const projects of chunkIds([...new Set(projectIds)])) {
-			const agents = await this.find({ select: ['id'], where: { projectId: In(projects) } });
+			const agents = await this.find({
+				select: ['id'],
+				where: { projectId: In(projects), ...archivedFilter },
+			});
 			ids.push(...agents.map(({ id }) => id));
 		}
 		return ids.sort();
@@ -205,6 +241,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				'agent.updatedAt',
 			])
 			.where(projectScopeSql)
+			.andWhere('agent.isArchived = :isArchived', { isArchived: false })
 			.orderBy('agent.updatedAt', 'DESC');
 
 		if (projectIds !== null) {
@@ -243,6 +280,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 			'agent.activeVersion',
 			'activeVersion',
 		);
+
+		if (this.tagsEnabled) {
+			query.leftJoinAndSelect('agent.tags', 'tags');
+		}
 
 		// Only cross-project consumers (MCP settings) label each agent by its home
 		// project; the overview lists don't read it, so they skip the extra join.
@@ -298,9 +339,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 		// `true` is the default page view: drop it so owned drafts stay in the list.
 		// `false` still narrows the list to the agents not in n8n Chat yet.
+		// n8n Chat never lists archived agents, so the request cannot include them.
 		this.applyFilters(query, {
 			...options.filter,
 			availableInChat: options.filter?.availableInChat === false ? false : undefined,
+			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
@@ -368,11 +411,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		query: SelectQueryBuilder<Agent>,
 		filter: ListAgentsQueryDto['filter'],
 	): void {
+		if (!filter?.includeArchived) {
+			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
+		}
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
 		if (filter?.ids) {
 			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
+		}
+		if (filter?.tags && filter.tags.length > 0) {
+			this.applyTagsFilter(query, filter.tags);
 		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
@@ -385,6 +434,30 @@ export class AgentRepository extends BaseRepository<Agent> {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
 		}
+	}
+
+	/**
+	 * Keeps only the agents that carry **all** the given tag ids. The mapping
+	 * rows are grouped per agent and the distinct tag count must match, so a
+	 * partial overlap drops the agent — the same semantics as the workflow
+	 * list's tag filter.
+	 */
+	private applyTagsFilter(query: SelectQueryBuilder<Agent>, tagIds: string[]): void {
+		// Duplicates would demand more distinct mappings than a tag pair can
+		// hold, so count the deduped list.
+		const uniqueTagIds = [...new Set(tagIds)];
+		const subQuery = query
+			.subQuery()
+			.select('atm.agentId')
+			.from(AgentTagMapping, 'atm')
+			.where('atm.tagId IN (:...tagIds)', { tagIds: uniqueTagIds })
+			.groupBy('atm.agentId')
+			.having('COUNT(DISTINCT atm.tagId) = :tagCount', { tagCount: uniqueTagIds.length });
+
+		query.andWhere(`agent.id IN (${subQuery.getQuery()})`).setParameters({
+			tagIds: uniqueTagIds,
+			tagCount: uniqueTagIds.length,
+		});
 	}
 
 	// Reachability is a property of the **published** config, not the draft:
@@ -476,7 +549,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return projectAgentOrNull(
 			await this.findOne({
 				where: { id, projectId, scope: projectScope },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, ...(this.tagsEnabled ? { tags: true } : {}) },
 			}),
 		);
 	}
@@ -495,7 +568,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return projectAgentOrNull(
 			await this.managerFor(ctx).findOne(Agent, {
 				where: { id, scope: projectScope },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, ...(this.tagsEnabled ? { tags: true } : {}) },
 			}),
 		);
 	}
@@ -606,10 +679,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 		const criteria =
 			'ids' in where
-				? { id: In(where.ids), scope: projectScope }
+				? { id: In(where.ids), scope: projectScope, isArchived: false }
 				: 'projectIds' in where
-					? { projectId: In(where.projectIds), scope: projectScope }
-					: { scope: projectScope };
+					? { projectId: In(where.projectIds), scope: projectScope, isArchived: false }
+					: { scope: projectScope, isArchived: false };
 
 		const agents = await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
@@ -618,12 +691,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.filter(isProjectAgent);
 	}
 
-	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
-		if (agentIds.length === 0) return;
-		await this.update(
-			{ id: In(agentIds), scope: projectScope },
+	/** Skips archived agents. Returns the number of agents that the update changed. */
+	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<number> {
+		if (agentIds.length === 0) return 0;
+		const result = await this.update(
+			{ id: In(agentIds), scope: projectScope, isArchived: false },
 			{ availableInMCP, revision: () => 'revision + 1' },
 		);
+		return result.affected ?? 0;
 	}
 
 	/**
@@ -669,6 +744,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 					revision: expected.revision,
 					versionId: expected.versionId ?? IsNull(),
 					activeVersionId: expected.activeVersionId ?? IsNull(),
+					// An archive does not advance the revision.
+					isArchived: false,
 				},
 				{
 					integrations,
@@ -795,17 +872,38 @@ export class AgentRepository extends BaseRepository<Agent> {
 			);
 	}
 
-	/** Draft writes do not conflict with publication of a fixed saved version. */
+	/**
+	 * Sets the archive state of an unpublished agent. Advances the publication
+	 * revision so a publication that started before the change loses its fence.
+	 * Returns false when the agent is published or already has this archive state.
+	 */
+	async setArchived(id: string, isArchived: boolean): Promise<boolean> {
+		const result = await this.update(
+			{ id, scope: projectScope, activeVersionId: IsNull(), isArchived: !isArchived },
+			{ isArchived, publicationRevision: () => '"publicationRevision" + 1' },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Draft writes do not conflict with publication of a fixed saved version.
+	 * `archive` marks the agent archived in the same write as the unpublication.
+	 */
 	async setActiveVersionFenced(
 		id: string,
 		publicationRevision: number,
 		activeVersionId: string | null,
 		ctx: OperationContext = {},
+		{ archive = false }: { archive?: boolean } = {},
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
-			.set({ activeVersionId, publicationRevision: () => '"publicationRevision" + 1' })
+			.set({
+				activeVersionId,
+				publicationRevision: () => '"publicationRevision" + 1',
+				...(archive ? { isArchived: true } : {}),
+			})
 			.where('id = :id AND "publicationRevision" = :publicationRevision', {
 				id,
 				publicationRevision,
@@ -827,6 +925,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		agent: Agent,
 		ctx: OperationContext = {},
 		metadata: AgentDefinitionMetadata = {},
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
@@ -840,7 +939,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
-		const result = await this.managerFor(ctx)
+		const query = this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({
@@ -857,8 +956,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 				...(connectionsChanged ? { publicationRevision: () => '"publicationRevision" + 1' } : {}),
 			})
 			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
-			.andWhere(projectScopeUpdateSql)
-			.execute();
+			.andWhere(projectScopeUpdateSql);
+		// Archiving does not change the revision. The write must check the stored state.
+		if (!allowArchivedUpdate) query.andWhere('"isArchived" = :isArchived', { isArchived: false });
+		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;

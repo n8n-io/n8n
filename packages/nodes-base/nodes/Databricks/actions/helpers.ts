@@ -1,6 +1,7 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
