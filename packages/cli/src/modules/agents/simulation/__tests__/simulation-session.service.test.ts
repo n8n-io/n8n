@@ -93,7 +93,7 @@ function setup({
 		threadRepository,
 		executionRepository,
 	);
-	return { service, threadRepository, executionRepository };
+	return { service, threadRepository, executionRepository, flagGate };
 }
 
 function llmBackend(): SimulationBackend {
@@ -293,5 +293,40 @@ describe('SimulationSessionService', () => {
 		const session = await service.openForDraftRun(openInput);
 
 		await expect(session!.markTestChat()).rejects.toThrow('Could not mark the test chat');
+	});
+
+	it('keeps a running test chat a test run when the flag reads off on a later turn', async () => {
+		const backend = llmBackend();
+		const { service, flagGate } = setup({ backend });
+		const first = await service.openForDraftRun(openInput);
+		flagGate.isEnabled.mockResolvedValue(false);
+
+		await expect(service.openForDraftRun({ ...openInput, message: 'again' })).resolves.toBe(first);
+		await expect(
+			service.openForDraftRun({ ...openInput, testChatId: 'other-chat' }),
+		).resolves.toBeUndefined();
+	});
+
+	it('keeps the stored world when the simulator is down on a later turn', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValue(new Error('down'));
+		const storedWorld = {
+			backend: 'llm-mock' as const,
+			worldId: 'world-1',
+			state: { seed: 'abc' },
+		};
+		const { service, threadRepository } = setup({
+			backend,
+			stored: { testRun: true, world: storedWorld },
+		});
+
+		const session = await service.openForDraftRun(openInput);
+		await session!.markTestChat();
+
+		expect(session?.worldId).toBeUndefined();
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{ simulation: { testRun: true, world: storedWorld } },
+		);
 	});
 });
