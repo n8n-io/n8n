@@ -6,11 +6,10 @@ let event;
 let commits;
 let runs;
 let labels;
-const listWorkflowRuns = mock.fn(async () => ({ data: { workflow_runs: runs } }));
-const octokit = {
-	paginate: mock.fn(async () => commits),
-	rest: { pulls: { listCommits: () => {} }, actions: { listWorkflowRuns } },
-};
+const listCommits = () => {};
+const listWorkflowRuns = () => {};
+const paginate = mock.fn(async (method) => (method === listCommits ? commits : runs));
+const octokit = { paginate, rest: { pulls: { listCommits }, actions: { listWorkflowRuns } } };
 
 mock.module('./github-helpers.mjs', {
 	namedExports: {
@@ -73,24 +72,28 @@ describe('main', () => {
 		event = {
 			pull_request: {
 				number: 7,
+				created_at: '2026-11-01T10:00:00Z',
 				head: { sha: 'c', ref: 'feature', repo: { full_name: 'n8n-io/n8n' } },
 			},
 		};
 		commits = [{ sha: 'a' }, { sha: 'b' }, { sha: 'c' }];
 		runs = [run('a')];
 		labels = [];
-		listWorkflowRuns.mock.resetCalls();
+		paginate.mock.resetCalls();
+		paginate.mock.restore();
 	});
 
 	it('returns the last green commit', async () => {
 		assert.equal(await main(), 'a');
-		assert.deepEqual(listWorkflowRuns.mock.calls[0].arguments[0], {
+		const runsCall = paginate.mock.calls.find((call) => call.arguments[0] === listWorkflowRuns);
+		assert.deepEqual(runsCall?.arguments[1], {
 			owner: 'n8n-io',
 			repo: 'n8n',
 			workflow_id: 'ci-pull-requests.yml',
 			event: 'pull_request',
 			branch: 'feature',
 			status: 'success',
+			created: '>=2026-11-01T10:00:00Z',
 			per_page: 100,
 		});
 	});
@@ -98,12 +101,13 @@ describe('main', () => {
 	it('returns an empty string when the PR has the force-full-ci label', async () => {
 		labels = [{ name: 'force-full-ci' }];
 		assert.equal(await main(), '');
-		assert.equal(listWorkflowRuns.mock.callCount(), 0);
+		assert.equal(paginate.mock.callCount(), 0);
 	});
 
 	it('returns an empty string when the lookup fails', async () => {
-		listWorkflowRuns.mock.mockImplementationOnce(async () => {
-			throw new Error('Resource not accessible by integration');
+		paginate.mock.mockImplementation(async (method) => {
+			if (method === listWorkflowRuns) throw new Error('Resource not accessible by integration');
+			return commits;
 		});
 		assert.equal(await main(), '');
 	});

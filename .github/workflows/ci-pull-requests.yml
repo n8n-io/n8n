@@ -17,6 +17,11 @@ jobs:
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    # find-last-green-commit.mjs reads the workflow runs and the PR commits.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
