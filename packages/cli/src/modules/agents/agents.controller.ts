@@ -61,6 +61,7 @@ export class AgentsController {
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
 				config: payload.config,
+				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
 				// Keep the config name in sync with the entity name so the list and
 				// builder never disagree on a directly-seeded create. Narrowing

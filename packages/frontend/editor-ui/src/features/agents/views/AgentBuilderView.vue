@@ -26,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
+	N8nSpinner,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -3792,7 +3793,7 @@ useKeybindings({
 				<AgentBuildingIndicator />
 			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
-				<N8nIcon icon="spinner" spin />
+				<N8nSpinner type="brand" size="xxlarge" />
 			</div>
 			<template v-else>
 				<AgentTestChatPage

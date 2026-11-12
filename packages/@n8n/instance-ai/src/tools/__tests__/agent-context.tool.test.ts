@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { Logger } from '../../logger';

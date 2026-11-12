@@ -760,6 +760,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/anthropic/claude-sonnet-4.5',
 		'google-vertex/claude-sonnet-4-5',
@@ -783,7 +784,9 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
+	// Inline agents have no `config` block, so an inline OpenAI agent sends no cache fields.
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/openai/gpt-5',
 		'google-vertex/gemini-2.5-pro',

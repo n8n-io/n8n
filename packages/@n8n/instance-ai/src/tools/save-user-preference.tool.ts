@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { InstanceAiContext, InstanceAiPreferenceWriteResult } from '../types';
