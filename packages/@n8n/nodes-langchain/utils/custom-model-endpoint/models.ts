@@ -15,6 +15,7 @@ import type { EndpointCredential } from './types';
 export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
 
 const NO_LIST_HINT = 'Switch Model to "By ID" and type the model ID that your gateway expects.';
+const MODEL_LIST_TIMEOUT_MS = 30_000;
 
 function idOf(entry: unknown): string | undefined {
 	if (typeof entry === 'string') return entry;
@@ -40,7 +41,21 @@ export async function listGatewayModels(
 	endpoint: EndpointCredential,
 	fetchModels: typeof fetch,
 ): Promise<string[]> {
-	const response = await fetchModels(`${endpoint.baseUrl}/models`, { method: 'GET' });
+	const deadline = AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS);
+	const response = await fetchModels(`${endpoint.baseUrl}/models`, {
+		method: 'GET',
+		signal: deadline,
+	}).catch((error: unknown) => {
+		if (!deadline.aborted) throw error;
+		throw new NodeApiError(
+			node,
+			{},
+			{
+				message: `The gateway did not answer the model list within ${MODEL_LIST_TIMEOUT_MS / 1000} seconds`,
+				description: NO_LIST_HINT,
+			},
+		);
+	});
 	const text = await response.text();
 	const httpCode = String(response.status);
 
