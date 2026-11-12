@@ -1,4 +1,5 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as DesignSystem from '@n8n/design-system';
 import { mount } from '@vue/test-utils';
 import type * as VueUse from '@vueuse/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -288,8 +289,7 @@ describe('AgentInfoPanel', () => {
 	});
 
 	it('keeps identifiers and placeholders in an instructions config update', async () => {
-		const { N8nMarkdownEditor } =
-			await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+		const { N8nMarkdownEditor } = await vi.importActual<typeof DesignSystem>('@n8n/design-system');
 		const instructions =
 			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
 		const wrapper = mount(AgentInfoPanel, {
