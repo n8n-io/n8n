@@ -49,11 +49,11 @@ const batch = (id: string): GraphNode => ({
 	type: 'batch',
 	config: { batchSize: 1 },
 });
-const edge = (from: string, to: string, outputIndex = 0): GraphEdge => ({
+const edge = (from: string, to: string, outputIndex = 0, inputIndex = 0): GraphEdge => ({
 	from,
 	to,
 	outputIndex,
-	inputIndex: 0,
+	inputIndex,
 });
 const backEdge = (from: string, to: string): GraphEdge => ({ ...edge(from, to), isBackEdge: true });
 
@@ -342,6 +342,51 @@ describe('execution completion under racy step:settled delivery (integration)', 
 			expect(run.endEvents()).toEqual([]);
 		}
 	});
+
+	it.each([
+		{
+			/**
+			 * trigger ─► a ─► j
+			 *    └─────► b ──┘   (both into input 0)
+			 */
+			shape: 'both predecessors feed one input',
+			joinEdges: [edge('a', 'j'), edge('b', 'j')],
+		},
+		{
+			/**
+			 * trigger ─► a ─[in 0]─► j
+			 *    └─────► b ─[in 1]──┘
+			 */
+			shape: 'each predecessor feeds its own input',
+			joinEdges: [edge('a', 'j', 0, 0), edge('b', 'j', 0, 1)],
+		},
+	])(
+		'plans a join once and completes once when its two predecessors settle concurrently ($shape)',
+		async ({ joinEdges }) => {
+			const graph: WorkflowGraph = {
+				nodes: [trigger, node('a'), node('b'), node('j')],
+				edges: [edge('trigger', 'a'), edge('trigger', 'b'), ...joinEdges],
+			};
+
+			for (let round = 0; round < 25; round++) {
+				const run = await setup(dataSource, graph, ['a', 'b']);
+				await run.complete('a');
+				await run.complete('b');
+
+				await Promise.all([run.settle('a'), run.settle('b')]);
+
+				expect(run.stepQueue.published).toHaveLength(1);
+				expect(await run.status()).toBe('running');
+				expect(run.endEvents()).toEqual([]);
+
+				await run.complete('j');
+				await Promise.all([run.settle('j'), run.settle('j')]);
+
+				expect(await run.status()).toBe('completed');
+				expect(run.endEvents().map((event) => event.type)).toEqual(['execution:completed']);
+			}
+		},
+	);
 
 	it('announces the end once when the last two steps settle concurrently', async () => {
 		/**
