@@ -41,12 +41,15 @@ import {
 	resolvePublicApiRoutes,
 	resolveRouteArgs,
 	resolveSuccessStatus,
+	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
+import { toPublicApiResult } from '@/public-api/public-api-result';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
 	const output = z.object({ [key]: schema }).safeParse(params);
@@ -76,10 +79,11 @@ function matchesPathTemplate(template: string, path: string): boolean {
 	);
 }
 
-// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
-function routePath(prefix: string, req: Request): string {
-	const path = (prefix === '/' ? '' : prefix) + req.path;
-	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+// Leaves out the version prefix. The name then matches the path that the controller declares.
+function toRouteName(method: string, prefix: string, routeTemplate: string): string {
+	const path = (prefix === '/' ? '' : prefix) + routeTemplate;
+	const trimmedPath = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+	return `${method.toUpperCase()} ${toOpenApiPathTemplate(trimmedPath)}`;
 }
 
 function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
@@ -171,6 +175,7 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
+			const routeName = toRouteName(route.method, prefix, route.path);
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
 
 			const successStatus = resolveSuccessStatus(
@@ -245,7 +250,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
 			middlewares.push(
 				...this.rateLimitService.createRouteLimiters(
 					route.method,
@@ -336,7 +341,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
 		return async (req, res, next) => {
 			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
@@ -356,10 +361,9 @@ export class PublicApiControllerRegistry {
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
-				this.eventService.emit('public-api-invoked', {
+				this.emitInvocationOnFinish(res, {
 					userId,
-					path: routePath(prefix, req),
-					method: req.method,
+					route: routeName,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
 					client: publicApiClient,
@@ -368,6 +372,19 @@ export class PublicApiControllerRegistry {
 
 			next();
 		};
+	}
+
+	/** Counts the call once the answer is sent, so the result is the status the caller received. */
+	private emitInvocationOnFinish(
+		res: Response,
+		invocation: Omit<RelayEventMap['public-api-invoked'], 'result'>,
+	): void {
+		res.once('finish', () => {
+			this.eventService.emit('public-api-invoked', {
+				...invocation,
+				result: toPublicApiResult(res.statusCode),
+			});
+		});
 	}
 
 	/**

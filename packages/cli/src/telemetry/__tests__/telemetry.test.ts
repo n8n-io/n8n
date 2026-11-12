@@ -8,6 +8,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import { defineTelemetryEvents, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
@@ -1094,13 +1095,13 @@ describe('Telemetry', () => {
 			vi.setSystemTime(testDateTime);
 		});
 
-		test('should count calls per user and endpoint', () => {
+		test('should count calls per user and route', () => {
 			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1108,8 +1109,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1117,8 +1118,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/executions',
-				method: 'POST',
+				route: 'POST /executions',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
 				client: 'other',
@@ -1135,11 +1136,46 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, other: 3 });
 		});
 
+		test('should count calls per route, result and caller', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '2xx',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '4xx',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '2xx',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].routes).toStrictEqual({
+				'GET /workflows/{workflowId}': {
+					'2xx': { other: 2 },
+					'4xx': { editor_ui: 1 },
+				},
+			});
+		});
+
 		test('should handle missing user_agent', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1153,8 +1189,8 @@ describe('Telemetry', () => {
 		test('should track multiple users independently', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1162,8 +1198,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user2',
-				path: '/executions',
-				method: 'POST',
+				route: 'POST /executions',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
 				client: 'other',
@@ -1180,24 +1216,24 @@ describe('Telemetry', () => {
 		test('should count calls for the editor_ui client in the same entry', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'editor_ui',
 			});
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/executions',
-				method: 'GET',
+				route: 'GET /executions',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1213,6 +1249,10 @@ describe('Telemetry', () => {
 						'GET /executions': 1,
 					},
 					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
+					routes: {
+						'GET /workflows': { '2xx': { other: 1, editor_ui: 1 } },
+						'GET /executions': { '2xx': { other: 1 } },
+					},
 					first: expect.any(Date),
 					user_agents: {},
 				},
@@ -1225,8 +1265,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1652,8 +1692,8 @@ describe('Telemetry', () => {
 		test('should send the buffered events and empty the buffers', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1667,10 +1707,37 @@ describe('Telemetry', () => {
 					total_calls: 1,
 					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
 					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
+					routes: JSON.stringify({ 'GET /workflows': { '2xx': { other: 1 } } }),
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should keep the usage report small when one user makes many calls to one route', () => {
+			for (let call = 0; call < 1000; call++) {
+				telemetry.trackApiInvocation({
+					user_id: 'user1',
+					route: 'GET /executions/{executionId}',
+					result: '2xx',
+					api_version: 'v1',
+					user_agent: 'my-script/1.0',
+					client: 'other',
+				});
+			}
+
+			telemetry.flushBuffers();
+
+			const usageEventCall = spyTrack.mock.calls.find(([event]) => event === 'Public API usage');
+			const usageProperties: Record<string, string | number> = usageEventCall?.[1] ?? {};
+			const reportSize = Buffer.byteLength(JSON.stringify(usageProperties), 'utf8');
+			expect(reportSize).toBeLessThan(1024);
+			expect(jsonParse(String(usageProperties.endpoints))).toEqual({
+				'GET /executions/{executionId}': 1000,
+			});
+			expect(jsonParse(String(usageProperties.routes))).toEqual({
+				'GET /executions/{executionId}': { '2xx': { other: 1000 } },
+			});
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {

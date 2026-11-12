@@ -294,13 +294,172 @@ describe('PublicApiControllerRegistry', () => {
 			.set({ 'x-n8n-client': 'editor-ui', 'user-agent': 'n8n-cli/1.0' })
 			.expect(200);
 
-		expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
-			userId: 'user-1',
-			path: '/widgets/w-1',
-			method: 'GET',
-			apiVersion: 'v1',
-			userAgent: 'n8n-cli/1.0',
-			client: 'editor_ui',
+		await vi.waitFor(() =>
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
+				userId: 'user-1',
+				route: 'GET /widgets/{widgetId}',
+				result: '2xx',
+				apiVersion: 'v1',
+				userAgent: 'n8n-cli/1.0',
+				client: 'editor_ui',
+			}),
+		);
+	});
+
+	describe('public-api-invoked event', () => {
+		const invokedEvents = () =>
+			eventService.emit.mock.calls.filter(([event]) => event === 'public-api-invoked');
+
+		it('names the route by its template, so every id maps to one route', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/:widgetId')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const app = activate();
+			await request(app).get('/api/v1/widgets/abc').expect(200);
+			await request(app).get('/api/v1/widgets/xyz').expect(200);
+
+			await vi.waitFor(() => expect(invokedEvents()).toHaveLength(2));
+			const routeMatcher = expect.objectContaining({ route: 'GET /widgets/{widgetId}' });
+			expect(invokedEvents()).toEqual([
+				['public-api-invoked', routeMatcher],
+				['public-api-invoked', routeMatcher],
+			]);
+		});
+
+		it('names a root route without a trailing slash', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(200);
+
+			await vi.waitFor(() =>
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'public-api-invoked',
+					expect.objectContaining({ route: 'GET /widgets' }),
+				),
+			);
+		});
+
+		it('records a handler NotFoundError as a 4xx result', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/:widgetId')
+				@ApiResponse(200)
+				method() {
+					throw new NotFoundError('Widget not found');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets/w-1').expect(404);
+
+			await vi.waitFor(() =>
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'public-api-invoked',
+					expect.objectContaining({ result: '4xx' }),
+				),
+			);
+		});
+
+		it('records a handler failure as a 5xx result', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					throw new Error('Unexpected failure');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(500);
+
+			await vi.waitFor(() =>
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'public-api-invoked',
+					expect.objectContaining({ result: '5xx' }),
+				),
+			);
+		});
+
+		it('records a call that the API-key scope check rejects as a 4xx result', async () => {
+			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+				req.user = authenticatedUser;
+				req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
+				return { authenticated: true };
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@ApiKeyScope('workflow:read')
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(403);
+
+			await vi.waitFor(() =>
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'public-api-invoked',
+					expect.objectContaining({ route: 'GET /widgets', result: '4xx' }),
+				),
+			);
+		});
+
+		it('records the call after the answer is sent, not while the handler runs', async () => {
+			let emitCountInsideHandler: number | undefined;
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					emitCountInsideHandler = invokedEvents().length;
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(emitCountInsideHandler).toBe(0);
+			await vi.waitFor(() => expect(invokedEvents()).toHaveLength(1));
+		});
+
+		it('does not record a call that fails authentication', async () => {
+			authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(401);
+
+			expect(invokedEvents()).toHaveLength(0);
 		});
 	});
 
