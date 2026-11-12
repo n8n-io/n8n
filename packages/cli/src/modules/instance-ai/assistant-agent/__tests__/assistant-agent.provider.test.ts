@@ -328,7 +328,6 @@ describe('AssistantAgentProvider', () => {
 			const target = { credentialType: 'slackApi', baseUrl: 'http://stub', urlField: 'url' };
 			vi.spyOn(turnOverrides, 'getBuildMode').mockReturnValue('progressive');
 			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('progressive@1');
-			vi.spyOn(turnOverrides, 'getObserverThresholdTokens').mockReturnValue(5_000);
 			vi.spyOn(turnOverrides, 'getCredentialIdAllowlist').mockReturnValue(['cred-1']);
 			vi.spyOn(turnOverrides, 'shouldBypassCredentialTest').mockReturnValue(true);
 			vi.spyOn(turnOverrides, 'getCredentialTestTarget').mockReturnValue(target);
@@ -338,7 +337,8 @@ describe('AssistantAgentProvider', () => {
 			const { turnState } = turnEnvironment.create.mock.calls[0][1];
 			expect(turnState.getBuildMode()).toBe('progressive');
 			expect(turnState.getPromptVersion()).toBe('progressive@1');
-			expect(turnState.getObserverThresholdTokens()).toBe(5_000);
+			// The Assistant agent has no threshold override.
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
 			expect(turnState.getCredentialIdAllowlist()).toEqual(['cred-1']);
 			expect(turnState.shouldBypassCredentialTest('cred-1')).toBe(true);
 			expect(turnState.getCredentialTestTarget('slackApi')).toBe(target);

@@ -32,11 +32,6 @@ export class AssistantTurnOverrides {
 		return undefined;
 	}
 
-	/** The observer threshold of the thread. `undefined` uses the instance setting. */
-	getObserverThresholdTokens(_threadId: string): number | undefined {
-		return undefined;
-	}
-
 	/** The build mode of the thread. `undefined` uses the experiment assignment. */
 	getBuildMode(_threadId: string): InstanceAiBuildMode | undefined {
 		return undefined;

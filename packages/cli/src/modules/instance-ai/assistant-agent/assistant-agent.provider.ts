@@ -449,7 +449,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			setPromptConfiguration: () => {},
 			setSetupPanelEnabled: () => {},
 			getBrowserUseAvailable: () => options.request.browserUseAvailable,
-			getObserverThresholdTokens: () => overrides.getObserverThresholdTokens(threadId),
+			// The Assistant agent has no threshold override. Memory uses the configured policy.
+			getObserverThresholdTokens: () => undefined,
 			getCredentialIdAllowlist: () => overrides.getCredentialIdAllowlist(threadId),
 			shouldBypassCredentialTest: (credentialId) =>
 				overrides.shouldBypassCredentialTest(threadId, credentialId),
