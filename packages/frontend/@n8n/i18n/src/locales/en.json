@@ -140,6 +140,11 @@
 	"inbox.promotionReview.approve.disabled.conflicts": "The merge request has conflicts. Resolve them on GitLab.",
 	"inbox.promotionReview.approve.disabled.changesUnavailable": "n8n couldn't show the changes of this review. Review and merge it on GitLab.",
 	"inbox.promotionReview.approve.error.title": "Couldn't approve and merge",
+	"inbox.promotionReview.close.button": "Close review",
+	"inbox.promotionReview.close.confirm.title": "Close this promotion review?",
+	"inbox.promotionReview.close.confirm.titleNamed": "Close '{title}'?",
+	"inbox.promotionReview.close.confirm.description": "This closes the review in n8n and can't be undone. The merge request stays open on GitLab.",
+	"inbox.promotionReview.close.error.title": "Couldn't close review",
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {
