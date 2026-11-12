@@ -46,7 +46,7 @@ export type Finding = {
 
 export const CHECKS = {
 	PROVENANCE: 'provenance',
-	ATTESTED_SOURCE: 'source',
+	SOURCE_REPOSITORY: 'source',
 	ESLINT: 'eslint',
 } as const;
 
@@ -557,7 +557,7 @@ export const isLocalPath = (packageSpec: string): boolean => {
 };
 
 /** npm provenance and the attested source only exist after publishing. */
-export const LOCAL_SKIPPED_CHECKS: readonly Check[] = [CHECKS.PROVENANCE, CHECKS.ATTESTED_SOURCE];
+export const LOCAL_SKIPPED_CHECKS: readonly Check[] = [CHECKS.PROVENANCE, CHECKS.SOURCE_REPOSITORY];
 
 export type PackageScan = AnalysisResult & {
 	readonly packageName: string;
@@ -709,7 +709,7 @@ export const analyzePackageByName = async (
 					packageName,
 					version: exactVersion,
 					passed: false,
-					check: CHECKS.ATTESTED_SOURCE,
+					check: CHECKS.SOURCE_REPOSITORY,
 					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
 					error: sourceError,
 				};
@@ -719,7 +719,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				passed: false,
-				check: CHECKS.ATTESTED_SOURCE,
+				check: CHECKS.SOURCE_REPOSITORY,
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
 			};
 		}
