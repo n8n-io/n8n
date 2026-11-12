@@ -4,6 +4,34 @@ import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { guardToolResultForModel } from '../tools/tool-result-guard';
 
 describe('guardToolResultForModel', () => {
+	it('offloads a large uninterrupted result without exact tokenization', async () => {
+		const filesystem = new InMemoryFilesystem();
+		const writeFile = vi.spyOn(filesystem, 'writeFile');
+		const output = 'x'.repeat(400_000);
+		const serialized = JSON.stringify(output);
+		// AGENT-662: Observe full-payload tokenization without blocking the test on BPE encoding.
+		const countTokens = vi.fn((text: string) => Math.ceil(text.length / 4));
+
+		const guarded = await guardToolResultForModel(output, countTokens, {
+			filesystem,
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+		});
+
+		expect(guarded).toMatchObject({
+			truncated: false,
+			offloaded: true,
+			historyOutput: { _offloaded: true, originalCharCount: serialized.length },
+		});
+		expect(guarded.wireOutput).toEqual(guarded.historyOutput);
+		expect(writeFile).toHaveBeenCalledExactlyOnceWith(
+			expect.any(String),
+			serialized,
+			expect.objectContaining({ recursive: true, overwrite: true }),
+		);
+		expect(countTokens).toHaveBeenCalledTimes(0);
+	});
+
 	it.each([false, true])(
 		'preserves a uniform-space result below the token limit with storage available: %s',
 		async (storageAvailable) => {
