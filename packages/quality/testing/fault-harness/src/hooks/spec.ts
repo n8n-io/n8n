@@ -62,7 +62,11 @@ export const hookSpecSchema = methodRef
 		/** Set when older images lack the file; the install check then fails only when the file loads and the method is missing. */
 		optional: z.boolean().optional(),
 	})
-	.strict();
+	.strict()
+	.refine((spec) => spec.kind !== 'drop' || spec.phase !== 'after', {
+		message: 'a drop hook runs before the call',
+		path: ['phase'],
+	});
 
 /** Writes fixed values onto an exported object, or onto the exports with `target: ''`, when the file loads. */
 export const setHookSpecSchema = z
