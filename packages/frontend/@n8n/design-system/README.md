@@ -192,7 +192,14 @@ A failed test writes the actual image and a diff image to
 
 The reference images that Git keeps are Linux images (`*-chromium-linux.png`), and only CI
 makes them. On macOS or Windows, the tests make images for your platform, and `.gitignore`
-keeps them out of Git. To check a change on your computer:
+keeps them out of Git.
+
+On Linux, the tests make `*-chromium-linux.png` images, with the same names as the committed
+references, so `.gitignore` cannot keep them out. Do not commit them: your fonts and your
+Chromium are not the ones that CI uses. Commit only the images that `test:visual:accept`
+copies from CI (see below).
+
+To check a change on your computer:
 
 1. On `master`, run `pnpm --filter @n8n/storybook test:visual`. The first run fails and
    writes your local reference images. Run it again. It must pass.
@@ -255,7 +262,9 @@ in Storybook.
 
 #### Accept new reference images
 
-When you add or change a story, CI makes the new Linux images:
+No CI job runs the visual tests yet, so Git has no reference images, and CI uploads no
+artifact. Until the job exists, use a local baseline (see above). When the job exists, CI
+makes the new Linux images for each story that you add or change:
 
 1. Push your branch. The visual tests in CI fail and upload the `visual-test-diffs`
    artifact.
