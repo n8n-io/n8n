@@ -15,14 +15,15 @@ describe('CreateAgentDto', () => {
 	});
 
 	it('rejects an initial config that is not a valid agent config', () => {
-		const request = {
+		// Invalid on purpose, so it cannot use the DTO input type.
+		const request: unknown = {
 			name: 'Agent',
 			// Missing the required config fields `name`, `model`, and `instructions`.
 			config: { instructions: 'Help users' },
 		};
 		expect(CreateAgentDto.safeParse(request).success).toBe(false);
 		expect(CreateAgentDto.schema.safeParse(request).success).toBe(false);
-		expect(() => new CreateAgentDto(request)).toThrow();
+		expect(() => new CreateAgentDto(request as never)).toThrow();
 	});
 
 	it('rejects initial config combined with a duplication schema', () => {
