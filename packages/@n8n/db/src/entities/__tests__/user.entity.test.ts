@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AuthIdentity } from '../auth-identity';
 import { type Role } from '../role';

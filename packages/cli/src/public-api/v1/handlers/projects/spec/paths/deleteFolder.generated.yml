@@ -2,7 +2,10 @@ operationId: deleteFolder
 tags:
   - Folders
 summary: Delete a folder
-description: Delete a folder within a project. When `transferToFolderId` is provided, workflows and sub-folders are moved to the target folder before deletion. When omitted, workflows are moved to the project root and archived, and child folders are deleted.
+description: |-
+  Delete a folder within a project. When `transferToFolderId` is provided, workflows and sub-folders are moved to the target folder before deletion. When omitted, workflows are moved to the project root and archived, and child folders are deleted.
+
+  Requires the `folder:delete` API key scope.
 x-required-scope: folder:delete
 parameters:
   - schema:

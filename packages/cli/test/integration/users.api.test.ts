@@ -947,6 +947,30 @@ describe('GET /users/:id/password-reset-link', () => {
 	});
 });
 
+describe('POST /users/:id/invite-link', () => {
+	let owner: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		owner = await createOwner();
+	});
+
+	it('should return 404 for a service account', async () => {
+		const serviceAccount = await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.post(`/users/${serviceAccount.id}/invite-link`)
+			.expect(404);
+
+		expect(response.body.message).toBe('User to generate invite link for not found');
+	});
+});
+
 describe('PATCH /users/:id/settings', () => {
 	let owner: User;
 	let member: User;
@@ -1471,6 +1495,7 @@ describe('PATCH /users/:id/role', () => {
 		test.each([
 			['is missing', {}],
 			['is `owner`', { newRoleName: 'global:owner' }],
+			['is `agent`', { newRoleName: 'global:agent' }],
 			['is an array', { newRoleName: ['global:owner'] }],
 		])('%s', async (_, payload) => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);

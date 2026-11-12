@@ -13,3 +13,14 @@ export async function approvePromotionReview(
 		{ ...payload },
 	);
 }
+
+export async function closePromotionReview(
+	context: IRestApiContext,
+	reviewId: string,
+): Promise<InboxPromotionReviewItem> {
+	return await makeRestApiRequest<InboxPromotionReviewItem>(
+		context,
+		'POST',
+		`/promotions/reviews/${encodeURIComponent(reviewId)}/close`,
+	);
+}

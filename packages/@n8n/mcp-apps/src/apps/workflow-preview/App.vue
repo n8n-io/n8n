@@ -120,7 +120,7 @@ const {
 			/>
 		</McpFallbackCard>
 
-		<N8nSpinner v-else type="ring" />
+		<N8nSpinner v-else type="brand" size="xxlarge" />
 	</McpAppContainer>
 </template>
 

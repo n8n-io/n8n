@@ -26,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
+	N8nSpinner,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -91,6 +92,7 @@ import type {
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentArchive } from '../composables/useAgentArchive';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -287,6 +289,7 @@ const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBas
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
+const { archive, unarchive } = useAgentArchive();
 
 // Artifact mode reuses this route shell inside Instance AI. It still relies on
 // singleton agent session/credential stores, so only one builder shell should
@@ -802,14 +805,17 @@ const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agen
 const {
 	canUpdate: canEditAgent,
 	canDelete: canDeleteAgent,
-	canExecute: canExecuteAgent,
+	canExecute: hasExecuteScope,
 } = useAgentPermissions(projectId);
+const isAgentArchived = computed(() => agent.value?.isArchived === true);
+// The backend rejects runs for an archived agent.
+const canExecuteAgent = computed(() => hasExecuteScope.value && !isAgentArchived.value);
 // True while an eval suggestion is being applied, see `runConfigWrite`.
 const configWriteInFlight = ref(false);
 // True while writes from this tab must not reach the backend: the AI is
 // mutating this agent (artifact build lock or the embedded assistant), an eval
-// suggestion is being applied to the saved config, or another client holds the
-// collaboration write lock (multi-tab / multi-user).
+// suggestion is being applied to the saved config, another client holds the
+// collaboration write lock (multi-tab / multi-user), or the agent is archived.
 // Every write path — the editor, the header actions, and the autosave loops —
 // keys off this.
 const isEditingLocked = computed(
@@ -817,7 +823,8 @@ const isEditingLocked = computed(
 		props.artifactEditingLocked ||
 		embeddedAiBuilding.value ||
 		configWriteInFlight.value ||
-		agentCollaborationStore.shouldBeReadOnly,
+		agentCollaborationStore.shouldBeReadOnly ||
+		isAgentArchived.value,
 );
 // Combines permission with the lock: while locked, editing is disabled even
 // for a user who otherwise has permission — mirrors the workflow artifact's
@@ -1112,15 +1119,6 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
-// Knowledge, Executions and Settings all read agent-scoped endpoints, so they
-// have nothing to show until the agent exists. Configuring the agent is what
-// creates it, so that is the only tab worth offering first.
-const visibleMainTabOptions = computed(() =>
-	isUnsaved.value
-		? mainTabOptions.value.filter((tab) => tab.value === 'agent')
-		: mainTabOptions.value,
-);
-
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 // Without n8n Chat in the known trigger types, the baseline drops its chip.
 const { withN8nChat } = useN8nChatChannel();
@@ -1154,6 +1152,7 @@ watch(
 const isBuilt = computed(() => agent.value?.isRunnable === true);
 const previewDisabledReason = computed(() => {
 	if (isArtifactMode.value) return undefined;
+	if (isAgentArchived.value) return locale.baseText('agents.builder.chatMode.archived');
 	if (!canExecuteAgent.value) return locale.baseText('agents.builder.chatMode.noPermission');
 	if (chatModeBusy.value) return locale.baseText('agents.builder.chatMode.building');
 	return undefined;
@@ -1216,7 +1215,7 @@ function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boo
 async function onGenerateEvalCases() {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	if (!targetProjectId || !targetAgentId) return;
+	if (!targetProjectId || !targetAgentId || isUnsaved.value) return;
 
 	try {
 		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
@@ -2751,17 +2750,13 @@ const removeAgentUpdateListener = pushConnectionStore.addEventListener(onAgentPu
 // this builder mounted is still honoured — which is the normal case, since the
 // assistant reveals the agent artifact as part of accepting the suggestion.
 watch(
-	[() => agentEvalsStore.pendingEvalsFocus, agentId, visibleMainTabOptions, initialized],
+	[() => agentEvalsStore.pendingEvalsFocus, agentId, mainTabOptions, initialized, isUnsaved],
 	() => {
 		if (!agentEvalsStore.pendingEvalsFocus) return;
-		// Hold the request until initialize() resolves: `isUnsaved` — and so the tab
-		// row — isn't settled before then, so deciding earlier would honour a
-		// request for an agent whose Evals tab turns out to be hidden.
-		if (!initialized.value) return;
-		// Checked against the rendered tab row rather than the flag, so the request
-		// can't select a tab the user has no way to see — `visibleMainTabOptions`
-		// also drops everything but Agent while the agent is still unsaved.
-		if (!visibleMainTabOptions.value.some((option) => option.value === 'evals')) return;
+		// Assistant requests can generate cases, which requires a saved Agent.
+		if (!initialized.value || isUnsaved.value) return;
+		// Keep focus requests pending while the Evals feature flag is off.
+		if (!mainTabOptions.value.some((option) => option.value === 'evals')) return;
 
 		const request = agentEvalsStore.consumeEvalsFocus(agentId.value);
 		if (!request) return;
@@ -2817,17 +2812,53 @@ const headerActions = computed(() => {
 		divided: true,
 	});
 
-	if (canDeleteAgent.value) {
-		actions.push({
-			id: 'delete',
-			label: locale.baseText('agents.builder.deleteAgent'),
-			icon: 'trash-2',
-			divided: true,
-		});
-	}
-
-	return actions;
+	return [...actions, ...archiveHeaderActions.value];
 });
+
+const archiveHeaderActions = computed((): Array<ActionDropdownItem<string>> => {
+	if (!canDeleteAgent.value || isUnsaved.value) return [];
+	if (!isAgentArchived.value) {
+		return [
+			{
+				id: 'archive',
+				label: locale.baseText('menuActions.archive'),
+				icon: 'archive',
+				divided: true,
+			},
+		];
+	}
+	return [
+		{
+			id: 'unarchive',
+			label: locale.baseText('menuActions.unarchive'),
+			icon: 'archive-restore',
+			divided: true,
+		},
+		{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent'), icon: 'trash-2' },
+	];
+});
+
+async function onArchiveAgent() {
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
+	// Save pending edits first. The backend rejects edits to an archived agent.
+	// A locked editor has no edits of its own to save.
+	if (!isEditingLocked.value && !(await flushBeforePublish())) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	const updated = await archive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
+}
+
+async function onUnarchiveAgent() {
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
+	const updated = await unarchive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
+}
 
 async function exportAgentJson() {
 	if (!localConfig.value) return;
@@ -2929,6 +2960,14 @@ async function onHeaderAction(action: string) {
 		await favoritesStore.toggleFavorite(agentId.value, 'agent');
 		return;
 	}
+	if (action === 'archive') {
+		await onArchiveAgent();
+		return;
+	}
+	if (action === 'unarchive') {
+		await onUnarchiveAgent();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -3004,9 +3043,9 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
-		schema: personalisation ? { personalisation } : null,
+		project: null,
+		isArchived: false,
 		availableInMCP: false,
-		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
 		hasVersionHistory: false,
@@ -3014,8 +3053,20 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		updatedAt: now,
 		versionId: null,
 		activeVersionId: null,
+		config: personalisation
+			? {
+					name: locale.baseText('agents.new.defaultName'),
+					model: '',
+					instructions: '',
+					personalisation,
+				}
+			: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
 		activeVersion: null,
 	};
 }
@@ -3581,7 +3632,8 @@ useKeybindings({
 				!isArtifactMode &&
 				instanceAiAvailable &&
 				!showAiPanel &&
-				!agentCollaborationStore.shouldBeReadOnly
+				!agentCollaborationStore.shouldBeReadOnly &&
+				!isAgentArchived
 			"
 			:class="$style.aiToggleBar"
 		>
@@ -3741,7 +3793,7 @@ useKeybindings({
 				<AgentBuildingIndicator />
 			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
-				<N8nIcon icon="spinner" spin />
+				<N8nSpinner type="brand" size="xxlarge" />
 			</div>
 			<template v-else>
 				<AgentTestChatPage
@@ -3790,7 +3842,7 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:main-tab-options="visibleMainTabOptions"
+					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:saved-description="localConfig?.description ?? ''"

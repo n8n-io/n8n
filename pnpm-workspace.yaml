@@ -294,6 +294,7 @@ catalog:
   vite-plugin-singlefile: 2.3.3
   vitest: 5.0.1
   vitest-mock-extended: ^3.1.0
+  vize: 0.715.0
   vm2: 3.12.2
   xml2js: 0.6.2
   xss: 1.0.15
@@ -325,6 +326,7 @@ catalogs:
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vitejs/plugin-vue': ^6.0.8
+    '@vue/compiler-dom': ^3.5.13
     '@vue/language-core': ^3.3.11
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0

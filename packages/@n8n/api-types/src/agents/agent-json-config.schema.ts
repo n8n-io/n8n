@@ -470,8 +470,8 @@ export const BudgetGuardrailConfigSchema = z
 
 /**
  * PII entity set for `pii` tool guardrails. Mirrors `PIIEntity` in
- * `@n8n/nodes-langchain` (`nodes/Guardrails/actions/checks/pii.ts`) —
- * api-types cannot depend on that package. Keep in sync.
+ * `@n8n/ai-utilities` (`src/guardrails/checks/pii.ts`) — api-types cannot
+ * depend on that package (it depends on api-types). Keep in sync.
  */
 export const TOOL_GUARDRAIL_PII_ENTITIES = [
 	// Global
