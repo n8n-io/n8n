@@ -1,4 +1,4 @@
-import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
+import type { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -868,6 +868,98 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(threadIds.sort()).toEqual(['thread-1', 'thread-2']);
 		const [job] = await repository.findWakeableUnconsumed('thread-1');
 		expect(job?.parentResourceId).toHaveLength(255);
+	});
+
+	it('keeps the result version when a wake attempt claims and releases it', async () => {
+		// The wake failure brake keys on updatedAt. A claim must not look like a new result.
+		const parentThreadId = uuid();
+		const id = uuid();
+		await insertJob({ id, parentThreadId });
+		const before = (await repository.findById(id))?.updatedAt;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		const attempt = uuid();
+		await repository.claimForWake(parentThreadId, [id], attempt);
+		expect((await repository.findById(id))?.updatedAt).toEqual(before);
+		await repository.releaseWakeClaim(parentThreadId, attempt);
+		expect((await repository.findById(id))?.updatedAt).toEqual(before);
+	});
+
+	it('links selected results to one wake attempt until they are consumed or released', async () => {
+		const parentThreadId = uuid();
+		const [first, second, late] = [uuid(), uuid(), uuid()];
+		await insertJob({ id: first, parentThreadId });
+		await insertJob({ id: second, parentThreadId });
+		const attempt = uuid();
+
+		await repository.claimForWake(parentThreadId, [first, second], attempt);
+		await insertJob({ id: late, parentThreadId });
+
+		const claims = async () =>
+			Object.fromEntries(
+				(await repository.findWakeableUnconsumed(parentThreadId)).map((job) => [
+					job.id,
+					job.wakeAttemptId,
+				]),
+			);
+		expect(await claims()).toEqual({ [first]: attempt, [second]: attempt, [late]: null });
+		// A result that another attempt holds fails the claim. The failed wake releases its rows.
+		const rejected = uuid();
+		await expect(
+			repository.claimForWake(parentThreadId, [first, late], rejected),
+		).rejects.toThrow();
+		await repository.releaseWakeClaim(parentThreadId, rejected);
+		expect(await claims()).toEqual({ [first]: attempt, [second]: attempt, [late]: null });
+
+		await repository.markMailConsumed(parentThreadId, [first], true);
+		expect(await repository.findById(first)).toMatchObject({ wakeAttemptId: null });
+		expect((await repository.findById(first))?.notifiedAt).toBeInstanceOf(Date);
+
+		await repository.releaseWakeClaim(parentThreadId, attempt);
+		expect(await claims()).toEqual({ [second]: null, [late]: null });
+	});
+
+	it('consumes results of a started wake after a restart without running the agent again', async () => {
+		const jobId = uuid();
+		const user = await createOwner();
+		await insertJob({
+			id: jobId,
+			parentThreadId: 'thread-1',
+			parentResourceId: `draft-chat:${user.id}`,
+			parentPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+		});
+		// The previous process started the wake and then failed to record it.
+		await repository.claimForWake('thread-1', [jobId], uuid());
+
+		const orchestrator = mock<AgentExecutionOrchestratorService>();
+		const jobService = mock<AgentBackgroundJobService>();
+		jobService.markMailConsumed.mockImplementation(
+			async (...args) => await repository.markMailConsumed(...args),
+		);
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const wakeService = new AgentWakeService(
+			Container.get(AgentExecutionThreadRepository),
+			repository,
+			mock<AgentConversationStateService>(),
+			agentRepository,
+			mock<UserRepository>(),
+			mock<ChatIntegrationRegistry>(),
+			orchestrator,
+			Container.get(LockService),
+			mock<Publisher>(),
+			mock<InstanceSettings>({ isWorker: false }),
+			mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+			logger,
+			jobService,
+			mock<AgentPlanService>(),
+		);
+
+		await wakeService.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(await repository.findById(jobId)).toMatchObject({ wakeAttemptId: null });
+		expect((await repository.findById(jobId))?.notifiedAt).toBeInstanceOf(Date);
 	});
 
 	it('settles a job, delays its wake, retries delivery, and marks the result as delivered', async () => {

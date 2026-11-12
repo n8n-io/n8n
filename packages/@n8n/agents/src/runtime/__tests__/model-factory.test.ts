@@ -384,30 +384,41 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('uses the Responses API when a baseURL explicitly serves it', () => {
+	it('uses the Responses API when a baseURL explicitly serves it', async () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
 		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
-		const model = createModel({
-			id: 'openai/gpt-5-mini',
-			apiKey: 'gateway-jwt',
-			baseURL: 'https://gw.example/v1/gateway/openai/v1',
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
-		expect(model.api).toBeUndefined();
+		const { fetchFn, paths } = fakeEndpoint({ '/v1/gateway/openai/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/gpt-5-mini',
+				apiKey: 'gateway-jwt',
+				baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'https://gw.example/v1/gateway/openai/v1/responses',
+		});
+		expect(paths).toEqual(['/v1/gateway/openai/v1/responses']);
 	});
 
-	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
-		const model = createModel({
-			id: 'openai/mock-model',
-			apiKey: 'sk-test',
-			url: 'http://127.0.0.1:1234/v1',
-			// Pinned, so the alias is asserted on the adapter itself instead of on the
-			// wrapper the automatic choice returns.
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
-		expect(model.api).toBeUndefined();
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', async () => {
+		const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/mock-model',
+				apiKey: 'sk-test',
+				url: 'http://127.0.0.1:1234/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'http://127.0.0.1:1234/v1/responses',
+		});
 	});
 
 	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
@@ -462,8 +473,9 @@ describe('createModel', () => {
 				prompt: [],
 				providerOptions: { openai: { reasoningEffort: 'low' } },
 			});
+			// A requested effort is forced through, as the SDK cannot tell from a proxy's model id.
 			expect(result.providerOptions).toEqual({
-				openai: { store: false, reasoningEffort: 'low' },
+				openai: { store: false, reasoningEffort: 'low', forceReasoning: true },
 			});
 		});
 
