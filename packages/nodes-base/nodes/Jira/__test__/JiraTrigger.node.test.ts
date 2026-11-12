@@ -985,76 +985,24 @@ describe('JiraTrigger', () => {
 			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 
-		test('should reject a token signed with a different secret', async () => {
-			const token = sign({}, 'another-secret');
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject an expired token', async () => {
-			const token = sign({}, clientSecret, { expiresIn: '-1m' });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token without an expiry', async () => {
-			const token = jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, {
-				algorithm: 'HS256',
-			});
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token signed with another HMAC algorithm', async () => {
-			const token = sign({}, clientSecret, { algorithm: 'HS384' });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token with an unexpected issuer', async () => {
-			const token = sign({ iss: 'someone-else' });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject an unsigned (alg none) token', async () => {
+		test.each([
+			['signed with a different secret', sign({}, 'another-secret')],
+			['that is expired', sign({}, clientSecret, { expiresIn: '-1m' })],
+			[
+				'without an expiry',
+				jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256' }),
+			],
+			['signed with another HMAC algorithm', sign({}, clientSecret, { algorithm: 'HS384' })],
+			['with an unexpected issuer', sign({ iss: 'someone-else' })],
 			// Carries a valid issuer and site, so only the signature check can reject it.
-			const token = jwt.sign({ iss: clientId, context: { cloudId } }, '', { algorithm: 'none' });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token issued for a different site', async () => {
-			const token = sign({ context: { cloudId: 'another-site-cloud-id' } });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token without a site in its context', async () => {
-			const token = sign({ context: undefined });
-			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
-
-			expect(response.status).toHaveBeenCalledWith(403);
-			expect(responseData).toEqual({ noWebhookResponse: true });
-		});
-
-		test('should reject a token issued in the future', async () => {
-			const futureIat = Math.floor(Date.now() / 1000) + 600;
-			const token = sign({ iat: futureIat });
+			[
+				'that is unsigned (alg none)',
+				jwt.sign({ iss: clientId, context: { cloudId } }, '', { algorithm: 'none' }),
+			],
+			['issued for a different site', sign({ context: { cloudId: 'another-site-cloud-id' } })],
+			['without a site in its context', sign({ context: undefined })],
+			['issued in the future', sign({ iat: Math.floor(Date.now() / 1000) + 600 })],
+		])('should reject a token %s', async (_name, token) => {
 			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
 
 			expect(response.status).toHaveBeenCalledWith(403);
