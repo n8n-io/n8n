@@ -30,11 +30,19 @@ const guaranteesTeleportation = (prop: AttributeNode | DirectiveNode) => {
 		return prop.value === undefined || prop.value.content === '' || prop.value.content === 'true';
 	}
 
-	return prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION && prop.exp.content.trim() === 'true';
+	if (prop.exp?.type !== NodeTypes.SIMPLE_EXPRESSION) return false;
+
+	// A plain literal or identifier has no parsed AST (`null`). Anything else, such as
+	// `(true)` or `true /* note */`, has its parsed expression in `ast`.
+	const { ast, content } = prop.exp;
+	if (ast === null || ast === undefined) return content.trim() === 'true';
+	return ast !== false && ast.type === 'BooleanLiteral' && ast.value;
 };
 
 // The Vue template rules report syntax errors, so this rule ignores them.
-const parseSfc = (source: string) => parse(source, { parseMode: 'sfc', onError: () => {} });
+// `prefixIdentifiers` makes the parser parse each binding expression.
+const parseSfc = (source: string) =>
+	parse(source, { parseMode: 'sfc', prefixIdentifiers: true, onError: () => {} });
 
 // Most SFCs have no dropdown menu, so a text check saves the parse.
 const mentionsDropdown = (source: string) =>
@@ -119,6 +127,9 @@ export const RequireTeleportedTooltipInDropdownRule = ESLintUtils.RuleCreator.wi
 				// text of that block. Read the SFC, and report from the first block only,
 				// so that each problem is reported once. Oxlint rejects a location outside
 				// the block, so the message carries the template position.
+				// Oxlint gives the rule no offset of the block. So when two script blocks
+				// have the same text, for example the same comment, both read as the first
+				// block, and Oxlint reports each problem twice.
 				const sfc = readFileSync(context.physicalFilename, 'utf8');
 				if (!mentionsDropdown(sfc)) return;
 				const root = parseSfc(sfc);

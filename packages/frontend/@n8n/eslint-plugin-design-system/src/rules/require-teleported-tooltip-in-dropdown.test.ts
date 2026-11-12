@@ -44,6 +44,11 @@ ruleTester.run('require-teleported-tooltip-in-dropdown', RequireTeleportedToolti
 			filename: 'Component.vue',
 			code: vue('<N8nDropdownMenu><N8nTooltip :teleported="true" /></N8nDropdownMenu>'),
 		},
+		...['(true)', '((true))', 'true /* note */', ' true '].map((binding) => ({
+			name: `the binding ${binding}`,
+			filename: 'Component.vue',
+			code: vue(`<N8nDropdownMenu><N8nTooltip :teleported="${binding}" /></N8nDropdownMenu>`),
+		})),
 		{
 			filename: 'Component.vue',
 			code: vue('<N8nTooltip :teleported="false" />'),
@@ -73,6 +78,12 @@ ruleTester.run('require-teleported-tooltip-in-dropdown', RequireTeleportedToolti
 			code: vue('<n8n-dropdown-menu><n8n-tooltip :teleported="false" /></n8n-dropdown-menu>'),
 			errors: [{ messageId: 'requireTeleported' }],
 		},
+		...['(false)', '!false', 'true || shouldTeleport', '"true"'].map((binding) => ({
+			name: `the binding ${binding}`,
+			filename: 'Component.vue',
+			code: vue(`<N8nDropdownMenu><N8nTooltip :teleported='${binding}' /></N8nDropdownMenu>`),
+			errors: [{ messageId: 'requireTeleported' as const }],
+		})),
 	],
 });
 
