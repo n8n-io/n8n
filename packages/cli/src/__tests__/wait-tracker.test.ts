@@ -20,6 +20,7 @@ import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumeAttemptService } from '@/executions/resume-attempt.service';
@@ -255,6 +256,25 @@ describe('WaitTracker', () => {
 				'waiting',
 				1,
 			);
+		});
+
+		it.each([
+			[
+				'the run data is gone',
+				new MissingExecutionDataError({ executionId: '123', workflowId: 'abcd' }),
+			],
+			[
+				'the execution cannot be resumed',
+				new UnexpectedError('Only saved workflows can be resumed.'),
+			],
+		])('keeps the attempt when %s', async (_, error) => {
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockRejectedValueOnce(error);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(error);
+
+			expect(resumeAttemptService.release).not.toHaveBeenCalled();
 		});
 
 		it('rejects a second resume while the first one is still loading', async () => {

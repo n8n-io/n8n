@@ -66,7 +66,7 @@ export class EnqueuedExecutionRecoveryService {
 			try {
 				await this.recoverEnqueuedExecution(executionId);
 			} catch (error) {
-				await this.crashUnstartableExecution(executionId, error);
+				await this.handleUnpreparedExecution(executionId, error);
 			}
 		}
 	}
@@ -132,6 +132,23 @@ export class EnqueuedExecutionRecoveryService {
 		this.logger.warn('Crashing enqueued execution with unreadable data', { executionId });
 		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 		return undefined;
+	}
+
+	/** Leave it `new` for the next start. The kept attempt stops a failure that repeats. */
+	private async handleUnpreparedExecution(executionId: string, error: unknown) {
+		if (
+			error instanceof ExecutionAlreadyResumingError ||
+			this.executionsConfig.recovery.maxResumeAttempts <= 0
+		) {
+			await this.crashUnstartableExecution(executionId, error);
+			return;
+		}
+
+		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+		this.logger.warn('Failed to prepare enqueued execution, leaving it for the next start', {
+			executionId,
+			error: ensureError(error).message,
+		});
 	}
 
 	/** An enqueued execution we cannot start would otherwise stay at `new` indefinitely. */
