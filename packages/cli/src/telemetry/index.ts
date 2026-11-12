@@ -33,6 +33,9 @@ import { SourceControlPreferencesService } from '../modules/source-control.ee/so
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 import { summarizeFootprint } from './cluster-footprint';
 
+/** A full queue of 500 events takes under 2 s on a healthy server. */
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
+
 type ExecutionTrackDataKey =
 	| 'manual_error'
 	| 'manual_success'
@@ -593,33 +596,26 @@ export class Telemetry {
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
 		this.flushBuffers();
-		await Promise.all([this.postHog.stop(), this.drainQueue()]);
+		await Promise.all([this.postHog.stop(), this.flushQueueBeforeExit()]);
 	}
 
 	/**
-	 * flush() returns as soon as the SDK queue is empty, not when the events reached
-	 * the server. Batches the SDK posted on its own are still in flight then, and a
-	 * process exit loses them. A flush on an empty queue waits for the batch in
-	 * flight, so flush until the queue stops shrinking, then once more. The loop
-	 * stops on a queue that cannot drain, for example while the server is down.
+	 * flush() sends every queued batch and retries each one, so a telemetry server
+	 * that does not answer can hold it past the graceful shutdown timeout. Give up
+	 * after a fixed time; the events are lost either way.
 	 */
-	private async drainQueue(): Promise<void> {
+	private async flushQueueBeforeExit(): Promise<void> {
 		if (!this.rudderStack) return;
 
-		let remaining = this.queuedEventCount();
-		while (remaining > 0) {
-			await this.rudderStack.flush();
-			const left = this.queuedEventCount();
-			if (left >= remaining) break;
-			remaining = left;
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
+		});
+		try {
+			await Promise.race([this.rudderStack.flush(), deadline]);
+		} finally {
+			clearTimeout(timer);
 		}
-		await this.rudderStack.flush();
-	}
-
-	/** The SDK's queue exists at runtime but is missing from its type definitions. */
-	private queuedEventCount(): number {
-		const sdk = this.rudderStack;
-		return sdk && 'queue' in sdk && Array.isArray(sdk.queue) ? sdk.queue.length : 0;
 	}
 
 	// Sets instance group properties and attaches user to instance group.
