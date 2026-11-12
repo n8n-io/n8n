@@ -35,16 +35,9 @@ vi.mock('vue-router', () => ({
 }));
 vi.mock('../components/AgentFolderDialog.vue', () => ({ default: { template: '<div />' } }));
 vi.mock('@n8n/design-system', () => ({
-	N8nBreadcrumbs: {
-		props: ['items'],
-		emits: ['item-selected'],
-		template:
-			'<nav><button v-for="item in items" :key="item.id" :data-resourceid="item.id" @click="$emit(\'item-selected\', item)">{{ item.label }}</button></nav>',
-	},
 	N8nCard: {
 		template: '<div><slot name="header"/><slot/><slot name="footer"/><slot name="append"/></div>',
 	},
-	N8nButton: { template: '<button><slot/></button>' },
 	N8nText: { template: '<span><slot/></span>' },
 	N8nTimeAgo: { props: ['date'], template: '<time :datetime="date">{{ date }}</time>' },
 	N8nIcon: { template: '<i />' },
@@ -158,12 +151,11 @@ describe('AgentFolderBrowser', () => {
 		);
 	});
 
-	it('moves a dragged Agent to root through the native breadcrumb drop', async () => {
+	it('moves a dragged Agent to the project root', async () => {
 		const wrapper = render();
 		await flushPromises();
 		wrapper.vm.startAgentDrag('agent');
-		await wrapper.get(`[data-resourceid="${PROJECT_ROOT}"]`).trigger('drop');
-		await flushPromises();
+		await wrapper.vm.drop(PROJECT_ROOT);
 
 		expect(mocks.moveAgent).toHaveBeenCalledOnce();
 		expect(mocks.moveAgent).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'project', 'agent', null);
@@ -188,10 +180,10 @@ describe('AgentFolderBrowser', () => {
 	it('clears the previous folder breadcrumbs when navigating to root', async () => {
 		const wrapper = render();
 		await flushPromises();
-		expect(wrapper.find('[data-resourceid="parent"]').exists()).toBe(true);
+		expect(wrapper.vm.breadcrumbs).toEqual([{ id: 'parent', label: 'Support' }]);
 
 		await wrapper.setProps({ folderId: null, folders: [] });
 
-		expect(wrapper.find('[data-resourceid="parent"]').exists()).toBe(false);
+		expect(wrapper.vm.breadcrumbs).toEqual([]);
 	});
 });

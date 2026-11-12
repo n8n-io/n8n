@@ -15,7 +15,6 @@ import { moveAgent } from '../composables/useAgentApi';
 import { PROJECT_AGENTS } from '../constants';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import AgentFolderDialog, { type AgentFolderAction } from './AgentFolderDialog.vue';
-import AgentFolderToolbar from './AgentFolderToolbar.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -23,7 +22,6 @@ const props = defineProps<{
 	folders: ChangeLocationSearchResponseItem[];
 	search: string;
 	folderPermissions: { create: boolean; update: boolean; delete: boolean };
-	hideToolbar?: boolean;
 }>();
 const emit = defineEmits<{ changed: [] }>();
 const rootStore = useRootStore();
@@ -37,11 +35,6 @@ const path = ref<PathItem[]>([]);
 const action = ref<AgentFolderAction | null>(null);
 const dragged = ref<{ type: 'agent' | 'folder'; id: string } | null>(null);
 let generation = 0;
-
-const breadcrumbs = computed<PathItem[]>(() => [
-	{ id: PROJECT_ROOT, label: i18n.baseText('agents.folders.root') },
-	...path.value,
-]);
 
 async function refresh() {
 	const requestGeneration = ++generation;
@@ -74,10 +67,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function createFolder() {
-	action.value = { mode: 'create', parentFolderId: props.folderId };
-}
 
 function navigate(id: string) {
 	void router.push({
@@ -166,11 +155,10 @@ async function drop(targetId: string) {
 }
 
 defineExpose({
-	breadcrumbs,
+	breadcrumbs: path,
 	isDragging: computed(() => dragged.value !== null),
 	navigate,
 	drop,
-	createFolder,
 	startAgentDrag,
 	endDrag: () => {
 		dragged.value = null;
@@ -181,16 +169,6 @@ defineExpose({
 
 <template>
 	<section :class="$style.browser" data-testid="agent-folders">
-		<AgentFolderToolbar
-			v-if="!hideToolbar"
-			:items="breadcrumbs"
-			:folder-id="folderId"
-			:can-create="folderPermissions.create"
-			:drag-active="dragged !== null"
-			@navigate="navigate"
-			@drop="drop"
-			@create="createFolder"
-		/>
 		<N8nCard
 			v-for="folder in folders"
 			:key="folder.id"

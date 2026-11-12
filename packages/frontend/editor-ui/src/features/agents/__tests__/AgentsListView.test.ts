@@ -172,6 +172,7 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 				'initialize',
 				'resourcesRefreshing',
 				'totalItems',
+				'hasEmptyState',
 				'type',
 				'dontPerformSortingAndFiltering',
 			],
@@ -419,6 +420,32 @@ describe('AgentsListView — folder pagination', () => {
 			expect(list.mock.lastCall?.at(-1)).toMatchObject({ skip: 0, take: 50, filter: undefined });
 		},
 	);
+
+	it.each([
+		{ name: 'an empty project root', folderId: undefined, folderCount: 0, expected: true },
+		{
+			name: 'a project root with folders only',
+			folderId: undefined,
+			folderCount: 1,
+			expected: false,
+		},
+		{ name: 'an empty folder', folderId: 'f1', folderCount: 0, expected: false },
+	])('sets the full empty state like the workflow list: $name', async (testCase) => {
+		mocks.routeFolderId = testCase.folderId;
+		mocks.getProjectFolders.mockResolvedValue({
+			data: Array.from({ length: testCase.folderCount }, (_, index) => folder(`f${index}`)),
+			count: testCase.folderCount,
+		});
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+		const wrapper = await mountView();
+
+		expect(wrapper.findComponent({ name: 'ResourcesListLayout' }).props('hasEmptyState')).toBe(
+			testCase.expected,
+		);
+		expect(wrapper.find('[data-test-id="empty-agent-folder-action-box"]').exists()).toBe(
+			testCase.folderId !== undefined,
+		);
+	});
 
 	it('clears folder rows and refetches a flat list when folder access is removed', async () => {
 		mocks.getProjectFolders.mockResolvedValue({ data: [folder('f1')], count: 1 });

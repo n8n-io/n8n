@@ -40,7 +40,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentFolderBrowser from '../components/AgentFolderBrowser.vue';
 import AgentFolderToolbar from '../components/AgentFolderToolbar.vue';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
-import { N8nText } from '@n8n/design-system';
+import { N8nEmptyState, N8nText } from '@n8n/design-system';
 import { getProjectFolders } from '@/features/core/folders/folders.api';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 
@@ -65,8 +65,8 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const folderBrowser = ref<InstanceType<typeof AgentFolderBrowser>>();
 const folders = ref<ChangeLocationSearchResponseItem[]>([]);
-const moveAction = ref<AgentFolderAction | null>(null);
-const moveProjectId = ref('');
+const folderAction = ref<AgentFolderAction | null>(null);
+const folderActionProjectId = ref('');
 const folderId = computed(() =>
 	typeof route.query.folderId === 'string' ? route.query.folderId : null,
 );
@@ -308,9 +308,16 @@ function onAgentPublished(updated: AgentResource) {
 	void fetchAgents();
 }
 
+function createFolder() {
+	if (!projectId.value || !showFolders.value) return;
+
+	folderActionProjectId.value = projectId.value;
+	folderAction.value = { mode: 'create', parentFolderId: folderId.value };
+}
+
 function openMove(agent: AgentResource) {
-	moveProjectId.value = agent.projectId;
-	moveAction.value = {
+	folderActionProjectId.value = agent.projectId;
+	folderAction.value = {
 		mode: 'moveAgent',
 		id: agent.id,
 		name: agent.name,
@@ -444,7 +451,7 @@ onMounted(async () => {
 			:type-props="{ itemSize: 80 }"
 			:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
 			:total-items="totalItems"
-			:has-empty-state="!showFolders"
+			:has-empty-state="!showFolders || (totalItems === 0 && !folderId)"
 			:dont-perform-sorting-and-filtering="true"
 			:shareable="false"
 			:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
@@ -454,7 +461,7 @@ onMounted(async () => {
 			@update:pagination-and-sort="setPaginationAndSort"
 		>
 			<template #header>
-				<ProjectHeader main-button="agent">
+				<ProjectHeader main-button="agent" @create-folder="createFolder">
 					<InsightsSummary
 						v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 						:loading="insightsStore.weeklySummary.isLoading"
@@ -466,13 +473,14 @@ onMounted(async () => {
 
 			<template v-if="showFolders" #breadcrumbs>
 				<AgentFolderToolbar
+					:project="homeProject ?? undefined"
 					:items="folderBrowser?.breadcrumbs ?? []"
 					:folder-id="folderId"
 					:can-create="folderPermissions.create"
 					:drag-active="folderBrowser?.isDragging ?? false"
 					@navigate="folderBrowser?.navigate($event)"
 					@drop="folderBrowser?.drop($event)"
-					@create="folderBrowser?.createFolder()"
+					@create="createFolder"
 				/>
 			</template>
 
@@ -484,23 +492,22 @@ onMounted(async () => {
 					:folders="folders"
 					:search="filters.search"
 					:folder-permissions="folderPermissions"
-					hide-toolbar
 					@changed="fetchAgents"
 				/>
 				<template v-if="!loading && totalItems === 0">
 					<N8nText v-if="filters.search" color="text-base" size="medium">
 						{{ locale.baseText('agents.noResults') }}
 					</N8nText>
-					<AgentsListIntro
-						v-else-if="showTemplatesIntro"
-						:disabled="!canCreateAgent"
-						@create-blank="onCreateBlank"
-						@submit="onCreateFromPrompt"
-						@select="onCreateFromTemplate"
-					/>
-					<ResourcesListEmptyState
-						v-else
-						resource-key="agents"
+					<N8nEmptyState
+						v-else-if="folderId"
+						data-test-id="empty-agent-folder-action-box"
+						:heading="
+							locale.baseText('folders.empty.actionbox.title', {
+								interpolate: { folderName: folderBrowser?.breadcrumbs.at(-1)?.label ?? '' },
+							})
+						"
+						:button-text="locale.baseText('projects.header.create.agent')"
+						button-type="secondary"
 						:button-disabled="!canCreateAgent"
 						@click:button="onCreateAgentClick"
 					/>
@@ -558,9 +565,9 @@ onMounted(async () => {
 			</template>
 		</ResourcesListLayout>
 		<AgentFolderDialog
-			:project-id="moveProjectId"
-			:action="moveAction"
-			@close="moveAction = null"
+			:project-id="folderActionProjectId"
+			:action="folderAction"
+			@close="folderAction = null"
 			@saved="fetchAgents"
 		/>
 	</div>
