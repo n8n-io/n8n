@@ -15,8 +15,7 @@ import { EngineEligibilityReport } from '@/commands/engine/eligibility-report';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-loadNodesAndCredentials.collectTypes.mockResolvedValue({ nodes: [], credentials: [] });
+mockInstance(LoadNodesAndCredentials);
 
 const command = setupTestCommand(EngineEligibilityReport);
 

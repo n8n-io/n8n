@@ -4,8 +4,6 @@ import { Container } from '@n8n/di';
 import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '@n8n/workflow-engine-check';
 import { z } from 'zod';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
 import { BaseCommand } from '../base-command';
 
 const PAGE_SIZE = 100;
@@ -51,7 +49,6 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 	 * run. `activeVersionId` is not used: it can name a version that is not live yet.
 	 */
 	private async buildReport(): Promise<EligibilityReport> {
-		const { nodes: nodeTypes } = await Container.get(LoadNodesAndCredentials).collectTypes();
 		const workflowRepository = Container.get(WorkflowRepository);
 		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 
@@ -72,10 +69,11 @@ export class EngineEligibilityReport extends BaseCommand<z.infer<typeof flagsSch
 			for (const workflow of page) {
 				const publishedVersion = publishedVersions.get(workflow.id);
 				const version = publishedVersion ?? workflow;
-				const result = checkEngineV2Eligibility(
-					{ nodes: version.nodes, connections: version.connections, settings: workflow.settings },
-					nodeTypes,
-				);
+				const result = checkEngineV2Eligibility({
+					nodes: version.nodes,
+					connections: version.connections,
+					settings: workflow.settings,
+				});
 
 				total++;
 				if (result.eligible) eligible++;
