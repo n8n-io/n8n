@@ -1,7 +1,7 @@
 import { AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import type { AgentOptions } from 'https';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { invokeAxios } from './invoke';
 import {

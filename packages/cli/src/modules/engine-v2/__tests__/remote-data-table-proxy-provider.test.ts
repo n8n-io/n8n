@@ -2,7 +2,8 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTableCall, DataTableCallRequest } from '../engine-data-tables.contract';
