@@ -3,8 +3,6 @@ import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import {
 	createSkillServices,
 	PROJECT,
@@ -19,7 +17,6 @@ import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
@@ -517,7 +514,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
+			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -838,7 +835,7 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
@@ -980,7 +977,7 @@ describe('SkillService', () => {
 						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
 					),
 			);
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScope.hasScopes.mockResolvedValue(true);
 		});
 
 		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
@@ -1026,7 +1023,7 @@ describe('SkillService', () => {
 		});
 
 		it('does not read a skill the user cannot read', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScope.hasScopes.mockResolvedValue(false);
 
 			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
 		});

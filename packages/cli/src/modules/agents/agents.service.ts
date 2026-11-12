@@ -4,6 +4,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
+	toDraftIntegration,
 	type AgentCapabilitySummary,
 	type AgentActor,
 	type AgentCreationState,
@@ -40,7 +41,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -476,9 +477,7 @@ export class AgentsService {
 		// The credential-claim check ignores publish state, so a copy holding the
 		// source's channel credentialId would block the original from republishing
 		// or reconnecting (and the reconciler records that 409 on the source's row).
-		const draftIntegrations = integrations.map((integration) =>
-			integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
-		);
+		const draftIntegrations = integrations.map(toDraftIntegration);
 		return { schemaConfig, integrations: draftIntegrations };
 	}
 
@@ -490,7 +489,9 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
+		);
 	}
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
@@ -566,7 +567,7 @@ export class AgentsService {
 		if (projectIds.length === 0) return [];
 
 		return await this.agentRepository.find({
-			where: { projectId: In(projectIds) },
+			where: { projectId: In(projectIds), isArchived: false },
 			order: { updatedAt: 'DESC' },
 		});
 	}
@@ -727,7 +728,19 @@ export class AgentsService {
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.addListSkillVersions(
+			await this.agentRepository.findByProjectIdsPaginated(projectIds, options),
+		);
+	}
+
+	private async addListSkillVersions(result: AgentListResult): Promise<AgentListResult> {
+		const versions = await this.agentSkillRefs.findSkillVersionsForAgents(result.data, {});
+		return {
+			...result,
+			data: result.data.map((agent) =>
+				Object.assign(agent, { skillVersions: versions.get(agent.id) ?? {} }),
+			),
+		};
 	}
 
 	/**
@@ -749,11 +762,19 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async delete(agentId: string, projectId: string): Promise<boolean> {
+	/** `requireArchived`: reject the delete of an agent that a user did not archive first. */
+	async delete(
+		agentId: string,
+		projectId: string,
+		{ requireArchived = false }: { requireArchived?: boolean } = {},
+	): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return false;
+		}
+		if (requireArchived && !agent.isArchived) {
+			throw new BadRequestError('Agent must be archived before it can be deleted.');
 		}
 
 		await this.deleteKnowledgeFiles(projectId, agentId);

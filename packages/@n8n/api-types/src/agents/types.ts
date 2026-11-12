@@ -8,7 +8,13 @@ import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
@@ -207,6 +213,11 @@ export interface AgentIntegrationConnectResponse {
  */
 export interface AgentWhatsAppVerifyTokenResponse {
 	verifyToken: string;
+}
+
+/** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
+export interface AgentWebhookUrlResponse {
+	url: string;
 }
 
 export interface AgentSkillReference {

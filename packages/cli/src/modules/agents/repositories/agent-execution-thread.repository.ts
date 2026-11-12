@@ -1027,7 +1027,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				pauseRequestId: stopId,
 				status: In(['paused', 'completed', 'failed', 'cancelled']),
 			},
-			{ notifiedAt: new Date(stop.pause.reportedAt) },
+			{ notifiedAt: new Date(stop.pause.reportedAt), wakeAttemptId: null },
 		);
 	}
 

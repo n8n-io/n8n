@@ -1,7 +1,6 @@
 import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { PostHogClient } from '@/posthog';
 
 @Service()
 export class CredentialDescriptionsService {

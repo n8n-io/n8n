@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRIMARY KEY NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resumeFromMessageId" varchar(36), "resumeFromAt" datetime(3), "resumeNotes" text, "lastRequestTokens" integer, "lastModelId" varchar(255), CONSTRAINT "FK_5b6319b2e9a37c1064a72428f9a" FOREIGN KEY ("observationScopeId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,9 +16,14 @@ CREATE TABLE "instance_ai_observation_cursors" ("observationScopeId" varchar PRI
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| lastModelId | varchar(255) |  | true |  |  |  |
 | lastObservedAt | datetime(3) |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| lastRequestTokens | INTEGER |  | true |  |  |  |
 | observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| resumeFromAt | datetime(3) |  | true |  |  |  |
+| resumeFromMessageId | varchar(36) |  | true |  |  |  |
+| resumeNotes | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -44,9 +49,14 @@ erDiagram
 
 "instance_ai_observation_cursors" {
   datetime_3_ createdAt
+  varchar_255_ lastModelId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
+  INTEGER lastRequestTokens
   varchar observationScopeId PK
+  datetime_3_ resumeFromAt
+  varchar_36_ resumeFromMessageId
+  TEXT resumeNotes
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
