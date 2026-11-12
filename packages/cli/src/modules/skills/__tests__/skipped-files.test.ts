@@ -50,12 +50,38 @@ describe('countSkippedFiles', () => {
 		['lib/a.c++', OTHER_EXTENSION],
 		['notes.customer-name', OTHER_EXTENSION],
 		['data.abcdefghijk', OTHER_EXTENSION],
+		['brief.acmecorp', OTHER_EXTENSION],
+		['report.Q3', OTHER_EXTENSION],
+		['prod.ENV', '.env'],
+		['guide.MD', '.md'],
 	])('puts %s in the %s bucket', (path, key) => {
 		expect(countSkippedFiles([path]).extensions).toEqual({ [key]: 1 });
 	});
 
 	it('names only the most common extensions and puts the rest in other', () => {
-		const rare = Array.from({ length: MAX_REPORTED_EXTENSIONS }, (_, index) => `f.x${index}`);
+		// Known extensions that each occur once. Two of them miss the cap.
+		const rare = [
+			'yaml',
+			'toml',
+			'xml',
+			'csv',
+			'tsv',
+			'ini',
+			'png',
+			'jpg',
+			'gif',
+			'svg',
+			'pdf',
+			'zip',
+			'txt',
+			'html',
+			'css',
+			'sql',
+			'py',
+			'sh',
+			'js',
+			'ts',
+		].map((extension) => `f.${extension}`);
 		const common = ['a.md', 'b.md', 'c.json', 'd.json', 'e.$$$'];
 
 		const { extensions } = countSkippedFiles([...rare, ...common]);
@@ -63,7 +89,7 @@ describe('countSkippedFiles', () => {
 		expect(Object.keys(extensions)).toHaveLength(MAX_REPORTED_EXTENSIONS + 1);
 		expect(extensions['.md']).toBe(2);
 		expect(extensions['.json']).toBe(2);
-		// Two rare extensions miss the cap, and the unusual one is always `other`.
+		// Two rare extensions miss the cap, and the unknown one is always `other`.
 		expect(extensions[OTHER_EXTENSION]).toBe(3);
 		expect(Object.values(extensions).reduce((sum, count) => sum + count, 0)).toBe(
 			rare.length + common.length,
@@ -71,8 +97,13 @@ describe('countSkippedFiles', () => {
 	});
 
 	it('never reports a file name or a path', () => {
-		const { extensions } = countSkippedFiles(['secret-plan/acme-contract.pdf', 'acme']);
+		const { extensions } = countSkippedFiles([
+			'secret-plan/acme-contract.pdf',
+			'acme',
+			'notes/brief.acmecorp',
+		]);
 
-		expect(JSON.stringify(extensions)).not.toMatch(/acme|secret|contract/);
+		expect(JSON.stringify(extensions)).not.toMatch(/acme|secret|contract|brief/);
+		expect(extensions).toEqual({ '.pdf': 1, none: 1, other: 1 });
 	});
 });

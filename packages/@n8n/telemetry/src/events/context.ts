@@ -497,7 +497,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			skipped_file_extensions: z
 				.record(z.string(), z.number())
 				.describe(
-					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts unusual extensions and the extensions after the 20 most common',
+					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts extensions outside a fixed list of known file types, and the extensions after the 20 most common',
 				),
 			skipped_script_files: z
 				.number()
