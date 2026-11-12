@@ -32,7 +32,10 @@ const run = (sha, repo = 'n8n-io/n8n') => ({ head_sha: sha, head_repository: { f
 
 describe('pickLastGreenCommit', () => {
 	it('picks the newest green commit before the head', () => {
-		assert.equal(pickLastGreenCommit(['a', 'b', 'c'], [run('a'), run('b')], 'c', 'n8n-io/n8n'), 'b');
+		assert.equal(
+			pickLastGreenCommit(['a', 'b', 'c'], [run('a'), run('b')], 'c', 'n8n-io/n8n'),
+			'b',
+		);
 	});
 
 	it('skips commits without a successful run', () => {
