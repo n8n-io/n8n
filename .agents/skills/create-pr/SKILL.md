@@ -209,8 +209,8 @@ Together, the alternatives must be shorter than the core Why section.
   "none needed"
 
 ### Backport labels
-Backport fixes for urgent or high priority bugs, security fixes, and fixes
-for regressions. Add the labels that `.github/backport_conventions.md` gives.
+Backport bugs with urgent or high priority and regression fixes. Add the
+labels that `.github/backport_conventions.md` gives.
 
 ## Examples
 
