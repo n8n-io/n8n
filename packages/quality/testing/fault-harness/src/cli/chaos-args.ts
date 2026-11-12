@@ -34,6 +34,16 @@ const count = (name: string, value: string, min = 1) => {
 	return n;
 };
 
+const MAX_TIMER_MS = 2_147_483_647;
+
+const timer = (name: string, ms: number) => {
+	if (ms > MAX_TIMER_MS)
+		throw new Error(
+			`--${name} gives a delay over ${MAX_TIMER_MS} ms, which Node cannot wait\n${USAGE}`,
+		);
+	return ms;
+};
+
 export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs {
 	const { values } = parseArgs({
 		args: argv,
@@ -60,12 +70,14 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 	const repeats = count('repeats', values.repeats);
 	const minFailures = count('min-failures', values['min-failures']);
 	if (minFailures > repeats) throw new Error(`--min-failures cannot exceed --repeats\n${USAGE}`);
+	const perSecond = positive('rate', values.rate);
+	timer('rate', 1000 / perSecond);
 	return {
 		seed:
 			values.seed === undefined ? Math.floor(random() * 2 ** 31) : count('seed', values.seed, 0),
 		faults: count('faults', values.faults),
-		durationMs: positive('duration', values.duration) * 1000,
-		perSecond: positive('rate', values.rate),
+		durationMs: timer('duration', positive('duration', values.duration) * 1000),
+		perSecond,
 		workers: count('workers', values.workers),
 		kinds,
 		settleMs: positive('settle', values.settle) * 1000,
