@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-services": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
@@ -45,7 +46,8 @@
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "n8n-core": "workspace:*"
+    "n8n-core": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/backend-test-utils": "workspace:*",
