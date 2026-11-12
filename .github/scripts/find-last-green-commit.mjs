@@ -59,19 +59,21 @@ export async function main() {
 			pull_number: pr.number,
 			per_page: 100,
 		});
-		const { data } = await octokit.rest.actions.listWorkflowRuns({
+		// Older runs on the same branch name cannot belong to this PR.
+		const runs = await octokit.paginate(octokit.rest.actions.listWorkflowRuns, {
 			owner,
 			repo,
 			workflow_id: workflow,
 			event: 'pull_request',
 			branch: pr.head.ref,
 			status: 'success',
+			created: `>=${pr.created_at}`,
 			per_page: 100,
 		});
 
 		const sha = pickLastGreenCommit(
 			commits.map((commit) => commit.sha),
-			data.workflow_runs,
+			runs,
 			pr.head.sha,
 			pr.head.repo.full_name,
 		);

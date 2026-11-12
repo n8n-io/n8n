@@ -193,7 +193,7 @@ A push to an open PR tests only the commits after the newest PR commit that
 passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
 `ci-filter` then uses the diff from that commit, not the whole PR, for the path
 filters, the test scoping and the E2E selection. Lint and typecheck still
-compare the whole PR with master.
+compare the whole PR with the base branch.
 
 `ci-filter` tests the whole PR when one of these is true:
 
@@ -207,13 +207,14 @@ compare the whole PR with master.
 
 **Why:** a small fix, such as one line in a test, ran all E2E shards and DB
 legs again because an earlier commit had changed runtime code. The earlier
-commits passed CI against an older master. The merge queue runs the unit,
+commits passed CI against an older base branch. The merge queue runs the unit,
 integration and DB tests, lint and typecheck for the whole PR on the latest
-master, so that gap closes before the merge. The queue does not run E2E, so an
+base branch, so that gap closes before the merge. The queue does not run E2E, so an
 E2E spec runs again only when the new commits select it.
 
-**Coverage:** an incremental run measures only the files that the new commits
-change. Codecov patch coverage for that push shows only those lines.
+**Coverage:** an incremental run collects coverage only for the files that the
+new commits change. Codecov still calculates patch coverage over the whole PR,
+but for that push only the lines in those files have coverage data.
 
 ### On PR Review
 
