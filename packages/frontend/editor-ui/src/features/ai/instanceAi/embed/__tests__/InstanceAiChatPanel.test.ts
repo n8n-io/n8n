@@ -18,6 +18,7 @@ import {
 	clearPendingHandoffContext,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
+	getPendingAgentAttachment,
 	type PendingComposerDraft,
 } from '../../composables/useInstanceAiHandoff';
 import InstanceAiChatPanel from '../InstanceAiChatPanel.vue';
@@ -139,6 +140,7 @@ function mountPanel(props: {
 	launch: typeof launch;
 	threadId?: string;
 	beforeSend?: () => Promise<void>;
+	beforeNewThread?: () => Promise<void>;
 	visible?: boolean;
 	closable?: boolean;
 }) {
@@ -207,7 +209,7 @@ describe('InstanceAiChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('mints a thread when none is given, calling beforeNewThread first', async () => {
+	it('keeps a new chat local until the first send, after the host hooks finish', async () => {
 		const order: string[] = [];
 		const beforeNewThread = vi.fn().mockImplementation(async () => {
 			order.push('before');
@@ -216,22 +218,99 @@ describe('InstanceAiChatPanel', () => {
 			order.push('synced');
 		});
 
-		const { emitted } = renderPanel({ props: { subject, launch, beforeNewThread } });
-		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+		const beforeSend = vi.fn(async () => {
+			order.push('send');
+		});
+		const wrapper = mountPanel({ subject, launch, beforeNewThread, beforeSend });
+		await flushPromises();
 
-		expect(order).toEqual(['before', 'synced']);
-		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		expect(order).toEqual(['before']);
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(store.threads).toEqual([]);
+		expect(wrapper.emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		await conversation.props('beforeSend')();
+
+		expect(order).toEqual(['before', 'send', 'synced']);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-2', {
+			instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' },
+		});
+		await conversation.props('beforeSend')();
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		wrapper.unmount();
 	});
 
-	it('shows an error toast and leaves the panel without a thread when minting fails', async () => {
+	it('keeps the draft available for retry when first-send provisioning fails', async () => {
 		store.updateThreadMetadata.mockRejectedValue(new Error('nope'));
 
-		const { emitted } = renderPanel({ props: { subject, launch } });
-
-		await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		await expect(conversation.props('beforeSend')()).rejects.toThrow('nope');
 
 		expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't open n8n Assistant");
-		expect(emitted('update:threadId')).toBeFalsy();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+		await conversation.props('beforeSend')();
+		expect(store.syncThread).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
+	it.each([false, true])(
+		'binds the first message after a pending agent is saved: %s',
+		async (saved) => {
+			const pendingSubject: InstanceAiEmbedSubject = { ...subject, pending: true };
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			await flushPromises();
+			expect(store.syncThread).not.toHaveBeenCalled();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			if (saved) await wrapper.setProps({ subject });
+			await wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith(
+				'thread-2',
+				saved
+					? { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } }
+					: { instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			);
+			wrapper.unmount();
+		},
+	);
+
+	it('shares first-send provisioning and cleans up if the panel closes before it finishes', async () => {
+		const gate = Promise.withResolvers<void>();
+		store.syncThread.mockReturnValue(gate.promise);
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const beforeSend = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend');
+		const first = beforeSend();
+		const second = beforeSend();
+		await flushPromises();
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		wrapper.unmount();
+		gate.resolve();
+		await Promise.all([first, second]);
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+	});
+
+	it('discards an unused chat without saving it when the panel closes', async () => {
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		wrapper.unmount();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(getPendingAgentAttachment('thread-2')).toBeNull();
 	});
 
 	it('does not throw and leaves the panel without a thread when beforeNewThread rejects', async () => {
@@ -276,6 +355,9 @@ describe('InstanceAiChatPanel', () => {
 		// first would never emit here.
 		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
 		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(store.threads).toEqual([]);
 
 		pending.resolve(true);
 	});
@@ -436,11 +518,9 @@ describe('InstanceAiChatPanel', () => {
 
 	it('drops an orphaned mint that resolves after the panel unmounts', async () => {
 		const pending = Promise.withResolvers<void>();
-		store.syncThread.mockImplementation(async () => {
-			await pending.promise;
-		});
+		const beforeNewThread = vi.fn(() => pending.promise);
 		const { getByTestId, emitted, unmount } = renderPanel({
-			props: { subject, launch, threadId: 't-match' },
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
 		});
 		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
 
@@ -449,16 +529,15 @@ describe('InstanceAiChatPanel', () => {
 		await flushPromises();
 
 		expect(emitted('update:threadId')).toBeFalsy();
-		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('drops an orphaned mint that resolves after the subject changes', async () => {
 		const pending = Promise.withResolvers<void>();
-		store.syncThread.mockImplementation(async () => {
-			await pending.promise;
-		});
+		const beforeNewThread = vi.fn(() => pending.promise);
 		const { getByTestId, rerender, emitted } = renderPanel({
-			props: { subject, launch, threadId: 't-match' },
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
 		});
 		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
 
@@ -468,16 +547,15 @@ describe('InstanceAiChatPanel', () => {
 		await flushPromises();
 
 		expect(emitted('update:threadId')).toBeFalsy();
-		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('drops an orphaned mint that resolves after the user picks a different thread', async () => {
 		const pending = Promise.withResolvers<void>();
-		store.syncThread.mockImplementation(async () => {
-			await pending.promise;
-		});
+		const beforeNewThread = vi.fn(() => pending.promise);
 		const { getByTestId, rerender, emitted } = renderPanel({
-			props: { subject, launch, threadId: 't-match' },
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
 		});
 		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
 
@@ -487,7 +565,8 @@ describe('InstanceAiChatPanel', () => {
 		await flushPromises();
 
 		expect(emitted('update:threadId')).toBeFalsy();
-		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('filters the thread list by the subject', async () => {
@@ -880,12 +959,7 @@ describe('InstanceAiChatPanel', () => {
 				projectId: 'p1',
 				pending: true,
 			};
-			// First call binds the pending-agent target (provisionSubjectThread) and must
-			// succeed so minting completes; the second is the queued handoff's own
-			// stash, which this test fails.
-			store.updateThreadMetadata
-				.mockResolvedValueOnce(undefined)
-				.mockRejectedValueOnce(new Error('nope'));
+			store.updateThreadMetadata.mockRejectedValueOnce(new Error('nope'));
 
 			const wrapper = mountPanel({ subject: pendingSubject, launch });
 			wrapper.vm.handoff(context, draft);
@@ -904,12 +978,7 @@ describe('InstanceAiChatPanel', () => {
 				pending: true,
 			};
 			const writeGate = Promise.withResolvers<void>();
-			let writeCount = 0;
 			store.updateThreadMetadata.mockImplementation(async () => {
-				writeCount += 1;
-				// 1st call binds the pending-agent target (provisionSubjectThread); the
-				// 2nd is the queued handoff's own stash, held open until the gate fires.
-				if (writeCount === 1) return undefined;
 				await writeGate.promise;
 				throw new Error('nope');
 			});
@@ -933,10 +1002,7 @@ describe('InstanceAiChatPanel', () => {
 				pending: true,
 			};
 			const writeGate = Promise.withResolvers<void>();
-			let writeCount = 0;
 			store.updateThreadMetadata.mockImplementation(async () => {
-				writeCount += 1;
-				if (writeCount === 1) return undefined;
 				await writeGate.promise;
 				throw new Error('nope');
 			});

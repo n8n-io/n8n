@@ -537,6 +537,44 @@ describe('InstanceAiConversation', () => {
 		});
 	});
 
+	it('does not fetch or connect a local draft, and waits for persistence before sending', async () => {
+		store.threads = [];
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { newThread: true, beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+		await flushPromises();
+		expect(store.loadThread).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			expect.objectContaining({
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+	});
+
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
 		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
 		const renderer = createThreadComponentRenderer(

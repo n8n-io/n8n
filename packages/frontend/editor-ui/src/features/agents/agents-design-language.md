@@ -62,6 +62,10 @@ Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
 
+Keep a new Assistant chat local until the user sends a message. Opening the
+panel must not add an empty chat to history. Resume an existing chat when one
+is available.
+
 ## Builder side panel widths
 
 Start the Assistant and Preview panels at 30% of the builder container width.

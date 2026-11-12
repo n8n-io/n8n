@@ -86,6 +86,8 @@ const props = withDefaults(
 	defineProps<{
 		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 		beforeSend?: () => Promise<void>;
+		/** The host persists this local draft before the first send. */
+		newThread?: boolean;
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		autofocus?: boolean;
@@ -588,6 +590,7 @@ async function syncThread() {
 	// Apply editor hand-off attachments before any await so a first submit
 	// cannot race past them, including when SSE is already connected.
 	restorePendingHandoffAttachments();
+	if (props.newThread) return;
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
