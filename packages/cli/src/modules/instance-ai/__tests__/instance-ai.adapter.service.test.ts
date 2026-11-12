@@ -7667,9 +7667,9 @@ describe('createCredentialAdapter — getAiGatewayNodeRejection', () => {
 				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
 			],
 		};
-		(adapter as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
+		(adapter as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes = {
 			getByNameAndVersion: vi.fn(
-				() => ({ description }) as unknown as ReturnType<NodeTypes['getByNameAndVersion']>,
+				() => ({ description }) as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>,
 			),
 		};
 		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
