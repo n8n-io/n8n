@@ -170,7 +170,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 
-	assertEngineSupported({ engine, mains, isQueueMode, usePostgres });
+	assertEngineSupported({ engine, mains, workers, webhooks, usePostgres });
 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	// Derived from the project name, not random, so a rerun with the same name
@@ -181,7 +181,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			: undefined;
 	// Once per stack, like the secret, so a replaced main still trusts the engine.
 	const engineTlsFiles =
-		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName, mains) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
