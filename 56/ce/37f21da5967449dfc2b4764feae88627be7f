@@ -1,0 +1,44 @@
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_c7dd453c2b098d::t_167ff293f3da46 273-277
+  s_c7dd453c2b098d::t_0dd4fb29363f01 146-153
+  s_c7dd453c2b098d::t_5169c0f80e3276 290
+  s_c7dd453c2b098d::t_1c383ac870f603 672
+  s_c7dd453c2b098d::t_563ef668c1a30f 58-59
+  s_c7dd453c2b098d::t_5661c6b047e1d7 698
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_c7dd453c2b098d::t_de879bcdcab188 572
+  s_c7dd453c2b098d::t_3104b92840d66b 262-264
+  s_c7dd453c2b098d::t_a90bfca09fc350 591
+  s_c7dd453c2b098d::t_fdd03c731bde44 539-547
+  s_c7dd453c2b098d::t_2aed823fc5982f 562,573-578
+  s_c7dd453c2b098d::t_7e6f6d4f8d339f 579
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_c7dd453c2b098d::t_37aa1faa6a25dd 89
+  s_c7dd453c2b098d::t_6e5eae3045c210 88
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-workspace-source.test.ts
+  s_c7dd453c2b098d::t_cc8248cb4761f5 78,86-87,90-92
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_c7dd453c2b098d::t_babcf3b546063d 501-581
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-workspace-source.ts
+  s_c7dd453c2b098d::t_cc8248cb4761f5 8,44-45,47,62,81,86
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_c7dd453c2b098d::t_070e358b42c9a8 849-896
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_c7dd453c2b098d::t_11456247fbc4f4 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56ce37f21da5967449dfc2b4764feae88627be7f",
+  "prompts": {},
+  "sessions": {
+    "s_c7dd453c2b098d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56e882fa-167c-40fe-888e-0255550ae798",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
