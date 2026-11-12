@@ -44,6 +44,7 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
@@ -52,7 +53,6 @@ erDiagram
   integer revision
   json schema
   varchar_16_ scope
-  uuid serviceAccountId FK
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools

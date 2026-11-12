@@ -114,16 +114,17 @@ export class Agent extends WithTimestampsAndStringId {
 	activeVersion?: Relation<AgentHistory> | null;
 
 	/**
-	 * The service account that acts for this agent. Null for an instance agent,
-	 * and for an agent created while agent service accounts were off.
+	 * The identity this agent acts as. Today it is always a service account.
+	 * Null for an instance agent, and for an agent created while agent service
+	 * accounts were off.
 	 */
-	@Index({ unique: true, where: '"serviceAccountId" IS NOT NULL' })
+	@Index({ unique: true, where: '"identityId" IS NOT NULL' })
 	@Column({ type: 'uuid', nullable: true })
-	serviceAccountId: string | null;
+	identityId: string | null;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'serviceAccountId', foreignKeyConstraintName: 'FK_agents_service_account' })
-	serviceAccount?: Relation<User> | null;
+	@JoinColumn({ name: 'identityId', foreignKeyConstraintName: 'FK_agents_identity' })
+	identity?: Relation<User> | null;
 
 	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })

@@ -79,6 +79,7 @@ erDiagram
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
@@ -87,7 +88,6 @@ erDiagram
   INTEGER revision
   TEXT schema
   varchar_16_ scope
-  varchar serviceAccountId FK
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools

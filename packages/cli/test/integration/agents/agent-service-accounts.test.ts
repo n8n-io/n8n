@@ -52,16 +52,14 @@ describe('Agent service accounts', () => {
 	});
 
 	const expectServiceAccountWithPersonalProject = async (agentId: string, name: string) => {
-		const { serviceAccountId } = await agentRepo.findOneByOrFail({ id: agentId });
-		expect(serviceAccountId).toEqual(expect.any(String));
-		const serviceAccount = await Container.get(ServiceAccountRepository).findById(
-			serviceAccountId!,
-		);
+		const { identityId } = await agentRepo.findOneByOrFail({ id: agentId });
+		expect(identityId).toEqual(expect.any(String));
+		const serviceAccount = await Container.get(ServiceAccountRepository).findById(identityId!);
 		expect(serviceAccount?.details.name).toBe(name);
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			serviceAccountId!,
+			identityId!,
 		);
-		expect(personalProject).toMatchObject({ type: 'personal', creatorId: serviceAccountId });
+		expect(personalProject).toMatchObject({ type: 'personal', creatorId: identityId });
 	};
 
 	it('gives a new agent a service account with a personal project', async () => {
@@ -116,9 +114,9 @@ describe('Agent service accounts', () => {
 		const project = await createTeamProject();
 		const first = await agentsService.create(project.id, 'First', { actor });
 		const second = await agentsService.create(project.id, 'Second', { actor });
-		const { serviceAccountId } = await agentRepo.findOneByOrFail({ id: first.id });
+		const { identityId } = await agentRepo.findOneByOrFail({ id: first.id });
 
-		await expect(agentRepo.update({ id: second.id }, { serviceAccountId })).rejects.toThrow();
+		await expect(agentRepo.update({ id: second.id }, { identityId })).rejects.toThrow();
 	});
 
 	it('creates no service account when agent service accounts are off', async () => {
@@ -128,7 +126,7 @@ describe('Agent service accounts', () => {
 
 		const agent = await agentsService.create(project.id, 'Agent', { actor });
 
-		expect((await agentRepo.findOneByOrFail({ id: agent.id })).serviceAccountId).toBeNull();
+		expect((await agentRepo.findOneByOrFail({ id: agent.id })).identityId).toBeNull();
 		expect(await countServiceAccounts()).toBe(before);
 	});
 });
