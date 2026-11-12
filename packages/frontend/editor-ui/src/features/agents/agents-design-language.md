@@ -41,7 +41,11 @@ Disable the fixed project field. Focus the folder picker after its options load.
 
 ## Folder removal
 
-Offer relocation or archival when a user deletes an Agent folder. Archival
+Match the workflow folder confirmation. Name the folder in the title and show
+its content counts. Offer relocation and archival as radio choices. Start with
+neither choice selected. Show the destination picker after relocation is selected.
+Require the same typed folder confirmation as workflows before archival. Keep
+keyboard focus on the choices without selecting text when the dialog opens. Archival
 deletes the folder tree and moves its Agents to the project root. Keep all Agent
 data. Explain that users can unarchive the Agents later. Use `Delete folder` for
 the confirmation action. Do not offer permanent Agent deletion in this dialog.

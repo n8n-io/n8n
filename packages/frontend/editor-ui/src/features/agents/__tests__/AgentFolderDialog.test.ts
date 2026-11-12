@@ -54,27 +54,29 @@ vi.mock('@/features/core/folders/components/MoveToFolderDropdown.vue', () => ({
 		template: '<div />',
 	},
 }));
-vi.mock('@n8n/design-system', () => ({
-	N8nInput: {
-		props: ['modelValue', 'disabled'],
-		inheritAttrs: false,
-		emits: ['update:modelValue'],
-		template:
-			'<div><slot name="prefix" /><input v-bind="$attrs" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
-	},
-	N8nSelect: {
-		props: ['modelValue'],
-		emits: ['update:modelValue'],
-		template:
-			'<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
-	},
-	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
-	N8nText: { template: '<span><slot /></span>' },
-	N8nButton: {
-		props: ['disabled', 'loading', 'variant'],
-		template: '<button :disabled="disabled || loading"><slot /></button>',
-	},
-}));
+vi.mock('@n8n/design-system', async () => {
+	const { N8nRadioGroup, N8nRadioGroupItem } = await import(
+		'@n8n/design-system/components/N8nRadioGroup'
+	);
+
+	return {
+		N8nRadioGroup,
+		N8nRadioGroupItem,
+		N8nInputLabel: { props: ['label'], template: '<label>{{ label }}<slot /></label>' },
+		N8nInput: {
+			props: ['modelValue', 'disabled'],
+			inheritAttrs: false,
+			emits: ['update:modelValue'],
+			template:
+				'<div><slot name="prefix" /><input v-bind="$attrs" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
+		},
+		N8nText: { template: '<span><slot /></span>' },
+		N8nButton: {
+			props: ['disabled', 'loading', 'variant'],
+			template: '<button :disabled="disabled || loading"><slot /></button>',
+		},
+	};
+});
 vi.mock('../components/modals/AgentModal.vue', () => ({
 	default: {
 		props: ['title', 'size'],
@@ -99,10 +101,48 @@ function render(action: NonNullable<InstanceType<typeof AgentFolderDialog>['$pro
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	api.getFolderContent.mockResolvedValue({ totalAgents: 3 });
+	api.getFolderContent.mockResolvedValue({ totalAgents: 3, totalSubFolders: 2 });
 });
 
 describe('AgentFolderDialog', () => {
+	it('starts deletion with a named title and neither operation selected', async () => {
+		const wrapper = render({ mode: 'delete', id: 'folder', name: 'Research' });
+		await flushPromises();
+
+		expect(wrapper.get('h1').text()).toBe("Delete 'Research'");
+		expect(wrapper.text()).toContain(
+			'What should we do with 2 folders and 3 Agents in this folder?',
+		);
+		expect(wrapper.findAll('[role="radio"]')).toHaveLength(2);
+		expect(wrapper.findAll('[role="radio"][aria-checked="true"]')).toHaveLength(0);
+		expect(wrapper.find('select').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-folder-save"]').element).toBeDisabled();
+
+		await wrapper.get('form').trigger('submit');
+
+		expect(api.deleteFolder).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			totalAgents: 1,
+			totalSubFolders: 1,
+			description: 'What should we do with 1 folder and 1 Agent in this folder?',
+		},
+		{
+			totalAgents: 0,
+			totalSubFolders: 0,
+			description: "What should we do with this folder's contents?",
+		},
+	])('describes deletion contents: $description', async (contents) => {
+		api.getFolderContent.mockResolvedValue(contents);
+		const wrapper = render({ mode: 'delete', id: 'folder', name: 'Research' });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain(contents.description);
+	});
+
 	it('creates a nested Agent folder and refreshes the project list', async () => {
 		const wrapper = render({ mode: 'create', parentFolderId: 'parent' });
 		await wrapper.get('[data-testid="agent-folder-name"]').setValue('Support');
@@ -208,8 +248,10 @@ describe('AgentFolderDialog', () => {
 		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
 	});
 
-	it('relocates contents to root by default and excludes the deleted subtree', async () => {
+	it('relocates contents to root after an explicit choice and excludes the deleted subtree', async () => {
 		const wrapper = render({ mode: 'delete', id: 'folder' });
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
 		await flushPromises();
 		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
 
@@ -237,6 +279,8 @@ describe('AgentFolderDialog', () => {
 	it('allows relocation to the parent folder through the shared picker', async () => {
 		const wrapper = render({ mode: 'delete', id: 'folder', parentFolderId: 'parent' });
 		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
+		await flushPromises();
 		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
 
 		expect(picker.props('parentFolderId')).toBeUndefined();
@@ -257,6 +301,8 @@ describe('AgentFolderDialog', () => {
 	it('blocks relocation after a folder-picker failure', async () => {
 		const wrapper = render({ mode: 'delete', id: 'folder' });
 		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
+		await flushPromises();
 		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
 		picker.vm.$emit('location:selected', destination);
 		await flushPromises();
@@ -269,8 +315,18 @@ describe('AgentFolderDialog', () => {
 	});
 
 	it('offers archival when the user cannot relocate contents', async () => {
-		const wrapper = render({ mode: 'delete', id: 'folder', canRelocate: false });
+		const wrapper = render({
+			mode: 'delete',
+			id: 'folder',
+			name: 'Research',
+			canRelocate: false,
+		});
 		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-folder-relocate"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-folder-save"]').element).toBeDisabled();
+
+		await wrapper.get('[data-testid="agent-folder-archive"]').trigger('click');
 
 		expect(wrapper.text()).toContain('It archives 3 Agents and moves them to the project root.');
 		expect(wrapper.text()).toContain('You can unarchive them later.');
@@ -278,6 +334,7 @@ describe('AgentFolderDialog', () => {
 		expect(wrapper.get('[data-testid="agent-folder-save"]').text()).toBe('Delete folder');
 		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
 
+		await wrapper.get('[data-testid="agent-folder-delete-confirm"]').setValue('delete Research');
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
 		await flushPromises();
 
@@ -290,18 +347,27 @@ describe('AgentFolderDialog', () => {
 	});
 
 	it('lets the user choose archival after a folder-picker failure', async () => {
-		api.getFolderContent.mockResolvedValue({ totalAgents: 1 });
-		const wrapper = render({ mode: 'delete', id: 'folder' });
+		api.getFolderContent.mockResolvedValue({ totalAgents: 1, totalSubFolders: 0 });
+		const wrapper = render({ mode: 'delete', id: 'folder', name: 'Research' });
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
 		await flushPromises();
 		wrapper
 			.findComponent({ name: 'MoveToFolderDropdown' })
 			.vm.$emit('load:error', new Error('Could not load folders'));
-		await wrapper.get('[data-testid="agent-folder-removal"]').setValue('archive');
+		await wrapper.get('[data-testid="agent-folder-archive"]').trigger('click');
 
 		expect(wrapper.text()).toContain('It archives 1 Agent and moves it to the project root.');
 		expect(wrapper.text()).toContain('You can unarchive it later.');
 		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
 
+		await wrapper.get('[data-testid="agent-folder-delete-confirm"]').setValue('delete Other');
+		await wrapper.get('form').trigger('submit');
+
+		expect(api.deleteFolder).not.toHaveBeenCalled();
+		expect(wrapper.get('[data-testid="agent-folder-save"]').element).toBeDisabled();
+
+		await wrapper.get('[data-testid="agent-folder-delete-confirm"]').setValue('delete Research');
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
 		await flushPromises();
 
@@ -318,7 +384,10 @@ describe('AgentFolderDialog', () => {
 		const wrapper = render({ mode: 'delete', id: 'folder', canDelete: false });
 		await flushPromises();
 
-		expect(wrapper.find('option[value="archive"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-folder-archive"]').exists()).toBe(false);
+
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
+
 		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(true);
 	});
 
@@ -330,6 +399,8 @@ describe('AgentFolderDialog', () => {
 			}),
 		);
 		const wrapper = render({ mode: 'delete', id: 'folder' });
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-relocate"]').trigger('click');
 		await flushPromises();
 		const picker = wrapper.findComponent({ name: 'MoveToFolderDropdown' });
 		picker.vm.$emit('location:selected', destination);
@@ -346,5 +417,22 @@ describe('AgentFolderDialog', () => {
 		expect(api.deleteFolder).not.toHaveBeenCalled();
 		expect(api.showError).toHaveBeenCalled();
 		expect(wrapper.get('[data-testid="agent-folder-save"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('resets the choice and archival confirmation when another folder opens', async () => {
+		const wrapper = render({ mode: 'delete', id: 'folder', name: 'Research' });
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-archive"]').trigger('click');
+		await wrapper.get('[data-testid="agent-folder-delete-confirm"]').setValue('delete Research');
+
+		expect(wrapper.get('[data-testid="agent-folder-save"]').element).not.toBeDisabled();
+
+		await wrapper.setProps({ action: { mode: 'delete', id: 'other', name: 'Support' } });
+		await flushPromises();
+
+		expect(wrapper.get('h1').text()).toBe("Delete 'Support'");
+		expect(wrapper.findAll('[role="radio"][aria-checked="true"]')).toHaveLength(0);
+		expect(wrapper.find('[data-testid="agent-folder-delete-confirm"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-folder-save"]').element).toBeDisabled();
 	});
 });

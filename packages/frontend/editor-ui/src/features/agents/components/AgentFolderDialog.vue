@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nInput, N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nRadioGroup,
+	N8nRadioGroupItem,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -38,12 +45,14 @@ const toast = useToast();
 const { projectName, projectIcon } = useAgentProjectBreadcrumb(computed(() => props.projectId));
 const name = ref('');
 const target = ref(PROJECT_ROOT);
-const removal = ref('relocate');
+const removal = ref('');
+const deleteConfirmText = ref('');
 const busy = ref(false);
 const loading = ref(false);
 const loadFailed = ref(false);
 const error = ref('');
 const count = ref(0);
+const subFolderCount = ref(0);
 let generation = 0;
 const selectedLocation = ref<ChangeLocationSearchResult | null>(null);
 const isNaming = computed(() => props.action?.mode === 'create' || props.action?.mode === 'rename');
@@ -51,9 +60,45 @@ const isDelete = computed(() => props.action?.mode === 'delete');
 const isMoving = computed(
 	() => props.action?.mode === 'moveAgent' || props.action?.mode === 'moveFolder',
 );
-const requiresDestination = computed(
-	() => isMoving.value || (isDelete.value && removal.value === 'relocate'),
+const confirmationText = computed(() =>
+	i18n.baseText('folders.delete.typeToConfirm', {
+		interpolate: { folderName: props.action?.name ?? '' },
+	}),
 );
+const canSave = computed(() => {
+	if (loading.value || loadFailed.value || busy.value) return false;
+
+	if (isDelete.value) {
+		return removal.value === 'relocate'
+			? selectedLocation.value !== null
+			: removal.value === 'archive' && deleteConfirmText.value === confirmationText.value;
+	}
+
+	return !isMoving.value || selectedLocation.value !== null;
+});
+const contentDescription = computed(() => {
+	const labels: string[] = [];
+
+	if (subFolderCount.value > 0) {
+		labels.push(
+			i18n.baseText('folders.move.modal.folder.count', {
+				interpolate: { count: subFolderCount.value },
+			}),
+		);
+	}
+
+	if (count.value > 0) {
+		labels.push(
+			i18n.baseText('agents.folders.agentCount', { interpolate: { count: count.value } }),
+		);
+	}
+
+	return labels.length
+		? i18n.baseText('agents.folders.deleteContents', {
+				interpolate: { contents: labels.join(` ${i18n.baseText('generic.and')} `) },
+			})
+		: i18n.baseText('agents.folders.deleteContentsFallback');
+});
 const moveLabel = computed(() =>
 	props.action?.mode === 'moveAgent'
 		? i18n.baseText('agents.folders.moveAgent')
@@ -64,7 +109,12 @@ const moveLabel = computed(() =>
 const title = computed(() => {
 	if (props.action?.mode === 'create') return i18n.baseText('agents.folders.create');
 	if (props.action?.mode === 'rename') return i18n.baseText('agents.folders.rename');
-	if (isDelete.value) return i18n.baseText('agents.folders.deleteTitle');
+
+	if (isDelete.value) {
+		return i18n.baseText('folders.delete.confirm.title', {
+			interpolate: { folderName: props.action?.name ?? '' },
+		});
+	}
 
 	if (props.action?.mode === 'moveAgent') {
 		return i18n
@@ -96,9 +146,11 @@ watch(
 
 		name.value = action.name ?? '';
 		target.value = action.parentFolderId ?? PROJECT_ROOT;
-		removal.value = action.canRelocate === false ? 'archive' : 'relocate';
+		removal.value = '';
+		deleteConfirmText.value = '';
 		error.value = '';
 		count.value = 0;
+		subFolderCount.value = 0;
 
 		if (action.mode !== 'delete' || !action.id) return;
 
@@ -110,6 +162,7 @@ watch(
 			if (generation !== requestGeneration) return;
 
 			count.value = contents.totalAgents;
+			subFolderCount.value = contents.totalSubFolders;
 		} catch (cause) {
 			if (generation !== requestGeneration) return;
 
@@ -135,9 +188,7 @@ function onDestinationError(cause: unknown) {
 async function save() {
 	const action = props.action;
 
-	if (!action || loading.value || loadFailed.value || busy.value) return;
-
-	if (requiresDestination.value && !selectedLocation.value) return;
+	if (!action || !canSave.value) return;
 
 	if (isNaming.value) {
 		const result = folderNameSchema.safeParse(name.value);
@@ -199,7 +250,7 @@ async function save() {
 	<AgentModal
 		:open="action !== null"
 		:title="title"
-		:size="isMoving ? 'medium' : 'small'"
+		:size="isDelete ? 'large' : isMoving ? 'medium' : 'small'"
 		:busy="busy"
 		@update:open="!$event && emit('close')"
 	>
@@ -252,55 +303,91 @@ async function save() {
 					/>
 				</div>
 			</template>
-			<template v-else>
-				<N8nSelect
-					v-if="isDelete"
+			<template v-else-if="isDelete">
+				<N8nText id="agent-folder-delete-description">{{ contentDescription }}</N8nText>
+				<N8nRadioGroup
 					v-model="removal"
-					:teleported="false"
+					aria-labelledby="agent-folder-delete-description"
 					data-testid="agent-folder-removal"
 				>
-					<N8nOption
+					<N8nRadioGroupItem
 						v-if="action?.canRelocate !== false"
 						value="relocate"
-						:label="i18n.baseText('agents.folders.relocate')"
-					/>
-					<N8nOption
+						data-testid="agent-folder-relocate"
+					>
+						<template #label>
+							<N8nText>{{
+								i18n.baseText(
+									projectName ? 'agents.folders.relocate' : 'agents.folders.relocate.noProject',
+									{ interpolate: { projectName: projectName ?? '' } },
+								)
+							}}</N8nText>
+						</template>
+						<template #content>
+							<div v-if="removal === 'relocate'" :class="$style.optionContent">
+								<label for="agent-folder-target">{{
+									i18n.baseText('folders.transfer.selectFolder')
+								}}</label>
+								<MoveToFolderDropdown
+									:key="action?.id"
+									input-id="agent-folder-target"
+									:selected-location="selectedLocation"
+									:selected-project-id="projectId"
+									:current-project-id="projectId"
+									:current-folder-id="action?.id"
+									resource-type="agent"
+									:teleported="false"
+									data-testid="agent-folder-target"
+									@location:selected="onLocationSelected"
+									@load:error="onDestinationError"
+								/>
+							</div>
+						</template>
+					</N8nRadioGroupItem>
+					<N8nRadioGroupItem
 						v-if="action?.canDelete !== false"
 						value="archive"
-						:label="i18n.baseText('agents.folders.archive')"
-					/>
-				</N8nSelect>
-				<N8nText v-if="isDelete && removal === 'archive'">
-					{{
-						i18n.baseText('agents.folders.archiveDescription', {
-							adjustToNumber: count,
-							interpolate: { count },
-						})
-					}}
-				</N8nText>
-				<template v-else>
-					<label for="agent-folder-target">{{ i18n.baseText('agents.folders.destination') }}</label>
-					<MoveToFolderDropdown
-						:key="action?.id"
-						input-id="agent-folder-target"
-						:selected-location="selectedLocation"
-						:selected-project-id="projectId"
-						:current-project-id="projectId"
-						:current-folder-id="action?.id"
-						resource-type="agent"
-						:teleported="false"
-						data-testid="agent-folder-target"
-						@location:selected="onLocationSelected"
-						@load:error="onDestinationError"
-					/>
-				</template>
+						data-testid="agent-folder-archive"
+					>
+						<template #label>
+							<N8nText>{{ i18n.baseText('agents.folders.archive') }}</N8nText>
+						</template>
+						<template #content>
+							<div v-if="removal === 'archive'" :class="$style.optionContent">
+								<N8nText>
+									{{
+										i18n.baseText('agents.folders.archiveDescription', {
+											adjustToNumber: count,
+											interpolate: { count },
+										})
+									}}
+								</N8nText>
+								<N8nInputLabel
+									input-name="agent-folder-delete-confirm"
+									:label="
+										i18n.baseText('folders.delete.confirmation.message', {
+											interpolate: { folderName: action?.name ?? '' },
+										})
+									"
+								>
+									<N8nInput
+										id="agent-folder-delete-confirm"
+										v-model="deleteConfirmText"
+										:placeholder="confirmationText"
+										data-testid="agent-folder-delete-confirm"
+									/>
+								</N8nInputLabel>
+							</div>
+						</template>
+					</N8nRadioGroupItem>
+				</N8nRadioGroup>
 			</template>
 		</form>
 		<template #footerActions>
 			<N8nButton
 				:variant="isDelete ? 'destructive' : 'solid'"
 				:loading="busy"
-				:disabled="loading || loadFailed || (requiresDestination && !selectedLocation)"
+				:disabled="!canSave"
 				data-testid="agent-folder-save"
 				@click="save"
 			>
@@ -327,5 +414,12 @@ async function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.optionContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
 }
 </style>
