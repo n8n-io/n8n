@@ -37,10 +37,12 @@ vi.mock('@n8n/ai-utilities', () => ({
 	createVectorStoreNode: (config: {
 		getVectorStoreClient: (...args: unknown[]) => unknown;
 		populateVectorStore: (...args: unknown[]) => unknown;
+		beforeInsert: (...args: unknown[]) => unknown;
 	}) =>
 		class BaseNode {
 			getVectorStoreClient = config.getVectorStoreClient;
 			populateVectorStore = config.populateVectorStore;
+			beforeInsert = config.beforeInsert;
 		},
 }));
 
@@ -63,6 +65,11 @@ type TestNode = {
 		documents: Document[],
 		itemIndex: number,
 	) => Promise<void>;
+	beforeInsert: (
+		context: ISupplyDataFunctions,
+		embeddings: Embeddings,
+		itemIndex: number,
+	) => Promise<void>;
 };
 
 const CREDENTIAL_PROXY = 'http://credential-proxy.test:3128';
@@ -81,9 +88,10 @@ const baseCredentials = {
 function createContext(
 	options: Record<string, unknown>,
 	credentials: Record<string, unknown> = {},
+	typeVersion = 1.4,
 ) {
 	const context = mock<ISupplyDataFunctions>();
-	context.getNode.mockReturnValue(mock<INode>({ name: 'Weaviate' }));
+	context.getNode.mockReturnValue(mock<INode>({ name: 'Weaviate', typeVersion }));
 	context.getNodeParameter.mockImplementation((name: string) =>
 		name === 'options' ? { skip_init_checks: true, ...options } : 'TestCollection',
 	);
@@ -402,7 +410,9 @@ describe('VectorStoreWeaviate.node', () => {
 	describe('populateVectorStore', () => {
 		const deleteCollection = vi.fn();
 		const removeTenants = vi.fn();
+		const closeClient = vi.fn();
 		const client = mock<WeaviateClient>({
+			close: closeClient,
 			collections: mock<WeaviateClient['collections']>({
 				delete: deleteCollection,
 				get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
@@ -411,13 +421,20 @@ describe('VectorStoreWeaviate.node', () => {
 		const documents = [new LcDocument({ pageContent: 'A cat', metadata: {} })];
 		const embeddings = mock<Embeddings>();
 
-		const insert = async (options: Record<string, unknown>) =>
-			await node.populateVectorStore(createContext(options), embeddings, documents, 0);
+		const insert = async (options: Record<string, unknown>, typeVersion?: number) =>
+			await node.populateVectorStore(
+				createContext(options, {}, typeVersion),
+				embeddings,
+				documents,
+				0,
+			);
 
 		beforeEach(() => {
 			connectSpy.mockResolvedValue(client);
 			deleteCollection.mockClear();
 			removeTenants.mockClear();
+			closeClient.mockClear();
+			deleteCollection.mockReset();
 			vi.mocked(WeaviateStore.fromDocuments).mockClear();
 		});
 
@@ -444,18 +461,56 @@ describe('VectorStoreWeaviate.node', () => {
 			);
 		});
 
-		it('should delete the collection before the insert when Clear Data is on', async () => {
+		it('should not clear the store in a batch, because beforeInsert does it', async () => {
 			await insert({ clearStore: true });
 
-			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
-			expect(removeTenants).not.toHaveBeenCalled();
+			expect(deleteCollection).not.toHaveBeenCalled();
+			expect(WeaviateStore.fromDocuments).toHaveBeenCalled();
 		});
 
-		it('should remove only the tenant when Clear Data is on and a tenant is set', async () => {
-			await insert({ clearStore: true, tenant: 'tenantA' });
+		it('should clear the store for each item in node version 1', async () => {
+			await insert({ clearStore: true }, 1);
 
-			expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
-			expect(deleteCollection).not.toHaveBeenCalled();
+			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+		});
+
+		describe('beforeInsert', () => {
+			const clear = async (options: Record<string, unknown>) =>
+				await node.beforeInsert(createContext(options), embeddings, 0);
+
+			it('should do nothing when Clear Data is off', async () => {
+				await clear({});
+
+				expect(connectSpy).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should delete the collection when Clear Data is on', async () => {
+				await clear({ clearStore: true });
+
+				expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+				expect(removeTenants).not.toHaveBeenCalled();
+			});
+
+			it('should remove only the tenant when Clear Data is on and a tenant is set', async () => {
+				await clear({ clearStore: true, tenant: 'tenantA' });
+
+				expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should close the client after the clear step', async () => {
+				await clear({ clearStore: true });
+
+				expect(closeClient).toHaveBeenCalledTimes(1);
+			});
+
+			it('should close the client when the clear step fails', async () => {
+				deleteCollection.mockRejectedValueOnce(new Error('clear failed'));
+
+				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
+				expect(closeClient).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 });
