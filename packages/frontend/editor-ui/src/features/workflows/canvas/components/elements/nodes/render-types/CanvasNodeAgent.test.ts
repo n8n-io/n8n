@@ -159,23 +159,29 @@ describe('CanvasNodeAgent', () => {
 		expect(getByTestId('canvas-node-agent')).not.toHaveClass('restricted');
 	});
 
-	it('renders the status ring only while the node is running', () => {
-		const idle = renderWithAgent('agent-1');
-		expect(idle.getByTestId('canvas-node-agent').querySelector('.statusRing')).toBeNull();
-		idle.unmount();
+	it('renders no status ring while the node is idle', () => {
+		const { getByTestId } = renderWithAgent('agent-1');
 
+		expect(getByTestId('canvas-node-agent').querySelector('.statusRing')).toBeNull();
+	});
+
+	it.each([
+		['running', { running: true }],
+		['waiting', { status: 'waiting' as const }],
+	])('renders the status ring while the node is %s', (state, execution) => {
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: createCanvasNodeProvide({
 					data: {
 						type: 'n8n-nodes-base.messageAnAgent',
-						execution: { running: true },
+						execution,
 						render: { type: CanvasNodeRenderType.Agent, options: { agentSource: 'inline' } },
 					},
 				}),
 			},
 		});
-		expect(getByTestId('canvas-node-agent')).toHaveClass('running');
+
+		expect(getByTestId('canvas-node-agent')).toHaveClass(state);
 		expect(getByTestId('canvas-node-agent').querySelector('.statusRing')).not.toBeNull();
 	});
 
