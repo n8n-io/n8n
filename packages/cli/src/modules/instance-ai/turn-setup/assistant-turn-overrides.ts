@@ -1,16 +1,25 @@
 import type { InstanceAiBuildMode } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import type { AssistantCredentialTestTarget } from '../turn-setup/assistant-turn-runtime';
+/**
+ * Where the connection tests of one credential type go instead of the provider.
+ * See `InstanceAiEvalCredentialTestTargetRequest`.
+ */
+export interface AssistantCredentialTestTarget {
+	credentialType: string;
+	baseUrl: string;
+	urlField: string;
+}
 
 /**
- * Per-thread overrides of Assistant agent turns. The turn setup reads them
- * when it builds a turn. Each method returns "no override" here, so normal
- * runtime keeps its default behavior.
+ * Per-thread overrides of Assistant turns. The turn environment factory reads
+ * the credential settings for both runtimes. The Assistant agent also reads the
+ * build mode and the prompt version. Each method returns "no override" here,
+ * so normal runtime keeps its default behavior.
  *
  * To supply overrides, extend this class and register the instance with
- * `Container.set(AssistantTurnOverrides, instance)` before the Assistant
- * agent registers. Product code then never imports the implementation.
+ * `Container.set(AssistantTurnOverrides, instance)` before the module resolves
+ * a service that injects it. Product code then never imports the implementation.
  */
 @Service()
 export class AssistantTurnOverrides {

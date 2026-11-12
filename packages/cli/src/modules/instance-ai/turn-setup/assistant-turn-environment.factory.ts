@@ -56,6 +56,7 @@ import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
+import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assistantCreditsExhaustedError,
@@ -148,6 +149,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
+		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
@@ -320,11 +322,11 @@ export class AssistantTurnEnvironmentFactory {
 			threadId,
 			projectId: boundProjectId,
 			// Read per call: the overrides can change while the run is in progress.
-			getCredentialIdAllowlist: () => runtime.turnState.getCredentialIdAllowlist(),
+			getCredentialIdAllowlist: () => this.turnOverrides.getCredentialIdAllowlist(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
-				runtime.turnState.shouldBypassCredentialTest(credentialId),
+				this.turnOverrides.shouldBypassCredentialTest(threadId, credentialId),
 			getCredentialTestTarget: (credentialType: string) =>
-				runtime.turnState.getCredentialTestTarget(credentialType),
+				this.turnOverrides.getCredentialTestTarget(threadId, credentialType),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,

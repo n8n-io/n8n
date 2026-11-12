@@ -2057,11 +2057,6 @@ export class InstanceAiService {
 				setSetupPanelEnabled: (enabled) => this.runState.setSetupPanelEnabled(threadId, enabled),
 				getBrowserUseAvailable: () => this.runState.getBrowserUseAvailable(threadId),
 				getObserverThresholdTokens: () => this.runState.getObserverThresholdTokens(threadId),
-				getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
-				shouldBypassCredentialTest: (credentialId) =>
-					this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
-				getCredentialTestTarget: (credentialType) =>
-					this.evalCredentialAllowlists.getTestTarget(threadId, credentialType),
 			},
 			sessionGrants: {
 				load: async () => await this.loadThreadSessionGrants(threadId, user.id),

@@ -207,7 +207,7 @@ import {
 } from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
-import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-runtime';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
 import { SkillsGate } from '@/modules/skills';

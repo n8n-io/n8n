@@ -28,10 +28,10 @@ import type {
 } from '../../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
+import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-overrides';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
-import { AssistantTurnOverrides } from '../assistant-turn-overrides';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
 	AssistantSandboxLease,
@@ -317,20 +317,13 @@ describe('AssistantAgentProvider', () => {
 			expect(turnState.getBuildMode()).toBeUndefined();
 			expect(turnState.getPromptVersion()).toBeUndefined();
 			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
-			expect(turnState.getCredentialIdAllowlist()).toBeUndefined();
-			expect(turnState.shouldBypassCredentialTest('cred-1')).toBe(false);
-			expect(turnState.getCredentialTestTarget('slackApi')).toBeUndefined();
 			expect(handle.hostMetadata).toMatchObject({ promptVersion: null });
 		});
 
 		it('reads the thread settings of the turn from the turn overrides', async () => {
 			const { provider, turnEnvironment, turnOverrides } = setup();
-			const target = { credentialType: 'slackApi', baseUrl: 'http://stub', urlField: 'url' };
 			vi.spyOn(turnOverrides, 'getBuildMode').mockReturnValue('progressive');
 			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('progressive@1');
-			vi.spyOn(turnOverrides, 'getCredentialIdAllowlist').mockReturnValue(['cred-1']);
-			vi.spyOn(turnOverrides, 'shouldBypassCredentialTest').mockReturnValue(true);
-			vi.spyOn(turnOverrides, 'getCredentialTestTarget').mockReturnValue(target);
 
 			const handle = await provider.prepareTurn(startTurn());
 
@@ -339,12 +332,8 @@ describe('AssistantAgentProvider', () => {
 			expect(turnState.getPromptVersion()).toBe('progressive@1');
 			// The Assistant agent has no threshold override.
 			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
-			expect(turnState.getCredentialIdAllowlist()).toEqual(['cred-1']);
-			expect(turnState.shouldBypassCredentialTest('cred-1')).toBe(true);
-			expect(turnState.getCredentialTestTarget('slackApi')).toBe(target);
 			expect(turnOverrides.getBuildMode).toHaveBeenCalledWith('thread-1');
-			expect(turnOverrides.shouldBypassCredentialTest).toHaveBeenCalledWith('thread-1', 'cred-1');
-			expect(turnOverrides.getCredentialTestTarget).toHaveBeenCalledWith('thread-1', 'slackApi');
+			expect(turnOverrides.getPromptVersion).toHaveBeenCalledWith('thread-1');
 			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'progressive@1' });
 		});
 

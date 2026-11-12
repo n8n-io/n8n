@@ -58,6 +58,7 @@ import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
+import { AssistantTurnOverrides } from '../turn-setup/assistant-turn-overrides';
 import type {
 	AssistantTurnRuntime,
 	AssistantTurnState,
@@ -65,7 +66,6 @@ import type {
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
-import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
@@ -439,7 +439,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 	}
 
-	/** The turn overrides supply the thread settings. The client request supplies only the Browser Use report. */
+	/** The turn overrides supply the build mode and the prompt version. The client request supplies only the Browser Use report. */
 	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
 		const overrides = this.turnOverrides;
 		return {
@@ -451,11 +451,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			getBrowserUseAvailable: () => options.request.browserUseAvailable,
 			// The Assistant agent has no threshold override. Memory uses the configured policy.
 			getObserverThresholdTokens: () => undefined,
-			getCredentialIdAllowlist: () => overrides.getCredentialIdAllowlist(threadId),
-			shouldBypassCredentialTest: (credentialId) =>
-				overrides.shouldBypassCredentialTest(threadId, credentialId),
-			getCredentialTestTarget: (credentialType) =>
-				overrides.getCredentialTestTarget(threadId, credentialType),
 		};
 	}
 

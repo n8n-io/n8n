@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import type { AssistantCredentialTestTarget } from '../turn-setup/assistant-turn-runtime';
+import type { AssistantCredentialTestTarget } from '../turn-setup/assistant-turn-overrides';
 
 /**
  * Per-thread credential settings for evaluation runs. The eval harness
