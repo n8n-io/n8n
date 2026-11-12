@@ -22,6 +22,7 @@ import {
 	apiRequest,
 	createSendAndWaitMessageBody,
 	getPropertyName,
+	materializeRichMessageLineBreaks,
 } from './GenericFunctions';
 import { telegramHitlProperties } from './hitl/descriptions';
 import { prepareChatApproval } from './hitl/setup';
@@ -1992,6 +1993,14 @@ export class Telegram implements INodeType {
 						description: 'The unique identifier of the forum topic',
 					},
 					{
+						displayName: 'Preserve Line Breaks',
+						name: 'preserveLineBreaks',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to show each single line break in the message as a new line. Telegram ignores single line breaks by default.',
+					},
+					{
 						displayName: 'Protect Content',
 						name: 'protect_content',
 						type: 'boolean',
@@ -2405,10 +2414,13 @@ export class Telegram implements INodeType {
 							body.draft_id = draftId;
 						}
 
-						const format = this.getNodeParameter('richFormat', i) as string;
-						const content = this.getNodeParameter('richMessageText', i) as string;
+						const format = this.getNodeParameter('richFormat', i) as 'html' | 'markdown';
+						const text = this.getNodeParameter('richMessageText', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const { is_rtl, skip_entity_detection } = additionalFields;
+						const { is_rtl, skip_entity_detection, preserveLineBreaks } = additionalFields;
+						const content = preserveLineBreaks
+							? materializeRichMessageLineBreaks(text, format)
+							: text;
 
 						// InputRichMessage requires exactly one of `html` or `markdown`
 						const richMessage: IDataObject =
