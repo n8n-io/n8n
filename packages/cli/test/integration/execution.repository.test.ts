@@ -5,7 +5,8 @@ import { Container } from '@n8n/di';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { createEmptyRunExecutionData, createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { createExecution } from '@test-integration/db/executions';
 import { createOwner } from '@test-integration/db/users';

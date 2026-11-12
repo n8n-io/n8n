@@ -11,7 +11,7 @@ export function registerCustomEndpointChatModel(model: ChatOpenAI, fields: ChatO
 
 // Agent v2 uses this adapter. Other consumers keep the model's selected API.
 export function resolveCustomEndpointChatModel(model: BaseChatModel | null | undefined) {
-	if (!(model instanceof ChatOpenAI)) return model;
+	if (!(model instanceof ChatOpenAI) || !model.useResponsesApi) return model;
 	const fields = customEndpointModels.get(model);
 	if (!fields) return model;
 

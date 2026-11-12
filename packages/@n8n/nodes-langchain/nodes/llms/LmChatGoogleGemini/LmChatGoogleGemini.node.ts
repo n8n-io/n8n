@@ -1,7 +1,8 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { isRecord } from '@n8n/utils/is-record';
-import { NodeConnectionTypes, OperationalError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type {
 	NodeError,
 	INodeType,

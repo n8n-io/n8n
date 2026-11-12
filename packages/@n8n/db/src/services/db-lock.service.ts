@@ -2,7 +2,7 @@ import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { DbLockUnavailableError } from './db-lock-unavailable.error';
 import type { OperationContext } from './transaction';
