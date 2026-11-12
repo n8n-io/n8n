@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nCommandBar } from '@n8n/design-system';
-import { computed, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
@@ -42,6 +43,30 @@ watch(isOpen, (open) => {
 	if (open) {
 		commandBarEventBus.emit('open');
 	}
+});
+
+function onOpenRequest() {
+	if (showCommandBar.value) isOpen.value = true;
+}
+
+// The canvas shortcut opens the palette. Handle closing while its input has focus.
+function onDocumentKeydown(event: KeyboardEvent) {
+	if (!isOpen.value) return;
+	if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+		event.preventDefault();
+		isOpen.value = false;
+		void nextTick(() => canvasEventBus.emit('focus'));
+	}
+}
+
+onMounted(() => {
+	commandBarEventBus.on('open:request', onOpenRequest);
+	document.addEventListener('keydown', onDocumentKeydown, { capture: true });
+});
+
+onBeforeUnmount(() => {
+	commandBarEventBus.off('open:request', onOpenRequest);
+	document.removeEventListener('keydown', onDocumentKeydown, { capture: true });
 });
 </script>
 
