@@ -183,13 +183,12 @@ describe('LmChatGoogleGemini', () => {
 				return null;
 			});
 			mockedProxyFetch.mockReset();
-			mockedProxyFetch.mockRejectedValue(
-				new TypeError('fetch failed', {
-					cause: Object.assign(new Error('Connect Timeout Error'), {
-						code: 'UND_ERR_CONNECT_TIMEOUT',
-					}),
+			const fetchError = new TypeError('fetch failed', {
+				cause: Object.assign(new Error('Connect Timeout Error'), {
+					code: 'UND_ERR_CONNECT_TIMEOUT',
 				}),
-			);
+			});
+			mockedProxyFetch.mockRejectedValue(fetchError);
 
 			const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
 			const result = (response as ChatGoogleGenerativeAI).invoke('hello').catch((e: unknown) => e);
@@ -201,6 +200,8 @@ describe('LmChatGoogleGemini', () => {
 				'message',
 				expect.stringContaining('fetch failed (UND_ERR_CONNECT_TIMEOUT: Connect Timeout Error)'),
 			);
+			expect(error).toHaveProperty('cause', fetchError);
+			expect(error).toHaveProperty('cause.cause.code', 'UND_ERR_CONNECT_TIMEOUT');
 		});
 	});
 
