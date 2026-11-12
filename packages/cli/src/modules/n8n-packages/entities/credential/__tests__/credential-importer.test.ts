@@ -51,7 +51,12 @@ describe('CredentialImporter', () => {
 
 	let importer: CredentialImporter;
 
-	const context: ImportContext = { user, projectId: targetProject.id, folderId: null };
+	const context: ImportContext = {
+		user,
+		projectId: targetProject.id,
+		folderId: null,
+		publicApi: false,
+	};
 
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
