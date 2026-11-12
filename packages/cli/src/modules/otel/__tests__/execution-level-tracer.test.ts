@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
-import type { StartWorkflowParams } from '../execution-level-tracer.types';
+import type { EndNodeParams, StartWorkflowParams } from '../execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
 import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
@@ -65,7 +65,11 @@ describe('ExecutionLevelTracer', () => {
 	const runSingleNodeExecution = (
 		executionId: string,
 		project?: { id: string; customAttributes?: Record<string, string> },
-		custom: { workflow?: Record<string, string>; node?: Record<string, string> } = {},
+		custom: {
+			workflow?: Record<string, string>;
+			node?: Record<string, string>;
+			genAi?: EndNodeParams['genAiAttributes'];
+		} = {},
 	) => {
 		tracer.startWorkflow({
 			executionId,
@@ -80,6 +84,7 @@ describe('ExecutionLevelTracer', () => {
 			inputItemCount: 1,
 			outputItemCount: 1,
 			customAttributes: custom.node,
+			genAiAttributes: custom.genAi,
 		});
 		tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
 
@@ -1770,6 +1775,21 @@ describe('ExecutionLevelTracer', () => {
 
 			const span = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 			expect(span.attributes.env).toBe('workflow');
+		});
+
+		it('should keep a custom gen_ai.agent.id over the generated one', () => {
+			tracer = makeTracer({ prefixes: noPrefixes });
+
+			const { nodeSpan } = runSingleNodeExecution(
+				'exec-prefixes',
+				{ id: 'proj-1', customAttributes: { 'gen_ai.agent.id': 'custom-agent' } },
+				{ genAi: { 'gen_ai.agent.name': 'MyNode', 'gen_ai.agent.id': 'n1' } },
+			);
+
+			expect(nodeSpan.attributes).toMatchObject({
+				'gen_ai.agent.name': 'MyNode',
+				'gen_ai.agent.id': 'custom-agent',
+			});
 		});
 
 		it('should keep built-in attributes when custom attributes use the same keys', () => {

@@ -1,3 +1,4 @@
+import { GEN_AI_ATTR, type GenAiAttributes } from '@n8n/ai-utilities/gen-ai';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
@@ -20,6 +21,7 @@ import {
 } from '@opentelemetry/api';
 import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import omit from 'lodash/omit';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -275,7 +277,7 @@ export class ExecutionLevelTracer {
 				[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 				[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
 				...this.buildCustomAttributes('node', params.customAttributes),
-				...params.genAiAttributes,
+				...withoutCustomAgentId(params.genAiAttributes, activeNodeSpan),
 			});
 
 			if (params.error) {
@@ -472,6 +474,14 @@ function withHookEntries(
 
 function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
 	return 'attributes' in span && typeof span.attributes === 'object' && span.attributes !== null;
+}
+
+function withoutCustomAgentId(
+	genAiAttributes: GenAiAttributes | undefined,
+	span: Span,
+): GenAiAttributes | undefined {
+	const isCustomAgentIdSet = hasAttributes(span) && GEN_AI_ATTR.AGENT_ID in span.attributes;
+	return isCustomAgentIdSet ? omit(genAiAttributes, GEN_AI_ATTR.AGENT_ID) : genAiAttributes;
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.
