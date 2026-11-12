@@ -37,6 +37,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_instance_activity',
 		'expand_instance_activity',
 		'get_node_usage',
+		// Lists credentials, data tables and agents too. The tool withholds the ones whose
+		// scope the grant lacks, and refuses a credential or data table as the requested resource.
+		'get_dependencies',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -188,6 +191,7 @@ export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_activity',
 	'expand_instance_activity',
 	'get_node_usage',
+	'get_dependencies',
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

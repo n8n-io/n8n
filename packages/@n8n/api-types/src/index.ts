@@ -214,6 +214,7 @@ export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
+	DependencyVersion,
 	ResolvedDependency,
 	ResolvedDependenciesResult,
 	DependenciesBatchResponse,

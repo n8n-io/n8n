@@ -105,6 +105,7 @@ import {
 	INSTANCE_CONTEXT_RESOURCE_URI,
 	readInstanceContext,
 } from './tools/get-instance-context.tool';
+import { createGetDependenciesTool } from './tools/get-dependencies.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -783,13 +784,27 @@ export class McpService {
 				);
 			}
 
-			// Node usage reads the dependency index, which is not part of any module and is always
-			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			// Node usage and dependencies read the dependency index, which is not part of any module
+			// and is always available, so they are not gated on `instance-ai` like the activity tools.
 			const { WorkflowDependencyQueryService } = await import(
 				'@/modules/workflow-index/workflow-dependency-query.service.js'
 			);
+			const workflowDependencyQueryService = Container.get(WorkflowDependencyQueryService);
 			registerIfAllowed(
-				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+				createGetNodeUsageTool(user, workflowDependencyQueryService, this.telemetry),
+			);
+			registerIfAllowed(
+				createGetDependenciesTool(
+					user,
+					workflowDependencyQueryService,
+					this.workflowFinderService,
+					this.telemetry,
+					{
+						credentialGranted,
+						dataTableGranted: allowedToolNames?.has('search_data_tables') ?? true,
+						agentGranted: allowedToolNames?.has('search_agents') ?? true,
+					},
+				),
 			);
 		}
 

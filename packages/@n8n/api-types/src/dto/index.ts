@@ -255,6 +255,7 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export {
+	DEPENDENCY_PUBLIC_TYPES,
 	DependencyListPublicDto,
 	ListDependenciesQueryDto,
 	type DependencyPublicType,
