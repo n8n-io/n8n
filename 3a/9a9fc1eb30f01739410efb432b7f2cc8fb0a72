@@ -1,0 +1,87 @@
+docs/generated/postgres-schema/README.md
+  s_9af1b09aa006a5::t_076db0aa7bd5ea 26,703
+docs/generated/postgres-schema/public.agent_execution.md
+  s_9af1b09aa006a5::t_a3506e8544eca2 168
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_9af1b09aa006a5::t_6fb79fb5b78856 18,88
+docs/generated/postgres-schema/public.agent_history.md
+  s_9af1b09aa006a5::t_d1cb1a1ce2ac79 114
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_9af1b09aa006a5::t_da3f478e0c89ca 126
+docs/generated/postgres-schema/public.agent_plan.md
+  s_9af1b09aa006a5::t_f7a02a0f2d1808 107
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  s_9af1b09aa006a5::t_4b8a3f10914263 54
+docs/generated/postgres-schema/public.agents.md
+  s_9af1b09aa006a5::t_a1a49dc8b109e7 221
+docs/generated/postgres-schema/public.project.md
+  s_9af1b09aa006a5::t_32da2d65850461 141
+docs/generated/postgres-schema/public.user.md
+  s_9af1b09aa006a5::t_89950c5a6407b5 189
+docs/generated/sqlite-schema/README.md
+  s_9af1b09aa006a5::t_29bcd840fa5d0a 26,689
+docs/generated/sqlite-schema/agent_execution.md
+  s_9af1b09aa006a5::t_ed36636a22c4af 171
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_9af1b09aa006a5::t_c8ed0a5d5c1b26 9,29,88
+docs/generated/sqlite-schema/agent_history.md
+  s_9af1b09aa006a5::t_7177b58b67741d 121
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_9af1b09aa006a5::t_067c3a3c2b1010 129
+docs/generated/sqlite-schema/agent_plan.md
+  s_9af1b09aa006a5::t_8bb5348964918f 112
+docs/generated/sqlite-schema/agent_thread_grants.md
+  s_9af1b09aa006a5::t_070f20044607c2 63
+docs/generated/sqlite-schema/agents.md
+  s_9af1b09aa006a5::t_7c1d6ce18624af 221
+docs/generated/sqlite-schema/project.md
+  s_9af1b09aa006a5::t_fab3acaed18273 147
+docs/generated/sqlite-schema/user.md
+  s_9af1b09aa006a5::t_2db796d4d4c658 193
+packages/@n8n/db/src/migrations/common/1794514039327-AddTestChatToAgentExecutionThreads.ts
+  s_9af1b09aa006a5::t_2203baf95bda28 1-28
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9af1b09aa006a5::t_f6fc9bc2d4368f 2301
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9af1b09aa006a5::t_35d18475ca05e4 157
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_9af1b09aa006a5::t_e2fc5ed8f8207f 605,608,646
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9af1b09aa006a5::t_b2b83117287825 1496-1498,1814,1819-1822
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9af1b09aa006a5::t_c31bafbb0f21bb 509,514-518
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_9af1b09aa006a5::t_4f0aea38c89c13 7,28-31
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_9af1b09aa006a5::t_10266321dd0838 106
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_73fe1385fd42ba 8,10,53,58,63,80-83,92,95,129-144,167,222-224,226,229-237,243-263
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9af1b09aa006a5::t_63adb5b60ffca5 17,303,309-315
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9af1b09aa006a5::t_4821fdc9d2a0aa 18,39-40,55,70-73,89,104,110-121
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_adcec4f5022162 27-28,104-105,128-129,147-167
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_9af1b09aa006a5::t_5080ab59bebda1 2,22-25,37-56,65-67
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9af1b09aa006a5::t_a1dc86a1ee3abb 106-124
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9af1b09aa006a5::t_77377337152551 6,10,53-54,59-68,85-89,133-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a9a9fc1eb30f01739410efb432b7f2cc8fb0a72",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
