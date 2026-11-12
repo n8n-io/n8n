@@ -181,10 +181,10 @@ describe('ExecutionLedgerRowWriter', () => {
 		});
 
 		it.each(BLOCKED_REASONS)('inserts a run blocked by %s', async (blockedBy) => {
-			await ledger.recordEnded(endedFacts({ outcome: 'blocked', blockedBy }));
+			await ledger.recordEnded({ ...startedFacts(), outcome: 'blocked', blockedBy });
 
 			expect(await claimAll()).toEqual([
-				expect.objectContaining({ outcome: 'blocked', blockedBy }),
+				expect.objectContaining({ outcome: 'blocked', blockedBy, runtimeMs: 0, timeSavedMin: 0 }),
 			]);
 		});
 

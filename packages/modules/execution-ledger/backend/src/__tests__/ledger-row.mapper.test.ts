@@ -65,11 +65,31 @@ describe('toEndedRow', () => {
 	});
 
 	it('keeps the reason of a blocked run', () => {
-		const facts = endedFacts({ outcome: 'blocked', blockedBy: 'policy' });
+		const facts: ExecutionLedgerEndedFacts = {
+			...startedFacts,
+			outcome: 'blocked',
+			blockedBy: 'policy',
+		};
 
 		expect(toEndedRow(facts, 'project-1', 'event-1')).toMatchObject({
 			outcome: 'blocked',
 			blockedBy: 'policy',
+			runtimeMs: 0,
+			timeSavedMin: 0,
+		});
+	});
+
+	it('stores no duration for a blocked run, even when one is given', () => {
+		// @ts-expect-error A blocked run has no runtime.
+		const facts: ExecutionLedgerEndedFacts = {
+			...endedFacts(),
+			outcome: 'blocked',
+			blockedBy: 'policy',
+		};
+
+		expect(toEndedRow(facts, 'project-1', 'event-1')).toMatchObject({
+			runtimeMs: 0,
+			timeSavedMin: 0,
 		});
 	});
 

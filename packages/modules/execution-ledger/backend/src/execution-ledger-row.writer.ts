@@ -1,7 +1,6 @@
 import {
 	type ExecutionLedgerEndedFacts,
 	type ExecutionLedgerStartedFacts,
-	type ExecutionLedgerWriteResult,
 	type ExecutionLedgerWriter,
 	WorkflowProjectService,
 } from '@n8n/backend-services';
@@ -12,8 +11,6 @@ import { v7 as uuidv7 } from 'uuid';
 import { ExecutionLedgerRepository } from './database/repositories/execution-ledger.repository';
 import { toEndedRow, toStartedRow } from './ledger-row.mapper';
 
-const NO_OWNER_PROJECT: ExecutionLedgerWriteResult = { recorded: false, reason: 'noOwnerProject' };
-
 /** Bound to the core `ExecutionLedger` service by the module. */
 @Service()
 export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
@@ -23,26 +20,20 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 		private readonly workflowProjectService: WorkflowProjectService,
 	) {}
 
-	async writeStarted(
-		facts: ExecutionLedgerStartedFacts,
-		ctx: OperationContext,
-	): Promise<ExecutionLedgerWriteResult> {
+	async writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
 		const projectId = await this.findProjectId(facts.workflowId, ctx);
-		if (!projectId) return NO_OWNER_PROJECT;
+		if (!projectId) return false;
 
 		await this.repository.append(toStartedRow(facts, projectId, uuidv7()), ctx);
-		return { recorded: true };
+		return true;
 	}
 
-	async writeEnded(
-		facts: ExecutionLedgerEndedFacts,
-		ctx: OperationContext,
-	): Promise<ExecutionLedgerWriteResult> {
+	async writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean> {
 		const projectId = await this.findProjectId(facts.workflowId, ctx);
-		if (!projectId) return NO_OWNER_PROJECT;
+		if (!projectId) return false;
 
 		await this.repository.append(toEndedRow(facts, projectId, uuidv7()), ctx);
-		return { recorded: true };
+		return true;
 	}
 
 	/**
