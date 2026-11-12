@@ -1,0 +1,28 @@
+packages/@n8n/config/src/configs/__tests__/code-execution.config.test.ts
+  h_8fb27e0cdf6d1e 1-78
+packages/@n8n/config/src/configs/code-execution.config.ts
+  h_8fb27e0cdf6d1e 1-54
+packages/@n8n/config/src/index.ts
+  h_8fb27e0cdf6d1e 14,72-78,211-213
+packages/@n8n/config/test/config.test.ts
+  h_8fb27e0cdf6d1e 473-480
+packages/cli/src/code-execution/__tests__/validate-code-execution-config.test.ts
+  h_8fb27e0cdf6d1e 1-59
+packages/cli/src/code-execution/errors/invalid-code-execution-config.error.ts
+  h_8fb27e0cdf6d1e 1-7
+packages/cli/src/code-execution/validate-code-execution-config.ts
+  h_8fb27e0cdf6d1e 1-37
+packages/cli/src/commands/base-command.ts
+  h_8fb27e0cdf6d1e 37,208-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ff08ad621e432b93f42f7ea49b0c9b0cddaa325",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
