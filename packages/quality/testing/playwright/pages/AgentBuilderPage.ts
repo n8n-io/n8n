@@ -122,7 +122,7 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	getTestAttachment(name: string): Locator {
-		return this.getComposerFrame('test').getByText(name, { exact: true });
+		return this.getComposerFrame('test').getByTitle(name);
 	}
 
 	async removeTestAttachment(): Promise<void> {

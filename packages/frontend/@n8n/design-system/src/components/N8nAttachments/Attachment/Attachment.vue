@@ -17,7 +17,6 @@ const emit = defineEmits<AttachmentEmits>();
 
 const { t } = useI18n();
 
-const MAX_FILE_NAME_CHARS = 20;
 /** Keep the source frame timing, but omit its loop pause. */
 const POOF_DURATION_MS = 520;
 /** Close the gap after the initial burst. */

@@ -122,23 +122,23 @@ describe('N8nAttachment', function describeComponent() {
 	});
 
 	it.each([
-		['a-very-long-file-name12.pdf', 'a-very-long-f…12.pdf'],
-		['report.final.PDF', 'report.final.PDF'],
-		['README', 'README'],
-		['.gitignore', '.gitignore'],
-		['a-very-long-name-without-extension', 'a-very-long-na…nsion'],
-		['a-very-long-file-name12.longextension', 'a-v…12.longextension'],
-	])('preserves the file name suffix for %s', function testFileName(fileName, expected) {
+		'a-very-long-file-name12.pdf',
+		'report.final.PDF',
+		'README',
+		'.gitignore',
+		'a-very-long-name-without-extension',
+		'a-very-long-file-name12.longextension',
+	])('renders the full file name for %s', function testFileName(fileName) {
 		render(N8nAttachment, { props: { fileName, mimeType: 'application/octet-stream' } });
 
 		const caption = screen.getByTitle(fileName);
 		const visibleName = caption.querySelector('[aria-hidden="true"]');
 
-		expect(visibleName).toHaveTextContent(expected);
+		expect(visibleName).toHaveTextContent(fileName);
 		expect(caption.firstElementChild).toHaveTextContent(fileName);
 	});
 
-	it('shows the full file name on hover and restores truncation on leave', async function testHover() {
+	it('keeps the full file name before and after hover', async function testHover() {
 		const fileName = 'a-very-long-file-name12.pdf';
 		render(N8nAttachment, { props: { fileName, mimeType: 'application/pdf' } });
 
@@ -151,10 +151,10 @@ describe('N8nAttachment', function describeComponent() {
 		expect(visibleName).toHaveTextContent(fileName);
 
 		await fireEvent.mouseLeave(container);
-		expect(visibleName).toHaveTextContent('a-very-long-f…12.pdf');
+		expect(visibleName).toHaveTextContent(fileName);
 	});
 
-	it('keeps the full name until the return transition ends', async function testReturn() {
+	it('keeps the full name through the return transition', async function testReturn() {
 		const fileName = 'a-very-long-file-name12.pdf';
 		render(N8nAttachment, { props: { fileName, mimeType: 'application/pdf' } });
 		const container = screen.getByRole('figure').parentElement!;
@@ -171,7 +171,7 @@ describe('N8nAttachment', function describeComponent() {
 		const transitionEnd = new Event('transitionend', { bubbles: true });
 		Object.defineProperty(transitionEnd, 'propertyName', { value: 'transform' });
 		await fireEvent(name, transitionEnd);
-		expect(viewport).toHaveTextContent('a-very-long-f…12.pdf');
+		expect(viewport).toHaveTextContent(fileName);
 	});
 
 	it('renders the attachment as a link that opens in a new tab', function testFileLink() {
