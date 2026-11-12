@@ -1,0 +1,127 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_40f8b037f3bcf9::t_436250a501f2b4 71-72
+packages/cli/test/migration/1794320866222-add-retry-delay-to-workflow-publication-retry-state.test.ts
+  s_40f8b037f3bcf9::t_a90b6094d483b4 12
+  s_fe81b129ac97c3::t_45f92c6acc195a 1-11,13-170
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_40f8b037f3bcf9::t_2b587e450b5ea0 52-67
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_40f8b037f3bcf9::t_ebd8c281355b5a 354
+  s_40f8b037f3bcf9::t_1c91744b8e2266 723-777
+  s_40f8b037f3bcf9::t_c2b06a71a46bc2 778,780-861
+  s_40f8b037f3bcf9::t_f31363e9ba7187 444
+  s_40f8b037f3bcf9::t_2b3a9c304fe130 604,606
+  s_40f8b037f3bcf9::t_e1e20bdcd93e94 779
+  s_40f8b037f3bcf9::t_d4c1f61af0bdb7 226
+  s_40f8b037f3bcf9::t_2e8546945524c6 10
+  s_40f8b037f3bcf9::t_ae264676b4ee4f 12,18-21
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_40f8b037f3bcf9::t_f07d39b079a83b 32-41
+  s_40f8b037f3bcf9::t_8aedf434e72298 202-206
+  s_40f8b037f3bcf9::t_465a033914c10d 14-15
+  s_40f8b037f3bcf9::t_242da7caba6635 122,131-143
+  s_40f8b037f3bcf9::t_2f8927e756beec 29
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_40f8b037f3bcf9::t_6343a244981a78 150,178-180,183
+  s_40f8b037f3bcf9::t_ebe4f29a906a1f 151-154
+  s_40f8b037f3bcf9::t_4a432951e26dd7 304-315
+  s_40f8b037f3bcf9::t_ccd70513c03df5 57
+  s_40f8b037f3bcf9::t_d7db796dc6e219 58
+  s_40f8b037f3bcf9::t_e73f78ceb1f851 182
+  s_40f8b037f3bcf9::t_927901250656ae 155-159,165,171,175,181
+packages/@n8n/db/src/entities/workflow-publication-retry-state.ts
+  s_40f8b037f3bcf9::t_7c24f0dcc0a3bb 7-9,20-22
+  s_11556d3276b9c3::t_7cd7d86378b404 23
+packages/cli/test/integration/workflows/workflow-publication-retry.test.ts
+  s_40f8b037f3bcf9::t_1202d0fa12ca2f 139-154
+  s_40f8b037f3bcf9::t_a41a04dd72b933 108-109
+  s_40f8b037f3bcf9::t_d959ca5de22b9e 1-10,12,14-15,17-24,26-31,34,36,38-90,100-101,117-121,123-125,128-137,163-173,175-180,182-183,185-191,194-225,401
+  s_40f8b037f3bcf9::t_57e7ca706c5e22 300-316,318-355,357-389
+  s_40f8b037f3bcf9::t_46d631e137d297 192
+  s_40f8b037f3bcf9::t_3848296766b0a5 394,398
+  s_40f8b037f3bcf9::t_a09b6b9f0f5fc6 273
+  s_40f8b037f3bcf9::t_c2f364093a2989 317
+  s_40f8b037f3bcf9::t_ae2440d410b0c6 16
+  s_40f8b037f3bcf9::t_bd4ba29c13ed10 292-294
+  s_40f8b037f3bcf9::t_c55375157225b4 25
+  s_40f8b037f3bcf9::t_4ed4b8fb23517b 116
+  s_40f8b037f3bcf9::t_9bba2611b35d14 280-281
+  s_40f8b037f3bcf9::t_541b657a157259 155-162
+  s_40f8b037f3bcf9::t_62d985dadb4215 13
+  s_40f8b037f3bcf9::t_6674b8622636c1 102-105
+  s_40f8b037f3bcf9::t_44ec546e1c5f33 356
+  s_40f8b037f3bcf9::t_1d48b65cacaf5c 184
+  s_40f8b037f3bcf9::t_c00c8701d941a4 226,228-229,235-242,249-254,390-391,395-397,399-400
+  s_40f8b037f3bcf9::t_1d3c105bbf03e9 106-107,112-115
+  s_40f8b037f3bcf9::t_c78236c4f917cd 174
+  s_40f8b037f3bcf9::t_2a58c295ecb10e 32-33,35
+  s_40f8b037f3bcf9::t_5dc5a3fa3586fa 11
+  s_40f8b037f3bcf9::t_11a8524828c072 181
+  s_40f8b037f3bcf9::t_51f44d1a3df701 110-111
+  s_40f8b037f3bcf9::t_c276fdd82df58d 122
+  s_40f8b037f3bcf9::t_5c9ca0c69fbcae 126-127
+  s_40f8b037f3bcf9::t_44b21bfffe70b4 227,230-234,243-244,392-393
+  s_40f8b037f3bcf9::t_96e18698c14ec0 37
+  s_40f8b037f3bcf9::t_0096258f43293c 255-272,274-279,282-291,295-299
+  s_40f8b037f3bcf9::t_af3e331aaae1f9 193
+  s_40f8b037f3bcf9::t_a9937212655910 91-99
+  s_40f8b037f3bcf9::t_db06e811b79de6 245-248
+  s_40f8b037f3bcf9::t_8ec2371d61e35c 138
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_40f8b037f3bcf9::t_5097c055dd4559 286-287
+  s_40f8b037f3bcf9::t_f841faf7f8a457 59-60
+  s_40f8b037f3bcf9::t_57e7273c3e9f80 15
+  s_40f8b037f3bcf9::t_7b9525596fd5c1 328-331
+  s_40f8b037f3bcf9::t_ae3d9e396d9a0d 369-420
+packages/@n8n/db/src/repositories/workflow-publication-retry-state.repository.ts
+  s_40f8b037f3bcf9::t_57ed4819afc94f 1,10-27,30-34,45,50-83,87-90
+  s_11556d3276b9c3::t_58bec47aa4e68a 91
+packages/@n8n/db/src/migrations/common/1794320866222-AddRetryDelayToWorkflowPublicationRetryState.ts
+  s_40f8b037f3bcf9::t_3e14d06ccbcca1 14-16
+  s_40f8b037f3bcf9::t_4d408ff208d8c4 1-2,68,74,85-86
+  s_40f8b037f3bcf9::t_e095130482d10a 3-13,17-67,69-73,75-84
+docs/generated/postgres-schema/README.md
+  s_40f8b037f3bcf9::t_dfc594a2558050 173,2165
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_40f8b037f3bcf9::t_3bbb053553f23a 365
+docs/generated/postgres-schema/public.workflow_publication_retry_state.md
+  s_40f8b037f3bcf9::t_598962ea34334a 8,39
+docs/generated/sqlite-schema/README.md
+  s_40f8b037f3bcf9::t_3e70693d6408e6 173,2153
+docs/generated/sqlite-schema/workflow_entity.md
+  s_40f8b037f3bcf9::t_321466f22c8293 356
+docs/generated/sqlite-schema/workflow_publication_retry_state.md
+  s_40f8b037f3bcf9::t_59bdd707ff29cf 9,19,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "349cf5fa1e7a3b25134c8f0b702695b30bb7626d",
+  "prompts": {},
+  "sessions": {
+    "s_11556d3276b9c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a51ecc0-aade-48b4-a168-45cad688ea5c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_fe81b129ac97c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7846b604-588b-48eb-bd5a-278f131418d5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
