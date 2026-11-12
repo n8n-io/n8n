@@ -171,6 +171,7 @@ describe('PromotionCheckoutCleanupService', () => {
 
 			expect(environmentRepository.findIdsWithRepositoryPathByProvider).toHaveBeenCalledWith(
 				'prov1',
+				{},
 			);
 			expect(await exists(affected.repositoryFolder)).toBe(false);
 			expect(await exists(unaffected.repositoryFolder)).toBe(true);
@@ -232,7 +233,7 @@ describe('PromotionCheckoutCleanupService', () => {
 
 			await service.removeOrphanedCheckouts();
 
-			expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([]);
+			expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([], {});
 			expect(await exists(path.join(environmentsFolder(), 'notes'))).toBe(true);
 			expect(await exists(path.join(environmentsFolder(), LIVE_ID.toUpperCase()))).toBe(true);
 			expect(await exists(path.join(environmentsFolder(), DELETED_ID))).toBe(true);
@@ -255,7 +256,7 @@ describe('PromotionCheckoutCleanupService', () => {
 
 			await expect(service.removeOrphanedCheckouts()).resolves.toBeUndefined();
 
-			expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([]);
+			expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([], {});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
@@ -417,7 +418,7 @@ describe('PromotionCheckoutCleanupService', () => {
 					change: 'deleted',
 				});
 
-				expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([DELETED_ID]);
+				expect(environmentRepository.findExistingIds).toHaveBeenCalledWith([DELETED_ID], {});
 				expect(await exists(paths.rootFolder)).toBe(false);
 			});
 
@@ -469,7 +470,7 @@ describe('PromotionCheckoutCleanupService', () => {
 
 				await handle();
 
-				expect(environmentRepository.findByIdWithProvider).toHaveBeenCalledWith(LIVE_ID);
+				expect(environmentRepository.findByIdWithProvider).toHaveBeenCalledWith(LIVE_ID, {});
 				expect(await exists(paths.repositoryFolder)).toBe(true);
 				expect(await exists(paths.descriptorFile)).toBe(true);
 			});

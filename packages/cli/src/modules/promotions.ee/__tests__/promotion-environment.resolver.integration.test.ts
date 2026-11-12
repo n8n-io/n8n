@@ -8,10 +8,12 @@ import {
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { BadRequestError } from '@n8n/errors';
 import { createOwner } from '@test-integration/db/users';
 
+import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
@@ -19,6 +21,7 @@ import { PromotionEnvironmentResolver } from '../promotion-environment.resolver'
 
 let providerRepository: PromotionProviderRepository;
 let environmentRepository: PromotionEnvironmentRepository;
+let environmentRows: Repository<PromotionEnvironment>;
 let linkRepository: PromotionEnvironmentProjectRepository;
 let resolver: PromotionEnvironmentResolver;
 let owner: User;
@@ -36,6 +39,7 @@ beforeAll(async () => {
 
 	providerRepository = Container.get(PromotionProviderRepository);
 	environmentRepository = Container.get(PromotionEnvironmentRepository);
+	environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 	linkRepository = Container.get(PromotionEnvironmentProjectRepository);
 	resolver = new PromotionEnvironmentResolver(
 		environmentRepository,
@@ -51,7 +55,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	// Delete children before parents to satisfy the foreign keys.
 	await linkRepository.delete({});
-	await environmentRepository.delete({});
+	await environmentRows.delete({});
 	await providerRepository.delete({});
 	await testDb.truncate(['SharedWorkflow', 'ProjectRelation', 'Project']);
 	owner = await createOwner();
@@ -71,14 +75,17 @@ async function createEnvironment(options: {
 		config: { schemaVersion: 1 },
 		auth: `encrypted-${options.name}`,
 	});
-	const environment = await environmentRepository.insertEnvironment({
-		name: options.name,
-		scope: options.scope,
-		providerId: provider.id,
-		remote: { schemaVersion: 1, remoteUrl: `https://example.com/org/${options.name}.git` },
-		direction,
-		settings: options.settings ?? (direction === 'apply' ? APPLY_SETTINGS : PROMOTE_SETTINGS),
-	});
+	const environment = await environmentRepository.insertEnvironment(
+		{
+			name: options.name,
+			scope: options.scope,
+			providerId: provider.id,
+			remote: { schemaVersion: 1, remoteUrl: `https://example.com/org/${options.name}.git` },
+			direction,
+			settings: options.settings ?? (direction === 'apply' ? APPLY_SETTINGS : PROMOTE_SETTINGS),
+		},
+		{},
+	);
 	return { environment, provider };
 }
 

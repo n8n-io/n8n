@@ -37,6 +37,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -85,6 +86,7 @@ import { createMember, createOwnerWithApiKey } from '@test-integration/db/users'
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
+import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
@@ -125,6 +127,7 @@ mockInstance(ActiveWorkflowManager);
 
 let providerRepository: PromotionProviderRepository;
 let environmentRepository: PromotionEnvironmentRepository;
+let environmentRows: Repository<PromotionEnvironment>;
 let linkRepository: PromotionEnvironmentProjectRepository;
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
@@ -143,6 +146,7 @@ beforeAll(async () => {
 
 	providerRepository = Container.get(PromotionProviderRepository);
 	environmentRepository = Container.get(PromotionEnvironmentRepository);
+	environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 	linkRepository = Container.get(PromotionEnvironmentProjectRepository);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
@@ -168,7 +172,7 @@ beforeEach(async () => {
 	// Delete children before parents to satisfy the foreign keys.
 	await Container.get(PromotionRunRepository).delete({});
 	await linkRepository.delete({});
-	await environmentRepository.delete({});
+	await environmentRows.delete({});
 	await providerRepository.delete({});
 	await testDb.truncate([
 		'WorkflowTagMapping',
@@ -289,16 +293,22 @@ async function createInstanceEnvironments(
 		providerId: provider.id,
 		remote: { schemaVersion: 1 as const, remoteUrl },
 	};
-	const apply = await environmentRepository.insertEnvironment({
-		...fields,
-		direction: 'apply',
-		settings: { schemaVersion: 1, branchName: branches.apply },
-	});
-	const promote = await environmentRepository.insertEnvironment({
-		...fields,
-		direction: 'promote',
-		settings: { schemaVersion: 1, baseBranchName: branches.promote, createBranchOnPromotion },
-	});
+	const apply = await environmentRepository.insertEnvironment(
+		{
+			...fields,
+			direction: 'apply',
+			settings: { schemaVersion: 1, branchName: branches.apply },
+		},
+		{},
+	);
+	const promote = await environmentRepository.insertEnvironment(
+		{
+			...fields,
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: branches.promote, createBranchOnPromotion },
+		},
+		{},
+	);
 	return { apply, promote };
 }
 
@@ -964,7 +974,7 @@ describe('Promote and Apply', () => {
 			mock<InstanceSettings>({ n8nFolder: path.join(testRoot, 'instance') }),
 		);
 		await expect(reloadedDirectory.readDescriptor(environmentId)).resolves.toBeNull();
-		await environmentRepository.update(environmentId, {
+		await environmentRows.update(environmentId, {
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 		});
 		const exportSpy = vi.spyOn(packagesService, 'exportPackageToDirectory');
@@ -3680,14 +3690,21 @@ describe('Promotion base branch listing', () => {
 			},
 		]);
 
-		const projectPromote = await environmentRepository.insertEnvironment({
-			name: 'Project production',
-			scope: 'projects',
-			providerId: instance.promote.providerId,
-			remote: { schemaVersion: 1, remoteUrl: remote.bareDir },
-			direction: 'promote',
-			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
-		});
+		const projectPromote = await environmentRepository.insertEnvironment(
+			{
+				name: 'Project production',
+				scope: 'projects',
+				providerId: instance.promote.providerId,
+				remote: { schemaVersion: 1, remoteUrl: remote.bareDir },
+				direction: 'promote',
+				settings: {
+					schemaVersion: 1,
+					baseBranchName: 'production',
+					createBranchOnPromotion: false,
+				},
+			},
+			{},
+		);
 		await linkRepository.linkProject(project.id, projectPromote.id, 'promote');
 		await service.clone(projectPromote.id, owner);
 
@@ -3881,7 +3898,7 @@ describe('Promotion base branch listing', () => {
 		await remote.git.add(['--all']);
 		await remote.git.commit('Export production project');
 		await remote.git.push('origin', 'production');
-		await environmentRepository.update(environments.promote.id, {
+		await environmentRows.update(environments.promote.id, {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not connected');

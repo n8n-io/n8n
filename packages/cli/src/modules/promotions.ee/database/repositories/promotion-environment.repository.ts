@@ -23,18 +23,29 @@ export type PromotionEnvironmentFilter = {
 	providerId?: string;
 };
 
-@Service()
-export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvironment> {
+class PromotionEnvironmentTable extends BaseRepository<PromotionEnvironment> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(PromotionEnvironment, dataSource.manager, transactionRunner);
+	}
+}
+
+@Service()
+export class PromotionEnvironmentRepository {
+	private readonly table: PromotionEnvironmentTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new PromotionEnvironmentTable(dataSource, transactionRunner);
 	}
 
 	/**
 	 * Loads the provider alongside the environment in one query, so an edit that
 	 * lands between two reads cannot pair old credentials with a new remote.
 	 */
-	async findByIdWithProvider(id: string): Promise<PromotionEnvironment | null> {
-		return await this.findOne({
+	async findByIdWithProvider(
+		id: string,
+		ctx: OperationContext,
+	): Promise<PromotionEnvironment | null> {
+		return await this.table.managerFor(ctx).findOne(PromotionEnvironment, {
 			where: { id },
 			relations: { provider: true },
 		});
@@ -42,8 +53,9 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 
 	async findInstanceEnvironment(
 		direction: PromotionDirection,
+		ctx: OperationContext,
 	): Promise<PromotionEnvironment | null> {
-		return await this.findOne({
+		return await this.table.managerFor(ctx).findOne(PromotionEnvironment, {
 			where: { scope: 'instance', direction },
 			relations: { provider: true },
 		});
@@ -53,9 +65,12 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 	 * Only one instance environment may exist for each direction, so a second one
 	 * loses to the partial unique index rather than to a count check.
 	 */
-	async insertEnvironment(environment: NewPromotionEnvironment): Promise<PromotionEnvironment> {
+	async insertEnvironment(
+		environment: NewPromotionEnvironment,
+		ctx: OperationContext,
+	): Promise<PromotionEnvironment> {
 		try {
-			return await this.save(this.create(environment));
+			return await this.table.managerFor(ctx).save(this.table.create(environment));
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new PromotionConflictError(
@@ -73,54 +88,66 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		changes: Partial<Pick<PromotionEnvironment, 'name' | 'providerId' | 'remote' | 'settings'>>,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(
-			PromotionEnvironment,
-			{ id, providerId: expectedProviderId },
-			changes,
-		);
+		const result = await this.table
+			.managerFor(ctx)
+			.update(PromotionEnvironment, { id, providerId: expectedProviderId }, changes);
 		return result.affected === 1;
 	}
 
 	/** Cascades to this environment's project links only. */
 	/** Returns false when no row was deleted, for example after a concurrent delete. */
 	async deleteEnvironment(id: string, ctx: OperationContext): Promise<boolean> {
-		const result = await this.managerFor(ctx).delete(PromotionEnvironment, { id });
+		const result = await this.table.managerFor(ctx).delete(PromotionEnvironment, { id });
 		return (result.affected ?? 0) > 0;
 	}
 
-	async countByProviderId(providerId: string): Promise<number> {
-		return await this.count({ where: { providerId } });
+	async countByProviderId(providerId: string, ctx: OperationContext): Promise<number> {
+		return await this.table.managerFor(ctx).count(PromotionEnvironment, { where: { providerId } });
 	}
 
-	async findExistingIds(ids: string[]): Promise<Set<string>> {
+	async findExistingIds(ids: string[], ctx: OperationContext): Promise<Set<string>> {
 		if (ids.length === 0) return new Set();
-		const rows = await this.find({ select: { id: true }, where: { id: In(ids) } });
+		const rows = await this.table
+			.managerFor(ctx)
+			.find(PromotionEnvironment, { select: { id: true }, where: { id: In(ids) } });
 		return new Set(rows.map((row) => row.id));
 	}
 
-	async findIdsWithRepositoryPathByProvider(providerId: string): Promise<string[]> {
+	async findIdsWithRepositoryPathByProvider(
+		providerId: string,
+		ctx: OperationContext,
+	): Promise<string[]> {
 		// The object form of `select` does not accept a JSON column, so use the list form.
-		const rows = await this.find({ select: ['id', 'remote'], where: { providerId } });
+		const rows = await this.table
+			.managerFor(ctx)
+			.find(PromotionEnvironment, { select: ['id', 'remote'], where: { providerId } });
 		return rows
 			.filter((row) => isRecord(row.remote) && 'repositoryPath' in row.remote)
 			.map((row) => row.id);
 	}
 
-	async listEnvironments(options: {
-		offset: number;
-		limit: number;
-		filter: PromotionEnvironmentFilter;
-	}) {
+	async listEnvironments(
+		options: {
+			offset: number;
+			limit: number;
+			filter: PromotionEnvironmentFilter;
+		},
+		ctx: OperationContext,
+	) {
 		const where: FindOptionsWhere<PromotionEnvironment> = {};
 		if (options.filter.scope) where.scope = options.filter.scope;
 		if (options.filter.direction) where.direction = options.filter.direction;
 		if (options.filter.providerId) where.providerId = options.filter.providerId;
 
+		const manager = this.table.managerFor(ctx);
+
 		// TypeORM omits the LIMIT clause when `take` is falsy, so `take: 0` would
 		// return every row instead of none. Short-circuit to honor the limit.
-		if (options.limit <= 0) return { count: await this.count({ where }), data: [] };
+		if (options.limit <= 0) {
+			return { count: await manager.count(PromotionEnvironment, { where }), data: [] };
+		}
 
-		const [data, count] = await this.findAndCount({
+		const [data, count] = await manager.findAndCount(PromotionEnvironment, {
 			where,
 			relations: { provider: true },
 			order: { id: 'ASC' },

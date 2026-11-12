@@ -56,8 +56,10 @@ export class PromotionCheckoutCleanupService {
 	async resetCheckoutsForHostChange(providerId: string): Promise<void> {
 		let environmentIds: string[];
 		try {
-			environmentIds =
-				await this.environmentRepository.findIdsWithRepositoryPathByProvider(providerId);
+			environmentIds = await this.environmentRepository.findIdsWithRepositoryPathByProvider(
+				providerId,
+				{},
+			);
 		} catch (error) {
 			this.warn('Failed to find the promotion checkouts to reset', { providerId }, error);
 			return;
@@ -75,7 +77,7 @@ export class PromotionCheckoutCleanupService {
 	async removeOrphanedCheckouts(): Promise<void> {
 		try {
 			const folderIds = await this.workingDirectory.listEnvironmentIds();
-			const existingIds = await this.environmentRepository.findExistingIds(folderIds);
+			const existingIds = await this.environmentRepository.findExistingIds(folderIds, {});
 			const orphanedIds = folderIds.filter((id) => !existingIds.has(id));
 			if (orphanedIds.length === 0) return;
 			this.logger.debug('Removing promotion checkouts of deleted environments', {
@@ -114,7 +116,7 @@ export class PromotionCheckoutCleanupService {
 	}
 
 	private async purgeIfDeleted(environmentIds: string[]) {
-		const existingIds = await this.environmentRepository.findExistingIds(environmentIds);
+		const existingIds = await this.environmentRepository.findExistingIds(environmentIds, {});
 		for (const environmentId of environmentIds) {
 			if (existingIds.has(environmentId)) {
 				this.logger.warn('Kept the promotion checkout of an environment that still exists', {
@@ -128,7 +130,7 @@ export class PromotionCheckoutCleanupService {
 
 	private async resetIfStale(environmentId: string) {
 		try {
-			const environment = await this.environmentRepository.findByIdWithProvider(environmentId);
+			const environment = await this.environmentRepository.findByIdWithProvider(environmentId, {});
 			if (!environment) {
 				await this.purge(environmentId);
 				return;

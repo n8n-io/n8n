@@ -221,7 +221,7 @@ export class PromotionProvidersService {
 	 */
 	async delete(id: string, actor: User): Promise<void> {
 		const provider = await this.getEntity(id);
-		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
+		if ((await this.environmentRepository.countByProviderId(id, {})) > 0) {
 			throw new ConflictError('This provider is used by a promotion environment');
 		}
 		const deleted = await mapPromotionConflicts(

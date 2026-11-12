@@ -8,6 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 import { mkdtempSync } from 'node:fs';
@@ -23,6 +24,7 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
@@ -61,8 +63,10 @@ let owner: Person;
 let environmentId: string;
 /** What GitLab reports for each merge request, by iid. */
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
+let environmentRows: Repository<PromotionEnvironment>;
 
 beforeAll(() => {
+	environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 	Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 		environmentsVersion: 'v2',
 	};
@@ -75,7 +79,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	await Container.get(PromotionRunRepository).delete({});
 	await Container.get(PromotionReviewRepository).delete({});
-	await Container.get(PromotionEnvironmentRepository).delete({});
+	await environmentRows.delete({});
 	await Container.get(PromotionProviderRepository).delete({});
 	await testDb.truncate([
 		'SharedCredentials',
@@ -119,14 +123,17 @@ beforeEach(async () => {
 	});
 
 	const provider = await insertTokenProvider({ name: 'Reviews' });
-	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
-		name: 'Reviews',
-		scope: 'instance',
-		providerId: provider.id,
-		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
-		direction: 'promote',
-		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-	});
+	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment(
+		{
+			name: 'Reviews',
+			scope: 'instance',
+			providerId: provider.id,
+			remote: { schemaVersion: 1, remoteUrl: remoteFolder },
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+		},
+		{},
+	);
 	environmentId = environment.id;
 	await Container.get(PromotionsService).clone(environmentId, owner);
 });
