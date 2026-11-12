@@ -10,6 +10,7 @@ import {
 	RECREATING_METHODS,
 	calleeName,
 	chainTop,
+	isColumnConstructor,
 	lineOf,
 	loadAddedMigrations,
 	maskSqlText,
@@ -227,7 +228,10 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 					: Node.isObjectLiteralExpression(third)
 						? third.getProperty('customIndexName')
 						: undefined;
-			if (customName && customName.getText() !== 'undefined') continue;
+			const customValue = Node.isPropertyAssignment(customName)
+				? customName.getInitializer()
+				: customName;
+			if (customName && customValue?.getText() !== 'undefined') continue;
 
 			const table = resolveTableName(tableArg);
 			if (!table || !Node.isArrayLiteralExpression(columnsArg)) continue;
@@ -250,9 +254,14 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 
 	private checkPrimaryNotNull({ file }: AddedMigration): Violation[] {
 		const violations: Violation[] = [];
-		for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-			if (calleeName(call) !== 'column') continue;
-			const top = chainTop(call);
+		const roots = [
+			...file
+				.getDescendantsOfKind(SyntaxKind.CallExpression)
+				.filter((call) => calleeName(call) === 'column'),
+			...file.getDescendantsOfKind(SyntaxKind.NewExpression).filter(isColumnConstructor),
+		];
+		for (const root of roots) {
+			const top = chainTop(root);
 			const chain = parseColumnChain(top);
 			if (!chain?.members.includes('notNull')) continue;
 			if (!chain.members.some((m) => m === 'primary' || m === 'primaryWithName')) continue;

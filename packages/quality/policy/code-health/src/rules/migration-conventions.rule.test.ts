@@ -347,6 +347,23 @@ describe('MigrationConventionsRule', () => {
 			expect(await analyzeAdded(migration(up))).toHaveLength(1);
 		});
 
+		it('resolves a query built from many concatenated pieces', async () => {
+			const pieces = [
+				'"SELECT id"',
+				'` FROM #{table}`',
+				'" WHERE a = 1"',
+				'" AND b = 2"',
+				'" AND c = 3"',
+				'" AND d = 4"',
+			];
+			const up = [
+				"const table = escape.tableName('agents');",
+				`await context.runInBatches(${pieces.join(' + ')}, async () => {});`,
+			].join('\n\t\t');
+
+			expect(await analyzeAdded(migration(up))).toHaveLength(1);
+		});
+
 		it('accepts an ordered query and skips a query it cannot resolve', async () => {
 			const up = [
 				"await context.runInBatches(`SELECT id FROM #{escape.tableName('agents')}\n order  by id`, async () => {});",
@@ -388,10 +405,13 @@ describe('MigrationConventionsRule', () => {
 			expect(await analyzeAdded(migration(up))).toEqual([]);
 		});
 
-		it('flags a createIndex call that passes undefined as the custom name', async () => {
-			const up = `await schemaBuilder.createIndex('self_healing_investigation', ${longColumns}, false, undefined, 'x IS NOT NULL');`;
+		it('flags createIndex and dropIndex calls that pass undefined as the custom name', async () => {
+			const up = [
+				`await schemaBuilder.createIndex('self_healing_investigation', ${longColumns}, false, undefined, 'x IS NOT NULL');`,
+				`await schemaBuilder.dropIndex('self_healing_investigation', ${longColumns}, { customIndexName: undefined });`,
+			].join('\n\t\t');
 
-			expect(await analyzeAdded(migration(up))).toHaveLength(1);
+			expect(await analyzeAdded(migration(up))).toHaveLength(2);
 		});
 
 		it('ignores SQLite-only migrations', async () => {
@@ -426,6 +446,16 @@ describe('MigrationConventionsRule', () => {
 				'Column `runId` chains `.notNull` with `.primary`',
 			]);
 			expect(violations[0].message).toContain('.agents/skills/db-migrations/SKILL.md#primary-keys');
+		});
+
+		it('flags a new Column chain', async () => {
+			const violations = await analyzeAdded(
+				migration("await createTable('job').withColumns(new Column('id').notNull.primary);"),
+			);
+
+			expect(violations.map((v) => v.message.split('. ')[0])).toEqual([
+				'Column `id` chains `.notNull` with `.primary`',
+			]);
 		});
 	});
 });

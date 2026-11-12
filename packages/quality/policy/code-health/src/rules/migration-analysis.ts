@@ -1,6 +1,6 @@
 import fg from 'fast-glob';
 import { Node, Project, SyntaxKind, VariableDeclarationKind } from 'ts-morph';
-import type { CallExpression, SourceFile } from 'ts-morph';
+import type { CallExpression, NewExpression, SourceFile } from 'ts-morph';
 import * as path from 'node:path';
 
 import type { CodeHealthContext } from '../context.js';
@@ -125,11 +125,12 @@ export function resolveSqlText(node: Node | undefined, depth = 0): string | unde
 		].join('');
 	}
 	if (Node.isParenthesizedExpression(node) || Node.isAsExpression(node)) {
-		return resolveSqlText(node.getExpression(), depth + 1);
+		return resolveSqlText(node.getExpression(), depth);
 	}
+	// Only `const` indirection counts toward the depth limit; concatenation is bounded by the source.
 	if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.PlusToken) {
-		const left = resolveSqlText(node.getLeft(), depth + 1);
-		const right = resolveSqlText(node.getRight(), depth + 1);
+		const left = resolveSqlText(node.getLeft(), depth);
+		const right = resolveSqlText(node.getRight(), depth);
 		return left === undefined || right === undefined ? undefined : left + right;
 	}
 	if (Node.isIdentifier(node)) {
@@ -162,7 +163,12 @@ export interface ColumnChain {
 	columnName: string | undefined;
 }
 
-/** Parses a `column('x')....` DSL chain. Returns undefined when the chain does not start with `column(...)`. */
+/** `new Column('x')`, the class behind the `column('x')` DSL helper. */
+export function isColumnConstructor(node: Node): node is NewExpression {
+	return Node.isNewExpression(node) && node.getExpression().getText() === 'Column';
+}
+
+/** Parses a `column('x')....` or `new Column('x')....` DSL chain. Returns undefined when the chain does not start with `column(...)`. */
 export function parseColumnChain(top: Node): ColumnChain | undefined {
 	const members: string[] = [];
 	let current: Node = top;
@@ -175,6 +181,8 @@ export function parseColumnChain(top: Node): ColumnChain | undefined {
 				return { members, columnName: resolveTableName(current.getArguments()[0]) };
 			}
 			current = current.getExpression();
+		} else if (isColumnConstructor(current)) {
+			return { members, columnName: resolveTableName(current.getArguments()[0]) };
 		} else {
 			return undefined;
 		}
