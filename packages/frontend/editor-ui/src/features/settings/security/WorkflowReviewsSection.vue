@@ -11,17 +11,19 @@ import {
 } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowReviewsPolicy } from '@n8n/api-types';
 
-import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
+import ReviewerPoolSelect from '@/features/workflow-reviews/components/ReviewerPoolSelect.vue';
+import {
+	isReviewerPool,
+	reviewPrototypeState,
+} from '@/features/workflow-reviews/reviewPrototype.state';
 
 type ApprovalChoice = 'configurable' | 'required';
 
-const props = defineProps<{
+defineProps<{
 	initialEnabled: boolean;
 	initialPublishingNeedsApproval: boolean;
 	initialPromotionReviewsEnabled: boolean;
@@ -30,36 +32,17 @@ const props = defineProps<{
 	managedByEnv: boolean;
 }>();
 
-const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
-const { showToast, showError } = useToast();
+const { showToast } = useToast();
 
-const seeded = reviewPrototypeState.initialized;
-const stored = settingsStore.settings.workflowReviews;
-const enabled = ref(
-	seeded
-		? reviewPrototypeState.workflowReviewsEnabled
-		: props.initialEnabled || stored?.enabled === true,
-);
-const publishingNeedsApproval = ref(
-	seeded
-		? reviewPrototypeState.publishingNeedsApproval
-		: props.initialPublishingNeedsApproval || stored?.publishingNeedsApproval === true,
-);
-const promotionReviewsEnabled = ref(
-	seeded
-		? reviewPrototypeState.promotionReviewsEnabled
-		: props.initialPromotionReviewsEnabled || stored?.promotionReviewsEnabled === true,
-);
-const promotingNeedsApproval = ref(
-	seeded
-		? reviewPrototypeState.promotingNeedsApproval
-		: props.initialPromotingNeedsApproval || stored?.promotingNeedsApproval === true,
-);
+// Start from the prototype. Do not copy the server flags. Custom does not change them.
+const enabled = ref(reviewPrototypeState.workflowReviewsEnabled);
+const publishingNeedsApproval = ref(reviewPrototypeState.publishingNeedsApproval);
+const promotionReviewsEnabled = ref(reviewPrototypeState.promotionReviewsEnabled);
+const promotingNeedsApproval = ref(reviewPrototypeState.promotingNeedsApproval);
 const showDisablePublishingDialog = ref(false);
 const showDisablePromotionDialog = ref(false);
-const isSaving = ref(false);
 
 const publishingToggle = computed({
 	get: () => enabled.value,
@@ -82,6 +65,8 @@ const promotionToggle = computed({
 		void persist({ promotionReviewsEnabled: true });
 	},
 });
+
+const isCustom = computed(() => reviewPrototypeState.mode === 'custom');
 
 const approvalOptions = computed<Array<SelectOptionBase<ApprovalChoice>>>(() => [
 	{
@@ -115,6 +100,17 @@ function onPromotingApproval(value: SelectValue | undefined) {
 	holdLocally({ promotingNeedsApproval: value === 'required' });
 }
 
+/** Reviewer pools stay in the prototype store. They do not use the security settings API. */
+function onPublishingReviewers(value: SelectValue | undefined) {
+	if (!isReviewerPool(value)) return;
+	reviewPrototypeState.publishingReviewers = value;
+}
+
+function onPromotingReviewers(value: SelectValue | undefined) {
+	if (!isReviewerPool(value)) return;
+	reviewPrototypeState.promotingReviewers = value;
+}
+
 function rememberPolicy() {
 	reviewPrototypeState.initialized = true;
 	reviewPrototypeState.workflowReviewsEnabled = enabled.value;
@@ -131,8 +127,11 @@ function rememberPolicy() {
 
 rememberPolicy();
 
-/** Enable workflow reviews is the only control that saves. Approval choices stay on the page. */
+/** Keep every review switch on this page. Do not call the security settings API. */
 function holdLocally(patch: Partial<WorkflowReviewsPolicy>) {
+	if (patch.enabled !== undefined) {
+		enabled.value = patch.enabled;
+	}
 	if (patch.publishingNeedsApproval !== undefined) {
 		publishingNeedsApproval.value = patch.publishingNeedsApproval;
 	}
@@ -143,6 +142,15 @@ function holdLocally(patch: Partial<WorkflowReviewsPolicy>) {
 		promotingNeedsApproval.value = patch.promotingNeedsApproval;
 	}
 	rememberPolicy();
+	if (patch.enabled !== undefined) {
+		showToast({
+			type: 'success',
+			title: i18n.baseText(
+				`settings.security.workflowReviews.success.${patch.enabled ? 'enabled' : 'disabled'}`,
+			),
+			message: '',
+		});
+	}
 	if (patch.promotionReviewsEnabled !== undefined) {
 		showToast({
 			type: 'success',
@@ -154,45 +162,8 @@ function holdLocally(patch: Partial<WorkflowReviewsPolicy>) {
 	}
 }
 
-function applyPolicy(policy: WorkflowReviewsPolicy) {
-	enabled.value = policy.enabled;
-	rememberPolicy();
-}
-
-async function persist(patch: Partial<WorkflowReviewsPolicy>): Promise<void> {
-	const savesWorkflowReviews =
-		patch.enabled !== undefined &&
-		patch.publishingNeedsApproval === undefined &&
-		patch.promotionReviewsEnabled === undefined &&
-		patch.promotingNeedsApproval === undefined;
-	if (!savesWorkflowReviews) {
-		holdLocally(patch);
-		return;
-	}
-
-	const previousEnabled = enabled.value;
-	enabled.value = patch.enabled === true;
-	isSaving.value = true;
-
-	try {
-		const response = await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
-			workflowReviews: { enabled: enabled.value },
-		});
-		if (response.workflowReviews) applyPolicy(response.workflowReviews);
-		else rememberPolicy();
-		showToast({
-			type: 'success',
-			title: i18n.baseText(
-				`settings.security.workflowReviews.success.${enabled.value ? 'enabled' : 'disabled'}`,
-			),
-			message: '',
-		});
-	} catch (error) {
-		enabled.value = previousEnabled;
-		showError(error, i18n.baseText('settings.security.workflowReviews.error'));
-	} finally {
-		isSaving.value = false;
-	}
+function persist(patch: Partial<WorkflowReviewsPolicy>): void {
+	holdLocally(patch);
 }
 
 function confirmDisablePublishing() {
@@ -224,7 +195,7 @@ function confirmDisablePromotion() {
 				<ElSwitch
 					v-model="publishingToggle"
 					size="large"
-					:disabled="managedByEnv || isSaving"
+					:disabled="managedByEnv"
 					data-test-id="security-workflow-reviews-toggle"
 				/>
 				<N8nAlertDialog
@@ -239,6 +210,7 @@ function confirmDisablePromotion() {
 		</N8nSettingsRow>
 		<N8nSettingsRow
 			v-if="enabled"
+			:show-divider="false"
 			:title="i18n.baseText('settings.security.workflowReviews.approval.label')"
 			data-test-id="security-workflow-reviews-approval-row"
 		>
@@ -247,9 +219,24 @@ function confirmDisablePromotion() {
 					:model-value="publishingApproval"
 					:items="approvalOptions"
 					size="medium"
-					:disabled="managedByEnv || isSaving"
+					:disabled="managedByEnv"
 					data-test-id="security-workflow-reviews-approval-select"
 					@update:model-value="onPublishingApproval"
+				/>
+			</template>
+		</N8nSettingsRow>
+		<N8nSettingsRow
+			v-if="enabled && isCustom"
+			:class="$style.followRow"
+			:title="i18n.baseText('settings.security.workflowReviews.reviewers.label')"
+			data-test-id="security-workflow-reviews-reviewers-row"
+		>
+			<template #action>
+				<ReviewerPoolSelect
+					:model-value="reviewPrototypeState.publishingReviewers"
+					:disabled="managedByEnv"
+					test-id="security-workflow-reviews-reviewers-select"
+					@update:model-value="onPublishingReviewers"
 				/>
 			</template>
 		</N8nSettingsRow>
@@ -272,7 +259,7 @@ function confirmDisablePromotion() {
 				<ElSwitch
 					v-model="promotionToggle"
 					size="large"
-					:disabled="managedByEnv || isSaving"
+					:disabled="managedByEnv"
 					data-test-id="security-promotion-reviews-toggle"
 				/>
 				<N8nAlertDialog
@@ -291,6 +278,7 @@ function confirmDisablePromotion() {
 		</N8nSettingsRow>
 		<N8nSettingsRow
 			v-if="promotionReviewsEnabled"
+			:show-divider="false"
 			:title="i18n.baseText('settings.security.workflowReviews.approval.label')"
 			data-test-id="security-promotion-reviews-approval-row"
 		>
@@ -299,9 +287,24 @@ function confirmDisablePromotion() {
 					:model-value="promotingApproval"
 					:items="approvalOptions"
 					size="medium"
-					:disabled="managedByEnv || isSaving"
+					:disabled="managedByEnv"
 					data-test-id="security-promotion-reviews-approval-select"
 					@update:model-value="onPromotingApproval"
+				/>
+			</template>
+		</N8nSettingsRow>
+		<N8nSettingsRow
+			v-if="promotionReviewsEnabled && isCustom"
+			:class="$style.followRow"
+			:title="i18n.baseText('settings.security.workflowReviews.reviewers.label')"
+			data-test-id="security-promotion-reviews-reviewers-row"
+		>
+			<template #action>
+				<ReviewerPoolSelect
+					:model-value="reviewPrototypeState.promotingReviewers"
+					:disabled="managedByEnv"
+					test-id="security-promotion-reviews-reviewers-select"
+					@update:model-value="onPromotingReviewers"
 				/>
 			</template>
 		</N8nSettingsRow>
@@ -313,5 +316,10 @@ function confirmDisablePromotion() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+/* Pull Reviewers up by one inset. The rows keep their own height. */
+.followRow {
+	margin-top: calc(-1 * var(--spacing--sm));
 }
 </style>

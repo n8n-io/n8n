@@ -6,6 +6,7 @@ import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
+import ReviewPolicyPrototypeSwitch from '@/features/workflow-reviews/components/ReviewPolicyPrototypeSwitch.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
@@ -29,6 +30,7 @@ import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -46,6 +48,7 @@ const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const workflowId = useWorkflowId();
 const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
@@ -152,6 +155,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
+			<ReviewPolicyPrototypeSwitch v-if="usersStore.currentUser" />
 			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
 			<WorkflowErrorNudge />
 			<!-- EOF Experiment cleanup -->

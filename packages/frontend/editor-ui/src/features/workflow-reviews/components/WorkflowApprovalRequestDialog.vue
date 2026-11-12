@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { ResponseError } from '@n8n/rest-api-client';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
 	N8nDialog,
@@ -18,23 +16,49 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
-import type { WorkflowReviewEligibleReviewer } from '@n8n/api-types';
 
 import { VIEWS } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 import { formatUserDisplayName } from '@/features/workflow-reviews/workflowReviews.utils';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
-	createWorkflowReviewRequest,
-	fetchEligibleReviewers,
-} from '@/features/workflow-reviews/workflowReviews.api';
+	reviewPrototypeState,
+	reviewerPoolForTrack,
+	roleMatchesReviewerPool,
+	type PrototypeReviewerRole,
+} from '@/features/workflow-reviews/reviewPrototype.state';
 
 const REVIEW_TITLE_MAX_LENGTH = 128;
 const REVIEW_DESCRIPTION_MAX_LENGTH = 512;
+
+/**
+ * Local stand-ins so the reviewer filter is visible without a reviews API.
+ * The signed-in user is added separately and counts as an instance admin.
+ */
+const PLACEHOLDER_REVIEWERS: Array<{
+	id: string;
+	firstName: string;
+	lastName: string;
+	email: string;
+	role: PrototypeReviewerRole;
+}> = [
+	{
+		id: 'prototype-reviewer-project-admin',
+		firstName: 'Jordan',
+		lastName: 'Hale',
+		email: 'jordan.hale@example.com',
+		role: 'projectAdmin',
+	},
+	{
+		id: 'prototype-reviewer-project-editor',
+		firstName: 'Riley',
+		lastName: 'Nguyen',
+		email: 'riley.nguyen@example.com',
+		role: 'projectEditor',
+	},
+];
 
 const props = defineProps<{
 	open: boolean;
@@ -51,18 +75,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const reviewStatusStore = useWorkflowReviewStatusStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const { fetchDependencyCounts, getTotalCount } = useDependencies();
 
 const reviewTitle = ref('');
 const description = ref('');
 const selectedReviewerId = ref('');
-const eligibleReviewers = ref<WorkflowReviewEligibleReviewer[]>([]);
-const isSubmitting = ref(false);
-const isLoadingReviewers = ref(false);
 
 const title = computed(() =>
 	i18n.baseText(
@@ -81,68 +100,81 @@ const dependencyLabel = computed(() =>
 	}),
 );
 
-function currentUserReviewer(): WorkflowReviewEligibleReviewer | undefined {
-	const user = usersStore.currentUser;
-	if (!user?.id) return undefined;
-	return {
-		id: user.id,
-		email: user.email ?? '',
-		firstName: user.firstName ?? null,
-		lastName: user.lastName ?? null,
-	};
-}
-
-function withCurrentUser(reviewers: WorkflowReviewEligibleReviewer[]) {
-	const current = currentUserReviewer();
-	if (!current || reviewers.some((reviewer) => reviewer.id === current.id)) return reviewers;
-	return [current, ...reviewers];
-}
-
-const reviewerOptions = computed<IUser[]>(() =>
-	withCurrentUser(eligibleReviewers.value).map((reviewer) => ({
-		...reviewer,
-		fullName: formatUserDisplayName(reviewer) || undefined,
-	})),
-);
-
-const canSubmit = computed(
-	() =>
-		!isSubmitting.value &&
-		reviewTitle.value.trim().length > 0 &&
-		description.value.trim().length > 0 &&
-		selectedReviewerId.value.length > 0,
-);
-
-let loadReviewersSequence = 0;
-
-async function loadEligibleReviewers() {
-	const sequence = ++loadReviewersSequence;
-	isLoadingReviewers.value = true;
-	try {
-		const { data } = await fetchEligibleReviewers(rootStore.restApiContext, {
-			workflowId: props.workflowId,
-		});
-		if (sequence !== loadReviewersSequence) return;
-		eligibleReviewers.value = withCurrentUser(data);
-	} catch {
-		if (sequence !== loadReviewersSequence) return;
-		eligibleReviewers.value = withCurrentUser([]);
-	} finally {
-		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
+function instanceRequiresApproval(): boolean {
+	if (props.intent === 'promote') {
+		return reviewPrototypeState.initialized
+			? reviewPrototypeState.promotingNeedsApproval
+			: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true;
 	}
+	return reviewPrototypeState.initialized
+		? reviewPrototypeState.publishingNeedsApproval
+		: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true;
 }
+
+const reviewerPool = computed(() => {
+	const promoting = props.intent === 'promote';
+	return reviewerPoolForTrack({
+		mode: reviewPrototypeState.mode,
+		instanceRequired: instanceRequiresApproval(),
+		projectRequired: promoting
+			? reviewPrototypeState.projectPromoting
+			: reviewPrototypeState.projectPublishing,
+		instancePool: promoting
+			? reviewPrototypeState.promotingReviewers
+			: reviewPrototypeState.publishingReviewers,
+		projectPool: promoting
+			? reviewPrototypeState.projectPromotingReviewers
+			: reviewPrototypeState.projectPublishingReviewers,
+	});
+});
+
+const reviewerOptions = computed<IUser[]>(() => {
+	const pool = reviewerPool.value;
+	const members: Array<{
+		id: string;
+		firstName: string | null;
+		lastName: string | null;
+		email: string;
+		role: PrototypeReviewerRole;
+	}> = [];
+	const current = usersStore.currentUser;
+	if (current?.id) {
+		members.push({
+			id: current.id,
+			firstName: current.firstName ?? null,
+			lastName: current.lastName ?? null,
+			email: current.email || 'you@example.com',
+			role: 'instanceAdmin',
+		});
+	}
+	members.push(...PLACEHOLDER_REVIEWERS);
+
+	return members
+		.filter((member) => roleMatchesReviewerPool(member.role, pool))
+		.map((member) => ({
+			id: member.id,
+			firstName: member.firstName,
+			lastName: member.lastName,
+			email: member.email,
+			fullName: formatUserDisplayName(member) || undefined,
+		}));
+});
+
+watch(reviewerOptions, (options) => {
+	if (!options.some((user) => user.id === selectedReviewerId.value)) {
+		selectedReviewerId.value = '';
+	}
+});
 
 watch(
 	() => props.open,
 	(isOpen) => {
 		if (!isOpen) {
-			loadReviewersSequence++;
 			reviewTitle.value = '';
 			description.value = '';
 			selectedReviewerId.value = '';
 			return;
 		}
-		void loadEligibleReviewers();
 		void fetchDependencyCounts([props.workflowId], 'workflow');
 	},
 );
@@ -207,7 +239,6 @@ function submit() {
 					<N8nUserSelect
 						v-model="selectedReviewerId"
 						:users="reviewerOptions"
-						:loading="isLoadingReviewers"
 						:teleported="false"
 						:placeholder="i18n.baseText('workflowReviews.approvalRequest.reviewer.placeholder')"
 						data-test-id="workflow-review-approval-reviewer"
