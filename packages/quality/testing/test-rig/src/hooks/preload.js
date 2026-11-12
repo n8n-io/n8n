@@ -167,12 +167,13 @@
 				return result;
 			}
 			if (hook.phase === 'after') {
-				return Promise.resolve(original.apply(this, args)).then(async (value) => {
+				const result = original.apply(this, args);
+				const settle = (/** @type {unknown} */ value) => {
 					const after = { ...ctx, result: value };
 					if (!shouldFire(hook, after)) return value;
-					await waitRelease(hook, hit(hook, after));
-					return value;
-				});
+					return waitRelease(hook, hit(hook, after)).then(() => value);
+				};
+				return typeof result?.then === 'function' ? result.then(settle) : settle(result);
 			}
 			if (!shouldFire(hook, ctx)) return original.apply(this, args);
 			return waitRelease(hook, hit(hook, ctx)).then(() => original.apply(this, args));
