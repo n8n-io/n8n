@@ -1,0 +1,61 @@
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.stories.ts
+  s_0c556d094c6550::t_774e89863d01eb 75
+  s_0c556d094c6550::t_78869737bf1bc0 1,3,12,73-74,76-129
+.gitignore
+  s_0c556d094c6550::t_4db4f70e47149f 46-48
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.stories.ts
+  s_0c556d094c6550::t_774e89863d01eb 1444-1446,1459-1462
+  s_0c556d094c6550::t_20cad357f6f179 2,14,30,1433-1438,1443,1448,1463-1470
+  s_0c556d094c6550::t_ce43d56a6fa9c7 1439-1442,1447,1449-1458
+packages/frontend/@n8n/storybook/scripts/accept-visual-references.ts
+  s_0c556d094c6550::t_414deb1c317ead 1-76
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.stories.ts
+  s_0c556d094c6550::t_5ed1ef42fc362b 13,97-103
+  s_0c556d094c6550::t_1c9839183e442e 104
+packages/frontend/@n8n/storybook/.storybook/visual-setup.ts
+  s_0c556d094c6550::t_e98e8fc78f885f 59,61-67
+  s_0c556d094c6550::t_1f2bb6a00a60b5 162-164
+  s_0c556d094c6550::t_774e89863d01eb 121-125
+  s_0c556d094c6550::t_a38ca92a58bd9a 1-6,8-20,22-46,48-58,60,68-116,126,128,130-161,165-184
+  s_0c556d094c6550::t_b8504f353e2f3c 7
+  s_0c556d094c6550::t_f293507c94cf8d 21,47
+  s_0c556d094c6550::t_3ba6f72526375d 117-120,127,129
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.stories.ts
+  s_0c556d094c6550::t_5ed1ef42fc362b 3,13,54,59,64,70,75,80,86,94,100,108,114,119,124,381-407
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.stories.ts
+  s_0c556d094c6550::t_5ed1ef42fc362b 69-76
+  s_0c556d094c6550::t_11d127d2f4ba04 11
+packages/frontend/@n8n/storybook/package.json
+  s_0c556d094c6550::t_11d127d2f4ba04 12
+  s_0c556d094c6550::t_447aad9e836e30 11
+  s_0c556d094c6550::t_414deb1c317ead 13
+packages/frontend/@n8n/storybook/vitest.visual.config.ts
+  s_0c556d094c6550::t_6bc3ce7f2df8de 1-55,57-121
+  s_0c556d094c6550::t_feac4bce6d1097 56
+packages/frontend/@n8n/storybook/tsconfig.node.json
+  s_0c556d094c6550::t_414deb1c317ead 23-28
+packages/frontend/@n8n/design-system/README.md
+  s_0c556d094c6550::t_6070f16e34c094 166-275
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.stories.ts
+  s_0c556d094c6550::t_5ed1ef42fc362b 10,49-50,52
+  s_0c556d094c6550::t_774e89863d01eb 51
+  s_0c556d094c6550::t_2bd02bd36ec4b2 53
+packages/frontend/@n8n/storybook/.storybook/visual-context.d.ts
+  s_0c556d094c6550::t_55aa7d52f0b5e8 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de8cf3cfe9ed8b0a2d4f63b94c785f6e01c11d0e",
+  "prompts": {},
+  "sessions": {
+    "s_0c556d094c6550": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a73fc0b9-98d9-46c5-bfe5-b13c4f4f2bf0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
