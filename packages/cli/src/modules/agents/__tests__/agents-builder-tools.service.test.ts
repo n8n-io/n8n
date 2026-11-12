@@ -1889,7 +1889,7 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config force-enables prompt caching even when the config says enabled: false', async () => {
+			it('agent_builder_write_config keeps prompt caching off when the config says enabled: false', async () => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1909,7 +1909,7 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'Anthropic Key',
-					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
@@ -1936,6 +1936,47 @@ describe('AgentsBuilderToolsService', () => {
 						baseConfigHash: getAgentConfigHash(currentConfig),
 						modifiedBy: 'builder',
 					}),
+				);
+			});
+
+			it('agent_builder_write_config keeps the stored opt-out when a write omits promptCaching', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					model: 'openai/gpt-5',
+					credential: 'OpenAI Key',
+					integrations: [],
+					config: { promptCaching: { enabled: false } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions',
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...updatedConfig,
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{ baseConfigHash: getAgentConfigHash(currentConfig), config: updatedConfig },
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+					user,
+					expect.objectContaining({ modifiedBy: 'builder' }),
 				);
 			});
 
