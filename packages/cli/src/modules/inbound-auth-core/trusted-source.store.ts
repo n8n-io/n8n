@@ -46,9 +46,11 @@ export class SystemTrustedSourceModificationError extends UserError {
 	}
 }
 
-const idKey = (id: string) => `trusted-source:id:${id}`;
-const issuerKey = (issuer: string) => `trusted-source:issuer:${issuer}`;
-const ALL_KEY = 'trusted-source:all';
+// One hash tag keeps every key of this cache in one cluster slot, so the multi-key DEL in
+// invalidateCache is valid on cluster-mode Redis.
+const idKey = (id: string) => `{trusted-source}:id:${id}`;
+const issuerKey = (issuer: string) => `{trusted-source}:issuer:${issuer}`;
+const ALL_KEY = '{trusted-source}:all';
 // Reads are look-aside, so a read that started before a concurrent write can re-cache the old
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;

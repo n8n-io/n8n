@@ -267,6 +267,18 @@ describe('TrustedSourceStore (integration)', () => {
 	});
 
 	describe('update', () => {
+		it('hands the cache keys of one source under a single hash tag', async () => {
+			const row = await seedRow({ issuer: 'https://old.example.com' });
+			const deleteMany = vi.spyOn(cacheService, 'deleteMany');
+
+			await store.update(row.id, { issuer: 'https://new.example.com' });
+
+			// A multi-key DEL is valid on cluster-mode Redis only when every key hashes to one slot.
+			const keys = deleteMany.mock.calls.flat(2);
+			expect(keys.length).toBeGreaterThan(1);
+			for (const key of keys) expect(key).toMatch(/^\{trusted-source\}:/);
+		});
+
 		it('rewrites the row and invalidates id, old issuer, new issuer and the list', async () => {
 			const row = await seedRow({ name: 'Old', issuer: 'https://old.example.com' });
 			// Prime every entry the write must invalidate.
@@ -736,9 +748,9 @@ describe('TrustedSourceStore (integration)', () => {
 
 			expect(deleteMany).toHaveBeenCalledWith(
 				expect.arrayContaining([
-					`trusted-source:id:${row.id}`,
-					`trusted-source:issuer:${row.issuer}`,
-					'trusted-source:all',
+					`{trusted-source}:id:${row.id}`,
+					`{trusted-source}:issuer:${row.issuer}`,
+					'{trusted-source}:all',
 				]),
 			);
 		});
