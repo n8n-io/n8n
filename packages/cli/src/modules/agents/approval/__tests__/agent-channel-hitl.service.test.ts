@@ -85,7 +85,12 @@ describe('Agent channel approval', () => {
 	});
 	it('rejects options for another Agent or an unavailable credential', async () => {
 		const { service, credentials } = setup([slack]);
-		const query = { channel: 'slack', credentialId: 'other', field: 'user', query: '' } as const;
+		const query = {
+			channel: 'slack',
+			credentialId: 'other',
+			field: 'recipient',
+			query: '',
+		} as const;
 		await expect(service.listOptions(mock<User>(), 'project', 'agent', query)).rejects.toThrow(
 			'no longer connected',
 		);

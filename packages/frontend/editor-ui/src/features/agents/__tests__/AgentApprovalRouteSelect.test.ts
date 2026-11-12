@@ -12,40 +12,21 @@ vi.mock('@n8n/stores/settings.store', () => ({
 beforeEach(() => {
 	feature.enabled = true;
 });
-
 const configurations: AgentHitlConfiguration[] = [
-	{ id: 'workflow', name: 'HITL Settings 1', method: 'workflow', workflowId: 'wf' },
+	{ id: 'workflow', name: 'Finance data check', method: 'workflow', workflowId: 'wf' },
 	{
 		id: 'slack',
-		name: 'Slack review',
+		name: 'Team review',
 		method: 'channel',
 		channel: 'slack',
 		credentialId: 'slack',
 		recipient: { kind: 'channel', id: 'C1' },
-	},
-	{
-		id: 'telegram',
-		name: 'Telegram review',
-		method: 'channel',
-		channel: 'telegram',
-		credentialId: 'telegram',
-		recipient: { kind: 'user', id: '123' },
-	},
-	{
-		id: 'discord',
-		name: 'Discord review',
-		method: 'channel',
-		channel: 'discord',
-		credentialId: 'discord',
-		recipient: { kind: 'channel', id: 'C2' },
-		guildId: 'server',
 	},
 ];
 function render(modelValue?: AgentApprovalRoute) {
 	const config = ref<AgentJsonConfig>({
 		name: 'Agent',
 		model: 'test',
-		instructions: 'Help',
 		hitlConfigurations: configurations,
 	});
 	const saveConfiguration = vi.fn();
@@ -59,113 +40,110 @@ function render(modelValue?: AgentApprovalRoute) {
 	});
 	return { wrapper, config, saveConfiguration };
 }
-
-it('lists creation first, the default, and each interaction with its name and icon', async () => {
-	const { wrapper } = render();
-	const input = wrapper.get<HTMLInputElement>('input');
-	expect(wrapper.get('label').text()).toBe('Human interaction for approval');
-	expect(input.attributes('aria-label')).toBe('Human interaction for approval');
-	expect(input.element.value).toBe('Ask user');
-	await input.trigger('focus');
+async function openMenu(wrapper: ReturnType<typeof render>['wrapper']) {
+	await wrapper.get('[data-testid="agent-review-add"]').trigger('click');
 	await flushPromises();
+	await wrapper.get('input').trigger('focus');
+	await flushPromises();
+}
+it('shows the default and opens a searchable add menu with creation first', async () => {
+	const { wrapper } = render();
+	expect(wrapper.text()).toContain('Human review for approval');
+	expect(wrapper.text()).toContain('Ask user');
+	await openMenu(wrapper);
 	const options = wrapper.findAll('[role="option"]');
 	expect(options.map((option) => option.text())).toEqual([
-		'Create human interaction',
-		'Ask user',
-		'HITL Settings 1',
-		'Slack review',
-		'Telegram review',
-		'Discord review',
+		'Create human review',
+		'Finance data check',
+		'Team review',
 	]);
-	for (const [index, icon] of [
-		'plus',
-		'user',
-		'workflow',
-		'slack',
-		'telegram',
-		'discord',
-	].entries()) {
-		expect(options[index].find(`[data-icon="${icon}"]`).exists()).toBe(true);
-	}
-	await wrapper.setProps({ label: 'Human interaction for Ask first tools' });
-	expect(wrapper.get('label').text()).toBe('Human interaction for Ask first tools');
-	expect(input.attributes('aria-label')).toBe('Human interaction for Ask first tools');
-});
-
-it('searches configurations and keeps the selected name and icon in the field', async () => {
-	const { wrapper, config } = render();
-	const input = wrapper.get<HTMLInputElement>('input');
-	await input.trigger('focus');
-	await input.setValue('slack');
+	expect(options[0].find('[data-icon="plus"]').exists()).toBe(true);
+	await wrapper.get('input').setValue('team');
 	await flushPromises();
-	const options = wrapper.findAll('[role="option"]').filter((option) => option.isVisible());
-	expect(options.map((option) => option.text())).toEqual(['Slack review']);
-	await options[0].trigger('click');
-	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
-		{ type: 'configuration', configurationId: 'slack' },
-	]);
-	await wrapper.setProps({ modelValue: { type: 'configuration', configurationId: 'slack' } });
-	expect(input.element.value).toBe('Slack review');
-	expect(wrapper.get('[data-testid="agent-approval-route"] [data-icon="slack"]').exists()).toBe(
+	expect(
+		wrapper
+			.findAll('[role="option"]')
+			.filter((option) => option.isVisible())
+			.map((option) => option.text()),
+	).toEqual(['Team review']);
+});
+it('appends a review after existing pills and excludes selected reviews from the menu', async () => {
+	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
+	expect(wrapper.get('[data-testid="agent-review-pill"]').text()).toBe('Finance data check');
+	expect(wrapper.get('[data-testid="agent-review-pill"] [data-icon="workflow"]').exists()).toBe(
 		true,
 	);
-	config.value = {
-		...config.value,
-		hitlConfigurations: configurations.map((configuration) => ({
-			...configuration,
-			name: configuration.id === 'slack' ? 'Slack team' : configuration.name,
-		})),
-	};
-	await flushPromises();
-	expect(input.element.value).toBe('Slack team');
-	await input.trigger('focus');
-	await input.setValue('Ask user');
-	await flushPromises();
-	await wrapper
-		.findAll('[role="option"]')
-		.find((option) => option.text() === 'Ask user')
-		?.trigger('click');
+	await openMenu(wrapper);
+	expect(wrapper.findAll('[role="option"]').map((option) => option.text())).toEqual([
+		'Create human review',
+		'Team review',
+	]);
+	await wrapper.findAll('[role="option"]')[1].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+		{ type: 'configuration', configurationIds: ['workflow', 'slack'] },
+	]);
+	await wrapper.setProps({
+		modelValue: { type: 'configuration', configurationIds: ['workflow', 'slack'] },
+	});
+	expect(wrapper.findAll('[data-testid="agent-review-pill"]').map((pill) => pill.text())).toEqual([
+		'Finance data check',
+		'Team review',
+	]);
+	expect(wrapper.text()).toContain('Reviews run in the order shown');
+});
+it('removes only the selected pill and falls back to Ask user after removing the last', async () => {
+	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow', 'slack'] });
+	await wrapper.findAll('[data-testid="agent-review-remove"]')[0].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+		{ type: 'configuration', configurationIds: ['slack'] },
+	]);
+	await wrapper.setProps({ modelValue: { type: 'configuration', configurationIds: ['slack'] } });
+	await wrapper.get('[data-testid="agent-review-remove"]').trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([undefined]);
 });
-
-it('opens creation without changing the route and selects the saved configuration', async () => {
-	const route = { type: 'configuration', configurationId: 'slack' } as const;
-	const { wrapper, saveConfiguration } = render(route);
-	const input = wrapper.get<HTMLInputElement>('input');
-	await input.trigger('focus');
+it('opens an existing review for editing without changing its order', async () => {
+	const { wrapper, saveConfiguration } = render({
+		type: 'configuration',
+		configurationIds: ['slack', 'workflow'],
+	});
+	await wrapper.findAll('[data-testid="agent-review-pill"] button')[0].trigger('click');
+	expect(wrapper.getComponent(AgentHitlConfigurationModal).props('configuration')).toEqual(
+		configurations[1],
+	);
+	const updated = { ...configurations[1], name: 'Team leads' };
+	wrapper.getComponent(AgentHitlConfigurationModal).vm.$emit('save', updated);
 	await flushPromises();
-	await wrapper.get('[role="option"]').trigger('click');
-	await flushPromises();
+	expect(saveConfiguration).toHaveBeenCalledWith(updated, undefined);
 	expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-	expect(input.element.value).toBe('Slack review');
-	const modal = wrapper.getComponent(AgentHitlConfigurationModal);
-	expect(modal.props('nextNumber')).toBe(5);
-	modal.vm.$emit('close');
+});
+it('creates a review from the plus menu and appends it without changing existing pills', async () => {
+	const { wrapper, saveConfiguration } = render({
+		type: 'configuration',
+		configurationIds: ['slack'],
+	});
+	await openMenu(wrapper);
+	await wrapper.findAll('[role="option"]')[0].trigger('click');
 	await flushPromises();
-	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
-	expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-	await input.trigger('focus');
-	await flushPromises();
-	await wrapper.get('[role="option"]').trigger('click');
-	await flushPromises();
-	const configuration: AgentHitlConfiguration = {
+	const created: AgentHitlConfiguration = {
 		id: 'new',
-		name: 'New review',
+		name: 'PII review',
 		method: 'workflow',
 		workflowId: 'wf2',
 	};
-	wrapper
-		.getComponent(AgentHitlConfigurationModal)
-		.vm.$emit('save', configuration, ['tool:workflow:Write']);
+	wrapper.getComponent(AgentHitlConfigurationModal).vm.$emit('save', created);
 	await flushPromises();
-	expect(saveConfiguration).toHaveBeenCalledWith(configuration, ['tool:workflow:Write']);
+	expect(saveConfiguration).toHaveBeenCalledWith(created, undefined);
 	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
-		{ type: 'configuration', configurationId: 'new' },
+		{ type: 'configuration', configurationIds: ['slack', 'new'] },
 	]);
-	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
 });
-
-it('hides configuration controls while the feature is disabled', () => {
+it('disables attachment and removal under a read-only lock', async () => {
+	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
+	await wrapper.setProps({ disabled: true });
+	expect(wrapper.get('[data-testid="agent-review-add"]').attributes('disabled')).toBeDefined();
+	expect(wrapper.get('[data-testid="agent-review-remove"]').attributes('disabled')).toBeDefined();
+});
+it('hides controls when the feature is disabled', () => {
 	feature.enabled = false;
 	expect(render().wrapper.find('[data-testid="agent-approval-route"]').exists()).toBe(false);
 });

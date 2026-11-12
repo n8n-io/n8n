@@ -37,7 +37,7 @@ beforeAll(() => {
 	definitionHash = getAgentRuntimeDefinitionHash(configuration);
 });
 
-function setup(agentConfiguration: AgentJsonConfig = configuration) {
+function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = ['review']) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<CallableWorkflowLoader>();
@@ -56,7 +56,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration) {
 	const tool: BuiltTool = { name: 'write', description: 'Write a record', handler };
 	const wrapped = service.wrap(
 		tool,
-		{ type: 'configuration', configurationId: 'review' },
+		{ type: 'configuration', configurationIds: reviewIds },
 		agentConfiguration,
 		{
 			agentId: 'agent',
@@ -70,7 +70,12 @@ function setup(agentConfiguration: AgentJsonConfig = configuration) {
 		resumeData: undefined,
 		emitEvent: vi.fn(),
 		toolCallId: 'call',
-		continuation: { __agentDecisionWorkflow: true, executionId: 'child', definitionHash },
+		continuation: {
+			__agentDecisionWorkflow: true,
+			executionId: 'child',
+			definitionHash,
+			reviewIndex: 0,
+		},
 		suspendPayload: { type: 'workflow_wait' },
 	};
 	return {
@@ -304,7 +309,7 @@ describe('Agent decision workflow approval', () => {
 		} as AgentJsonConfig;
 		const wrapped = service.wrap(
 			tool,
-			{ type: 'configuration', configurationId: 'review' },
+			{ type: 'configuration', configurationIds: ['review'] },
 			config,
 			{
 				agentId: 'agent',
@@ -409,7 +414,12 @@ describe('Agent decision workflow approval', () => {
 		expect(suspend).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				continuation: { __agentDecisionWorkflow: true, executionId: 'child', definitionHash },
+				continuation: {
+					__agentDecisionWorkflow: true,
+					executionId: 'child',
+					definitionHash,
+					reviewIndex: 0,
+				},
 			}),
 		);
 		expect(handler).not.toHaveBeenCalled();
@@ -528,7 +538,7 @@ describe('Agent decision workflow approval', () => {
 			);
 			const wrapped = service.wrap(
 				tool,
-				{ type: 'configuration', configurationId: 'review' },
+				{ type: 'configuration', configurationIds: ['review'] },
 				configuration,
 				{
 					agentId: 'agent',
@@ -615,13 +625,13 @@ describe('Agent decision workflow approval', () => {
 		const { service, tool, context, suspend, handler } = setup();
 		const wrapped = service.wrap(
 			tool,
-			{ type: 'configuration', configurationId: 'missing' },
+			{ type: 'configuration', configurationIds: ['missing'] },
 			configuration,
 			{ agentId: 'agent', projectId: 'project', published: false, integrationType: 'slack' },
 		);
 		await expect(
 			wrapped.handler?.({}, { ...context, continuation: undefined, suspendPayload: undefined }),
-		).rejects.toThrow('The selected human interaction is unavailable');
+		).rejects.toThrow('A selected human review is unavailable');
 		expect(suspend).not.toHaveBeenCalled();
 		expect(handler).not.toHaveBeenCalled();
 	});
@@ -750,7 +760,7 @@ it('does not use a decision for changed custom tool code', async () => {
 	const { service, tool, context, handler } = setup();
 	const changed = service.wrap(
 		tool,
-		{ type: 'configuration', configurationId: 'review' },
+		{ type: 'configuration', configurationIds: ['review'] },
 		configuration,
 		{ agentId: 'agent', projectId: 'project', published: false },
 		{ write: 'changed implementation' },
@@ -789,4 +799,176 @@ it('does not treat an unknown continuation as a prior approval', async () => {
 		wrapped.handler?.({}, { ...context, continuation: { executionId: 'unrecognized-child' } }),
 	).rejects.toThrow('continuation is invalid');
 	expect(handler).not.toHaveBeenCalled();
+});
+
+function sequenceFixture() {
+	const config: AgentJsonConfig = {
+		...configuration,
+		hitlConfigurations: [
+			{ id: 'first', name: 'First', method: 'workflow', workflowId: 'workflow-first' },
+			{ id: 'second', name: 'Second', method: 'workflow', workflowId: 'workflow-second' },
+		],
+	};
+	const fixture = setup(config, ['second', 'first']);
+	Container.set(WorkflowRunner, mock<WorkflowRunner>());
+	fixture.loader.loadWorkflow.mockImplementation(
+		async (_project, reference) =>
+			({
+				id: reference.workflowId,
+				nodes: [{ name: 'Decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+				settings: {},
+			}) as WorkflowEntity,
+	);
+	const execute = vi
+		.spyOn(workflowTools, 'executeWorkflow')
+		.mockImplementation(async (workflow) => ({
+			executionId: `child-${workflow.id}`,
+			status: 'waiting',
+		}));
+	const context: InterruptibleToolContext = {
+		...fixture.context,
+		continuation: undefined,
+		suspendPayload: undefined,
+		runId: 'run',
+		persistence: {
+			threadId: 'thread',
+			resourceId: 'resource',
+			hostMetadata: {
+				...encodeAgentSandboxHostMetadata({
+					projectId: 'project',
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-execution',
+						workflowId: 'caller',
+						executionId: 'parent',
+					}),
+				}),
+				workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+			},
+		},
+	};
+	return { ...fixture, config, context, execute };
+}
+
+describe('ordered human reviews', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		Container.reset();
+	});
+	it.each([true, false])(
+		'runs in assignment order and stops when the last review approves=%s',
+		async (approved) => {
+			const fixture = sequenceFixture();
+			fixture.jobs.findWorkflowJobByExecutionId.mockImplementation(
+				async (id) =>
+					({
+						status: 'completed',
+						result: JSON.stringify({ approved: id === 'child-workflow-second' || approved }),
+					}) as AgentBackgroundJob,
+			);
+			expect(await fixture.wrapped.handler?.({ value: 'original' }, fixture.context)).toEqual(
+				approved ? 'executed' : { declined: true, message: 'Tool "write" was not approved' },
+			);
+			expect(fixture.execute.mock.calls.map(([workflow]) => workflow.id)).toEqual([
+				'workflow-second',
+				'workflow-first',
+			]);
+			expect(fixture.handler).toHaveBeenCalledTimes(approved ? 1 : 0);
+			if (approved)
+				expect(fixture.handler).toHaveBeenCalledWith({ value: 'original' }, expect.anything());
+		},
+	);
+	it('keeps every review bound to the same workflow tool version', async () => {
+		const fixture = sequenceFixture();
+		fixture.tool.metadata = { kind: 'workflow', workflowId: 'protected' };
+		let version = 0;
+		fixture.loader.loadWorkflow.mockImplementation(
+			async (_project, reference) =>
+				({
+					id: reference.workflowId,
+					versionId:
+						reference.workflowId === 'protected' ? `version-${++version}` : 'decision-version',
+					nodes: [{ name: 'Decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+					settings: {},
+				}) as WorkflowEntity,
+		);
+		fixture.jobs.findWorkflowJobByExecutionId.mockResolvedValue({
+			status: 'completed',
+			result: '{"approved":true}',
+		} as AgentBackgroundJob);
+		await expect(fixture.wrapped.handler?.({}, fixture.context)).rejects.toThrow(
+			'tool workflow changed',
+		);
+		expect(fixture.execute).toHaveBeenCalledOnce();
+		expect(fixture.handler).not.toHaveBeenCalled();
+	});
+	it('resumes a suspended protected tool without repeating its reviews', async () => {
+		const fixture = sequenceFixture();
+		fixture.jobs.findWorkflowJobByExecutionId.mockResolvedValue({
+			status: 'completed',
+			result: '{"approved":true}',
+		} as AgentBackgroundJob);
+		fixture.handler.mockImplementationOnce(async (_input, context) =>
+			context.suspend(
+				{ type: 'workflow_wait' },
+				{ continuation: { executionId: 'protected-child' } },
+			),
+		);
+		expect(await fixture.wrapped.handler?.({}, fixture.context)).toBe('waiting');
+		const continuation = fixture.suspend.mock.calls[0][1]?.continuation;
+		expect(continuation).toMatchObject({
+			reviewIndex: 1,
+			toolSuspended: true,
+			executionId: 'protected-child',
+		});
+		expect(await fixture.wrapped.handler?.({}, { ...fixture.context, continuation })).toBe(
+			'executed',
+		);
+		expect(fixture.execute).toHaveBeenCalledTimes(2);
+		expect(fixture.handler).toHaveBeenLastCalledWith(
+			{},
+			expect.objectContaining({ continuation: { executionId: 'protected-child' } }),
+		);
+	});
+
+	it('does not send a later request after rejection', async () => {
+		const fixture = sequenceFixture();
+		fixture.jobs.findWorkflowJobByExecutionId.mockResolvedValue({
+			status: 'completed',
+			result: '{"approved":false}',
+		} as AgentBackgroundJob);
+		expect(await fixture.wrapped.handler?.({}, fixture.context)).toMatchObject({ declined: true });
+		expect(fixture.execute).toHaveBeenCalledOnce();
+		expect(fixture.handler).not.toHaveBeenCalled();
+	});
+	it('resumes the second review from its continuation without repeating the first', async () => {
+		const fixture = sequenceFixture();
+		let secondResolved = false;
+		fixture.jobs.findWorkflowJobByExecutionId.mockImplementation(async (id) =>
+			id === 'child-workflow-second' || secondResolved
+				? ({ status: 'completed', result: '{"approved":true}' } as AgentBackgroundJob)
+				: ({ status: 'running' } as AgentBackgroundJob),
+		);
+		fixture.executions.findSingleExecution.mockResolvedValue({
+			status: 'waiting',
+		} as IExecutionResponse);
+		expect(await fixture.wrapped.handler?.({}, fixture.context)).toBe('waiting');
+		expect(fixture.handler).not.toHaveBeenCalled();
+		const continuation = fixture.suspend.mock.calls[0][1]?.continuation;
+		expect(continuation).toMatchObject({ executionId: 'child-workflow-first', reviewIndex: 1 });
+		secondResolved = true;
+		const restored = fixture.service.wrap(
+			fixture.tool,
+			{ type: 'configuration', configurationIds: ['second', 'first'] },
+			fixture.config,
+			{ agentId: 'agent', projectId: 'project', published: false },
+		);
+		expect(
+			await restored.handler?.(
+				{},
+				{ ...fixture.context, continuation, suspendPayload: fixture.suspend.mock.calls[0][0] },
+			),
+		).toBe('executed');
+		expect(fixture.execute).toHaveBeenCalledTimes(2);
+		expect(fixture.handler).toHaveBeenCalledOnce();
+	});
 });

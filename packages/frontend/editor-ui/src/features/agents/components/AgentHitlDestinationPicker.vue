@@ -22,6 +22,15 @@ const i18n = useI18n();
 const open = ref(false);
 const query = ref('');
 const options = ref<AgentHitlOption[]>([]);
+function optionKey(option: AgentHitlOption) {
+	return `${option.kind ?? 'server'}:${option.id}`;
+}
+function optionIcon(option?: AgentHitlOption) {
+	return option?.kind === 'user' ? 'user' : option?.kind === 'channel' ? 'hash' : props.icon;
+}
+const keyedOptions = computed(() =>
+	options.value.map((option) => ({ ...option, key: optionKey(option) })),
+);
 const visibleRowCount = computed(() => Math.min(options.value.length, 6));
 const cursor = ref<string>();
 const loading = ref(false);
@@ -55,7 +64,10 @@ async function loadPage(append = false) {
 		} while (!page.options.length && nextCursor);
 		options.value = [
 			...new Map(
-				[...(append ? options.value : []), ...page.options].map((option) => [option.id, option]),
+				[...(append ? options.value : []), ...page.options].map((option) => [
+					optionKey(option),
+					option,
+				]),
 			).values(),
 		];
 		cursor.value = nextCursor;
@@ -95,7 +107,9 @@ onBeforeUnmount(() => {
 	clearTimeout(timer);
 });
 function select(option: AgentHitlOption) {
-	emit('update:modelValue', option);
+	const destination = options.value.find((entry) => optionKey(entry) === optionKey(option));
+	if (!destination) return;
+	emit('update:modelValue', destination);
 	open.value = false;
 }
 function move(event: KeyboardEvent) {
@@ -113,7 +127,7 @@ function move(event: KeyboardEvent) {
 			Math.min(options.value.length - 1, activeIndex.value + direction),
 		);
 		const option = options.value[activeIndex.value];
-		if (option) scroller.value?.scrollToKey(option.id);
+		if (option) scroller.value?.scrollToKey(optionKey(option));
 	}
 }
 </script>
@@ -134,7 +148,7 @@ function move(event: KeyboardEvent) {
 				:aria-label="label"
 				data-testid="agent-hitl-destination-picker"
 			>
-				<N8nIcon :icon="icon" :size="16" />
+				<N8nIcon :icon="optionIcon(modelValue)" :size="16" />
 				<span :class="[$style.value, !modelValue && $style.placeholder]">{{
 					modelValue?.name ?? label
 				}}</span>
@@ -152,7 +166,9 @@ function move(event: KeyboardEvent) {
 					aria-expanded="true"
 					:aria-controls="listId"
 					:aria-activedescendant="
-						activeIndex >= 0 ? `${listId}-${options[activeIndex]?.id}` : undefined
+						activeIndex >= 0
+							? `${listId}-${options[activeIndex] ? optionKey(options[activeIndex]) : ''}`
+							: undefined
 					"
 				/>
 				<div :id="listId" role="listbox" :aria-label="label" :aria-busy="loading">
@@ -160,23 +176,28 @@ function move(event: KeyboardEvent) {
 						v-if="options.length"
 						:key="visibleRowCount"
 						ref="scroller"
-						:items="options"
-						item-key="id"
+						:items="keyedOptions"
+						item-key="key"
 						:item-size="40"
 						:class="$style.list"
 						:style="{ '--destination-count': visibleRowCount }"
 					>
 						<template #default="{ item }">
 							<button
-								:id="`${listId}-${item.id}`"
+								:id="`${listId}-${optionKey(item)}`"
 								type="button"
 								role="option"
 								tabindex="-1"
-								:aria-selected="modelValue?.id === item.id"
-								:class="[$style.option, options[activeIndex]?.id === item.id && $style.active]"
+								:aria-selected="modelValue && optionKey(modelValue) === optionKey(item)"
+								:class="[
+									$style.option,
+									options[activeIndex] &&
+										optionKey(options[activeIndex]) === optionKey(item) &&
+										$style.active,
+								]"
 								@click="select(item)"
 							>
-								<N8nIcon :icon="icon" :size="16" />
+								<N8nIcon :icon="optionIcon(item)" :size="16" />
 								<span :class="$style.value">{{ item.name }}</span>
 							</button>
 						</template>

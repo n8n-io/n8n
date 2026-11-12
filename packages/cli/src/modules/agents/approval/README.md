@@ -1,7 +1,7 @@
-# Human interactions for approval
+# Human review for approval
 
-Human interactions route a saved Agent's tool approvals to a decision workflow or
-one of its connected channels. A configured route always handles the request.
+Human review routes a saved Agent's tool approvals through decision workflows or
+its connected channels. A configured route always handles the request.
 Without a route, the tool keeps its existing conversational approval behavior.
 
 Enable the Agents module and include `human-interactions` in `N8N_AGENTS_MODULES`.
@@ -27,13 +27,15 @@ The coordinator does not read platform-specific node parameters.
 
 ## Configuration
 
-Open a saved Agent's Settings, then Human interactions. Create a destination and
+Open a saved Agent's Settings, then Human review. Create a destination and
 assign tools in its modal. Tools and MCP servers can also select the destination
-in their approval settings. Approval must be enabled separately. An MCP server's
+as ordered pills in their approval settings. All reviews must approve in the listed
+order before the tool runs. Rejection, expiry, or an error stops the sequence.
+Approval must be enabled separately. An MCP server's
 route applies to its Ask first tools.
 
 Definitions stay in `hitlConfigurations` in the Agent JSON. Assignments use
-`approvalRoute: { type: "configuration", configurationId }`. New definition IDs
+`approvalRoute: { type: "configuration", configurationIds: [firstReviewId, secondReviewId] }`. New definition IDs
 use `interaction_<nanoid>`. Names follow the selected destination until the user
 sets a custom name. No separate configuration table is used.
 

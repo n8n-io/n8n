@@ -1,4 +1,4 @@
-import { AgentHitlConfigurationSchema } from '../agent-hitl.schema';
+import { AgentHitlConfigurationSchema, AgentApprovalRouteSchema } from '../agent-hitl.schema';
 const base = {
 	id: 'review',
 	name: 'Review',
@@ -75,3 +75,23 @@ it.each([0, -1, 60, '3600', null])('rejects unsupported expiry %s', (expirySecon
 		AgentHitlConfigurationSchema.safeParse({ ...base, channel: 'telegram', expirySeconds }).success,
 	).toBe(false);
 });
+
+it('preserves review order and normalizes saved single-review routes', () => {
+	expect(
+		AgentApprovalRouteSchema.parse({
+			type: 'configuration',
+			configurationIds: ['second', 'first'],
+		}),
+	).toEqual({ type: 'configuration', configurationIds: ['second', 'first'] });
+	expect(
+		AgentApprovalRouteSchema.parse({ type: 'configuration', configurationId: 'existing' }),
+	).toEqual({ type: 'configuration', configurationIds: ['existing'] });
+});
+it.each([[], ['same', 'same'], ['']])(
+	'rejects an empty or repeated review sequence %s',
+	(configurationIds) => {
+		expect(
+			AgentApprovalRouteSchema.safeParse({ type: 'configuration', configurationIds }).success,
+		).toBe(false);
+	},
+);

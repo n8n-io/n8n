@@ -1,4 +1,5 @@
 import type {
+	AgentApprovalRoute,
 	AgentHitlConfiguration,
 	AgentJsonConfig,
 	AgentJsonToolConfig,
@@ -24,12 +25,14 @@ export function hitlConfigurationToolKeys(config: AgentJsonConfig | null, id?: s
 	if (!id) return [];
 	return [
 		...(config?.tools ?? []).flatMap((tool) =>
-			tool.approvalRoute?.type === 'configuration' && tool.approvalRoute.configurationId === id
+			tool.approvalRoute?.type === 'configuration' &&
+			tool.approvalRoute.configurationIds.includes(id)
 				? [hitlToolKey(tool)]
 				: [],
 		),
 		...(config?.mcpServers ?? []).flatMap((server) =>
-			server.approvalRoute?.type === 'configuration' && server.approvalRoute.configurationId === id
+			server.approvalRoute?.type === 'configuration' &&
+			server.approvalRoute.configurationIds.includes(id)
 				? [hitlMcpServerKey(server.name)]
 				: [],
 		),
@@ -73,29 +76,35 @@ export function hitlConfigurationUpdates(
 	};
 	if (!toolKeys) return updates;
 	const selected = new Set(toolKeys);
-	const approvalRoute = { type: 'configuration', configurationId: configuration.id } as const;
 	updates.tools = config?.tools?.map((tool) => {
-		if (selected.has(hitlToolKey(tool))) return { ...tool, requireApproval: true, approvalRoute };
-		if (
-			tool.approvalRoute?.type === 'configuration' &&
-			tool.approvalRoute.configurationId === configuration.id
-		)
-			return { ...tool, approvalRoute: undefined };
-		return tool;
+		const attached = selected.has(hitlToolKey(tool));
+		const approvalRoute = updateReviewRoute(tool.approvalRoute, configuration.id, attached);
+		return approvalRoute === tool.approvalRoute && (!attached || tool.requireApproval)
+			? tool
+			: { ...tool, ...(attached ? { requireApproval: true } : {}), approvalRoute };
 	});
 	updates.mcpServers = config?.mcpServers?.map((server) => {
-		if (selected.has(hitlMcpServerKey(server.name)))
-			return {
-				...server,
-				approvalRoute,
-				toolPermissions: enableMcpApproval(server.toolPermissions),
-			};
-		if (
-			server.approvalRoute?.type === 'configuration' &&
-			server.approvalRoute.configurationId === configuration.id
-		)
-			return { ...server, approvalRoute: undefined };
-		return server;
+		const attached = selected.has(hitlMcpServerKey(server.name));
+		const approvalRoute = updateReviewRoute(server.approvalRoute, configuration.id, attached);
+		return approvalRoute === server.approvalRoute && !attached
+			? server
+			: {
+					...server,
+					approvalRoute,
+					...(attached ? { toolPermissions: enableMcpApproval(server.toolPermissions) } : {}),
+				};
 	});
 	return updates;
+}
+
+/** Attach at the end, or remove only this review. Other reviews keep their order. */
+export function updateReviewRoute(
+	route: AgentApprovalRoute | undefined,
+	id: string,
+	attached: boolean,
+): AgentApprovalRoute | undefined {
+	const ids = route?.type === 'configuration' ? route.configurationIds : [];
+	if (ids.includes(id) === attached) return route;
+	const configurationIds = attached ? [...ids, id] : ids.filter((value) => value !== id);
+	return configurationIds.length ? { type: 'configuration', configurationIds } : undefined;
 }

@@ -237,7 +237,10 @@ describe('AgentRegistryMcpConfigForm', () => {
 	});
 
 	it('preserves the server approval destination when saving settings', () => {
-		const approvalRoute: AgentApprovalRoute = { type: 'configuration', configurationId: 'review' };
+		const approvalRoute: AgentApprovalRoute = {
+			type: 'configuration',
+			configurationIds: ['review'],
+		};
 		const wrapper = mountForm({ approvalRoute });
 		expect(confirm(wrapper)).toBe(true);
 		expect(saveMock).toHaveBeenCalledWith(expect.anything(), approvalRoute);

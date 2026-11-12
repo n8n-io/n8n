@@ -198,3 +198,20 @@ it('keeps loaded results and retries the same page when loading more fails', asy
 	]);
 	expect(wrapper.text()).not.toContain('Load more');
 });
+
+it('lists a channel and user with the same ID separately and keeps their icons after selection', async () => {
+	const channel = { id: 'same', name: '#review', kind: 'channel' as const };
+	const user = { id: 'same', name: 'Reviewer', kind: 'user' as const };
+	const wrapper = render(vi.fn().mockResolvedValue({ options: [channel, user] }));
+	const trigger = wrapper.get('[data-testid="agent-hitl-destination-picker"]');
+	await trigger.trigger('click');
+	await flushPromises();
+	const options = wrapper.findAll('[role="option"]');
+	expect(options).toHaveLength(2);
+	expect(options[0].find('[data-icon="hash"]').exists()).toBe(true);
+	expect(options[1].find('[data-icon="user"]').exists()).toBe(true);
+	await options[1].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([user]);
+	await wrapper.setProps({ modelValue: user });
+	expect(trigger.find('[data-icon="user"]').exists()).toBe(true);
+});

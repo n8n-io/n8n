@@ -12,6 +12,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nSelect2,
+	N8nSwitch,
 	type SelectOptionBase,
 	N8nText,
 	N8nTooltip,
@@ -40,6 +41,7 @@ const props = defineProps<{
 	context: AgentHitlContext;
 	configuration?: AgentHitlConfiguration;
 	nextNumber: number;
+	hideRemove?: boolean;
 }>();
 const emit = defineEmits<{
 	save: [configuration: AgentHitlConfiguration, toolKeys?: string[]];
@@ -86,11 +88,9 @@ const channelItems = computed<SelectOptionBase[]>(() =>
 		icon: item.channel,
 	})),
 );
-function updateMethod(value: unknown) {
-	if (value === 'workflow' || value === 'channel') method.value = value;
-}
-function updateRecipientKind(value: unknown) {
-	if (value === 'channel' || value === 'user') recipientKind.value = value;
+function updateMethod(value: boolean) {
+	if (value && !channels.value.length) return;
+	method.value = value ? 'channel' : 'workflow';
 }
 function updateExpiry(value: unknown) {
 	if (value === 'none' || value === 3600 || value === 86400 || value === 604800)
@@ -99,13 +99,11 @@ function updateExpiry(value: unknown) {
 function updateChannel(value: unknown) {
 	channelKey.value = typeof value === 'string' ? value : '';
 }
-const recipientKind = ref<'channel' | 'user'>(
-	props.configuration?.method === 'channel' ? props.configuration.recipient.kind : 'channel',
-);
 const recipient = ref<AgentHitlOption | undefined>(
 	props.configuration?.method === 'channel'
 		? {
 				id: props.configuration.recipient.id,
+				kind: props.configuration.recipient.kind,
 				name: props.configuration.recipient.name ?? props.configuration.recipient.id,
 			}
 		: undefined,
@@ -137,7 +135,7 @@ const generatedName = computed(() => {
 		channel.value?.channel === 'telegram' ? telegramId.value : recipient.value?.name;
 	if (!channel.value || !destination) return defaultName;
 	const destinationName =
-		recipientKind.value === 'channel' && !destination.startsWith('#')
+		recipient.value?.kind === 'channel' && !destination.startsWith('#')
 			? `#${destination}`
 			: destination;
 	return i18n.baseText('agents.hitl.channelName', {
@@ -159,7 +157,7 @@ const destinationValid = computed(() =>
 				channel.value &&
 					(channel.value.channel === 'telegram'
 						? /^\d+$/.test(telegramId.value)
-						: recipient.value && (channel.value.channel !== 'discord' || guild.value)),
+						: recipient.value?.kind && (channel.value.channel !== 'discord' || guild.value)),
 			),
 );
 const saveDisabledReason = computed(() => {
@@ -204,24 +202,10 @@ function saveConfiguration(configuration: AgentHitlConfiguration) {
 	if (toolSelectionChanged.value) emit('save', configuration, selectedToolKeys.value);
 	else emit('save', configuration);
 }
-const recipientKinds = computed(
-	() => channel.value?.fields.find((field) => field.name === 'recipient')?.kinds ?? [],
-);
-const recipientItems = computed(() =>
-	recipientKinds.value.map<SelectOptionBase>((kind) => ({
-		value: kind,
-		label: i18n.baseText(kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient'),
-		icon: kind === 'user' ? 'user' : 'hash',
-	})),
-);
 watch(channelKey, () => {
 	recipient.value = undefined;
 	guild.value = undefined;
 	telegramId.value = '';
-	recipientKind.value = recipientKinds.value[0] ?? 'user';
-});
-watch(recipientKind, () => {
-	recipient.value = undefined;
 });
 watch(guild, () => {
 	recipient.value = undefined;
@@ -305,7 +289,7 @@ async function createWorkflow() {
 		creating.value = false;
 	}
 }
-async function loadOptions(field: 'guild' | 'channel' | 'user', query: string, cursor?: string) {
+async function loadOptions(field: 'guild' | 'recipient', query: string, cursor?: string) {
 	if (!channel.value || !props.context.agentId) return { options: [] };
 	return await getAgentHitlChannelOptions(
 		rootStore.restApiContext,
@@ -334,17 +318,17 @@ function save() {
 	else if (channel.value) {
 		const destination =
 			channel.value.channel === 'telegram'
-				? { id: telegramId.value, name: telegramId.value }
+				? { id: telegramId.value, name: telegramId.value, kind: 'user' as const }
 				: recipient.value;
-		if (!destination) return;
+		if (!destination?.kind) return;
 		saveConfiguration({
 			...base,
 			method: 'channel',
 			channel: channel.value.channel,
 			credentialId: channel.value.credentialId,
 			recipient: {
-				kind: channel.value.channel === 'telegram' ? 'user' : recipientKind.value,
 				...destination,
+				kind: destination.kind,
 			},
 			...(guild.value ? { guildId: guild.value.id } : {}),
 		});
@@ -363,34 +347,26 @@ function save() {
 	>
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.method')">
-				<N8nSelect2
-					:model-value="method"
-					@update:model-value="updateMethod"
-					size="large"
-					:items="[
-						{ value: 'workflow', label: i18n.baseText('agents.hitl.workflowMethod') },
-						{
-							value: 'channel',
-							label: i18n.baseText('agents.hitl.channelMethod'),
-							disabled: !channels.length,
-						},
-					]"
-					:aria-label="i18n.baseText('agents.hitl.method')"
-					data-testid="agent-hitl-method"
-				>
-					<template #item-label="{ item }">
-						<span :class="$style.channelMethodLabel">
-							<span>{{ item.label }}</span>
-							<N8nText
-								v-if="item.value === 'channel' && !loading && !channels.length"
-								size="small"
-								color="text-light"
-							>
-								{{ i18n.baseText('agents.hitl.noChannels') }}
-							</N8nText>
-						</span>
-					</template>
-				</N8nSelect2>
+				<div :class="$style.methodChoices">
+					<N8nText :color="method === 'workflow' ? 'text-dark' : 'text-light'">{{
+						i18n.baseText('agents.hitl.workflowMethod')
+					}}</N8nText>
+					<N8nSwitch
+						:model-value="method === 'channel'"
+						:disabled="loading || (!channels.length && method !== 'channel')"
+						:aria-label="i18n.baseText('agents.hitl.method')"
+						data-testid="agent-hitl-method"
+						@update:model-value="updateMethod"
+					/>
+					<div :class="$style.channelMethodLabel">
+						<N8nText :color="method === 'channel' ? 'text-dark' : 'text-light'">{{
+							i18n.baseText('agents.hitl.channelMethod')
+						}}</N8nText>
+						<N8nText v-if="!loading && !channels.length" size="small" color="text-light">{{
+							i18n.baseText('agents.hitl.noChannels')
+						}}</N8nText>
+					</div>
+				</div>
 			</N8nInputLabel>
 			<N8nInputLabel v-if="method === 'workflow'" :label="i18n.baseText('agents.hitl.workflow')">
 				<div :class="$style.workflowRow">
@@ -447,9 +423,10 @@ function save() {
 					/>
 				</N8nInputLabel>
 				<template v-if="channel?.channel === 'telegram'">
-					<N8nInputLabel :label="i18n.baseText('agents.hitl.telegramUserId')"
+					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipient')"
 						><N8nInput
 							v-model="telegramId"
+							size="large"
 							inputmode="numeric"
 							data-testid="agent-hitl-telegram-user"
 					/></N8nInputLabel>
@@ -458,39 +435,26 @@ function save() {
 					}}</N8nText>
 				</template>
 				<template v-else-if="channel && (channel.channel !== 'discord' || guild)">
-					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipientType')">
-						<N8nSelect2
-							:model-value="recipientKind"
-							@update:model-value="updateRecipientKind"
-							size="large"
-							:items="recipientItems"
-							:aria-label="i18n.baseText('agents.hitl.recipientType')"
-							data-testid="agent-hitl-recipient-type"
-						/>
-					</N8nInputLabel>
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipient')">
 						<N8nText
-							v-if="channel.channel === 'slack' && recipientKind === 'channel'"
+							v-if="channel.channel === 'slack'"
 							:class="$style.selectorSubtitle"
 							color="text-light"
 							size="small"
 							>{{ i18n.baseText('agents.hitl.slackChannelHelp') }}</N8nText
 						>
 						<AgentHitlDestinationPicker
-							:key="`${channelKey}:${guild?.id}:${recipientKind}`"
+							:key="`${channelKey}:${guild?.id}`"
 							v-model="recipient"
-							:icon="recipientKind === 'user' ? 'user' : 'hash'"
+							icon="hash"
 							:label="i18n.baseText('agents.hitl.recipient')"
-							:load="(query, cursor) => loadOptions(recipientKind, query, cursor)"
+							:load="(query, cursor) => loadOptions('recipient', query, cursor)"
 						/>
 					</N8nInputLabel>
 				</template>
-				<N8nText
-					v-if="channel?.channel === 'discord' && recipientKind === 'user'"
-					color="text-light"
-					size="small"
-					>{{ i18n.baseText('agents.hitl.discordUserHelp') }}</N8nText
-				>
+				<N8nText v-if="channel?.channel === 'discord'" color="text-light" size="small">{{
+					i18n.baseText('agents.hitl.discordUserHelp')
+				}}</N8nText>
 			</template>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.tools')">
 				<AgentHitlToolsSelect
@@ -519,7 +483,7 @@ function save() {
 				i18n.baseText('agents.hitl.expiryHelp')
 			}}</N8nText>
 		</div>
-		<template v-if="configuration" #footerLeft>
+		<template v-if="configuration && !hideRemove" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-hitl-remove" @click="emit('remove')">
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.tools.remove') }}
@@ -546,6 +510,11 @@ function save() {
 </template>
 
 <style module lang="scss">
+.methodChoices {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
 .fields {
 	display: flex;
 	flex-direction: column;

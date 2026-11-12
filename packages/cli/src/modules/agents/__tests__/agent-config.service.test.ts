@@ -374,7 +374,7 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
-		describe('Human interactions', () => {
+		describe('Human review', () => {
 			beforeEach(() => {
 				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
 					true,
@@ -397,7 +397,7 @@ describe('AgentConfigService', () => {
 				},
 			];
 
-			it('refuses a new human interaction while the module is disabled', async () => {
+			it('refuses a new human review while the module is disabled', async () => {
 				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
 					false,
 				);

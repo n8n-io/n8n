@@ -1,5 +1,11 @@
-import type { ChannelHitlDefinition } from '../../channel-hitl';
-import { approvalNode, matchesApprovalUser, matchesApprovalChannel } from '../../channel-hitl';
+import type { AgentHitlOptionsPage } from '@n8n/api-types';
+import type { ChannelHitlDefinition, ChannelHitlOptionsContext } from '../../channel-hitl';
+import {
+	approvalNode,
+	matchesApprovalUser,
+	matchesApprovalChannel,
+	listReviewRecipients,
+} from '../../channel-hitl';
 import { requireCredentialField } from '../../credential-fields';
 import { UserError } from '@n8n/errors';
 import { z } from 'zod';
@@ -29,50 +35,15 @@ export const discordHitl: ChannelHitlDefinition = {
 	},
 	fields: [
 		{ name: 'guild', type: 'search' },
-		{ name: 'recipient', type: 'search', kinds: ['channel', 'user'] },
+		{ name: 'recipient', type: 'search' },
 	],
-	async listOptions({ credential, httpClient, query }) {
-		const guildId = query.guildId;
-		if (query.field !== 'guild' && !guildId) throw new UserError('Select a Discord server first');
-		const params = new URLSearchParams({ limit: '200' });
-		if (query.cursor) {
-			if (!/^\d+$/.test(query.cursor)) throw new UserError('Invalid Discord page');
-			params.set('after', query.cursor);
-		}
-		const path =
-			query.field === 'guild'
-				? '/users/@me/guilds'
-				: `/guilds/${guildId}/${query.field === 'user' ? 'members' : 'channels'}`;
-		const response = await httpClient.request<unknown>({
-			method: 'GET',
-			url: `https://discord.com/api/v10${path}?${params}`,
-			headers: {
-				Authorization: `Bot ${requireCredentialField(credential, 'botToken', 'The Discord bot token is missing')}`,
-			},
-			json: true,
-			disableFollowRedirect: true,
-		});
-		const members = query.field === 'user' ? membersSchema.parse(response) : undefined;
-		const rows = members
-			? members.map((member) => ({
-					id: member.user.id,
-					name: member.nick || member.user.global_name || member.user.username,
-					bot: member.user.bot,
-				}))
-			: z.array(idName.extend({ type: z.number().optional() })).parse(response);
-		const options = rows
-			.filter(
-				(row) =>
-					(!('bot' in row) || !row.bot) &&
-					(!('type' in row) || row.type === undefined || row.type === 0 || row.type === 5),
-			)
-			.map((row) => ({ id: row.id, name: query.field === 'channel' ? `#${row.name}` : row.name }));
-		return {
-			options: options.filter((option) =>
-				option.name.toLowerCase().includes(query.query.toLowerCase().replace(/^[@#]/, '')),
-			),
-			nextCursor: query.field !== 'channel' && rows.length === 200 ? rows.at(-1)?.id : undefined,
-		};
+	async listOptions(context) {
+		if (context.query.field === 'guild')
+			return await listDiscordPage(context, 'guild', context.query.cursor);
+		return await listReviewRecipients(
+			context.query.cursor,
+			async (kind, cursor) => await listDiscordPage(context, kind, cursor),
+		);
 	},
 	createNode(configuration) {
 		if (!configuration.guildId || !/^\d+$/.test(configuration.recipient.id))
@@ -89,3 +60,51 @@ export const discordHitl: ChannelHitlDefinition = {
 		});
 	},
 };
+
+async function listDiscordPage(
+	{ credential, httpClient, query }: ChannelHitlOptionsContext,
+	field: 'guild' | 'channel' | 'user',
+	cursor?: string,
+): Promise<AgentHitlOptionsPage> {
+	const guildId = query.guildId;
+	if (field !== 'guild' && !guildId) throw new UserError('Select a Discord server first');
+	const params = new URLSearchParams({ limit: '200' });
+	if (cursor) {
+		if (!/^\d+$/.test(cursor)) throw new UserError('Invalid Discord page');
+		params.set('after', cursor);
+	}
+	const path =
+		field === 'guild'
+			? '/users/@me/guilds'
+			: `/guilds/${guildId}/${field === 'user' ? 'members' : 'channels'}`;
+	const response = await httpClient.request<unknown>({
+		method: 'GET',
+		url: `https://discord.com/api/v10${path}?${params}`,
+		headers: {
+			Authorization: `Bot ${requireCredentialField(credential, 'botToken', 'The Discord bot token is missing')}`,
+		},
+		json: true,
+		disableFollowRedirect: true,
+	});
+	const members = field === 'user' ? membersSchema.parse(response) : undefined;
+	const rows = members
+		? members.map((member) => ({
+				id: member.user.id,
+				name: member.nick || member.user.global_name || member.user.username,
+				bot: member.user.bot,
+			}))
+		: z.array(idName.extend({ type: z.number().optional() })).parse(response);
+	const options = rows
+		.filter(
+			(row) =>
+				(!('bot' in row) || !row.bot) &&
+				(!('type' in row) || row.type === undefined || row.type === 0 || row.type === 5),
+		)
+		.map((row) => ({ id: row.id, name: field === 'channel' ? `#${row.name}` : row.name }));
+	return {
+		options: options.filter((option) =>
+			option.name.toLowerCase().includes(query.query.toLowerCase().replace(/^[@#]/, '')),
+		),
+		nextCursor: field !== 'channel' && rows.length === 200 ? rows.at(-1)?.id : undefined,
+	};
+}

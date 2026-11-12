@@ -2040,7 +2040,7 @@ describe('AgentValidationService — restricted node types', () => {
 	});
 });
 
-describe('human interaction validation', () => {
+describe('human review validation', () => {
 	it('reports an assignment whose configuration is missing', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -2050,7 +2050,7 @@ describe('human interaction validation', () => {
 					{
 						type: 'custom',
 						id: 'missing-tool',
-						approvalRoute: { type: 'configuration', configurationId: 'missing' },
+						approvalRoute: { type: 'configuration', configurationIds: ['missing'] },
 					},
 				],
 			}),

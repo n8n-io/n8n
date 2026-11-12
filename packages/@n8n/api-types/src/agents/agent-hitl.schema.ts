@@ -1,11 +1,34 @@
 import { z } from 'zod';
+import { isRecord } from '@n8n/utils/is-record';
 
 export const AGENT_DECISION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.agentDecisionTrigger';
 
-export const AgentApprovalRouteSchema = z.discriminatedUnion('type', [
-	z.object({ type: z.literal('conversation') }).strict(),
-	z.object({ type: z.literal('configuration'), configurationId: z.string().min(1) }).strict(),
-]);
+export const AgentApprovalRouteSchema = z.preprocess(
+	(value) => {
+		if (
+			isRecord(value) &&
+			value.type === 'configuration' &&
+			typeof value.configurationId === 'string' &&
+			!('configurationIds' in value)
+		) {
+			const { configurationId, ...route } = value;
+			return { ...route, configurationIds: [configurationId] };
+		}
+		return value;
+	},
+	z.discriminatedUnion('type', [
+		z.object({ type: z.literal('conversation') }).strict(),
+		z
+			.object({
+				type: z.literal('configuration'),
+				configurationIds: z
+					.array(z.string().min(1))
+					.min(1)
+					.refine((ids) => new Set(ids).size === ids.length, 'Select each human review once'),
+			})
+			.strict(),
+	]),
+);
 
 export const AgentHitlChannelSchema = z.enum(['slack', 'telegram', 'discord']);
 const configurationBase = {
@@ -69,6 +92,7 @@ export type AgentHitlChannelConfiguration = Extract<AgentHitlConfiguration, { me
 export type AgentHitlOption = {
 	id: string;
 	name: string;
+	kind?: 'channel' | 'user';
 };
 export interface AgentHitlOptionsPage {
 	options: AgentHitlOption[];
@@ -81,14 +105,13 @@ export interface AgentHitlChannelDescriptor {
 	fields: Array<{
 		name: 'guild' | 'recipient';
 		type: 'search' | 'text';
-		kinds?: Array<'channel' | 'user'>;
 	}>;
 }
 
 export const AgentHitlOptionsQuerySchema = z.object({
 	channel: AgentHitlChannelSchema,
 	credentialId: z.string().min(1),
-	field: z.enum(['guild', 'channel', 'user']),
+	field: z.enum(['guild', 'recipient']),
 	guildId: z.string().regex(/^\d+$/).optional(),
 	query: z.string().max(200).default(''),
 	cursor: z.string().max(2048).optional(),

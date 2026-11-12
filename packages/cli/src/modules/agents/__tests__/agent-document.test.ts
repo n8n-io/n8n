@@ -31,7 +31,7 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(toAgentDocument(config, skillRefs)).toEqual(document);
 	});
 
-	it('keeps human interactions and tool routes in the stored JSON and exported document', () => {
+	it('keeps human review and tool routes in the stored JSON and exported document', () => {
 		const configured: AgentJsonConfig = {
 			...document,
 			hitlConfigurations: [
@@ -57,7 +57,7 @@ describe('toAgentDocument / fromAgentDocument', () => {
 					type: 'custom',
 					id: 'lookup',
 					requireApproval: true,
-					approvalRoute: { type: 'configuration', configurationId: 'workflow' },
+					approvalRoute: { type: 'configuration', configurationIds: ['workflow'] },
 				},
 			],
 			mcpServers: [
@@ -66,7 +66,7 @@ describe('toAgentDocument / fromAgentDocument', () => {
 					url: 'https://example.com/mcp',
 					transport: 'streamableHttp',
 					authentication: 'none',
-					approvalRoute: { type: 'configuration', configurationId: 'channel' },
+					approvalRoute: { type: 'configuration', configurationIds: ['channel'] },
 				},
 			],
 		};

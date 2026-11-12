@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import type { CustomToolEntry } from '../types';
-import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
+import { hitlConfigurationUpdates, updateReviewRoute } from '../utils/hitlConfiguration';
 import AgentPanel from './AgentPanel.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentChipButton from './AgentChipButton.vue';
@@ -45,16 +45,14 @@ watch(
 
 function remove(id = editing.value?.id) {
 	if (props.disabled || !id) return;
-	const tools = props.config?.tools?.map((tool) =>
-		tool.approvalRoute?.type === 'configuration' && tool.approvalRoute.configurationId === id
-			? { ...tool, approvalRoute: undefined }
-			: tool,
-	);
-	const mcpServers = props.config?.mcpServers?.map((server) =>
-		server.approvalRoute?.type === 'configuration' && server.approvalRoute.configurationId === id
-			? { ...server, approvalRoute: undefined }
-			: server,
-	);
+	const tools = props.config?.tools?.map((tool) => ({
+		...tool,
+		approvalRoute: updateReviewRoute(tool.approvalRoute, id, false),
+	}));
+	const mcpServers = props.config?.mcpServers?.map((server) => ({
+		...server,
+		approvalRoute: updateReviewRoute(server.approvalRoute, id, false),
+	}));
 	emit('update:config', {
 		hitlConfigurations: configurations.value.filter((entry) => entry.id !== id),
 		tools,

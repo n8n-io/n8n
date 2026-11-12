@@ -216,6 +216,16 @@ or deactivation.
 
 ## Modal patterns
 
+### Fixed mode choices
+
+Use `N8nSwitch` for two fixed options in an Agent modal. Show both option labels
+beside the switch. The left option is off and the right option is on. Keep the
+selected mode clear. Use `N8nSegmentControl` for three fixed options.
+Use selects for longer lists and dynamic resources, regardless of result count.
+Approval method uses Workflow on the left and Connected channel on the right.
+Disable switching to Connected channel when no supported channel is attached.
+Show the reason as a muted subtitle beside that option.
+
 ### Channel behavior settings
 
 Put optional channel behavior controls in the channel edit view after setup.
@@ -559,30 +569,35 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
-Human interactions use `AgentChipRow` and `AgentChipButton`, as the Build
+Human review settings use `AgentChipRow` and `AgentChipButton`, as the Build
 page does. Each pill opens its configuration. Put the add action after the pills.
-Use the item context menu for removal. Select an interaction on each gated tool
-or MCP server. Do not show an Agent-wide default destination.
-Label the select `Human interaction for approval`. For MCP servers, place it
-after tool permissions and use `Human interaction for Ask first tools`. Show it
-when at least one tool or category uses Ask first. Default the select to `Ask user`.
-Put `Create human interaction` first in the searchable select, with a plus icon.
-Show each interaction's name and workflow or channel icon in its option and selection.
+Use the item context menu for removal. Do not show an Agent-wide default destination.
 
-A configured interaction always handles approval, including in conversations.
-Only tools without an interaction ask the requester. Show a fixed waiting message
+Tools and MCP servers use an ordered row of Human review pills. Show each review's
+workflow or channel icon and name. Click its name to edit it. Put a remove action
+inside each pill. Put a plus action after the pills. Its searchable menu lists
+unselected reviews and a leading Create human review action. Creating a review
+appends it to this tool's sequence. Removing a pill keeps the other reviews in order.
+Show Ask user when no reviews are selected. All selected reviews must approve.
+Run them in the order added. A rejection, expiry, or error stops the sequence.
+Label the row Human review for approval. For MCP servers, place it after tool
+permissions and use Human review for Ask first tools. Show it when at least one
+tool or category uses Ask first. Keep the approval toggle beside its review row.
+
+Configured reviews always handle approval, including in conversations.
+Only tools without a review ask the requester. Show a fixed waiting message
 with no approval actions in the requester's conversation. Name the tool that is
 waiting and include its approval description. The configured workflow or channel
 owns approver access.
 
-Generate the interaction name from the selected workflow name or the platform
+Generate the review name from the selected workflow name or the platform
 and destination. Prefix channel destinations with a hash. Let users override the
 name in the modal title. Keep automatic naming after Save until a user overrides
 it. Store the definitions and name
 override state in the Agent JSON.
 
-Disable the connected channel approval method when no supported channels are
-attached. Put the reason below the option label in smaller, muted text.
+Use the two-option switch for Approval method. Keep the no-channel reason beside
+the Connected channel label in smaller, muted text.
 Request expiry defaults to no expiry. Offer one hour, one day, and one week.
 Keep expiry local until Save, as the destination does.
 Keep Save disabled until the approval configuration is complete. Explain the missing
@@ -590,15 +605,18 @@ workflow selection or channel configuration in a tooltip on hover and focus.
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
 Show platform icons in the connected channel select. Use `N8nSelect2` item icons
 so saved selections keep the icon and label in the same layout after loading.
-Use the large size of the current Design System selects throughout Human interactions.
+Use the large size of the current Design System selects throughout Human review.
 Keep single-row tool selections at this height. Let the field grow when pills wrap.
-Use the same form field style for searchable destinations. Mark channel results with a hash icon and
+After selecting a channel, show one searchable Destination field. Combine channel
+and user results. Keep each result's destination kind in its value. Do not show a
+Destination type control. Use the same form field style for searchable destinations. Mark channel results with a hash icon and
 user results with a user icon. Keep search and pagination in the destination menu.
 Size the list to its results, up to six rows. Skip empty provider pages during
 lookup. Show Load more only with results and a continuation cursor.
 Show attached tools in a multiple select with the same icon and name pills as Build.
-Keep attachment edits local until Save. Selecting a tool enables approval and sets
-its destination. Removing a selection restores its default approval behavior.
+Keep attachment edits local until Save. Selecting a tool enables approval and appends this review to its sequence.
+Removing a selection detaches only this review. The other reviews keep their order.
+Removing the last review restores the current conversational approval behavior.
 
 Attach the plan card directly above the approval card. Keep both in one stack
 without a gap. Use the standard approval header with the Agent and tool names.

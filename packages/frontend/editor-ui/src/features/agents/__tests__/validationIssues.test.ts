@@ -2,7 +2,7 @@ import type { AgentConfigValidationIssue } from '@n8n/api-types';
 
 import { unpublishedWorkflowTools } from '../utils/validationIssues';
 
-it('links an unpublished decision workflow through its human interaction', () => {
+it('links an unpublished decision workflow through its human review', () => {
 	const issues: AgentConfigValidationIssue[] = [
 		{
 			code: 'incompatible_reference',

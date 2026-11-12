@@ -172,12 +172,15 @@ describe('Durable channel approval lifecycle', () => {
 		{ approved: false, destination: 'channel', method: 'channel' },
 		{ approved: true, destination: 'channel', method: 'workflow' },
 		{ approved: false, destination: 'channel', method: 'workflow' },
+		{ approved: true, destination: 'channel', method: 'workflow', sequence: true },
+		{ approved: false, destination: 'channel', method: 'workflow', sequence: true },
 		{ approved: false, destination: 'channel', method: 'channel', cancelled: true },
 		{ approved: false, destination: 'channel', method: 'workflow', cancelled: true },
 	] as const)(
 		'resumes a $method approval to a $destination with approved=$approved',
 		async (scenario) => {
 			const { approved, destination, method } = scenario;
+			const sequence = 'sequence' in scenario;
 			const project = await createTeamProject();
 			const agents = Container.get(AgentRepository);
 			const agent = await agents.save(
@@ -268,6 +271,11 @@ describe('Durable channel approval lifecycle', () => {
 					},
 				];
 			}
+			if (sequence && config.hitlConfigurations?.[0])
+				config.hitlConfigurations.push({
+					...config.hitlConfigurations[0],
+					id: 'interaction_second',
+				});
 			const handler = vi.fn().mockResolvedValue({ saved: true });
 			const tool = new Tool('save')
 				.description('Save a record')
@@ -276,7 +284,10 @@ describe('Durable channel approval lifecycle', () => {
 				.build();
 			const wrapped = service.wrap(
 				tool,
-				{ type: 'configuration', configurationId: 'interaction_test' },
+				{
+					type: 'configuration',
+					configurationIds: config.hitlConfigurations?.map(({ id }) => id) ?? [],
+				},
 				config,
 				{
 					agentId: agent.id,
@@ -373,7 +384,8 @@ describe('Durable channel approval lifecycle', () => {
 
 			expect(await executions.findSingleExecution(childId)).toMatchObject({ status: 'waiting' });
 			const event = mock<ActionEvent>({
-				actionId: approved ? send.mock.calls[0][0].approve : send.mock.calls[0][0].reject,
+				actionId:
+					approved || sequence ? send.mock.calls[0][0].approve : send.mock.calls[0][0].reject,
 				user: mock({ userId: 'U_REVIEWER' }),
 				adapter: mock({ decodeThreadId: vi.fn().mockReturnValue({ channel: 'C_REVIEW' }) }),
 			});
@@ -410,7 +422,7 @@ describe('Durable channel approval lifecycle', () => {
 					{ type: 'slack', credentialId: 'credential' },
 					event,
 				),
-			).toBe(approved);
+			).toBe(approved || sequence);
 			await Container.get(ActiveExecutions).getPostExecutePromise(childId);
 			expect(await executions.findSingleExecution(childId)).toMatchObject({ status: 'success' });
 			// Rebuild the Agent to prove that only the durable checkpoint carries the continuation.
@@ -419,7 +431,34 @@ describe('Durable channel approval lifecycle', () => {
 				{ type: 'workflow_finished', value: 'success' },
 				{ runId: first.runId, toolCallId: 'call' },
 			);
-			const chunks = await drain(resumed.stream);
+			let chunks = await drain(resumed.stream);
+			if (sequence) {
+				expect(handler).not.toHaveBeenCalled();
+				expect(send).toHaveBeenCalledTimes(2);
+				const secondJob = await jobs.findByParentThread(threadId);
+				const nextJob = secondJob.find((entry) => entry.childExecutionId !== childId);
+				if (!nextJob?.childExecutionId) throw new Error('Expected the second review execution');
+				const secondEvent = mock<ActionEvent>({
+					...event,
+					actionId: approved ? send.mock.calls[1][0].approve : send.mock.calls[1][0].reject,
+				});
+				expect(
+					await channels.respond(
+						agent.id,
+						project.id,
+						{ type: 'slack', credentialId: 'credential' },
+						secondEvent,
+					),
+				).toBe(approved);
+				await Container.get(ActiveExecutions).getPostExecutePromise(nextJob.childExecutionId);
+				const final = await buildAgent().resume(
+					'stream',
+					{ type: 'workflow_finished', value: 'success' },
+					{ runId: first.runId, toolCallId: 'call' },
+				);
+				chunks = await drain(final.stream);
+			}
+
 			expect(JSON.stringify(chunks)).toContain(approved ? 'saved' : 'declined');
 			if (approved) expect(handler).toHaveBeenCalledWith(input, expect.any(Object));
 			expect(handler).toHaveBeenCalledTimes(approved ? 1 : 0);
@@ -431,7 +470,7 @@ describe('Durable channel approval lifecycle', () => {
 					event,
 				),
 			).toBe('unavailable');
-			expect(send).toHaveBeenCalledOnce();
+			expect(send).toHaveBeenCalledTimes(sequence ? 2 : 1);
 			await expect(
 				buildAgent().resume('stream', {}, { runId: first.runId, toolCallId: 'call' }),
 			).rejects.toThrow();

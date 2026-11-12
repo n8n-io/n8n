@@ -633,7 +633,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
 		.refine((entries) => new Set(entries.map(({ id }) => id)).size === entries.length, {
-			message: 'Human interaction IDs must be unique',
+			message: 'Human review IDs must be unique',
 		})
 		.optional(),
 	name: z.string().min(1).max(128),

@@ -314,7 +314,7 @@ export class AgentConfigPreparationService {
 					(server) => server.approvalRoute?.type === 'configuration',
 				))
 		)
-			throw new UserError('Human interactions are not enabled on this instance');
+			throw new UserError('Human review is not enabled on this instance');
 
 		if (validatedConfig.tools !== undefined) {
 			await this.nodeToolAiGatewayService.assignManagedCredentials(

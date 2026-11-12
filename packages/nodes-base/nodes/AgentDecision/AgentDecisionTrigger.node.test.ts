@@ -11,10 +11,10 @@ beforeEach(() =>
 );
 afterEach(() => Container.reset());
 
-it('rejects a new request when human interactions are disabled', async () => {
+it('rejects a new request when human review is disabled', async () => {
 	Container.set(AgentsConfig, mock<AgentsConfig>({ humanInteractionsEnabled: false }));
 	await expect(node.trigger.call(mock<ITriggerFunctions>())).rejects.toThrow(
-		'Human interactions are not enabled',
+		'Human review is not enabled',
 	);
 });
 

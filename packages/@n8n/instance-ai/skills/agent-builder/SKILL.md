@@ -184,12 +184,12 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-Human interactions adds workflow and connected-channel approval for saved Agents.
+Human review adds workflow and connected-channel approval for saved Agents.
 It supports conversations, workflow calls, and scheduled tasks. Workflow calls
-require Message an Agent version 4. The instance must enable the human interactions
+require Message an Agent version 4. The instance must enable the human review
 module. Do not configure this feature when the instance has not enabled it.
 
-Use `hitlConfigurations` in the Agent JSON for named human interactions. Do not
+Use `hitlConfigurations` in the Agent JSON for named human reviews. Do not
 create a separate configuration resource. These definitions import and export
 with the Agent. A workflow configuration
 has `id`, `name`, `method: "workflow"`, and `workflowId`. Use the canonical
@@ -201,7 +201,7 @@ user ID, and the user must first message the bot. Do not use a Telegram username
 Slack and Discord provide searchable destination lists in Settings. The channel
 path uses existing durable send-and-wait nodes with the connected credential.
 
-Set `approvalRoute: { type: "configuration", configurationId }` on each tool or
+Set `approvalRoute: { type: "configuration", configurationIds: [firstReviewId, secondReviewId] }` on each tool or
 MCP server that uses a destination. There is no Agent-wide default destination.
 Keep `requireApproval` and MCP permission rules. The route selects the destination.
 It does not require approval by itself.
@@ -212,11 +212,12 @@ sees a fixed waiting message with no approval actions. The workflow or channel
 controls its approvers. This does not add an n8n administrator-role check.
 
 Use the selected workflow name or the platform and destination for the default
-interaction name. Set `nameOverridden: false` for an automatic name. Use
+review name. Set `nameOverridden: false` for an automatic name. Use
 `nameOverridden: true` when the user chooses a custom name. Preserve a custom
 name when its destination changes.
-The UI calls these definitions Human interactions. Tools select a Human interaction
-for approval. Only approval interactions are available.
+The UI calls these definitions Human review. Tools select a Human review
+for approval. Reviews run in the listed order. Every review must approve before the tool runs.
+A rejection, expiry, or failed review stops the sequence.
 
 A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
 review steps and return one terminal item with `{ approved: boolean }`.
@@ -227,7 +228,7 @@ published decision workflow. Requests have no expiry by default. Set
 `expirySeconds` to 3600, 86400, or 604800 for a one-hour, one-day, or one-week
 deadline. Omit it for no expiry. An expired request does not run the tool.
 Agent Settings configures
-human interactions.
+human review.
 
 After a successful build or config change that leaves the Agent ready to try,
 include that Preview markdown link in your wrap-up. Keep Preview links as

@@ -56,6 +56,7 @@ export const DECISION_CONTINUATION_SCHEMA = z.object({
 	executionId: z.string(),
 	definitionHash: z.string(),
 	workflowVersionId: z.string().optional(),
+	reviewIndex: z.number().int().min(0).default(0),
 	toolSuspended: z.boolean().optional(),
 	toolContinuation: z.string().optional(),
 });
@@ -85,8 +86,8 @@ export class AgentDecisionWorkflowService {
 		if (!effective || effective.type === 'conversation') {
 			return wrapToolForApproval(tool, { requireApproval: true });
 		}
-		const configuration = agentConfig.hitlConfigurations?.find(
-			(entry) => entry.id === effective.configurationId,
+		const configurations = effective.configurationIds.map((id) =>
+			agentConfig.hitlConfigurations?.find((entry) => entry.id === id),
 		);
 		const definitionHash = getAgentRuntimeDefinitionHash(
 			agentConfig,
@@ -106,7 +107,11 @@ export class AgentDecisionWorkflowService {
 					throw new UserError(
 						'The Agent configuration changed while approval was pending. Start a new request.',
 					);
+				if (pending.success && pending.data.reviewIndex >= configurations.length)
+					throw new UserError('The human review continuation is invalid');
 				if (pending.success && pending.data.toolSuspended) {
+					if (pending.data.reviewIndex !== configurations.length - 1)
+						throw new UserError('The human review continuation is invalid');
 					ctx.abortSignal?.throwIfAborted();
 					return await handler?.call(tool, input, {
 						...this.approvedContext(ctx, pending.data.executionId, pending.data.definitionHash),
@@ -122,8 +127,52 @@ export class AgentDecisionWorkflowService {
 					(!isRecord(ctx.suspendPayload) || ctx.suspendPayload.type !== 'approval')
 				)
 					throw new UserError('The approval continuation is invalid');
-				if (!configuration) throw new UserError('The selected human interaction is unavailable');
-				return await this.decide(tool, input, ctx, configuration, identity, definitionHash);
+				if (configurations.some((entry) => !entry))
+					throw new UserError('A selected human review is unavailable');
+				const firstIndex = pending.success ? pending.data.reviewIndex : 0;
+				const review = async (index: number, workflowVersionId?: string): Promise<unknown> => {
+					const configuration = configurations[index];
+					if (!configuration) throw new UserError('A selected human review is unavailable');
+					const reviewContext: InterruptibleToolContext = {
+						...ctx,
+						...(index !== firstIndex
+							? { continuation: undefined, resumeData: undefined, suspendPayload: undefined }
+							: {}),
+						suspend: async (payload, options) =>
+							await ctx.suspend(payload, {
+								...options,
+								continuation: {
+									...(isRecord(options?.continuation) ? options.continuation : {}),
+									reviewIndex: index,
+								},
+							}),
+					};
+					const reviewedTool: BuiltTool =
+						index === configurations.length - 1
+							? tool
+							: {
+									...tool,
+									handler: async (_input, approved) => {
+										const version =
+											'continuation' in approved &&
+											isRecord(approved.continuation) &&
+											typeof approved.continuation.__agentApprovalWorkflowVersion === 'string'
+												? approved.continuation.__agentApprovalWorkflowVersion
+												: workflowVersionId;
+										return await review(index + 1, version);
+									},
+								};
+					return await this.decide(
+						reviewedTool,
+						input,
+						reviewContext,
+						configuration,
+						identity,
+						definitionHash,
+						workflowVersionId,
+					);
+				};
+				return await review(firstIndex);
 			},
 		};
 	}
@@ -147,6 +196,9 @@ export class AgentDecisionWorkflowService {
 								: executionId,
 						definitionHash,
 						toolSuspended: true,
+						...(isRecord(ctx.continuation) && typeof ctx.continuation.reviewIndex === 'number'
+							? { reviewIndex: ctx.continuation.reviewIndex }
+							: {}),
 						...(child === undefined ? {} : { toolContinuation: JSON.stringify(child) }),
 					},
 				});
@@ -179,10 +231,13 @@ export class AgentDecisionWorkflowService {
 		configuration: NonNullable<AgentJsonConfig['hitlConfigurations']>[number],
 		identity: ApprovalRunIdentity,
 		definitionHash: string,
+		reviewedWorkflowVersionId?: string,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		let executionId: string;
-		let workflowVersionId = pending.success ? pending.data.workflowVersionId : undefined;
+		let workflowVersionId = pending.success
+			? pending.data.workflowVersionId
+			: reviewedWorkflowVersionId;
 		if (pending.success) {
 			if (pending.data.definitionHash !== definitionHash)
 				throw new UserError(
@@ -191,7 +246,7 @@ export class AgentDecisionWorkflowService {
 			executionId = pending.data.executionId;
 		} else {
 			if (!this.config.humanInteractionsEnabled)
-				throw new UserError('Human interactions are not enabled on this instance');
+				throw new UserError('Human review is not enabled on this instance');
 			if (tool.metadata?.kind === 'workflow' && typeof tool.metadata.workflowId === 'string') {
 				const target = await this.loader.loadWorkflow(
 					identity.projectId,
@@ -202,6 +257,10 @@ export class AgentDecisionWorkflowService {
 					{ usePublishedVersion: identity.published },
 				);
 				if (!target) throw new UserError('The tool workflow is unavailable');
+				if (workflowVersionId && workflowVersionId !== target.versionId)
+					throw new UserError(
+						'The tool workflow changed while human review was pending. Start a new request.',
+					);
 				workflowVersionId = target.versionId;
 			}
 			const caller = readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
@@ -212,7 +271,7 @@ export class AgentDecisionWorkflowService {
 				(!caller && !identity.integrationType)
 			) {
 				throw new UserError(
-					'Human interactions require a resumable conversation, workflow, or task run',
+					'Human review requires a resumable conversation, workflow, or task run',
 				);
 			}
 			const workflow =

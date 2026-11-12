@@ -1,5 +1,9 @@
-import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
-import { hitlConfigurationToolKeys, hitlConfigurationUpdates } from '../utils/hitlConfiguration';
+import type { AgentApprovalRoute, AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
+import {
+	hitlConfigurationToolKeys,
+	hitlConfigurationUpdates,
+	updateReviewRoute,
+} from '../utils/hitlConfiguration';
 
 const configuration: AgentHitlConfiguration = {
 	id: 'review',
@@ -7,7 +11,7 @@ const configuration: AgentHitlConfiguration = {
 	method: 'workflow',
 	workflowId: 'workflow',
 };
-const route = { type: 'configuration', configurationId: 'review' } as const;
+const route: AgentApprovalRoute = { type: 'configuration', configurationIds: ['review'] };
 function config(): AgentJsonConfig {
 	return {
 		name: 'Agent',
@@ -21,7 +25,7 @@ function config(): AgentJsonConfig {
 				type: 'custom',
 				id: 'other',
 				requireApproval: true,
-				approvalRoute: { type: 'configuration', configurationId: 'other' },
+				approvalRoute: { type: 'configuration', configurationIds: ['other'] },
 			},
 		],
 		mcpServers: [
@@ -106,5 +110,45 @@ it('selects workflow aliases independently', () => {
 		...current.tools[1],
 		requireApproval: true,
 		approvalRoute: route,
+	});
+});
+
+it('appends reviews and removes only the selected review without changing order', () => {
+	const existing: AgentApprovalRoute = {
+		type: 'configuration',
+		configurationIds: ['first', 'second'],
+	};
+	expect(updateReviewRoute(existing, 'third', true)).toEqual({
+		type: 'configuration',
+		configurationIds: ['first', 'second', 'third'],
+	});
+	expect(updateReviewRoute(existing, 'first', false)).toEqual({
+		type: 'configuration',
+		configurationIds: ['second'],
+	});
+	expect(updateReviewRoute(existing, 'second', true)).toBe(existing);
+	expect(
+		updateReviewRoute({ type: 'configuration', configurationIds: ['first'] }, 'first', false),
+	).toBeUndefined();
+});
+it('preserves other reviews when changing tool and MCP attachments from settings', () => {
+	const current = config();
+	if (!current.tools?.[1] || !current.mcpServers?.[0]) throw new Error('Missing fixture');
+	current.tools[1].approvalRoute = {
+		type: 'configuration',
+		configurationIds: ['first', 'review', 'last'],
+	};
+	current.mcpServers[0].approvalRoute = {
+		type: 'configuration',
+		configurationIds: ['first', 'review', 'last'],
+	};
+	const updates = hitlConfigurationUpdates(current, configuration, []);
+	expect(updates.tools?.[1].approvalRoute).toEqual({
+		type: 'configuration',
+		configurationIds: ['first', 'last'],
+	});
+	expect(updates.mcpServers?.[0].approvalRoute).toEqual({
+		type: 'configuration',
+		configurationIds: ['first', 'last'],
 	});
 });

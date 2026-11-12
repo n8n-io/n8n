@@ -778,7 +778,7 @@ export class AgentValidationService {
 				if (
 					('enabled' in entry && entry.enabled === false) ||
 					entry.approvalRoute?.type !== 'configuration' ||
-					ids.has(entry.approvalRoute.configurationId)
+					entry.approvalRoute.configurationIds.every((id) => ids.has(id))
 				)
 					continue;
 				issues.push(

@@ -10,7 +10,7 @@ export const telegramHitl: ChannelHitlDefinition = {
 	matchesResponse(node, event) {
 		return matchesApprovalUser(node.parameters.chatId, event);
 	},
-	fields: [{ name: 'recipient', type: 'text', kinds: ['user'] }],
+	fields: [{ name: 'recipient', type: 'text' }],
 	async listOptions() {
 		return { options: [] };
 	},

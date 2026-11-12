@@ -710,7 +710,7 @@ export class AgentWorkflowExecutionService {
 			!workflowContext.continuation &&
 			!this.agentsConfig.humanInteractionsEnabled
 		)
-			throw new UserError('Message an Agent version 4 requires human interactions to be enabled');
+			throw new UserError('Message an Agent version 4 requires human review to be enabled');
 		return await this.executeForWorkflowInternal({
 			agentId,
 			message,
@@ -801,7 +801,7 @@ export class AgentWorkflowExecutionService {
 					: [];
 				if (executionIds.length === 0) {
 					await this.checkpointStorage.delete(run.runId, agentId);
-					throw new UserError('This Agent needs a human interaction to approve its tool');
+					throw new UserError('This Agent needs a human review to approve its tool');
 				}
 				if (!checkpoint?.persistence)
 					throw new OperationalError('The suspended Agent checkpoint is unavailable');

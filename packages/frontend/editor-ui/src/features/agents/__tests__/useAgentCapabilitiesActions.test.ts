@@ -166,7 +166,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 				type: 'custom',
 				id: 'send',
 				requireApproval: true,
-				approvalRoute: { type: 'configuration', configurationId: 'review' },
+				approvalRoute: { type: 'configuration', configurationIds: ['review'] },
 			},
 		] as const;
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
