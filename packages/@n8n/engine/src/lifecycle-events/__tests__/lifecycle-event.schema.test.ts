@@ -29,6 +29,7 @@ const every: LifecycleEvent[] = [
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
 	{ type: 'step:failed', ...stepEvent },
+	{ type: 'step:waiting', ...stepEvent },
 ];
 
 describe('lifecycleEventSchema', () => {

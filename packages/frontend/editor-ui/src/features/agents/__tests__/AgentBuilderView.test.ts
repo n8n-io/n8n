@@ -207,6 +207,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const repointConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
+const archiveAgentMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
@@ -273,6 +274,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
 	deleteAgent: deleteAgentMock,
+	archiveAgent: archiveAgentMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
@@ -1035,6 +1037,45 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
+
+	it.each([false, true])(
+		'keeps every tab selectable for a new agent (artifact: %s)',
+		async (artifactMode) => {
+			if (!artifactMode) history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			else mockPendingAgentRow('a1');
+			const wrapper = await renderView({
+				waitForAsyncSetup: true,
+				props: artifactMode
+					? {
+							artifactMode: true,
+							artifactProjectId: 'p1',
+							artifactAgentId: 'a1',
+							artifactAgentPending: true,
+						}
+					: {},
+			});
+			const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+
+			expect(editor.props('mainTabOptions')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'agent' }),
+					expect.objectContaining({ value: 'knowledge' }),
+					expect.objectContaining({ value: 'sessions' }),
+					expect.objectContaining({ value: 'settings' }),
+				]),
+			);
+			for (const tab of ['knowledge', 'sessions', 'settings', 'agent']) {
+				editor.vm.$emit('update:activeMainTab', tab);
+				await flushPromises();
+				expect(editor.props('activeMainTab')).toBe(tab);
+			}
+			expect(editor.props('agentUnsaved')).toBe(true);
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(fetchSessionThreadsMock).not.toHaveBeenCalled();
+			expect(listAgentFilesMock).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		},
+	);
 
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
@@ -2316,6 +2357,20 @@ describe('AgentBuilderView — preview routing', () => {
 
 			expect(builderTelemetryMock.trackStartedVectorStoreSetup).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	it('does not generate eval cases for an unsaved agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView({ waitForAsyncSetup: true });
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('generate-eval-cases');
+		await flushPromises();
+
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
 	it('generates eval cases and confirms the result with a toast', async () => {
@@ -3788,6 +3843,41 @@ describe('AgentBuilderView — configuration validation', () => {
 			expect(updateConfigMock).toHaveBeenCalledTimes(1);
 		},
 	);
+
+	it('archives only after a skipped save persists', async () => {
+		archiveAgentMock.mockReset();
+		archiveAgentMock.mockResolvedValue(makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		const wrapper = await renderView();
+		agentPermissionsMock.canDelete.value = false;
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<string | undefined>;
+		};
+		vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+		const saving = vm.flushAutosave();
+		assistant.vm.$emit('update:building', true);
+		await expect(saving).resolves.toBe('skipped');
+		assistant.vm.$emit('update:building', false);
+		await nextTick();
+
+		updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(archiveAgentMock).not.toHaveBeenCalled();
+
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenLastCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Local edit' }),
+			'hash-1',
+		);
+		expect(archiveAgentMock).toHaveBeenCalledTimes(1);
+	});
 
 	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
@@ -5755,6 +5845,25 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
+	it('opens an archived agent read-only and offers Unarchive and Delete', async () => {
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+
+		const wrapper = await renderView();
+		agentPermissionsMock.canDelete.value = false;
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const actionIds = wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.props('headerActions')
+			.map((item: { id: string }) => item.id);
+
+		expect(editor.props('canEditAgent')).toBe(false);
+		expect(editor.props('canExecuteAgent')).toBe(false);
+		expect(actionIds).toEqual(expect.arrayContaining(['unarchive', 'delete']));
+		expect(actionIds).not.toContain('archive');
+		expect(actionIds).not.toContain('import-json');
+	});
+
 	it('adds JSON import and export actions to the header menu', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
@@ -6042,7 +6151,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			await wrapper.setProps({ artifactAgentPending: false });
 			await nextTick();
 
-			expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+			expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 			expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 
 			finishHydrating();
@@ -6730,7 +6839,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		// initialize() hasn't resolved yet → spinner visible, content hidden.
 		await nextTick();
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 
 		// Let initialize() complete.
@@ -6738,7 +6847,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// Spinner gone, content rendered.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
@@ -6750,7 +6859,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		// initialized is set in the `finally` block, so the spinner must be gone.
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-spinner="brand"]').exists()).toBe(false);
 		// The catch block must have surfaced the error to the user.
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
@@ -6844,8 +6953,7 @@ describe('AgentBuilderView — evals focus request', () => {
 	});
 
 	it('ignores the request while the agent is still unsaved', async () => {
-		// Unsaved narrows the row to Agent only, so honouring the request here
-		// would render evals content with no Evals tab visible to match it.
+		// Keep the Assistant generation request pending until the Agent exists.
 		mockPendingAgentRow('aBcDeFgHiJkLmNoP');
 		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
 			artifactMode: true,

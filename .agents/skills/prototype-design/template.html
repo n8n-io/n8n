@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Example flow · prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------- theme: wireframe. Change only if the flow needs it. ---------- */
+  :root {
+    --ink: #2b2b2b; --ink-soft: #6f6f6f; --ink-faint: #a8a8a8;
+    --paper: #fbfbf9; --panel: #ffffff;
+    --line: #2b2b2b; --line-soft: #c9c9c9; --wash: #f0efeb;
+    --red: #c43c2a; --green: #2e7d4f;
+    --font: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
+    --t-title: 16px; --t-head: 14px; --t-body: 12px; --t-meta: 11px;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --ink: #ececea; --ink-soft: #a9a9a6; --ink-faint: #6f6f6c;
+    --paper: #1c1c1b; --panel: #252524; --line: #ececea; --line-soft: #4a4a48; --wash: #30302e;
+    --red: #ff7a68; --green: #5fc48a; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --ink: #ececea; --ink-soft: #a9a9a6; --ink-faint: #6f6f6c;
+    --paper: #1c1c1b; --panel: #252524; --line: #ececea; --line-soft: #4a4a48; --wash: #30302e;
+    --red: #ff7a68; --green: #5fc48a; color-scheme: dark; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); font-size: var(--t-body); font-weight: 300; background: var(--paper); color: var(--ink);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 20px 40px; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  /* ---------- prototype chrome: not part of the UI, keep it light ---------- */
+  .controls { display: flex; align-items: center; gap: 7px; margin-bottom: 28px; flex-wrap: wrap; justify-content: center; }
+  .pill { font-size: var(--t-body); border: 1.5px solid var(--line-soft); border-radius: 999px; color: var(--ink-soft); padding: 3px 12px; }
+  .pill:hover { background: var(--wash); }
+  .pill.active { background: var(--ink-soft); border-color: var(--ink-soft); color: var(--paper); font-weight: 400; }
+
+  /* ---------- modal ---------- */
+  .modal { width: 584px; max-width: 100%; background: var(--panel); border: 2px solid var(--line); border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--wash); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .m-head { padding: 15px 18px 0; display: flex; align-items: center; gap: 10px; }
+  .m-title { font-size: var(--t-title); font-weight: 400; flex: 1; }
+  .x-btn { font-size: 15px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
+  .x-btn:hover { background: var(--wash); }
+  .m-body { padding: 10px 18px 14px; }
+  .m-foot { border-top: 1.5px solid var(--line); padding: 10px 18px; display: flex; justify-content: flex-end; gap: 10px; }
+  .foot-spacer { flex: 1; }
+
+  /* ---------- form ---------- */
+  label.f { display: block; font-size: var(--t-body); font-weight: 400; margin: 12px 0 5px; }
+  .field { border: 1.5px solid var(--line-soft); border-radius: 7px; padding: 6px 10px; display: flex; align-items: center; min-height: 32px; background: var(--panel); }
+  .field:focus-within { border-color: var(--line); }
+  .field input { flex: 1; border: 0; outline: 0; background: transparent; min-width: 0; }
+  .field input::placeholder { color: var(--ink-faint); font-weight: 300; }
+  .sel { border: 1.5px solid var(--line-soft); border-radius: 7px; padding: 6px 10px; display: flex; align-items: center; gap: 10px;
+    min-height: 32px; background: var(--panel); width: 100%; text-align: left; }
+  .sel:hover { border-color: var(--line); }
+  .sel .v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sel::after { content: '⌄'; color: var(--ink-soft); }
+  .sel[disabled] { background: var(--wash); color: var(--ink-soft); cursor: default; }
+  .inline-row { display: flex; align-items: center; gap: 10px; }
+  .inline-row .sel { flex: 1; width: auto; min-width: 0; }
+  .fhint { font-size: var(--t-meta); color: var(--ink-soft); margin-top: 4px; }
+  .ferr { font-size: var(--t-meta); color: var(--red); margin-top: 5px; }
+  .fok { font-size: var(--t-meta); color: var(--green); margin-top: 5px; }
+  .sect-label { font-size: var(--t-head); font-weight: 400; margin: 20px 0 8px; }
+  .sect-note { font-size: var(--t-meta); color: var(--ink-soft); margin: -6px 0 10px; }
+  .group { border: 1.5px solid var(--line-soft); border-radius: 7px; padding: 10px 12px; margin-bottom: 10px; }
+  .group.dim { opacity: .45; pointer-events: none; }
+
+  /* ---------- buttons ---------- */
+  .btn { font-size: var(--t-body); border: 1.5px solid var(--line); border-radius: 7px; background: var(--panel); padding: 6px 12px;
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .btn:hover { background: var(--wash); }
+  .btn.primary { background: var(--ink); color: var(--paper); font-weight: 400; }
+  .btn.primary:hover { filter: brightness(.85); }
+  .btn.primary[disabled] { background: var(--line-soft); border-color: var(--line-soft); color: var(--panel); cursor: default; filter: none; }
+  .btn-text { font-size: var(--t-body); padding: 6px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-text:hover { background: var(--wash); }
+  .spin { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid currentColor; border-top-color: transparent; animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+  /* ---------- menu, sheet, toast ---------- */
+  .menu { position: absolute; z-index: 30; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 4px; min-width: 170px; display: none; }
+  .menu.open { display: block; }
+  .menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 7px 10px; border-radius: 5px; }
+  .menu button:hover { background: var(--wash); }
+  .overlay { position: absolute; inset: 0; z-index: 40; background: rgba(43,43,43,.32); display: flex; align-items: center; justify-content: center; padding: 26px; }
+  .sheet { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 16px; width: 100%; max-width: 380px; }
+  .sheet h3 { font-size: var(--t-head); font-weight: 400; }
+  .sheet p { color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+  .sheet .r { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 2px solid var(--line);
+    border-radius: 10px; padding: 8px 14px; display: none; box-shadow: 4px 4px 0 var(--wash); z-index: 60; }
+  .toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- One pill for each scenario. Name pills by outcome. -->
+<div class="controls">
+  <button class="pill active" data-tab="ok">Connect succeeds</button>
+  <button class="pill" data-tab="fail">Connect fails</button>
+</div>
+
+<div class="modal" id="modal"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const AUTHS = ['None', 'Bearer Auth'];
+
+/* State
+   tab:   active scenario pill ('ok' | 'fail'). It decides the fake outcome.
+   S.conn: 'idle' | 'connecting' | 'connected' | 'failed'
+   sheet: null | 'remove'  (confirmation sheet shown over the modal) */
+let tab = 'ok';
+let sheet = null;
+let S, token = 0;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fresh = () => ({ url: '', auth: 'None', conn: 'idle' });
+
+function setTab(t) {
+  tab = t; token++; sheet = null; S = fresh();
+  document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
+  render();
+}
+
+/* Fake async. A changed token means the user moved on: drop the result. */
+async function connect() {
+  const t = ++token;
+  S.conn = 'connecting'; render();
+  await new Promise(r => setTimeout(r, 900));
+  if (t !== token) return;
+  S.conn = tab === 'ok' ? 'connected' : 'failed';
+  render();
+}
+
+/* Any edit to a verified value resets the verification. */
+function fieldChanged() { token++; S.conn = 'idle'; }
+
+function render() {
+  const busy = S.conn === 'connecting';
+  const connected = S.conn === 'connected';
+  const note = S.conn === 'failed' ? `<div class="ferr" role="alert">Couldn’t connect. The server didn’t respond. Check the URL and try again.</div>`
+    : connected ? `<div class="fok" role="status">✓ Connected. Tools are loaded below.</div>` : '';
+
+  $('#modal').innerHTML = `
+    <div class="m-head">
+      <div class="m-title">Example flow</div>
+      <button class="x-btn" data-act="cancel" aria-label="Close">✕</button>
+    </div>
+    <div class="m-body">
+      <label class="f" for="fUrl">Server URL</label>
+      <div class="field"><input id="fUrl" ${busy ? 'readonly' : ''} value="${esc(S.url)}" placeholder="e.g. https://mcp.acme-crm.com/mcp" spellcheck="false" autocomplete="off"></div>
+
+      <label class="f">Authentication</label>
+      <div class="inline-row">
+        <button class="sel" data-act="auth" ${busy ? 'disabled' : ''}><span class="v">${esc(S.auth)}</span></button>
+        ${connected ? '' : `<button class="btn primary" data-act="connect" ${S.url.trim() && !busy ? '' : 'disabled'}>${
+          busy ? '<span class="spin" aria-hidden="true"></span> Connecting' : 'Connect'}</button>`}
+      </div>
+      ${note}
+
+      <div class="sect-label">Tool permissions</div>
+      ${connected ? '' : '<div class="sect-note">Available after you connect</div>'}
+      <div class="group ${connected ? '' : 'dim'}">Replace this block with the next part of the flow.</div>
+    </div>
+    <div class="m-foot">
+      <button class="btn-text" data-act="remove">Remove</button>
+      <span class="foot-spacer"></span>
+      <button class="btn" data-act="cancel">Cancel</button>
+      <button class="btn primary" data-act="save" ${connected ? '' : 'disabled'}>Save</button>
+    </div>
+    <div class="menu" id="menu"></div>
+    ${sheet === 'remove' ? `<div class="overlay"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
+      <h3 id="shT">Remove this item?</h3>
+      <p>Nothing is deleted in this prototype. Say what the real action would remove.</p>
+      <div class="r"><button class="btn" data-act="sheet-close">Keep item</button><button class="btn primary" data-act="remove-yes">Remove item</button></div>
+    </div></div>` : ''}`;
+  wire();
+}
+
+function openOptions(anchor, options, current, onPick) {
+  const menu = $('#menu'), mr = $('#modal').getBoundingClientRect(), r = anchor.getBoundingClientRect();
+  menu.innerHTML = options.map(o => `<button data-pick="${esc(o)}"><span>${esc(o)}</span><span>${o === current ? '✓' : ''}</span></button>`).join('');
+  menu.onclick = e => { const b = e.target.closest('[data-pick]'); if (!b) return; e.stopPropagation(); closeMenus(); onPick(b.dataset.pick); };
+  menu.style.left = Math.max(8, r.left - mr.left) + 'px';
+  menu.style.top = (r.bottom - mr.top + 4) + 'px';
+  menu.classList.add('open');
+}
+function closeMenus() { $('#menu')?.classList.remove('open'); }
+
+function wire() {
+  const m = $('#modal');
+  $('#fUrl').addEventListener('input', e => {
+    S.url = e.target.value;
+    if (S.conn !== 'idle') {                      /* re-render, then restore focus and cursor */
+      fieldChanged(); render();
+      const f = $('#fUrl'); f.focus(); f.setSelectionRange(f.value.length, f.value.length);
+      return;
+    }
+    const b = m.querySelector('[data-act="connect"]'); if (b) b.disabled = !S.url.trim();
+  });
+  m.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const act = b.dataset.act;
+    if (act === 'connect') connect();
+    if (act === 'auth') openOptions(b, AUTHS, S.auth, v => { if (v !== S.auth) { S.auth = v; fieldChanged(); } render(); });
+    if (act === 'cancel') setTab(tab);
+    if (act === 'save') toast('Changes saved');
+    if (act === 'remove') { sheet = 'remove'; render(); }
+    if (act === 'sheet-close') { sheet = null; render(); }
+    if (act === 'remove-yes') { toast('Item removed'); setTab(tab); }
+  }));
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+document.addEventListener('click', closeMenus);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); if (sheet) { sheet = null; render(); } } });
+document.querySelectorAll('[data-tab]').forEach(p => p.addEventListener('click', () => setTab(p.dataset.tab)));
+
+setTab('ok');
+</script>
+</body>
+</html>

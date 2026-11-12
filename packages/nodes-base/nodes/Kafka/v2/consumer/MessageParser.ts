@@ -8,7 +8,8 @@ import type {
 	ITriggerFunctions,
 	Logger,
 } from 'n8n-workflow';
-import { jsonParse, OperationalError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { sanitizeRegistryError } from '../../utils';
 

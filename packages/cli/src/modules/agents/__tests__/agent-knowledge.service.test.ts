@@ -228,6 +228,24 @@ describe('AgentKnowledgeService', () => {
 		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['uploadFiles', async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()])],
+		['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+	])('rejects %s for an archived agent, and still lists its files', async (_name, call) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			isArchived: true,
+		} as never);
+
+		await expect(call()).rejects.toThrow('Cannot update an archived agent');
+		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
+		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+
+		await service.listFiles(agentId, projectId);
+		expect(knowledgeFileService.listFiles).toHaveBeenCalled();
+	});
+
 	it('removes the temp files of an upload that is rejected before it reaches the knowledge module', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-facade-'));

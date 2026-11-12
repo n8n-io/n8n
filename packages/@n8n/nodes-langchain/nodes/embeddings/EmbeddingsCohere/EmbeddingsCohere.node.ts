@@ -9,6 +9,8 @@ import {
 
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Cohere',
@@ -103,7 +105,7 @@ export class EmbeddingsCohere implements INodeType {
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
 		const embeddings = new CohereEmbeddings({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 		});
 
