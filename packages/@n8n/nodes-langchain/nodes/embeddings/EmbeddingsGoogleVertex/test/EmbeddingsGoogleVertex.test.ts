@@ -87,4 +87,10 @@ describe('EmbeddingsGoogleVertex - location resolution', () => {
 			expect(callArgs).not.toHaveProperty('endpoint');
 		},
 	);
+
+	it('retries a failed request at most twice', async () => {
+		await node.supplyData.call(setupMockContext('us-central1'), 0);
+
+		expect(MockedVertexAIEmbeddings.mock.calls[0][0].maxRetries).toBe(2);
+	});
 });

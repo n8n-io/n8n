@@ -60,4 +60,24 @@ describe('EmbeddingsGoogleGemini', () => {
 			}),
 		);
 	});
+
+	it('should retry twice when the connection fails', async () => {
+		vi.useFakeTimers();
+		try {
+			const ctx = mockDeep<ISupplyDataFunctions>();
+			ctx.getNode.mockReturnValue(nodeDef);
+			ctx.getCredentials.mockResolvedValue({ apiKey: 'test-key', host: 'https://gemini.test' });
+			ctx.getNodeParameter.mockReturnValue('models/gemini-embedding-001');
+			mockedProxyFetch.mockRejectedValue(new TypeError('fetch failed'));
+
+			const { response } = await new EmbeddingsGoogleGemini().supplyData.call(ctx, 0);
+			const result = (response as Embeddings).embedQuery('hello').catch((e: unknown) => e);
+			await vi.runAllTimersAsync();
+
+			expect(await result).toBeInstanceOf(Error);
+			expect(mockedProxyFetch).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });

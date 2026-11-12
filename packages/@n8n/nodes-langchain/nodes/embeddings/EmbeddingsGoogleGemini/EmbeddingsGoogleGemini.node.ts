@@ -129,6 +129,8 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
 				await proxyFetch({ input, init, egressFilter }),
 			model: modelName,
+			// LangChain defaults to 6 retries, so a failing connection surfaced only after minutes
+			maxRetries: 2,
 		});
 
 		return {
