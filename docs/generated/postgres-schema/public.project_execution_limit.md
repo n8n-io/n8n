@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| maxExecutions | integer |  | false |  |  |  |
+| maxExecutions | integer |  | false |  |  | Maximum number of executions for the project in one period. The instance setting features.executionLimits sets the period |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 

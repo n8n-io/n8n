@@ -5,7 +5,12 @@ const TABLE = 'project_execution_limit';
 export class CreateProjectExecutionLimitTable1794398106852 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable(TABLE)
-			.withColumns(column('projectId').varchar(36).primary, column('maxExecutions').int.notNull)
+			.withColumns(
+				column('projectId').varchar(36).primary,
+				column('maxExecutions').int.notNull.comment(
+					'Maximum number of executions for the project in one period. The instance setting features.executionLimits sets the period',
+				),
+			)
 			.withForeignKey('projectId', {
 				tableName: 'project',
 				columnName: 'id',
