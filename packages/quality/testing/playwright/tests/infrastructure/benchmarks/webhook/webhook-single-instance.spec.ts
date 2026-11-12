@@ -24,7 +24,7 @@ test.describe(
 	{
 		tag: '@bench:webhook',
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Execution' },
 			{ type: 'question', description: 'webhook-single-instance' },
 		],
 	},

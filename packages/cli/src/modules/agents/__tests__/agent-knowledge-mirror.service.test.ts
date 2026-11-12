@@ -8,10 +8,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { getKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
+
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
-import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
@@ -22,8 +23,8 @@ import type { AgentRepository } from '../repositories/agent.repository';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
-const knowledgePaths = getAgentKnowledgePaths('daytona');
-const n8nKnowledgePaths = getAgentKnowledgePaths('n8n-sandbox');
+const knowledgePaths = getKnowledgePaths('daytona');
+const n8nKnowledgePaths = getKnowledgePaths('n8n-sandbox');
 
 type TestWorkspaceSandbox = WorkspaceSandbox & { provider: SandboxProvider } & Required<
 		Pick<WorkspaceSandbox, 'executeCommand'>
@@ -46,8 +47,8 @@ function makeAgentFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
 	} as KnowledgeFile;
 }
 
-function makeKnowledgeFileStore(): ReturnType<typeof mock<AgentKnowledgeFileStore>> {
-	const store = mock<AgentKnowledgeFileStore>();
+function makeKnowledgeFileStore(): ReturnType<typeof mock<KnowledgeFileStore>> {
+	const store = mock<KnowledgeFileStore>();
 	store.readAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
 	return store;
 }
@@ -115,7 +116,7 @@ function makeService({
 	logger?: Logger;
 	agentFileRepository?: KnowledgeFileRepository;
 	agentRepository?: AgentRepository;
-	agentKnowledgeFileStore?: AgentKnowledgeFileStore;
+	agentKnowledgeFileStore?: KnowledgeFileStore;
 	projectDeletion?: AgentProjectDeletionRepository;
 }): AgentKnowledgeMirrorService {
 	return new AgentKnowledgeMirrorService(
@@ -309,7 +310,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			logger = mock<Logger>(),
 		}: {
 			fileRepository: KnowledgeFileRepository;
-			fileStore?: AgentKnowledgeFileStore;
+			fileStore?: KnowledgeFileStore;
 			logger?: Logger;
 		}): AgentKnowledgeMirrorService {
 			const agentRepository = mock<AgentRepository>();

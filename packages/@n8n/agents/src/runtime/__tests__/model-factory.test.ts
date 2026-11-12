@@ -225,17 +225,43 @@ vi.mock('@n8n/client-oauth2', () => ({
 }));
 
 vi.mock('@ai-sdk/openai-compatible', () => ({
-	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
-		provider: opts.name,
-		modelId: model,
-		apiKey: opts.apiKey,
-		baseURL: opts.baseURL,
-		headers: opts.headers,
-		fetch: opts.fetch,
-		includeUsage: opts.includeUsage,
-		supportsStructuredOutputs: opts.supportsStructuredOutputs,
-		specificationVersion: 'v3',
-	}),
+	createOpenAICompatible:
+		(opts: ProviderOpts & { name: string; supportedUrls?: () => unknown }) => (model: string) => {
+			// Like the OpenAI stub: a call really POSTs to /chat/completions through the
+			// injected fetch, and reports what the adapter was built with.
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
+				const url = `${(opts.baseURL ?? '').replace(/\/+$/, '')}/chat/completions`;
+				const response = await (opts.fetch ?? globalThis.fetch)(url, { method: 'POST' });
+				if (!response.ok) {
+					throw Object.assign(new Error(`Endpoint returned ${response.status}`), {
+						statusCode: response.status,
+						url,
+					});
+				}
+				return {
+					api: 'chat-completions',
+					adapter: opts.name,
+					url,
+					includeUsage: opts.includeUsage,
+					supportsStructuredOutputs: opts.supportsStructuredOutputs,
+					providerOptions: options?.providerOptions,
+				};
+			};
+			return {
+				provider: opts.name,
+				modelId: model,
+				apiKey: opts.apiKey,
+				baseURL: opts.baseURL,
+				headers: opts.headers,
+				fetch: opts.fetch,
+				includeUsage: opts.includeUsage,
+				supportsStructuredOutputs: opts.supportsStructuredOutputs,
+				specificationVersion: 'v4',
+				supportedUrls: opts.supportedUrls?.() ?? {},
+				doGenerate: callEndpoint,
+				doStream: callEndpoint,
+			};
+		},
 }));
 
 vi.mock('@ai-sdk/moonshotai', () => ({
@@ -358,30 +384,41 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('uses the Responses API when a baseURL explicitly serves it', () => {
+	it('uses the Responses API when a baseURL explicitly serves it', async () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
 		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
-		const model = createModel({
-			id: 'openai/gpt-5-mini',
-			apiKey: 'gateway-jwt',
-			baseURL: 'https://gw.example/v1/gateway/openai/v1',
-			apiStyle: 'responses',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
-		expect(model.api).toBeUndefined();
+		const { fetchFn, paths } = fakeEndpoint({ '/v1/gateway/openai/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/gpt-5-mini',
+				apiKey: 'gateway-jwt',
+				baseURL: 'https://gw.example/v1/gateway/openai/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'https://gw.example/v1/gateway/openai/v1/responses',
+		});
+		expect(paths).toEqual(['/v1/gateway/openai/v1/responses']);
 	});
 
-	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
-		const model = createModel({
-			id: 'openai/mock-model',
-			apiKey: 'sk-test',
-			url: 'http://127.0.0.1:1234/v1',
-			// Pinned, so the alias is asserted on the adapter itself instead of on the
-			// wrapper the automatic choice returns.
-			apiStyle: 'chat',
-		}) as unknown as Record<string, unknown>;
-		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
-		expect(model.api).toBe('chat-completions');
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', async () => {
+		const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+		const model = createModel(
+			{
+				id: 'openai/mock-model',
+				apiKey: 'sk-test',
+				url: 'http://127.0.0.1:1234/v1',
+				apiStyle: 'responses',
+			},
+			fetchFn,
+		) as unknown as EndpointModel;
+		await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+			api: undefined,
+			url: 'http://127.0.0.1:1234/v1/responses',
+		});
 	});
 
 	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
@@ -436,8 +473,9 @@ describe('createModel', () => {
 				prompt: [],
 				providerOptions: { openai: { reasoningEffort: 'low' } },
 			});
+			// A requested effort is forced through, as the SDK cannot tell from a proxy's model id.
 			expect(result.providerOptions).toEqual({
-				openai: { store: false, reasoningEffort: 'low' },
+				openai: { store: false, reasoningEffort: 'low', forceReasoning: true },
 			});
 		});
 
@@ -448,9 +486,34 @@ describe('createModel', () => {
 
 			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
 				api: 'chat-completions',
+				adapter: 'openai',
 				url: 'http://127.0.0.1:1234/v1/chat/completions',
+				includeUsage: true,
+				supportsStructuredOutputs: true,
 			});
 			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('passes the openai options the chat adapter reads, and drops the others', async () => {
+			const { fetchFn } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1', apiStyle: 'chat' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: {
+					openai: {
+						reasoningEffort: 'high',
+						reasoningSummary: null,
+						promptCacheKey: 'agent-key',
+						strictJsonSchema: false,
+					},
+					other: { kept: true },
+				},
+			});
+			expect(result.providerOptions).toEqual({
+				openai: { reasoningEffort: 'high', strictJsonSchema: false },
+				other: { kept: true },
+			});
 		});
 
 		it('moves to chat completions on a streaming call too', async () => {
@@ -499,7 +562,9 @@ describe('createModel', () => {
 			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
 			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'chat' }, fetchFn);
 
-			await model.doGenerate({ prompt: [] });
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				adapter: 'openai',
+			});
 			expect(paths).toEqual(['/v1/chat/completions']);
 		});
 

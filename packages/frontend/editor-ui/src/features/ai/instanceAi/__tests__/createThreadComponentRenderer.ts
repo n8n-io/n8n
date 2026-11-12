@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { defineComponent, h, reactive, ref, type Component } from 'vue';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -16,6 +17,9 @@ export function makeThread(): ThreadRuntime {
 	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		get artifactTurns() {
+			return toArtifactTurns(this.messages);
+		},
 		hasMessages: false,
 		sseState: 'connected',
 		isStreaming: false,

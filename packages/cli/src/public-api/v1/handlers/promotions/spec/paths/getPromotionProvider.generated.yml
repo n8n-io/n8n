@@ -1,8 +1,13 @@
 operationId: getPromotionProvider
 tags:
   - Promotions
-summary: Retrieve a promotion provider
-description: Returns the provider with its public configuration. Secrets are never returned.
+summary: 'Beta: Retrieve a promotion provider'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns the provider with its public configuration. Secrets are never returned.
+
+  Requires the `promotions:read` API key scope.
 x-required-scope: promotions:read
 parameters:
   - schema:
