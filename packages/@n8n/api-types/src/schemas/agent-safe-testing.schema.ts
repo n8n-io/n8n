@@ -45,6 +45,10 @@ export const toolCallSimulationSchema = z.object({
 });
 export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
 
+/** Before a run: can this tool be tested, and how. */
+export const toolTestabilitySchema = z.enum(['simulated', 'read_for_real', 'blocked']);
+export type ToolTestability = z.infer<typeof toolTestabilitySchema>;
+
 export const toolTestKindSchema = z.enum([
 	'node',
 	'workflow',
@@ -55,3 +59,14 @@ export const toolTestKindSchema = z.enum([
 	'other',
 ]);
 export type ToolTestKind = z.infer<typeof toolTestKindSchema>;
+
+export const toolTestCapabilitySchema = z.object({
+	/** The name the model calls. For an MCP server, the server name. */
+	toolName: z.string(),
+	kind: toolTestKindSchema,
+	testability: toolTestabilitySchema,
+	/** Set when the tool is blocked. */
+	reason: toolCallReasonSchema.optional(),
+	detail: z.string().optional(),
+});
+export type ToolTestCapability = z.infer<typeof toolTestCapabilitySchema>;

@@ -1,4 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
+import type { ToolTestCapability } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -15,6 +16,12 @@ function makeWorld(
 		handleRequest: vi.fn(async () => (typeof reply === 'function' ? await reply() : reply)),
 	};
 }
+
+const slackCapability: ToolTestCapability = {
+	toolName: 'send_slack',
+	kind: 'node',
+	testability: 'simulated',
+};
 
 function nodeTool(name: string, nodeType: string, handler: BuiltTool['handler']): BuiltTool {
 	return { name, description: name, metadata: { kind: 'node', nodeType }, handler };
@@ -55,6 +62,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 		const handler = vi.fn(async () => await Promise.resolve('plan saved'));
 
@@ -74,6 +82,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 		const { tool } = slackTool(session);
 
@@ -105,6 +114,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 
 		await runTool(session, slackTool(session).tool);
@@ -123,6 +133,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 
 		await expect(runTool(session, slackTool(session, true).tool)).rejects.toThrow(
@@ -140,6 +151,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 		const { tool, additionalData } = slackTool(session);
 
@@ -158,6 +170,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			unavailableDetail: 'No simulator is set up on this instance.',
+			capabilities: [slackCapability],
 		});
 		const { tool, handler } = slackTool(session);
 
@@ -177,7 +190,7 @@ describe('SimulationSession', () => {
 		['an undispatched call_tool', { name: 'call_tool', description: '' }],
 	])('blocks %s that it cannot route', async (_label, partial) => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
 		const handler = vi.fn();
 
 		await expect(runTool(session, { ...partial, handler })).rejects.toThrow(SimulationBlockedError);
@@ -193,6 +206,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [{ toolName: 'send_email', kind: 'node', testability: 'simulated' }],
 		});
 		const handler = vi.fn();
 
@@ -207,6 +221,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
 		});
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		session
@@ -230,11 +245,42 @@ describe('SimulationSession', () => {
 		});
 	});
 
+	it('uses the reason the backend gave for a tool it cannot serve', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [
+				{
+					...slackCapability,
+					testability: 'blocked',
+					reason: 'unsupported_by_simulator',
+					detail: 'No Slack',
+				},
+			],
+		});
+
+		await expect(runTool(session, slackTool(session).tool)).rejects.toThrow(SimulationBlockedError);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'unsupported_by_simulator',
+			detail: 'No Slack',
+		});
+	});
+
 	it('blocks MCP tools and refuses every MCP connection', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [
+				{
+					toolName: 'linear',
+					kind: 'mcp',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+					detail: 'MCP servers cannot run in a test run yet.',
+				},
+			],
 		});
 		const handler = vi.fn();
 		const tool: BuiltTool = {
@@ -257,30 +303,30 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 		const replacement = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 
 		expect(session.runtimeCacheKey).toMatch(/^simulation:chat-1:/);
 		expect(replacement.runtimeCacheKey).not.toBe(session.runtimeCacheKey);
 	});
 
-	it('blocks workflow tools in queue mode, where the hooks do not reach the worker', async () => {
+	it('uses a tool list update for later calls', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world, queueMode: true });
-		const handler = vi.fn();
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
+		const tool = nodeTool(
+			'send_slack',
+			'n8n-nodes-base.slack',
+			async () => await Promise.resolve('ok'),
+		);
 
-		await expect(
-			runTool(session, {
-				name: 'notify',
-				description: '',
-				metadata: { kind: 'workflow' },
-				handler,
-			}),
-		).rejects.toThrow(SimulationBlockedError);
-		expect(handler).not.toHaveBeenCalled();
-		expect(session.takeDecision('tc-1')).toMatchObject({ reason: 'not_simulatable' });
+		await expect(runTool(session, tool, 'tc-before')).rejects.toThrow(SimulationBlockedError);
+		session.updateCapabilities([slackCapability]);
+
+		await expect(runTool(session, tool, 'tc-after')).resolves.toBe('ok');
 	});
 });

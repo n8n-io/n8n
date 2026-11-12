@@ -7,7 +7,12 @@ import {
 	type FetchFn,
 	type ToolCallInterceptor,
 } from '@n8n/agents';
-import type { ToolCallReason, ToolCallSimulation, ToolTestKind } from '@n8n/api-types';
+import type {
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestCapability,
+	ToolTestKind,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
@@ -92,8 +97,8 @@ export interface SimulationSessionInit {
 	world?: SimulationWorld;
 	/** Why the world is absent. Shown on each blocked call. */
 	unavailableDetail?: string;
-	/** Workflow tools are blocked in queue mode: the tool hooks do not reach queue workers. */
-	queueMode?: boolean;
+	/** Testability of each tool, keyed by tool name (MCP: server name). */
+	capabilities: ToolTestCapability[];
 }
 
 /**
@@ -114,7 +119,7 @@ export class SimulationSession {
 
 	private readonly unavailableDetail: string;
 
-	private readonly queueMode: boolean;
+	private capabilities: Map<string, ToolTestCapability>;
 
 	/**
 	 * A runtime keeps the hooks of the session it was built for. A session that
@@ -132,12 +137,17 @@ export class SimulationSession {
 		this.worldId = init.world?.worldId;
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
-		this.queueMode = init.queueMode ?? false;
+		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
 	}
 
 	/** Separates this chat's runtime from every other runtime in the cache. */
 	get runtimeCacheKey(): string {
 		return `simulation:${this.testChatId}:${this.instanceId}`;
+	}
+
+	/** Replace the tool list, for example after the agent's tools changed mid-chat. */
+	updateCapabilities(capabilities: ToolTestCapability[]): void {
+		this.capabilities = new Map(capabilities.map((tool) => [tool.toolName, tool]));
 	}
 
 	/** Remove and return the route of a settled tool call. */
@@ -198,37 +208,25 @@ export class SimulationSession {
 	private preflight(
 		classification: Extract<ToolClassification, { type: 'simulated' }>,
 	): ToolCallSimulation | undefined {
-		const gap = this.toolGap(classification);
-		if (gap) return blocked('not_simulatable', gap);
+		if (classification.kind === 'node' && classification.nodeType) {
+			const gap = nodeSimulationGap(
+				classification.nodeType,
+				isRecord(classification.parameters) ? classification.parameters : undefined,
+			);
+			if (gap) return blocked('not_simulatable', gap);
+		}
+		const capability = this.capabilities.get(classification.key);
+		if (!capability) {
+			return blocked('not_simulatable', 'This kind of tool cannot run in a test run yet.');
+		}
+		if (capability.testability === 'blocked') {
+			return blocked(capability.reason ?? 'not_simulatable', capability.detail);
+		}
+		if (capability.testability === 'read_for_real') {
+			return blocked('blocked_by_policy', 'Real reads are not available in test runs yet.');
+		}
 		if (!this.world) return blocked('simulator_unavailable', this.unavailableDetail);
 		return undefined;
-	}
-
-	/** Why no simulator can serve this tool, or `undefined` when one can. */
-	private toolGap(
-		classification: Extract<ToolClassification, { type: 'simulated' }>,
-	): string | undefined {
-		switch (classification.kind) {
-			case 'node':
-				return classification.nodeType
-					? nodeSimulationGap(
-							classification.nodeType,
-							isRecord(classification.parameters) ? classification.parameters : undefined,
-						)
-					: 'This node tool has no node type.';
-			case 'workflow':
-				return this.queueMode
-					? 'Workflow tools cannot run in a test run in queue mode yet.'
-					: undefined;
-			case 'mcp':
-				return 'MCP servers cannot run in a test run yet.';
-			case 'web_search':
-				return 'Web search cannot run in a test run yet.';
-			default:
-				// Custom code, chat integration actions, memory, vector stores, shell
-				// commands and anything new: unknown traffic, so blocked.
-				return 'This kind of tool cannot run in a test run yet.';
-		}
 	}
 
 	private async ask(request: OutboundRequest, extra: { nodeType?: string }) {

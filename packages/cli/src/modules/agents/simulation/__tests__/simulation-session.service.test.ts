@@ -11,7 +11,11 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import type { SafeTestingFlagGate } from '../safe-testing-flag-gate';
 import { SimulationBackendRegistry } from '../simulation-backend-registry';
 import { SimulationSessionService } from '../simulation-session.service';
-import type { SimulationBackend, SimulationWorld } from '../tool-simulation.contracts';
+import type {
+	SimulatedAgent,
+	SimulationBackend,
+	SimulationWorld,
+} from '../tool-simulation.contracts';
 
 vi.mock('../../json-config/agent-document', () => ({
 	toAgentDocument: (schema: AgentJsonConfig) => schema,
@@ -84,6 +88,13 @@ function setup({
 function llmBackend(): SimulationBackend {
 	return {
 		id: 'llm-mock',
+		describeTools: vi.fn(async (agent: SimulatedAgent) =>
+			agent.tools.map((tool) => ({
+				toolName: tool.toolName,
+				kind: tool.kind,
+				testability: 'simulated' as const,
+			})),
+		),
 		openWorld: vi.fn(async () => world),
 	};
 }
@@ -138,6 +149,47 @@ describe('SimulationSessionService', () => {
 
 		expect(session).toBeDefined();
 		expect(session?.worldId).toBeUndefined();
+	});
+
+	it('lists which tools can be tested, with n8n blocks before the backend sees them', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend, queueMode: true });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toEqual([
+			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
+			expect.objectContaining({
+				toolName: 'Send_Email',
+				testability: 'blocked',
+				reason: 'not_simulatable',
+			}),
+			expect.objectContaining({
+				toolName: 'create-ticket',
+				kind: 'workflow',
+				testability: 'blocked',
+				detail: 'Workflow tools cannot run in a test run in queue mode yet.',
+			}),
+			expect.objectContaining({ toolName: 'my_code', kind: 'custom', testability: 'blocked' }),
+			expect.objectContaining({ toolName: 'linear', kind: 'mcp', testability: 'blocked' }),
+		]);
+		expect(backend.describeTools).toHaveBeenCalledWith(
+			expect.objectContaining({ tools: [expect.objectContaining({ toolName: 'Send_Slack' })] }),
+		);
+	});
+
+	it('marks a tool the backend leaves out as unsupported by the simulator', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.describeTools).mockResolvedValue([]);
+		const { service } = setup({ backend });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools[0]).toMatchObject({
+			toolName: 'Send_Slack',
+			testability: 'blocked',
+			reason: 'unsupported_by_simulator',
+		});
 	});
 
 	it('marks the execution as a test run', async () => {

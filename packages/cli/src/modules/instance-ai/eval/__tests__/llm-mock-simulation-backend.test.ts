@@ -37,6 +37,21 @@ function setup() {
 describe('LlmMockSimulationBackend', () => {
 	beforeEach(() => vi.clearAllMocks());
 
+	it('serves node and workflow tools, and nothing else', async () => {
+		const { backend } = setup();
+
+		await expect(backend.describeTools(agent)).resolves.toEqual([
+			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
+			expect.objectContaining({ toolName: 'linear', testability: 'blocked' }),
+			expect.objectContaining({ toolName: 'web_search', testability: 'blocked' }),
+			expect.objectContaining({
+				toolName: 'my_code',
+				testability: 'blocked',
+				reason: 'unsupported_by_simulator',
+			}),
+		]);
+	});
+
 	it('seeds a new world from the first message and answers HTTP with made-up replies', async () => {
 		const { backend, httpMock } = setup();
 		httpMock.mockResolvedValue({ statusCode: 200, headers: {}, body: { ok: true, ts: '1.2' } });

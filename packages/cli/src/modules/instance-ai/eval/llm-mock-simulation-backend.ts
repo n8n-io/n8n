@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { InstanceAiEvalAgentScenarioSeed, ToolTestKind } from '@n8n/api-types';
+import type { InstanceAiEvalAgentScenarioSeed, ToolTestCapability } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { IHttpRequestMethods, INode } from 'n8n-workflow';
@@ -19,8 +19,8 @@ import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
 
-/** Tool kinds the LLM mock answers. n8n blocks the other kinds before they run. */
-const SERVED_KINDS = new Set<ToolTestKind>(['node', 'workflow']);
+/** Tool kinds the LLM mock can answer. n8n blocks the other kinds before they get here. */
+const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow']);
 
 /**
  * The first simulation backend: the LLM mock that the agent evals use. Every
@@ -31,6 +31,23 @@ const SERVED_KINDS = new Set<ToolTestKind>(['node', 'workflow']);
 @Service()
 export class LlmMockSimulationBackend implements SimulationBackend {
 	readonly id = 'llm-mock' as const;
+
+	async describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]> {
+		return await Promise.resolve(
+			agent.tools.map(
+				(tool): ToolTestCapability =>
+					SERVED_KINDS.has(tool.kind)
+						? { toolName: tool.toolName, kind: tool.kind, testability: 'simulated' }
+						: {
+								toolName: tool.toolName,
+								kind: tool.kind,
+								testability: 'blocked',
+								reason: 'unsupported_by_simulator',
+								detail: 'The LLM mock cannot answer this kind of tool.',
+							},
+			),
+		);
+	}
 
 	async openWorld({ agent, firstMessage }: OpenWorldInput): Promise<SimulationWorld> {
 		const scenarioHints = truncateForLlm(

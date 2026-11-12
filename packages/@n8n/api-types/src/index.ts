@@ -1091,11 +1091,15 @@ export {
 	toolCallRouteSchema,
 	toolCallReasonSchema,
 	toolCallSimulationSchema,
+	toolTestabilitySchema,
 	toolTestKindSchema,
+	toolTestCapabilitySchema,
 } from './schemas/agent-safe-testing.schema';
 export type {
 	ToolCallRoute,
 	ToolCallReason,
 	ToolCallSimulation,
+	ToolTestability,
 	ToolTestKind,
+	ToolTestCapability,
 } from './schemas/agent-safe-testing.schema';
