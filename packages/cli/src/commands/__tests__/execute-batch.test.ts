@@ -93,6 +93,7 @@ test('should start a task runner and the policy modules', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 		}),
 	);
