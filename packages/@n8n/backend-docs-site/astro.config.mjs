@@ -50,6 +50,8 @@ function monthOneGroups() {
 export default defineConfig({
 	// The toolbar covers page content in screenshots and reviews.
 	devToolbar: { enabled: false },
+	// Fetch a page when the pointer is over its link, so that the click shows it at once.
+	prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
 	image: { service: passthroughImageService() },
 	// Keep the text as written. Smartypants would turn quotes and dots into typographic variants.
 	markdown: {

@@ -1,2 +1,6 @@
 /*
   X-Robots-Tag: noindex
+
+# Astro puts a content hash in each file name here, so a file never changes.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
