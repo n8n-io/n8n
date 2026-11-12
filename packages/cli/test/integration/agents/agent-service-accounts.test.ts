@@ -14,6 +14,8 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { ServiceAccountService } from '@/services/service-account.service';
 import { Telemetry } from '@/telemetry';
 
+import { createOwner } from '../shared/db/users';
+
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 
 describe('Agent service accounts', () => {
@@ -49,24 +51,39 @@ describe('Agent service accounts', () => {
 		await testDb.terminate();
 	});
 
+	const expectServiceAccountWithPersonalProject = async (agentId: string, name: string) => {
+		const { serviceAccountId } = await agentRepo.findOneByOrFail({ id: agentId });
+		expect(serviceAccountId).toEqual(expect.any(String));
+		const serviceAccount = await Container.get(ServiceAccountRepository).findById(
+			serviceAccountId!,
+		);
+		expect(serviceAccount?.details.name).toBe(name);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			serviceAccountId!,
+		);
+		expect(personalProject).toMatchObject({ type: 'personal', creatorId: serviceAccountId });
+	};
+
 	it('gives a new agent a service account with a personal project', async () => {
 		const project = await createTeamProject();
 
 		const agent = await agentsService.create(project.id, 'Support Agent', { actor });
 
-		const saved = await agentRepo.findOneByOrFail({ id: agent.id });
-		expect(saved.serviceAccountId).toEqual(expect.any(String));
-		const serviceAccount = await Container.get(ServiceAccountRepository).findById(
-			saved.serviceAccountId!,
-		);
-		expect(serviceAccount?.details.name).toBe('Support Agent');
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			saved.serviceAccountId!,
-		);
-		expect(personalProject).toMatchObject({
-			type: 'personal',
-			creatorId: saved.serviceAccountId,
+		await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+	});
+
+	it('gives an agent created from a complete definition a service account', async () => {
+		const project = await createTeamProject();
+		const owner = await createOwner();
+
+		const agent = await agentsService.create(project.id, 'Imported Agent', {
+			id: nanoid(),
+			definition: { name: 'Imported Agent', tools: {}, config: null, tasks: new Map() },
+			user: owner,
+			actor: { kind: 'user', user: owner },
 		});
+
+		await expectServiceAccountWithPersonalProject(agent.id, 'Imported Agent');
 	});
 
 	it('does not save the agent when the service account cannot be created', async () => {
