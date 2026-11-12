@@ -214,8 +214,13 @@ export const engineRefusals: EngineRefusal[] = [
  *   `EngineV2Dispatcher.assertSupported` in cli. These depend on the run, so the
  *   check has no rule for them.
  * - A node type without an execute method, and a node that sends engine requests,
- *   such as an AI agent with sub-nodes: `v1-step-executor.ts`. Check rule planned
- *   in CET-676.
+ *   such as an AI agent with sub-nodes: `v1-step-executor.ts`. Other node types run
+ *   but miss a feature they need. Check rules: the entries of `node-type-denylist.ts`
+ *   and COMMUNITY_NODE. Each entry names the ticket that removes it, and a test in
+ *   @n8n/workflow-engine-check pins the list.
+ * - A trigger that waits for its run to finish: `EngineV2ActiveTriggers` in cli.
+ *   Check rule: TRIGGER_WAITS_FOR_RUN, a warning, because the trigger's settings
+ *   decide whether it waits.
  * - A wait for a sub-execution that waits, a send-and-wait approval, a wait that
  *   nothing can end, and a wait date that is not valid: `v1-step-executor.ts`. A
  *   signed resume URL without a resume secret: `v1-adapters.ts`. No check rule.
