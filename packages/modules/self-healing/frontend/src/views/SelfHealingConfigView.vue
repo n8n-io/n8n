@@ -54,6 +54,7 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	workflowIds: [],
 	reviewerIds: [],
 	includeAllProjectMembers: false,
+	includeSubWorkflows: false,
 	enabled: true,
 });
 
@@ -211,6 +212,7 @@ async function load() {
 				workflowIds: [...configuration.workflowIds],
 				reviewerIds: [...configuration.reviewerIds],
 				includeAllProjectMembers: configuration.includeAllProjectMembers,
+				includeSubWorkflows: configuration.includeSubWorkflows,
 				enabled: configuration.enabled,
 			};
 		} else {
@@ -220,6 +222,7 @@ async function load() {
 				workflowIds: [],
 				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 				enabled: true,
 			};
 		}

@@ -263,6 +263,7 @@ export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tag
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { PUBLIC_API_IGNORED_NODE_FIELDS } from './workflows/base-workflow-public.dto';
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
