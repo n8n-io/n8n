@@ -1115,13 +1115,14 @@ describe('Microsoft Teams Trigger Node', () => {
 				value: [
 					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '1' } },
 					{ subscriptionId: 'subX', clientState: 'wrong', resourceData: { id: '2' } },
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '3' } },
 				],
 			});
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
 			expect(res.status).not.toHaveBeenCalled();
-			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }]] });
+			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }, { json: { id: '3' } }]] });
 			expect(ctx.logger.debug).toHaveBeenCalledWith(
 				'Microsoft Teams Trigger: rejected notifications without the stored clientState',
 				expect.objectContaining({ workflowId: 'wf1', rejected: 1, subscriptionIds: ['subX'] }),
@@ -1144,13 +1145,17 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 		});
 
-		it('emits the whole notification when it has no resourceData', async () => {
-			const bare = { subscriptionId: 'sub1', clientState: 'secret' };
+		it('emits the notification without clientState when it has no resourceData', async () => {
+			const bare = { subscriptionId: 'sub1', clientState: 'secret', changeType: 'created' };
 			const { ctx } = arrange({ value: [bare, { ...bare, resourceData: { id: 'm2' } }] });
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
-			expect(result).toEqual({ workflowData: [[{ json: bare }, { json: { id: 'm2' } }]] });
+			expect(result).toEqual({
+				workflowData: [
+					[{ json: { subscriptionId: 'sub1', changeType: 'created' } }, { json: { id: 'm2' } }],
+				],
+			});
 		});
 
 		it('caps the logged subscription ids of the rejected notifications', async () => {

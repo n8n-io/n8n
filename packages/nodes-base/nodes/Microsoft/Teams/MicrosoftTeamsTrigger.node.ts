@@ -535,10 +535,12 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
-		// The node has one output. Each change notification becomes one item on it.
+		// `workflowData` has one array for each output. The node has one output, so all change
+		// notifications go in one array. `clientState` is the stored secret. The items do not
+		// include it.
 		const workflowData = [
-			changeNotifications.map((event) => ({
-				json: (event.resourceData as IDataObject) ?? event,
+			changeNotifications.map(({ clientState, ...notification }) => ({
+				json: (notification.resourceData ?? notification) as IDataObject,
 			})),
 		];
 
