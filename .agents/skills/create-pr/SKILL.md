@@ -94,7 +94,7 @@ comma and a space: `fix(core, editor): ...`.
    creating the PR:
    - **Summary**: what the PR does and why, plus any surprises (see PR Body Guidelines below)
    - **How to test**: the steps that a person follows in the product to see the change work, and the command that runs the tests
-   - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`), any GitHub issue links, and the docs link
+   - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`), any GitHub issue links, and the docs link if there is one
 
    Before you create the PR, proofread the Summary against the Summary
    Section rules. Delete each sentence that restates the diff, or that is
@@ -211,8 +211,8 @@ Examples of a complete Summary for a change with no surprises:
 - Link to GitHub issues using keywords to auto-close:
   - `closes #123` / `fixes #123` / `resolves #123`
 - Link to Community forum posts if applicable
-- Link the n8n-docs PR or the docs follow-up ticket, or write
-  "Docs: none needed"
+- If the change has docs, link the n8n-docs PR or the docs follow-up ticket.
+  Otherwise leave out the docs line
 
 ### Backport labels
 Backport bugs with urgent or high priority and regression fixes. Add the
