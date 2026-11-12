@@ -72,7 +72,7 @@ jobs:
       - name: Setup Node.js and build
         uses: ./.github/actions/setup-nodejs
 
-      - name: Build versioned Daytona snapshot
+      - name: Publish versioned Daytona snapshot
         if: ${{ !inputs.verify_image_only }}
         env:
           N8N_VERSION: ${{ inputs.n8n_version }}
@@ -91,7 +91,7 @@ jobs:
           DAYTONA_SNAPSHOT_RETENTION: ${{ matrix.environment == 'dev' && '15' || '100' }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"
 
-      - name: Verify Daytona image
+      - name: Build and delete verification snapshot
         if: ${{ inputs.verify_image_only }}
         env:
           N8N_VERSION: ${{ inputs.n8n_version }}
