@@ -32,7 +32,7 @@ import {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
-import { toRestorableMessages } from './eval/restorable-messages';
+import { toRestorableMessages } from './restorable-messages';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {

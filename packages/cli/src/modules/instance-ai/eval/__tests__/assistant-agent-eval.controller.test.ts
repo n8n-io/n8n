@@ -24,7 +24,6 @@ import { EvalThreadCredentialAllowlistService } from '../thread-credential-allow
 import type { EvalThreadRestoreService, RestoredSeedArtifacts } from '../thread-restore.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { AssistantAgentEvalController } from '../assistant-agent-eval.controller';
-import type { AssistantEvalThreadMemoryService } from '../assistant-eval-thread-memory.service';
 import { EvalAssistantTurnOverrides } from '../eval-assistant-turn-overrides';
 
 const THREAD_ID = '6b1f0f5e-3c43-4a59-9e0c-2f6f4f3f9b11';
@@ -43,7 +42,6 @@ describe('AssistantAgentEvalController', () => {
 		systemAgents.createThread.mockResolvedValue(thread);
 		const allowlists = new EvalThreadCredentialAllowlistService();
 		const overrides = new EvalAssistantTurnOverrides(allowlists);
-		const memory = mock<AssistantEvalThreadMemoryService>();
 		const restore = mock<EvalThreadRestoreService>();
 		const portability = mock<FailedExecutionPortabilityService>();
 		// Stands in for the locked thread row: `patch` replaces the stored metadata.
@@ -59,7 +57,6 @@ describe('AssistantAgentEvalController', () => {
 			systemAgents,
 			overrides,
 			allowlists,
-			memory,
 			restore,
 			portability,
 			threadMetadata,
@@ -72,7 +69,6 @@ describe('AssistantAgentEvalController', () => {
 			systemAgents,
 			allowlists,
 			overrides,
-			memory,
 			restore,
 			portability,
 			threadMetadata,
@@ -344,7 +340,6 @@ describe('AssistantAgentEvalController', () => {
 			ctx.allowlists.set(THREAD_ID, ['cred-1']);
 			const seed = seedArtifacts();
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
-			ctx.memory.restoreThreadMessages.mockResolvedValue({ restored: 2 });
 			const body = payload();
 
 			const result = await ctx.controller.restoreThread(ctx.req, ctx.res, body);
@@ -360,11 +355,17 @@ describe('AssistantAgentEvalController', () => {
 				ctx.user,
 				new Set(['cred-1']),
 			);
-			expect(ctx.memory.ensureThread).toHaveBeenCalledWith(ctx.user, THREAD_ID);
-			expect(ctx.memory.restoreThreadMessages).toHaveBeenCalledWith(
+			expect(ctx.systemAgents.ensureMemoryThread).toHaveBeenCalledWith(
+				'assistant',
 				ctx.user,
 				THREAD_ID,
-				seedMessages,
+			);
+			// The seed keeps its ids, roles and content. `createdAt` becomes a date.
+			expect(ctx.systemAgents.saveMessages).toHaveBeenCalledWith(
+				'assistant',
+				ctx.user,
+				THREAD_ID,
+				seedMessages.map((message) => ({ ...message, createdAt: new Date(message.createdAt) })),
 			);
 			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
 			expect(seed.rollback).not.toHaveBeenCalled();
@@ -382,7 +383,6 @@ describe('AssistantAgentEvalController', () => {
 		it('passes no allowlist when the thread has none', async () => {
 			const ctx = setup();
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seedArtifacts());
-			ctx.memory.restoreThreadMessages.mockResolvedValue({ restored: 2 });
 
 			await ctx.controller.restoreThread(ctx.req, ctx.res, payload());
 
@@ -401,14 +401,14 @@ describe('AssistantAgentEvalController', () => {
 			const result = await ctx.controller.restoreThread(ctx.req, ctx.res, payload([]));
 
 			expect(result).toMatchObject({ ok: true, restored: 0 });
-			expect(ctx.memory.ensureThread).not.toHaveBeenCalled();
-			expect(ctx.memory.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
 		});
 
 		it('binds the seeded agents before it writes the messages, and keeps the other keys', async () => {
 			const ctx = setup();
 			const order: string[] = [];
-			ctx.memory.ensureThread.mockImplementation(async () => {
+			ctx.systemAgents.ensureMemoryThread.mockImplementation(async () => {
 				order.push('ensureThread');
 			});
 			ctx.threadMetadata.patch.mockImplementationOnce(async (_a, _u, _t, change) => {
@@ -416,9 +416,8 @@ describe('AssistantAgentEvalController', () => {
 				ctx.stored.metadata = change(ctx.stored.metadata) ?? ctx.stored.metadata;
 				return ctx.stored.metadata;
 			});
-			ctx.memory.restoreThreadMessages.mockImplementation(async () => {
+			ctx.systemAgents.saveMessages.mockImplementation(async () => {
 				order.push('messages');
-				return { restored: 2 };
 			});
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(
 				seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding }),
@@ -441,7 +440,7 @@ describe('AssistantAgentEvalController', () => {
 			const ctx = setup();
 			const seed = seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding });
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
-			ctx.memory.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+			ctx.systemAgents.saveMessages.mockRejectedValue(new Error('boom'));
 
 			await expect(ctx.controller.restoreThread(ctx.req, ctx.res, payload())).rejects.toThrow(
 				'boom',
@@ -457,7 +456,7 @@ describe('AssistantAgentEvalController', () => {
 			const ctx = setup();
 			const seed = seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding });
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
-			ctx.memory.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+			ctx.systemAgents.saveMessages.mockRejectedValue(new Error('boom'));
 			ctx.threadMetadata.patch
 				.mockImplementationOnce(async () => ({}))
 				.mockRejectedValueOnce(new Error('undo failed'));
@@ -472,14 +471,12 @@ describe('AssistantAgentEvalController', () => {
 			const ctx = setup();
 			const seed = seedArtifacts();
 			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
-			ctx.memory.restoreThreadMessages.mockRejectedValue(
-				new BadRequestError('Seed message at index 0 is not a valid agent message'),
-			);
 
 			await expect(
 				ctx.controller.restoreThread(ctx.req, ctx.res, payload([{ id: 'msg-1' }])),
 			).rejects.toThrow(BadRequestError);
 
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
 			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
 			expect(seed.rollback).toHaveBeenCalledTimes(1);
 		});
@@ -492,9 +489,9 @@ describe('AssistantAgentEvalController', () => {
 				BadRequestError,
 			);
 
-			expect(ctx.memory.ensureThread).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
 			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
-			expect(ctx.memory.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
 		});
 	});
 

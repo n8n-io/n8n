@@ -19,7 +19,7 @@ import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents
 
 import { ASSISTANT_AGENT_ID } from '../assistant-agent/assistant-turn-options';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import { AssistantEvalThreadMemoryService } from './assistant-eval-thread-memory.service';
+import { toRestorableMessages } from '../restorable-messages';
 import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
 import { FailedExecutionPortabilityService } from './failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from './thread-credential-allowlist.service';
@@ -40,7 +40,6 @@ export class AssistantAgentEvalController {
 		private readonly systemAgentEval: SystemAgentEvalService,
 		private readonly turnOverrides: EvalAssistantTurnOverrides,
 		private readonly credentialAllowlists: EvalThreadCredentialAllowlistService,
-		private readonly threadMemory: AssistantEvalThreadMemoryService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly failedExecutionPortability: FailedExecutionPortabilityService,
 		private readonly threadMetadata: SystemAgentThreadMetadataService,
@@ -196,7 +195,11 @@ export class AssistantAgentEvalController {
 		try {
 			if (seed.agentBuilderBinding || payload.messages.length > 0) {
 				// The memory row comes with the first turn. The binding and the messages need it now.
-				await this.threadMemory.ensureThread(req.user, payload.threadId);
+				await this.systemAgentEval.ensureMemoryThread(
+					ASSISTANT_AGENT_ID,
+					req.user,
+					payload.threadId,
+				);
 			}
 			// Bind the seeded agents, or the live turn rejects their refs as unknown agents.
 			if (seed.agentBuilderBinding) {
@@ -214,11 +217,15 @@ export class AssistantAgentEvalController {
 			}
 			// A data-table-only seed sends no messages.
 			if (payload.messages.length > 0) {
-				({ restored } = await this.threadMemory.restoreThreadMessages(
+				// Ids, roles, content and `createdAt` stay as in the seed.
+				const messages = toRestorableMessages(payload.messages);
+				await this.systemAgentEval.saveMessages(
+					ASSISTANT_AGENT_ID,
 					req.user,
 					payload.threadId,
-					payload.messages,
-				));
+					messages,
+				);
+				restored = messages.length;
 			}
 		} catch (error) {
 			if (bindingWritten) {
