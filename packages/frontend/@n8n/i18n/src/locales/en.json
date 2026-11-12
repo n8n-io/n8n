@@ -4107,7 +4107,7 @@
 	"settings.context.skills.sources.delete.title": "Delete source?",
 	"settings.context.skills.sources.delete.message": "This will permanently delete {source} and its {count} synced skill. This can't be undone. | This will permanently delete {source} and its {count} synced skills. This can't be undone.",
 	"settings.context.skills.sources.delete.blocked.title": "Can't delete source",
-	"settings.context.skills.sources.delete.blocked.message": "These agents use skills from this source. Remove the skills from each agent before you delete the source. Nothing was deleted.",
+	"settings.context.skills.sources.delete.blocked.message": "These agents use skills from this source. Remove the skills from each agent before you delete the source. Ask a project admin to remove them from agents in projects you can't open. Nothing was deleted.",
 	"settings.context.skills.sources.delete.success": "Source and synced skills deleted",
 	"settings.context.skills.sources.delete.error": "Could not delete the source",
 	"settings.context.skills.checkForUpdates.checked": "Checked {label}",

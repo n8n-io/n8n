@@ -61,7 +61,8 @@ describe('SkillSourceDeleteDialog', () => {
 		'names the source and %s skills, and explains that deletion is permanent',
 		(count) => {
 			const { getByRole } = renderDialog({ props: { source: { ...source, skillCount: count } } });
-			expect(getByRole('dialog')).toHaveTextContent(`acme/skills and its ${count} synced skill`);
+			const noun = count === 1 ? 'skill' : 'skills';
+			expect(getByRole('dialog')).toHaveTextContent(`acme/skills and its ${count} synced ${noun}.`);
 			expect(getByRole('dialog')).toHaveTextContent("This can't be undone.");
 		},
 	);
@@ -118,6 +119,27 @@ describe('SkillSourceDeleteDialog', () => {
 		expect(emitted('close')).toEqual([[]]);
 	});
 
+	it('explains how to unblock deletion when all agents are in unreadable projects', async () => {
+		mockedStore(useSkillsStore).deleteSource.mockRejectedValue(
+			new ResponseError('In use', {
+				httpStatusCode: 409,
+				meta: { reason: 'skills_in_use', agents: [], hiddenAgents: 1 },
+			}),
+		);
+		const { getByRole, queryByRole, emitted } = renderDialog();
+		await userEvent.click(getByRole('button', { name: 'Delete source' }));
+		await waitFor(() =>
+			expect(getByRole('dialog')).toHaveTextContent(
+				"Ask a project admin to remove them from agents in projects you can't open.",
+			),
+		);
+		expect(getByRole('dialog')).toHaveTextContent('1 agent in other projects');
+		expect(getByRole('dialog')).toHaveTextContent('Nothing was deleted.');
+		expect(queryByRole('button', { name: 'Delete source' })).toBeNull();
+		expect(emitted('deleted')).toBeUndefined();
+		expect(emitted('close')).toBeUndefined();
+	});
+
 	it('keeps the dialog open when a request fails', async () => {
 		const error = new ResponseError('Not allowed', { httpStatusCode: 403 });
 		mockedStore(useSkillsStore).deleteSource.mockRejectedValue(error);
@@ -126,6 +148,7 @@ describe('SkillSourceDeleteDialog', () => {
 		await waitFor(() =>
 			expect(showError).toHaveBeenCalledWith(error, 'Could not delete the source'),
 		);
+		expect(emitted('close')).toBeUndefined();
 		expect(emitted('deleted')).toBeUndefined();
 	});
 });
