@@ -18,7 +18,10 @@ const NODE_TYPE_OUTPUTS: Record<string, INodeTypeDescription['outputs']> = {
 		{ type: NodeConnectionTypes.Main, displayName: 'Different' },
 		{ type: NodeConnectionTypes.Main, displayName: 'In B only' },
 	],
-	'n8n-nodes-base.switch': '={{ [] }}',
+	'n8n-nodes-base.switch': '={{ ["main", "main"] }}',
+	'@n8n/n8n-nodes-langchain.vectorStoreSupabase':
+		'={{ $parameter.mode === "insert" ? ["main"] : ["ai_vectorStore"] }}',
+	'n8n-nodes-awesome-package.broken': '={{ $parameter.missing.value }}',
 	'@n8n/n8n-nodes-langchain.memoryBufferWindow': [NodeConnectionTypes.AiMemory],
 	'n8n-nodes-awesome-package.router': [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 };
@@ -27,7 +30,7 @@ const nodeTypes = mock<NodeTypesProxy>();
 nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 	const outputs = NODE_TYPE_OUTPUTS[type];
 	if (outputs === undefined) throw new UnexpectedError('Unknown node type');
-	return { description: { outputs } } as INodeType;
+	return { description: { outputs, properties: [] } } as unknown as INodeType;
 });
 
 const withAlwaysOutputData = (name: string, type: string): INode => ({
@@ -77,6 +80,32 @@ describe('AlwaysOutputDataMultiOutputRule', () => {
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0].level).toBe('warning');
 			expect(result.issues[0].nodeName).toBe('Node');
+		});
+
+		it('should not flag a vector store node in insert mode with Always Output Data on', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				{
+					...withAlwaysOutputData('Supabase', '@n8n/n8n-nodes-langchain.vectorStoreSupabase'),
+					parameters: { mode: 'insert' },
+				},
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(false);
+			expect(result.issues).toHaveLength(0);
+		});
+
+		it('should flag a node whose outputs expression cannot be evaluated', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				withAlwaysOutputData('Broken', 'n8n-nodes-awesome-package.broken'),
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(true);
+			expect(result.issues).toHaveLength(1);
+			expect(result.issues[0].nodeName).toBe('Broken');
 		});
 
 		it('should flag a multi-output community node with Always Output Data on', async () => {
