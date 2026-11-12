@@ -3,7 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
-import { chunkIds, isValidEmail, SettingsRepository, User, UserRepository } from '@n8n/db';
+import { chunkIds, isValidEmail, Person, PersonRepository, SettingsRepository } from '@n8n/db';
 import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
@@ -11,10 +11,10 @@ import { Constructable, Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError } from '@n8n/errors';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
@@ -67,7 +67,7 @@ const LDAP_CONNECTION_ERROR_CODES = new Set([
 ]);
 
 @AuthHandler()
-export class LdapService implements IPasswordAuthHandler<User> {
+export class LdapService implements IPasswordAuthHandler<Person> {
 	readonly metadata = { name: 'ldap', type: 'password' as const };
 
 	private ldapts: typeof import('ldapts');
@@ -76,7 +76,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 	config: LdapConfig;
 
-	readonly userClass: Constructable<User> = User;
+	readonly userClass: Constructable<Person> = Person;
 
 	constructor(
 		private readonly logger: Logger,
@@ -528,8 +528,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		adUsers: LdapUser[],
 		localAdUsers: string[],
 	): {
-		usersToCreate: Array<[string, User]>;
-		usersToUpdate: Array<[string, User]>;
+		usersToCreate: Array<[string, Person]>;
+		usersToUpdate: Array<[string, Person]>;
 		usersToDisable: string[];
 	} {
 		return {
@@ -568,15 +568,15 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 	/** Drop LDAP entries whose email already belongs to an n8n account */
 	private async filterExistingAccounts(
-		usersToCreate: Array<[string, User]>,
-	): Promise<Array<[string, User]>> {
+		usersToCreate: Array<[string, Person]>,
+	): Promise<Array<[string, Person]>> {
 		if (usersToCreate.length === 0) return usersToCreate;
 
 		// Query in batches to stay below the driver's bind-parameter limit.
-		const userRepository = Container.get(UserRepository);
+		const personRepository = Container.get(PersonRepository);
 		const existingEmails = new Set<string>();
 		for (const emails of chunkIds(usersToCreate.map(([, user]) => user.email))) {
-			const existingUsers = await userRepository.findManyByEmail(emails);
+			const existingUsers = await personRepository.findManyByEmail(emails);
 			for (const user of existingUsers) existingEmails.add(user.email);
 		}
 
@@ -596,7 +596,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	private getUsersToCreate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, Person]> {
 		return remoteAdUsers
 			.filter((adUser) => !localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config, true));
@@ -606,7 +606,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	private getUsersToUpdate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, Person]> {
 		return remoteAdUsers
 			.filter((adUser) => localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config));
@@ -618,7 +618,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
+	async handleLogin(loginId: string, password: string): Promise<Person | undefined> {
 		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;

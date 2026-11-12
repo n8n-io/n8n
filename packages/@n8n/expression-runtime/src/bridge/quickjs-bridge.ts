@@ -3,9 +3,16 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
-import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import {
+	DEFAULT_BRIDGE_CONFIG,
+	HostCallError,
+	MemoryLimitError,
+	RuntimeRestartingError,
+	TimeoutError,
+} from '../types';
 import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import { isArrayIndexKey } from '../runtime/utils';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	defineOwnValue,
@@ -259,6 +266,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isSet',
 	'__isEscaped',
 	'__isError',
+	'__isKeyedArray',
 ]);
 
 /**
@@ -288,7 +296,7 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	if (value instanceof Set) {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
-	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
+	if (Array.isArray(value)) return wrapArrayForGuest(value);
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
@@ -297,6 +305,21 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		defineOwnValue(result, key, wrapSpecialValuesForGuest(record[key]));
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
+}
+
+/** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
+function wrapArrayForGuest(value: unknown[]): unknown {
+	const items = value.map(wrapSpecialValuesForGuest);
+	const keys = Object.keys(value);
+	// Own keys list array indices first, so an array without named keys ends on an index.
+	if (keys.length === 0 || isArrayIndexKey(keys[keys.length - 1])) {
+		return items;
+	}
+	const namedKeys = keys.filter((key) => !isArrayIndexKey(key));
+	const record = value as unknown as Record<string, unknown>;
+	const props: Record<string, unknown> = {};
+	namedKeys.forEach((key) => defineOwnValue(props, key, wrapSpecialValuesForGuest(record[key])));
+	return { __isKeyedArray: true, __items: items, __props: props };
 }
 
 /**
@@ -513,6 +536,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private broken = false;
 
+	/** The name of the host error that broke the runtime. A nested call keeps the first one. */
+	private hostErrorName = 'Error';
+
 	/** The bundle that the runtime loaded. A rebuild loads it again. */
 	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
@@ -691,6 +717,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const shimCode = `
 (function() {
+	// An expression can replace a built-in, so keep the ones from context setup.
+	var isArray = Array.isArray;
+	var objectKeys = Object.keys;
+
 	function checkError(result) {
 		if (result && typeof result === 'object' && result.__intlError) {
 			throw new Error(result.message);
@@ -708,7 +738,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		return copy;
 	}
 	function snapshotLocales(locales) {
-		return Array.isArray(locales) ? locales.slice() : locales;
+		return isArray(locales) ? locales.slice() : locales;
 	}
 
 	function callIntl(inst, ctorName, op, args, transform) {
@@ -770,7 +800,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	// prefers getWeekInfo() — expose both, like current V8.
 	function Locale(tag, options) {
 		var dumped = checkError(__intl('Locale', 'dump', tag, snapshotOptions(options)));
-		var keys = Object.keys(dumped);
+		var keys = objectKeys(dumped);
 		for (var i = 0; i < keys.length; i++) {
 			var k = keys[i];
 			if (k === 'weekInfo') this._weekInfo = dumped[k];
@@ -913,11 +943,14 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const wrapperCode = `
 (function() {
-	// Host data uses the parser from context setup.
+	// An expression can replace a built-in, so keep the ones from context setup.
 	var parseJSON = JSON.parse;
+	var defineProperty = Object.defineProperty;
+	var objectKeys = Object.keys;
+	var isArray = Array.isArray;
 	// Define own data keys so a JSON __proto__ key stays part of the data.
 	function defineOwnValue(target, key, value) {
-		Object.defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
+		defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
 	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
@@ -947,7 +980,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 		if (v instanceof Error) {
 			var errExtra = {};
-			var errKeys = Object.keys(v);
+			var errKeys = objectKeys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
 					defineOwnValue(errExtra, errKeys[ei], wrapSpecialValues(v[errKeys[ei]], true));
@@ -969,7 +1002,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
+		if (isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
@@ -988,7 +1021,7 @@ export class QuickJsBridge implements RuntimeBridge {
 					opaqueWrapper['${TRANSFER_OPAQUE_KEY}'] = true;
 					return opaqueWrapper;
 				}
-				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+				if (payload !== null && typeof payload === 'object' && !isArray(payload)) {
 					var walkedWrapper = { __value: wrapOwnKeys(payload, inCollection) };
 					walkedWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
 					return walkedWrapper;
@@ -1003,7 +1036,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	function wrapErrorMarker(marker) {
 		var result = {};
-		Object.keys(marker).forEach(function(key) {
+		objectKeys(marker).forEach(function(key) {
 			var isData = key === '__props' || key === '__cause' || key === '__json';
 			defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
 		});
@@ -1017,7 +1050,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
-		var keys = Object.keys(v);
+		var keys = objectKeys(v);
 		var collides = false;
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
@@ -1069,16 +1102,22 @@ export class QuickJsBridge implements RuntimeBridge {
 			for (var j = 0; j < v.__values.length; j++) s.add(unwrapFromHost(v.__values[j]));
 			return s;
 		}
+		if (v.__isKeyedArray === true) {
+			var keyed = v.__items.map(unwrapFromHost);
+			var pkeys = objectKeys(v.__props);
+			for (var p = 0; p < pkeys.length; p++) defineOwnValue(keyed, pkeys[p], unwrapFromHost(v.__props[pkeys[p]]));
+			return keyed;
+		}
 		if (v.__isEscaped === true) {
 			var inner = v.__value;
 			var out = {};
-			var ekeys = Object.keys(inner);
+			var ekeys = objectKeys(inner);
 			for (var e = 0; e < ekeys.length; e++) defineOwnValue(out, ekeys[e], unwrapFromHost(inner[ekeys[e]]));
 			return out;
 		}
-		if (Array.isArray(v)) return v.map(unwrapFromHost);
+		if (isArray(v)) return v.map(unwrapFromHost);
 		var result = {};
-		var keys = Object.keys(v);
+		var keys = objectKeys(v);
 		for (var n = 0; n < keys.length; n++) defineOwnValue(result, keys[n], unwrapFromHost(v[keys[n]]));
 		return result;
 	}
@@ -1206,7 +1245,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				vm.newFunction('__callHostImpl', (msgHandle) => {
 					const rawMsg = vm.dump(msgHandle);
 					try {
-						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver));
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1352,6 +1391,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
+				if (!this.broken) {
+					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+				}
 				this.broken = true;
 				throw error;
 			}
@@ -1406,7 +1448,12 @@ export class QuickJsBridge implements RuntimeBridge {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			// A host error, for example a WASM trap, can name memory without the
 			// guest reaching its memory limit.
-			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			if (this.broken) {
+				throw new HostCallError(
+					`Expression evaluation failed: ${errorMessage}`,
+					this.hostErrorName,
+				);
+			}
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1475,7 +1522,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			loadQuickJSWasm().catch((error: unknown) => {
 				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
 			});
-			throw new Error(
+			throw new RuntimeRestartingError(
 				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
 			);
 		}

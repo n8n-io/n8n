@@ -4,7 +4,7 @@
  * version keeps its pins in `agent_version_skill_dependency`, and the skill text lives in
  * `skill_version`. These tests run the agent services against real rows.
  */
-import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill, ListAgentsQueryDto } from '@n8n/api-types';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -14,7 +14,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
@@ -160,26 +160,27 @@ describe('Agent skills in the skills module', () => {
 		);
 	}
 
-	it('saves each shared-skill edit as a complete draft version', async () => {
+	it('keeps agent rows and saved versions unchanged when a followed skill is saved', async () => {
 		const skill = await createSkill(body('Writing', 'First instructions'));
 		const agent = await createAgent([skill]);
+		const before = await reload(agent);
 		await saveInstructions(skill, 'Second instructions');
 		const second = await reload(agent);
 		await saveInstructions(skill, 'Third instructions');
 		const third = await reload(agent);
-		expect(new Set([agent.versionId, second.versionId, third.versionId]).size).toBe(3);
+		expect(second).toEqual(before);
+		expect(second.versionId).toBe(agent.versionId);
+		expect(third).toEqual(second);
+		expect(third.revision).toBe(agent.revision);
+		expect(third.updatedAt).toEqual(agent.updatedAt);
 		const history = Container.get(AgentHistoryRepository);
-		for (const [versionId, instructions] of [
-			[agent.versionId, 'First instructions'],
-			[second.versionId, 'Second instructions'],
-			[third.versionId, 'Third instructions'],
-		]) {
-			const saved = await history.findByVersionAndAgentId(versionId!, agent.id, {});
-			expect(saved).not.toBeNull();
-			const snapshot = await skillRefs.readVersion(saved!, {});
-			expect(snapshot.skills[skill]?.instructions).toBe(instructions);
-			expect(saved?.skills).toBeNull();
-		}
+		const versions = await history.findByAgentId(agent.id, 10, 0, {});
+		expect(versions.map(({ versionId }) => versionId)).toEqual([agent.versionId]);
+		const snapshot = await skillRefs.readVersion(versions[0], {});
+		expect(snapshot.skills[skill]?.instructions).toBe('First instructions');
+		expect((await skillRefs.readDraft(third, {})).skills[skill]?.instructions).toBe(
+			'Third instructions',
+		);
 		expect(third.activeVersionId).toBeNull();
 	});
 
@@ -224,7 +225,7 @@ describe('Agent skills in the skills module', () => {
 		]);
 	});
 
-	it('marks every following agent as changed on a shared skill save, and a published agent keeps its pinned text', async () => {
+	it('refreshes following drafts without agent writes and keeps published skill pins', async () => {
 		const shared = await createSkill(body('Shared', 'Version one.'));
 		const first = (await publish(await createAgent([shared])))!;
 		const second = (await publish(await createAgent([shared])))!;
@@ -240,7 +241,19 @@ describe('Agent skills in the skills module', () => {
 
 		for (const agent of [first, second]) {
 			const stored = await reload(agent);
-			expect(stored.versionId).not.toBe(stored.activeVersionId);
+			expect(stored).toMatchObject({
+				versionId: agent.versionId,
+				activeVersionId: agent.activeVersionId,
+				revision: agent.revision,
+				updatedAt: agent.updatedAt,
+			});
+			expect(
+				await Container.get(AgentHistoryRepository).findByAgentId(agent.id, 10, 0, {}),
+			).toHaveLength(1);
+			const refs = await skillRefs.refsForDraft(stored, {});
+			expect(await skillRefs.findSkillVersions(stored, refs, {})).toMatchObject({
+				[shared]: { draft: 2, published: 1, latest: 2, pinned: false },
+			});
 			const draft = await skillRefs.readDraft(stored, {});
 			expect(await instructionsOf(draft.skills)).toEqual({ [shared]: 'Version two.' });
 			const version = await skillRefs.readVersion(agent.activeVersion!, {});
@@ -249,6 +262,123 @@ describe('Agent skills in the skills module', () => {
 		expect(broadcaster.notify).toHaveBeenCalledWith(
 			expect.objectContaining({ agentId: second.id }),
 			undefined,
+		);
+	});
+
+	it('captures the current skill versions only when the draft is published', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = (await publish(await createAgent([skill])))!;
+		const originalId = agent.versionId!;
+		await saveInstructions(skill, 'Second instructions');
+		const listOptions = { skip: 0, take: 50 } as ListAgentsQueryDto;
+		const historyBeforePublish = await publishService.listVersions(agent.id, project.id, 10, 0);
+		expect(historyBeforePublish).toHaveLength(1);
+		expect(historyBeforePublish[0]).toMatchObject({ versionId: originalId, isCurrent: false });
+		for (const result of [
+			await agentsService.findByProjectIdPaginated(project.id, listOptions),
+			await agentsService.findListableByUserPaginated(owner, listOptions),
+		]) {
+			expect(result.data.find(({ id }) => id === agent.id)).toMatchObject({
+				skillVersions: { [skill]: { draft: 2, published: 1, pinned: false } },
+			});
+		}
+		const updated = (await publish(agent))!;
+		expect(updated.versionId).not.toBe(originalId);
+		expect(updated.activeVersionId).toBe(updated.versionId);
+		expect(
+			(await skillRefs.readVersion(updated.activeVersion!, {})).skills[skill].instructions,
+		).toBe('Second instructions');
+		await saveInstructions(skill, 'Third instructions');
+		expect(
+			(await skillRefs.readVersion(updated.activeVersion!, {})).skills[skill].instructions,
+		).toBe('Second instructions');
+		await publishService.publishAgent(
+			agent.id,
+			project.id,
+			owner,
+			{ by: 'user', trigger: 'explicit' },
+			originalId,
+		);
+		const restored = (await agentRepository.findByIdAndProjectId(agent.id, project.id))!;
+		expect(restored.versionId).toBe(updated.versionId);
+		expect(
+			(await skillRefs.readVersion(restored.activeVersion!, {})).skills[skill].instructions,
+		).toBe('First instructions');
+	});
+
+	it('rejects a skill change after the publish dialog selected the draft', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = (await publish(await createAgent([skill])))!;
+		await saveInstructions(skill, 'Second instructions');
+		await expect(
+			publishService.publishAgent(
+				agent.id,
+				project.id,
+				owner,
+				{ by: 'user', trigger: 'explicit' },
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ versionId: agent.versionId!, skillVersions: { [skill]: 1 } },
+			),
+		).rejects.toThrow('The agent skills changed');
+		expect((await reload(agent)).versionId).toBe(agent.versionId);
+		expect((await reload(agent)).activeVersionId).toBe(agent.activeVersionId);
+		expect(
+			await Container.get(AgentHistoryRepository).findByAgentId(agent.id, 10, 0, {}),
+		).toHaveLength(1);
+	});
+
+	it('publishes the draft skill versions confirmed by the editor', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = (await publish(await createAgent([skill])))!;
+		await saveInstructions(skill, 'Second instructions');
+		const { agent: published } = await publishService.publishAgent(
+			agent.id,
+			project.id,
+			owner,
+			{ by: 'user', trigger: 'explicit' },
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{ versionId: agent.versionId!, skillVersions: { [skill]: 2 } },
+		);
+		expect(
+			(await skillRefs.readVersion(published.activeVersion!, {})).skills[skill].instructions,
+		).toBe('Second instructions');
+	});
+
+	it('keeps pinned draft skills when a newer skill version is saved', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = (await publish(await createAgent([skill])))!;
+		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
+		const before = await reload(agent);
+		await saveInstructions(skill, 'Second instructions');
+		expect(await reload(agent)).toEqual(before);
+		const published = (await publish(before))!;
+		expect(
+			(await skillRefs.readVersion(published.activeVersion!, {})).skills[skill].instructions,
+		).toBe('First instructions');
+	});
+
+	it('keeps the captured skills if another save finishes during publish validation', async () => {
+		const skill = await createSkill(body('Writing', 'First instructions'));
+		const agent = await createAgent([skill]);
+		await saveInstructions(skill, 'Second instructions');
+		vi.mocked(
+			Container.get(AgentValidationService).validateAgentHistoryConfiguration,
+		).mockImplementationOnce(async () => {
+			await saveInstructions(skill, 'Third instructions');
+			return { status: 'valid', issues: [] };
+		});
+		const published = (await publish(await reload(agent)))!;
+		expect(
+			(await skillRefs.readVersion(published.activeVersion!, {})).skills[skill].instructions,
+		).toBe('Second instructions');
+		expect((await skillRefs.readDraft(published, {})).skills[skill].instructions).toBe(
+			'Third instructions',
 		);
 	});
 

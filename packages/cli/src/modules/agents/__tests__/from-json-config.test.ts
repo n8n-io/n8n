@@ -8,7 +8,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -189,6 +189,8 @@ describe('buildFromJson()', () => {
 		getMessagesForObservationScope: vi.fn(),
 		getCursor: vi.fn(),
 		setCursor: vi.fn(),
+		getResumeState: vi.fn(),
+		saveResumeState: vi.fn(),
 		acquireObservationLogTaskLock: vi.fn(),
 		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {

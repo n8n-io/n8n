@@ -47,7 +47,7 @@ async function assertNodeExecutionStates(
 test.describe(
 	'Execution',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should test manual workflow @engine:v2', async ({ n8n }) => {

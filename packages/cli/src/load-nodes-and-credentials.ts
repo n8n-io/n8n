@@ -40,12 +40,8 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	injectDomainRestrictionFields,
-	NodeHelpers,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { injectDomainRestrictionFields, NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import path from 'path';
 import picocolors from 'picocolors';
 

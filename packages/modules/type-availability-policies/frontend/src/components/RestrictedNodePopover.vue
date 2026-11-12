@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { ProjectType } from '@n8n/rest-api-client';
 import {
 	unrefElement,
 	useActiveElement,
@@ -10,6 +11,7 @@ import {
 } from '@vueuse/core';
 import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue';
 
+import { ESCAPE_OWNER_ATTRIBUTE } from '../composables/useCloseOnEscape';
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
@@ -33,6 +35,11 @@ const props = withDefaults(
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
 		markerSize?: 'small' | 'xsmall';
+		/** Replace the scope line and the description, for a type that is unusable for another reason. */
+		scopeLabel?: string;
+		description?: string;
+		/** The project the restriction applies to, when it is not the open one. */
+		projectType?: ProjectType | null;
 	}>(),
 	{
 		kind: 'node',
@@ -43,6 +50,8 @@ const props = withDefaults(
 		align: 'center',
 		sideOffset: 24,
 		markerSize: 'small',
+		scopeLabel: undefined,
+		description: undefined,
 	},
 );
 
@@ -99,7 +108,11 @@ function reopen() {
 }
 useEventListener(anchorElement, 'mouseenter', reopen, { passive: true });
 
-const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
+const { copy: contactCopy } = useRestrictionContact(
+	() => props.restriction,
+	undefined,
+	() => props.projectType,
+);
 const scopeKey = computed<BaseTextKey>(() => {
 	const scope = props.restriction?.scope;
 	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
@@ -165,6 +178,7 @@ function onContentKeydown(event: KeyboardEvent) {
 					tabindex="0"
 					role="img"
 					:aria-label="i18n.baseText(RESTRICTED_TYPE_COPY[kind].title)"
+					:[ESCAPE_OWNER_ATTRIBUTE]="open ? '' : undefined"
 					@keydown="onMarkerKeydown"
 					@pointerdown="reopen"
 				>
@@ -178,14 +192,17 @@ function onContentKeydown(event: KeyboardEvent) {
 					ref="contentRef"
 					:class="$style.popover"
 					data-test-id="node-restricted-popover"
+					:[ESCAPE_OWNER_ATTRIBUTE]="''"
 					@pointerdown.stop
 					@mousedown.prevent
 					@keydown="onContentKeydown"
 				>
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
-					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
+					<N8nText tag="p" size="small" color="text-light">
+						{{ scopeLabel ?? i18n.baseText(scopeKey) }}
+					</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-						{{ i18n.baseText(contactCopy.popoverDescription[kind]) }}
+						{{ description ?? i18n.baseText(contactCopy.popoverDescription[kind]) }}
 					</N8nText>
 					<N8nButton
 						variant="outline"
@@ -204,7 +221,7 @@ function onContentKeydown(event: KeyboardEvent) {
 		<ContactAdminModal
 			v-if="!parentHandlesContactAdmin"
 			v-model:open="isContactAdminOpen"
-			:node-type-name="nodeTypeName"
+			:type-name="nodeTypeName"
 			:kind="kind"
 			:audience="contactCopy.audience"
 		/>

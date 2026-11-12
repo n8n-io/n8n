@@ -42,9 +42,8 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
+import { NotFoundError, ServiceUnavailableError, UnexpectedError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
 import type { ScopeAttachments } from '@/modules/type-availability-policies/type-availability-policy.service';

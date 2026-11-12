@@ -181,6 +181,16 @@ describe('roles store', () => {
 					roleType: 'global',
 					usedByUsers: 2,
 				},
+				{
+					displayName: 'Agent',
+					slug: 'global:agent',
+					description: 'Agent',
+					scopes: [],
+					licensed: true,
+					systemRole: true,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
 			],
 		});
 		await rolesStore.fetchRoles();
@@ -191,8 +201,9 @@ describe('roles store', () => {
 			'custom:alpha',
 			'custom:zeta',
 		]);
-		// global:owner is never managed via the Roles UI
+		// Reserved global roles are never assigned through the UI
 		expect(rolesStore.processedInstanceRoles.some((r) => r.slug === 'global:owner')).toBe(false);
+		expect(rolesStore.processedInstanceRoles.some((r) => r.slug === 'global:agent')).toBe(false);
 	});
 
 	describe('global:chatUser filtering in processedInstanceRoles', () => {

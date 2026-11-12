@@ -5,7 +5,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 test.describe(
 	'Debug mode',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		// Manual Trigger -> `Error` Code node (disabled) -> `Code`. Toggling the `Error`
@@ -76,10 +76,7 @@ test.describe(
 			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
-		// TODO(CET-332): the fixture runs Code nodes, and engine v2 does not support task runners yet.
-		test('should exit debug mode after successful execution @engine:v2-pending', async ({
-			n8n,
-		}) => {
+		test('should exit debug mode after successful execution @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
 			await n8n.canvas.toggleNodeEnabled('Error');
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
