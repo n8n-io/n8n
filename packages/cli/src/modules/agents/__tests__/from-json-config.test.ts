@@ -8,7 +8,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -189,6 +189,8 @@ describe('buildFromJson()', () => {
 		getMessagesForObservationScope: vi.fn(),
 		getCursor: vi.fn(),
 		setCursor: vi.fn(),
+		getResumeState: vi.fn(),
+		saveResumeState: vi.fn(),
 		acquireObservationLogTaskLock: vi.fn(),
 		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {
@@ -758,6 +760,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/anthropic/claude-sonnet-4.5',
 		'google-vertex/claude-sonnet-4-5',
@@ -781,7 +784,9 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
+	// Inline agents have no `config` block, so an inline OpenAI agent sends no cache fields.
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/openai/gpt-5',
 		'google-vertex/gemini-2.5-pro',

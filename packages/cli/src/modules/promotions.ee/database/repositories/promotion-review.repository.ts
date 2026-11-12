@@ -66,6 +66,24 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	}
 
 	/**
+	 * Closes one review for a user. It changes a row only while the row is still on the host and
+	 * has no live approval claim, so a merge in progress is never hidden. Returns whether it closed.
+	 */
+	async closeByUser(
+		id: string,
+		at: Date,
+		staleBefore: Date,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			PromotionReview,
+			{ id, state: In(OPEN_STATES), approvedAt: Or(IsNull(), LessThan(staleBefore)) },
+			{ state: 'closed', lastStateChangeAt: at },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
 	 * Closes the open reviews of an environment inside the change that ends them. A terminal row
 	 * never changes. Returns how many reviews closed.
 	 */
@@ -117,6 +135,9 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 			.leftJoinAndSelect('review.environment', 'environment')
 			.leftJoinAndSelect('review.createdBy', 'createdBy')
 			.leftJoinAndSelect('review.approvedBy', 'approvedBy')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('createdBy.details', 'createdByDetails')
+			.leftJoinAndSelect('approvedBy.details', 'approvedByDetails')
 			.where('review.state IN (:...states)', {
 				states: state === 'open' ? OPEN_STATES : TERMINAL_STATES,
 			})

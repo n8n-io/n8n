@@ -1303,6 +1303,24 @@ describe('OtelLifecycleHandler', () => {
 			});
 		});
 
+		it('should mark the span of a node connected as a tool with the tool operation and the node name', () => {
+			const ctx = makeEndCtx();
+			ctx.workflow.connections = {
+				Node1: { ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]] },
+			};
+
+			handler.onNodeEnd(ctx);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					genAiAttributes: {
+						'gen_ai.operation.name': 'execute_tool',
+						'gen_ai.tool.name': 'Node1',
+					},
+				}),
+			);
+		});
+
 		it('should forward taskData.error to tracer.endNode', () => {
 			const error = new Error('node failure');
 			handler.onNodeEnd(

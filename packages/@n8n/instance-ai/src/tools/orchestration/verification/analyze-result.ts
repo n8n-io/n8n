@@ -333,7 +333,7 @@ function classifyVerificationFailure(
 			shouldEdit: false,
 			reason: 'mocked_credentials_or_placeholders',
 			guidance:
-				'Workflow verification reached an unresolved setup value. Stop code edits and route to setup_workflow.',
+				'Workflow verification reached an unresolved setup value. Stop code edits and run setup_workflow through call_tool.',
 		});
 	}
 
@@ -356,8 +356,8 @@ function classifyVerificationFailure(
 				? 'mocked_credentials_or_placeholders'
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
-				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to setup_workflow.'
-				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to setup_workflow.${quotaGuidance}`,
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and run setup_workflow through call_tool.'
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and run setup_workflow through call_tool.${quotaGuidance}`,
 		});
 	}
 
@@ -426,6 +426,24 @@ export function buildSimulationNote(
 		);
 	}
 	return undefined;
+}
+
+/** Tell the agent which waits ran without their delay, so it does not claim the timing was tested. */
+export function buildSkippedWaitNote(
+	skippedWaitNodeNames: string[] | undefined,
+	reachedNames: Set<string>,
+): string | undefined {
+	const reached = [...new Set(skippedWaitNodeNames ?? [])].filter((name) => reachedNames.has(name));
+	if (reached.length === 0) return undefined;
+	return (
+		`Ran ${reached.length} time-based Wait node(s) without their delay: ${reached.join(', ')}. ` +
+		'The data flow through them is verified, but the wait duration is not.'
+	);
+}
+
+export function joinNotes(...notes: Array<string | undefined>): string | undefined {
+	const present = notes.filter((note): note is string => note !== undefined);
+	return present.length > 0 ? present.join(' ') : undefined;
 }
 
 function buildCoverageNote(
@@ -661,7 +679,10 @@ export function analyzeVerificationResult(args: {
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
-		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
+		simulationNote: joinNotes(
+			buildSimulationNote(reachedSimulatedNodes, false),
+			buildSkippedWaitNote(result.skippedWaitNodeNames, reachedNames),
+		),
 		coverageNote: buildCoverageNote(
 			nodesNotReached,
 			result,

@@ -24,7 +24,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
@@ -518,6 +520,7 @@ export async function provisionOnboardingThread(
  * into the same write so binding a subject and recording where it opened from
  * (e.g. the agent-preview view) costs one round trip, not two.
  *
+ * A supplied draft id keeps the mounted runtime available if binding fails.
  * Shared by `InstanceAiChatPanel` (embed/), which used to run this in two
  * separate steps.
  */
@@ -525,28 +528,38 @@ export async function provisionSubjectThread(
 	subject: InstanceAiEmbedSubject,
 	launch: InstanceAiThreadLaunch,
 	extraMetadata?: Record<string, unknown>,
+	draftThreadId?: string,
 ): Promise<string> {
 	const store = useInstanceAiStore();
-	const threadId = uuidv4();
+	const threadId = draftThreadId ?? uuidv4();
 	await store.syncThread(threadId, subject.projectId, launch);
 
-	const targetMetadata =
-		subject.type === 'agent'
-			? subject.pending
-				? {
-						[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
-							projectId: subject.projectId,
-							agentId: subject.id,
-						},
-					}
-				: {
-						[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-							agentId: subject.id,
-							projectId: subject.projectId,
-							...(subject.name ? { name: subject.name } : {}),
-						},
-					}
-			: {}; // workflow: no target metadata yet — see instanceAiEmbed.types.ts.
+	let targetMetadata: Record<string, unknown> = {};
+	if (subject.type === 'agent') {
+		targetMetadata = subject.pending
+			? {
+					[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
+						projectId: subject.projectId,
+						agentId: subject.id,
+					},
+				}
+			: {
+					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+						agentId: subject.id,
+						projectId: subject.projectId,
+						...(subject.name ? { name: subject.name } : {}),
+					},
+				};
+	} else if (subject.type === 'app') {
+		const target = {
+			appId: subject.id,
+			projectId: subject.projectId,
+			...(subject.name ? { name: subject.name } : {}),
+		};
+		targetMetadata = subject.pending
+			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
+			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };
+	}
 
 	try {
 		await store.updateThreadMetadata(threadId, { ...targetMetadata, ...extraMetadata });
@@ -554,7 +567,10 @@ export async function provisionSubjectThread(
 		// The thread now exists server-side — leaving it target-less would strand
 		// an unbound conversation the user never asked to start. Silent: the
 		// caller already surfaces its own failure toast.
-		await store.deleteThread(threadId, { silent: true });
+		await store.deleteThread(threadId, {
+			silent: true,
+			...(draftThreadId ? { preserveRuntime: true } : {}),
+		});
 		throw error;
 	}
 

@@ -41,6 +41,7 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
+import { toBaggageHeader, toCallerBaggage } from './caller-baggage';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import { OtelConfigureHook } from './otel-configure-hook';
 import type { TracingContext } from './tracing-context';
@@ -56,13 +57,15 @@ function isError(status: ExecutionStatus): boolean {
 type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
-	projectCustomAttributes: Record<string, string>;
+	customAttributes: CustomAttributes;
+	baggage?: Baggage;
 };
 
 @Service()
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
+	private readonly warnedDroppedKeys = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -82,14 +85,13 @@ export class ExecutionLevelTracer {
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const projectCustomAttributes = this.buildCustomAttributes(
-				'project',
-				params.project?.customAttributes,
-			);
+			const customAttributes = {
+				...this.buildCustomAttributes('project', params.project?.customAttributes),
+				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+			};
 
 			const attributes = {
-				...projectCustomAttributes,
-				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+				...customAttributes,
 				[ATTR.WORKFLOW_NAME]: params.workflow.name,
 				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
@@ -99,11 +101,13 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
+			const baggage = toCallerBaggage(params.tracingContext?.baggage);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
-				projectCustomAttributes,
+				customAttributes,
+				baggage,
 			});
 
 			if (params.emitStartSpan) {
@@ -115,7 +119,7 @@ export class ExecutionLevelTracer {
 				);
 			}
 
-			return toTracingParentContext(span, identity);
+			return toTracingParentContext(span, identity, baggage);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -226,7 +230,7 @@ export class ExecutionLevelTracer {
 				[ATTR.NODE_NAME]: params.node.name,
 				[ATTR.NODE_TYPE]: params.node.type,
 				[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
-				...tracked.projectCustomAttributes,
+				...tracked.customAttributes,
 			};
 
 			const span = this.tracer.startSpan('node.execute', { attributes }, tracked.context);
@@ -318,12 +322,16 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			let ctx = trace.setSpan(ROOT_CONTEXT, span);
-			const entries = this.configureHook.buildOutboundBaggage(
+			const callerBaggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const hookEntries = this.configureHook.buildOutboundBaggage(
 				hasAttributes(span) ? span.attributes : {},
 			);
-			if (Object.keys(entries).length > 0) ctx = propagation.setBaggage(ctx, toBaggage(entries));
-			propagation.inject(ctx, headers, defaultTextMapSetter);
+
+			propagation.inject(
+				spanContext(span, withHookEntries(callerBaggage, hookEntries)),
+				headers,
+				defaultTextMapSetter,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -395,7 +403,21 @@ export class ExecutionLevelTracer {
 		return Object.fromEntries(
 			Object.entries(attributes)
 				.map(([key, value]): [string, string] => [`${prefix}${key}`, value])
-				.filter(([key]) => !BUILT_IN_ATTRIBUTE_KEYS.has(key)),
+				.filter(([key]) => {
+					if (!BUILT_IN_ATTRIBUTE_KEYS.has(key)) return true;
+					this.warnDroppedKeyOnce(level, key);
+					return false;
+				}),
+		);
+	}
+
+	private warnDroppedKeyOnce(level: keyof CustomAttributePrefixes, key: string): void {
+		const levelAndKey = `${level}:${key}`;
+		if (this.warnedDroppedKeys.has(levelAndKey)) return;
+		this.warnedDroppedKeys.add(levelAndKey);
+		this.logger.warn(
+			`Dropped the ${level} custom telemetry tag "${key}" because the key matches a built-in attribute key. n8n keeps the built-in value.`,
+			{ level, key },
 		);
 	}
 }
@@ -423,16 +445,43 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
-	const carrier: Record<string, string> = {};
-	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
-	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+function spanContext(span: Span, baggage: Baggage | undefined): Context {
+	const ctx = trace.setSpan(ROOT_CONTEXT, span);
+	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
 }
 
-function toBaggage(entries: Record<string, string>): Baggage {
-	const baggageEntries: Record<string, BaggageEntry> = {};
-	for (const [key, value] of Object.entries(entries)) baggageEntries[key] = { value };
-	return propagation.createBaggage(baggageEntries);
+function toTracingParentContext(
+	span: Span,
+	identity: ExecutionIdentity,
+	baggage: Baggage | undefined,
+): TracingContext {
+	const carrier: Record<string, string> = {};
+	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
+	const baggageHeader = baggage && toBaggageHeader(baggage);
+	return {
+		traceparent: carrier.traceparent,
+		tracestate: carrier.tracestate,
+		identity,
+		...(baggageHeader && { baggage: baggageHeader }),
+	};
+}
+
+/**
+ * The `otel.configure` entries first, then the caller baggage where the hook
+ * did not set the key. The hook is operator configuration, so it wins on a
+ * shared key, and it survives when the propagator cuts the header at its limit.
+ */
+function withHookEntries(
+	baggage: Baggage | undefined,
+	entries: Record<string, string>,
+): Baggage | undefined {
+	const hookEntries = Object.entries(entries);
+	if (hookEntries.length === 0) return baggage;
+
+	const merged: Record<string, BaggageEntry> = {};
+	for (const [key, value] of hookEntries) merged[key] = { value };
+	for (const [key, entry] of baggage?.getAllEntries() ?? []) merged[key] ??= entry;
+	return propagation.createBaggage(merged);
 }
 
 function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {

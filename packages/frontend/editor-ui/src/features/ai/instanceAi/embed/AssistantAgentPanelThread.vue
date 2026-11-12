@@ -14,20 +14,21 @@ import type {
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
 import { provideArtifactThread } from '../artifactThread';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
+import { useAssistantAgentMessageTelemetry } from '../assistantAgent/useAssistantAgentMessageTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -48,21 +49,28 @@ import {
 	formatAgentPreviewContextLabel,
 } from '../instanceAi.handoffContext';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { resolveAuthorship } from '../prefills';
 
-const props = defineProps<{
-	threadId: string;
-	subject: InstanceAiAgentAttachment;
-	/** True for a thread that the panel just created: it has no history to load. */
-	newSession: boolean;
-	placeholder?: string;
-	composerHeight?: string;
-	beforeSend?: () => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		threadId: string;
+		subject: InstanceAiAgentAttachment;
+		/** True for a thread that the panel just created: it has no history to load. */
+		newSession: boolean;
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		visible?: boolean;
+		composerHeight?: string;
+		beforeSend?: () => Promise<void>;
+	}>(),
+	{ visible: true },
+);
 
 const emit = defineEmits<{
 	'update:building': [building: boolean];
 	'update:working': [working: boolean];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'session-created': [];
 }>();
 
@@ -80,6 +88,7 @@ const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const threadsStore = useAssistantAgentThreadsStore();
 const identity = useN8nAssistantIdentity();
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 const isNewSession = ref(props.newSession);
 const agentConfig = computed<AgentJsonConfig>(() => ({
@@ -91,6 +100,8 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 
 // The host stashes a starter message before it opens a new thread.
 const starter = consumePendingFirstMessage(props.threadId);
+// A new thread has no credit total on the server yet. Pushes add it during the turn.
+if (!props.newSession) void threadsStore.loadThreadCredits(props.threadId);
 let starterReferences: InstanceAiAttachment[] = starter?.attachments ?? [];
 // A hand-off context goes with the next accepted message only.
 const handoffContext = ref<InstanceAiHandoffContext | null>(
@@ -146,12 +157,18 @@ const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 watch(panel, (current, previous) => {
 	if (!current || previous) return;
 	if (starter) {
+		messageTelemetry.expectHostSend({ text: starter.message, authorship: starter.authorship });
 		current.sendMessageFromOutside(starter.message);
 		return;
 	}
 	const draft = getPendingComposerDraft(props.threadId);
-	if (draft) current.setDraft(draft.text);
+	if (draft) setPrefill(draft);
 });
+
+function setPrefill(prefill: InstanceAiPrefillPayload): void {
+	messageTelemetry.setPrefill(prefill);
+	panel.value?.setDraft(prefill.text);
+}
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
@@ -173,8 +190,10 @@ const thread = useAssistantArtifactThread({
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
-	sendMessage: (text, context) =>
-		panel.value?.sendMessageFromOutside(text, [], context ? { context } : undefined),
+	sendMessage: (text, authorship, context) => {
+		messageTelemetry.expectHostSend({ text, authorship });
+		panel.value?.sendMessageFromOutside(text, [], context ? { context } : undefined);
+	},
 });
 provideArtifactThread(thread);
 useAgentMutationRefresh(thread);
@@ -185,7 +204,7 @@ watch(
 	{ immediate: true },
 );
 watch(
-	() => thread.messages.some((message) => message.role === 'user'),
+	() => thread.artifactTurns.some((turn) => turn.role === 'user'),
 	(hasMessages) => {
 		if (hasMessages) emit('message-sent');
 	},
@@ -202,15 +221,19 @@ defineExpose({
 		handoffContext.value = context;
 		if (initialDraft) {
 			stashPendingComposerDraft(props.threadId, initialDraft);
-			panel.value?.setDraft(initialDraft.text);
+			setPrefill(initialDraft);
 		} else {
 			clearPendingComposerDraft(props.threadId);
 		}
 		panel.value?.focusInput();
 	},
-	setPrefill: (prefill: InstanceAiPrefillPayload) => panel.value?.setDraft(prefill.text),
-	submitSuggestion: (payload: SuggestionSelectionPayload) =>
-		panel.value?.sendMessageFromOutside(payload.prompt ?? i18n.baseText(payload.promptKey)),
+	setPrefill,
+	submitSuggestion(payload: SuggestionSelectionPayload) {
+		const text = payload.prompt ?? i18n.baseText(payload.promptKey);
+		const prefill = { text, prefillType: payload.prefillType, prefillId: payload.suggestionId };
+		messageTelemetry.expectHostSend({ text, authorship: resolveAuthorship(text, prefill) });
+		panel.value?.sendMessageFromOutside(text);
+	},
 });
 </script>
 
@@ -223,7 +246,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
-		:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"
 		channel="system"
@@ -231,9 +254,15 @@ defineExpose({
 		:interaction-extensions="interactionExtensions"
 		:before-send="props.beforeSend"
 		:placeholder="props.placeholder"
+		:placeholder-preview="props.placeholderPreview"
+		:visible="props.visible"
+		autofocus
 		:composer-height="props.composerHeight"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
+		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
+		@message-sending="messageTelemetry.trackSend"
+		@draft-cleared="messageTelemetry.setPrefill(null)"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"
 	>

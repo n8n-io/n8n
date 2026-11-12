@@ -18,7 +18,7 @@ import type {
 	RawMessage,
 } from 'chat';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { createHmac } from 'node:crypto';
 
 import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';

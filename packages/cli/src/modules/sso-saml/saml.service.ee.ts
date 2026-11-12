@@ -2,7 +2,7 @@ import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import type { Settings, User } from '@n8n/db';
+import type { Person, Settings } from '@n8n/db';
 import {
 	AuthIdentityRepository,
 	isPerson,
@@ -15,7 +15,7 @@ import { Container, Service } from '@n8n/di';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type {
 	BindingContext,
@@ -23,7 +23,7 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError, BadRequestError, ForbiddenError } from '@n8n/errors';
+import { AuthError, BadRequestError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { CacheService, EventService, UrlService } from '@n8n/backend-services';
@@ -373,7 +373,7 @@ export class SamlService {
 		binding: SamlLoginBinding,
 		metadataOverride?: string,
 	): Promise<{
-		authenticatedUser: User | undefined;
+		authenticatedUser: Person | undefined;
 		attributes: SamlUserAttributes;
 		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
@@ -492,20 +492,23 @@ export class SamlService {
 	}
 
 	private async applySsoProvisioning(
-		user: User,
+		person: Person,
 		attributes: SamlPreferencesAttributeMapping,
 		rawAttributes: Record<string, unknown>,
 	): Promise<void> {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildSamlClaimsContext(rawAttributes);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(person, context);
 			return;
 		}
 		// Called even when the attribute is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
+		await this.provisioningService.provisionInstanceRoleForUser(
+			person,
+			attributes?.n8nInstanceRole,
+		);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
-				user.id,
+				person.id,
 				attributes.n8nProjectRoles,
 			);
 		}
@@ -513,7 +516,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}

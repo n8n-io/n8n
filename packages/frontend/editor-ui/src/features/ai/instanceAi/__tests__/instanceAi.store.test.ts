@@ -47,7 +47,6 @@ vi.mock('../instanceAi.api', () => ({
 		},
 		created: true,
 	}),
-	getInstanceAiCredits: vi.fn(),
 	postCancel: vi.fn(),
 	postCancelTask: vi.fn(),
 	postConfirmation: vi.fn(),
@@ -243,6 +242,31 @@ describe('useInstanceAiStore - runtime registry', () => {
 		]);
 	});
 
+	it('keeps a draft runtime when failed provisioning removes its saved thread', async () => {
+		const store = useInstanceAiStore();
+		const runtime = store.getOrCreateRuntime('thread-1');
+		const disposeSpy = vi.spyOn(runtime, 'dispose');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+
+		await expect(
+			store.deleteThread('thread-1', { silent: true, preserveRuntime: true }),
+		).resolves.toBe(true);
+
+		expect(mockDeleteThread).toHaveBeenCalled();
+		expect(disposeSpy).not.toHaveBeenCalled();
+		expect(store.getRuntime('thread-1')).toBe(runtime);
+		expect(store.threads).toEqual([]);
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mockEnsureThread).toHaveBeenCalledTimes(2);
+		store.disposeRuntime('thread-1');
+	});
+
 	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
 		const store = useInstanceAiStore();
 		await store.syncThread('thread-1', 'project-1', {
@@ -290,120 +314,17 @@ describe('useInstanceAiStore - credits', () => {
 		});
 	});
 
-	describe('credits push handling', () => {
-		it('writes creditsUsed onto the matching thread from the push payload', () => {
+	describe('setThreadCreditsUsed', () => {
+		it('writes creditsUsed onto the matching thread', () => {
 			const store = useInstanceAiStore();
-			store.threads.push(makeThread('t1', {}));
+			store.threads.push(makeThread('t1', { other: true }));
 
-			store.handleCreditsPush({
-				creditsQuota: 100,
-				creditsClaimed: 5,
-				creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
-			});
+			store.setThreadCreditsUsed('t1', 2.5);
+			store.setThreadCreditsUsed('missing', 1);
 
-			expect(store.creditsClaimed).toBe(5);
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
-		});
-	});
-
-	describe('isOutOfCredits', () => {
-		it('is false when the balance is still loading', () => {
-			const store = useInstanceAiStore();
-			expect(store.isOutOfCredits).toBe(false);
-		});
-
-		it('is false while credits remain, including a low balance', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 95;
-
-			expect(store.creditsRemaining).toBe(5);
-			expect(store.isOutOfCredits).toBe(false);
-		});
-
-		it('is true when no credits remain', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 800;
-			store.creditsClaimed = 800;
-
-			expect(store.isOutOfCredits).toBe(true);
-		});
-	});
-
-	describe('isLowCredits', () => {
-		it('returns false when credits are undefined', () => {
-			const store = useInstanceAiStore();
-			expect(store.isLowCredits).toBe(false);
-		});
-
-		it('returns false when credits are above 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 89;
-			expect(store.isLowCredits).toBe(false);
-		});
-
-		it('returns true when credits are exactly 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 90;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns true when credits are below 10%', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 95;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns false when quota is unlimited', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = -1;
-			store.creditsClaimed = 50;
-			expect(store.isLowCredits).toBe(false);
-		});
-
-		it('returns true when quota is 0', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 0;
-			store.creditsClaimed = 0;
-			expect(store.isLowCredits).toBe(true);
-		});
-
-		it('returns true when all credits are consumed', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 100;
-			expect(store.isLowCredits).toBe(true);
-		});
-	});
-
-	describe('creditsPercentageRemaining', () => {
-		it('returns undefined when credits are not initialized', () => {
-			const store = useInstanceAiStore();
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns undefined when quota is unlimited', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = -1;
-			store.creditsClaimed = 50;
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns 0 when quota is 0', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 0;
-			store.creditsClaimed = 0;
-			expect(store.creditsPercentageRemaining).toBe(0);
-		});
-
-		it('calculates percentage correctly', () => {
-			const store = useInstanceAiStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 75;
-			expect(store.creditsPercentageRemaining).toBe(25);
+			expect(store.getThreadMetadata('t1')).toEqual({ other: true, creditsUsed: 2.5 });
+			expect(store.threadCreditsUsed('missing')).toBeUndefined();
 		});
 	});
 });

@@ -1,5 +1,5 @@
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
-import type { OperationalErrorOptions, UnexpectedErrorOptions } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
+import type { OperationalErrorOptions, UnexpectedErrorOptions } from '@n8n/errors';
 
 /**
  * Base error class for AI Workflow Builder specific errors

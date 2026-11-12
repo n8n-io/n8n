@@ -1205,56 +1205,6 @@
 				"hash": "affee27335fc"
 			}
 		],
-		"packages/modules/insights/frontend/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 24,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/naming-convention' down to 'warn' for the whole package.",
-				"hash": "3da608aa064b"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 25,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-argument' down to 'warn' for the whole package.",
-				"hash": "e9ae1f320e01"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 26,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-assignment' down to 'warn' for the whole package.",
-				"hash": "a488f2f44a8e"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 27,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-call' down to 'warn' for the whole package.",
-				"hash": "58fd1d708522"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 28,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-member-access' down to 'warn' for the whole package.",
-				"hash": "7de9b4bde334"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 29,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-return' down to 'warn' for the whole package.",
-				"hash": "14aa32c2f578"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 30,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/await-thenable' down to 'warn' for the whole package.",
-				"hash": "f6b34bf81039"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 31,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/require-await' down to 'warn' for the whole package.",
-				"hash": "b857963c49d1"
-			}
-		],
 		"packages/frontend/@n8n/design-system/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",

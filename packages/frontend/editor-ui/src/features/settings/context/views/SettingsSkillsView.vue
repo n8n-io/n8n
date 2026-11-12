@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
+import { validate as validateUuid } from 'uuid';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
@@ -12,6 +14,7 @@ import {
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSourceListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -44,6 +47,10 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	AgentSkillImportError,
+	useAgentSkillImport,
+} from '@/features/agents/composables/useAgentSkillImport';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
@@ -57,6 +64,7 @@ import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -106,6 +114,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const sourceToDelete = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -173,6 +182,16 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 		...(agentId ? { agentId } : {}),
 		...(createdById ? { createdById } : {}),
 		...(sortBy ? { sortBy } : {}),
+		// With Skill Sync, each source heads its synced skills.
+		...(skillSyncEnabled.value
+			? {
+					groupBy: 'source' as const,
+					page,
+					...(collapsedSourceIds.value.length > 0
+						? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
+						: {}),
+				}
+			: {}),
 	};
 }
 
@@ -196,6 +215,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			projectIcon: personalProject.icon,
 			target: { projectId: personalProject.id },
 		});
 	}
@@ -205,6 +225,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			projectIcon: project.icon,
 			target: { projectId: project.id },
 		});
 	}
@@ -214,10 +235,10 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 // Only the newest load updates the page state, so a slow earlier search cannot win.
 const { next: nextLoad } = useLatestFetch();
 
-async function load() {
+async function load(focusSourceId?: string) {
 	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
-	const query = listQuery(page, itemsPerPage);
+	const query = { ...listQuery(page, itemsPerPage), ...(focusSourceId ? { focusSourceId } : {}) };
 	// Sort and paging do not narrow the list, so they do not count as filters.
 	const filtered = [query.search, query.scope, query.agentId, query.createdById].some(
 		(value) => value !== undefined,
@@ -226,8 +247,14 @@ async function load() {
 		await skillsStore.fetchSkills(query);
 		if (!isLatest()) return;
 		// Deleting the last rows of a page can leave the page past the end.
-		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
-		if (page > lastPage) {
+		const lastPage = Math.max(
+			0,
+			(skillsStore.pageCount ?? Math.ceil(skillsStore.count / itemsPerPage)) - 1,
+		);
+		if (skillsStore.page !== undefined && skillsStore.page !== page) {
+			tableOptions.value = { ...tableOptions.value, page: skillsStore.page };
+		}
+		if (skillsStore.page === undefined && page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
 			if (!isLatest()) return;
@@ -315,14 +342,22 @@ async function loadFilterOptions() {
 }
 
 function openModal(data: AgentSkillModalData) {
+	// The skill modal is shared, so a late upload must not replace what opens now.
+	dropPendingUpload();
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
 }
 
-/** Starts at the SKILL.md upload step, which also offers "Add manually". */
-function openCreateModal() {
+/**
+ * Opens the create modal. Without `preset` it starts at the SKILL.md upload step, which also
+ * offers "Add manually". The create menu presets the form step, or a skill the user uploaded.
+ */
+function openCreateModal(
+	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
 	openModal({
+		...preset,
 		scopeOptions: options,
 		initialScope: options[0].value,
 		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
@@ -337,14 +372,45 @@ function openCreateModal() {
 	});
 }
 
-type CreateAction = 'github' | 'manual';
+type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
+// One upload at a time. An upload is dropped when another skill action starts or the
+// user leaves the page, so its late result opens no modal and shows no toast.
+const uploadBusy = ref(false);
+let pendingUpload: object | null = null;
+
+function dropPendingUpload() {
+	pendingUpload = null;
+	uploadBusy.value = false;
+}
+
+onBeforeUnmount(dropPendingUpload);
+
+// Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
+	...(skillSyncEnabled.value
+		? [
+				{
+					id: 'github' as const,
+					label: i18n.baseText('settings.context.skills.actions.connectGithub'),
+					icon: 'git-branch' as const,
+					testId: 'skills-create-github',
+				},
+			]
+		: []),
 	{
-		id: 'github',
-		label: i18n.baseText('settings.context.skills.actions.connectGithub'),
-		icon: 'git-branch',
-		testId: 'skills-create-github',
+		id: 'uploadFolder',
+		label: i18n.baseText('settings.context.skills.actions.uploadFolder'),
+		icon: 'folder-open',
+		testId: 'skills-create-upload-folder',
+		disabled: uploadBusy.value,
+	},
+	{
+		id: 'uploadFile',
+		label: i18n.baseText('settings.context.skills.actions.uploadSkillFile'),
+		icon: 'file-text',
+		testId: 'skills-create-upload-file',
+		disabled: uploadBusy.value,
 	},
 	{
 		id: 'manual',
@@ -354,9 +420,46 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 	},
 ]);
 
+const skillFolderInput = useTemplateRef<HTMLInputElement>('skillFolderInput');
+const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
+const { importSkillFiles } = useAgentSkillImport();
+
 function onCreateMenuSelect(action: CreateAction) {
-	if (action === 'github') connectOpen.value = true;
-	else openCreateModal();
+	if (action === 'uploadFolder') skillFolderInput.value?.click();
+	else if (action === 'uploadFile') skillFileInput.value?.click();
+	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
+	else {
+		dropPendingUpload();
+		connectOpen.value = true;
+	}
+}
+
+/** Reads the picked folder or SKILL.md, then opens the form with the skill for review. */
+async function onSkillFilesPicked(event: Event) {
+	const input = event.target;
+	if (!(input instanceof HTMLInputElement)) return;
+	const files = Array.from(input.files ?? []);
+	// Cleared so that the same pick fires a change event again.
+	input.value = '';
+	if (files.length === 0 || uploadBusy.value) return;
+	const request = {};
+	pendingUpload = request;
+	uploadBusy.value = true;
+	try {
+		const skill = await importSkillFiles(files);
+		if (pendingUpload !== request) return;
+		openCreateModal({ skill, initialMethod: 'upload' });
+	} catch (error) {
+		if (pendingUpload !== request) return;
+		// The same texts as the upload step in the modal, so both paths read alike.
+		const message =
+			error instanceof AgentSkillImportError
+				? i18n.baseText(error.i18nKey, { interpolate: error.interpolate })
+				: i18n.baseText('agents.builder.skills.import.invalidFolder');
+		showError(new Error(message), i18n.baseText('settings.context.skills.upload.error'));
+	} finally {
+		if (pendingUpload === request) dropPendingUpload();
+	}
 }
 
 type FailedSkill = SkillSourceConnected['response']['failed'][number];
@@ -404,7 +507,8 @@ async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSou
 		});
 	}
 	void loadCreators();
-	await load();
+	// The new source gets its group row.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -490,8 +594,8 @@ function scopeLock(
 	return {};
 }
 
-/** `show` opens the editor with the Versions panel or with the latest two versions compared. */
-async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' | 'compare') {
+/** `show` opens the editor with the Versions panel. */
+async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions') {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -504,7 +608,10 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+			: [
+					{ value: currentValue, ...scopeDisplay(detail), projectIcon: detail.projectIcon },
+					...scopeOptions.value,
+				];
 		// A restore keeps the modal open, so the next save must send the hash it produced.
 		let baseSkillHash = detail.skillHash;
 		openModal({
@@ -517,13 +624,14 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			projectType: detail.projectType,
+			projectIcon: detail.projectIcon,
 			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
 			latestVersion: detail.latestVersion,
 			initialVersionsOpen: show === 'versions',
-			initialCompare: show === 'compare',
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),
 			...(detail.syncedFrom?.canStopSyncing
@@ -634,7 +742,8 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
-	await load();
+	// The source of a synced skill counts one skill less.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -669,17 +778,60 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
 		type: 'success',
 	});
+	// The source counts one synced skill less, and may have none left.
+	await Promise.all([load(), loadSources()]);
+}
+
+/** The sources that the user folded, kept in this browser, so the table opens as it was left. */
+const usersStore = useUsersStore();
+const collapsedSourceIds = useLocalStorage<string[]>(
+	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
+	[],
+	// A storage event must not change folds without fetching their server page.
+	{ listenToStorageChanges: false },
+);
+
+/** The sources with a check that runs, so their rows show progress. */
+const checkingSourceIds = ref<string[]>([]);
+
+const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
+
+async function onSourceDeleted() {
+	sourceToDelete.value = undefined;
+	void loadCreators();
+	await loadSources();
 	await load();
 }
 
-/**
- * Check now: checks the whole source of the skill. The list reloads, so the badges of every
- * skill of the source show what the check found.
- */
-async function onCheckForUpdates(skill: SkillListItem) {
+async function loadSources() {
+	if (!skillSyncEnabled.value) return;
+	try {
+		const sources = await skillsStore.fetchSources();
+		if (!sources) return;
+		// Forget folds of sources that are gone, so the list stays within what the API accepts.
+		const known = new Set(sources.map(({ id }) => id));
+		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
+		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
+	}
+}
+
+async function onToggleSource(sourceId: string) {
+	const ids = new Set(collapsedSourceIds.value);
+	if (ids.has(sourceId)) ids.delete(sourceId);
+	else ids.add(sourceId);
+	collapsedSourceIds.value = [...ids];
+	await load(sourceId);
+}
+
+/** Check for updates on a source: progress on its row, then a toast with the result. */
+async function onCheckSource(source: SkillSourceListItem) {
+	if (checkingSourceIds.value.includes(source.id)) return;
+	checkingSourceIds.value = [...checkingSourceIds.value, source.id];
 	let result;
 	try {
-		result = await skillsStore.checkForUpdates(skill.id);
+		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
 		// The user cannot pick another credential here, so that reason gets its own text.
@@ -694,6 +846,9 @@ async function onCheckForUpdates(skill: SkillListItem) {
 			i18n.baseText('settings.context.skills.checkForUpdates.error'),
 		);
 		return;
+	} finally {
+		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
+		await loadSources();
 	}
 	const { label, updatesFound, throttled } = result;
 	showMessage({
@@ -713,18 +868,35 @@ async function onCheckForUpdates(skill: SkillListItem) {
 					}),
 		type: 'success',
 	});
-	await load();
+}
+
+async function onOpenSource(sourceId: string) {
+	connectOpen.value = false;
+	search.value = '';
+	filters.value = { ...NO_FILTERS };
+	collapsedSourceIds.value = collapsedSourceIds.value.filter((id) => id !== sourceId);
+	await Promise.all([load(sourceId), loadSources()]);
+	await nextTick();
+	const row = document.getElementById(`skill-source-${sourceId}`);
+	row?.scrollIntoView({ block: 'center' });
+	row?.focus({ preventScroll: true });
 }
 
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
+// The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
+watch(skillSyncEnabled, async (enabled) => {
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
+});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	// The filter options are not needed for the first page or the deep links below.
 	void loadFilterOptions();
-	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
@@ -732,9 +904,12 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
+	const { skillId, create, sourceId } = route.query;
 	if (typeof skillId === 'string') {
 		await openEditModal({ id: skillId });
+	} else if (typeof sourceId === 'string' && validateUuid(sourceId) && skillSyncEnabled.value) {
+		// The API refuses a malformed id, which would fail the whole list.
+		await onOpenSource(sourceId);
 	} else if (create === 'true') {
 		openCreateModal();
 	}
@@ -854,7 +1029,7 @@ onMounted(async () => {
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0 && skillSyncEnabled"
+				v-if="scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -867,27 +1042,27 @@ onMounted(async () => {
 					</N8nButton>
 				</template>
 			</N8nActionDropdown>
-			<N8nButton
-				v-else-if="scopeOptions.length > 0"
-				:label="i18n.baseText('settings.context.skills.actions.create')"
-				data-test-id="skills-create-button"
-				@click="openCreateModal"
-			/>
 		</div>
 
 		<SkillsTable
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
+			:page-count="skillsStore.pageCount"
 			:loading="showLoading"
-			:show-empty="emptyState !== 'none'"
+			:show-empty="emptyState !== 'none' && skillsStore.collapsedSources.length === 0"
 			:show-assistant-availability="assistantSkillsEnabled"
 			:show-mcp-availability="mcpSkillsEnabled"
+			:sources="tableSources"
+			:collapsed-source-ids="collapsedSourceIds"
+			:collapsed-sources="skillsStore.collapsedSources"
+			:checking-source-ids="checkingSourceIds"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
-			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
-			@check-for-updates="onCheckForUpdates($event)"
+			@toggle-source="onToggleSource"
+			@check-source="onCheckSource"
+			@delete-source="sourceToDelete = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -909,12 +1084,20 @@ onMounted(async () => {
 					<N8nText color="text-light">
 						{{ i18n.baseText('settings.context.skills.empty.description') }}
 					</N8nText>
-					<N8nButton
+					<N8nActionDropdown
 						v-if="scopeOptions.length > 0"
-						:label="i18n.baseText('settings.context.skills.actions.create')"
-						data-test-id="skills-empty-create-button"
-						@click="openCreateModal"
-					/>
+						:items="createMenuItems"
+						placement="bottom"
+						data-test-id="skills-empty-create-menu"
+						@select="onCreateMenuSelect"
+					>
+						<template #activator>
+							<N8nButton data-test-id="skills-empty-create-button">
+								{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nActionDropdown>
 				</div>
 			</template>
 		</SkillsTable>
@@ -924,6 +1107,32 @@ onMounted(async () => {
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
+			@open-source="onOpenSource"
+		/>
+		<SkillSourceDeleteDialog
+			v-if="skillSyncEnabled && sourceToDelete"
+			:source="sourceToDelete"
+			@close="sourceToDelete = undefined"
+			@deleted="onSourceDeleted"
+		/>
+		<input
+			ref="skillFolderInput"
+			type="file"
+			webkitdirectory
+			multiple
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-folder-input"
+			@change="onSkillFilesPicked"
+		/>
+		<input
+			ref="skillFileInput"
+			type="file"
+			accept=".md,text/markdown"
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-file-input"
+			@change="onSkillFilesPicked"
 		/>
 	</N8nSettingsLayout>
 </template>

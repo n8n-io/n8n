@@ -1,7 +1,8 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import { Person, TransactionRunner, type WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
@@ -10,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -209,13 +211,15 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock<GlobalConfig>({ tags: { disabled: false } }),
+				mock<TagService>(),
 			);
-			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
+			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
-				user,
-				actor: { kind: 'user', user },
+				user: person,
+				actor: { kind: 'user', user: person },
 				createdBy: 'user',
 				adoptOnCollision: true,
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
@@ -323,7 +327,7 @@ describe('AgentRepository', () => {
 					agent.id,
 					projectId,
 					config,
-					mock<User>({ firstName: 'Test', lastName: 'User' }),
+					Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 					options,
 				),
 			).rejects.toThrow('Task cleanup failed');
@@ -338,7 +342,7 @@ describe('AgentRepository', () => {
 				agent.id,
 				projectId,
 				config,
-				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 				options,
 			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
@@ -353,7 +357,7 @@ describe('AgentRepository', () => {
 				agent.id,
 				projectId,
 				saved.config,
-				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 				{
 					...options,
 					baseConfigHash: saved.configHash,
@@ -485,7 +489,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>({ firstName: 'Test', lastName: 'User' }),
+						user: Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),
@@ -676,6 +680,22 @@ describe('AgentRepository', () => {
 			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
 		});
 
+		it('rejects a draft loaded before the agent was archived unless archived updates are allowed', async () => {
+			const stale = await createAgent();
+			expect(await agentRepo.setArchived(stale.id, true)).toBe(true);
+			stale.name = 'Stale Edit';
+
+			expect(await agentRepo.saveDraftFenced(stale)).toBe(false);
+			expect((await agentRepo.findById(stale.id))?.name).not.toBe('Stale Edit');
+
+			const allowed = await agentRepo.saveDraftFenced(stale, {}, {}, { allowArchivedUpdate: true });
+			expect(allowed).toBe(true);
+			expect(await agentRepo.findById(stale.id)).toMatchObject({
+				name: 'Stale Edit',
+				isArchived: true,
+			});
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
@@ -777,6 +797,19 @@ describe('AgentRepository', () => {
 				activeVersionId: null,
 				publicationRevision: 1,
 			});
+		});
+
+		it('changes the archive state only when the agent has the opposite state', async () => {
+			const agent = await createAgent();
+
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				isArchived: true,
+				publicationRevision: 1,
+			});
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(false);
 		});
 	});
 
@@ -880,6 +913,23 @@ describe('AgentRepository', () => {
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.integrations).toEqual([]);
 			expect(reloaded?.versionId).toBe('version-9');
+		});
+
+		it('refuses the write when the agent was archived after the read', async () => {
+			const agent = await createAgent({ versionId: 'version-1' });
+			await agentRepo.setArchived(agent.id, true);
+
+			const written = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'slack', credentialId: 'slack-1' }],
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
+				'version-2',
+			);
+
+			expect(written).toBe(false);
+			const reloaded = await agentRepo.findById(agent.id);
+			expect(reloaded?.integrations).toEqual([]);
+			expect(reloaded?.versionId).toBe('version-1');
 		});
 
 		it('rejects an integration delta after a draft save with the same version ID', async () => {

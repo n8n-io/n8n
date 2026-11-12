@@ -51,6 +51,32 @@ export const state = {
 };
 let authenticatedFeaturesInitialized = false;
 
+/** Shows a toast that stays open and tells the user that the editor cannot connect to n8n. */
+function showStartupErrorToast() {
+	const i18n = useI18n();
+
+	useToast().showToast({
+		title: i18n.baseText('startupError'),
+		message: i18n.baseText('startupError.message'),
+		type: 'error',
+		duration: 0,
+	});
+}
+
+/**
+ * Replaces the settings in the store with the full settings of the signed-in user.
+ * On a page with embedded settings, this is the only request for the full settings.
+ * A failure shows the startup error toast, then rejects.
+ */
+async function loadFullSettings() {
+	try {
+		await useSettingsStore().getSettings();
+	} catch (error) {
+		showStartupErrorToast();
+		throw error;
+	}
+}
+
 /**
  * Initializes the core application stores and hooks
  * This is called once, when the first route is loaded.
@@ -67,9 +93,6 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
-	const toast = useToast();
-	const i18n = useI18n();
-
 	registerAuthenticationHooks();
 
 	/**
@@ -80,12 +103,7 @@ export async function initializeCore() {
 		await settingsStore.initialize();
 	} catch (error) {
 		console.error('Failed to initialize settings store', error);
-		toast.showToast({
-			title: i18n.baseText('startupError'),
-			message: i18n.baseText('startupError.message'),
-			type: 'error',
-			duration: 0,
-		});
+		showStartupErrorToast();
 	}
 
 	// Must run before any view renders: expressions evaluate as soon as workflow
@@ -305,7 +323,7 @@ function registerAuthenticationHooks() {
 	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
-		await settingsStore.getSettings();
+		await loadFullSettings();
 
 		// Start the expression engine now if the app booted unauthenticated.
 		// Public settings omit the engine, so `initializeCore` left the legacy

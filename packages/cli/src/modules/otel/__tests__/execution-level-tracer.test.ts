@@ -13,7 +13,8 @@ import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
 
-import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/outbound-propagator';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -712,7 +713,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['gen_ai.usage.input_tokens']).toBe(5);
 		});
 
-		it('should not apply workflow custom attributes to node spans', () => {
+		it('should apply workflow custom attributes to node spans', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-workflow-tags-on-node',
 				tracingContext: inboundTracingContext,
@@ -740,9 +741,9 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
-			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBeUndefined();
-			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('prod');
+			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBe('3');
+			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
 		});
 
 		it('should keep workflow and node custom attributes under separate prefixes', () => {
@@ -774,7 +775,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
-			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBe('workflow');
 			expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('node');
 		});
 
@@ -903,7 +904,7 @@ describe('ExecutionLevelTracer', () => {
 			baggageTracer.startNode({ executionId: 'exec-baggage', node: httpNode });
 
 			const headers: Record<string, string> = {};
-			withGlobalPropagator(OUTBOUND_HEADERS_PROPAGATOR, () => {
+			withGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR, () => {
 				baggageTracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
 			});
 
@@ -1065,6 +1066,174 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('caller baggage', () => {
+		const node = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+		const withBaggage = { ...inboundTracingContext, baggage: 'tenant=acme' };
+
+		const end = (target: ExecutionLevelTracer, executionId: string) =>
+			target.endWorkflow({ executionId, status: 'success', mode: 'webhook', isRetry: false });
+
+		const inject = (
+			target: ExecutionLevelTracer,
+			executionId: string,
+			nodeName?: string,
+			propagator = DEFAULT_OUTBOUND_PROPAGATOR,
+		) => {
+			const headers: Record<string, string> = {};
+			withGlobalPropagator(propagator, () => {
+				target.injectTraceHeaders(executionId, nodeName, headers);
+			});
+			return headers;
+		};
+
+		it('sends the caller baggage on node and workflow requests, also without a traceparent', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag',
+				tracingContext: { baggage: 'tenant=acme' },
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({ executionId: 'exec-bag', node });
+
+			const nodeHeaders = inject(tracer, 'exec-bag', node.name);
+			const workflowHeaders = inject(tracer, 'exec-bag');
+			end(tracer, 'exec-bag');
+
+			expect(nodeHeaders).toEqual({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+			expect(workflowHeaders.baggage).toBe('tenant=acme');
+		});
+
+		it('sends no baggage when the execution has none', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-none',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-none');
+			end(tracer, 'exec-bag-none');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('sends no baggage when the propagator does not carry it', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-plain',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-plain', undefined, new W3CTraceContextPropagator());
+			end(tracer, 'exec-bag-plain');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('saves the caller baggage, so a resumed segment sends it again', () => {
+			const saved = tracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			end(tracer, 'exec-bag-resume');
+
+			expect(saved.baggage).toBe('tenant=acme');
+
+			const resaved = tracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: saved,
+				linkTo: saved,
+				workflow: defaultWorkflow,
+			});
+			const headers = inject(tracer, 'exec-bag-resume');
+			end(tracer, 'exec-bag-resume');
+
+			expect(resaved.baggage).toBe('tenant=acme');
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it.each([
+			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
+			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],
+			['a reserved key in another case', 'tenant=acme,N8N.Execution.Id=forged'],
+		])('neither saves nor sends an entry that n8n owns, given %s', (_name, header) => {
+			const saved = tracer.startWorkflow({
+				executionId: 'exec-bag-forged',
+				tracingContext: { ...inboundTracingContext, baggage: header },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-forged');
+			end(tracer, 'exec-bag-forged');
+
+			expect(saved.baggage).toBe('tenant=acme');
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('saves and sends nothing when only entries that n8n owns are sent', () => {
+			const saved = tracer.startWorkflow({
+				executionId: 'exec-bag-forged-only',
+				tracingContext: { ...inboundTracingContext, baggage: 'n8n.execution.id=forged' },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-forged-only');
+			end(tracer, 'exec-bag-forged-only');
+
+			expect(saved.baggage).toBeUndefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('puts the hook entries first, so an overflow cuts the caller baggage and not the operator entries', () => {
+			const configureHook = new OtelConfigureHook(logger);
+			configureHook.api.registerOutboundBaggageMapper(() => ({
+				tenant: 'hook',
+				'project.id': 'p'.repeat(60),
+			}));
+			const hookTracer = makeTracer({ configureHook });
+			const filler = Array.from(
+				{ length: 20 },
+				(_, i) => `k${String(i).padStart(2, '0')}=${'v'.repeat(402)}`,
+			);
+			hookTracer.startWorkflow({
+				executionId: 'exec-bag-hook',
+				tracingContext: { baggage: ['tenant=acme', ...filler].join(',') },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(hookTracer, 'exec-bag-hook');
+			end(hookTracer, 'exec-bag-hook');
+
+			const entries = headers.baggage.split(',');
+			expect(entries.slice(0, 2)).toEqual(['tenant=hook', `project.id=${'p'.repeat(60)}`]);
+			expect(entries).toHaveLength(21);
+			expect(entries.at(-1)).toBe(filler[18]);
+		});
+
+		it('does not add caller baggage to span attributes', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-attrs',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({ executionId: 'exec-bag-attrs', node });
+			tracer.endNode({
+				executionId: 'exec-bag-attrs',
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			end(tracer, 'exec-bag-attrs');
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+			for (const span of spans) {
+				expect(span.attributes).not.toHaveProperty('tenant');
+			}
 		});
 	});
 
@@ -1510,6 +1679,7 @@ describe('ExecutionLevelTracer', () => {
 				'n8n.node.name': 'MyNode',
 				'n8n.node.type': 'test',
 				'n8n.node.type_version': 1,
+				'n8n.workflow.custom.team': 'ops',
 				'n8n.project.custom.env': 'prod',
 				...identity,
 			});
@@ -1578,12 +1748,13 @@ describe('ExecutionLevelTracer', () => {
 			tracer = makeTracer({ prefixes: noPrefixes });
 
 			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-prefixes', project, {
-				workflow: { env: 'workflow' },
-				node: { env: 'node' },
+				workflow: { env: 'workflow', model: 'workflow' },
+				node: { model: 'node' },
 			});
 
 			expect(workflowSpan.attributes.env).toBe('workflow');
-			expect(nodeSpan.attributes.env).toBe('node');
+			expect(nodeSpan.attributes.env).toBe('workflow');
+			expect(nodeSpan.attributes.model).toBe('node');
 		});
 
 		it('should let workflow attributes win over project attributes on a reconstructed crash span', () => {
@@ -1605,17 +1776,20 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should keep built-in attributes when custom attributes use the same keys', () => {
 			tracer = makeTracer({ prefixes: noPrefixes });
+			logger.warn.mockClear();
+			const projectWithBuiltInKeys = {
+				id: 'proj-1',
+				customAttributes: { 'n8n.project.id': 'forged', 'n8n.node.name': 'forged' },
+			};
+			const tagsWithBuiltInKeys = {
+				workflow: { 'n8n.workflow.version_id': 'forged' },
+				node: { 'n8n.execution.id': 'forged', 'n8n.node.items.output': 'forged' },
+			};
 
 			const { workflowSpan, nodeSpan } = runSingleNodeExecution(
 				'exec-prefixes',
-				{
-					id: 'proj-1',
-					customAttributes: { 'n8n.project.id': 'forged', 'n8n.node.name': 'forged' },
-				},
-				{
-					workflow: { 'n8n.workflow.version_id': 'forged' },
-					node: { 'n8n.execution.id': 'forged', 'n8n.node.items.output': 'forged' },
-				},
+				projectWithBuiltInKeys,
+				tagsWithBuiltInKeys,
 			);
 
 			expect(workflowSpan.attributes['n8n.project.id']).toBe('proj-1');
@@ -1623,6 +1797,15 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['n8n.node.name']).toBe('MyNode');
 			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-prefixes');
 			expect(nodeSpan.attributes['n8n.node.items.output']).toBe(1);
+			expect(logger.warn).toHaveBeenCalledTimes(5);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Dropped the node custom telemetry tag "n8n.execution.id" because the key matches a built-in attribute key. n8n keeps the built-in value.',
+				{ level: 'node', key: 'n8n.execution.id' },
+			);
+
+			runSingleNodeExecution('exec-prefixes-repeat', projectWithBuiltInKeys, tagsWithBuiltInKeys);
+
+			expect(logger.warn).toHaveBeenCalledTimes(5);
 		});
 	});
 });
