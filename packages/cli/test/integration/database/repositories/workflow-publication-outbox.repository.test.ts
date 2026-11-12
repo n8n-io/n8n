@@ -49,6 +49,22 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
 	});
 
+	it('finds no due retry while the in-flight records fill the limit', async () => {
+		for (const workflow of [await createActiveWorkflow(), await createActiveWorkflow()]) {
+			await retryStateRepository.scheduleRetry(workflow.id, workflow.versionId);
+		}
+		await retryStateRepository
+			.createQueryBuilder()
+			.update()
+			.set({ updatedAt: new Date('2000-01-01T00:00:00.000Z') })
+			.execute();
+		for (const workflow of [await createActiveWorkflow(), await createActiveWorkflow()]) {
+			await repository.enqueue(workflow.id, workflow.versionId, 'publish');
+		}
+
+		expect(await repository.findRetryDueWorkflowIds(2)).toEqual([]);
+	});
+
 	it('supersedes an existing pending record when re-enqueued for the same workflow', async () => {
 		await repository.enqueue('wf-1', 'v-1', 'publish');
 		await repository.enqueue('wf-1', 'v-2', 'publish');

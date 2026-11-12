@@ -7,12 +7,18 @@ import type {
 	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
+import { WebhookPathTakenError, WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
+import type {
+	PublicationResult,
+	TriggerPublicationStatus,
+} from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
@@ -217,7 +223,7 @@ describe('PublicationStatusReporter', () => {
 				'registration failed',
 				operationContext,
 			);
-			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
 				'wf-1',
 				'v-2',
 				operationContext,
@@ -345,7 +351,7 @@ describe('PublicationStatusReporter', () => {
 			'registration failed',
 			operationContext,
 		);
-		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+		expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 			operationContext,
@@ -435,7 +441,7 @@ describe('PublicationStatusReporter', () => {
 			'partial registration failed',
 			operationContext,
 		);
-		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+		expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 			operationContext,
@@ -595,8 +601,9 @@ describe('PublicationStatusReporter', () => {
 			expectedMessage,
 			operationContext,
 		);
-		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+		expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
 			'wf-1',
+			'v-2',
 			operationContext,
 		);
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
@@ -713,4 +720,143 @@ describe('PublicationStatusReporter', () => {
 		);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
+
+	const failedRow = (triggerKind: 'in-memory' | 'persisted'): TriggerPublicationStatus => ({
+		nodeId: `${triggerKind}-node`,
+		nodeName: `${triggerKind} node`,
+		status: 'failed',
+		triggerKind,
+		errorMessage: 'activation failed',
+	});
+
+	const PERMANENT_FAILURES: Array<[string, PublicationResult]> = [
+		['a missing version', { type: 'version-missing' }],
+		[
+			'an oversized node id with no storable trigger',
+			{
+				type: 'failed',
+				error: new TriggerNodeIdTooLongError([{ id: 'too-long', name: 'Long' }]),
+				triggerStatuses: [],
+			},
+		],
+		[
+			'a user error wrapped by trigger activation',
+			{
+				type: 'failed',
+				error: new WorkflowActivationError('There was a problem activating the workflow', {
+					cause: new UserError('The polling interval is too short.'),
+				}),
+				triggerStatuses: [failedRow('in-memory')],
+			},
+		],
+		[
+			'a serialized policy refusal',
+			{
+				type: 'failed',
+				error: Object.assign(new Error('Blocked by policy'), { isPolicyRefusal: true }),
+			},
+		],
+		[
+			'a webhook path conflict',
+			{
+				type: 'failed',
+				error: new WebhookPathTakenError('Webhook'),
+				triggerStatuses: [failedRow('persisted')],
+			},
+		],
+	];
+
+	test.each(PERMANENT_FAILURES)('keeps permanent failures suppressed: %s', async (_, result) => {
+		await reporter.report(makeRecord(), result);
+
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+	});
+
+	const unreachable = (): Error =>
+		Object.assign(new Error('connect EHOSTUNREACH 10.0.0.1:993'), { code: 'EHOSTUNREACH' });
+
+	const RETRY_FAILURES: Array<[string, PublicationResult]> = [
+		[
+			'an unreachable host for an in-memory trigger',
+			{ type: 'failed', error: unreachable(), triggerStatuses: [failedRow('in-memory')] },
+		],
+		[
+			'an external webhook registration during an outage',
+			{
+				type: 'failed',
+				error: new Error('Failed to register the webhook: socket hang up'),
+				triggerStatuses: [failedRow('persisted')],
+			},
+		],
+		[
+			'an unreachable host for an in-memory and a webhook trigger',
+			{
+				type: 'failed',
+				error: unreachable(),
+				triggerStatuses: [failedRow('in-memory'), failedRow('persisted')],
+			},
+		],
+		[
+			'an auth failure from the server',
+			{
+				type: 'failed',
+				error: new WorkflowActivationError('There was a problem activating the workflow', {
+					cause: new Error('Invalid credentials'),
+				}),
+				triggerStatuses: [failedRow('in-memory')],
+			},
+		],
+		[
+			'a deadline abort before reporting',
+			{
+				type: 'failed',
+				error: new OperationalError('Workflow publication processing exceeded its deadline'),
+			},
+		],
+		[
+			'an unexpected applier failure',
+			{
+				type: 'failed',
+				error: new UnexpectedError('Unexpected: applier failed', {
+					cause: new Error('applier failed'),
+				}),
+			},
+		],
+	];
+
+	test.each(RETRY_FAILURES)(
+		'schedules a retry for a failure that is not permanent: %s',
+		async (_, result) => {
+			await reporter.report(makeRecord(), result);
+
+			expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
+			);
+		},
+	);
+
+	test.each(['in-memory', 'persisted'] as const)(
+		'partial schedules a retry for any failed trigger: %s',
+		async (triggerKind) => {
+			await reporter.report(makeRecord(), {
+				type: 'partial',
+				triggerStatuses: [
+					{ nodeId: 'ok', nodeName: 'Running', status: 'activated', triggerKind: 'in-memory' },
+					failedRow(triggerKind),
+				],
+			});
+
+			expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
+			);
+		},
+	);
 });

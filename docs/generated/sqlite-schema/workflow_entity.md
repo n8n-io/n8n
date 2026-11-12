@@ -353,6 +353,7 @@ erDiagram
 }
 "workflow_publication_retry_state" {
   datetime_3_ createdAt
+  INTEGER retryDelaySeconds
   varchar_36_ targetVersionId
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
