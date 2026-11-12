@@ -120,6 +120,57 @@ describe('guardToolResultForModel', () => {
 		35_000,
 	);
 
+	// AGENT-1568: Byte size must not replace the model's token budget.
+	it.each([false, true])(
+		'preserves a 5.2 MB space result within the token limit with storage available: %s',
+		async (storageAvailable) => {
+			const filesystem = new InMemoryFilesystem();
+			const writeFile = vi.spyOn(filesystem, 'writeFile');
+			const output = ' '.repeat(5_200_000);
+
+			expect(await estimateObservationTokens(JSON.stringify(output))).toBeLessThanOrEqual(
+				MAX_MODEL_TOOL_RESULT_TOKENS,
+			);
+
+			const guarded = await guardToolResultForModel(
+				output,
+				undefined,
+				storageAvailable ? { filesystem, runId: 'run-1', toolCallId: 'tc-1' } : undefined,
+			);
+
+			expect(guarded).toMatchObject({ truncated: false, offloaded: false });
+			expect(guarded.historyOutput).toBe(output);
+			expect(guarded.wireOutput).toBe(output);
+			expect(writeFile).not.toHaveBeenCalled();
+		},
+		35_000,
+	);
+
+	it('keeps a token-bounded excerpt above 200 KB when storage is unavailable', async () => {
+		const output = 'word '.repeat(100_000);
+		const serialized = JSON.stringify(output);
+
+		expect(await estimateObservationTokens(serialized)).toBeGreaterThan(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+
+		const guarded = await guardToolResultForModel(output);
+
+		expect(guarded).toMatchObject({
+			truncated: true,
+			offloaded: false,
+			historyOutput: { _truncated: true, originalCharCount: serialized.length },
+		});
+		expect(guarded.wireOutput).toEqual(guarded.historyOutput);
+		const envelope = guarded.historyOutput as { head: string; tail: string };
+		expect(serialized.startsWith(envelope.head)).toBe(true);
+		expect(serialized.endsWith(envelope.tail)).toBe(true);
+		expect(await estimateObservationTokens(JSON.stringify(envelope))).toBeLessThanOrEqual(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+		expect(envelope.head.length + envelope.tail.length).toBeGreaterThan(200_000);
+	});
+
 	it('truncates without storing a result above the offload size limit', async () => {
 		const filesystem = new InMemoryFilesystem();
 		const writeFile = vi.spyOn(filesystem, 'writeFile');
