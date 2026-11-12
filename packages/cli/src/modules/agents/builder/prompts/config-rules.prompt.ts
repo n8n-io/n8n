@@ -67,10 +67,13 @@ export function getConfigRulesSection(): string {
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- The server sets \`config.promptCaching\` for every model that supports it, and
-  it cannot be disabled. Do not write it, except to tune the cache duration for
-  Anthropic models and routed Claude models (OpenRouter, Google Vertex,
-  Microsoft Foundry) when the user asks. Then write the full object, for example
+- The server turns on \`config.promptCaching\` for every model that supports
+  it. Do not write it unless the user asks. A user can turn it off, for example
+  when a custom endpoint rejects the prompt cache fields. Then write
+  \`config.promptCaching: { "enabled": false }\`. Never turn it back on unless
+  the user asks. To tune the cache duration for Anthropic models and routed
+  Claude models (OpenRouter, Google Vertex, Microsoft Foundry), write the full
+  object, for example
   \`config.promptCaching: { "enabled": true, "anthropic": { "ttl": "5m" } }\`
   (\`"5m"\` or \`"1h"\`, default \`"1h"\`).
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.

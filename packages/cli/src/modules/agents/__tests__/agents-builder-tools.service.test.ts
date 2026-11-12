@@ -1927,7 +1927,7 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config force-enables prompt caching even when the config says enabled: false', async () => {
+			it('agent_builder_write_config keeps prompt caching off when the config says enabled: false', async () => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1947,7 +1947,7 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'Anthropic Key',
-					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
