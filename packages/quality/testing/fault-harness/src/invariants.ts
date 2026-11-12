@@ -31,12 +31,15 @@ export function everyExecutionFinished({ executions }: RunRecord): Violation[] {
 		: [];
 }
 
-/** An accepted request has its effect, or an execution that ended without success accounts for it. */
+/** An accepted request has the effect of the execution it started, or an execution that ended without success accounts for it. */
 export function noAcceptedRequestLost({ requests, executions, effects }: RunRecord): Violation[] {
+	const pairs = new Set(effects.map((e) => `${e.requestId}|${e.executionId}`));
 	const done = new Set(effects.map((e) => e.requestId));
 	const lost = requests
 		.filter((r) => r.status === 200)
-		.filter((r) => !done.has(r.requestId))
+		.filter((r) =>
+			r.executionId ? !pairs.has(`${r.requestId}|${r.executionId}`) : !done.has(r.requestId),
+		)
 		.filter((r) => {
 			const status = r.executionId && executions[r.executionId];
 			return !status || status === 'success';
