@@ -10,6 +10,10 @@ const aiGatewayProviderConfigEntryShape = {
 	// Lets a single credential fan out to multiple gateway providers. When present,
 	// it is authoritative over `urlField`/`gatewayPath`.
 	routing: z.record(z.string()).optional(),
+	// How the gateway token is written to `apiKeyField`. `oauth2` wraps it as OAuth2 token
+	// data, for credentials that sign requests with `oauthTokenData.access_token`. Unknown
+	// values fall back to the default (a plain string), so a newer gateway can't break parsing.
+	tokenFormat: z.enum(['oauth2']).optional().catch(undefined),
 };
 
 export class AiGatewayProviderConfigEntry extends Z.class(aiGatewayProviderConfigEntryShape) {}
