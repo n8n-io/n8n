@@ -144,10 +144,13 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(image.dockerfile).toContain('COPY');
 		expect(image.dockerfile).toContain('/tmp/n8n-workspace-bake');
-		expect(image.dockerfile).toContain('cp -a /tmp/n8n-workspace-bake/. /home/daytona/workspace/');
 		expect(image.dockerfile).toContain(
-			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
+			'SUDO=$([ "$(id -u)" = 0 ] || echo sudo) && $SUDO mkdir -p /home/user/workspace && $SUDO chown -R "$(id -u):$(id -g)" /home/user && cp -a /tmp/n8n-workspace-bake/. /home/user/workspace/',
 		);
+		expect(image.dockerfile).toContain(
+			'mkdir -p /home/user/workspace/src /home/user/workspace/chunks /home/user/workspace/node-types',
+		);
+		expect(image.dockerfile).not.toContain('/home/daytona/workspace');
 		expect(image.dockerfile).toContain(
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 		);

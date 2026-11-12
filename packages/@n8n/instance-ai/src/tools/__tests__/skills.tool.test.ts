@@ -14,15 +14,17 @@ const listItem: SkillListItem = {
 	projectId: 'project-1',
 	projectName: 'Marketing',
 	projectType: 'team',
-	agentId: null,
-	agentName: null,
 	availableToAssistant: false,
 	source: 'ui',
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 3,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
+	canStopSyncing: false,
+	syncState: null,
+	sourceId: null,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };
@@ -32,6 +34,7 @@ const detail: SkillDetail = {
 	skill: { name: 'Brand voice', description: 'Write in the brand voice', instructions: 'Be kind.' },
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };

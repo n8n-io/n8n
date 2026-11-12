@@ -18,6 +18,7 @@ import type { AgentMemoryEntryCandidateRepository } from '../../repositories/age
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
+import type { AgentMemoryScopeRepository } from '../../repositories/agent-memory-scope.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
@@ -61,7 +62,8 @@ describe('N8nMemory', () => {
 	let transactionObservationFind: Mock;
 	let transactionObservationSave: Mock;
 	let transactionObservationUpdate: Mock;
-	let transactionMemoryEntryUpdate: Mock;
+	const memoryScopeRepository = mock<AgentMemoryScopeRepository>();
+	let transactionMemoryEntryDelete: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
 
 	beforeEach(() => {
@@ -115,7 +117,7 @@ describe('N8nMemory', () => {
 			value: { transaction: observationRunInTransaction },
 		});
 
-		transactionMemoryEntryUpdate = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
+		transactionMemoryEntryDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
 		runInTransaction = vi.fn(
 			async (
@@ -128,7 +130,10 @@ describe('N8nMemory', () => {
 					delete: transactionDelete,
 					getRepository: vi.fn((entity) => {
 						if (entity === AgentMemoryEntryEntity) {
-							return { update: transactionMemoryEntryUpdate };
+							return {
+								delete: transactionMemoryEntryDelete,
+								find: vi.fn().mockResolvedValue([{ resourceId: 'user-1' }]),
+							};
 						}
 						return { find: transactionMemoryEntrySourceFind };
 					}),
@@ -156,6 +161,7 @@ describe('N8nMemory', () => {
 			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
+			memoryScopeRepository,
 		);
 		memory = memoryService.getImplementation('agent-1');
 	});
@@ -340,6 +346,25 @@ describe('N8nMemory', () => {
 		});
 	});
 
+	describe('getThreadsMetadata', () => {
+		it('reads the metadata of the threads in one query, and leaves out empty or unreadable metadata', async () => {
+			threadRepository.findMetadataByIds.mockResolvedValue([
+				{ id: 'thread-1', metadata: JSON.stringify({ emoji: '🤖' }) },
+				{ id: 'thread-2', metadata: null },
+				{ id: 'thread-3', metadata: '{not json' },
+			]);
+
+			const metadata = await memoryService.getThreadsMetadata(['thread-1', 'thread-2', 'thread-3']);
+
+			expect(threadRepository.findMetadataByIds).toHaveBeenCalledWith([
+				'thread-1',
+				'thread-2',
+				'thread-3',
+			]);
+			expect(metadata).toEqual(new Map([['thread-1', { emoji: '🤖' }]]));
+		});
+	});
+
 	describe('patchThread', () => {
 		let writes: number;
 
@@ -468,7 +493,7 @@ describe('N8nMemory', () => {
 			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('drops active episodic entries that lose their last source when deleting a thread', async () => {
+		it('deletes episodic entries that lose their last source when deleting a thread', async () => {
 			transactionMemoryEntrySourceFind
 				.mockResolvedValueOnce([
 					makeMemoryEntrySourceEntity({
@@ -489,11 +514,16 @@ describe('N8nMemory', () => {
 
 			await memory.deleteThread('thread-1');
 
+			expect(memoryScopeRepository.lockActiveScope).toHaveBeenCalledWith('user-1', {});
+			expect(memoryScopeRepository.lockActiveScope.mock.invocationCallOrder[0]).toBeLessThan(
+				transactionDelete.mock.invocationCallOrder[0],
+			);
+
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
 				select: { memoryEntryId: true },
 				where: { agentId: 'agent-1', threadId: 'thread-1' },
 			});
-			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntrySourceEntity, {
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 			});
@@ -501,10 +531,10 @@ describe('N8nMemory', () => {
 				select: { memoryEntryId: true },
 				where: { agentId: 'agent-1', memoryEntryId: In(['orphaned-memory', 'shared-memory']) },
 			});
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', id: In(['orphaned-memory']), status: 'active' },
-				{ status: 'dropped', supersededBy: null },
-			);
+			expect(transactionMemoryEntryDelete).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				id: In(['orphaned-memory']),
+			});
 		});
 
 		it('does not clean up episodic source rows owned by another agent', async () => {
@@ -520,9 +550,8 @@ describe('N8nMemory', () => {
 				AgentMemoryEntrySourceEntity,
 				expect.objectContaining({ threadId: 'thread-1' }),
 			);
-			expect(transactionMemoryEntryUpdate).not.toHaveBeenCalledWith(
+			expect(transactionMemoryEntryDelete).not.toHaveBeenCalledWith(
 				expect.objectContaining({ id: In(['other-agent-memory']) }),
-				expect.anything(),
 			);
 		});
 
@@ -575,7 +604,7 @@ describe('N8nMemory', () => {
 			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('drops source-less episodic entries when deleting threads by prefix', async () => {
+		it('deletes source-less episodic entries when deleting threads by prefix', async () => {
 			transactionMemoryEntrySourceFind
 				.mockResolvedValueOnce([
 					makeMemoryEntrySourceEntity({
@@ -596,10 +625,10 @@ describe('N8nMemory', () => {
 				threadId,
 				agentId: 'agent-1',
 			});
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', id: In(['prefix-orphaned-memory']), status: 'active' },
-				{ status: 'dropped', supersededBy: null },
-			);
+			expect(transactionMemoryEntryDelete).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				id: In(['prefix-orphaned-memory']),
+			});
 		});
 	});
 
@@ -649,7 +678,7 @@ describe('N8nMemory', () => {
 			status: 'active',
 			supersededBy: null,
 			embeddingModel: 'openai/text-embedding-3-small',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			metadata: null,
 			lastSeenAt: createdAt,
 			createdAt,
@@ -1249,7 +1278,7 @@ describe('N8nMemory', () => {
 				{
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				},
 				[
@@ -1266,7 +1295,7 @@ describe('N8nMemory', () => {
 				expect.objectContaining({
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				}),
 				[{ observationId: 'obs-1', threadId: 'thread-1', evidenceText: 'User chose Postgres' }],
@@ -1276,7 +1305,7 @@ describe('N8nMemory', () => {
 				id: 'memory-1',
 				content: 'User chose Postgres for the memory store.',
 				status: 'active',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			});
 		});
 
@@ -1286,7 +1315,7 @@ describe('N8nMemory', () => {
 					resourceId: 'integration:slack:U_BOB',
 					episodic: threadEpisodic,
 					content: 'The Flan recipe uses three eggs.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				},
 				[{ candidateId: 'candidate-1', threadId: 'thread-1', evidenceText: 'Use three eggs.' }],
@@ -1326,7 +1355,11 @@ describe('N8nMemory', () => {
 					['hash-1'],
 				);
 				expect(entries).toEqual([
-					expect.objectContaining({ id: 'memory-1', status: 'dropped', embedding: [1, 0] }),
+					expect.objectContaining({
+						id: 'memory-1',
+						status: 'dropped',
+						embedding: new Float32Array([1, 0]),
+					}),
 				]);
 			},
 		);
@@ -1366,22 +1399,29 @@ describe('N8nMemory', () => {
 				'agent-1',
 				'thread:thread-1',
 				100,
+				{},
 			);
 		});
 
 		it('searches scoped active entries through hybrid ranking', async () => {
-			memoryEntryRepository.find.mockResolvedValue([
+			const entities = [
 				makeMemoryEntryEntity({
 					id: 'memory-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 				}),
 				makeMemoryEntryEntity({
 					id: 'memory-2',
 					content: 'User investigated a webhook timeout.',
-					embedding: [0, 1],
+					contentHash: 'hash-2',
+					embedding: new Float32Array([0, 1]),
 				}),
-			]);
+			];
+			memoryEntryRepository.findRankableEntries.mockResolvedValue(entities);
+			memoryEntryRepository.findInAnyStatus.mockImplementation(
+				async (_agentId, ids) =>
+					await Promise.resolve(entities.filter(({ id }) => ids.includes(id))),
+			);
 
 			const results = await memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
@@ -1389,19 +1429,19 @@ describe('N8nMemory', () => {
 				{ queryEmbedding: [1, 0], topK: 1 },
 			);
 
-			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-				where: {
-					agentId: 'agent-1',
-					resourceId: In(['resource-1']),
-					status: In(['active']),
-				},
-			});
+			expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+				'agent-1',
+				['resource-1'],
+				['active'],
+			);
 			expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
+			expect(memoryEntryRepository.findInAnyStatus).toHaveBeenCalledWith('agent-1', ['memory-1']);
 		});
 
 		it('limits write-scope searches to the resolved write scope', async () => {
-			memoryEntryRepository.find.mockResolvedValue([]);
+			memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+			memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
 
 			await memory.episodic.searchEntries(
 				{ resourceId: 'integration:slack:U1', threadId: 'thread-1', episodic: threadEpisodic },
@@ -1409,24 +1449,28 @@ describe('N8nMemory', () => {
 				{ writeScopeOnly: true },
 			);
 
-			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-				where: {
-					agentId: 'agent-1',
-					resourceId: In(['thread:thread-1']),
-					status: In(['active']),
-				},
-			});
+			expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+				'agent-1',
+				['thread:thread-1'],
+				['active'],
+			);
 		});
 
 		describe('without a resolved scope on an integration resource', () => {
 			const scope = { resourceId: 'integration:slack:U1', threadId: 'thread-1' };
 
 			it('recalls nothing and reads no entries', async () => {
+				memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+				memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
+
 				await expect(memory.episodic.searchEntries(scope, 'shared fact')).resolves.toEqual([]);
 				await expect(
 					memory.episodic.searchEntries(scope, 'shared fact', { writeScopeOnly: true }),
 				).resolves.toEqual([]);
-				expect(memoryEntryRepository.find).not.toHaveBeenCalled();
+				const searchedScopes = memoryEntryRepository.findRankableEntries.mock.calls.map(
+					([, resourceIds]) => resourceIds,
+				);
+				expect(searchedScopes).toEqual([[], []]);
 			});
 
 			it.each([
@@ -1481,11 +1525,13 @@ describe('N8nMemory', () => {
 					'agent-1',
 					'slack:T1:channel:C1',
 					100,
+					{},
 				);
 			});
 
 			it('recalls only from the resolved read scopes', async () => {
-				memoryEntryRepository.find.mockResolvedValue([]);
+				memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+				memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
 				const readScopeIds = ['slack:T1:channel:C1', 'slack:T1:user:U_ALICE'];
 
 				await memory.episodic.searchEntries(
@@ -1494,13 +1540,11 @@ describe('N8nMemory', () => {
 				);
 
 				expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
-				expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-					where: {
-						agentId: 'agent-1',
-						resourceId: In(readScopeIds),
-						status: In(['active']),
-					},
-				});
+				expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+					'agent-1',
+					readScopeIds,
+					['active'],
+				);
 			});
 
 			it('saves entries under the resolved write scope without storing the scope itself', async () => {
@@ -1589,10 +1633,11 @@ describe('N8nMemory', () => {
 
 			const sources = await memory.getEntrySourcesWithMessageContext(['memory-1']);
 
-			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith('agent-1', [
-				'candidate-1',
-				'candidate-2',
-			]);
+			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith(
+				'agent-1',
+				['candidate-1', 'candidate-2'],
+				{},
+			);
 			expect(sources[0]).toMatchObject({
 				id: 'source-quoted',
 				author: { id: 'U1', name: 'Alice' },

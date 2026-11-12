@@ -1,3 +1,4 @@
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import {
 	createDelegateSubAgentTool,
 	type CreateDelegateSubAgentToolOptions,
@@ -8,11 +9,11 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
-import { OperationalError, UserError } from 'n8n-workflow';
 
-import { ResponseError } from '@n8n/errors';
+import { ResponseError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
+import { resolveSandboxFileRefs } from '../agent-sandbox-files.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
@@ -82,6 +83,17 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined
+						? {
+								fileIds:
+									request.parentThreadId !== undefined
+										? await resolveSandboxFileRefs(request.fileIds, {
+												projectId: runContext.projectId,
+												threadId: request.parentThreadId,
+											})
+										: request.fileIds,
+							}
+						: {}),
 					...(policy !== undefined ? { policy } : {}),
 					...(request.parentThreadId !== undefined
 						? { parentThreadId: request.parentThreadId }
@@ -98,6 +110,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				{
 					...runContext,
 					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
+					planTask: readPlanTaskContext(request.parentHostMetadata),
 					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
@@ -130,6 +143,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			const context = {
 				...runContext,
+				planTask: readPlanTaskContext(request.parentHostMetadata),
 				...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 				...(request.parentExecutionCounter !== undefined
 					? { executionCounter: request.parentExecutionCounter }

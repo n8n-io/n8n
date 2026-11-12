@@ -2,10 +2,12 @@ import { z } from 'zod';
 
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillAvailabilitySchema,
 	agentSkillSchema,
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
+import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -13,6 +15,9 @@ import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
+export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
+/** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
+export const SKILL_SYNC_FLAG = '136_skill_sync';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -24,17 +29,17 @@ const optionalTake = z
 	})
 	.transform((value) => (value === undefined ? undefined : Math.min(value, SKILLS_MAX_PAGE_SIZE)));
 
-/** Who owns a skill: one project, one agent (only that agent can use it), or the instance. */
-export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
+/** Who owns a skill: one project, or the instance. */
+export const skillScopeSchema = agentSkillAvailabilitySchema;
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
  * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant, `import` from an
- * n8n package import.
+ * n8n package import, `github` by Skill Sync from a GitHub source. A synced skill is read-only.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -50,14 +55,11 @@ export type SkillListItem = {
 	name: string;
 	description: string;
 	scope: SkillScope;
-	/** The project of a project skill, or the project of the agent of an agent skill. */
+	/** The project of a project skill. */
 	projectId: string | null;
 	projectName: string | null;
 	/** Lets the editor name another member's personal project, which it does not list. */
 	projectType: ProjectType | null;
-	/** Set for an agent skill: the only agent that can use it. */
-	agentId: string | null;
-	agentName: string | null;
 	source: SkillSource;
 	/** Null when the creator is unknown or the user no longer exists. */
 	createdBy: SkillUserDto | null;
@@ -66,15 +68,37 @@ export type SkillListItem = {
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
 	availableToAssistant: boolean;
+	availableToMCP: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
+	/** Whether the skill is synced and the user may stop syncing it. */
+	canStopSyncing: boolean;
+	/** The sync state of a synced skill, for its badge. Null for a skill that is not synced. */
+	syncState: SkillSyncState | null;
+	/** The source that syncs the skill. Null for a skill that no source syncs. */
+	sourceId: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
 
+/** A folded or empty source with no skill rows on this page. */
+export type SkillListCollapsedSource = {
+	sourceId: string;
+	/** Where its row goes in `data`: before the skill at this index, or last for `data.length`. */
+	index: number;
+	/** The skills of the source that match the filters, which its row stands for. */
+	skillCount: number;
+};
+
 export type SkillListResponse = {
+	/** The rows of all pages. With `groupBy: 'source'`, a folded source counts as one row. */
 	count: number;
 	data: SkillListItem[];
+	/** Folded and empty sources on this page. Only with `groupBy: 'source'`. */
+	collapsedSources?: SkillListCollapsedSource[];
+	/** The selected page and page count. Only with `groupBy: 'source'`. */
+	page?: number;
+	pageCount?: number;
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
@@ -107,6 +131,8 @@ export type SkillDetail = SkillListItem & {
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
 	usedBy: SkillUsedBy;
+	/** Set for a synced skill: its content is read-only and changes only in its source. */
+	syncedFrom: SkillSyncedFrom | null;
 };
 
 export type SkillSaveResponse = {
@@ -148,6 +174,13 @@ export const SKILLS_SORT_OPTIONS = [
 
 export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
 
+/** A comma-separated list of source ids in a query string. */
+const sourceIdList = z
+	.string()
+	.optional()
+	.transform((value) => (value ? value.split(',') : undefined))
+	.pipe(z.array(z.string().uuid()).optional());
+
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	take: optionalTake,
@@ -155,15 +188,15 @@ export class ListSkillsQueryDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
 	/**
-	 * The id of an agent: the skills it uses (a draft ref or a published pin) and its own
-	 * agent skills. Not combined with `attachableTo`.
+	 * The id of an agent: the skills it uses (a draft ref or a published pin). Not combined
+	 * with `attachableTo`.
 	 */
 	agentId: z.string().max(36).optional(),
 	/** The id of the user who created the skill. User ids are UUIDs. */
 	createdById: z.string().uuid().optional(),
 	/**
-	 * The id of an agent: the skills it may attach, which are its project's skills, its own
-	 * agent skills and instance skills. Not combined with `scope`, `projectId` or `agentId`.
+	 * The id of an agent: the skills it may attach, which are its project's skills and
+	 * instance skills. Not combined with `scope`, `projectId` or `agentId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
 	sortBy: z
@@ -171,6 +204,20 @@ export class ListSkillsQueryDto extends Z.class({
 			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
 		})
 		.optional(),
+	/**
+	 * `source` puts the sources first, by repository, each one a group of its synced skills, and
+	 * then the skills that no source syncs. `sortBy` sorts the skills in each group.
+	 */
+	groupBy: z.enum(['source']).optional(),
+	/** Zero-based page for source groups. `take` is a target; a larger group stays whole. */
+	page: z.coerce.number().int().nonnegative().optional(),
+	/** Select the page of this visible source, for navigation from the connect dialog. */
+	focusSourceId: z.string().uuid().optional(),
+	/**
+	 * Comma-separated ids of the sources that the user folded: each is one row of the page in
+	 * place of its skills. Only with `groupBy: 'source'`.
+	 */
+	collapsedSourceIds: sourceIdList,
 }) {}
 
 export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;
@@ -207,8 +254,6 @@ export class SkillNewNameQueryDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),
-	/** Required for an agent skill, absent otherwise. */
-	agentId: z.string().max(36).optional(),
 	name: skillNameSchema,
 }) {}
 
@@ -221,11 +266,10 @@ export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),
-	/** Required for an agent skill, absent otherwise. */
-	agentId: z.string().max(36).optional(),
 	availableToAssistant: z.boolean().optional(),
 	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
+	availableToMCP: z.boolean().optional(),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),
 }) {}
@@ -243,10 +287,10 @@ export class SaveSkillDto extends Z.class({
 	baseSkillHash: z.string().min(1),
 	/**
 	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
-	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
-	 * `agent` is not a choice.
+	 * uses the skill cannot use it there.
 	 */
-	scope: z.enum(['project', 'instance']).optional(),
+	scope: skillScopeSchema.optional(),
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+	availableToMCP: z.boolean().optional(),
 }) {}

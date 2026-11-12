@@ -32,7 +32,7 @@ import type {
 	Thread,
 } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { ObservationCursor } from '../../types/sdk/observation';
+import type { ObservationCursor, ObservationResumeState } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -112,6 +112,8 @@ export class InMemoryMemory
 
 	private cursorsByScope = new Map<string, ObservationCursor>();
 
+	private resumeStateByScope = new Map<string, ObservationResumeState>();
+
 	private locksByScope = new Map<string, ObservationLogTaskLockHandle>();
 
 	private episodicMemory: EpisodicMemoryEntry[] = [];
@@ -188,6 +190,7 @@ export class InMemoryMemory
 		this.messagesByThread.delete(threadId);
 		this.observationLogByScope.delete(threadId);
 		this.cursorsByScope.delete(threadId);
+		this.resumeStateByScope.delete(threadId);
 		this.locksByScope.delete(threadId);
 		const affectedEntryIds = uniqueStrings(
 			this.episodicMemorySources
@@ -484,6 +487,18 @@ export class InMemoryMemory
 		this.cursorsByScope.set(cursor.observationScopeId, cloneCursor(cursor));
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		const state = this.resumeStateByScope.get(observationScopeId);
+		return state ? structuredClone(state) : null;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		if (!this.cursorsByScope.has(state.observationScopeId)) return;
+		this.resumeStateByScope.set(state.observationScopeId, structuredClone(state));
+	}
+
 	async acquireObservationLogTaskLock(
 		observationScopeId: string,
 		taskKind: ObservationLogTaskKind,
@@ -618,7 +633,7 @@ export class InMemoryMemory
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
-				...(entry.embedding ? { embedding: [...entry.embedding] } : {}),
+				...(entry.embedding ? { embedding: entry.embedding.slice() } : {}),
 				...(entry.embeddingModel ? { embeddingModel: entry.embeddingModel } : {}),
 				metadata: entry.metadata ?? null,
 				createdAt: entry.createdAt ?? now,
@@ -707,7 +722,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async findSimilarEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		embeddings: number[][],
+		embeddings: Array<ArrayLike<number>>,
 		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
 	): Promise<RetrievedEpisodicMemoryEntry[][]> {
 		const resourceId = episodicWriteScopeId(scope);
@@ -883,14 +898,14 @@ function refreshEpisodicMemoryEntry(
 	markLifecycleActive(entry);
 	entry.lastSeenAt = update.lastSeenAt ?? now;
 	entry.updatedAt = now;
-	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embedding !== undefined) entry.embedding = update.embedding.slice();
 	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {
 	return {
 		...entry,
-		...(entry.embedding ? { embedding: [...entry.embedding] } : {}),
+		...(entry.embedding ? { embedding: entry.embedding.slice() } : {}),
 		createdAt: new Date(entry.createdAt),
 		updatedAt: new Date(entry.updatedAt),
 		lastSeenAt: new Date(entry.lastSeenAt),

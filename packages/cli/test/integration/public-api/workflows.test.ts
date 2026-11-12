@@ -10,8 +10,8 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig, NodesConfig } from '@n8n/config';
-import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
+import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
+import type { Person, Project, TagEntity, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
 	ProjectRepository,
@@ -54,8 +54,8 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -120,7 +120,7 @@ beforeEach(async () => {
 
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -2271,6 +2271,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			nodes: [
@@ -2375,6 +2376,7 @@ describe('POST /workflows', () => {
 		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			settings: {
@@ -3654,6 +3656,24 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	describe('credential access on shared workflows', () => {
+		// The shared httpRequest stub declares no parameters, so the guard cannot see a
+		// parameter edit. Declare the URL for this block only.
+		beforeAll(async () => {
+			const defaultNodes = utils.buildDefaultNodes();
+			const customHttpRequestNode = utils.minimalNodeType('n8n-nodes-base.httpRequest', [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			]);
+
+			await utils.initNodeTypes({
+				...defaultNodes,
+				'n8n-nodes-base.httpRequest': customHttpRequestNode,
+			});
+		});
+
+		afterAll(async () => {
+			await utils.initNodeTypes();
+		});
+
 		const ownerCredentialPayload = {
 			name: 'Owner Header Auth',
 			type: 'httpHeaderAuth',
@@ -3786,7 +3806,7 @@ describe('PUT /workflows/:id', () => {
 			expect(httpNode?.credentials?.httpHeaderAuth?.name).toBe(ownerCredential.name);
 		});
 
-		test('should revert edits to a read-only credential node when a sharee updates the workflow', async () => {
+		test('should reject an edit to a node whose credential the sharee cannot use', async () => {
 			license.enable('feat:sharing');
 
 			const ownerCredential = await saveCredential(ownerCredentialPayload, {
@@ -3811,9 +3831,8 @@ describe('PUT /workflows/:id', () => {
 			const historyCountBeforeUpdate = await workflowHistoryRepository.count({
 				where: { workflowId: workflow.id },
 			});
+			const storedBeforeUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
 
-			// Sharee renames the workflow (allowed) and changes the
-			// owner-credential node URL (must be reverted).
 			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
 				name: 'renamed by sharee',
 				nodes: [
@@ -3828,21 +3847,17 @@ describe('PUT /workflows/:id', () => {
 				settings: {},
 			});
 
-			expect(response.statusCode).toBe(200);
-			const { name, nodes, versionId } = response.body as {
-				name: string;
-				nodes: INode[];
-				versionId: string;
-			};
-			// The sharee can still edit the workflow...
-			expect(name).toBe('renamed by sharee');
-			const httpNode = nodes.find((node) => node.id === 'http-node');
-			// ...but parameter edits to the read-only credential node are reverted
-			expect(httpNode?.parameters?.url).toBe(originalUrl);
-			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				"You don't have access to the credentials in the 'HTTP Request' node. Ask the owner to share them with you.",
+			);
 
-			// Reverted node edits should not create a new workflow version
-			expect(versionId).toBe(workflow.versionId);
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(storedAfterUpdate.name).toBe(storedBeforeUpdate.name);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(storedAfterUpdate.versionId).toBe(storedBeforeUpdate.versionId);
+			expect(storedAfterUpdate.updatedAt).toEqual(storedBeforeUpdate.updatedAt);
 			await expect(
 				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
 			).resolves.toBe(historyCountBeforeUpdate);

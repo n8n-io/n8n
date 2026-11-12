@@ -7,9 +7,8 @@ import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import {
@@ -101,6 +100,8 @@ export class AgentConfigService {
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 			writeSkills?: AgentSkillWriter;
+			/** A package import replaces the definition of an archived agent. */
+			allowArchivedUpdate?: boolean;
 		},
 	): Promise<ProjectAgent> {
 		await Container.get(AgentsSettingsService).assertEnabled();
@@ -145,7 +146,9 @@ export class AgentConfigService {
 		agent.tools = structuredClone(content.tools);
 		markAgentDraftDirty(agent);
 		const { skillRefs, tasksChanged } = await this.transactionRunner.run({}, async (ctx) => {
-			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata);
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata, {
+				allowArchivedUpdate: options.allowArchivedUpdate,
+			});
 			await options.writeSkills?.(ctx);
 			const skillRefs = await this.agentSkillRefs.replaceAllDraftRefs(
 				agent,

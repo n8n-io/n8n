@@ -200,7 +200,7 @@ export class SplunkV1 implements INodeType {
 						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
-						setCount.call(this, qs);
+						setCount.call(this, qs, i);
 
 						const endpoint = '/services/saved/searches';
 						responseData = await splunkApiRequest
@@ -280,7 +280,7 @@ export class SplunkV1 implements INodeType {
 						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
-						setCount.call(this, qs);
+						setCount.call(this, qs, i);
 
 						const endpoint = '/services/search/jobs';
 						responseData = (await splunkApiRequest.call(
@@ -319,7 +319,7 @@ export class SplunkV1 implements INodeType {
 						}
 
 						populate(options, qs);
-						setCount.call(this, qs);
+						setCount.call(this, qs, i);
 
 						const endpoint = `/services/search/jobs/${searchJobId}/results`;
 						responseData = await splunkApiRequest
@@ -389,7 +389,7 @@ export class SplunkV1 implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers
 
 						const qs = {} as IDataObject;
-						setCount.call(this, qs);
+						setCount.call(this, qs, i);
 
 						const endpoint = '/services/authentication/users';
 						responseData = await splunkApiRequest

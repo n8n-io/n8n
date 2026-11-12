@@ -8,12 +8,11 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import {
 	findIntroducedNameClashes,
 	findNameClashGroups,
@@ -37,7 +36,11 @@ import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
-import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import {
+	assertAgentNotArchived,
+	markAgentDraftDirty,
+	saveAgentDraftFenced,
+} from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	applySkillInstructionEdits,
@@ -149,7 +152,9 @@ export class AgentSkillsService {
 		// Skills ignore `allowedTools`, and get the trimmed name the skills module stores, so the
 		// answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => withTrimmedName(toStoredSkill(this.validateSkill(skill))));
-		await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
+		await this.skillAccess.assertCanCreate(context.user, {
+			projectId: availableTo === 'project' ? entity.projectId : null,
+		});
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
@@ -225,6 +230,8 @@ export class AgentSkillsService {
 			projectId,
 			'Agent not found',
 		);
+		// An unpinned skill update does not save the draft, so the draft fence does not see it.
+		assertAgentNotArchived(entity);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 		const ref = skillRefs.find((candidate) => candidate.id === skillId);
@@ -251,7 +258,9 @@ export class AgentSkillsService {
 		if (nextAvailability) {
 			await this.skillAccess.assertCanEdit(context.user, [skillId]);
 			const checkedSource = await this.skillAccess.assertCanMove(context.user, skillId);
-			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
+			await this.skillAccess.assertCanCreate(context.user, {
+				projectId: nextAvailability === 'project' ? entity.projectId : null,
+			});
 			// A refused move names only the agents the user may read.
 			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
 				'agent:read',
@@ -303,7 +312,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.saveTrusted(
+			const result = await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,
@@ -315,6 +324,10 @@ export class AgentSkillsService {
 				context.user.id,
 				ctx,
 			);
+			if (pinned) {
+				await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
+			}
+			return result;
 		});
 
 		await this.skillService.refreshFollowingAgents(
@@ -413,24 +426,6 @@ export class AgentSkillsService {
 			);
 		}
 		return result.data;
-	}
-
-	private async assertCanCreateSkills(
-		user: User,
-		projectId: string,
-		availableTo: AgentSkillAvailability,
-	): Promise<void> {
-		// A skill of one agent is part of that agent: the agent permission is enough.
-		if (availableTo === 'agent') return;
-		if (availableTo === 'instance') {
-			if (!(await this.skillAccess.canCreate(user, null))) {
-				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
-			}
-			return;
-		}
-		if (!(await this.skillAccess.canCreate(user, projectId))) {
-			throw new ForbiddenError('You are not allowed to create skills for this project.');
-		}
 	}
 
 	/** New names must be easy to tell apart from the agent's skills and from each other. */

@@ -3,9 +3,12 @@ import { z } from 'zod';
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 
 import {
-	getFixedWorkflowToolInputs,
 	inferInputSchema,
 	listWorkflowInputFields,
+} from '@/workflows/callable/callable-workflow-input';
+
+import {
+	getFixedWorkflowToolInputs,
 	mergeWorkflowToolInput,
 	buildWorkflowToolInputSchema,
 } from '../workflow-tool-factory';

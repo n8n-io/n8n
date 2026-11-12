@@ -5,8 +5,14 @@ export type Workflow = {
 	id: string;
 	name: string;
 	versionId: string;
+	isArchived?: boolean;
 	tags?: string[];
+	settings?: Record<string, unknown>;
 };
+
+export const WORKFLOW_ENGINE_TYPES = ['v1', 'v2'] as const;
+
+export type WorkflowEngineType = (typeof WORKFLOW_ENGINE_TYPES)[number];
 
 export type Credential = {
 	id: string;

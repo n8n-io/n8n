@@ -1,4 +1,5 @@
-import { Time } from '@n8n/constants';
+import { setN8nVersion } from '@n8n/backend-common';
+import { MISSING_SCOPE_ERROR_MESSAGE, Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
@@ -33,6 +34,7 @@ const workflowSdkPackageJson = jsonParse<n8n.PackageJson>(
 	readFileSync(workflowSdkPackageJsonPath, 'utf8'),
 );
 export const N8N_VERSION = n8nPackageJson.version;
+setN8nVersion(N8N_VERSION);
 export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
@@ -68,7 +70,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	USERS_QUOTA_REACHED: 'Maximum number of users reached',
 	OAUTH2_CREDENTIAL_TEST_SUCCEEDED: 'Connection Successful!',
 	OAUTH2_CREDENTIAL_TEST_FAILED: 'This OAuth2 credential was not connected to an account.',
-	MISSING_SCOPE: 'User is missing a scope required to perform this action',
+	MISSING_SCOPE: MISSING_SCOPE_ERROR_MESSAGE,
 } as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
@@ -111,6 +113,9 @@ export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 
 export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
+
+/** A reactivated trigger that stays up at least this long starts its retry backoff over. */
+export const WORKFLOW_REACTIVATE_STABLE_PERIOD = 60 * 1000; // 1 minute
 
 /** Max in-process attempts to activate a single trigger node before recording it as failed. */
 export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
@@ -200,12 +205,6 @@ export const TRIMMED_TASK_DATA_CONNECTIONS: ITaskDataConnections = {
 		],
 	],
 };
-
-/** Lowest priority, meaning shut down happens after other groups */
-export const LOWEST_SHUTDOWN_PRIORITY = 0;
-export const DEFAULT_SHUTDOWN_PRIORITY = 100;
-/** Highest priority, meaning shut down happens before all other groups */
-export const HIGHEST_SHUTDOWN_PRIORITY = 200;
 
 export const WsStatusCodes = {
 	CloseNormal: 1000,

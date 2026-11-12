@@ -3,17 +3,22 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import {
+	HIGHEST_SHUTDOWN_PRIORITY,
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnShutdown,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
@@ -144,7 +149,7 @@ export class ScalingService {
 		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
 			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		const { Publisher } = await import('@n8n/backend-services');
 
 		const publisher = Container.get(Publisher);
 
@@ -631,6 +636,7 @@ export class ScalingService {
 									lastNodeExecuted: msg.lastNodeExecuted,
 									usedDynamicCredentials: msg.usedDynamicCredentials,
 									metadata: msg.metadata,
+									...(msg.failedBeforeStart && { failedBeforeStart: true }),
 									startedAt: new Date(msg.startedAt),
 									stoppedAt: new Date(msg.stoppedAt),
 									// Dropping `waitTill` here makes main mistake a waiting execution

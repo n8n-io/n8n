@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { computed, useCssModule } from 'vue';
 import type { SkillVersionSummary } from '@n8n/api-types';
-import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, N8nSwitch, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 
-type VersionAction = 'open' | 'restore';
+// A click on the row opens a version, so the menu has no open item.
+type VersionAction = 'restore' | 'use';
 
 const props = defineProps<{
 	/** Newest first, so the first one is the latest. */
@@ -15,6 +17,11 @@ const props = defineProps<{
 	/** The version the editor shows. */
 	shownVersion?: number;
 	canRestore: boolean;
+	/**
+	 * Agent builder only: the agent the editor was opened from, and which versions its
+	 * draft and published agent run. Absent in Settings.
+	 */
+	agent?: { name: string; draft: number; published: number | null; pinned: boolean };
 }>();
 
 const emit = defineEmits<{
@@ -22,9 +29,14 @@ const emit = defineEmits<{
 	restore: [version: number];
 	/** Compare this version with the version the editor shows. */
 	compare: [version: number];
+	/** Agent builder: pin the agent draft to this version. */
+	use: [version: number];
+	/** Agent builder: let the agent draft follow the latest version. */
+	useLatest: [];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
 function savedBy(version: SkillVersionSummary): string {
 	const { date, time } = convertToDisplayDate(version.createdAt);
@@ -34,15 +46,24 @@ function savedBy(version: SkillVersionSummary): string {
 				preferenceUserName(version.createdBy) ||
 				i18n.baseText('agents.builder.skills.versions.unknownUser'),
 			date,
-			// The panel shows minutes, as the design does.
-			time: time.slice(0, 5),
+			time,
 		},
 	});
 }
 
-function actionsFor(index: number): Array<ActionDropdownItem<VersionAction>> {
+function actionsFor(index: number, version: number): Array<ActionDropdownItem<VersionAction>> {
 	return [
-		{ id: 'open', label: i18n.baseText('agents.builder.skills.versions.open'), icon: 'eye' },
+		...(props.agent && version !== props.agent.draft
+			? [
+					{
+						id: 'use' as const,
+						label: i18n.baseText('agents.builder.skills.versions.useIn', {
+							interpolate: { agent: props.agent.name },
+						}),
+						icon: 'node-pin' as const,
+					},
+				]
+			: []),
 		// The latest version needs no restore: it is what the editor shows.
 		...(props.canRestore && index > 0
 			? [
@@ -56,42 +77,84 @@ function actionsFor(index: number): Array<ActionDropdownItem<VersionAction>> {
 	];
 }
 
+/** The menu items of each row, computed once per render and not per template use. */
+const actionsByVersion = computed(
+	() => new Map(props.versions.map((v, index) => [v.version, actionsFor(index, v.version)])),
+);
+
 function onAction(version: number, action: VersionAction) {
-	if (action === 'open') emit('open', version);
+	if (action === 'use') emit('use', version);
 	else emit('restore', version);
+}
+
+function isShown(version: SkillVersionSummary) {
+	return version.version === props.shownVersion;
+}
+
+/** The dot of a row: the draft and the published agent in the builder, the latest in Settings. */
+function dotClass(version: number, index: number) {
+	if (!props.agent) return index === 0 && $style.latestDot;
+	return [
+		version === props.agent.draft && $style.draftDot,
+		version === props.agent.published && $style.publishedDot,
+	];
 }
 </script>
 
 <template>
 	<aside :class="$style.panel" data-testid="skill-version-timeline">
-		<N8nText tag="h3" size="small" bold :class="$style.title">
-			{{ i18n.baseText('agents.builder.skills.versions.title') }}
-		</N8nText>
+		<div :class="$style.header">
+			<N8nText tag="h3" size="medium" bold :class="$style.title">
+				{{ i18n.baseText('agents.builder.skills.versions.title') }}
+			</N8nText>
+			<N8nSwitch
+				v-if="props.agent"
+				:model-value="!props.agent.pinned"
+				:label="i18n.baseText('agents.builder.skills.versions.useLatest')"
+				data-testid="skill-version-use-latest"
+				@update:model-value="$event ? emit('useLatest') : emit('use', props.agent.draft)"
+			/>
+		</div>
 		<ol :class="$style.list">
 			<li
 				v-for="(version, index) in props.versions"
 				:key="version.id"
-				:class="[$style.row, version.version === props.shownVersion && $style.shown]"
+				:class="[$style.row, isShown(version) && $style.shown]"
 				:data-testid="`skill-version-row-${version.version}`"
 				@click="emit('open', version.version)"
 			>
-				<span :class="[$style.dot, index === 0 && $style.latestDot]" aria-hidden="true" />
+				<span :class="[$style.dot, dotClass(version.version, index)]" aria-hidden="true" />
 				<div :class="$style.text">
-					<N8nText size="small" color="text-dark">
-						{{
-							i18n.baseText('agents.builder.skills.versions.number', {
-								interpolate: { version: version.version },
-							})
-						}}
+					<span :class="$style.versionLine">
+						<N8nText size="small" color="text-dark" bold>
+							{{
+								i18n.baseText('agents.builder.skills.versions.number', {
+									interpolate: { version: version.version },
+								})
+							}}
+						</N8nText>
 						<N8nText v-if="index === 0" size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.skills.versions.latest') }}
 						</N8nText>
-					</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>
+						<N8nText
+							v-if="props.agent && version.version === props.agent.published"
+							size="small"
+							color="text-light"
+							data-testid="skill-version-published"
+						>
+							{{ i18n.baseText('agents.builder.skills.versions.inPublishedAgent') }}
+						</N8nText>
+					</span>
+					<N8nText size="small" color="text-light">{{ savedBy(version) }}</N8nText>
 				</div>
 				<span :class="$style.actions" @click.stop>
+					<!-- The shown version cannot compare with itself. The button keeps its place, so the
+					     row does not change size when the user opens another version. -->
 					<N8nIconButton
-						v-if="version.version !== props.shownVersion"
+						:class="isShown(version) && $style.placeholder"
+						:disabled="isShown(version)"
+						:aria-hidden="isShown(version) || undefined"
+						:tabindex="isShown(version) ? -1 : undefined"
 						variant="ghost"
 						size="small"
 						icon="file-diff"
@@ -103,8 +166,21 @@ function onAction(version: number, action: VersionAction) {
 						:data-testid="`skill-version-compare-${version.version}`"
 						@click="emit('compare', version.version)"
 					/>
+					<!-- A version with no actions keeps an empty slot, so the compare buttons stay in line. -->
+					<N8nIconButton
+						v-if="!actionsByVersion.get(version.version)?.length"
+						:class="$style.placeholder"
+						variant="ghost"
+						size="small"
+						icon="ellipsis"
+						disabled
+						aria-hidden="true"
+						tabindex="-1"
+						:data-testid="`skill-version-actions-${version.version}`"
+					/>
 					<N8nActionDropdown
-						:items="actionsFor(index)"
+						v-else
+						:items="actionsByVersion.get(version.version) ?? []"
 						activator-icon="ellipsis"
 						activator-size="small"
 						placement="bottom-end"
@@ -125,13 +201,21 @@ function onAction(version: number, action: VersionAction) {
 	padding: var(--spacing--md) var(--spacing--sm) var(--spacing--md) var(--spacing--md);
 }
 
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
 .title {
 	margin: 0;
 }
 
 .list {
+	--skill-version-timeline--gap: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
+	gap: var(--skill-version-timeline--gap);
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -157,7 +241,8 @@ function onAction(version: number, action: VersionAction) {
 		position: absolute;
 		left: calc(var(--spacing--xs) + var(--spacing--5xs) - 0.5px);
 		top: calc(50% + var(--spacing--2xs));
-		height: calc(100% - var(--spacing--xs));
+		/* Down to the dot of the next row, across the gap between the rows. */
+		height: calc(100% - var(--spacing--xs) + var(--skill-version-timeline--gap));
 		border-left: var(--border);
 	}
 }
@@ -171,9 +256,31 @@ function onAction(version: number, action: VersionAction) {
 	background-color: var(--color--background--light-3);
 }
 
+.draftDot {
+	border-color: var(--color--warning);
+	background-color: var(--color--warning);
+}
+
 .latestDot {
 	border-color: var(--color--success);
 	background-color: var(--color--success);
+}
+
+.publishedDot {
+	border-color: var(--color--teal);
+	background-color: var(--color--teal);
+}
+
+/* The draft and the published agent run the same version: an amber dot with a teal ring. */
+.draftDot.publishedDot {
+	border-color: var(--color--teal);
+	background-color: var(--color--warning);
+}
+
+.versionLine {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
 }
 
 .text {
@@ -186,5 +293,9 @@ function onAction(version: number, action: VersionAction) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
+}
+
+.placeholder {
+	visibility: hidden;
 }
 </style>

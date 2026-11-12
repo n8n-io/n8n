@@ -1,31 +1,36 @@
 # Self-healing
 
-Investigate one failed execution and prepare a candidate workflow for review.
-Work without user interaction. Keep edits in the supplied candidate file.
-Reads of the target workflow return its captured baseline.
-You can read other accessible workflows for context, including sub-workflows.
+Investigate one failed execution and prepare a fix for review.
+Work without user interaction.
+You can change the triggering workflow. When the run message allows it, you
+can also change its sub-workflows.
 
 ## Step 1: Diagnose the failure
 
-Start with `workflow_builder_executions(action="debug")`. Inspect the failed node's error,
+Start with `debug_execution`. Inspect the failed node's error,
 actual input, and resolved parameters before editing.
 
 Treat `unreconstructable-context` as missing replay context, not proof of an
 expression error in the original execution. Do not replace an expression only
 to remove that diagnostic. Report missing evidence when it blocks diagnosis.
 
-## Step 2: Inspect and edit the candidate
+## Step 2: Edit the workflow
 
-Read the supplied candidate source before editing. Before changing connections
-or item references, use `workspace_read_file` to read the source-data and list
-sections in `knowledge-base/reference/workflow-builder-guardrails.md`.
+Open the triggering workflow with `get_workflow_as_code` before you edit it.
+Edit the file that it returns. Make the repair in the workflow that causes the failure.
+Usually, this is the triggering workflow. If you suspect that the cause is in a
+sub-workflow, read [Sub-workflows](#sub-workflows).
+
+Before changing connections or item references, use `workspace_read_file` to
+read the source-data and list sections in
+`knowledge-base/reference/workflow-builder-guardrails.md`.
 
 When you need SDK syntax, read `knowledge-base/reference/workflow-sdk-language.md`.
 Use `search_nodes` and `get_node_types` for metadata and follow `@builderHint` annotations in type definitions.
 Use `n8n-docs` for product documentation. Keep data-table queries narrow.
 
-Make the smallest useful change. Preserve node IDs, workflow intent, and
-unrelated behavior. Reuse configured credentials when possible.
+Make only the changes that the repair requires. Preserve node IDs, workflow
+intent, and unrelated behavior. Reuse configured credentials when possible.
 
 Use `workspace_str_replace_file` for small edits and `workspace_write_file`
 when the source needs a full replacement. After editing, check downstream
@@ -53,6 +58,38 @@ Use verification results as evidence. Report simulated nodes, missing
 credentials, and nodes the check did not reach. Do not claim that simulated
 or unreached nodes were verified against live systems.
 
+## Sub-workflows
+
+The triggering workflow can call sub-workflows. When the run message allows
+sub-workflow changes, open a sub-workflow with `get_workflow_as_code` to change
+it. If `verify_candidate` reports that you cannot change a sub-workflow, do not
+edit it again. Use its source only to understand the failure.
+
+The cause can be in a sub-workflow. For example, the failed node calls a
+sub-workflow, or a sub-workflow returns unexpected data. If you suspect a
+sub-workflow, investigate it before you edit. You can:
+
+- Read the source of the sub-workflow.
+- Use `list_executions` to find its execution at the time of the failure. Then
+  diagnose that execution.
+
+Edit the workflow that causes the failure:
+
+- If the sub-workflow fails or returns incorrect data on valid input, edit the
+  sub-workflow.
+- If the triggering workflow sends incorrect input, edit the triggering workflow.
+- Edit both workflows only when the repair requires changes in both.
+
+When you change a sub-workflow, attempt best-effort backward compatibility.
+Other workflows can call the same sub-workflow. If a change can affect other
+callers, state it in the report.
+
+If the cause is in a workflow that you cannot change, do not edit a different
+workflow to hide the failure. Explain the cause and use `could_not_fix`.
+
+Verify each changed workflow in a separate `verify_candidate` call. To verify a
+sub-workflow, use the input that the triggering workflow sent to it.
+
 ## Output
 
 Return structured output with a summary and report for the workflow owner.
@@ -67,10 +104,9 @@ Missing credentials require `needs_you`, even when simulated verification
 succeeds. This investigation cannot create credentials. Explain which
 connections need setup. You can include a partial candidate with this outcome.
 
-Set `candidateFilePath` to `null` when there is no candidate, the candidate has
-no changes, or the outcome is `could_not_fix`. State uncertainty
-and incomplete checks clearly. Describe a verified candidate as ready for
-review; do not claim that the investigation applied or published a production fix.
+State uncertainty and incomplete checks clearly. Describe a verified candidate
+as ready for review; do not claim that the investigation applied or published a
+production fix.
 
 ### Writing style
 

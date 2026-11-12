@@ -15,7 +15,7 @@
 		},
 		{
 			"name": "DataTable",
-			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+			"path": "packages/modules/data-table/backend/src/data-table.entity.ts"
 		}
 	],
 	"notTransferred": [
@@ -100,6 +100,11 @@
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."
 		},
 		{
+			"name": "SkillSourceConnection",
+			"path": "packages/cli/src/modules/skills/database/entities/skill-source-connection.entity.ts",
+			"reason": "A skill source has the scope of its synced skills, which are not transferred either (see Skill); both are dropped via FK cascade, with the source links. Global sources carry no projectId."
+		},
+		{
 			"name": "AiPreference",
 			"path": "packages/@n8n/db/src/entities/ai-preference.ts",
 			"reason": "Project-scoped AI preferences describe how to work inside the deleted project; dropped via FK cascade, like Variables. Personal and global preferences carry no projectId."
@@ -107,12 +112,12 @@
 		{
 			"name": "WorkflowSuggestion",
 			"path": "packages/cli/src/modules/instance-ai/workflow-suggestions/database/workflow-suggestion.entity.ts",
-			"reason": "Keeps the original project and baseline. A workflow transfer makes the proposal ineligible. Deleted with its activity via FK cascade when the original project, workflow, or background user is deleted."
+			"reason": "Keeps the original project and baseline. A workflow transfer makes the proposal ineligible. Deleted with its activity via FK cascade when its self-healing result, the original project, workflow, or background user is deleted."
 		},
 		{
 			"name": "SelfHealingResult",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts",
-			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the configuration, original project, workflow, background user, or linked suggestion is deleted. Configuration removal explicitly deletes linked suggestions."
+			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade, with its suggestions, when the configuration, original project, workflow, or background user is deleted."
 		},
 		{
 			"name": "SelfHealingInvestigation",
@@ -128,6 +133,11 @@
 			"name": "SelfHealingConfigurationWorkflow",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration-workflow.entity.ts",
 			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
+		},
+		{
+			"name": "ExecutionLedgerEntity",
+			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
+			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
 		}
 	]
 }

@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService, type OAuthDiscoveryClient, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	type OAuthDiscoveryClient,
+	UrlService,
+} from '@n8n/backend-services';
 import { Container } from '@n8n/di';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import {
 	AuthenticationPipeline,
 	JwkSchema,
@@ -23,7 +28,7 @@ import { McpServerApiKeyService } from '@/modules/mcp/mcp-api-key.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
@@ -46,7 +51,7 @@ const MCP_ISSUER = 'https://idp-a.example';
 const PUBLIC_API_ISSUER = 'https://idp-b.example';
 const CLIENT_ID = 'external-client';
 
-let member: User;
+let member: Person;
 let mcpResource: string;
 let metadataUrl: string;
 let privateKey: CryptoKey;
@@ -147,7 +152,8 @@ beforeAll(async () => {
 	apiKey = (await Container.get(McpServerApiKeyService).createMcpServerApiKey(member)).apiKey;
 	await Container.get(McpSettingsService).setEnabled(true);
 	// The token rows of the local server need a registered client.
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: CLIENT_ID,
 		name: 'MCP pipeline tests',
 		redirectUris: ['https://example.com/callback'],
@@ -167,6 +173,7 @@ beforeAll(async () => {
 		Container.get(TrustedSourceDbStore),
 		offline,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	).refresh('n8n-internal');
 
 	const pair = await generateKeyPair('ES256');

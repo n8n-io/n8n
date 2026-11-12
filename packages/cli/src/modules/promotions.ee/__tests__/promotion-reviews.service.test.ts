@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { TransactionRunner, User } from '@n8n/db';
+import { Person, type TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ServiceUnavailableError } from '@n8n/errors';
@@ -33,7 +33,7 @@ describe('PromotionReviewsService', () => {
 		eventService,
 	);
 
-	const actor = mock<User>({
+	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
 		lastName: 'Lovelace',
@@ -121,7 +121,7 @@ describe('PromotionReviewsService', () => {
 	});
 
 	it('writes the description from the commit message and the promoter', async () => {
-		const unnamed = mock<User>({
+		const unnamed = Object.assign(new Person(), {
 			id: 'actor',
 			firstName: undefined,
 			lastName: undefined,

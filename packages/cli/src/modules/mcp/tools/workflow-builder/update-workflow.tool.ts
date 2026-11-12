@@ -9,14 +9,13 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, type IWorkflowSettings, type INodeTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
-import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -67,6 +66,10 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	workflowMigrationFindingsSchema,
+	type ReadWorkflowMigrationFindings,
+} from '../migration-report/migration-report.utils';
 import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -360,6 +363,7 @@ const outputSchema = {
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
 	note: z.string().optional(),
+	migrationFindings: workflowMigrationFindingsSchema.optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -755,7 +759,7 @@ function assertOperationsSupported(
  */
 function resolveNodeGroupViolations(
 	result: ApplyOperationsSuccess,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): {
 	skippedOperations: SkippedOperation[];
 	removedGroups: Array<{ groupName: string; reason: string }>;
@@ -916,7 +920,7 @@ async function autoAssignCredentialsForAddedNodes(
 		aiGatewayService,
 	}: {
 		user: User;
-		nodeTypes: NodeTypes;
+		nodeTypes: INodeTypes;
 		credentialsService: CredentialsService;
 		aiGatewayService: AiGatewayService;
 	},
@@ -956,7 +960,7 @@ async function autoAssignCredentialsForAddedNodes(
 async function collectValidationWarnings(
 	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
@@ -1052,7 +1056,7 @@ export const createUpdateWorkflowTool = (
 	workflowService: WorkflowService,
 	urlService: UrlService,
 	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
@@ -1070,6 +1074,11 @@ export const createUpdateWorkflowTool = (
 		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 		/** Whether this session can call the install tool; steers the warning text. */
 		installToolAvailable?: boolean;
+		/**
+		 * Reads the migration report findings of the saved workflow, so a fix needs no
+		 * extra check. Supplied only when the caller can read the migration report.
+		 */
+		readMigrationFindings?: ReadWorkflowMigrationFindings;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1374,6 +1383,9 @@ export const createUpdateWorkflowTool = (
 						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
 						: undefined,
 				};
+
+				const migrationFindings = await options.readMigrationFindings?.(updatedWorkflow.id);
+				if (migrationFindings) output.migrationFindings = migrationFindings;
 
 				try {
 					if (autoAssignOutcomes.length > 0) {

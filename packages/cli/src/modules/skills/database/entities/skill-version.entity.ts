@@ -46,4 +46,8 @@ export class SkillVersion extends WithTimestamps {
 
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
+
+	/** Source revision that Skill Sync made this version from, such as a commit SHA. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	sourceRevision: string | null;
 }

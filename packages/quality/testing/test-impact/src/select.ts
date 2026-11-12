@@ -13,6 +13,7 @@
 import * as fs from 'node:fs';
 
 import {
+	changedRuntimeDeps,
 	changedRuntimeDepsFromManifests,
 	classifyManifestChange,
 	configForcesBroad,
@@ -31,6 +32,7 @@ import {
 	type ResolveResult,
 	decodeImpactMap,
 } from './impact-map.js';
+import type { LineScope } from './line-scope.js';
 import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
 import { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 import { selectImpactedTests } from './select/pipeline.js';
@@ -60,10 +62,18 @@ export interface SelectTestsInput {
 	 *  walked to its declaring packages and scoped via the map instead
 	 *  of forcing broad. */
 	lockfileImporters?: WorkspaceImporters;
+	/** Workspace package dirs whose resolved runtime dependencies changed in
+	 *  pnpm-lock.yaml. With it, a changed runtime dep scopes only the packages
+	 *  whose manifest changed it and these dirs, not every package that declares
+	 *  the dep. Null or omitted → unknown: every declaring package is scoped. */
+	lockfileImpactedDirs?: string[] | null;
 	/** Package names reachable from the deployed packages' runtime deps (see
 	 *  `runtimeClosure` in dep-graph). Classifies `pnpm.overrides` changes;
 	 *  omitted → an override change stays broad. */
 	runtimeClosure?: ReadonlySet<string>;
+	/** Line-level scopes by changed file, in the map commit's lines. A file
+	 *  without a scope resolves at file level. */
+	lineScopes?: Record<string, LineScope>;
 }
 
 export interface SelectTestsResult extends ResolveResult {
@@ -76,6 +86,29 @@ function parseSpecList(raw: string): string[] {
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+/**
+ * The package dirs that a runtime-dependency change can reach: the dirs whose
+ * manifest changed a runtime dependency, plus the dirs whose resolved runtime
+ * dependencies changed in the lockfile. Another package that declares the same
+ * dependency keeps its resolved version, so its code runs as before.
+ *
+ * Returns undefined (scope every declaring package) when the lockfile signal is
+ * unknown, or when the root's resolved runtime dependencies changed: any
+ * package can load them. `selectTests` runs every spec when the root manifest
+ * changed a runtime dependency.
+ */
+export function runtimeDepScopeDirs(
+	manifests: FileDiffs | undefined,
+	lockfileImpactedDirs: string[] | null | undefined,
+): string[] | undefined {
+	if (!manifests || !lockfileImpactedDirs) return undefined;
+	if (lockfileImpactedDirs.includes('.')) return undefined;
+	const manifestDirs = Object.entries(manifests)
+		.filter(([, { before, after }]) => changedRuntimeDeps(before, after).length > 0)
+		.map(([file]) => file.replace(/\/?package\.json$/, '') || '.');
+	return [...new Set([...manifestDirs, ...lockfileImpactedDirs])].sort();
 }
 
 function loadMap(mapFile: string | undefined): { map: ImpactMap; failOpen?: string } {
@@ -160,6 +193,13 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const strategies: SelectionStrategy[] = [];
 	if (input.lockfileImporters && input.manifests) {
 		const runtimeDeps = changedRuntimeDepsFromManifests(input.manifests);
+		// Any package can load the root's runtime dependencies, and a removed one
+		// is no longer listed for the root in the lockfile, so the walk cannot
+		// scope it.
+		const rootManifest = input.manifests['package.json'];
+		if (rootManifest && changedRuntimeDeps(rootManifest.before, rootManifest.after).length > 0) {
+			return broad(['package.json']);
+		}
 		if (runtimeDeps.length > 0) {
 			// Stripping the lockfile is intentional: the dep-graph scopes each changed
 			// declared dep to its importers, which covers that dep's transitive subtree
@@ -170,7 +210,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 			// manifest) never reaches here and stays broad.
 			impactful = stripDependencyFiles(impactful);
 			strategies.push(
-				new DependencyGraphStrategy(map, input.lockfileImporters, runtimeDeps, { allSpecs }),
+				new DependencyGraphStrategy(map, input.lockfileImporters, runtimeDeps, {
+					allSpecs,
+					scopeDirs: runtimeDepScopeDirs(input.manifests, input.lockfileImpactedDirs),
+				}),
 			);
 		}
 	}
@@ -197,7 +240,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	strategies.unshift(new CoverageMapStrategy(map, { allSpecs, onUncovered: 'declare' }));
 
 	return selectImpactedTests(
-		impactful.map((file) => ({ file })),
+		impactful.map((file) => {
+			const scope = input.lineScopes?.[file];
+			return scope ? { file, scope } : { file };
+		}),
 		strategies,
 	);
 }

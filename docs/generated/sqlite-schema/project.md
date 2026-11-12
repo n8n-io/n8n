@@ -20,7 +20,7 @@ CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(25
 | customTelemetryTags | TEXT | '[]' | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [app](app.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_environment_project](promotion_environment_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [app](app.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_environment_project](promotion_environment_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_configuration](self_healing_configuration.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [skill_source](skill_source.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -67,6 +67,7 @@ erDiagram
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_source" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "type_availability_policy_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "variables" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -117,6 +118,7 @@ erDiagram
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
+  VARCHAR_64_ contentHash
   datetime_3_ createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName
@@ -157,6 +159,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
   INTEGER publicationRevision
@@ -258,6 +261,7 @@ erDiagram
   varchar enabledById FK
   INTEGER id
   BOOLEAN includeAllProjectMembers
+  BOOLEAN includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
@@ -287,14 +291,12 @@ erDiagram
   datetime_3_ completedAt
   INTEGER configurationId FK
   datetime_3_ createdAt
-  datetime_3_ dismissedAt
-  varchar dismissedById FK
   varchar_36_ executionId
   varchar_36_ id PK
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage
@@ -315,7 +317,6 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   datetime_3_ createdAt
@@ -323,6 +324,21 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ projectId FK
   varchar_16_ source
+  datetime_3_ updatedAt
+}
+"skill_source" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ credentialId FK
+  varchar id PK
+  varchar_255_ identityKey
+  datetime_3_ lastCheckedAt
+  varchar_32_ lastErrorReason
+  TEXT locator
+  TEXT probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
   datetime_3_ updatedAt
 }
 "type_availability_policy_scope" {
@@ -370,6 +386,7 @@ erDiagram
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

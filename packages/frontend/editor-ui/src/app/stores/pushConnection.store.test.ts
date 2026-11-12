@@ -1,8 +1,9 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, test, expect, vi } from 'vitest';
 import { usePushConnectionStore } from './pushConnection.store';
+import { useBackendConnectionStore } from './backendConnection.store';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 type WebSocketClient = ReturnType<typeof useWebSocketClient>;
 
@@ -197,6 +198,65 @@ describe('usePushConnectionStore', () => {
 
 			mockWebSocketClient.isConnected.value = false;
 			expect(store.isConnected).toBe(false);
+		});
+	});
+
+	describe('backend connection recovery', () => {
+		const setBackendOnline = async (isOnline: boolean) => {
+			useBackendConnectionStore().setOnline(isOnline);
+			await nextTick();
+		};
+
+		test('should not reconnect when the backend comes back online without a requested connection', async () => {
+			const { mockWebSocketClient } = createTestInitialState({ isConnected: true });
+
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(0);
+		});
+
+		test('should not reconnect when the backend goes offline', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState({ isConnected: true });
+
+			store.pushConnect();
+			await setBackendOnline(false);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not reconnect when the push client already lost the connection', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+		});
+
+		test('should reconnect the push client when the backend comes back online', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			mockWebSocketClient.isConnected.value = true;
+			await nextTick();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(2);
+		});
+
+		test('should mark the push connection as connecting when it reconnects after the backend comes back online', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			mockWebSocketClient.isConnected.value = true;
+			await nextTick();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(store.isConnecting).toBe(true);
 		});
 	});
 

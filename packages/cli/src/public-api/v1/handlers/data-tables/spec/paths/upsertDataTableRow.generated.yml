@@ -2,7 +2,10 @@ operationId: upsertDataTableRow
 tags:
   - DataTable
 summary: Upsert a row in a data table
-description: Update an existing row, or insert a new one if no row matches the filter conditions.
+description: |-
+  Update an existing row, or insert a new one if no row matches the filter conditions.
+
+  Requires the `dataTableRow:upsert` API key scope.
 x-required-scope: dataTableRow:upsert
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -181,3 +184,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

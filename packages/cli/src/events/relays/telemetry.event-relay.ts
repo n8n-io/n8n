@@ -1,6 +1,6 @@
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -26,9 +26,11 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
+	isExecutionOutputRedacted,
 	TelemetryHelpers,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
@@ -58,7 +60,6 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
@@ -66,6 +67,7 @@ import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime'
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -193,14 +195,19 @@ function getExecutionTelemetryProperties(
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
 	const executionSource = source ?? 'user';
+	const { mockDataSources, personalCredentialsCount } = telemetryMetadata ?? {};
+	const personalCredentials = personalCredentialsCount
+		? { personal_credentials_count: personalCredentialsCount }
+		: {};
 
-	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
-
-	const { mockDataSources } = telemetryMetadata ?? {};
+	if (executionSource !== 'instance_ai') {
+		return { execution_source: executionSource, ...personalCredentials };
+	}
 
 	return {
 		execution_source: executionSource,
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+		...personalCredentials,
 	};
 }
 
@@ -235,6 +242,12 @@ export class TelemetryEventRelay extends EventRelay {
 		await this.telemetry.init();
 
 		this.setupListeners({
+			'data-table-storage-limit-reached': ({ totalBytes, maxBytes }) => {
+				this.telemetry.track('User hit data table storage limit', {
+					total_bytes: totalBytes,
+					max_bytes: maxBytes,
+				});
+			},
 			'team-project-updated': (event) => this.teamProjectUpdated(event),
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
@@ -284,6 +297,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-probed': (event) => this.credentialsProbed(event),
+			'oauth-client-registered': (event) => this.oauthClientRegistered(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -337,6 +351,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
+			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -373,7 +388,22 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
-			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'memory-guard-execution-stopped': async (event) =>
+				await this.memoryGuardExecutionStopped(event),
+			'trusted-source-created': (event) => this.trustedSourceCreated(event),
+			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
+			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
+			'trusted-source-first-authenticated': (event) => this.trustedSourceFirstAuthenticated(event),
+			'app-created': (event) => this.appCreated(event),
+			'app-visibility-changed': (event) => this.appVisibilityChanged(event),
+			'app-deleted': (event) => this.appDeleted(event),
+			'app-published': (event) => this.appPublished(event),
+			'app-unpublished': (event) => this.appUnpublished(event),
+			'app-build-finished': (event) => this.appBuildFinished(event),
+			'app-opened': (event) => this.appOpened(event),
+			'app-interacted': (event) => this.appInteracted(event),
+			'app-bindings-changed': (event) => this.appBindingsChanged(event),
 		});
 	}
 
@@ -565,6 +595,197 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_pushed: variablesPushed,
 			public_api: publicApi,
 		});
+	}
+
+	// #endregion
+
+	// #region Apps
+
+	private appCreated({
+		userId,
+		threadId,
+		appId,
+		projectId,
+		visibility,
+	}: RelayEventMap['app-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CREATED_APP, {
+			app_id: appId,
+			project_id: projectId,
+			user_id: userId,
+			thread_id: threadId,
+			visibility,
+		});
+	}
+
+	private appVisibilityChanged({
+		userId,
+		appId,
+		from,
+		to,
+	}: RelayEventMap['app-visibility-changed']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY, {
+			app_id: appId,
+			user_id: userId,
+			from,
+			to,
+		});
+	}
+
+	private appDeleted({ userId, appId, wasPublished }: RelayEventMap['app-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_DELETED_APP, {
+			app_id: appId,
+			user_id: userId,
+			was_published: wasPublished,
+		});
+	}
+
+	private appPublished({
+		userId,
+		appId,
+		versionId,
+		visibility,
+		isFirstPublish,
+	}: RelayEventMap['app-published']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			access_level: visibility,
+			is_first_publish: isFirstPublish,
+		});
+	}
+
+	private appUnpublished({ userId, appId }: RelayEventMap['app-unpublished']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_UNPUBLISHED_APP, {
+			app_id: appId,
+			user_id: userId,
+		});
+	}
+
+	private appBuildFinished({
+		userId,
+		threadId,
+		appId,
+		versionId,
+		changeSource,
+		status,
+		attempts,
+		durationMs,
+	}: RelayEventMap['app-build-finished']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.APP_BUILD_FINISHED, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			thread_id: threadId,
+			change_source: changeSource,
+			status,
+			attempts,
+			duration_ms: durationMs,
+		});
+	}
+
+	private appOpened({ userId, appId, versionId, isPreview }: RelayEventMap['app-opened']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			interaction_type: 'app_opened',
+			is_preview: isPreview,
+		});
+	}
+
+	private appBindingsChanged({
+		appId,
+		projectId,
+		versionId,
+		userId,
+		workflowCount,
+		dataTableCount,
+		agentCount,
+		addedCount,
+		removedCount,
+	}: RelayEventMap['app-bindings-changed']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CHANGED_APP_BINDINGS, {
+			app_id: appId,
+			project_id: projectId,
+			version_id: versionId,
+			user_id: userId,
+			workflow_count: workflowCount,
+			data_table_count: dataTableCount,
+			agent_count: agentCount,
+			added_count: addedCount,
+			removed_count: removedCount,
+		});
+	}
+
+	private appInteracted({
+		userId,
+		appId,
+		versionId,
+		interactionType,
+		isPreview,
+	}: RelayEventMap['app-interacted']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			interaction_type: interactionType,
+			is_preview: isPreview,
+		});
+	}
+
+	// #endregion
+
+	// #region Trusted sources
+
+	private trustedSourceCreated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceUpdated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceDeleted({ sourceId, user }: RelayEventMap['trusted-source-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE, {
+			source_id: sourceId,
+			user_id: user.id,
+		});
+	}
+
+	private trustedSourceHealthy({ sourceId }: RelayEventMap['trusted-source-healthy']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY, {
+			source_id: sourceId,
+		});
+	}
+
+	private trustedSourceFirstAuthenticated({
+		sourceId,
+		surface,
+	}: RelayEventMap['trusted-source-first-authenticated']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+			{
+				source_id: sourceId,
+				surface,
+			},
+		);
 	}
 
 	// #endregion
@@ -872,6 +1093,7 @@ export class TelemetryEventRelay extends EventRelay {
 		method,
 		apiVersion,
 		userAgent,
+		client,
 	}: RelayEventMap['public-api-invoked']) {
 		this.telemetry.trackApiInvocation({
 			user_id: userId,
@@ -879,6 +1101,7 @@ export class TelemetryEventRelay extends EventRelay {
 			method,
 			api_version: apiVersion,
 			user_agent: userAgent,
+			client,
 		});
 	}
 
@@ -994,6 +1217,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && {
@@ -1016,6 +1240,7 @@ export class TelemetryEventRelay extends EventRelay {
 			jwe_enabled: jweEnabled ?? false,
 			credential_supports_managed_auth: supportsManagedAuth ?? false,
 			credential_uses_managed_auth: usesManagedAuth ?? false,
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1039,6 +1264,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private credentialsUpdated({
+		descriptionOnly,
 		user,
 		credentialId,
 		credentialType,
@@ -1048,6 +1274,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && { source: 'backend' }),
@@ -1060,10 +1287,17 @@ export class TelemetryEventRelay extends EventRelay {
 				description_length: credentialDescriptionLength,
 			}),
 			is_private: isDynamic ?? false,
-			uses_external_secrets: usesExternalSecrets ?? false,
-			jwe_enabled: jweEnabled ?? false,
-			credential_supports_managed_auth: supportsManagedAuth ?? false,
-			credential_uses_managed_auth: usesManagedAuth ?? false,
+			...(!descriptionOnly || usesExternalSecrets !== undefined
+				? { uses_external_secrets: usesExternalSecrets ?? false }
+				: {}),
+			...(!descriptionOnly || jweEnabled !== undefined ? { jwe_enabled: jweEnabled ?? false } : {}),
+			...(!descriptionOnly || supportsManagedAuth !== undefined
+				? { credential_supports_managed_auth: supportsManagedAuth ?? false }
+				: {}),
+			...(!descriptionOnly || usesManagedAuth !== undefined
+				? { credential_uses_managed_auth: usesManagedAuth ?? false }
+				: {}),
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1098,6 +1332,19 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			credential_id: credentialId,
 			outcome,
+		});
+	}
+
+	private oauthClientRegistered(event: RelayEventMap['oauth-client-registered']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT, {
+			user_id: event.userId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			method: event.method,
+			success: event.success,
+			cimd_enabled: event.cimdEnabled,
+			server_supports_cimd: event.serverSupportsCimd,
+			server_supports_dcr: event.serverSupportsDcr,
 		});
 	}
 
@@ -1491,7 +1738,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
-		includeArchivedWorkflows,
+		includeArchived,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1503,7 +1750,8 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
-			include_archived_workflows: includeArchivedWorkflows,
+			// The property keeps its first name. It now also covers archived agents.
+			include_archived_workflows: includeArchived,
 		});
 	}
 
@@ -1710,7 +1958,14 @@ export class TelemetryEventRelay extends EventRelay {
 					this.telemetry.track('User ran out of free AI credits');
 				}
 
-				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				// Under an active redaction policy the message can carry node output.
+				telemetryProperties.error_message = isExecutionOutputRedacted(
+					runData.data,
+					workflow.settings,
+					runData.mode,
+				)
+					? ERROR_MESSAGE_REDACTED_MESSAGE
+					: runData.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error
 						? runData?.data.resultData.error.node?.name
@@ -2049,6 +2304,23 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	/**
+	 * Owner of the workflow's personal project, or the instance owner for a team project.
+	 * `undefined` when a lookup fails, so the event still goes out, without a user.
+	 */
+	private async getWorkflowOwnerId(workflowId: string) {
+		try {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+			if (project.type === 'personal') {
+				const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+				return owner?.id;
+			}
+			return await this.getInstanceOwnerId();
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
 	private async getInstanceOwnerId() {
 		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
@@ -2142,8 +2414,11 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
-	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+	private async memoryGuardExecutionStopped(
+		event: RelayEventMap['memory-guard-execution-stopped'],
+	) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			user_id: await this.getWorkflowOwnerId(event.workflowId),
 			workflow_id: event.workflowId,
 			execution_mode: event.mode,
 			reason: event.reason,
@@ -2383,6 +2658,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userMfaDisabled({ user }: RelayEventMap['user-mfa-disabled']) {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
+	}
+
+	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
 	}
 
 	private userSubmittedPersonalizationSurvey({
@@ -2828,6 +3107,7 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		counts,
 		selectedWorkflowCount,
+		selectedFolderCount,
 		openedReview,
 	}: RelayEventMap['promotion-promoted']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
@@ -2845,6 +3125,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts?.variables,
 			tag_count: counts?.tags,
 			selected_workflow_count: selectedWorkflowCount,
+			selected_folder_count: selectedFolderCount,
 			opened_review: openedReview,
 		});
 	}
@@ -2859,6 +3140,8 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		workflowsChanged,
 		workflowsFailedToPublish,
+		foldersChanged,
+		projectsChanged,
 	}: RelayEventMap['promotion-applied']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
 			user_id: user.id,
@@ -2870,6 +3153,8 @@ export class TelemetryEventRelay extends EventRelay {
 			duration_ms: durationMs,
 			workflows_changed: workflowsChanged,
 			workflows_failed_to_publish: workflowsFailedToPublish,
+			folders_changed: foldersChanged,
+			projects_changed: projectsChanged,
 		});
 	}
 

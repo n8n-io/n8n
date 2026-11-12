@@ -1,8 +1,13 @@
 operationId: deletePromotionProvider
 tags:
   - Promotions
-summary: Delete a promotion provider
-description: A provider used by an environment cannot be deleted.
+summary: 'Beta: Delete a promotion provider'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  A provider used by an environment cannot be deleted.
+
+  Requires the `promotions:delete` API key scope.
 x-required-scope: promotions:delete
 parameters:
   - schema:
@@ -22,5 +27,7 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

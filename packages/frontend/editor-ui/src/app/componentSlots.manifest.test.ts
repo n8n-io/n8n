@@ -18,6 +18,8 @@ describe('registerComponentSlots', () => {
 	// An async component wrapper, not the resolved SFC: resolving here would make the
 	// projects feature and the list layout statically reachable from `main.ts`.
 	it.each([
+		'workflow-diff-placeholder',
+		'code-diff',
 		'project-filter',
 		'project-header',
 		'insights-summary',

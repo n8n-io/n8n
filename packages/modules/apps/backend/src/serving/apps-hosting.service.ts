@@ -22,7 +22,7 @@ export class AppsHostingService {
 			return;
 		}
 		res.set('Cache-Control', 'no-store');
-		if (!this.hosts.namespace(req)) {
+		if (!this.hosts.namespace(req) && !this.hosts.previewNamespace(req)) {
 			res.sendStatus(404);
 			return;
 		}

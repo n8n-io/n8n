@@ -165,6 +165,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return count > 0;
 	}
 
+	async existsById(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(CredentialsEntity, { id });
+	}
+
+	/** The stored (encrypted) data only, or null when the credential does not exist. */
+	async findStoredData(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id },
+			select: { data: true },
+		});
+	}
+
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
 		return await this.createQueryBuilder('credentials')
 			.leftJoinAndSelect('credentials.shared', 'shared')
@@ -195,6 +207,19 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): Promise<CredentialsEntity> {
 		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateDescription(
+		id: string,
+		description: string | null,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		const result = await this.managerFor(ctx).update(CredentialsEntity, id, {
+			description,
+			updatedAt: new Date(),
+		});
+		return (result.affected ?? 0) > 0;
 	}
 
 	async updateContent(

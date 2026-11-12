@@ -16,6 +16,8 @@ describe('public API', () => {
 			'SkillNameTakenError',
 			'SkillRuntimeService',
 			'SkillService',
+			'SkillSourceCredentials',
+			'SkillSourceCredentialsProxy',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',
@@ -27,6 +29,7 @@ describe('public API', () => {
 			'skillContentHashOf',
 			'skillNameTakenToolMessage',
 			'skillScopeOf',
+			'toSkillToolRefusal',
 			'withTrimmedName',
 		]);
 		// The import loads every skills service, which takes seconds under a full test run.

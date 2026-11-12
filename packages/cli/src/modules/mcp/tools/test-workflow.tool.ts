@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -9,12 +10,13 @@ import {
 	createRunExecutionData,
 	jsonStringify,
 	isTriggerNode,
+	type INodeTypes,
 } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
-import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -24,6 +26,7 @@ import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
+	getRunErrorForViewer,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
@@ -73,9 +76,10 @@ export const createTestWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	telemetry: Telemetry,
 	mcpService: McpService,
+	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
 	config: {
@@ -116,6 +120,7 @@ export const createTestWorkflowTool = (
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
@@ -172,8 +177,9 @@ export async function testWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	mcpService: McpService,
+	logger: Logger,
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
@@ -265,7 +271,20 @@ export async function testWorkflow(
 		}),
 	};
 
+	// Redaction can hide the refusal reason in the saved execution, so get it up front.
+	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+
 	const executionId = await workflowRunner.run(runData);
+
+	// The runner finalizes a refused run before it returns, so there is nothing to wait for.
+	if (credentialRefusal && !activeExecutions.has(executionId)) {
+		return {
+			executionId,
+			status: 'error',
+			error: [credentialRefusal.message, credentialRefusal.description].filter(Boolean).join('. '),
+		};
+	}
+
 	const data = await waitForExecutionResult(
 		executionId,
 		activeExecutions,
@@ -273,12 +292,13 @@ export async function testWorkflow(
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
+	if (!hasError) {
+		return { executionId, status: data.status, error: undefined };
+	}
 
 	return {
 		executionId,
-		status: hasError ? 'error' : data.status,
-		error: hasError
-			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
-			: undefined,
+		status: 'error',
+		error: await getRunErrorForViewer(executionId, user, logger),
 	};
 }

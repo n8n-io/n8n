@@ -7,7 +7,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance-AI Memory: Single Thread Lifecycle',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('heap returns to baseline after single build + delete', async ({

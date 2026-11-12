@@ -82,7 +82,7 @@ A backend opt-in flag is three small pieces (worked example: the
    (e.g. `N8N_EVAL_COLLECTIONS_ENABLED` in
    `packages/@n8n/config/src/configs/evaluation.config.ts`).
 3. **Override wiring** in `PostHogClient.applyEnvOverrides()`
-   ([`packages/cli/src/posthog/index.ts`](../packages/cli/src/posthog/index.ts)) —
+   ([`packages/@n8n/backend-services/src/services/posthog-client.ts`](../packages/@n8n/backend-services/src/services/posthog-client.ts)) —
    force-enable the flag when the env toggle is on:
    ```ts
    if (this.globalConfig.evaluation.collectionsEnabled) {

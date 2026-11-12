@@ -21,6 +21,8 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 	scope: z.enum(['once', 'session']).optional(),
+	/** Why the action was declined. The agent reads it, so it can explain the decline. */
+	reason: z.string().optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -165,7 +167,11 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			await approvalContext?.onDecision(grantKey, decision);
 			interruptCtx.abortSignal?.throwIfAborted();
 			if (!decision.approved) {
-				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
+				const message = `Tool "${currentTool.name}" was not approved`;
+				return {
+					declined: true,
+					message: decision.reason ? `${message}: ${decision.reason}` : message,
+				};
 			}
 			if (tool.suspendSchema === undefined) {
 				return await originalHandler(input, interruptCtx);
@@ -242,6 +248,8 @@ export class Tool<
 	private toTraceOutputFn?: (output: OutputType<TOutput>) => unknown;
 
 	private outputTrustValue?: BuiltTool['outputTrust'];
+
+	private requiresWorkspaceValue?: true;
 
 	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
 
@@ -386,6 +394,12 @@ export class Tool<
 		return this;
 	}
 
+	/** Mark the handler as one that uses the agent's workspace, so the runtime prepares it early. */
+	requiresWorkspace(): this {
+		this.requiresWorkspaceValue = true;
+		return this;
+	}
+
 	/**
 	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
 	 * By default, the runtime bypasses the handler and injects the steering message directly.
@@ -472,6 +486,7 @@ export class Tool<
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			toTraceOutput: this.toTraceOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			...(this.requiresWorkspaceValue ? { requiresWorkspace: true } : {}),
 			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,
