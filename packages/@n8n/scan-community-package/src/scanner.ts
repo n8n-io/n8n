@@ -62,6 +62,7 @@ export class ScanInputError extends Error {
 	override name = 'ScanInputError';
 }
 
+/** The result of one check, for example the provenance check or one ESLint pass. */
 export type AnalysisResult =
 	| {
 			readonly passed: true;
@@ -80,11 +81,19 @@ export type AnalysisResult =
 			readonly error?: unknown;
 	  };
 
+/** The result of a whole scan of one package, merged from its checks. */
+export type PackageScan = AnalysisResult & {
+	readonly packageName: string;
+	readonly version: string | null;
+	/** Checks that did not run, so a pass does not cover them. */
+	readonly skippedChecks?: readonly Check[];
+};
+
 /**
- * The file format of `--output`. It is separate from `AnalysisResult` so that
- * internal changes do not change the format that CI jobs read.
+ * The file that `--output` writes for a `PackageScan`. It is a separate type so
+ * that internal changes do not change the format that CI jobs read.
  */
-export type ScanReport = {
+export type JsonReport = {
 	readonly package: string;
 	readonly version: string | null;
 	readonly status: 'passed' | 'failed' | 'error';
@@ -119,17 +128,14 @@ const STATUSES = {
 	[EXIT_CODES.INTERNAL_ERROR]: 'error',
 } as const;
 
-export const buildReport = (
-	packageName: string,
-	result: AnalysisResult & { version: string | null; skippedChecks?: readonly Check[] },
-): ScanReport => ({
-	package: packageName,
-	version: result.version,
-	status: STATUSES[getExitCode(result)],
-	check: result.check ?? null,
-	message: result.message ?? null,
-	findings: result.findings ?? [],
-	skippedChecks: result.skippedChecks ?? [],
+export const toJsonReport = (scan: PackageScan): JsonReport => ({
+	package: scan.packageName,
+	version: scan.version,
+	status: STATUSES[getExitCode(scan)],
+	check: scan.check ?? null,
+	message: scan.message ?? null,
+	findings: scan.findings ?? [],
+	skippedChecks: scan.skippedChecks ?? [],
 });
 
 /**
@@ -558,13 +564,6 @@ export const isLocalPath = (packageSpec: string): boolean => {
 
 /** npm provenance and the attested source only exist after publishing. */
 export const LOCAL_SKIPPED_CHECKS: readonly Check[] = [CHECKS.PROVENANCE, CHECKS.SOURCE_REPOSITORY];
-
-export type PackageScan = AnalysisResult & {
-	readonly packageName: string;
-	readonly version: string | null;
-	/** Checks that did not run, so a pass does not cover them. */
-	readonly skippedChecks?: readonly Check[];
-};
 
 const readPackageJson = (packageDir: string): unknown => {
 	let stats: fs.Stats;

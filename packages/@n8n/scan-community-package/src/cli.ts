@@ -9,7 +9,7 @@ import {
 	analyzeLocalPackage,
 	analyzePackageByName,
 	isLocalPath,
-	buildReport,
+	toJsonReport,
 	errorMessage,
 	formatPackageSpec,
 	getExitCode,
@@ -17,7 +17,7 @@ import {
 	ScanInputError,
 	LOCAL_SKIPPED_CHECKS,
 	type PackageScan,
-	type ScanReport,
+	type JsonReport,
 } from './scanner.js';
 
 const USAGE =
@@ -47,7 +47,7 @@ const analyzePackage = async (spec: string): Promise<PackageScan> => {
 	return await analyzePackageByName(packageName, version);
 };
 
-const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number }> => {
+const run = async (spec: string): Promise<{ report: JsonReport; exitCode: number }> => {
 	try {
 		const result = await analyzePackage(spec);
 		const { packageName } = result;
@@ -80,13 +80,14 @@ const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number
 			);
 		}
 
-		return { report: buildReport(packageName, result), exitCode };
+		return { report: toJsonReport(result), exitCode };
 	} catch (error: unknown) {
 		// An input error is the user's to fix, so a stack trace would only add noise
 		const message =
 			error instanceof ScanInputError ? error.message : `Analysis failed: ${errorMessage(error)}`;
 		console.error(error instanceof ScanInputError ? `❌ ${message}` : error);
-		const report = buildReport(spec, {
+		const report = toJsonReport({
+			packageName: spec,
 			version: null,
 			passed: false,
 			message,

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	analyzeLocalPackage,
 	lintDirectory,
-	buildReport,
+	toJsonReport,
 	buildScanConfig,
 	EXIT_CODES,
 	findPackageRoot,
@@ -579,7 +579,7 @@ describe('analyzeLocalPackage', () => {
 	});
 });
 
-describe('buildReport', () => {
+describe('toJsonReport', () => {
 	it('reports the status that matches the exit code', () => {
 		const finding = {
 			file: 'package.json',
@@ -590,7 +590,7 @@ describe('buildReport', () => {
 			origin: 'package',
 		} as const;
 
-		expect(buildReport('n8n-nodes-foo', { version: '1.0.0', passed: true })).toEqual({
+		expect(toJsonReport({ packageName: 'n8n-nodes-foo', version: '1.0.0', passed: true })).toEqual({
 			package: 'n8n-nodes-foo',
 			version: '1.0.0',
 			status: 'passed',
@@ -600,14 +600,16 @@ describe('buildReport', () => {
 			skippedChecks: [],
 		});
 		expect(
-			buildReport('n8n-nodes-foo', {
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
 				version: '1.0.0',
 				passed: true,
 				skippedChecks: ['provenance', 'source'],
 			}),
 		).toMatchObject({ status: 'passed', skippedChecks: ['provenance', 'source'] });
 		expect(
-			buildReport('n8n-nodes-foo', {
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
 				version: '1.0.0',
 				passed: false,
 				check: 'eslint',
@@ -616,7 +618,8 @@ describe('buildReport', () => {
 			}),
 		).toMatchObject({ status: 'failed', check: 'eslint', findings: [finding] });
 		expect(
-			buildReport('n8n-nodes-foo', {
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
 				version: null,
 				passed: false,
 				message: 'Analysis failed: npm pack failed',
