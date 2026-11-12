@@ -118,6 +118,7 @@ describe('AppPublishDialog', () => {
 		await screen.findByTestId('app-publish-error');
 
 		await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+		expect(publishApp).toHaveBeenCalledTimes(2);
 
 		expect(screen.getByTestId('app-publish-error')).toHaveTextContent('Could not publish "Sales"');
 
