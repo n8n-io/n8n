@@ -74,11 +74,11 @@ export class RigStack {
 				N8N_RUNNERS_MODE: options.runners,
 				N8N_RUNNERS_ENABLED: 'true',
 				NODE_OPTIONS: preloadNodeOptions(),
-				TEST_RIG_HOOK_DIR: HOOK_DIR,
 				TEST_RIG_HOOKS: JSON.stringify(hooks),
 				...licenceEnv(mains),
 				...scaledTimeouts(options.scale),
 				...options.env,
+				TEST_RIG_HOOK_DIR: HOOK_DIR,
 			},
 		}).then((stack) => {
 			const rig = new RigStack(stack, hooks);
