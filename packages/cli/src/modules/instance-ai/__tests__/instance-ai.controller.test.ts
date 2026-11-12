@@ -1624,6 +1624,7 @@ describe('InstanceAiController', () => {
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
+				cursor: 'cursor-1',
 				raw: undefined,
 			});
 
@@ -1633,7 +1634,7 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
-				page: 0,
+				cursor: 'cursor-1',
 			});
 		});
 
