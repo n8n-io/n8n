@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddSettingsToWorkflowHistory1794479189000';
+const MIGRATION_NAME = 'AddSettingsToWorkflowHistory1794508199000';
 
 const newWorkflowId = () => randomUUID().slice(0, 16);
 
