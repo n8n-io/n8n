@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_1b76c8082a8c84::t_3756cc8653f979 4,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a883e56eaff399e4c068acb09f30955ac62b4e0",
+  "prompts": {},
+  "sessions": {
+    "s_1b76c8082a8c84": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e36e50d2bffejJRdDVFSd36hBy",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
