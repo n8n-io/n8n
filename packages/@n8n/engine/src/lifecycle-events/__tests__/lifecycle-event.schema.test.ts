@@ -19,6 +19,7 @@ const stepEvent = {
 	iteration: 0,
 	at,
 };
+const spawnedStepFields = { declaringStepId: 'step-0', round: 0, callId: 'call-1' };
 
 const every: LifecycleEvent[] = [
 	{ type: 'execution:started', ...executionEvent, mode: 'production', hostMode: 'webhook' },
@@ -97,6 +98,21 @@ describe('lifecycleEventSchema', () => {
 
 		expect(parsed.success).toBe(true);
 	});
+
+	it('accepts a spawned step event that names its declaring step, round and call id', () => {
+		const event = { type: 'step:started', ...stepEvent, ...spawnedStepFields };
+
+		expect(lifecycleEventSchema.parse(event)).toEqual(event);
+	});
+
+	it.each(Object.keys(spawnedStepFields))(
+		'rejects a spawned step event without its %s',
+		(missing) => {
+			const event = { type: 'step:started', ...stepEvent, ...spawnedStepFields, [missing]: undefined };
+
+			expect(lifecycleEventSchema.safeParse(event).success).toBe(false);
+		},
+	);
 
 	it('rejects a completed step without outputs', () => {
 		expect(lifecycleEventSchema.safeParse({ type: 'step:completed', ...stepEvent }).success).toBe(

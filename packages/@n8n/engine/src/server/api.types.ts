@@ -34,7 +34,7 @@ export interface CancelExecutionResponse {
 /** `T` without its `K` fields. */
 type Without<T, K extends keyof T> = Omit<T, K>;
 
-export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps'>;
+export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps' | 'rounds'>;
 
 export interface SearchExecutionsResponse {
 	items: ExecutionListItem[];

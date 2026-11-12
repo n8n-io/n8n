@@ -116,6 +116,12 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						isUnique: true,
 						where: "kind = 'spawned'",
 					},
+					// The other indexes on `execution_id` are partial and skip spawned rows.
+					// This one serves the cascade when an execution is deleted.
+					{
+						name: 'idx_workflow_step_execution_execution_id',
+						columnNames: ['execution_id'],
+					},
 					// Partial index for the failed-sibling checks: they run on every event, and
 					// loops make an execution's row count scale with its data. Graph steps
 					// only, because a failed action does not fail the execution.

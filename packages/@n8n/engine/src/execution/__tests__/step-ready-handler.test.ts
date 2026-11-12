@@ -73,12 +73,13 @@ function makeHandler(
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 	subExecutionStarter: SubExecutionStarter = makeSubExecutionStarter(),
+	stepQueue: WorkQueue<StepMessage> = makeStepQueue(),
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
 		stepStore,
 		queue,
-		makeStepQueue(),
+		stepQueue,
 		dependencies,
 		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
@@ -1014,16 +1015,27 @@ describe('StepReadyHandler actions', () => {
 			{ recordRound: vi.fn().mockRejectedValue(new Error('check constraint violated')) },
 		);
 		const queue = makeQueue();
-		const handler = makeHandler(makeExecutionStore({ graph: agentGraph }), stepStore, queue, {
-			v1StepExecutor: makeExecutor({
-				actions: {
-					actions: [
-						{ targetNodeId: 'tool', callId: 'call-1', itemIndex: 0, arguments: {}, metadata: {} },
-					],
-					payload: {},
-				},
-			}),
-		});
+		const stepQueue = makeStepQueue();
+		const handler = makeHandler(
+			makeExecutionStore({ graph: agentGraph }),
+			stepStore,
+			queue,
+			{
+				v1StepExecutor: makeExecutor({
+					actions: {
+						actions: [
+							{ targetNodeId: 'tool', callId: 'call-1', itemIndex: 0, arguments: {}, metadata: {} },
+						],
+						payload: {},
+					},
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			stepQueue,
+		);
 
 		await handler.handle(event);
 
@@ -1036,6 +1048,7 @@ describe('StepReadyHandler actions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 });
 

@@ -60,7 +60,17 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
 	/** The step paused until a deadline or a resume request. It has no outcome yet. */
 	z.object({ type: z.literal('step:waiting'), ...stepFields }),
-]);
+]).superRefine((event, ctx) => {
+	if (!('stepId' in event)) return;
+	const spawnedFields = [event.declaringStepId, event.round, event.callId];
+	const setCount = spawnedFields.filter((field) => field !== undefined).length;
+	if (setCount !== 0 && setCount !== spawnedFields.length) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'A spawned step event must set declaringStepId, round and callId together',
+		});
+	}
+});
 
 /** Body of the host's lifecycle event endpoint. */
 export const lifecycleEventBatchSchema = z.object({

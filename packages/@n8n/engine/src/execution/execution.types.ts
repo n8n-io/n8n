@@ -153,12 +153,14 @@ export type WaitDeclaration =
 			outputsAtDeadline: StepSlots;
 			/** Which resume request may end the wait early. If absent, none can. */
 			resumeBinding?: ResumeBinding;
+			round?: never;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+			round?: never;
 	  }
 	| {
 			/**
