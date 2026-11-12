@@ -51,16 +51,6 @@ describe('node type rule', () => {
 			reason: { code: 'MCP_SERVER_TRIGGER', severity: 'blocking' },
 		},
 		{
-			case: 'a trigger that may wait for its run, as a warning',
-			node: node('n8n-nodes-base.rabbitmqTrigger'),
-			reason: { code: 'TRIGGER_WAITS_FOR_RUN', severity: 'warning' },
-		},
-		{
-			case: 'the Kafka trigger from version 2',
-			node: node('n8n-nodes-base.kafkaTrigger', 2),
-			reason: { code: 'TRIGGER_WAITS_FOR_RUN', severity: 'warning' },
-		},
-		{
 			case: 'a community node',
 			node: node('n8n-nodes-community-example.example'),
 			reason: { code: 'COMMUNITY_NODE', severity: 'blocking' },
@@ -88,7 +78,6 @@ describe('node type rule', () => {
 			node('n8n-nodes-community-example.example', 1, { disabled: true }),
 		],
 		['an allowed core node', node('n8n-nodes-base.set', 3.4)],
-		['the Kafka trigger before version 2', node('n8n-nodes-base.kafkaTrigger', 1.3)],
 	])('does not report %s', (_, allowed) => {
 		expect(check([allowed])).toEqual({ eligible: true, reasons: [] });
 	});
@@ -106,38 +95,25 @@ describe('node type rule', () => {
 		]);
 	});
 
-	it('keeps a workflow eligible when it has only warnings', () => {
-		const result = check([node('n8n-nodes-base.mqttTrigger')]);
-
-		expect(result.eligible).toBe(true);
-		expect(result.reasons).toHaveLength(1);
-	});
-
 	// Removing an entry lets workflows publish on engine v2. Do it only when the ticket lands.
 	it('pins the denylist', () => {
 		const entries = NODE_TYPE_DENYLIST.map(
-			({ type, minTypeVersion, code, severity, ticket }) =>
-				`${type}${minTypeVersion ? ` v${minTypeVersion}+` : ''}: ${code} ${severity} ${ticket ?? 'no ticket'}`,
+			({ type, code, ticket }) => `${type}: ${code} ${ticket ?? 'no ticket'}`,
 		);
 		expect(entries).toMatchInlineSnapshot(`
 			[
-			  "n8n-nodes-base.form: FORM_NODE blocking CET-331",
-			  "n8n-nodes-base.formTrigger: FORM_NODE blocking CET-331",
-			  "@n8n/n8n-nodes-langchain.chat: CHAT_NODE blocking CET-522",
-			  "@n8n/n8n-nodes-langchain.chatTrigger: CHAT_NODE blocking CET-291",
-			  "@n8n/n8n-nodes-langchain.mcpTrigger: MCP_SERVER_TRIGGER blocking no ticket",
-			  "@n8n/n8n-nodes-langchain.microsoftAgent365Trigger: MICROSOFT_AGENT365_TRIGGER blocking no ticket",
-			  "n8n-nodes-base.executionData: EXECUTION_DATA_NODE blocking no ticket",
-			  "n8n-nodes-base.timeSaved: TIME_SAVED_NODE blocking no ticket",
-			  "n8n-nodes-base.messageAnAgent: MESSAGE_AN_AGENT_NODE blocking no ticket",
-			  "n8n-nodes-base.evaluation: EVALUATION_NODE blocking no ticket",
-			  "n8n-nodes-base.evaluationTrigger: EVALUATION_NODE blocking no ticket",
-			  "n8n-nodes-base.kafkaTrigger v2+: TRIGGER_WAITS_FOR_RUN warning CET-299",
-			  "n8n-nodes-base.rabbitmqTrigger: TRIGGER_WAITS_FOR_RUN warning CET-299",
-			  "n8n-nodes-base.amqpTrigger: TRIGGER_WAITS_FOR_RUN warning CET-299",
-			  "n8n-nodes-base.mqttTrigger: TRIGGER_WAITS_FOR_RUN warning CET-299",
-			  "n8n-nodes-base.emailReadImap: TRIGGER_WAITS_FOR_RUN warning CET-299",
-			  "@n8n/n8n-nodes-langchain.: AI_NODE blocking CET-291",
+			  "n8n-nodes-base.form: FORM_NODE CET-331",
+			  "n8n-nodes-base.formTrigger: FORM_NODE CET-331",
+			  "@n8n/n8n-nodes-langchain.chat: CHAT_NODE CET-522",
+			  "@n8n/n8n-nodes-langchain.chatTrigger: CHAT_NODE CET-291",
+			  "@n8n/n8n-nodes-langchain.mcpTrigger: MCP_SERVER_TRIGGER no ticket",
+			  "@n8n/n8n-nodes-langchain.microsoftAgent365Trigger: MICROSOFT_AGENT365_TRIGGER no ticket",
+			  "n8n-nodes-base.executionData: EXECUTION_DATA_NODE no ticket",
+			  "n8n-nodes-base.timeSaved: TIME_SAVED_NODE no ticket",
+			  "n8n-nodes-base.messageAnAgent: MESSAGE_AN_AGENT_NODE no ticket",
+			  "n8n-nodes-base.evaluation: EVALUATION_NODE no ticket",
+			  "n8n-nodes-base.evaluationTrigger: EVALUATION_NODE no ticket",
+			  "@n8n/n8n-nodes-langchain.: AI_NODE CET-291",
 			]
 		`);
 	});

@@ -219,8 +219,8 @@ export const engineRefusals: EngineRefusal[] = [
  *   and COMMUNITY_NODE. Each entry names the ticket that removes it, and a test in
  *   @n8n/workflow-engine-check pins the list.
  * - A trigger that waits for its run to finish: `EngineV2ActiveTriggers` in cli.
- *   Check rule: TRIGGER_WAITS_FOR_RUN, a warning, because the trigger's settings
- *   decide whether it waits.
+ *   Check rule: TRIGGER_WAITS_FOR_RUN. It blocks when the trigger's settings make
+ *   it wait, and warns when an expression decides.
  * - A wait for a sub-execution that waits, a send-and-wait approval, a wait that
  *   nothing can end, and a wait date that is not valid: `v1-step-executor.ts`. A
  *   signed resume URL without a resume secret: `v1-adapters.ts`. No check rule.
