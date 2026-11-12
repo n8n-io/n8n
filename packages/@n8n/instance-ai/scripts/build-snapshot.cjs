@@ -20,7 +20,8 @@
  * of the bundler-only `module: src/index.ts` entry.
  *
  * Required env vars:
- *   DAYTONA_API_KEY   admin key with snapshot.create permissions
+ *   DAYTONA_API_KEY   admin key with snapshot.create permissions, or sandbox
+ *                     create/delete permissions in --verify-image mode
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
  *   DAYTONA_SNAPSHOT_MAX_AGE_DAYS
  *                     prune versioned snapshots not used within this many days
@@ -34,9 +35,11 @@
  *
  * Usage:
  *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
+ *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0 --verify-image
  */
 
 const { Daytona } = require('@daytona/sdk');
+const { createSandbox, PORTABLE_WORKSPACE_ROOT } = require('@n8n/agents/sandbox');
 const {
 	BuilderTemplatesService,
 	SnapshotManager,
@@ -50,6 +53,10 @@ function parseVersion(argv) {
 		if (arg.startsWith('--version=')) return arg.slice('--version='.length);
 	}
 	return process.env.N8N_VERSION;
+}
+
+function isImageVerification(argv) {
+	return argv.includes('--verify-image');
 }
 
 const DEFAULT_SNAPSHOT_RETENTION = 10;
@@ -77,8 +84,66 @@ const consoleLogger = {
 	debug: () => {},
 };
 
+async function verifyImage(image, apiKey, apiUrl) {
+	const runId = process.env.GITHUB_RUN_ID ?? `${process.pid}-${Date.now()}`;
+	const runAttempt = process.env.GITHUB_RUN_ATTEMPT ?? 'local';
+	const name = `n8n-image-verify-${runId}-${runAttempt}`;
+	const sandbox = await createSandbox(
+		{
+			enabled: true,
+			provider: 'daytona',
+			name,
+			daytonaApiKey: apiKey,
+			daytonaApiUrl: apiUrl,
+			image,
+			ephemeral: true,
+			timeout: 1_800_000,
+			createTimeoutSeconds: 1_800,
+			labels: { purpose: 'n8n-snapshot-image-verification' },
+		},
+		{ logger: consoleLogger },
+	);
+	if (!sandbox) throw new Error('Failed to create the Daytona verification sandbox');
+
+	try {
+		const install = await sandbox.executeCommand(
+			'npm',
+			['install', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
+			{ cwd: PORTABLE_WORKSPACE_ROOT, timeout: 120_000 },
+		);
+		if (!install.success) {
+			throw new Error(`Verification npm install failed: ${install.stderr || install.stdout}`);
+		}
+
+		const sdk = await sandbox.executeCommand(
+			'node',
+			[
+				'--input-type=module',
+				'--eval',
+				"import { workflow } from '@n8n/workflow-sdk'; workflow('snapshot-image-smoke', 'Snapshot image smoke');",
+			],
+			{ cwd: PORTABLE_WORKSPACE_ROOT },
+		);
+		if (!sdk.success) {
+			throw new Error(`Workflow SDK verification failed: ${sdk.stderr || sdk.stdout}`);
+		}
+	} catch (error) {
+		await sandbox.deleteRemote().catch((cleanupError) => {
+			consoleLogger.warn('Failed to delete Daytona verification sandbox', {
+				name,
+				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+			});
+		});
+		throw error;
+	}
+
+	await sandbox.deleteRemote();
+	consoleLogger.info('Daytona image verified', { name });
+}
+
 async function main() {
-	const version = parseVersion(process.argv.slice(2));
+	const argv = process.argv.slice(2);
+	const version = parseVersion(argv);
 	if (!version) {
 		console.error('Missing --version (or N8N_VERSION env)');
 		process.exit(1);
@@ -106,6 +171,10 @@ async function main() {
 	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService, {
 		packWorkspacePackages: true,
 	});
+	if (isImageVerification(argv)) {
+		await verifyImage(await manager.ensureImage(), apiKey, apiUrl);
+		return;
+	}
 
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,

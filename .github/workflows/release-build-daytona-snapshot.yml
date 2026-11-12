@@ -8,6 +8,11 @@ on:
         description: 'n8n version to build the Daytona snapshot for'
         required: true
         type: string
+      verify_image_only:
+        description: 'Build and verify an ephemeral image without publishing a snapshot'
+        required: false
+        default: false
+        type: boolean
     secrets:
       DAYTONA_API_KEY_DEV:
         required: true
@@ -27,13 +32,18 @@ on:
         description: 'n8n version to build the Daytona snapshot for (e.g. 1.123.0)'
         required: true
         type: string
+      verify_image_only:
+        description: 'Build and verify an ephemeral dev image without publishing a snapshot'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
   build-snapshot:
-    name: Build versioned Daytona snapshot (${{ matrix.environment }})
+    name: ${{ inputs.verify_image_only && 'Verify Daytona image' || 'Build versioned Daytona snapshot' }} (${{ matrix.environment }})
     runs-on: ubuntu-latest
     # Serialize builds per version+environment: overlapping creates for the same
     # snapshot name make Daytona reject with "an operation is already in progress"
@@ -49,12 +59,12 @@ jobs:
     timeout-minutes: 50
     # Dev is best-effort: a dev failure is reported but does not block the release.
     # Only the prod publish gates the release.
-    continue-on-error: ${{ matrix.environment == 'dev' }}
+    continue-on-error: ${{ !inputs.verify_image_only && matrix.environment == 'dev' }}
     strategy:
       # Publish to every environment even if one fails, so a partial outage is visible.
       fail-fast: false
       matrix:
-        environment: [dev, prod]
+        environment: ${{ fromJSON(inputs.verify_image_only && '["dev"]' || '["dev","prod"]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +73,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Build versioned Daytona snapshot
+        if: ${{ !inputs.verify_image_only }}
         env:
           N8N_VERSION: ${{ inputs.n8n_version }}
           # Each branch is guarded on its own environment so an empty/unset key
@@ -79,3 +90,11 @@ jobs:
           # below that.
           DAYTONA_SNAPSHOT_RETENTION: ${{ matrix.environment == 'dev' && '15' || '100' }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"
+
+      - name: Verify Daytona image
+        if: ${{ inputs.verify_image_only }}
+        env:
+          N8N_VERSION: ${{ inputs.n8n_version }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY_DEV }}
+          DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL_DEV || secrets.DAYTONA_API_URL }}
+        run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION" --verify-image

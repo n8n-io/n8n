@@ -143,6 +143,20 @@ The smoke test builds the SDK dependency graph, packs the same packages as the
 release snapshot, installs them in a temporary workspace, and rejects any n8n
 workspace package that resolves from the npm registry.
 
+To test the complete remote Daytona image build from a branch, dispatch the
+snapshot workflow in verification mode:
+
+```sh
+gh workflow run release-build-daytona-snapshot.yml \
+  --ref <branch> \
+  -f n8n_version=<version> \
+  -f verify_image_only=true
+```
+
+This mode uses the dev Daytona environment. It creates an ephemeral sandbox
+from the branch's image descriptor, repeats the dependency install, loads the
+Workflow SDK, and deletes the sandbox. It does not create a named snapshot.
+
 The knowledge base has a manifest with a content hash. Setup compares the
 manifest hash with the expected hash. When the hashes do not match, setup
 writes the bundle again and writes the manifest last. A matching manifest is
