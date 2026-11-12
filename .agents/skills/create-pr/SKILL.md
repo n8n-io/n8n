@@ -97,9 +97,9 @@ comma and a space: `fix(core, editor): ...`.
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`), any GitHub issue links, and the docs link if there is one
 
    Before you create the PR, proofread the Summary against the Summary
-   Section rules. Delete each sentence that restates the diff, or that is
-   neither part of the first two sentences nor a surprise. Make sure that
-   each sentence is true for the diff.
+   Section rules. Delete each sentence that restates the diff, or that is not
+   the what-and-where sentence, the why, or a surprise. Make sure that each
+   sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
 
@@ -149,22 +149,33 @@ Keep the description short. The reviewer reads the diff for the details. The
 description gives only what the diff cannot show: why the change exists, and
 what could surprise the reviewer. Keep the length in proportion to the
 complexity of the change: a complex change usually has more surprises. A
-change with no surprises needs one or two sentences and nothing more.
+change with no surprises needs only the first two paragraphs of the Summary.
 
 Write for an engineer. Use exact technical terms, and do not simplify them.
 Use ASD-STE100 Simplified Technical English: short sentences, active voice,
 plain technical verbs, no metaphors.
 
 ### Summary Section
-1. Start with one or two sentences: what the PR does and why. Write the first
-   sentence in the imperative mood, like the PR title ("Fix the ...", "Add
-   ...", "Change the ..."). Do not start with "This PR". State the area
-   of the product or code (for example, the RabbitMQ Trigger node, workflow
-   history, or the CI pipeline) and the nature of the change: a bug fix, a
-   feature, a refactor, or tests. Do not name functions or fields in these
-   sentences. The diff shows them.
-2. Add more only when the change has one of these surprises. For each surprise
-   that applies, add one short paragraph:
+Write the Summary as up to three paragraphs:
+
+```
+<one sentence: what changes and where>
+
+<why>
+
+<important details, only if there are surprises>
+```
+
+1. **What and where:** one sentence in the imperative mood, like the PR title
+   ("Fix the ...", "Add ...", "Change the ..."). Do not start with "This PR".
+   State the area of the product or code (for example, the RabbitMQ Trigger
+   node, workflow history, or the CI pipeline) and the nature of the change: a
+   bug fix, a feature, a refactor, or tests. Do not name functions or fields.
+   The diff shows them.
+2. **Why:** one or two sentences about the problem or the constraint that
+   makes the pre-existing code unfit.
+3. **Important details:** add this paragraph only when the change has one of
+   these surprises. Give each surprise one or two sentences:
    - **Unexpected behaviour:** a change in behaviour for users or for other
      code paths, a changed default, a migration, or a side effect outside the
      obvious scope.
@@ -176,22 +187,24 @@ plain technical verbs, no metaphors.
      made the change and that the diff and the ticket do not show. For
      example, a measurement, a reproduction detail, a cause found while
      debugging, or an error in the ticket.
-3. Leave out what the diff shows: file lists, renamed fields, call order, test
-   names, error cases, and descriptions of the code. Leave out framework
-   behaviour that reviewers know.
-4. Do not add background, an introduction that repeats the title, or a
-   closing sentence.
-5. Define an n8n-internal term only if an engineer from another team would not
-   know it. Use one short clause.
-6. Include screenshots or videos for UI changes.
+
+Leave out what the diff shows: file lists, renamed fields, call order, test
+names, error cases, and descriptions of the code. Leave out framework behaviour
+that reviewers know. Do not add background or a closing sentence. Define an
+n8n-internal term only if an engineer from another team would not know it.
+Include screenshots or videos for UI changes.
 
 Examples of a complete Summary for a change with no surprises:
 
-> Fix a bug in the RabbitMQ Trigger node. The node returned its channel before
-> the queue bindings were complete, so it could miss the first messages.
+> Fix a bug in the RabbitMQ Trigger node.
+>
+> The node returned its channel before the queue bindings were complete, so it
+> could miss the first messages.
 
-> Fix the documentation in `AGENTS.md`. It referred to the UI design skill by
-> an old name, so agents could not find the skill.
+> Fix the documentation in `AGENTS.md`.
+>
+> It referred to the UI design skill by an old name, so agents could not find
+> the skill.
 
 ### How to test Section
 - Write short steps for a person who tests the product change by hand: the
