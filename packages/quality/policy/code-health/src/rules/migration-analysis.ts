@@ -110,6 +110,77 @@ export function resolveTableName(node: Node | undefined, depth = 0): string | un
 	return undefined;
 }
 
+/** Static SQL text of literals, `+` concatenation and `const` bindings; `${expr}` becomes a placeholder. */
+export function resolveSqlText(node: Node | undefined, depth = 0): string | undefined {
+	if (!node || depth > 4) return undefined;
+	if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+		return node.getLiteralText();
+	}
+	if (Node.isTemplateExpression(node)) {
+		return [
+			node.getHead().getLiteralText(),
+			...node
+				.getTemplateSpans()
+				.map((span) => `${PLACEHOLDER}${span.getLiteral().getLiteralText()}`),
+		].join('');
+	}
+	if (Node.isParenthesizedExpression(node) || Node.isAsExpression(node)) {
+		return resolveSqlText(node.getExpression(), depth + 1);
+	}
+	if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.PlusToken) {
+		const left = resolveSqlText(node.getLeft(), depth + 1);
+		const right = resolveSqlText(node.getRight(), depth + 1);
+		return left === undefined || right === undefined ? undefined : left + right;
+	}
+	if (Node.isIdentifier(node)) {
+		for (const declaration of node.getSymbol()?.getDeclarations() ?? []) {
+			if (!Node.isVariableDeclaration(declaration)) continue;
+			const list = declaration.getVariableStatement()?.getDeclarationKind();
+			if (list !== undefined && list !== VariableDeclarationKind.Const) continue;
+			return resolveSqlText(declaration.getInitializer(), depth + 1);
+		}
+	}
+	return undefined;
+}
+
+/** The outermost member access or call of the chain that `node` starts, e.g. all of `column('id').int.primary`. */
+export function chainTop(node: Node): Node {
+	let top = node;
+	for (let parent = top.getParent(); parent; parent = top.getParent()) {
+		const continuesChain =
+			(Node.isPropertyAccessExpression(parent) || Node.isCallExpression(parent)) &&
+			parent.getExpression() === top;
+		if (!continuesChain) break;
+		top = parent;
+	}
+	return top;
+}
+
+export interface ColumnChain {
+	/** Member names in source order, e.g. `['int', 'primary', 'notNull']`. */
+	members: string[];
+	columnName: string | undefined;
+}
+
+/** Parses a `column('x')....` DSL chain. Returns undefined when the chain does not start with `column(...)`. */
+export function parseColumnChain(top: Node): ColumnChain | undefined {
+	const members: string[] = [];
+	let current: Node = top;
+	for (;;) {
+		if (Node.isPropertyAccessExpression(current)) {
+			members.unshift(current.getName());
+			current = current.getExpression();
+		} else if (Node.isCallExpression(current)) {
+			if (calleeName(current) === 'column') {
+				return { members, columnName: resolveTableName(current.getArguments()[0]) };
+			}
+			current = current.getExpression();
+		} else {
+			return undefined;
+		}
+	}
+}
+
 /** True when `node` sits in a branch that runs only on Postgres. */
 export function isPostgresOnlyBranch(node: Node): boolean {
 	let child: Node = node;
@@ -248,7 +319,7 @@ function referenceAt(
 }
 
 // Blanks quoted SQL values and comments; keeps offsets and newlines.
-function maskSqlText(text: string): string {
+export function maskSqlText(text: string): string {
 	return text.replace(/'(?:[^']|'')*'|--[^\n]*|\/\*[\s\S]*?\*\//g, (match) =>
 		match.replace(/[^\n]/g, ' '),
 	);

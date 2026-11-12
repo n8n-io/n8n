@@ -9,8 +9,12 @@ import {
 	MIGRATIONS_ROOT,
 	RECREATING_METHODS,
 	calleeName,
+	chainTop,
 	lineOf,
 	loadAddedMigrations,
+	maskSqlText,
+	parseColumnChain,
+	resolveSqlText,
 	resolveTableName,
 	skillLink,
 	sqlLiterals,
@@ -47,6 +51,13 @@ const IMPORTS_LINK = skillLink(
 );
 const ESCAPE_LINK = skillLink('always-escape-identifiers', 'Always escape identifiers');
 const ENUM_LINK = skillLink('constrain-enum-like-strings', 'Constrain enum-like strings');
+const BATCH_LINK = skillLink('use-batch-operations', 'Use Batch Operations');
+const INDEX_LINK = skillLink('index-management', 'Index Management');
+const PRIMARY_KEY_LINK = skillLink('primary-keys', 'Primary Keys');
+
+const POSTGRES_MAX_IDENTIFIER_LENGTH = 63;
+// `DB_TABLE_PREFIX` is free-form; budget for a long one.
+const DEFAULT_MAX_TABLE_PREFIX_LENGTH = 16;
 
 function packageName(specifier: string): string {
 	const parts = specifier.split('/');
@@ -61,7 +72,7 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'migration-conventions';
 	readonly name = 'Migration Conventions';
 	readonly description =
-		'Added migrations must not import app code as values, must escape table names in raw SQL, and must comment enum-checked columns.';
+		'Added migrations must not import app code as values, must escape table names in raw SQL, must comment enum-checked columns, must order batched queries, must keep derived index names short enough for Postgres, and must not chain `.notNull` with `.primary`.';
 	readonly severity = 'error' as const;
 
 	async analyze(context: CodeHealthContext): Promise<Violation[]> {
@@ -72,6 +83,9 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 			...this.checkValueImports(context.rootDir, migration),
 			...this.checkTableNames(migration),
 			...this.checkEnumComments(migration),
+			...this.checkBatchOrder(migration),
+			...this.checkIndexNameLength(migration),
+			...this.checkPrimaryNotNull(migration),
 		]);
 	}
 
@@ -160,14 +174,7 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 		const violations: Violation[] = [];
 		for (const access of file.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)) {
 			if (access.getName() !== 'withEnumCheck') continue;
-			let top: Node = access;
-			for (let parent = top.getParent(); parent; parent = top.getParent()) {
-				const continuesChain =
-					(Node.isPropertyAccessExpression(parent) || Node.isCallExpression(parent)) &&
-					parent.getExpression() === top;
-				if (!continuesChain) break;
-				top = parent;
-			}
+			const top = chainTop(access);
 			if (/\.comment\s*\(/.test(top.getText())) continue;
 			const columnCall = top
 				.getDescendantsOfKind(SyntaxKind.CallExpression)
@@ -179,6 +186,83 @@ export class MigrationConventionsRule extends BaseRule<CodeHealthContext> {
 					access.getStartLineNumber(),
 					1,
 					`Column ${columnName ? `\`${columnName}\` ` : ''}has \`.withEnumCheck(...)\` but no \`.comment(...)\`. Add \`.comment('...')\` to the same column chain to explain each value. ${ENUM_LINK}`,
+				),
+			);
+		}
+		return violations;
+	}
+
+	private checkBatchOrder({ file }: AddedMigration): Violation[] {
+		const violations: Violation[] = [];
+		for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+			if (calleeName(call) !== 'runInBatches') continue;
+			const sql = resolveSqlText(call.getArguments()[0]);
+			if (sql === undefined || /\bORDER\s+BY\b/i.test(maskSqlText(sql))) continue;
+			violations.push(
+				this.createViolation(
+					file.getFilePath(),
+					call.getStartLineNumber(),
+					1,
+					`The \`runInBatches\` query has no \`ORDER BY\`. \`runInBatches\` reads pages with LIMIT and OFFSET. Without a stable order, the database can return a row in two pages or in no page. Add \`ORDER BY\` on a unique column, such as the primary key. ${BATCH_LINK}`,
+				),
+			);
+		}
+		return violations;
+	}
+
+	private checkIndexNameLength({ file, dialect }: AddedMigration): Violation[] {
+		if (dialect === 'sqlite') return [];
+		const option = this.getOptions().maxTablePrefixLength;
+		const prefixBudget = typeof option === 'number' ? option : DEFAULT_MAX_TABLE_PREFIX_LENGTH;
+		const violations: Violation[] = [];
+
+		for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+			const method = calleeName(call);
+			if (method !== 'createIndex' && method !== 'dropIndex') continue;
+			const [tableArg, columnsArg, third, fourth] = call.getArguments();
+
+			const customName =
+				method === 'createIndex'
+					? fourth
+					: Node.isObjectLiteralExpression(third)
+						? third.getProperty('customIndexName')
+						: undefined;
+			if (customName && customName.getText() !== 'undefined') continue;
+
+			const table = resolveTableName(tableArg);
+			if (!table || !Node.isArrayLiteralExpression(columnsArg)) continue;
+			const columns = columnsArg.getElements().map((element) => resolveTableName(element));
+			if (columns.some((column) => column === undefined)) continue;
+
+			const name = ['IDX', table, ...columns].join('_');
+			if (name.length + prefixBudget <= POSTGRES_MAX_IDENTIFIER_LENGTH) continue;
+			violations.push(
+				this.createViolation(
+					file.getFilePath(),
+					call.getStartLineNumber(),
+					1,
+					`The derived index name \`${name}\` has ${name.length} characters. With a table prefix of ${prefixBudget} characters, it is longer than the ${POSTGRES_MAX_IDENTIFIER_LENGTH}-character limit of Postgres. Postgres shortens the name without an error, and a later \`dropIndex\` with the derived name fails. Pass a custom index name of at most ${POSTGRES_MAX_IDENTIFIER_LENGTH} characters, and use the same name in \`down()\` and on the entity \`@Index\`. ${INDEX_LINK}`,
+				),
+			);
+		}
+		return violations;
+	}
+
+	private checkPrimaryNotNull({ file }: AddedMigration): Violation[] {
+		const violations: Violation[] = [];
+		for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+			if (calleeName(call) !== 'column') continue;
+			const top = chainTop(call);
+			const chain = parseColumnChain(top);
+			if (!chain?.members.includes('notNull')) continue;
+			if (!chain.members.some((m) => m === 'primary' || m === 'primaryWithName')) continue;
+			const label = chain.columnName ? `Column \`${chain.columnName}\`` : 'A column';
+			violations.push(
+				this.createViolation(
+					file.getFilePath(),
+					top.getStartLineNumber(),
+					1,
+					`${label} chains \`.notNull\` with \`.primary\`. A primary key is always NOT NULL. Remove \`.notNull\`. ${PRIMARY_KEY_LINK}`,
 				),
 			);
 		}

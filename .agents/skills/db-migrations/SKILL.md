@@ -113,15 +113,17 @@ CI checks the items marked **(CI)** on each migration file that a PR adds. The `
 - [ ] **Match column type to value semantics.** Native `uuid` for UUIDs, `timestampTimezone()` for timestamps, a numeric type for numbers, `bool` for booleans, `json` for structured data. Never `varchar` as a catch-all. — [Column types](#column-types)
 - [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers. — [Column types](#column-types)
 - [ ] **A generated `id` key is an integer** (`int.primary.autoGenerate2`). A UUID key is a UUIDv7. For a UUID or string key, write the reason in the PR description. A join table uses its foreign-key columns as the key, not an `id` column. — [Primary Keys](#primary-keys)
-- [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL. Migration's `notNull` matches the entity's nullability. — [NOT NULL and entity parity](#not-null-and-entity-parity)
+- [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL. Migration's `notNull` matches the entity's nullability. **(CI)** reports `.notNull` chained with `.primary`. — [NOT NULL and entity parity](#not-null-and-entity-parity)
 - [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`. **(CI)** checks that each `.withEnumCheck` column has a `.comment`. — [Constrain enum-like strings](#constrain-enum-like-strings), [Add comments on columns](#add-comments-on-columns)
 - [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. Avoid polymorphic `(typeCol, idCol)` patterns. — [Foreign Key Constraints](#foreign-key-constraints), [General Design Guidance](#general-design-guidance)
 - [ ] **Indexes match real query patterns.** A unique constraint already creates an index; a composite PK indexes its prefix. Mirror `withIndexOn(...)` to entity `@Index(...)`. — [Index Management](#index-management)
+- [ ] **Derived index names fit Postgres.** `IDX_<table>_<columns>` plus a table prefix of 16 characters must be at most 63 characters. If it is longer, pass a short custom name to `createIndex` and `dropIndex`. **(CI)** — [Index Management](#index-management)
 - [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL`. — [Index Management](#index-management)
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage. — [Index Management](#index-management)
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
 - [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
+- [ ] **Each `runInBatches` query has `ORDER BY`** on a unique column. **(CI)** — [Use Batch Operations](#use-batch-operations)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
@@ -234,7 +236,7 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
   private async backfillSlugs({ escape, runQuery, runInBatches, logger, migrationName }: MigrationContext) {
     const table = escape.tableName('my_table');
     await runInBatches<{ id: string; name: string }>(
-      `SELECT id, name FROM ${table} WHERE slug IS NULL`,
+      `SELECT id, name FROM ${table} ORDER BY id`,
       async (rows) => {
         for (const row of rows) {
           try {
@@ -539,6 +541,7 @@ await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 - **Unique indexes enforce uniqueness AND speed up lookups.** Prefer them over a separate unique constraint + index pair.
 - **Drop unused indexes.** If a query plan no longer uses it, drop it in a follow-up migration.
 - **Name indexes via the DSL,** never hand-roll names. The DSL prefixes them consistently so they line up across environments.
+- **Keep derived index names short.** Postgres identifiers have a limit of 63 characters. When `IDX_<table>_<columns>` plus a table prefix of 16 characters is longer, pass a short custom name to `createIndex`, the same name to `dropIndex`, and the same name to the entity `@Index`. Postgres shortens a longer name without an error, and a later `dropIndex` with the full name then fails.
 - **Mirror DSL indexes onto the entity with `@Index`.** The migration creates the runtime index; the entity decorator keeps fresh-DB setups in sync.
 - **Use `.withIndexOn(...)` when defining a new table** rather than a separate `createIndex(...)` call.
 
@@ -614,10 +617,12 @@ When SQL alone can't express the transformation, fall back to `runInBatches`. Fi
 
 **Never `SELECT *` unbounded on tables that could have millions of rows.**
 
+**Add `ORDER BY` on a unique column to each `runInBatches` query.** `runInBatches` reads pages with `LIMIT` and `OFFSET`. Without a stable order, the database can return a row in two pages or in no page. Also make sure that the updates in the callback do not remove rows from the query result. If they do, `OFFSET` skips rows.
+
 ```typescript
 // ✅: batched processing
 await runInBatches<Workflow>(
-	`SELECT id, nodes FROM ${tableName} WHERE ${condition}`,
+	`SELECT id, nodes FROM ${tableName} WHERE ${condition} ORDER BY id`,
 	async (workflows) => {
 		for (const workflow of workflows) {
 			// ... process each workflow ...
@@ -654,7 +659,7 @@ export class AddAndBackfillColumn1234567890000 implements IrreversibleMigration 
 	private async backfillNewCol({ escape, runQuery, runInBatches }: MigrationContext) {
 		const table = escape.tableName('my_table');
 		await runInBatches<{ id: string; oldCol: string }>(
-			`SELECT id, oldCol FROM ${table}`,
+			`SELECT id, oldCol FROM ${table} ORDER BY id`,
 			async (rows) => {
 				for (const row of rows) {
 					const transformed = transform(row.oldCol);

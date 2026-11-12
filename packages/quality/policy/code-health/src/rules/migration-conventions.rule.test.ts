@@ -203,7 +203,7 @@ describe('MigrationConventionsRule', () => {
 		it('flags lowercase SQL that a variable passes to a query function', async () => {
 			const violations = await analyzeAdded(
 				migration(
-					"const query = 'select id from workflow_entity';\n" +
+					"const query = 'select id from workflow_entity order by id';\n" +
 						'await context.runInBatches(query, async () => {});',
 				),
 			);
@@ -319,6 +319,113 @@ describe('MigrationConventionsRule', () => {
 
 			expect(violations).toHaveLength(1);
 			expect(violations[0].message).toContain('Column `status`');
+		});
+	});
+
+	describe('batched queries', () => {
+		it('flags a runInBatches query without ORDER BY', async () => {
+			const violations = await analyzeAdded(
+				migration(
+					"await context.runInBatches(`SELECT id FROM #{escape.tableName('agents')} WHERE x = 'order by'`, async () => {});",
+				),
+			);
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].message).toContain('The `runInBatches` query has no `ORDER BY`');
+			expect(violations[0].message).toContain(
+				'.agents/skills/db-migrations/SKILL.md#use-batch-operations',
+			);
+		});
+
+		it('resolves a query that a const or a concatenation holds', async () => {
+			const up = [
+				"const table = escape.tableName('agents');",
+				'const query = `SELECT id FROM #{table}` + " WHERE id > 0";',
+				'await context.runInBatches(query, async () => {});',
+			].join('\n\t\t');
+
+			expect(await analyzeAdded(migration(up))).toHaveLength(1);
+		});
+
+		it('accepts an ordered query and skips a query it cannot resolve', async () => {
+			const up = [
+				"await context.runInBatches(`SELECT id FROM #{escape.tableName('agents')}\n order  by id`, async () => {});",
+				'const build = () => "SELECT 1";',
+				'await context.runInBatches(build(), async () => {});',
+			].join('\n\t\t');
+
+			expect(await analyzeAdded(migration(up))).toEqual([]);
+		});
+	});
+
+	describe('index name length', () => {
+		const longColumns = "['configurationId', 'createdAt']";
+
+		it('flags createIndex and dropIndex calls whose derived name is too long for Postgres', async () => {
+			const up = [
+				`await schemaBuilder.createIndex('self_healing_investigation', ${longColumns});`,
+				`await schemaBuilder.dropIndex('self_healing_investigation', ${longColumns}, { skipIfMissing: true });`,
+			].join('\n\t\t');
+
+			const violations = await analyzeAdded(migration(up));
+
+			expect(violations).toHaveLength(2);
+			expect(violations[0].message).toContain(
+				'The derived index name `IDX_self_healing_investigation_configurationId_createdAt` has 56 characters',
+			);
+			expect(violations[0].message).toContain(
+				'.agents/skills/db-migrations/SKILL.md#index-management',
+			);
+		});
+
+		it('accepts custom index names and short derived names', async () => {
+			const up = [
+				`await schemaBuilder.createIndex('self_healing_investigation', ${longColumns}, false, 'IDX_shi_config_created');`,
+				`await schemaBuilder.dropIndex('self_healing_investigation', ${longColumns}, { customIndexName: 'IDX_shi_config_created' });`,
+				"await schemaBuilder.createIndex('agents', ['projectId'], false, undefined, 'x IS NOT NULL');",
+			].join('\n\t\t');
+
+			expect(await analyzeAdded(migration(up))).toEqual([]);
+		});
+
+		it('flags a createIndex call that passes undefined as the custom name', async () => {
+			const up = `await schemaBuilder.createIndex('self_healing_investigation', ${longColumns}, false, undefined, 'x IS NOT NULL');`;
+
+			expect(await analyzeAdded(migration(up))).toHaveLength(1);
+		});
+
+		it('ignores SQLite-only migrations', async () => {
+			const up = `await schemaBuilder.createIndex('self_healing_investigation', ${longColumns});`;
+
+			expect(await analyzeAdded(migration(up), 'sqlite')).toEqual([]);
+		});
+
+		it('uses the configured table prefix budget', async () => {
+			rule.configure({ options: { maxTablePrefixLength: 4 } });
+			const up = `await schemaBuilder.createIndex('self_healing_investigation', ${longColumns});`;
+
+			expect(await analyzeAdded(migration(up))).toEqual([]);
+		});
+	});
+
+	describe('primary key nullability', () => {
+		it('flags notNull chained with primary in either order', async () => {
+			const up = [
+				"await createTable('job').withColumns(",
+				"\tcolumn('id').int.primary.notNull.autoGenerate2,",
+				"\tcolumn('runId').varchar(36).notNull.primaryWithName('PK_job_run'),",
+				"\tcolumn('name').varchar(36).notNull,",
+				"\tcolumn('key').varchar(36).primary,",
+				');',
+			].join('\n\t\t');
+
+			const violations = await analyzeAdded(migration(up));
+
+			expect(violations.map((v) => v.message.split('. ')[0])).toEqual([
+				'Column `id` chains `.notNull` with `.primary`',
+				'Column `runId` chains `.notNull` with `.primary`',
+			]);
+			expect(violations[0].message).toContain('.agents/skills/db-migrations/SKILL.md#primary-keys');
 		});
 	});
 });
