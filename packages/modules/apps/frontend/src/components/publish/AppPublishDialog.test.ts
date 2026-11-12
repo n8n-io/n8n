@@ -105,6 +105,39 @@ describe('AppPublishDialog', () => {
 		expect(emitted('update:open')).toBeUndefined();
 	});
 
+	it('keeps the error visible while the next publish runs', async () => {
+		vi.mocked(publishApp).mockRejectedValueOnce(new Error('Could not publish "Sales"'));
+		let resolveSecond: (app: ReturnType<typeof testApp>) => void = () => {};
+		vi.mocked(publishApp).mockReturnValueOnce(
+			new Promise((done) => {
+				resolveSecond = done;
+			}),
+		);
+		renderComponent();
+		await userEvent.click(await screen.findByTestId('app-publish-dialog-confirm'));
+		await screen.findByTestId('app-publish-error');
+
+		await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+		expect(screen.getByTestId('app-publish-error')).toHaveTextContent('Could not publish "Sales"');
+
+		resolveSecond(testApp());
+		await flushPromises();
+	});
+
+	it('replaces the error with the new one when the next publish fails', async () => {
+		vi.mocked(publishApp).mockRejectedValueOnce(new Error('Could not publish "Sales"'));
+		vi.mocked(publishApp).mockRejectedValueOnce(new Error('Could not publish "Support"'));
+		renderComponent();
+		await userEvent.click(await screen.findByTestId('app-publish-dialog-confirm'));
+		await screen.findByText('Could not publish "Sales"');
+
+		await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
+
+		expect(await screen.findByText('Could not publish "Support"')).toBeInTheDocument();
+		expect(screen.queryByText('Could not publish "Sales"')).not.toBeInTheDocument();
+	});
+
 	describe('attached resources', () => {
 		const sales = {
 			key: 'sales',

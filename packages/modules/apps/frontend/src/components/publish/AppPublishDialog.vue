@@ -93,7 +93,6 @@ function reset() {
 
 async function publish() {
 	busy.value = true;
-	publishError.value = null;
 	try {
 		emit(
 			'updated',
