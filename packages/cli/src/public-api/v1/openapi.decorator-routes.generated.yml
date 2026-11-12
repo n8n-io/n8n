@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /agents:
+    post:
+      $ref: ./handlers/agents/spec/paths/createAgent.generated.yml
   /audit:
     post:
       $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml

@@ -21,6 +21,7 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { agentCustomToolsSchema } from './create-agent-public.dto';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -204,15 +205,11 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
 const createAgentShape = {
-	name: z.string().min(1),
+	name: z.string().min(1).max(128),
 	id: clientMintedAgentIdSchema.optional(),
-	config: z.record(z.unknown()).optional(),
+	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
-	tools: z
-		.record(
-			z.object({ code: z.string(), descriptor: z.object({ name: z.string() }).passthrough() }),
-		)
-		.optional(),
+	tools: agentCustomToolsSchema.optional(),
 	skills: z.record(agentSkillSchema).optional(),
 	/** Tag ids assigned to the new agent, as the workflow create endpoint takes them. */
 	tags: z.array(z.string().min(1)).max(50).optional(),

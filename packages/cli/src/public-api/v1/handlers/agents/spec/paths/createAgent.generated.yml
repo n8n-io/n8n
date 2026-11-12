@@ -1,0 +1,191 @@
+operationId: createAgent
+tags:
+  - Agent
+summary: Create an agent
+description: |-
+  Create an agent in the specified project. If projectId is omitted, use your personal project.
+
+  Requires the `agent:create` API key scope.
+x-required-scope: agent:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          projectId:
+            type: string
+            minLength: 1
+          config:
+            type: object
+            description: Agent configuration. Set name, model, and instructions. An empty model creates an unconfigured draft.
+            example:
+              name: Support
+              model: ''
+              instructions: Help users.
+          tools:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                code:
+                  type: string
+                descriptor:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      minLength: 1
+                      pattern: ^[A-Za-z0-9_]+$
+                    description:
+                      type: string
+                      default: ''
+                    systemInstruction:
+                      type: string
+                      nullable: true
+                      default: null
+                    inputSchema:
+                      type: object
+                      nullable: true
+                      additionalProperties: {}
+                      default: null
+                    outputSchema:
+                      type: object
+                      nullable: true
+                      additionalProperties: {}
+                      default: null
+                    hasSuspend:
+                      type: boolean
+                      default: false
+                    hasResume:
+                      type: boolean
+                      default: false
+                    hasToMessage:
+                      type: boolean
+                      default: false
+                    requireApproval:
+                      type: boolean
+                      default: false
+                    outputTrust:
+                      type: string
+                      nullable: true
+                      enum:
+                        - untrusted
+                    providerOptions:
+                      type: object
+                      nullable: true
+                      additionalProperties: {}
+                      default: null
+                  required:
+                    - name
+                  additionalProperties: false
+              required:
+                - code
+                - descriptor
+              additionalProperties: false
+          availableInMCP:
+            type: boolean
+        required:
+          - name
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            projectId:
+              type: string
+            project:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            availableInMCP:
+              type: boolean
+            isArchived:
+              type: boolean
+            versionId:
+              type: string
+              nullable: true
+            activeVersionId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+            config:
+              type: object
+              nullable: true
+            configHash:
+              type: string
+              nullable: true
+            tools:
+              type: object
+              additionalProperties:
+                type: object
+            activeVersion:
+              type: object
+              nullable: true
+              properties:
+                versionId:
+                  type: string
+                integrations:
+                  type: array
+                  items:
+                    type: object
+              required:
+                - versionId
+                - integrations
+          required:
+            - id
+            - name
+            - projectId
+            - project
+            - availableInMCP
+            - isArchived
+            - versionId
+            - activeVersionId
+            - createdAt
+            - updatedAt
+            - config
+            - configHash
+            - tools
+            - activeVersion
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

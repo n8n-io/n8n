@@ -18,6 +18,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { AgentsService } from './agents.service';
+import { mapAgentDto } from './agent-response.mapper';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsController {
@@ -53,6 +54,7 @@ export class AgentsController {
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
 				config: payload.config,
+				tools: payload.tools,
 				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
 				// Keep the config name in sync with the entity name so the list and
@@ -68,8 +70,11 @@ export class AgentsController {
 					: {}),
 			},
 		);
+		const state = await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 		return {
-			...(await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user)),
+			// Keep legacy builder fields until the other internal endpoints use AgentDto.
+			...state,
+			...mapAgentDto(agent, { ...state, config: creationState.config }),
 			...creationState,
 		};
 	}

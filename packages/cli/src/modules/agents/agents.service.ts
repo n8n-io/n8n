@@ -1,6 +1,7 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	agentCustomToolsSchema,
 	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
@@ -28,6 +29,7 @@ import {
 	In,
 	isUniqueConstraintError,
 	ProjectRelationRepository,
+	ProjectRepository,
 	TransactionRunner,
 	type TagEntity,
 	type User,
@@ -43,13 +45,16 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { TagService } from '@/services/tag.service';
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	NotFoundError,
 	UnexpectedError,
 	UserError,
+	UnprocessableRequestError,
 } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
@@ -127,8 +132,7 @@ type DraftAgentCreateOptions = {
 	/** Creates the skills of refs with only a body when `user` is not set.
 	 *  Without either, those refs are dropped. */
 	skillCreator?: User;
-	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
-	 *  validated when the source agent was authored). */
+	/** Custom tool bodies keyed by ID. Validated before insertion. */
 	tools?: Record<string, unknown>;
 	/** Tag ids assigned at insert time (REST create). Validated before the agent is created. */
 	tagIds?: string[];
@@ -166,6 +170,18 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 	) {}
+
+	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
+		const projects = Container.get(ProjectRepository);
+		const id = projectId ?? (await projects.getPersonalProjectForUserOrFail(user.id)).id;
+		if (!(await this.projectScopeService.hasScopes(user, id, ['agent:create']))) {
+			throw new ForbiddenError('You do not have permission to create Agents in this project.');
+		}
+		if (!(await projects.findOneWithUserRoles(id, user.id, undefined))) {
+			throw new BadRequestError(`Project with ID "${id}" not found`);
+		}
+		return id;
+	}
 
 	/**
 	 * `id` lets the caller mint the agent id before deciding to persist it, so a
@@ -205,6 +221,11 @@ export class AgentsService {
 			return await this.getCreationResult(agent, false);
 		}
 		this.assertCreateOptions(options);
+		if (options.user) {
+			await this.resolveOwningProjectId(options.user, projectId);
+		}
+		const tools = agentCustomToolsSchema.safeParse(options.tools ?? {});
+		if (!tools.success) throw new BadRequestError(tools.error.message);
 		const agentTags = await this.resolveCreateTags(options.tagIds);
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(
 			projectId,
@@ -219,13 +240,19 @@ export class AgentsService {
 				projectId,
 				schema: fromAgentDocument(schemaConfig).config,
 				...(integrations.length > 0 ? { integrations } : {}),
-				...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
+				...(options.tools ? { tools: tools.data } : {}),
 				versionId: uuid(),
 				availableInMCP: options.availableInMCP ?? false,
 			}),
 			{ projectId },
 		);
-		const prepared = await this.prepareAgentCreation(agent, schemaConfig, options);
+		const prepared = await this.prepareAgentCreation(agent, schemaConfig, options).catch(
+			(error: unknown) => {
+				if (error instanceof PolicyViolationError)
+					throw new UnprocessableRequestError(error.message, undefined, error.meta);
+				throw error;
+			},
+		);
 		let savedRefs: AgentSkillRefs;
 		try {
 			savedRefs = await this.insertAgent(agent, prepared.skillRefs, options);

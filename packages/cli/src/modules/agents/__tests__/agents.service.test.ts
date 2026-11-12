@@ -20,13 +20,14 @@ import type {
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -94,6 +95,11 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
+	projectScopeService.hasScopes.mockResolvedValue(true);
+	const projectRepository = mock<ProjectRepository>();
+	projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'personal' } as never);
+	projectRepository.findOneWithUserRoles.mockResolvedValue({ id: projectId } as never);
+	Container.set(ProjectRepository, projectRepository);
 	projectScopeService.getMemberProjectIds.mockResolvedValue([]);
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
@@ -211,6 +217,39 @@ describe('AgentsService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	describe('resolveOwningProjectId', () => {
+		it('uses the personal project and checks create permission', async () => {
+			const { service, projectScopeService } = makeService();
+			expect(await service.resolveOwningProjectId(user)).toBe('personal');
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'personal', [
+				'agent:create',
+			]);
+		});
+
+		it('uses the requested project', async () => {
+			const { service, projectScopeService } = makeService();
+			expect(await service.resolveOwningProjectId(user, projectId)).toBe(projectId);
+			expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, projectId, ['agent:create']);
+		});
+
+		it.each([undefined, 'team'])('rejects a project without create permission: %s', async (id) => {
+			const { service, projectScopeService } = makeService();
+			projectScopeService.hasScopes.mockResolvedValue(false);
+			await expect(service.resolveOwningProjectId(user, id)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	it('rejects invalid custom tools before insertion', async () => {
+		const { service, agentRepository } = makeService();
+		await expect(
+			service.create(projectId, 'Agent', {
+				actor,
+				tools: { lookup: { code: 'return []', descriptor: { name: 'invalid name' } } },
+			}),
+		).rejects.toThrow(BadRequestError);
+		expect(agentRepository.insertNew).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -623,7 +662,7 @@ describe('AgentsService', () => {
 		});
 
 		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity.tools).toEqual(tools);
+		expect(entity.tools).toMatchObject(tools);
 		expect(entity.schema).toMatchObject({
 			tools: [{ type: 'custom', id: 'refund_tool' }],
 		});

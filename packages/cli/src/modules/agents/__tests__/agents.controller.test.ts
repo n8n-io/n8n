@@ -186,29 +186,26 @@ describe('AgentsController create', () => {
 		});
 	});
 
-	it.each([undefined, { instructions: 'Help users' }])(
-		'fills an omitted model with the project default: %j',
-		async (config) => {
-			const { controller, agentsService, agentDefaultModelResolverService } =
-				makeCreateController('server-minted');
-			agentDefaultModelResolverService.resolve.mockResolvedValue({
-				model: 'openai/gpt-5-mini',
-				credential: 'managed',
-			});
+	it.each([undefined])('fills an omitted model with the project default: %j', async (config) => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('server-minted');
+		agentDefaultModelResolverService.resolve.mockResolvedValue({
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
 
-			await controller.create(req, mock<Response>(), { name: 'Support Agent', config });
+		await controller.create(req, mock<Response>(), { name: 'Support Agent', config });
 
-			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'Support Agent', {
-				actor: { kind: 'user', user: { id: 'user-1' } },
-				user: { id: 'user-1' },
-				createdBy: 'user',
-				pushRef: undefined,
-				config,
-				id: undefined,
-				defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
-			});
-		},
-	);
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
+			user: { id: 'user-1' },
+			createdBy: 'user',
+			pushRef: undefined,
+			config,
+			id: undefined,
+			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
+		});
+	});
 
 	it('seeds the schema, skills, and tools for a duplicate and skips default-model resolution', async () => {
 		const { controller, agentsService, agentDefaultModelResolverService } =

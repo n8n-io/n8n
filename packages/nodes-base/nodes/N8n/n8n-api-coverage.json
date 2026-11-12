@@ -1,6 +1,9 @@
 {
 	"$comment": "Coverage manifest: n8n node vs n8n public API. When a new endpoint is added to the OpenAPI spec, add it here with status covered/gap/excluded. See test/N8n.api-coverage.test.ts.",
 	"endpoints": {
+		"POST /agents": {
+			"status": "gap"
+		},
 		"POST /audit": {
 			"status": "covered",
 			"nodeOperation": "audit:generate"
