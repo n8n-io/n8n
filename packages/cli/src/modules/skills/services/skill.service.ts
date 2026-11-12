@@ -937,6 +937,7 @@ export class SkillService {
 				projectId,
 				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
 				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,
+				projectIcon: projectId ? (projects.get(projectId)?.icon ?? null) : null,
 				source: skill.source,
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
