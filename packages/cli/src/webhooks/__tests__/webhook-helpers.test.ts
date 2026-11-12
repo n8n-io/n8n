@@ -1,13 +1,18 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type WorkflowPublishedDataService } from '@n8n/backend-services';
 import {
 	OAuth2FlowProxy,
 	type ProtectedResource,
 	ProtectedResourceRegistry,
 } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
+import {
+	EngineConfig,
+	ExecutionsConfig,
+	type ExpressionEngineConfig,
+	type WorkflowsConfig,
+} from '@n8n/config';
+import type { Project, WebhookEntity, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Person, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -67,6 +72,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
 	ExpressionError,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -74,6 +80,8 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import type { EngineV2ResumeRequest } from '@/interfaces';
+import { rawBodyReader } from '@/middlewares';
+import type { NodeTypes } from '@/node-types';
 import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -83,6 +91,8 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import {
 	createLargeTempFile,
 	disconnectBeforeResponse,
@@ -94,6 +104,7 @@ import {
 } from '@test/file-stream-server';
 
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
+import { LiveWebhooks } from '../live-webhooks';
 import {
 	autoDetectResponseMode,
 	handleFormRedirectionCase,
@@ -108,6 +119,7 @@ import {
 	extractTracingContext,
 } from '../webhook-helpers';
 import { WebhookResponder, type WebhookResponseCallback } from '../webhook-responder';
+import { createWebhookHandlerFor } from '../webhook-request-handler';
 import { isWebhookResponse, isWebhookStaticResponse } from '../webhook-response';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
@@ -2725,6 +2737,57 @@ describe('executeWebhook manual chat history', () => {
 		],
 	};
 
+	const successfulRun: IRun = {
+		mode: 'webhook',
+		status: 'success',
+		startedAt: new Date(0),
+		storedAt: 'db',
+		data: createRunExecutionData({
+			resultData: {
+				lastNodeExecuted: 'Load History',
+				runData: {
+					'Load History': [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							source: [],
+							data: { main: [[{ json: history }]] },
+						},
+					],
+				},
+			},
+		}),
+	};
+
+	const createChatTrigger = (responseMode: string): INode => ({
+		id: 'chat-trigger',
+		name: 'Chat Trigger',
+		type: CHAT_TRIGGER_NODE_TYPE,
+		typeVersion: 1.4,
+		position: [0, 0],
+		parameters: {
+			public: true,
+			mode: 'webhook',
+			options: { responseMode, loadPreviousSession: 'manually', allowedOrigins: '*' },
+		},
+	});
+
+	const createWebhookData = (node: INode, responseMode: string): IWebhookData => ({
+		httpMethod: 'POST',
+		node: node.name,
+		path: 'chat',
+		webhookDescription: {
+			httpMethod: 'POST',
+			path: 'chat',
+			name: 'default',
+			responseMode,
+			responseData: 'firstEntryJson',
+		},
+		workflowId: WORKFLOW_ID,
+		workflowExecuteAdditionalData: mock<IWorkflowExecuteAdditionalData>(),
+	});
+
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
@@ -2748,102 +2811,67 @@ describe('executeWebhook manual chat history', () => {
 		);
 	});
 
+	const startWebhook = async (
+		responseMode: string,
+		body: IDataObject = historyRequest,
+		type = CHAT_TRIGGER_NODE_TYPE,
+	) => {
+		const workflowStartNode = { ...createChatTrigger(responseMode), type };
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Chat history workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'chatTrigger' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+			},
+		});
+		const postExecute = createDeferredPromise<IRun | undefined>();
+		activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
+		const req = mock<WebhookRequest>({
+			method: 'POST',
+			contentType: 'application/json',
+			headers: {},
+		});
+		req.readRawBody.mockImplementation(async () => {
+			req.rawBody = Buffer.from(JSON.stringify(body));
+			req.encoding = 'utf8';
+		});
+		const res = mock<express.Response>({ headersSent: false });
+		const responseCallback = vi.fn<WebhookResponseCallback>();
+
+		await executeWebhook(
+			workflow,
+			createWebhookData(workflowStartNode, responseMode),
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Chat history workflow' }),
+			workflowStartNode,
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			res,
+			responseCallback,
+		);
+
+		return { req, res, responseCallback, postExecute };
+	};
+
 	it.each(['lastNode', 'responseNode', 'streaming', 'responseNodes'])(
 		'returns the workflow history as plain JSON in %s mode',
 		async (responseMode) => {
-			const workflowStartNode: INode = {
-				id: 'chat-trigger',
-				name: 'Chat Trigger',
-				type: CHAT_TRIGGER_NODE_TYPE,
-				typeVersion: 1.4,
-				position: [0, 0],
-				parameters: {
-					public: true,
-					mode: 'webhook',
-					options: { responseMode, loadPreviousSession: 'manually', allowedOrigins: '*' },
-				},
-			};
-			const workflow = mock<Workflow>({
-				id: WORKFLOW_ID,
-				name: 'Chat history workflow',
-				nodeTypes: {
-					getByNameAndVersion: vi
-						.fn()
-						.mockReturnValue(mock<INodeType>({ description: { name: 'chatTrigger' } })),
-				},
-				expression: {
-					getSimpleParameterValue: vi.fn(
-						(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
-							args[1] ?? args[5],
-					),
-					getComplexParameterValue: vi.fn(
-						(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) =>
-							args[1] ?? args[5],
-					),
-				},
-			});
-			const postExecute = createDeferredPromise<IRun | undefined>();
-			activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
-			const req = mock<WebhookRequest>({
-				method: 'POST',
-				contentType: 'application/json',
-				headers: {},
-			});
-			req.readRawBody.mockImplementation(async () => {
-				req.rawBody = Buffer.from(JSON.stringify(historyRequest));
-				req.encoding = 'utf8';
-			});
-			const res = mock<express.Response>({ headersSent: false });
-			const responseCallback = vi.fn<WebhookResponseCallback>();
-
-			await executeWebhook(
-				workflow,
-				{
-					httpMethod: 'POST',
-					node: workflowStartNode.name,
-					path: 'chat',
-					webhookDescription: {
-						httpMethod: 'POST',
-						path: 'chat',
-						name: 'default',
-						responseMode,
-						responseData: 'firstEntryJson',
-					},
-					workflowId: WORKFLOW_ID,
-					workflowExecuteAdditionalData: mock<IWorkflowExecuteAdditionalData>(),
-				},
-				mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Chat history workflow' }),
-				workflowStartNode,
-				'webhook',
-				undefined,
-				undefined,
-				undefined,
-				req,
-				res,
-				responseCallback,
-			);
-			postExecute.resolve({
-				mode: 'webhook',
-				status: 'success',
-				startedAt: new Date(0),
-				storedAt: 'db',
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'Load History',
-						runData: {
-							'Load History': [
-								{
-									startTime: 0,
-									executionIndex: 0,
-									executionTime: 0,
-									source: [],
-									data: { main: [[{ json: history }]] },
-								},
-							],
-						},
-					},
-				}),
-			});
+			const { req, res, responseCallback, postExecute } = await startWebhook(responseMode);
+			postExecute.resolve(successfulRun);
 			await new Promise(process.nextTick);
 
 			expect(req.body).toEqual(historyRequest);
@@ -2851,6 +2879,11 @@ describe('executeWebhook manual chat history', () => {
 			const [runData] = workflowRunner.run.mock.calls[0];
 			expect(runData.streamingEnabled).not.toBe(true);
 			expect(runData.httpResponse).toBeUndefined();
+			expect(runData.callerAwaitsOutcome).toBe('response');
+			expect(activeExecutions.setResponseMode).toHaveBeenCalledWith(
+				EXECUTION_ID,
+				responseMode === 'responseNode' ? 'responseNode' : 'lastNode',
+			);
 			expect(responseCallback).toHaveBeenCalledOnce();
 			const [error, response] = responseCallback.mock.calls[0];
 			expect(error).toBeNull();
@@ -2858,6 +2891,124 @@ describe('executeWebhook manual chat history', () => {
 			if (isWebhookStaticResponse(response)) body = response.body;
 			else if (!isWebhookResponse(response)) body = response.data;
 			expect(body).toEqual(history);
+		},
+	);
+
+	it.each(['streaming', 'responseNodes'])(
+		'keeps %s mode for normal chat messages',
+		async (responseMode) => {
+			const { res, postExecute } = await startWebhook(responseMode, {
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				sessionId: 's1',
+			});
+			postExecute.resolve(successfulRun);
+
+			const [runData] = workflowRunner.run.mock.calls[0];
+			if (responseMode === 'streaming') {
+				expect(runData.streamingEnabled).toBe(true);
+				expect(runData.httpResponse).toBe(res);
+			} else {
+				expect(res.send).toHaveBeenCalledWith(
+					expect.objectContaining({ executionStarted: true, executionId: EXECUTION_ID }),
+				);
+			}
+		},
+	);
+
+	it('keeps streaming for other webhook node types with the same action', async () => {
+		const { res, postExecute } = await startWebhook('streaming', historyRequest, WEBHOOK_NODE_TYPE);
+		postExecute.resolve(successfulRun);
+
+		const [runData] = workflowRunner.run.mock.calls[0];
+		expect(runData.streamingEnabled).toBe(true);
+		expect(runData.httpResponse).toBe(res);
+	});
+
+	it.each(['lastNode', 'responseNode', 'streaming', 'responseNodes'])(
+		'sends JSON through live webhooks and the HTTP response handler in %s mode',
+		async (responseMode) => {
+			const trigger = createChatTrigger(responseMode);
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: {
+						name: 'chatTrigger',
+						properties: [
+							{
+								displayName: 'Options',
+								name: 'options',
+								type: 'collection',
+								default: {},
+								options: [
+									{
+										displayName: 'Response Mode',
+										name: 'responseMode',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Load Previous Session',
+										name: 'loadPreviousSession',
+										type: 'string',
+										default: 'manually',
+									},
+								],
+							},
+						],
+					},
+				}),
+			);
+			const workflowRepository = mock<WorkflowRepository>();
+			workflowRepository.findOne.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: WORKFLOW_ID,
+					name: 'Chat history workflow',
+					activeVersionId: 'v1',
+					staticData: {},
+					shared: [],
+					activeVersion: { versionId: 'v1', nodes: [trigger], connections: {} },
+				}),
+			);
+			webhookService.findWebhook.mockResolvedValue(
+				mock<WebhookEntity>({ workflowId: WORKFLOW_ID, node: trigger.name, webhookPath: 'chat' }),
+			);
+			webhookService.getNodeWebhooks.mockReturnValue([createWebhookData(trigger, responseMode)]);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(successfulRun);
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
+			vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+			const liveWebhooks = new LiveWebhooks(
+				mock<Logger>(),
+				nodeTypes,
+				webhookService,
+				workflowRepository,
+				mock<WorkflowStaticDataService>(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock<WorkflowPublishedDataService>(),
+				mock<ExpressionEngineConfig>(),
+				mock<WorkflowPublisherService>(),
+			);
+			const app = express();
+			app.use(rawBodyReader);
+			app.post('/:path', createWebhookHandlerFor(liveWebhooks));
+			const server = await startServer(app);
+			try {
+				const response = await fetch(`${server.url}chat`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(historyRequest),
+					signal: AbortSignal.timeout(5000),
+				});
+
+				expect(Container.get(Logger).error).not.toHaveBeenCalled();
+				expect(response.status).toBe(200);
+				expect(response.headers.get('content-type')).toContain('application/json');
+				expect(response.headers.get('transfer-encoding')).toBeNull();
+				await expect(response.json()).resolves.toEqual(history);
+			} finally {
+				await server.close();
+			}
 		},
 	);
 });
