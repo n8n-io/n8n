@@ -406,7 +406,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 						role: 'assistant',
 						content: [
 							{ type: 'reasoning', text: 'hmm' },
-							{ type: 'text', text: 'Hello', providerMetadata: { fake: { foo: 'bar' } } },
+							{ type: 'text', text: 'Hello', providerMetadata: { foo: 'bar' } },
 							{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
 							{ type: 'tool-result', toolCallId: 'call-1', result: { hits: 3 } },
 							{ type: 'tool-result', toolCallId: 'call-2', result: new Date(0), isError: true },
@@ -427,7 +427,13 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(result.content).toEqual([
 				{ type: 'reasoning', text: 'hmm' },
 				{ type: 'text', text: 'Hello', providerMetadata: { fake: { foo: 'bar' } } },
-				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
+				{
+					type: 'tool-call',
+					toolCallId: 'call-1',
+					toolName: 'lookup',
+					input: '{"q":1}',
+					providerExecuted: true,
+				},
 				{ type: 'tool-result', toolCallId: 'call-1', toolName: 'lookup', result: { hits: 3 } },
 				{
 					type: 'tool-result',
@@ -465,7 +471,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 						outputTokenDetails: { reasoning: 6 },
 						additionalMetadata: { billed: 1 },
 					},
-					providerMetadata: { fake: { trace: 'abc' }, ignored: 'not an object' },
+					providerMetadata: { status: 'completed', reasoning: { id: 'r1' }, at: new Date(0) },
 					message: { role: 'assistant', content: [] },
 				},
 			});
@@ -480,7 +486,89 @@ describe('AiSdkLanguageModelAdapter', () => {
 				raw: { billed: 1 },
 			});
 			expect(result.response).toEqual({ id: 'resp-1', modelId: 'fake-model' });
-			expect(result.providerMetadata).toEqual({ fake: { trace: 'abc' } });
+			expect(result.providerMetadata).toEqual({
+				fake: { status: 'completed', reasoning: { id: 'r1' }, at: '1970-01-01T00:00:00.000Z' },
+			});
+		});
+
+		it('leaves the uncached input tokens unknown when cache reads are not reported', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					result: {
+						usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+						message: { role: 'assistant', content: [] },
+					},
+				}),
+			);
+
+			const result = await adapter.doGenerate(callOptions());
+
+			expect(result.usage.inputTokens).toEqual({
+				total: 10,
+				noCache: undefined,
+				cacheRead: undefined,
+				cacheWrite: undefined,
+			});
+		});
+
+		it('sends block metadata back to the chat model when the AI SDK replays it', async () => {
+			const model = createFakeChatModel({
+				result: {
+					message: {
+						role: 'assistant',
+						content: [
+							{ type: 'reasoning', text: 'hmm', providerMetadata: { signature: 'sig-1' } },
+							{
+								type: 'tool-call',
+								toolCallId: 'call-1',
+								toolName: 'lookup',
+								input: '{}',
+								providerMetadata: { thought: 'sig-2' },
+							},
+						],
+					},
+				},
+			});
+			const adapter = new AiSdkLanguageModelAdapter(model);
+
+			const generated = await adapter.doGenerate(callOptions());
+			await adapter.doGenerate(
+				callOptions({
+					prompt: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'reasoning',
+									text: 'hmm',
+									providerOptions: generated.content[0].providerMetadata,
+								},
+								{
+									type: 'tool-call',
+									toolCallId: 'call-1',
+									toolName: 'lookup',
+									input: {},
+									providerOptions: {
+										...generated.content[1].providerMetadata,
+										other: { ignored: true },
+									},
+								},
+							],
+						},
+					],
+				}),
+			);
+
+			expect(model.calls[1].messages[0].content).toEqual([
+				{ type: 'reasoning', text: 'hmm', providerMetadata: { signature: 'sig-1' } },
+				{
+					type: 'tool-call',
+					toolCallId: 'call-1',
+					toolName: 'lookup',
+					input: '{}',
+					providerMetadata: { thought: 'sig-2' },
+				},
+			]);
 		});
 
 		it('falls back to "other" and empty usage when the chat model reports none', async () => {
@@ -499,12 +587,32 @@ describe('AiSdkLanguageModelAdapter', () => {
 		it('passes the abort signal to the chat model stream', async () => {
 			const model = createFakeChatModel();
 			const adapter = new AiSdkLanguageModelAdapter(model);
-			const abortSignal = new AbortController().signal;
+			const caller = new AbortController();
 
-			const { stream } = await adapter.doStream(callOptions({ abortSignal }));
+			const { stream } = await adapter.doStream(callOptions({ abortSignal: caller.signal }));
 			await readAll(stream);
+			caller.abort();
 
-			expect(model.calls[0].config?.abortSignal).toBe(abortSignal);
+			expect(model.calls[0].config?.abortSignal?.aborted).toBe(true);
+		});
+
+		it('aborts a chat model call that waits for a chunk when the consumer cancels', async () => {
+			const model = createFakeChatModel();
+			model.stream = async function* (_messages, config) {
+				yield { type: 'text-delta', delta: 'a' };
+				await new Promise((_resolve, reject) => {
+					config?.abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+			};
+			const adapter = new AiSdkLanguageModelAdapter(model);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const reader = stream.getReader();
+			for (let i = 0; i < 4; i++) await reader.read();
+			// This read waits for the chunk that never arrives.
+			void reader.read();
+
+			await expect(reader.cancel()).resolves.toBeUndefined();
 		});
 
 		it('opens with stream-start and response-metadata', async () => {
@@ -552,7 +660,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 					usage: {
 						inputTokens: {
 							total: 1,
-							noCache: 1,
+							noCache: undefined,
 							cacheRead: undefined,
 							cacheWrite: undefined,
 						},
@@ -610,6 +718,31 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
+		it('reads on when several chunks in a row give no parts', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'call-1', argumentsDelta: '{"q":' },
+						{ type: 'tool-call-delta', id: 'call-1', argumentsDelta: '1}' },
+						{ type: 'content', content: { type: 'provider', value: { raw: true } } },
+						{ type: 'tool-call-delta', id: 'call-1', name: 'lookup' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2);
+
+			expect(parts.map((part) => part.type)).toEqual([
+				'tool-input-start',
+				'tool-input-delta',
+				'tool-input-end',
+				'tool-call',
+				'finish',
+			]);
+		});
+
 		it('keeps interleaved parallel tool calls apart by id', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(
 				createFakeChatModel({
@@ -637,10 +770,150 @@ describe('AiSdkLanguageModelAdapter', () => {
 				{ type: 'tool-input-delta', id: 'b', delta: '"Berlin"' },
 				{ type: 'tool-input-delta', id: 'b', delta: '}' },
 				{ type: 'tool-input-end', id: 'a' },
-				{ type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
 				{ type: 'tool-input-end', id: 'b' },
+				{ type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
 				{ type: 'tool-call', toolCallId: 'b', toolName: 'weather', input: '{"city":"Berlin"}' },
 			]);
+		});
+
+		it('keeps the target of id-less deltas when another tool call completes', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{"q":' },
+						{ type: 'tool-call-delta', id: 'b', name: 'weather', argumentsDelta: '{"city":' },
+						{
+							type: 'content',
+							content: { type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
+						},
+						{ type: 'tool-call-delta', argumentsDelta: '"Berlin"}' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts.filter((part) => part.type === 'tool-call')).toEqual([
+				{ type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
+				{ type: 'tool-call', toolCallId: 'b', toolName: 'weather', input: '{"city":"Berlin"}' },
+			]);
+		});
+
+		it('sends no tool calls from a failed response', async () => {
+			const error = new Error('bad');
+			const afterErrorChunk = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{}' },
+						{ type: 'error', error },
+					],
+				}),
+			);
+			const afterErrorFinish = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{}' },
+						{ type: 'finish', finishReason: 'error' },
+					],
+				}),
+			);
+
+			const first = (await readAll((await afterErrorChunk.doStream(callOptions())).stream)).slice(
+				2,
+			);
+			const second = (await readAll((await afterErrorFinish.doStream(callOptions())).stream)).slice(
+				2,
+			);
+
+			expect(first.map((part) => part.type)).toEqual([
+				'tool-input-start',
+				'tool-input-delta',
+				'error',
+				'tool-input-end',
+				'finish',
+			]);
+			expect(first.at(-1)).toMatchObject({ finishReason: { unified: 'error' } });
+			expect(second.map((part) => part.type)).toEqual([
+				'tool-input-start',
+				'tool-input-delta',
+				'tool-input-end',
+				'finish',
+			]);
+		});
+
+		it('marks a streamed tool call as provider-executed when its result follows', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'search-1', name: 'web_search', argumentsDelta: '{}' },
+						{
+							type: 'content',
+							content: { type: 'tool-result', toolCallId: 'search-1', result: { hits: 2 } },
+						},
+						{ type: 'text-delta', delta: 'Found' },
+						{ type: 'finish', finishReason: 'stop' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts).toEqual([
+				{ type: 'tool-input-start', id: 'search-1', toolName: 'web_search' },
+				{ type: 'tool-input-delta', id: 'search-1', delta: '{}' },
+				{ type: 'tool-input-end', id: 'search-1' },
+				{
+					type: 'tool-call',
+					toolCallId: 'search-1',
+					toolName: 'web_search',
+					input: '{}',
+					providerExecuted: true,
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'search-1',
+					toolName: 'web_search',
+					result: { hits: 2 },
+				},
+				{ type: 'text-start', id: 'text' },
+				{ type: 'text-delta', id: 'text', delta: 'Found' },
+				{ type: 'text-end', id: 'text' },
+			]);
+		});
+
+		it('keeps the provider metadata of stream chunks', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'reasoning-delta', delta: 'think' },
+						{ type: 'reasoning-delta', delta: '', providerMetadata: { signature: 'sig' } },
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', providerMetadata: { t: 1 } },
+						{ type: 'tool-call-delta', id: 'a', argumentsDelta: '{}', providerMetadata: { u: 2 } },
+						{ type: 'finish', finishReason: 'tool-calls', providerMetadata: { status: 'done' } },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2);
+
+			expect(parts).toContainEqual({
+				type: 'reasoning-delta',
+				id: 'reasoning',
+				delta: '',
+				providerMetadata: { fake: { signature: 'sig' } },
+			});
+			expect(parts).toContainEqual({
+				type: 'tool-call',
+				toolCallId: 'a',
+				toolName: 'lookup',
+				input: '{}',
+				providerMetadata: { fake: { t: 1, u: 2 } },
+			});
+			expect(parts.at(-1)).toMatchObject({ providerMetadata: { fake: { status: 'done' } } });
 		});
 
 		it('drops a streamed tool call that never got a name', async () => {
@@ -666,12 +939,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 						{
 							type: 'content',
 							id: 't1',
-							content: { type: 'text', text: 'Hello', providerMetadata: { fake: { n: 1 } } },
+							content: { type: 'text', text: 'Hello', providerMetadata: { n: 1 } },
 						},
 						{
 							type: 'content',
 							id: 'r1',
-							content: { type: 'reasoning', text: 'hm', providerMetadata: { fake: { sig: 'x' } } },
+							content: { type: 'reasoning', text: 'hm', providerMetadata: { sig: 'x' } },
 						},
 						{
 							type: 'content',
@@ -699,7 +972,6 @@ describe('AiSdkLanguageModelAdapter', () => {
 				{ type: 'tool-input-start', id: 'call-1', toolName: 'lookup' },
 				{ type: 'tool-input-delta', id: 'call-1', delta: '{}' },
 				{ type: 'tool-input-end', id: 'call-1' },
-				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{}' },
 				{
 					type: 'source',
 					sourceType: 'url',
@@ -707,6 +979,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 					url: 'https://example.com',
 					title: 'Example',
 				},
+				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{}' },
 			]);
 		});
 
@@ -735,6 +1008,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(parts).toEqual([
 				{ type: 'tool-input-start', id: 'call-1', toolName: 'lookup' },
 				{ type: 'tool-input-delta', id: 'call-1', delta: '{"q"' },
+				{ type: 'tool-input-delta', id: 'call-1', delta: ':1}' },
 				{ type: 'tool-input-end', id: 'call-1' },
 				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
 			]);

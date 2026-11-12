@@ -53,10 +53,10 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 		const result = await model.generate(messages, config);
 
 		return {
-			content: fromChatModelMessage(result.message),
+			content: fromChatModelMessage(result.message, this.provider),
 			finishReason: toFinishReason(result.finishReason),
 			usage: toUsage(result.usage),
-			providerMetadata: toProviderMetadata(result.providerMetadata),
+			providerMetadata: toProviderMetadata(this.provider, result.providerMetadata),
 			response: { id: result.id, modelId: this.modelId },
 			warnings,
 		};
@@ -64,8 +64,14 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 
 	async doStream(options: LanguageModelV4CallOptions): Promise<LanguageModelV4StreamResult> {
 		const { model, messages, config, warnings } = this.prepareCall(options);
-		const iterator = model.stream(messages, config)[Symbol.asyncIterator]();
-		const converter = new AiSdkStreamConverter();
+		// Closing the iterator waits for a chunk that is in flight. Aborting the
+		// call lets a cancel of the stream end that wait.
+		const cancellation = new AbortController();
+		const abortSignal = options.abortSignal
+			? AbortSignal.any([options.abortSignal, cancellation.signal])
+			: cancellation.signal;
+		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
+		const converter = new AiSdkStreamConverter(this.provider);
 		const modelId = this.modelId;
 
 		const stream = new ReadableStream<LanguageModelV4StreamPart>({
@@ -74,20 +80,31 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				controller.enqueue({ type: 'response-metadata', modelId });
 			},
 			async pull(controller) {
-				let next: IteratorResult<StreamChunk>;
-				try {
-					next = await iterator.next();
-				} catch (error) {
-					controller.enqueue({ type: 'error', error });
-					controller.close();
-					return;
-				}
+				// A pull that enqueues nothing is not called again, so read on until
+				// a chunk gives parts or the chat model stream ends.
+				while (true) {
+					let next: IteratorResult<StreamChunk>;
+					try {
+						next = await iterator.next();
+					} catch (error) {
+						controller.enqueue({ type: 'error', error });
+						controller.close();
+						return;
+					}
 
-				const parts = next.done ? converter.end() : converter.convert(next.value);
-				for (const part of parts) controller.enqueue(part);
-				if (next.done) controller.close();
+					if (next.done) {
+						for (const part of converter.end()) controller.enqueue(part);
+						controller.close();
+						return;
+					}
+
+					const parts = converter.convert(next.value);
+					for (const part of parts) controller.enqueue(part);
+					if (parts.length > 0) return;
+				}
 			},
 			async cancel() {
+				cancellation.abort();
 				await iterator.return?.();
 			},
 		});
@@ -98,7 +115,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 	private prepareCall(options: LanguageModelV4CallOptions) {
 		const { model, warnings } = bindCallTools(this.chatModel, options);
 		const { config, warnings: configWarnings } = toChatModelConfig(options);
-		const prompt = toChatModelMessages(options.prompt);
+		const prompt = toChatModelMessages(options.prompt, this.provider);
 
 		return {
 			model,
