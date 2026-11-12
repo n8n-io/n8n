@@ -110,11 +110,11 @@ When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts
 
 ## Multi-main scenarios
 
-A stack with more than one main needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one; the stack fails to start without one. The stack uses the sandbox licence tenant by default, so use a sandbox key, and never commit a key or a cert.
+A stack with more than one main needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell first; without one the stack fails to start. The stack uses the sandbox licence tenant by default, so use a sandbox key. Never commit a key or a cert.
 
-Every new stack activates the key again. When you run many multi-main scenarios, a cert is faster: start one stack with the key, read the cert from the `settings` table where `key = 'license.cert'`, and export it as `N8N_LICENSE_CERT`.
+Each new stack activates the key again. For many runs a cert is faster: start one stack with the key, read `license.cert` from the `settings` table, and export it as `N8N_LICENSE_CERT`.
 
-The multi-main helpers cover the common leader checks. `LEADER_HOOKS` log every leader takeover and step-down in the mains, `fastLeaderElection` shortens the leader key TTL and check interval, `currentLeader` waits until exactly one main leads, and `oneLeaderAtATime` finds periods in which two mains both led.
+`LEADER_HOOKS` logs each leader takeover and step-down in the mains. `fastLeaderElection` shortens the leader key TTL and check interval. `currentLeader` waits until exactly one main leads. `oneLeaderAtATime` finds periods in which two mains both led.
 
 ## How it works
 
