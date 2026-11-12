@@ -198,29 +198,50 @@ describe('createClientCredentialsTokenSource', () => {
 		expect(clientCredentialsTokenRequest(login()).timeout).toBe(30_000);
 	});
 
-	it('says the deadline passed, rather than handing back the abort the runtime threw', async () => {
-		const controller = new AbortController();
+	describe('when the deadline passes', () => {
 		const expired = new DOMException('This operation was aborted', 'TimeoutError');
-		const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
-		const stalling = (async (_url: RequestInfo | URL, init?: RequestInit) =>
-			await new Promise<Response>((_resolve, reject) => {
-				init?.signal?.addEventListener('abort', () => reject(expired));
-				controller.abort(expired);
-			})) as typeof fetch;
 
-		const error = await createClientCredentialsTokenSource(login(), stalling)
-			.getToken()
-			.then(
-				() => undefined,
-				(reason: Error) => reason,
+		/** Nothing arrives at all: the request is still waiting for the first byte. */
+		const beforeAnyHeaders = (controller: AbortController) =>
+			(async (_url: RequestInfo | URL, init?: RequestInit) =>
+				await new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener('abort', () => reject(expired));
+					controller.abort(expired);
+				})) as typeof fetch;
+
+		/** The headers arrive and the body then stalls, so the read is what the deadline cuts. */
+		const afterHeaders = (controller: AbortController) =>
+			(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				const body = new ReadableStream<Uint8Array>({
+					start: (stream) => {
+						init?.signal?.addEventListener('abort', () => stream.error(expired));
+						setTimeout(() => controller.abort(expired), 0);
+					},
+				});
+				return new Response(body, { status: 200 });
+			}) as typeof fetch;
+
+		it.each<[string, (controller: AbortController) => typeof fetch]>([
+			['before any headers arrive', beforeAnyHeaders],
+			['while the body is still being read', afterHeaders],
+		])('says the deadline passed %s', async (_name, stalling) => {
+			const controller = new AbortController();
+			const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+
+			const error = await createClientCredentialsTokenSource(login(), stalling(controller))
+				.getToken()
+				.then(
+					() => undefined,
+					(reason: Error) => reason,
+				);
+
+			expect(deadline).toHaveBeenCalledWith(30_000);
+			expect(error).toBeInstanceOf(UserError);
+			expect(error?.message).toBe(
+				'Could not sign in to the gateway: the login server did not answer within 30 seconds',
 			);
-
-		expect(deadline).toHaveBeenCalledWith(30_000);
-		expect(error).toBeInstanceOf(UserError);
-		expect(error?.message).toBe(
-			'Could not sign in to the gateway: the login server did not answer within 30 seconds',
-		);
-		deadline.mockRestore();
+			deadline.mockRestore();
+		});
 	});
 
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {

@@ -110,17 +110,22 @@ export function createClientCredentialsTokenSource(
 	const request = async (): Promise<CachedToken> => {
 		const { timeout, ...init } = clientCredentialsTokenRequest(login);
 		const deadline = AbortSignal.timeout(timeout);
-		const response = await fetchToken(login.tokenUrl, { ...init, signal: deadline }).catch(
-			(error: unknown) => {
-				if (!deadline.aborted) throw error;
-				throw new UserError(
-					`Could not sign in to the gateway: the login server did not answer within ${timeout / 1000} seconds`,
-					{ description: 'Check that the token URL is reachable from this n8n instance.' },
-				);
-			},
-		);
-		const text = await response.text();
-		if (!response.ok) throw refusedToSignIn(text, response.status);
+
+		// The body is read under the same deadline, so the read belongs in the same handler
+		const read = async () => {
+			const response = await fetchToken(login.tokenUrl, { ...init, signal: deadline });
+			return { ok: response.ok, status: response.status, text: await response.text() };
+		};
+
+		const { ok, status, text } = await read().catch((error: unknown) => {
+			if (!deadline.aborted) throw error;
+			throw new UserError(
+				`Could not sign in to the gateway: the login server did not answer within ${timeout / 1000} seconds`,
+				{ description: 'Check that the token URL is reachable from this n8n instance.' },
+			);
+		});
+
+		if (!ok) throw refusedToSignIn(text, status);
 		return readToken(text);
 	};
 
