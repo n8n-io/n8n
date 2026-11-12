@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-/**
- * PostHog flag that turns on safe testing for agents. With the flag on, draft
- * runs of an agent are test runs: tool calls go to a simulation and nothing is
- * sent to a real service. It is separate from `101_agent_evals`.
- */
+/** PostHog flag: agent draft runs are test runs that send nothing to real services. */
 export const AGENT_SAFE_TESTING_FLAG = '140_agent_safe_testing';
 
 /** How one tool call ran in a test run. */
@@ -25,12 +21,11 @@ export const toolCallReasonSchema = z.enum([
 	'served_from_world',
 	'invented_by_llm',
 	'real_read_allowed',
-	// The simulator cannot serve this call, for example it returned 501.
-	// This is a gap in the simulator, not an agent failure.
+	// A simulator gap (for example a 501), not an agent failure.
 	'unsupported_by_simulator',
 	// The simulator is down, timed out or failed.
 	'simulator_unavailable',
-	// n8n cannot send this tool through a simulator at all.
+	// No simulator can serve this kind of tool.
 	'not_simulatable',
 	// A rule blocked the call.
 	'blocked_by_policy',

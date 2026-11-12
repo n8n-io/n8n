@@ -24,16 +24,13 @@ export interface OpenSimulationInput {
 	user: User;
 	agentId: string;
 	projectId: string;
-	/** The test chat (thread) ID. One world for each test chat. */
+	/** The thread ID. One world per test chat. */
 	testChatId: string;
-	/** The user message of this turn. Seeds a new world. */
+	/** Seeds a new world. */
 	message: string;
 }
 
-/**
- * Decides whether a draft run is a test run and gives it the session of its
- * test chat. With the flag off, draft runs stay live.
- */
+/** Decides whether a draft run is a test run, and gives it its test chat's session. */
 @Service()
 export class SimulationSessionService {
 	private readonly sessions = new TtlMap<string, SimulationSession>(
@@ -50,7 +47,6 @@ export class SimulationSessionService {
 		private readonly executionRepository: AgentExecutionRepository,
 	) {}
 
-	/** The session of a test run, or `undefined` for a live run. */
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 		const cached = this.sessions.get(input.testChatId);
@@ -93,7 +89,6 @@ export class SimulationSessionService {
 		await this.executionRepository.update({ id: executionId }, { simulated: true });
 	}
 
-	/** The agent and its tools, as a backend sees them to seed a world. */
 	private async describeAgent(agentId: string, projectId: string): Promise<SimulatedAgent> {
 		const saved = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!saved?.schema) throw new NotFoundError(`Agent ${agentId} not found`);

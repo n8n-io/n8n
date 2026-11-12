@@ -21,12 +21,8 @@ import type {
 	SimulationWorld,
 } from './tool-simulation.contracts';
 
-/**
- * Built-in tools that only touch n8n or the agent's own sandbox files. They
- * run normally in a test run and carry no route. `call_tool` is not here: the
- * runtime hands the dispatched tool to the interceptor, and an undispatched
- * `call_tool` must stay blocked.
- */
+// Built-ins that only touch n8n or the sandbox: they run and get no route. `call_tool` is
+// missing on purpose: the interceptor sees the dispatched tool, so a bare `call_tool` stays blocked.
 const LOCAL_TOOL_NAMES: ReadonlySet<string> = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	'load_skill',
@@ -88,21 +84,14 @@ type ToolClassification =
 
 export interface SimulationSessionInit {
 	testChatId: string;
-	/** Absent when no backend is registered or the world failed to open. */
+	/** Absent when no backend is set up or the world failed to open: every simulated call is blocked. */
 	world?: SimulationWorld;
-	/** Why the world is absent. Shown on each blocked call. */
 	unavailableDetail?: string;
-	/** Workflow tools are blocked in queue mode: the tool hooks do not reach queue workers. */
+	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
 	queueMode?: boolean;
 }
 
-/**
- * One test chat's link to its simulated world. It guards every tool call of
- * the chat's runtime and records the route of each call by its tool call ID.
- *
- * It fails closed: a tool it does not know is blocked, and a request that the
- * world does not serve throws instead of reaching the network.
- */
+/** Guards every tool call of one test chat and records each call's route. Fails closed. */
 export class SimulationSession {
 	readonly testChatId: string;
 
@@ -116,10 +105,7 @@ export class SimulationSession {
 
 	private readonly queueMode: boolean;
 
-	/**
-	 * A runtime keeps the hooks of the session it was built for. A session that
-	 * replaces an expired one for the same chat must not reuse that runtime.
-	 */
+	// A cached runtime keeps this session's hooks, so a replacement session needs its own runtime.
 	private readonly instanceId = randomUUID();
 
 	private readonly activeCalls = new AsyncLocalStorage<ActiveToolCall>();
@@ -135,12 +121,10 @@ export class SimulationSession {
 		this.queueMode = init.queueMode ?? false;
 	}
 
-	/** Separates this chat's runtime from every other runtime in the cache. */
 	get runtimeCacheKey(): string {
 		return `simulation:${this.testChatId}:${this.instanceId}`;
 	}
 
-	/** Remove and return the route of a settled tool call. */
 	takeDecision(toolCallId: string): ToolCallSimulation | undefined {
 		const decision = this.decisions.get(toolCallId);
 		this.decisions.delete(toolCallId);
@@ -180,10 +164,6 @@ export class SimulationSession {
 		return output;
 	};
 
-	/**
-	 * The seams that send a runtime's outbound traffic to the world. The
-	 * runtime must be built for this session only, never from the shared cache.
-	 */
 	instrumentation(): AgentRuntimeInstrumentation {
 		return {
 			toolCallInterceptor: this.interceptor,
@@ -204,7 +184,6 @@ export class SimulationSession {
 		return undefined;
 	}
 
-	/** Why no simulator can serve this tool, or `undefined` when one can. */
 	private toolGap(
 		classification: Extract<ToolClassification, { type: 'simulated' }>,
 	): string | undefined {
@@ -225,8 +204,6 @@ export class SimulationSession {
 			case 'web_search':
 				return 'Web search cannot run in a test run yet.';
 			default:
-				// Custom code, chat integration actions, memory, vector stores, shell
-				// commands and anything new: unknown traffic, so blocked.
 				return 'This kind of tool cannot run in a test run yet.';
 		}
 	}
@@ -265,7 +242,7 @@ export class SimulationSession {
 		throw new SimulationBlockedError(decision);
 	}
 
-	/** Never returns `undefined`: that would send the request to the real service. */
+	// Never return `undefined`: core would then send the request to the real service.
 	private createHttpHandler(toolName: string): EvalLlmMockHandler {
 		return async (options: IHttpRequestOptions, node): Promise<EvalMockHttpResponse> => {
 			const reply = await this.ask(
@@ -283,7 +260,7 @@ export class SimulationSession {
 		};
 	}
 
-	/** Blocks nodes whose traffic the HTTP seam cannot see, for example inside a workflow tool. */
+	// Blocks nodes the HTTP seam cannot see, also inside workflow tools.
 	private readonly nodeGuard: EvalNodeMockHandler = async (context) => {
 		const node = context.getNode();
 		const gap = nodeSimulationGap(node.type, node.parameters);
@@ -294,10 +271,7 @@ export class SimulationSession {
 		throw new SimulationBlockedError(decision);
 	};
 
-	/**
-	 * MCP servers are not simulated yet. Refuse every connection, so that no
-	 * MCP request reaches a real server. Their tools are blocked before they run.
-	 */
+	// MCP is not simulated yet: refuse every connection so no request reaches a real server.
 	private readonly mcpFetch: FetchFn = async () => {
 		throw new SimulationBlockedError(
 			blocked('not_simulatable', 'MCP servers cannot run in a test run yet.'),
@@ -324,12 +298,10 @@ function classifyTool(tool: BuiltTool): ToolClassification {
 		return { type: 'simulated', key: WEB_SEARCH_TOOL_NAME, kind: 'web_search' };
 	}
 	if (LOCAL_TOOL_NAMES.has(tool.name)) return { type: 'local' };
-	// Custom code, chat integration actions, memory, vector stores, shell
-	// commands and anything new: unknown traffic, so blocked.
+	// Custom code, integration actions, memory, shell commands and anything new: blocked.
 	return { type: 'simulated', key: `unknown:${tool.name}`, kind: 'other' };
 }
 
-/** Folds the replies of one tool call into its route. No replies: no route. */
 export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefined {
 	if (sources.length === 0) return undefined;
 	if (sources.includes('made_up')) return { route: 'simulated_made_up', reason: 'invented_by_llm' };
