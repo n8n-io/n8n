@@ -136,10 +136,12 @@ export class EnqueuedExecutionRecoveryService {
 
 	/** Leave it `new` for the next start. The kept attempt stops a failure that repeats. */
 	private async handleUnpreparedExecution(executionId: string, error: unknown) {
-		if (
-			error instanceof ExecutionAlreadyResumingError ||
-			this.executionsConfig.recovery.maxResumeAttempts <= 0
-		) {
+		if (error instanceof ExecutionAlreadyResumingError) {
+			this.logger.debug('Execution was already claimed, skipping recovery', { executionId });
+			return;
+		}
+
+		if (this.executionsConfig.recovery.maxResumeAttempts <= 0) {
 			await this.crashUnstartableExecution(executionId, error);
 			return;
 		}
