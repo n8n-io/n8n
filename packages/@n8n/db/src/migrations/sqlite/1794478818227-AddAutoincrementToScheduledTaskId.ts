@@ -4,7 +4,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'scheduled_task';
 
-export class AddAutoincrementToScheduledTaskId1794321432114 implements ReversibleMigration {
+export class AddAutoincrementToScheduledTaskId1794478818227 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		// Claim guards match on (id, leaseEpoch) and leaseEpoch restarts per row, so a deleted row's ID must never be reused.
 		await setIdAutoincrement(context, true);

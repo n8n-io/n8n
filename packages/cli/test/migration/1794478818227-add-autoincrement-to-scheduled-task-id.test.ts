@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddAutoincrementToScheduledTaskId1794321432114';
+const MIGRATION_NAME = 'AddAutoincrementToScheduledTaskId1794478818227';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => {
