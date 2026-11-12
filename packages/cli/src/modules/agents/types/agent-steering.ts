@@ -3,7 +3,6 @@ import type { AgentSseEvent, ToolCallSimulation } from '@n8n/api-types';
 
 export type SteeredMessageEvent = Extract<AgentSseEvent, { type: 'message-steered' }>;
 
-/** A tool result in a test run carries how the call ran. */
 export type SimulatedToolResultChunk = Extract<StreamChunk, { type: 'tool-result' }> & {
 	simulation?: ToolCallSimulation;
 };

@@ -102,10 +102,7 @@ export class InstanceAiModule implements ModuleInterface {
 		}
 	}
 
-	/**
-	 * Serve agent test runs (safe testing) with the LLM mock. Without this
-	 * registration, test runs block every call that needs the simulator.
-	 */
+	/** Serve agent test runs with the LLM mock. */
 	private async registerSimulationBackend(): Promise<void> {
 		const { ModuleRegistry } = await import('@n8n/backend-common');
 		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) return;
