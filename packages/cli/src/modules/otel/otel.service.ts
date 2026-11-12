@@ -25,7 +25,7 @@ import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import type { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-import { withResourceAttributes } from './otel-span-exporter';
+import { withHookAttributes } from './otel-span-exporter';
 
 import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
@@ -260,10 +260,10 @@ export class OtelService {
 		settings: ExportSettings,
 	): Promise<SpanProcessor[] | undefined> {
 		try {
-			const exporter = withResourceAttributes(
+			const exporter = withHookAttributes(
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
-				(spanAttributes) => this.configureHook.mapResourceAttributes(spanAttributes),
+				this.configureHook,
 			);
 			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(exporter)];
 		} catch (error) {

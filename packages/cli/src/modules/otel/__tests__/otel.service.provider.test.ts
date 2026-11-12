@@ -458,22 +458,70 @@ describe('OtelService on the startup OTel setup', () => {
 		expect(withoutProject.span.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
 	});
 
-	it('keeps exporting with the base resource and warns once when a resource mapper throws', async () => {
-		configureHook.api.registerResourceAttributeMapper(() => {
-			throw new Error('boom');
-		});
+	it('lets a dangerous override of the otel.configure hook win over the n8n values, except for n8n.* keys, and warns once for each key', async () => {
+		configureHook.api.dangerouslyOverrideResourceAttributes((attrs) => ({
+			[ATTR.OTEL_SERVICE_NAME]: `n8n-${String(attrs[ATTR.PROJECT_ID])}`,
+			'agent.seen.by.resource.override': String(attrs['gen_ai.agent.id']),
+			[ATTR.INSTANCE_ID]: 'forged',
+		}));
+		configureHook.api.dangerouslyOverrideSpanAttributes(() => ({
+			'gen_ai.agent.id': 'from-hook',
+			[ATTR.PROJECT_ID]: 'forged',
+		}));
 		await service.init();
 
-		startWorkflowSpan().end();
-		startWorkflowSpan().end();
+		for (const projectId of ['p1', 'p2']) {
+			trace
+				.getTracer('n8n-workflow')
+				.startSpan('node.execute', {
+					attributes: { 'gen_ai.agent.id': 'node-1', [ATTR.PROJECT_ID]: projectId },
+				})
+				.end();
+		}
 
-		const [exported] = await exportedAfterFlush();
-		expect(exported.span.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
-		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
-			'OpenTelemetry resource attribute mapper failed',
-			{ error: 'boom' },
-		);
+		const [first, second] = await exportedAfterFlush();
+		expect(first.span.resource.attributes).toMatchObject({
+			[ATTR.OTEL_SERVICE_NAME]: 'n8n-p1',
+			'agent.seen.by.resource.override': 'node-1',
+			[ATTR.INSTANCE_ID]: 'inst-1',
+		});
+		expect(first.span.attributes).toMatchObject({
+			'gen_ai.agent.id': 'from-hook',
+			[ATTR.PROJECT_ID]: 'p1',
+		});
+		expect(second.span.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n-p2');
+		expect(logger.warn.mock.calls.map(([message]) => message).sort()).toEqual([
+			'An otel.configure hook sets the resource attribute "agent.seen.by.resource.override" with a dangerous override.',
+			`An otel.configure hook sets the resource attribute "${ATTR.OTEL_SERVICE_NAME}" with a dangerous override.`,
+			'An otel.configure hook sets the span attribute "gen_ai.agent.id" with a dangerous override.',
+			`Ignored the resource attribute "${ATTR.INSTANCE_ID}" from an otel.configure override, because n8n reserves the n8n. prefix.`,
+			`Ignored the span attribute "${ATTR.PROJECT_ID}" from an otel.configure override, because n8n reserves the n8n. prefix.`,
+		]);
 	});
+
+	it.each([
+		{ register: 'registerResourceAttributeMapper', label: 'resource attribute' },
+		{ register: 'dangerouslyOverrideResourceAttributes', label: 'resource attribute override' },
+		{ register: 'dangerouslyOverrideSpanAttributes', label: 'span attribute override' },
+	] as const)(
+		'keeps exporting the span as n8n set it and warns once when a $label mapper throws',
+		async ({ register, label }) => {
+			configureHook.api[register](() => {
+				throw new Error('boom');
+			});
+			await service.init();
+
+			startWorkflowSpan().end();
+			startWorkflowSpan().end();
+
+			const [exported] = await exportedAfterFlush();
+			expect(exported.span.resource.attributes[ATTR.OTEL_SERVICE_NAME]).toBe('n8n');
+			expect(exported.span.name).toBe('workflow.execute');
+			expect(logger.warn).toHaveBeenCalledExactlyOnceWith(`OpenTelemetry ${label} mapper failed`, {
+				error: 'boom',
+			});
+		},
+	);
 
 	it('builds outbound baggage from the otel.configure hook and keeps only string values', async () => {
 		configureHook.api.registerOutboundBaggageMapper((attrs) => ({
