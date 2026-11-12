@@ -14,7 +14,10 @@ interface ThreadRecord {
 }
 
 /** A thread store with `patchThread`, so the real workflow loop storage runs against it. */
-export function createMemory(options: { rejectRoutedMarker?: boolean } = {}) {
+export function createMemory(
+	options: { rejectRoutedMarker?: boolean; rejectRoutedMarkerOnce?: boolean } = {},
+) {
+	let rejectOnce = options.rejectRoutedMarkerOnce === true;
 	let thread: ThreadRecord = {
 		id: THREAD_ID,
 		title: 'Thread',
@@ -33,8 +36,12 @@ export function createMemory(options: { rejectRoutedMarker?: boolean } = {}) {
 		}) => {
 			const patch = update(structuredClone(thread));
 			if (!patch) return thread;
-			if (options.rejectRoutedMarker && JSON.stringify(patch).includes('setupRoutedAt')) {
-				throw new Error('storage down');
+			if (JSON.stringify(patch).includes('setupRoutedAt')) {
+				if (options.rejectRoutedMarker) throw new Error('storage down');
+				if (rejectOnce) {
+					rejectOnce = false;
+					throw new Error('storage down');
+				}
 			}
 			thread = { ...thread, ...patch };
 			return thread;

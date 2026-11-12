@@ -170,8 +170,10 @@ export class AssistantWorkflowSetupRoute {
 	): Promise<'marked' | 'taken' | 'failed'> {
 		const { workItemId } = record.state;
 		const claim = this.createClaim();
+		let claimed = false;
 		try {
 			if (!(await this.storage.claimSetupRouting(this.threadId, workItemId, claim))) return 'taken';
+			claimed = true;
 			const marked = await this.storage.markSetupRouted(
 				this.threadId,
 				workItemId,
@@ -179,15 +181,28 @@ export class AssistantWorkflowSetupRoute {
 				new Date().toISOString(),
 			);
 			if (marked) return 'marked';
-			await this.storage.releaseSetupRoutingClaim(this.threadId, workItemId, claim.claimId);
-			return 'failed';
 		} catch (error) {
 			this.logger.warn('Failed to store the workflow setup route of an Assistant build', {
 				threadId: this.threadId,
 				workItemId,
 				error: getErrorMessage(error),
 			});
-			return 'failed';
+		}
+		// A held claim makes a retry see `taken`, so release it.
+		if (claimed) await this.releaseClaim(workItemId, claim.claimId);
+		return 'failed';
+	}
+
+	private async releaseClaim(workItemId: string, claimId: string): Promise<void> {
+		try {
+			await this.storage.releaseSetupRoutingClaim(this.threadId, workItemId, claimId);
+		} catch (error) {
+			// The claim expires on its own.
+			this.logger.warn('Failed to release the workflow setup claim of an Assistant build', {
+				threadId: this.threadId,
+				workItemId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 

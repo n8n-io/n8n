@@ -76,6 +76,17 @@ describe('AssistantWorkflowSetupRoute', () => {
 		expect(await createRoute(memory).nextInstruction()).toBeUndefined();
 	});
 
+	it('releases the claim after a failed marker, so the retry stores it', async () => {
+		const memory = createMemory({ rejectRoutedMarkerOnce: true });
+		await saveBuild(memory, outcome());
+		const route = createRoute(memory);
+
+		await expect(route.markWorkflowSetupHandled('wf-1')).rejects.toThrow();
+		await route.markWorkflowSetupHandled('wf-1');
+
+		expect(await routedAt(memory)).toEqual(expect.any(String));
+	});
+
 	it('throws when the setup panel marker cannot be stored, so the tool can retry', async () => {
 		const memory = createMemory({ rejectRoutedMarker: true });
 		await saveBuild(memory, outcome());
