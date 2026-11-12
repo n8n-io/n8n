@@ -7,6 +7,7 @@ import {
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
+import type { CustomModelEndpointCredentialData } from './credential-data';
 import { listGatewayModels, searchModels } from './models';
 import type { EndpointCredential, LoginMethod } from './types';
 
@@ -198,16 +199,19 @@ describe('listGatewayModels', () => {
 });
 
 describe('searchModels', () => {
-	const searching = (body: string, status = 200) => {
-		const { fetchImpl } = answering(body, status);
-		stubbed.baseFetch = fetchImpl;
-		return {
+	const loadOptions = (credential: CustomModelEndpointCredentialData) =>
+		({
 			getNode: () => node,
-			getCredentials: async () => ({ url: BASE_URL, authentication: 'none' }),
+			getCredentials: async () => credential,
 			helpers: {
 				getSecureEgressFilter: () => ({ validateUrl: async () => ({ ok: true }) }),
 			},
-		} as unknown as ILoadOptionsFunctions;
+		}) as unknown as ILoadOptionsFunctions;
+
+	const searching = (body: string, status = 200) => {
+		const { fetchImpl } = answering(body, status);
+		stubbed.baseFetch = fetchImpl;
+		return loadOptions({ url: BASE_URL, authentication: 'none' });
 	};
 
 	it('offers every model the gateway lists, in name order as the other model fields do', async () => {
@@ -240,5 +244,26 @@ describe('searchModels', () => {
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe(httpCode);
 		expect(error?.description).toBe(BY_ID_HINT);
+	});
+
+	it('signs the list call with the login and the gateway headers on the credential', async () => {
+		const { calls, fetchImpl } = answering(JSON.stringify({ data: [{ id: 'platform/gpt-4o' }] }));
+		stubbed.baseFetch = fetchImpl;
+
+		const result = await searchModels.call(
+			loadOptions({
+				url: BASE_URL,
+				authentication: 'header',
+				authHeaderName: 'X-Api-Key',
+				apiKey: 'secret-9f2a71c4',
+				gatewayHeaders: { headers: [{ name: 'X-Gateway-Team', value: 'platform' }] },
+			}),
+		);
+
+		expect(Object.fromEntries(calls[0].headers)).toMatchObject({
+			'x-api-key': 'secret-9f2a71c4',
+			'x-gateway-team': 'platform',
+		});
+		expect(result.results).toEqual([{ name: 'platform/gpt-4o', value: 'platform/gpt-4o' }]);
 	});
 });
