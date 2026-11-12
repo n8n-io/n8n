@@ -3,7 +3,13 @@ vi.mock('@langchain/community/vectorstores/zep', () => ({ ZepVectorStore: vi.fn(
 vi.mock('@langchain/community/vectorstores/zep_cloud', () => ({ ZepCloudVectorStore: vi.fn() }));
 
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { IExecuteFunctions, INode, INodeType, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	INodeType,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EmbeddingsCohere } from '../../nodes/embeddings/EmbeddingsCohere/EmbeddingsCohere.node';
@@ -31,6 +37,7 @@ import { EmbeddingsAzureOpenAi } from '../../nodes/embeddings/EmbeddingsAzureOpe
 import { MemoryXata } from '../../nodes/memory/MemoryXata/MemoryXata.node';
 import { RerankerCohere } from '../../nodes/rerankers/RerankerCohere/RerankerCohere.node';
 import { ToolSerpApi } from '../../nodes/tools/ToolSerpApi/ToolSerpApi.node';
+import { VectorStoreChromaDB } from '../../nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node';
 import { VectorStoreZep } from '../../nodes/vector_store/VectorStoreZep/VectorStoreZep.node';
 import * as assistantMessage from '../../nodes/vendors/OpenAi/v1/actions/assistant/message.operation';
 
@@ -40,6 +47,22 @@ const supplyData =
 	(NodeClass: new () => INodeType): Run =>
 	async (ctx) =>
 		await new NodeClass().supplyData!.call(ctx, 0);
+
+// Runs the Chroma node with Cloud authentication and the given operation parameters
+const chromaCloud =
+	(run: Run, extra: Record<string, unknown> = {}): Run =>
+	async (ctx) => {
+		const params: Record<string, unknown> = { authentication: 'chromaCloudApi', ...extra };
+		const getNodeParameter = ctx.getNodeParameter;
+		ctx.getNodeParameter = vi.fn(
+			(name: string, i: number, fallback?: unknown) =>
+				params[name] ?? getNodeParameter.call(ctx, name, i, fallback),
+		) as unknown as typeof ctx.getNodeParameter;
+		ctx.getInputConnectionData = vi.fn().mockResolvedValue([]);
+		ctx.getExecutionCancelSignal = vi.fn();
+		return await run(ctx);
+	};
+const chromaExecute: Run = async (ctx) => await new VectorStoreChromaDB().execute.call(ctx);
 
 // Every node that passes a credential API key through getRequiredApiKey
 const nodes: Array<[string, Run]> = [
@@ -69,6 +92,21 @@ const nodes: Array<[string, Run]> = [
 	['OpenAiAssistant', async (ctx) => await new OpenAiAssistant().execute.call(ctx)],
 	['RerankerCohere', supplyData(RerankerCohere)],
 	['ToolSerpApi', supplyData(ToolSerpApi)],
+	[
+		'VectorStoreChromaDB (cloud, collection list)',
+		chromaCloud(
+			async (ctx) =>
+				await new VectorStoreChromaDB().methods!.listSearch!.chromaCollectionsSearch.call(
+					ctx as unknown as ILoadOptionsFunctions,
+				),
+		),
+	],
+	['VectorStoreChromaDB (cloud, retrieve)', chromaCloud(supplyData(VectorStoreChromaDB))],
+	['VectorStoreChromaDB (cloud, load)', chromaCloud(chromaExecute, { mode: 'load' })],
+	[
+		'VectorStoreChromaDB (cloud, insert with Clear Collection)',
+		chromaCloud(chromaExecute, { mode: 'insert', options: { clearCollection: true } }),
+	],
 	['VectorStoreZep (cloud)', supplyData(VectorStoreZep)],
 ];
 
