@@ -212,8 +212,9 @@ Examples of a complete Summary for a change with no surprises:
 - Add an example workflow only if the test needs one
 - If the change needs a non-default module (`N8N_ENABLED_MODULES`), an
   enterprise license, a feature flag, or similar, give the setting
-- If the change has no behaviour that a person can see (refactor, CI, docs),
-  write one line that says so
+- If nothing changes for a user, write one short line that starts with "No
+  visible changes", for example "No visible changes, only tests." or "No
+  visible changes, only CI configuration."
 - Give the command that runs the tests for the change, for example
   `pnpm agent:test --filter <package> -- <test-file>`. If there are no tests,
   give the reason in one line. A bug fix needs a regression test. A feature
