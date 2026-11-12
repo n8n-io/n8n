@@ -1,0 +1,67 @@
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 1000-1003,1212-1215
+  s_abe416d94b4232::t_2f5aeaf80e0c6e 33,51,1052-1054,1056
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_abe416d94b4232::t_2f5aeaf80e0c6e 2333-2341,2345-2349
+  s_abe416d94b4232::t_0c20e0e18b3250 2342-2344
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_abe416d94b4232::t_2f5aeaf80e0c6e 2011,2029,2033-2035,2087,2096-2100,2103-2107,2119
+  s_abe416d94b4232::t_0c20e0e18b3250 2030-2032,2053-2054,2059-2063,2067-2069,2088-2095,2101-2102,2108-2118
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 242-245
+  s_abe416d94b4232::t_573bf048007d17 261
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_abe416d94b4232::t_60c6308eeeba4d 13-14,178-179,185-187,200-208
+  s_abe416d94b4232::t_2899b581acbb55 180-184,188-199
+  s_abe416d94b4232::t_cbbff892e1a93c 209
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_abe416d94b4232::t_573bf048007d17 411
+  s_abe416d94b4232::t_2e3bed93888180 410
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_abe416d94b4232::t_573bf048007d17 63,110,137,167,277-278,298-299,311,322-328
+  s_abe416d94b4232::t_97b06c716387ee 329
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 780-784
+  s_abe416d94b4232::t_2e3bed93888180 16,778-779,785-788
+  s_abe416d94b4232::t_1a714cc869f8ed 789-791
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 143-167
+packages/cli/src/services/project.service.ee.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 286-298
+  s_abe416d94b4232::t_2e3bed93888180 139-144,325,327
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 461-463
+  s_abe416d94b4232::t_2e3bed93888180 464-466
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_abe416d94b4232::t_573bf048007d17 6,85,91,96-99
+  s_abe416d94b4232::t_0c20e0e18b3250 86-90,92-95
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_abe416d94b4232::t_60c6308eeeba4d 15-16,23
+  s_abe416d94b4232::t_2899b581acbb55 334-397
+  s_abe416d94b4232::t_55cea8879c905d 398
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_abe416d94b4232::t_2f5aeaf80e0c6e 21,65,164,517-520
+  s_abe416d94b4232::t_0c20e0e18b3250 133-136
+  s_abe416d94b4232::t_e90e203438af3e 521
+packages/@n8n/telemetry/src/catalog.ts
+  s_abe416d94b4232::t_0c20e0e18b3250 67-70
+  s_abe416d94b4232::t_573bf048007d17 11,92
+packages/cli/test/integration/agents/agent-project-cleanup.test.ts
+  s_abe416d94b4232::t_2899b581acbb55 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e03b5e2fe06f5424258150896511cce1845e01c",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

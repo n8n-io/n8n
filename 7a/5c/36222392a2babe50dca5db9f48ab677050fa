@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.vue
+  s_f9831d8f0ed93e::t_1896f2ec3324e3 493
+  s_f9831d8f0ed93e::t_5241b86b0b8e39 515-522
+  s_f9831d8f0ed93e::t_3021cf8ef33e17 487
+  s_f9831d8f0ed93e::t_412faf440df0e6 499
+  s_f9831d8f0ed93e::t_59011205ffa88a 466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a5c36222392a2babe50dca5db9f48ab677050fa",
+  "prompts": {},
+  "sessions": {
+    "s_f9831d8f0ed93e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a83f255-a230-4236-9460-cfd7fca88ac2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

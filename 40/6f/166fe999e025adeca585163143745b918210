@@ -1,0 +1,65 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.utils.ts
+  s_3401c61efbb7b6::t_205fff3b230aa0 1-28
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_3401c61efbb7b6::t_b554e5e8702a8c 94
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
+  s_3401c61efbb7b6::t_891315262499ea 95-98,100-101
+  s_3401c61efbb7b6::t_ade53a46e96fd9 1-45,47-56,58-64,66-69,71-75,77-94,102-120,135-140,143-154,166-192,197,212-213
+  s_3401c61efbb7b6::t_a292e82c77d85a 142
+  s_3401c61efbb7b6::t_a59c56c9951180 121-134,141,204-211
+  s_3401c61efbb7b6::t_7c7a511bcc6206 155-165
+  s_3401c61efbb7b6::t_a0e84e18d6e65e 193-196,198-203
+  s_3401c61efbb7b6::t_8d89457240cc5c 46
+  s_3401c61efbb7b6::t_07d9e89ab0c428 57
+  s_3401c61efbb7b6::t_d4fc6eb0d3b62e 65
+  s_3401c61efbb7b6::t_e4c8138b075076 70
+  s_3401c61efbb7b6::t_291679ad1f80ca 76
+  s_3401c61efbb7b6::t_00d9fb66ea8f19 99
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.types.ts
+  s_3401c61efbb7b6::t_4666d174d8fa60 1-41
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_3401c61efbb7b6::t_d7c4ec2b1244ce 160-165
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.stories.ts
+  s_3401c61efbb7b6::t_936f04183c91be 3,33-37,39-58,66-67,73-74,80-82
+  s_3401c61efbb7b6::t_065cf2c642bb13 5,31,38,59-65,71-72,90
+  s_3401c61efbb7b6::t_06ee736f4a0d3e 1-2,4,6-30,32,68-70,75-79,83-89,91-102
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/index.ts
+  s_3401c61efbb7b6::t_34376067519d09 1-3
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.test.ts
+  s_3401c61efbb7b6::t_8e8baa88e625e0 1-30
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/component-chat-scroll-area.md
+  s_151fbb7f099e1d::t_edb9ebe7732955 1,4-6,23,33,50,52-55,57-65,67,69-72,74-105,122-124
+  s_151fbb7f099e1d::t_e0da9bc3f1a56d 7-22,24-32,34-35,37-46,110,112,116-120
+  s_151fbb7f099e1d::t_27fee7c83cb38d 2,47,49,51,56,66,68,73,106-109,121,133,136-140
+  s_151fbb7f099e1d::t_315f581d8bc4dd 125-132
+  s_151fbb7f099e1d::t_59b5dd7647e4f7 3
+  s_151fbb7f099e1d::t_db989d504f4c4e 36
+  s_151fbb7f099e1d::t_70d596ad73cfd9 48
+  s_151fbb7f099e1d::t_0906c87246f0d5 111
+  s_151fbb7f099e1d::t_a5d61db6f9f770 113-115
+  s_151fbb7f099e1d::t_dfeecbff0d2875 134-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "406f166fe999e025adeca585163143745b918210",
+  "prompts": {},
+  "sessions": {
+    "s_151fbb7f099e1d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1cfd9-f67e-75f9-b82c-04e3c295cd5e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_3401c61efbb7b6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1cff7-0289-75f9-b82c-04e5c911f5db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

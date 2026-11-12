@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.test.ts
+  s_40f8b037f3bcf9::t_acf5cd3b93307c 239
+packages/frontend/editor-ui/src/features/execution/logs/composables/useChatState.test.ts
+  s_40f8b037f3bcf9::t_d626f14a4aee32 39
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_40f8b037f3bcf9::t_218c39aa6d49c7 183
+packages/workflow/src/node-helpers.ts
+  s_40f8b037f3bcf9::t_5be936062dd8e8 1397
+packages/@n8n/instance-ai/src/tools/workflows/validate-workflow.service.ts
+  s_fe81b129ac97c3::t_3e19dc2997cab2 453,635-636
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_fe81b129ac97c3::t_feb982047eb095 812-875
+packages/workflow/test/node-helpers.test.ts
+  s_fe81b129ac97c3::t_a85d193dade35b 31,4480,4515-4524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "451ea0ae8a1e771c1610db30150df509d1b7f874",
+  "prompts": {},
+  "sessions": {
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_fe81b129ac97c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7846b604-588b-48eb-bd5a-278f131418d5",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

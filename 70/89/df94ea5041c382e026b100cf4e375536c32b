@@ -28,7 +28,7 @@ packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
   s_0a72bc3c235415::t_7f4481ac08669f 32,55,180-181,204
 packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
   s_0a72bc3c235415::t_19e9329c9df74d 191,198-210,234,241
-  s_0a72bc3c235415::t_6ad530572c20c1 1,19,97,114-126,169-190,192-197,211-233,235-240,242-282
+  s_0a72bc3c235415::t_6ad530572c20c1 1,19,97,114-126,114-119,121-126,169-190,192-197,211-233,235-240,242-282
 packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
   s_0a72bc3c235415::t_7002a7a3c0faaa 1-206
 packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
@@ -44,6 +44,14 @@ packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
       "agent_id": {
         "tool": "claude",
         "id": "5c9ecc3c-aafa-44f1-8213-2bcc4eb98d48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_22f83b791fec63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3dd7c2f2-196a-47df-88a4-eac905eace31",
         "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"

@@ -1,0 +1,45 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/json-schema-validation/allows-the-llm-to-self-correct-after-receiving-a-json-schema-validation-error.json
+  s_22d0a7cb733359::t_4a7257330d3c14 128,236
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_22d0a7cb733359::t_891718ef1f04e2 11,64
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_22d0a7cb733359::t_c3a01a6cc43b41 11-14
+  s_22d0a7cb733359::t_6c5ce26ead2ed5 118,324,336-340,342,385-386
+packages/@n8n/agents/src/runtime/tools/tool-input-error.ts
+  s_22d0a7cb733359::t_37bb8ca8953e67 1-63
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_22d0a7cb733359::t_6db23a247e32a1 290-292
+  s_22d0a7cb733359::t_6307a71d8e5b02 275-289
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_22d0a7cb733359::t_34b275d85594df 324
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_22d0a7cb733359::t_80d42c00bab347 6422,6461,6647-6649
+  s_22d0a7cb733359::t_6db23a247e32a1 10802-10804
+packages/frontend/editor-ui/src/features/agents/utils/tool-call-details.ts
+  s_22d0a7cb733359::t_891718ef1f04e2 3,67-68,71-84
+  s_22d0a7cb733359::t_6db23a247e32a1 69-70
+packages/@n8n/agents/src/__tests__/integration/cassettes/zod-validation-error/includes-the-zod-error-text-in-the-tool-result-visible-to-the-llm.json
+  s_22d0a7cb733359::t_4a7257330d3c14 130,240
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_22d0a7cb733359::t_891718ef1f04e2 221-222
+  s_22d0a7cb733359::t_787849040e8d0c 26
+packages/@n8n/agents/src/__tests__/integration/tool-invalid-input-retry.test.ts
+  s_22d0a7cb733359::t_587e6950f1885a 1-15,17-117
+  s_22d0a7cb733359::t_89743c08a9e32e 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e35e81ca3a25f505a8c6f2e0535bdbb9e07aafe",
+  "prompts": {},
+  "sessions": {
+    "s_22d0a7cb733359": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88471906-f377-41dd-9abb-5b578a84cfdb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

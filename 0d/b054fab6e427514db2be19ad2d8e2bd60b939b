@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_b7777e773ad24d::t_027433940ce4f3 272-281,285,328-335,339
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_b7777e773ad24d::t_1520c2e97453e7 930-967
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_b7777e773ad24d::t_bae210933c3d9e 132-135
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b7777e773ad24d::t_4e18f5cdc84023 10728,10730-10734,10736,10738-10740
+  s_b7777e773ad24d::t_4858e4ba1f016f 10729,10737
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_b7777e773ad24d::t_ca95cf019e3ed5 7-10,234-235,243-244
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_b7777e773ad24d::t_8cf3c9e1bf229e 1088-1095,1152-1157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0db054fab6e427514db2be19ad2d8e2bd60b939b",
+  "prompts": {},
+  "sessions": {
+    "s_b7777e773ad24d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e8c299-48a3-41c1-9580-4f18eeaa0beb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

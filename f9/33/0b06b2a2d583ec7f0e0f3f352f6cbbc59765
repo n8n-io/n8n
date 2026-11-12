@@ -1,0 +1,72 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_b86bd8b73ec329::t_cd6c03860bb827 49,198-217,224-256,258-274,278-288
+  s_b86bd8b73ec329::t_1a96d8c47c72b3 218-223,275-277
+  s_b86bd8b73ec329::t_857ba4cda1f4fe 257
+packages/@n8n/backend-services/src/services/__tests__/folder-finder.service.test.ts
+  s_b86bd8b73ec329::t_1e3a5425f7f7dc 219-226
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b86bd8b73ec329::t_4ec794daa121cf 1276
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 660
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b86bd8b73ec329::t_8337b802f49119 25,69,78,82-85
+packages/@n8n/db/src/repositories/folder-access.repository.ts
+  s_b86bd8b73ec329::t_1e3a5425f7f7dc 1,106-110,113
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 36,61
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 202
+packages/@n8n/backend-services/src/services/folder-finder.service.ts
+  s_b86bd8b73ec329::t_1e3a5425f7f7dc 1,151-157
+packages/modules/promotions/frontend/src/promotionPreview.content.test.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 31-32
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b86bd8b73ec329::t_8337b802f49119 466,497,620-632
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 608
+  s_b86bd8b73ec329::t_42418e882a9a07 615
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_b86bd8b73ec329::t_1c03bc5794d631 142-146,159
+packages/@n8n/db/src/repositories/__tests__/access-repositories.test.ts
+  s_b86bd8b73ec329::t_f5eabf1d6c311c 471
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 80,337
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b86bd8b73ec329::t_8169845774f77d 276
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_b86bd8b73ec329::t_c3b13352f3da0f 492,495-496,506,513,516,521-522,526,529
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 15-18
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_b86bd8b73ec329::t_9b8ff510c7647c 12-14,522-534,539-560,585,591-598,604-606,616-617,621-622,625-631
+  s_b86bd8b73ec329::t_952d7ced541365 36,600,602-603
+  s_b86bd8b73ec329::t_8169845774f77d 577-584,586-590,599,618-620,623-624
+  s_b86bd8b73ec329::t_95b1868c66e8af 601
+  s_b86bd8b73ec329::t_1a96d8c47c72b3 535-538,607-615
+  s_b86bd8b73ec329::t_00eb990a2e0381 561-576
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_b86bd8b73ec329::t_9f1be9b0b3522f 60-61
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_b86bd8b73ec329::t_8337b802f49119 499
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_b86bd8b73ec329::t_8337b802f49119 28,165
+  s_b86bd8b73ec329::t_1e3a5425f7f7dc 146-149
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_b86bd8b73ec329::t_4ec794daa121cf 68,90,1505-1528,1532,1538-1544,1549
+  s_b86bd8b73ec329::t_fe3c6f2fe25725 1545-1548
+  s_b86bd8b73ec329::t_1a96d8c47c72b3 1529-1531,1533-1537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f9330b06b2a2d583ec7f0e0f3f352f6cbbc59765",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
