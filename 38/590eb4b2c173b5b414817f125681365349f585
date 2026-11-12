@@ -1,0 +1,21 @@
+pnpm-workspace.yaml
+  s_b605b692be0ba9::t_9f1590a501df2c 130
+pnpm-lock.yaml
+  ai_agent 363-364,4968,14546-14548,31176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38590eb4b2c173b5b414817f125681365349f585",
+  "prompts": {},
+  "sessions": {
+    "s_b605b692be0ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73fef18a-e96c-41e0-9b79-5671c3ecbbed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

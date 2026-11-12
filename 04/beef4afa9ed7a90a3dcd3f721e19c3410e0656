@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_56109556f64e99 28-30,36-39,189-195
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_b86bd8b73ec329::t_56109556f64e99 214-225,237-270,292,296-298,332-335,342
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_684c7497b5c1b6 2,4,10,17,35
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_b86bd8b73ec329::t_88affe1eb656ff 54-56,103,108,110,112,131,140,283-290,293-295,303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "04beef4afa9ed7a90a3dcd3f721e19c3410e0656",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
