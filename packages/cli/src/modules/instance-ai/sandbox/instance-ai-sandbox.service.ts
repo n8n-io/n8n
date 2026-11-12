@@ -259,6 +259,9 @@ export class InstanceAiSandboxService {
 
 	private cacheGeneration = 0;
 
+	/** Run in which the last sandbox start of each thread failed, keyed by thread ID. */
+	private readonly failedStartRuns = new Map<string, string>();
+
 	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
 
 	private get logger(): Logger {
@@ -533,7 +536,15 @@ export class InstanceAiSandboxService {
 		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config, {
+		// After a failed start the sandbox is usually still starting. Later starts in the
+		// same run only check on it, so each retry does not wait minutes again.
+		const runId = this.options.runState.getActiveRunId(threadId);
+		const quickStart =
+			config.provider === 'daytona' &&
+			runId !== undefined &&
+			this.failedStartRuns.get(threadId) === runId;
+
+		const sandbox = await createSandbox(quickStart ? { ...config, quickStart } : config, {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
@@ -548,6 +559,7 @@ export class InstanceAiSandboxService {
 				async () => await workspace.init(),
 			);
 		} catch (error) {
+			if (runId !== undefined) this.failedStartRuns.set(threadId, runId);
 			try {
 				await traceSandboxOperation(
 					'cleanup-failed-start',
@@ -556,6 +568,14 @@ export class InstanceAiSandboxService {
 				);
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
+			}
+			// A failed quick check is expected while the sandbox starts, so it is not reported.
+			if (quickStart) {
+				const reason = error instanceof Error ? error.message : String(error);
+				throw new OperationalError(
+					`The sandbox is not ready yet. It can still be starting, so try again shortly. Reason: ${reason}`,
+					{ cause: error },
+				);
 			}
 			// Only the generic transient wrap is downgraded to a non-reported warning.
 			// Classified subclasses (name conflict, sandbox not ready) keep their identity
@@ -568,6 +588,7 @@ export class InstanceAiSandboxService {
 			}
 			throw error;
 		}
+		this.failedStartRuns.delete(threadId);
 
 		const entry: RuntimeSandboxEntry = {
 			userId: user.id,
