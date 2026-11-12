@@ -801,6 +801,100 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
+		it('gives a tool call that started without an id the id that follows', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', name: 'lookup', argumentsDelta: '{"q":' },
+						{ type: 'tool-call-delta', id: 'call-1', argumentsDelta: '1}' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts).toEqual([
+				{ type: 'tool-input-start', id: 'call-1', toolName: 'lookup' },
+				{ type: 'tool-input-delta', id: 'call-1', delta: '{"q":1}' },
+				{ type: 'tool-input-end', id: 'call-1' },
+				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
+			]);
+		});
+
+		it('keeps a new id with another tool name apart from a call without an id', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', name: 'lookup', argumentsDelta: '{"q":1}' },
+						{ type: 'tool-call-delta', id: 'b', name: 'weather', argumentsDelta: '{}' },
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const calls = (await readAll(stream)).filter((part) => part.type === 'tool-call');
+
+			expect(calls).toEqual([
+				{ type: 'tool-call', toolCallId: expect.any(String), toolName: 'lookup', input: '{"q":1}' },
+				{ type: 'tool-call', toolCallId: 'b', toolName: 'weather', input: '{}' },
+			]);
+			expect(calls[0]).not.toMatchObject({ toolCallId: 'b' });
+		});
+
+		it('matches a complete tool call without an id to the only pending call', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{"q"' },
+						{
+							type: 'content',
+							content: { type: 'tool-call', toolName: 'lookup', input: '{"q":1}' },
+						},
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts).toEqual([
+				{ type: 'tool-input-start', id: 'a', toolName: 'lookup' },
+				{ type: 'tool-input-delta', id: 'a', delta: '{"q"' },
+				{ type: 'tool-input-delta', id: 'a', delta: ':1}' },
+				{ type: 'tool-input-end', id: 'a' },
+				{ type: 'tool-call', toolCallId: 'a', toolName: 'lookup', input: '{"q":1}' },
+			]);
+		});
+
+		it('keeps a complete tool call without an id apart when the pending call is ambiguous', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', id: 'a', name: 'lookup', argumentsDelta: '{}' },
+						{ type: 'tool-call-delta', id: 'b', name: 'lookup', argumentsDelta: '{}' },
+						{
+							type: 'content',
+							content: { type: 'tool-call', toolName: 'lookup', input: '{"q":1}' },
+						},
+						{ type: 'finish', finishReason: 'tool-calls' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const calls = (await readAll(stream)).filter((part) => part.type === 'tool-call');
+
+			expect(calls.map((call) => call.type === 'tool-call' && call.input)).toEqual([
+				'{"q":1}',
+				'{}',
+				'{}',
+			]);
+		});
+
 		it('sends no tool calls from a failed response', async () => {
 			const error = new Error('bad');
 			const afterErrorChunk = new AiSdkLanguageModelAdapter(
@@ -1011,6 +1105,60 @@ describe('AiSdkLanguageModelAdapter', () => {
 				{ type: 'tool-input-delta', id: 'call-1', delta: ':1}' },
 				{ type: 'tool-input-end', id: 'call-1' },
 				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
+			]);
+		});
+
+		it('sends only the missing end of a complete block that follows its deltas', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', id: 't1', delta: 'Hel' },
+						{ type: 'content', id: 't1', content: { type: 'text', text: 'Hello' } },
+						{ type: 'reasoning-delta', delta: 'thi' },
+						{ type: 'content', content: { type: 'reasoning', text: 'think' } },
+						{ type: 'finish', finishReason: 'stop' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+
+			expect(parts).toEqual([
+				{ type: 'text-start', id: 't1' },
+				{ type: 'text-delta', id: 't1', delta: 'Hel' },
+				{ type: 'text-delta', id: 't1', delta: 'lo' },
+				{ type: 'text-end', id: 't1' },
+				{ type: 'reasoning-start', id: 'reasoning' },
+				{ type: 'reasoning-delta', id: 'reasoning', delta: 'thi' },
+				{ type: 'reasoning-delta', id: 'reasoning', delta: 'nk' },
+				{ type: 'reasoning-end', id: 'reasoning' },
+			]);
+		});
+
+		it('sends a complete block that does not continue its deltas as a part of its own', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', id: 't1', delta: 'Hel' },
+						{ type: 'content', id: 't1', content: { type: 'text', text: 'World' } },
+						{ type: 'finish', finishReason: 'stop' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+			const newId = parts[3]?.type === 'text-start' ? parts[3].id : undefined;
+
+			expect(newId).not.toBe('t1');
+			expect(parts).toEqual([
+				{ type: 'text-start', id: 't1' },
+				{ type: 'text-delta', id: 't1', delta: 'Hel' },
+				{ type: 'text-end', id: 't1' },
+				{ type: 'text-start', id: newId },
+				{ type: 'text-delta', id: newId, delta: 'World' },
+				{ type: 'text-end', id: newId },
 			]);
 		});
 
