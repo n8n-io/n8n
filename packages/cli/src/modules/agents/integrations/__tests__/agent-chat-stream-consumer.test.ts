@@ -506,6 +506,8 @@ const SESSION_BUDGET_MESSAGE =
 	'⚠️ This session reached its cost cap and stopped. Open the agent in n8n and increase the cap.';
 const MONTHLY_BUDGET_MESSAGE =
 	'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.';
+const CREDITS_BUDGET_MESSAGE =
+	'⚠️ The Gateway credits balance is empty, so this agent stopped. Open n8n and top up Gateway credits to continue.';
 
 describe('AgentChatStreamConsumer — budget stop', () => {
 	it('posts the session message once and clears the status when the run never starts', async () => {
@@ -551,6 +553,22 @@ describe('AgentChatStreamConsumer — budget stop', () => {
 		}
 		expect(streamedText).toEqual(['Partial answer']);
 		expect(discrete).toEqual([{ markdown: MONTHLY_BUDGET_MESSAGE }]);
+	});
+
+	it('posts the credits message when the wallet stop ends the run', async () => {
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeConsumer(postErrorToThread);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.credits' } },
+			]),
+			localThread,
+		);
+
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: CREDITS_BUDGET_MESSAGE });
+		expect(postErrorToThread).not.toHaveBeenCalled();
 	});
 
 	it('does not post a budget message when the run finishes normally', async () => {
@@ -631,5 +649,264 @@ describe('AgentChatStreamConsumer — stopped sessions', () => {
 		}
 		expect(postErrorToThread).not.toHaveBeenCalled();
 		expect(clearBeforeResponse).toHaveBeenCalled();
+	});
+});
+
+describe('AgentChatStreamConsumer — files queued for the final reply', () => {
+	const queued = (toolCallId: string, fileIds: string[]): StreamChunk => ({
+		type: 'tool-result',
+		toolCallId,
+		toolName: 'telegram_action',
+		output: { ok: true, queuedFileIds: fileIds, note: 'The files go with your final reply.' },
+	});
+
+	function makeFilesConsumer(disableStreaming: boolean) {
+		const postReplyFiles = vi.fn().mockResolvedValue(undefined);
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = new AgentChatStreamConsumer({
+			disableStreaming,
+			logger: mock<Logger>(),
+			postErrorToThread,
+			handleSuspension: vi.fn().mockResolvedValue('posted'),
+			handleMessage: vi.fn().mockResolvedValue(true),
+			isIntegrationActionTool: (toolName) => toolName === 'telegram_action',
+			postReplyFiles,
+		});
+		return { consumer, postReplyFiles, postErrorToThread };
+	}
+
+	it('posts the files with the final reply as caption on a buffered platform', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledTimes(1);
+		expect(postReplyFiles).toHaveBeenCalledWith(localThread, {
+			fileIds: ['file-1'],
+			caption: 'Here is your chart.',
+			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
+		});
+		expect(localThread.post).not.toHaveBeenCalled();
+	});
+
+	it('posts the files in their own message after a streamed reply', async () => {
+		const { thread: localThread, streamedText } = makeStreamingThread();
+		const { consumer, postReplyFiles } = makeFilesConsumer(false);
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(streamedText).toEqual(['Here is your chart.']);
+		expect(postReplyFiles).toHaveBeenCalledWith(localThread, {
+			fileIds: ['file-1'],
+			caption: '',
+			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
+		});
+	});
+
+	it('reads files that a batch action queued', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+
+		await consumer.consume(
+			makeStream([
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'telegram_action',
+					output: {
+						ok: true,
+						results: [{ action: 'respond', result: { ok: true, queuedFileIds: ['file-1'] } }],
+					},
+				},
+			]),
+			mock<Thread<unknown, unknown>>(),
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ fileIds: ['file-1'] }),
+		);
+	});
+
+	it('ignores queued file IDs from tools other than the integration action tool', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+
+		await consumer.consume(
+			makeStream([
+				{ ...queued('tc-1', ['file-1']), toolName: 'some_workflow_tool' } as StreamChunk,
+			]),
+			mock<Thread<unknown, unknown>>(),
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['streaming', false],
+		['buffered', true],
+	])('keeps the files of a suspended run for its resume (%s)', async (_name, disableStreaming) => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(disableStreaming);
+
+		await consumer.consume(
+			makeStream([queued('tc-1', ['file-1']), SUSPENDED_CHUNK]),
+			makeStreamingThread().thread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).not.toHaveBeenCalled();
+	});
+
+	it('sends the files that a resumed run queued before its suspension one time', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+
+		await consumer.consume(
+			makeStream([
+				// The resumed tool call can report its result again. It must not add the file twice.
+				queued('tc-1', ['file-1']),
+				queued('tc-2', ['file-2']),
+				{ type: 'text-delta', id: 't-1', delta: 'Done.' },
+			]),
+			mock<Thread<unknown, unknown>>(),
+			{
+				agentThreadId: 'agent-thread-1',
+				earlierToolResults: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'telegram_action',
+						output: { ok: true, queuedFileIds: ['file-1'] },
+					},
+				],
+			},
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledTimes(1);
+		expect(postReplyFiles).toHaveBeenCalledWith(expect.anything(), {
+			fileIds: ['file-1', 'file-2'],
+			caption: 'Done.',
+			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
+		});
+	});
+
+	it('sends the files without a caption after do_not_respond', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Staying quiet' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-2',
+					toolName: 'telegram_action',
+					output: { ok: true, silent: true },
+				},
+			]),
+			mock<Thread<unknown, unknown>>(),
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ fileIds: ['file-1'], caption: '' }),
+		);
+	});
+
+	it('sends the files without a caption when the run ends with no text', async () => {
+		const { consumer, postReplyFiles } = makeFilesConsumer(true);
+
+		await consumer.consume(
+			makeStream([queued('tc-1', ['file-1'])]),
+			mock<Thread<unknown, unknown>>(),
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ fileIds: ['file-1'], caption: '' }),
+		);
+	});
+
+	it('posts the reply text and an error when the files cannot be sent', async () => {
+		const { consumer, postReplyFiles, postErrorToThread } = makeFilesConsumer(true);
+		const error = new Error('File "file-1" not found in this conversation.');
+		postReplyFiles.mockRejectedValue(error);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: 'Here is your chart.' });
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+	});
+
+	it('does not post the reply text again when a later file group fails', async () => {
+		const { consumer, postReplyFiles, postErrorToThread } = makeFilesConsumer(true);
+		const error = new Error('Failed to upload the second file group');
+		// The first group goes out with the caption, then the second group fails.
+		postReplyFiles.mockImplementation(async (_thread, { onPosted }) => {
+			onPosted?.();
+			throw error;
+		});
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1', 'doc-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledWith(
+			localThread,
+			expect.objectContaining({ caption: 'Here is your chart.' }),
+		);
+		expect(localThread.post).not.toHaveBeenCalled();
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+	});
+
+	it('posts the reply text when the files of a wake delivery cannot be sent', async () => {
+		const { consumer, postReplyFiles, postErrorToThread } = makeFilesConsumer(true);
+		const error = new Error('File "file-1" not found in this conversation.');
+		postReplyFiles.mockRejectedValue(error);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1', throwOnDeliveryError: true },
+		);
+
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: 'Here is your chart.' });
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, true);
 	});
 });

@@ -75,7 +75,7 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_INSTANCE_AI_ENABLED=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \
@@ -98,6 +98,7 @@ INCLUDE_TEST_CONTROLLER=true pnpm build:docker
 # Start a container (E2E_TESTS=true exposes /rest/e2e/reset)
 docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
+  -e N8N_INSTANCE_AI_ENABLED=true \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
   -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
@@ -968,7 +969,7 @@ a server that drops it after a write.
 "requiresMemoryCompaction": true
 ```
 
-For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at 30k tokens of visible message content (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`), which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
+For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at shares of the model's context window, capped at 200k tokens (`N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS`), measured on the real request size, which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
 
 1. The harness sends a low `observerThresholdTokens` override with **every** turn of that thread. The flag means "compact as soon as there is anything to compact" — the seed does not have to hit a token number. The Observer's prompt, masking and cursor logic are the production ones at any threshold.
 2. After the build, the harness checks the premise held, and reports every expectation on the case **not judged** if it did not. That is an `incomplete` verdict — excluded from scoring, not a red.
@@ -1329,6 +1330,8 @@ status.
 ## Troubleshooting
 
 **`Wrong username or password` on login.** Your instance has no owner. Run the `rest/e2e/reset` curl from [Quick start](#quick-start) (needs `E2E_TESTS=true` on the server).
+
+**`Instance AI is disabled` (403).** The Assistant is off by default on the Enterprise plan, and a server started with `E2E_TESTS=true` reports that plan. Set `N8N_INSTANCE_AI_ENABLED=true` on the server. Turning it on in Settings > Assistant also works, but the `rest/e2e/reset` call deletes that saved choice.
 
 **`Have reached end of quota` mid-run.** You're hitting the hosted AI proxy's per-tenant quota. Set `N8N_AI_ASSISTANT_BASE_URL=""` to hit Anthropic directly with your `N8N_INSTANCE_AI_MODEL_API_KEY`. Also consider lowering `--concurrency`.
 

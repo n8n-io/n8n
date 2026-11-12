@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -27,6 +28,8 @@ type CompactionConfig = Pick<
 >;
 
 let defaultCompactionConfig: CompactionConfig;
+
+const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 
 beforeAll(async () => {
 	await testModules.loadModules(['insights'], {
@@ -916,6 +919,105 @@ describe('compaction', () => {
 			expect(weeklyInsights[0].periodStart.toISOString()).toEqual(
 				beyondThresholdTimestamp.startOf('week').toISO(),
 			);
+		});
+	});
+
+	describe.runIf(isPostgres)('Postgres session time zone other than UTC', () => {
+		async function setSessionTimeZone(timeZone: string) {
+			expect(Container.get(GlobalConfig).database.postgresdb.poolSize).toBe(1);
+			const repository = Container.get(InsightsByPeriodRepository);
+			await repository.query(`SET TIME ZONE '${timeZone}'`);
+			onTestFinished(async () => {
+				await repository.query('RESET TIME ZONE');
+			});
+		}
+
+		async function seedPeriods(periodUnit: PeriodUnit, periodStarts: string[]) {
+			const workflow = await createWorkflow({}, await createTeamProject());
+			for (const periodStart of periodStarts) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit,
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+				});
+			}
+		}
+
+		async function getPeriods(periodUnit: PeriodUnit) {
+			const insights = await Container.get(InsightsByPeriodRepository).find({
+				order: { periodStart: 1 },
+			});
+			return insights
+				.filter((insight) => insight.periodUnit === periodUnit)
+				.map(({ periodStart, value }) => ({ periodStart: periodStart.toISOString(), value }));
+		}
+
+		test('compactRawToHour buckets by UTC hour on a half-hour offset', async () => {
+			const workflow = await createWorkflow({}, await createTeamProject());
+			await createRawInsightsEvents(workflow, [
+				{ type: 'success', value: 1, timestamp: DateTime.utc(2000, 1, 1, 10, 15) },
+				{ type: 'success', value: 1, timestamp: DateTime.utc(2000, 1, 1, 10, 45) },
+			]);
+			await setSessionTimeZone('Asia/Kolkata');
+
+			await Container.get(InsightsCompactionService).compactRawToHour();
+
+			await expect(getPeriods('hour')).resolves.toEqual([
+				{ periodStart: '2000-01-01T10:00:00.000Z', value: 2 },
+			]);
+		});
+
+		test.each(['Asia/Tokyo', 'America/New_York'])(
+			'compactHourToDay buckets by UTC day on %s',
+			async (timeZone) => {
+				await seedPeriods('hour', [
+					'2000-01-01T23:00:00',
+					'2000-01-02T01:00:00',
+					'2000-01-02T23:00:00',
+					'2000-01-03T00:00:00',
+				]);
+				await setSessionTimeZone(timeZone);
+
+				await Container.get(InsightsCompactionService).compactHourToDay();
+
+				await expect(getPeriods('day')).resolves.toEqual([
+					{ periodStart: '2000-01-01T00:00:00.000Z', value: 1 },
+					{ periodStart: '2000-01-02T00:00:00.000Z', value: 2 },
+					{ periodStart: '2000-01-03T00:00:00.000Z', value: 1 },
+				]);
+			},
+		);
+
+		test.each(['Asia/Tokyo', 'America/New_York'])(
+			'compactDayToWeek buckets by UTC week on %s',
+			async (timeZone) => {
+				// 2000-01-02 is a Sunday, 2000-01-03 a Monday
+				await seedPeriods('day', ['2000-01-02T00:00:00', '2000-01-03T00:00:00']);
+				await setSessionTimeZone(timeZone);
+
+				await Container.get(InsightsCompactionService).compactDayToWeek();
+
+				await expect(getPeriods('week')).resolves.toEqual([
+					{ periodStart: '1999-12-27T00:00:00.000Z', value: 1 },
+					{ periodStart: '2000-01-03T00:00:00.000Z', value: 1 },
+				]);
+			},
+		);
+
+		test('compactHourToDay applies the age threshold at UTC midnight', async () => {
+			const thresholdDays = Container.get(InsightsConfig).compactionHourlyToDailyThresholdDays;
+			const threshold = DateTime.utc().startOf('day').minus({ days: thresholdDays });
+			const beforeThreshold = threshold.minus({ hours: 1 });
+			await seedPeriods('hour', [beforeThreshold.toISO(), threshold.toISO()]);
+			// UTC-12, so the session day never starts at UTC midnight
+			await setSessionTimeZone('Etc/GMT+12');
+
+			await Container.get(InsightsCompactionService).compactHourToDay();
+
+			await expect(getPeriods('hour')).resolves.toEqual([
+				{ periodStart: threshold.toISO(), value: 1 },
+			]);
 		});
 	});
 });

@@ -32,7 +32,10 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
 
 /** The source of a synced skill, and where the skill is in it. */
-export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator' | 'projectId'> & {
+export type SyncedFromRow = Pick<
+	SkillSourceConnection,
+	'type' | 'locator' | 'projectId' | 'credentialId'
+> & {
 	sourceId: string;
 	remoteRef: Record<string, unknown>;
 };
@@ -161,6 +164,7 @@ export class SkillSourceRepository {
 			type: source.type,
 			locator: source.locator,
 			projectId: source.projectId,
+			credentialId: source.credentialId,
 			remoteRef: link.remoteRef,
 		};
 	}
@@ -200,17 +204,67 @@ export class SkillSourceRepository {
 		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
 	}
 
-	/** The sync state of each synced skill among `skillIds`. A skill without a link is absent. */
-	async findSyncStates(skillIds: string[]): Promise<Map<string, SkillSourceLinkState>> {
-		const states = new Map<string, SkillSourceLinkState>();
+	/**
+	 * The sync state and the source of each synced skill among `skillIds`. A skill without a
+	 * link is absent.
+	 */
+	async findSyncStates(
+		skillIds: string[],
+	): Promise<Map<string, { state: SkillSourceLinkState; sourceId: string }>> {
+		const states = new Map<string, { state: SkillSourceLinkState; sourceId: string }>();
 		for (const chunk of chunkIds(skillIds)) {
 			const links = await this.links.managerFor({}).find(SkillSourceLink, {
-				select: ['skillId', 'state'],
+				select: ['skillId', 'state', 'sourceId'],
 				where: { skillId: In(chunk) },
 			});
-			for (const { skillId, state } of links) states.set(skillId, state);
+			for (const { skillId, state, sourceId } of links) states.set(skillId, { state, sourceId });
 		}
 		return states;
+	}
+
+	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
+	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
+		const manager = this.sources.managerFor({});
+		if (projectIds === 'all') {
+			return await manager.find(SkillSourceConnection, { order: { createdAt: 'ASC' } });
+		}
+		const sources = [
+			...(await manager.find(SkillSourceConnection, { where: { projectId: IsNull() } })),
+		];
+		for (const chunk of chunkIds(projectIds)) {
+			sources.push(
+				...(await manager.find(SkillSourceConnection, { where: { projectId: In(chunk) } })),
+			);
+		}
+		return sources.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+	}
+
+	/** The synced skills of each source, and its updates by state, in one query. */
+	async countLinksBySource(
+		sourceIds: string[],
+	): Promise<Map<string, { skills: number; available: number; blocked: number }>> {
+		const counts = new Map<string, { skills: number; available: number; blocked: number }>();
+		for (const chunk of chunkIds(sourceIds)) {
+			const rows = await this.links
+				.managerFor({})
+				.createQueryBuilder(SkillSourceLink, 'link')
+				.select('link.sourceId', 'sourceId')
+				.addSelect('link.state', 'state')
+				.addSelect('COUNT(*)', 'count')
+				.where('link.sourceId IN (:...chunk)', { chunk })
+				.groupBy('link.sourceId')
+				.addGroupBy('link.state')
+				.getRawMany<{ sourceId: string; state: SkillSourceLinkState; count: string | number }>();
+			for (const { sourceId, state, count } of rows) {
+				const entry = counts.get(sourceId) ?? { skills: 0, available: 0, blocked: 0 };
+				const n = Number(count);
+				entry.skills += n;
+				if (state === 'update_available') entry.available += n;
+				if (state === 'update_blocked') entry.blocked += n;
+				counts.set(sourceId, entry);
+			}
+		}
+		return counts;
 	}
 
 	/** Synced skills of the source with an update that waits for review. */

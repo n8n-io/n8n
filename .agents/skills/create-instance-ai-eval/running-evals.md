@@ -127,6 +127,8 @@ flag wins — use it.
   a key is missing — and grep its names with `^[A-Za-z0-9_]+=`, since a
   `^[A-Z_]*=` pattern silently drops every `N8N_*` var (the digit).
 - `E2E_TESTS=true` — exposes `POST /rest/e2e/reset` so you can seed a known owner.
+- `N8N_INSTANCE_AI_ENABLED=true` turns the Assistant on. `E2E_TESTS=true`
+  reports the Enterprise plan, where the Assistant is off by default.
 
 **Seed an owner** (a fresh instance has none → login 401s). Full payload shape in
 the [README](../../../packages/@n8n/instance-ai/evaluations/README.md) quick
@@ -147,7 +149,7 @@ second instance its own everything:
 # N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
 # defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_AI_ASSISTANT_BASE_URL= \
+E2E_TESTS=true N8N_INSTANCE_AI_EVAL_INSTANCE=true N8N_INSTANCE_AI_ENABLED=true N8N_AI_ASSISTANT_BASE_URL= \
   npx dotenvx run -f .env.eval -- \
   sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680

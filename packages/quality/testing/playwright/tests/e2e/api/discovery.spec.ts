@@ -5,7 +5,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'API Discovery',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('owner sees all available operations', async ({ api }) => {

@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
+
 ## Configuration add actions
 
 Show a leading `plus` icon beside empty-state configuration add labels. Use
@@ -378,9 +385,8 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
 When the skills module is on, `Add skill` starts with the `Skills` picker. The
-picker shows only skills that the Agent can use: skills of its project, skills
-of this Agent only, and global skills. Group them in the tabs All, the project
-name, This agent, and Global. Do not
+picker shows only skills that the Agent can use: skills of its project and
+global skills. Group them in the tabs All, the project name, and Global. Do not
 show a scope label or an icon in a row. Each row has a switch with the label
 `Attached` or `Detached`. The switch saves at once and keeps the picker open.
 This is an exception to the explicit row action. Disable a skill whose name is
@@ -390,10 +396,10 @@ preview of an attached skill shows `Detach` instead of `Add skill`. Both
 actions return to the picker. Do not edit a skill from the picker.
 `Create skill` shows on every tab. It opens the upload screen, and Back returns
 to the picker. The first field of the skill form is `Where can this skill be
-added?`: `This project`, `This agent only`, or `Global`. Each choice has an
-icon. The field starts from the tab: the project tab starts at `This project`,
-the Global tab at `Global`, and the other tabs at `This agent only`. Only a
-user who can create global skills sees `Global`. An existing skill that the
+added?`: `This project` or `Global`. Each choice has an icon. The field starts
+from the tab: the Global tab starts at `Global`, and the other tabs at
+`This project`. Only a user who can create global skills sees `Global`; for
+other users the Global tab also starts at `This project`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
 the user changes the skill or its target. Do not show the field for an inline
@@ -600,8 +606,14 @@ publication and unpublication event, including repeated publication of a version
 Show unknown durations for incomplete legacy records.
 
 Use the small Agent modal shell for version details and publication. Reuse the
-workflow version name and description fields. Both fields are optional. Keep
-Cancel before Save or Publish. Keep entered values when the request fails.
+workflow version name and description fields. Require a nonblank version name
+in both dialogs. Prefill an unnamed version with `Version <first 8 ID characters>`.
+Select the name text on initial focus. Keep the description optional. Keep Cancel
+before Save or Publish. Keep entered values when the request fails.
+
+Order version actions as Restore version, Publish version, and Name version.
+For the published version, replace Publish version with Unpublish agent.
+Keep automatic draft saves unnamed unless the user names them.
 
 Flush pending editor changes before opening the publish dialog. Keep the selected
 saved version fixed while the dialog is open. Later edits remain in the draft.

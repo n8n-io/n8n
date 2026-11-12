@@ -79,6 +79,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',
 	'n8n.audit.user.login.emailConflict',
+	'n8n.audit.user.logout',
 	'n8n.audit.user.signedup',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',
@@ -93,6 +94,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.credentials.userDisconnected',
+	'n8n.audit.user.credentials.data.read',
+	'n8n.audit.user.credentials.list.data.read',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.api.rotated',
@@ -114,6 +117,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.resumed',
 	'n8n.audit.workflow.archived',
 	'n8n.audit.workflow.unarchived',
+	'n8n.audit.agent.archived',
+	'n8n.audit.agent.unarchived',
 	'n8n.audit.workflow.activated',
 	'n8n.audit.workflow.deactivated',
 	'n8n.audit.workflow.version.updated',
@@ -177,6 +182,12 @@ export const eventNamesAudit = [
 	'n8n.audit.trusted-source.created',
 	'n8n.audit.trusted-source.updated',
 	'n8n.audit.trusted-source.deleted',
+	'n8n.audit.promotions.provider.created',
+	'n8n.audit.promotions.provider.updated',
+	'n8n.audit.promotions.provider.deleted',
+	'n8n.audit.promotions.environment.created',
+	'n8n.audit.promotions.environment.updated',
+	'n8n.audit.promotions.environment.deleted',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload

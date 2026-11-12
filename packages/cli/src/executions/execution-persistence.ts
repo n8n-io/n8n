@@ -21,11 +21,8 @@ import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	migrateRunExecutionData,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
@@ -456,22 +453,6 @@ export class ExecutionPersistence {
 
 		const { executions } = await this.readMultiple(queryParams, options);
 		return executions;
-	}
-
-	/**
-	 * Like {@link findMultipleExecutions}, but also returns the ids of executions whose data
-	 * bundle could not be read. The plain read drops those silently; callers that must act on
-	 * them (rather than skip them) use this.
-	 */
-	async findMultipleExecutionsWithUnreadable(
-		queryParams: FindManyOptions<ExecutionEntity>,
-	): Promise<{ executions: IExecutionResponse[]; unreadableIds: string[] }> {
-		const { executions, unreadableIds } = await this.readMultiple(queryParams, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		return { executions: executions as IExecutionResponse[], unreadableIds };
 	}
 
 	/**
@@ -980,12 +961,17 @@ export class ExecutionPersistence {
 		executionId: string,
 		conditions?: UpdateExecutionConditions,
 	): FindOptionsWhere<ExecutionEntity> {
-		if (conditions?.requireStatus && conditions?.requireNotCanceled) {
-			throw new UnexpectedError('`requireStatus` and `requireNotCanceled` cannot be combined');
+		const statusConstraintCount =
+			(conditions?.requireStatus !== undefined ? 1 : 0) +
+			(conditions?.requireStatuses !== undefined ? 1 : 0) +
+			(conditions?.requireNotCanceled ? 1 : 0);
+		if (statusConstraintCount > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
+		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.

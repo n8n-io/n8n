@@ -5,21 +5,16 @@ export const skillIdSchema = AgentJsonConfigBaseSchema.shape.skills.unwrap().inn
 	.shape.id;
 
 /**
- * One skill of the skills hub, at its latest saved version. A skill of one agent names
- * that agent. Version pins and n8n Assistant availability do not travel.
+ * One skill, at its latest saved version: a project skill or an instance skill. Version
+ * pins and n8n Assistant availability do not travel.
  */
 export const serializedSkillSchema = z
 	.object({
 		id: skillIdSchema,
 		scope: skillScopeSchema,
-		agentId: z.string().min(1).optional(),
 		skill: agentSkillSchema.omit({ allowedTools: true }),
 		frontmatter: z.record(z.unknown()).nullable(),
 	})
-	.strict()
-	.refine(({ scope, agentId }) => (scope === 'agent') === (agentId !== undefined), {
-		message: 'A skill of one agent must name its agent, and only such a skill can.',
-		path: ['agentId'],
-	});
+	.strict();
 
 export type SerializedSkill = z.infer<typeof serializedSkillSchema>;

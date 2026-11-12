@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import express, { type Application } from 'express';
-import { createServer, type Server } from 'node:http';
+import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -11,19 +11,19 @@ import { send } from '@/response-helper';
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
-import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
+import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
+import { EngineMtls } from './engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
-	STATUS_CALLBACK_PATH,
+	SUB_WORKFLOWS_RESOLVE_PATH,
 } from './engine-v2.constants';
 
 /**
- * Receives lifecycle events from the data plane, and resolves credentials and
- * runs data table operations for it. It listens on its own host and port,
- * separate from the REST API server, so an operator can restrict these
- * internal routes to the network that the data plane uses without touching
- * the editor's routes.
+ * Provides services for the engine in the data plane: credentials, data tables,
+ * and sub-workflow resolution. It listens on its own host and port, separate
+ * from the REST API server, so an operator can restrict these internal routes
+ * to the network that the data plane uses without touching the editor's routes.
  */
 @Service()
 export class EngineControlPlaneServer {
@@ -36,9 +36,10 @@ export class EngineControlPlaneServer {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly lifecycleEventController: EngineLifecycleEventController,
+		private readonly mtls: EngineMtls,
 		private readonly credentialsController: EngineCredentialsController,
 		private readonly dataTablesController: EngineDataTablesController,
+		private readonly subWorkflowController: EngineSubWorkflowController,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -51,7 +52,7 @@ export class EngineControlPlaneServer {
 
 		const { controlPlaneHost: host, controlPlanePort: port } = this.engineConfig;
 
-		this.server = createServer(app);
+		this.server = this.mtls.createServer(app);
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
 			if (error.code !== 'EADDRINUSE') {
 				// Nothing else handles these, so an unlogged one is a silent failure.
@@ -77,7 +78,9 @@ export class EngineControlPlaneServer {
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		// The bound port, not the configured one, which is `0` when the OS picks it.
-		this.logger.info(`Engine v2 control plane listening on http://${shownHost}:${this.port}`);
+		this.logger.info(
+			`Engine v2 control plane listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${this.port}`,
+		);
 	}
 
 	async stop(): Promise<void> {
@@ -101,20 +104,6 @@ export class EngineControlPlaneServer {
 		// runs before the body parser, so an unauthenticated body is never read.
 		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
 		app.post(
-			STATUS_CALLBACK_PATH,
-			createEngineControlPlaneAuthMiddleware(
-				this.engineConfig,
-				this.logger,
-				'lifecycle-events:write',
-			),
-			rawBodyReader,
-			bodyParser,
-			send(
-				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
-			),
-		);
-
-		app.post(
 			CREDENTIALS_RESOLVE_PATH,
 			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'credentials:read'),
 			rawBodyReader,
@@ -128,6 +117,18 @@ export class EngineControlPlaneServer {
 			rawBodyReader,
 			bodyParser,
 			send(async (req, res) => await this.dataTablesController.call(req, res)),
+		);
+
+		app.post(
+			SUB_WORKFLOWS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(
+				this.engineConfig,
+				this.logger,
+				'sub-workflows:resolve',
+			),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.subWorkflowController.resolveSubWorkflow(req, res)),
 		);
 	}
 }

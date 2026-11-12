@@ -24,6 +24,20 @@ describe('N8nCodeBlock', () => {
 		setClipboard({ writeText });
 	});
 
+	it('normalizes the language', () => {
+		const { container } = render(CodeBlock, {
+			props: { code: 'const active = true;', language: ' TypeScript ' },
+		});
+		expect(container.querySelector('.hljs-keyword')).toHaveTextContent('const');
+	});
+
+	it('escapes unknown languages', () => {
+		const code = '<img src=x onerror=alert(1)> & text &lt;tag&gt; &#60; &#x3c; &amp;';
+		const { container } = render(CodeBlock, { props: { code, language: 'unknown-language' } });
+		expect(container.querySelector('code')?.textContent).toBe(code);
+		expect(container.querySelector('code img')).toBeNull();
+	});
+
 	it('renders highlighted code', () => {
 		const { container } = render(CodeBlock, {
 			props: { code: 'const active = true;', language: 'typescript' },
@@ -41,9 +55,49 @@ describe('N8nCodeBlock', () => {
 
 		expect(writeText).toHaveBeenCalledWith(code);
 		expect(emitted('copy')).toEqual([[code]]);
+		expect(getByRole('button', { name: 'Copied to clipboard' })).toBeInTheDocument();
+		expect(ElNotification).not.toHaveBeenCalled();
+	});
+
+	it('reports copy failure without emitting a copy event', async () => {
+		writeText.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+		const { emitted, getByRole } = render(CodeBlock, { props: { code: 'example' } });
+
+		await fireEvent.click(getByRole('button', { name: 'Copy code' }));
+
 		expect(ElNotification).toHaveBeenCalledWith(
-			expect.objectContaining({ title: 'Copied to clipboard', type: 'success' }),
+			expect.objectContaining({ type: 'error', position: 'bottom-right' }),
 		);
+		expect(emitted('copy')).toBeUndefined();
+		expect(getByRole('button', { name: 'Copy code' })).toBeInTheDocument();
+	});
+
+	it('clears success feedback when a later copy fails', async () => {
+		const { emitted, getByRole } = render(CodeBlock, { props: { code: 'example' } });
+		await fireEvent.click(getByRole('button', { name: 'Copy code' }));
+		writeText.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+
+		await fireEvent.click(getByRole('button', { name: 'Copied to clipboard' }));
+
+		expect(getByRole('button', { name: 'Copy code' })).toBeInTheDocument();
+		expect(emitted('copy')).toEqual([['example']]);
+		expect(ElNotification).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('resets copy feedback after two seconds', async () => {
+		vi.useFakeTimers();
+		try {
+			const { getByRole, unmount } = render(CodeBlock, { props: { code: 'example' } });
+
+			await fireEvent.click(getByRole('button', { name: 'Copy code' }));
+			expect(getByRole('button', { name: 'Copied to clipboard' })).toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(getByRole('button', { name: 'Copy code' })).toBeInTheDocument();
+			unmount();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it.each([

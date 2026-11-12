@@ -11,26 +11,34 @@ import {
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
+	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
+	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
+	WorkflowRepository,
 } from '@n8n/db';
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
+	ACTIVITY_LOG_TOOLS,
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	MIGRATION_REPORT_TOOLS,
 	SKILL_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
@@ -44,8 +52,14 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { BreakingChangeMigrationService } from '@/modules/breaking-changes/breaking-changes.migration.service';
+import { MigrationRegistry } from '@/modules/breaking-changes/breaking-changes.migration-registry.service';
+import { RuleRegistry } from '@/modules/breaking-changes/breaking-changes.rule-registry.service';
+import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
+import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
+import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import { SkillService, SkillsGate } from '@/modules/skills';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
@@ -54,8 +68,6 @@ import {
 } from '../tools/get-instance-context.tool';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -81,9 +93,6 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	// On by default so the drift guards below cover `get_user_preferences`. Its own
-	// registration tests set it explicitly either way.
-	aiPreferencesEnabled: true,
 	credentialDescriptionsEnabled: true,
 	...overrides,
 });
@@ -146,9 +155,10 @@ describe('getAllowedToolNames', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
 
-	it('allows integration updates and publishing with agent:write', () => {
+	it('allows integration updates, publishing and archiving with agent:write', () => {
 		const allowed = getAllowedToolNames(['agent:write']);
 
+		expect(allowed).toContain('archive_agent');
 		expect(allowed).toContain('update_agent_integration');
 		expect(allowed).toContain('publish_agent');
 		expect(allowed).toContain('unpublish_agent');
@@ -173,6 +183,36 @@ describe('getAllowedToolNames', () => {
 	it('exposes the renamed list_n8n_gateway_services tool via credential:read', () => {
 		expect(getAllowedToolNames(['credential:read'])).toContain('list_n8n_gateway_services');
 	});
+
+	it('resolves the migration report read scope to the two read tools', () => {
+		expect(getAllowedToolNames(['breakingChanges:list'])).toEqual(
+			new Set(['get_migration_report', 'get_migration_findings']),
+		);
+	});
+
+	// A fix or a status starts from the findings, so the read tools ride along.
+	it('resolves the migration report write scope to the fix and status tools plus the reads', () => {
+		expect(getAllowedToolNames(['breakingChanges:migrate'])).toEqual(
+			new Set([
+				'get_migration_report',
+				'get_migration_findings',
+				'migrate_workflow',
+				'set_migration_finding_status',
+			]),
+		);
+	});
+
+	// A hand fix needs `workflow:write`: the migration scopes must not open general editing.
+	it('keeps update_workflow and the workflow reads off the migration report scopes', () => {
+		const allowed = getAllowedToolNames(['breakingChanges:list', 'breakingChanges:migrate']);
+		expect(allowed).not.toContain('update_workflow');
+		expect(allowed).not.toContain('get_workflow_details');
+	});
+
+	it('keeps the migration report tools off the workflow scopes', () => {
+		const allowed = getAllowedToolNames(['workflow:read', 'workflow:write']);
+		for (const name of MIGRATION_REPORT_TOOLS) expect(allowed).not.toContain(name);
+	});
 });
 
 describe('McpService scope enforcement', () => {
@@ -184,12 +224,14 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		breakingChangesActive = false,
 		agentsActive = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
+		breakingChangesActive?: boolean;
 		agentsActive?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
@@ -201,6 +243,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
@@ -219,7 +262,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ProjectService),
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
-			mockInstance(NodeTypes),
+			mockInstance(NodeTypesProxy),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
@@ -247,7 +290,9 @@ describe('McpService scope enforcement', () => {
 					.fn()
 					.mockImplementation(
 						(name: string) =>
-							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+							(instanceAiActive && name === 'instance-ai') ||
+							(agentsActive && name === 'agents') ||
+							(breakingChangesActive && name === 'breaking-changes'),
 					),
 				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
@@ -368,13 +413,16 @@ describe('McpService scope enforcement', () => {
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
 		// need the `instance-ai` module, inactive here for the same reason.
+		// Migration report tools need the `breaking-changes` module; their
+		// registration tests are below.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
 			(name) =>
 				!registered.has(name) &&
 				!AGENT_TOOLS.has(name) &&
 				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
-				!INSTANCE_CONTEXT_TOOLS.has(name),
+				!INSTANCE_CONTEXT_TOOLS.has(name) &&
+				!MIGRATION_REPORT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -449,7 +497,7 @@ describe('McpService scope enforcement', () => {
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
 	 * activity tools off the instance when the AI assistant is disabled.
 	 */
-	it('keeps node usage but drops the activity tools when the module is inactive', async () => {
+	it('keeps the index tools but drops the activity tools when the module is inactive', async () => {
 		mockInstance(WorkflowDependencyQueryService);
 
 		const server = await buildService({ instanceAiActive: false }).getServer(
@@ -458,11 +506,12 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const registered = getRegisteredToolNames(server);
-		// Driven off the set so a fifth tool cannot be added without this case noticing.
-		const moduleBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => name !== 'get_node_usage');
+		// Driven off the sets so a new tool cannot be added without this case noticing.
+		const indexBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => !ACTIVITY_LOG_TOOLS.has(name));
 
-		expect(registered).toContain('get_node_usage');
-		for (const name of moduleBound) expect(registered).not.toContain(name);
+		expect(indexBound).toEqual(['get_node_usage', 'get_dependencies']);
+		for (const name of indexBound) expect(registered).toContain(name);
+		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
 
@@ -619,22 +668,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	describe('get_user_preferences registration', () => {
-		it('registers the tool when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the tool', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
-		});
-
-		it('does not register the tool when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
 		});
 
 		// Preferences cover Agents, data tables and folders too, none of which are
@@ -642,7 +679,7 @@ describe('McpService scope enforcement', () => {
 		it('registers the tool with the builder disabled', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
@@ -664,28 +701,16 @@ describe('McpService scope enforcement', () => {
 	describe('preference write tools registration', () => {
 		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
 
-		it('registers the three write tools when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the three write tools', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
-		});
-
-		it('registers none of them when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
 		});
 
 		it('registers them with the builder disabled, like the read tool', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
@@ -787,6 +812,137 @@ describe('McpService scope enforcement', () => {
 
 		expect(getRegisteredToolNames(server)).not.toContain('create_workflow_from_code');
 		expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+	});
+
+	describe('migration report tools registration', () => {
+		const READ_TOOLS = ['get_migration_report', 'get_migration_findings'];
+		const WRITE_TOOLS = ['migrate_workflow', 'set_migration_finding_status'];
+		const owner = Object.assign(new User(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+		const chatUser = Object.assign(new User(), { id: 'chat-1', role: GLOBAL_CHAT_USER_ROLE });
+
+		const getInstructions = (server: unknown) =>
+			(server as { server: { _instructions?: string } }).server._instructions ?? '';
+
+		beforeEach(() => {
+			mockInstance(RuleRegistry);
+			mockInstance(MigrationRegistry);
+			mockInstance(MigrationFindingSyncService);
+			mockInstance(MigrationFindingQueryService);
+			mockInstance(MigrationFindingTriageService);
+			mockInstance(BreakingChangeMigrationService);
+			mockInstance(WorkflowRepository);
+		});
+
+		it('registers all four for an owner while the module serves a report', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				owner,
+				mcpFeatureFlags(),
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) expect(registered).toContain(name);
+			expect(getInstructions(server)).toContain('get_migration_report');
+		});
+
+		it('registers all four for a member, as the REST routes allow', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) expect(registered).toContain(name);
+		});
+
+		it('registers none for a user who cannot read the report', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				chatUser,
+				mcpFeatureFlags(),
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
+			expect(getInstructions(server)).not.toContain('get_migration_report');
+		});
+
+		it('registers none while the module is inactive', async () => {
+			const server = await buildService({ breakingChangesActive: false }).getServer(
+				owner,
+				mcpFeatureFlags(),
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('keeps them, and the pointer to them, from a grant without the scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				owner,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['workflow:read', 'workflow:write'] },
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
+			expect(getInstructions(server)).not.toContain('get_migration_report');
+		});
+
+		it('registers exactly the four for an owner whose grant holds only the write scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				owner,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['breakingChanges:migrate'] },
+			);
+
+			expect(getRegisteredToolNames(server)).toEqual(new Set([...READ_TOOLS, ...WRITE_TOOLS]));
+		});
+
+		it('registers only the read tools for an owner whose grant holds only the read scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				owner,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['breakingChanges:list'] },
+			);
+
+			expect(getRegisteredToolNames(server)).toEqual(new Set(READ_TOOLS));
+		});
+
+		it('registers only the read tools for a member whose grant holds only the read scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['breakingChanges:list'] },
+			);
+
+			expect(getRegisteredToolNames(server)).toEqual(new Set(READ_TOOLS));
+		});
+
+		// A grant can outlive the role it was made under, so the role is checked on every request.
+		it('registers none for a user who cannot read the report and holds the write scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				chatUser,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['breakingChanges:migrate'] },
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('registers them with the builder disabled', async () => {
+			const server = await buildService({
+				breakingChangesActive: true,
+				builderEnabled: false,
+			}).getServer(owner, mcpFeatureFlags());
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).toContain(name);
+		});
 	});
 
 	it('registers the MCP app and the marked create tool when it is in scope', async () => {

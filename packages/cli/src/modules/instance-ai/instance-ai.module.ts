@@ -52,6 +52,7 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
+		await import('./assistant.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
@@ -118,6 +119,13 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
+		);
+		const { InstanceAiCreditService } = await import('./instance-ai-credit.service.js');
+		const { AssistantThreadCreditsService } = await import(
+			'./assistant-agent/assistant-thread-credits.service.js'
+		);
+		Container.get(InstanceAiCreditService).useAgentThreadCredits(
+			Container.get(AssistantThreadCreditsService),
 		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');

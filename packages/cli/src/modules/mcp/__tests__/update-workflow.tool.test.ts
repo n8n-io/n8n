@@ -21,10 +21,10 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
+import { UrlService, WorkflowPublishedDataService, NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -32,6 +32,7 @@ import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-valid
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
+import type { ReadWorkflowMigrationFindings } from '../tools/migration-report/migration-report.utils';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -93,7 +94,7 @@ describe('update-workflow MCP tool', () => {
 	let telemetry: Telemetry;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
-	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
@@ -145,7 +146,7 @@ describe('update-workflow MCP tool', () => {
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
-		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes = mockInstance(NodeTypesProxy);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
 				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
@@ -210,7 +211,7 @@ describe('update-workflow MCP tool', () => {
 	const buildErrorWorkflowValidationService = () =>
 		new ErrorWorkflowValidationService(
 			globalConfig,
-			nodeTypes,
+			nodeTypes as unknown as NodeTypes,
 			workflowFinderService,
 			workflowPublishedDataService,
 			subworkflowPolicyChecker,
@@ -398,6 +399,87 @@ describe('update-workflow MCP tool', () => {
 					versionDescription: 'Updated nodes: B',
 				}),
 			);
+		});
+	});
+
+	describe('migration findings', () => {
+		const operations = [
+			{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+		];
+		const findings = {
+			targetVersion: 'v3',
+			openFindings: [
+				{
+					ruleId: 'cron-removed-v3',
+					title: 'Cron node removed',
+					impact: 'executionsFail' as const,
+					assistantAction: 'fix' as const,
+					migratable: true,
+					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
+				},
+			],
+			unpublishedFixes: 0,
+			wontFixFindings: 1,
+		};
+
+		const createToolWithReader = (readMigrationFindings: ReadWorkflowMigrationFindings) =>
+			createUpdateWorkflowTool(
+				user,
+				workflowFinderService,
+				workflowService,
+				urlService,
+				telemetry,
+				nodeTypes,
+				credentialsService,
+				sharedWorkflowRepository,
+				collaborationService,
+				dataTableOps as never,
+				tagService,
+				globalConfig,
+				buildErrorWorkflowValidationService(),
+				aiGatewayService,
+				{ readMigrationFindings },
+				logger,
+				postSaveMetrics,
+			);
+
+		test('reports what the migration report still flags on the saved workflow', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(findings);
+			const tool = createToolWithReader(reader);
+
+			const result = (await callHandler({ workflowId: 'wf-1', operations }, tool)) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(reader).toHaveBeenCalledWith('wf-1');
+			expect(reader).toHaveBeenCalledAfter(updateMock);
+			expect(result.structuredContent.migrationFindings).toEqual(findings);
+			// The field must stay inside the published schema, or strict clients reject the response.
+			expect(() =>
+				z
+					.object(tool.config.outputSchema as z.ZodRawShape)
+					.strict()
+					.parse(result.structuredContent),
+			).not.toThrow();
+		});
+
+		test('leaves the field out for a workflow the report never flagged', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(undefined);
+
+			const result = (await callHandler(
+				{ workflowId: 'wf-1', operations },
+				createToolWithReader(reader),
+			)) as { structuredContent: Record<string, unknown> };
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
+		});
+
+		test('reports nothing about migration for a caller without a reader', async () => {
+			const result = (await callHandler({ workflowId: 'wf-1', operations })) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
 		});
 	});
 

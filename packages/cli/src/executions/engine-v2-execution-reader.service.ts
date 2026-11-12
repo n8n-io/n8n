@@ -14,13 +14,13 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
 import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
+import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**
@@ -222,13 +222,13 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
 		);
 	}
 
 	private toExecutionResponse(
 		snapshot: ExecutionSnapshot,
-		workflow: WorkflowSnapshot,
+		workflow: WorkflowRunDocument,
 		data: IRunExecutionData,
 	): IExecutionResponse {
 		// No real run timing yet (CAT-4234), so both come from the row.
@@ -261,9 +261,9 @@ export class EngineV2ExecutionReader {
  * without — redaction walks it unguarded — so a document without it reads as no
  * execution at all rather than as a 500.
  */
-export function asWorkflowSnapshot(document: unknown): WorkflowSnapshot | undefined {
+export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | undefined {
 	if (typeof document !== 'object' || document === null) return undefined;
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
-	return document as unknown as WorkflowSnapshot;
+	return document as unknown as WorkflowRunDocument;
 }

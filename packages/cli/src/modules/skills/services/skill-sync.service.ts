@@ -1,6 +1,7 @@
 import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
+import { validate as isUuid } from 'uuid';
 import { GLOBAL_OWNER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -29,6 +30,7 @@ import type {
 } from '../sources/skill-source-client';
 import { rowContent, storedContentOf } from '../utils/skill-content';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
+import { skillSourceBackoffSeconds } from '../utils/skill-source-backoff';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
@@ -37,9 +39,6 @@ import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telem
 
 /** Check now checks a source at most this often. */
 const CHECK_NOW_INTERVAL_MS = 60_000;
-
-/** How long to wait after a rate limit whose answer did not say. */
-const DEFAULT_RETRY_AFTER_SECONDS = 60;
 
 /** Skills fetched at the same time from one source, as at import. */
 const FETCH_CONCURRENCY = 8;
@@ -69,7 +68,7 @@ export class SkillSyncService {
 	 * When each access may read its source again after a rate limit: a credential, or the
 	 * public access of a source type. In memory, so a restart or another main forgets it.
 	 */
-	private readonly retryAt = new Map<string, number>();
+	private readonly backoff = new Map<string, { until: number; attempts: number }>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -101,14 +100,21 @@ export class SkillSyncService {
 	}
 
 	/**
-	 * Check now on a synced skill: checks the whole source of the skill, as the hourly check
-	 * does. A source checked less than a minute ago, also by the hourly check, is not checked
+	 * Check for updates on one source, as the hourly check does. A source checked less than a minute ago, also by the hourly check, is not checked
 	 * again, and the answer says so.
 	 */
-	async checkNow(user: User, skillId: string): Promise<SkillSourceCheckResponse> {
-		const { source } = await this.requireSource(user, skillId, 'checkNow');
-		const client = this.clients.get(source.type);
-		if (!client) throw new NotFoundError('This skill is not synced.');
+	async checkNow(user: User, sourceId: string): Promise<SkillSourceCheckResponse> {
+		await this.flagGate.assertEnabled(user);
+		// A malformed id finds no source. Postgres refuses it in a uuid column, so it is not read.
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		const client = source && this.clients.get(source.type);
+		// 404 for a source that the user cannot see, so the answer reveals nothing about it.
+		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'checkNow'))) {
+			throw new ForbiddenError('You are not allowed to check this source.');
+		}
 		const label = client.describe(source.locator).label;
 		const track = async (props: {
 			updatesFound: number;
@@ -225,9 +231,10 @@ export class SkillSyncService {
 		if (!client) return;
 		const access = accessKey(source);
 		const checkedAt = new Date();
+		const previousBackoff = this.backoff.get(access);
 		// Still waiting after a rate limit: no request, and the wait does not grow. The check time
 		// stays, because n8n did not read the source, so the task still checks it first next time.
-		if ((this.retryAt.get(access) ?? 0) > checkedAt.getTime()) {
+		if ((previousBackoff?.until ?? 0) > checkedAt.getTime()) {
 			await this.sourceRepository.recordDelayed(source.id);
 			throw new SkillSourceReadError(
 				'rate_limited',
@@ -239,6 +246,7 @@ export class SkillSyncService {
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
 			if (cursor !== undefined && cursor === source.probeCursor) {
 				await this.sourceRepository.recordCheck(source.id, { checkedAt, errorReason: null });
+				if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
 				return;
 			}
 			const links = await this.sourceRepository.findLinksBySource(source.id);
@@ -251,6 +259,8 @@ export class SkillSyncService {
 				errorReason: null,
 				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
 			});
+			// A concurrent source check can set a newer limit for the same credential.
+			if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
 			const found = counts.pass + counts.needs_review + counts.blocked;
 			if (found > 0) {
 				await this.skillsTelemetry.updateFound({
@@ -262,11 +272,13 @@ export class SkillSyncService {
 			}
 		} catch (error) {
 			if (error instanceof SkillSourceReadError && error.reason === 'rate_limited') {
-				const seconds = error.retryAfterSeconds ?? DEFAULT_RETRY_AFTER_SECONDS;
-				this.retryAt.set(
-					access,
-					Math.max(this.retryAt.get(access) ?? 0, Date.now() + seconds * 1000),
-				);
+				const current = this.backoff.get(access);
+				const attempts = (current?.attempts ?? 0) + 1;
+				const seconds = skillSourceBackoffSeconds(attempts, error.retryAfterSeconds);
+				this.backoff.set(access, {
+					until: Math.max(current?.until ?? 0, Date.now() + seconds * 1000),
+					attempts,
+				});
 			}
 			await this.sourceRepository.recordCheck(source.id, {
 				checkedAt,
@@ -468,7 +480,7 @@ export class SkillSyncService {
 	private async requireSource(
 		user: User,
 		skillId: string,
-		action: 'stopSyncing' | 'checkNow',
+		action: 'stopSyncing',
 	): Promise<{ link: SkillSourceLink; source: SkillSourceConnection }> {
 		await this.flagGate.assertEnabled(user);
 		// 404 for a skill the user cannot read, so the answer reveals nothing about it.

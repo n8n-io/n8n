@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
-import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+	type LifecycleEvent,
+} from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
@@ -75,7 +79,7 @@ function makeHandler(
 		stepStore,
 		queue,
 		dependencies,
-		lifecycleEventPublisher,
+		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
 		subExecutionStarter as StartExecutionService,
 		onStepSuspended,
@@ -95,6 +99,7 @@ function makeExecutionStore(
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		lifecycleEventSubscription: { kind: 'all' },
 		finishedAt: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
@@ -137,9 +142,11 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		suspendStep: vi.fn().mockResolvedValue(true),
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
@@ -1186,6 +1193,24 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(subExecutionStarter.start).not.toHaveBeenCalled();
 	});
 
+	it('announces no step:waiting while the step waits on an awaited sub-execution', async () => {
+		// As in v1, the calling node keeps showing as running while its sub-execution runs.
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			publisher,
+		);
+
+		await handler.handle(event);
+
+		expect(publisher.publish).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ type: 'step:started' }),
+		);
+	});
+
 	it('fails the waiting step and reports it when the sub-execution cannot start', async () => {
 		const stepStore = makeStepStore();
 		const subExecutionStarter: SubExecutionStarter = {
@@ -1339,6 +1364,28 @@ describe('StepReadyHandler sub-executions', () => {
 			stepId: 'step-a',
 		});
 	});
+
+	it('runs the node again with the sub-execution result when a sub-execution resume dispatches the step', async () => {
+		const cause = {
+			kind: 'subExecution' as const,
+			executionId: 'exec-sub',
+			status: 'completed' as const,
+			result: [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'sub-execution' } }]] }],
+		};
+		const stepStore = makeStepStore({ waitDeclaration: subExecutionWait, resumeCause: cause });
+		const executor = makeExecutor({ outputs: [[{ json: { shaped: true } }]] });
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		// The node runs again, with its inputs and the sub-execution's result.
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [{}], resume: cause }),
+		);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { shaped: true } }]]);
+	});
 });
 
 describe('StepReadyHandler lifecycle events', () => {
@@ -1425,6 +1472,47 @@ describe('StepReadyHandler lifecycle events', () => {
 		expect(order).toEqual(['step:started', 'step:completed', 'queue:step:settled']);
 	});
 
+	it('announces step:waiting and no outcome when the step suspends on a wait', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: { resumeBinding: 'execution' } }) },
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(2);
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(1, {
+			type: 'step:started',
+			...stepFields,
+		});
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
+			type: 'step:waiting',
+			...stepFields,
+		});
+	});
+
+	it('announces no step:waiting for a suspension it did not record', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) }),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: { resumeBinding: 'execution' } }) },
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:started',
+			...stepFields,
+		});
+	});
+
 	it('announces nothing when the step cannot be claimed', async () => {
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
@@ -1472,6 +1560,59 @@ describe('StepReadyHandler lifecycle events', () => {
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	describe('when the caller does not subscribe to lifecycle events', () => {
+		const unsubscribed = [
+			['is missing', { lifecycleEventSubscription: undefined }],
+			['is null', { lifecycleEventSubscription: null }],
+			['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
+		] as const;
+
+		it.each(unsubscribed)(
+			'announces neither the start nor the completion when the subscription %s',
+			async (_name, overrides) => {
+				const lifecycleEventPublisher = makeLifecycleEventPublisher();
+				const queue = makeQueue();
+				const handler = makeHandler(
+					makeExecutionStore(overrides),
+					makeStepStore(),
+					queue,
+					{ v1StepExecutor: makeExecutor() },
+					lifecycleEventPublisher,
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				// The step still settles.
+				expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
+					type: 'step:settled',
+					executionId: 'exec-1',
+					stepId: 'step-a',
+				});
+			},
+		);
+
+		it.each(unsubscribed)(
+			'announces no failure when the subscription %s',
+			async (_name, overrides) => {
+				const lifecycleEventPublisher = makeLifecycleEventPublisher();
+				const queue = makeQueue();
+				const handler = makeHandler(
+					makeExecutionStore(overrides),
+					makeStepStore(),
+					queue,
+					{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('boom')) } },
+					lifecycleEventPublisher,
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				expect(queue.publish).toHaveBeenCalledOnce();
+			},
+		);
 	});
 });
 
