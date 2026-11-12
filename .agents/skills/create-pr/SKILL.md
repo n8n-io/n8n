@@ -209,8 +209,8 @@ Together, the alternatives must be shorter than the core Why section.
   "none needed"
 
 ### Backport labels
-If an urgent fix must go to an older release line, add the label
-`Backport to Beta`, `Backport to Stable`, or `Backport to v1`.
+If an urgent fix must go to an older release line, add the labels that
+`.github/backport_conventions.md` gives.
 
 ## Examples
 
