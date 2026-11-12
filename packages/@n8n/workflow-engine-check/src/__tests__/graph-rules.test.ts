@@ -5,14 +5,17 @@ import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
 /** `[from, to, outputIndex = 0, inputIndex = 0]` */
 type Connection = [string, string, number?, number?];
 
-/** Node types follow the name: `Trigger*` is a manual trigger, `Loop*` a Split In Batches. */
-function nodeNamed(name: string, disabled: boolean): INode {
+/**
+ * Node types follow the name: `Trigger*` is a manual trigger, `Loop*` a Split In Batches.
+ * Nodes sit on the canvas from left to right in the order they first appear.
+ */
+function nodeNamed(name: string, index: number, disabled: boolean): INode {
 	const node: INode = {
 		id: name.toLowerCase(),
 		name,
 		type: 'n8n-nodes-base.noOp',
 		typeVersion: 1,
-		position: [0, 0],
+		position: [index * 200, 0],
 		parameters: {},
 		disabled,
 	};
@@ -33,7 +36,7 @@ function check(connectionList: Connection[], disabled: string[] = []) {
 		while (slots.length <= outputIndex) slots.push([]);
 		slots[outputIndex]!.push({ node: to, type: 'main', index: inputIndex });
 	}
-	const nodes = names.map((name) => nodeNamed(name, disabled.includes(name)));
+	const nodes = names.map((name, index) => nodeNamed(name, index, disabled.includes(name)));
 	return checkEngineV2Eligibility({ nodes, connections, settings: {} }, []);
 }
 
@@ -45,7 +48,13 @@ const simpleLoop: Connection[] = [
 ];
 
 describe('graph rules', () => {
-	it.each<{ shape: string; connections: Connection[]; code: EngineV2ReasonCode; node?: string }>([
+	it.each<{
+		shape: string;
+		connections: Connection[];
+		disabled?: string[];
+		code: EngineV2ReasonCode;
+		node?: string;
+	}>([
 		{
 			shape: 'a cycle without a Split In Batches node',
 			connections: [
@@ -54,6 +63,18 @@ describe('graph rules', () => {
 				['B', 'A'],
 			],
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			node: 'A',
+		},
+		{
+			shape: 'a cycle that appears when a disabled node is bypassed',
+			connections: [
+				['Trigger', 'A'],
+				['A', 'Disabled'],
+				['Disabled', 'A'],
+			],
+			disabled: ['Disabled'],
+			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			node: 'A',
 		},
 		{
 			shape: 'a cycle whose node names contain "|"',
@@ -65,6 +86,7 @@ describe('graph rules', () => {
 				['C', 'A'],
 			],
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			node: 'A',
 		},
 		{
 			shape: 'a loop entered at a body node',
@@ -147,8 +169,88 @@ describe('graph rules', () => {
 			code: 'INPUT_SLOT_CONVERGENCE',
 			node: 'Join',
 		},
-	])('blocks $shape with code $code', ({ connections, code, node }) => {
-		const result = check(connections);
+		{
+			shape: 'two branches that meet in one input when a disabled node is bypassed',
+			connections: [
+				['Trigger', 'If'],
+				['If', 'Disabled', 0],
+				['If', 'Disabled', 1],
+				['Disabled', 'Join'],
+			],
+			disabled: ['Disabled'],
+			code: 'INPUT_SLOT_CONVERGENCE',
+			node: 'Join',
+		},
+		{
+			// Only the first input of a disabled node passes data on, so Side loses its way in.
+			shape: 'a node that the trigger reaches only through the second input of a disabled node',
+			connections: [
+				['Trigger', 'A'],
+				['A', 'Disabled', 0, 1],
+				['Disabled', 'Side'],
+				['Side', 'Join', 0, 1],
+				['A', 'Join'],
+			],
+			disabled: ['Disabled'],
+			code: 'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE',
+			node: 'Side',
+		},
+		{
+			shape: 'a loop whose done output feeds its own body',
+			connections: [
+				['Trigger', 'Loop'],
+				['Loop', 'Body', 1],
+				['Loop', 'Body', 0, 1],
+				['Body', 'Loop'],
+			],
+			code: 'LOOP_DONE_OUTPUT_FEEDS_BODY',
+			node: 'Loop',
+		},
+		{
+			shape: 'a loop whose return goes into the second input of its Split In Batches node',
+			connections: [
+				['Trigger', 'Loop'],
+				['Loop', 'Body', 1],
+				['Body', 'Loop', 0, 1],
+				['Loop', 'After', 0],
+			],
+			code: 'LOOP_INPUT_NOT_FIRST',
+			node: 'Loop',
+		},
+		{
+			shape: 'a loop entered at the second input of its Split In Batches node',
+			connections: [
+				['Trigger', 'Loop', 0, 1],
+				['Loop', 'Body', 1],
+				['Body', 'Loop'],
+				['Loop', 'After', 0],
+			],
+			code: 'LOOP_INPUT_NOT_FIRST',
+			node: 'Loop',
+		},
+		{
+			shape: 'a Split In Batches node that nothing returns to',
+			connections: [
+				['Trigger', 'Loop'],
+				['Loop', 'Body', 1],
+				['Loop', 'After', 0],
+			],
+			code: 'LOOP_WITHOUT_RETURN',
+			node: 'Loop',
+		},
+		{
+			shape: 'a Split In Batches node inside a loop that nothing returns to',
+			connections: [
+				['Trigger', 'LoopOuter'],
+				['LoopOuter', 'LoopInner', 1],
+				['LoopInner', 'LoopOuter', 0],
+				['LoopOuter', 'After', 0],
+			],
+			code: 'LOOP_WITHOUT_RETURN',
+			node: 'LoopInner',
+		},
+	])('blocks $shape with code $code', ({ connections, disabled, code, node }) => {
+		const result = check(connections, disabled);
 
 		expect(result.eligible).toBe(false);
 		expect(result.reasons).toEqual([
