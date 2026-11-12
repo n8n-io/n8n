@@ -245,7 +245,7 @@ describe('POST /n8n-packages/export', () => {
 			})
 			.send({
 				projectIds: [id],
-				includeArchivedWorkflows: true,
+				includeArchived: true,
 				credentialExportPolicy: 'no-values',
 				includeVariableValues: false,
 				dependencyPolicy: 'reference-only',

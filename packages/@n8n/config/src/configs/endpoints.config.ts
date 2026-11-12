@@ -187,6 +187,10 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
 
+	/** Path segment for agent webhook channel endpoints. */
+	@Env('N8N_ENDPOINT_AGENT_WEBHOOK')
+	agentWebhook: string = 'agent-webhook';
+
 	/** Path segment for MCP endpoints. */
 	@Env('N8N_ENDPOINT_MCP')
 	mcp: string = 'mcp';
