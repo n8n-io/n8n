@@ -525,23 +525,40 @@ export const lintDirectory = async (
 const findingsFrom = (result: AnalysisResult, origin: Finding['origin']): Finding[] =>
 	(result.findings ?? []).map((finding) => ({ ...finding, origin }));
 
+const summarizeFindings = (sourceCount: number, packageCount: number): string | null => {
+	const counts = [
+		sourceCount > 0 ? `${sourceCount} in the source` : null,
+		packageCount > 0 ? `${packageCount} in the package` : null,
+	].filter((count) => count !== null);
+	return counts.length > 0 ? `ESLint violations found: ${counts.join(', ')}` : null;
+};
+
 const mergeResults = (
 	sourceResult: AnalysisResult,
 	packageResult: AnalysisResult,
 ): AnalysisResult => {
 	const failures = [sourceResult, packageResult].filter((result) => !result.passed);
-	const firstFailure = failures.find((result) => result.error !== undefined) ?? failures[0];
-	if (!firstFailure) return { passed: true };
+	if (failures.length === 0) return { passed: true };
 
+	const sourceFindings = findingsFrom(sourceResult, 'source');
+	const packageFindings = findingsFrom(packageResult, 'package');
+	// Crashes come first, so an incomplete scan is never reported as a plain failure
+	const crashes = failures.filter((result) => result.error !== undefined);
+	const message = [
+		...crashes.map((result) => result.message),
+		summarizeFindings(sourceFindings.length, packageFindings.length),
+	]
+		.filter((part) => part !== null)
+		.join('. ');
 	const details = failures.flatMap((result) => result.details || []).join('\n');
 
 	return {
 		passed: false,
-		message: firstFailure.message,
+		message,
 		details: details || undefined,
-		findings: [...findingsFrom(sourceResult, 'source'), ...findingsFrom(packageResult, 'package')],
-		check: firstFailure.check,
-		error: firstFailure.error,
+		findings: [...sourceFindings, ...packageFindings],
+		check: CHECKS.ESLINT,
+		error: crashes[0]?.error,
 	};
 };
 

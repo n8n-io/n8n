@@ -509,6 +509,7 @@ describe('analyzeLocalPackage', () => {
 			packageName: 'n8n-nodes-fixture',
 			version: '1.0.0',
 			skippedChecks: ['provenance', 'source'],
+			message: 'ESLint violations found: 1 in the source, 1 in the package',
 		});
 		expect(getExitCode(result)).toBe(EXIT_CODES.SCAN_FAILED);
 		expect(result.findings?.map((f) => [f.origin, f.file])).toEqual([
@@ -544,6 +545,7 @@ describe('analyzeLocalPackage', () => {
 		const result = await analyzeLocalPackage(fixtureDir);
 
 		expect(result.findings?.map((f) => [f.origin, f.file])).toEqual([['package', 'runtime.js']]);
+		expect(result.message).toBe('ESLint violations found: 1 in the package');
 	});
 
 	it('rejects an invalid package.json', async () => {

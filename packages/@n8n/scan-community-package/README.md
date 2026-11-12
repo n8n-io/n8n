@@ -46,7 +46,7 @@ The file has this shape:
   "version": "1.2.3",
   "status": "failed",
   "check": "eslint",
-  "message": "ESLint violations found",
+  "message": "ESLint violations found: 1 in the source",
   "findings": [
     {
       "file": "nodes/Example/Example.node.ts",
