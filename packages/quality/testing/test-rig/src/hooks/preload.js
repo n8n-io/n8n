@@ -46,7 +46,7 @@
 	/** @param {any} root @param {string} dotted */
 	function get(root, dotted) {
 		let value = root;
-		for (const key of String(dotted).split('.')) {
+		for (const key of dotted.split('.')) {
 			if (value === null || value === undefined) return undefined;
 			value = value[key];
 		}
@@ -117,9 +117,8 @@
 
 	/** @param {Hook} hook @param {Context} ctx */
 	function hit(hook, ctx) {
-		const detail = details(hook, ctx);
 		const hitAt = Date.now();
-		log('hit', hook.point, detail);
+		log('hit', hook.point, details(hook, ctx));
 		return hitAt;
 	}
 
@@ -140,13 +139,8 @@
 	/** @param {Hook} hook @param {Context} ctx */
 	function shouldFire(hook, ctx) {
 		if (!matches(hook, ctx)) return false;
-		if (hook.scope) {
-			const store = ctx.scope;
-			if (!store) return false;
-			if (store.fired.has(hook.point)) return false;
-		}
-		if (!isArmed(hook)) return false;
-		if (!consumeArm(hook)) return false;
+		if (hook.scope && (!ctx.scope || ctx.scope.fired.has(hook.point))) return false;
+		if (!isArmed(hook) || !consumeArm(hook)) return false;
 		if (hook.scope) ctx.scope.fired.add(hook.point);
 		return true;
 	}
@@ -183,8 +177,7 @@
 				});
 			}
 			if (!shouldFire(hook, ctx)) return original.apply(this, args);
-			const hitAt = hit(hook, ctx);
-			return waitRelease(hook, hitAt).then(() => original.apply(this, args));
+			return waitRelease(hook, hit(hook, ctx)).then(() => original.apply(this, args));
 		};
 	}
 

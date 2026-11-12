@@ -82,7 +82,7 @@ export async function logs(container: Container): Promise<string> {
 }
 
 /** Splits chunked text into whole lines and returns the first line that contains one of the snippets. */
-export function lineMatcher(snippets: string[]) {
+function lineMatcher(snippets: string[]) {
 	let buffer = '';
 	return (chunk: string): string | undefined => {
 		buffer += chunk;

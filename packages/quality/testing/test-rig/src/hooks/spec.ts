@@ -5,7 +5,7 @@ export const FILES = {
 	jobProcessor: 'n8n/dist/scaling/job-processor.js',
 } as const;
 
-export const ROLES = ['main', 'worker'] as const;
+const ROLES = ['main', 'worker'] as const;
 export type Role = (typeof ROLES)[number];
 
 const methodRef = z.object({
