@@ -68,10 +68,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 
 vi.mock('../../composables/useAgentMutationRefresh', () => ({ useAgentMutationRefresh: vi.fn() }));
 
-type AcceptMessage = (payload: {
-	clientContext?: Record<string, unknown>;
-	fromComposer: boolean;
-}) => void;
+type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
 
 const subject: InstanceAiAgentAttachment = {
 	type: 'agent',
@@ -91,10 +88,7 @@ function clientContext(): Record<string, unknown> {
 }
 
 function acceptMessage(context: Record<string, unknown>): void {
-	(panelProps.current.onMessageAccepted as AcceptMessage)({
-		clientContext: context,
-		fromComposer: true,
-	});
+	(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext: context });
 }
 
 /** The chat reports a send, and the test reads the message telemetry it caused. */
@@ -241,6 +235,8 @@ describe('AssistantAgentPanelThread', () => {
 
 		expect(clearDraftIfMatches).toHaveBeenCalledWith('Fix the reply tone');
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		// The chat reports the composer that the removed draft left empty.
+		(panelProps.current.onDraftCleared as () => void)();
 		expect(sendAndReadTelemetry('Something else')).toMatchObject({ prefill_type: null });
 	});
 

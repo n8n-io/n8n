@@ -208,13 +208,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 }
 
 /** The references go with the first message, so a retry of a refused send keeps them. */
-function onMessageAccepted({
-	clientContext,
-	fromComposer,
-}: {
-	clientContext?: Record<string, unknown>;
-	fromComposer: boolean;
-}): void {
+function onMessageAccepted({ clientContext }: { clientContext?: Record<string, unknown> }): void {
 	// Tracked on acceptance, like the current runtime, so refused sends don't inflate the count.
 	// The sent context has the references and the nodes that the composer chips added.
 	const nodeCount = countSentNodes(clientContext);
@@ -226,7 +220,6 @@ function onMessageAccepted({
 	}
 	pendingReferences = [];
 	pendingHandoffContext = undefined;
-	messageTelemetry.onMessageAccepted(fromComposer);
 }
 
 const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
@@ -722,6 +715,7 @@ function removeStagedNodes(chipId: string): void {
 						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
 						@message-sending="messageTelemetry.trackSend"
+						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 					>

@@ -37,8 +37,6 @@ export interface AssistantAgentSendingMessage {
 export function useAssistantAgentMessageTelemetry(threadId: string) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
-	// shortcut: the pre-fill stays until a send is accepted, so a text typed after the user
-	// clears the composer reports as an edited pre-fill. Track the draft if that share matters.
 	let prefill: InstanceAiPrefillPayload | null = null;
 	let hostSend: AssistantAgentHostSend | null = null;
 
@@ -76,17 +74,13 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	}
 
 	return {
-		/** The text that the composer shows now came from a pre-fill. */
+		/** The text that the composer shows now came from a pre-fill. Set `null` when the composer text is cleared. */
 		setPrefill(next: InstanceAiPrefillPayload | null) {
 			prefill = next;
 		},
 		/** Call before the host sends a text for the user. */
 		expectHostSend(send: AssistantAgentHostSend) {
 			hostSend = send;
-		},
-		/** Only a composer send empties the composer. A host send leaves the pre-fill there. */
-		onMessageAccepted(fromComposer: boolean) {
-			if (fromComposer) prefill = null;
 		},
 		trackSend,
 	};

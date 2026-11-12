@@ -194,6 +194,8 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'content-change': [hasContent: boolean];
+	/** The composer text became empty: a send or the user cleared it. A host send does not. */
+	'draft-cleared': [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -208,16 +210,10 @@ const emit = defineEmits<{
 	/**
 	 * The server accepted a new message. Answers to an open card do not emit this.
 	 * `clientContext` is the context sent with it: the `clientContext` prop, then
-	 * the patches of the composer chips. `fromComposer` is false for a host send,
-	 * which leaves the composer as it was.
+	 * the patches of the composer chips.
 	 */
 	'message-accepted': [
-		payload: {
-			text: string;
-			files: File[];
-			clientContext?: Record<string, unknown>;
-			fromComposer: boolean;
-		},
+		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
@@ -1339,7 +1335,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			// The retry is the wallet re-check: drop the stale credits stop. A
 			// wallet still empty stops this run with a fresh notice.
 			clearBudgetNotices(new Set(['budget.credits']));
-			emit('message-accepted', { text, files, clientContext, fromComposer });
+			emit('message-accepted', { text, files, clientContext });
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
 				previewQueueId.value = queueId;
 			}
@@ -1494,6 +1490,12 @@ function isDirty(): boolean {
 }
 
 watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+watch(
+	() => inputText.value.trim() === '',
+	(isEmpty) => {
+		if (isEmpty) emit('draft-cleared');
+	},
+);
 
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {

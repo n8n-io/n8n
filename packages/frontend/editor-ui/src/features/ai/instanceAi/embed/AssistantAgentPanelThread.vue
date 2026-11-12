@@ -129,19 +129,11 @@ function clearHandoff(): void {
 function dismissHandoff(): void {
 	const draft = getPendingComposerDraft(props.threadId);
 	if (draft) panel.value?.clearDraftIfMatches(draft.text);
-	if (!panel.value?.isDirty()) messageTelemetry.setPrefill(null);
 	clearHandoff();
 }
 
-function onMessageAccepted({
-	clientContext,
-	fromComposer,
-}: {
-	clientContext?: Record<string, unknown>;
-	fromComposer: boolean;
-}): void {
+function onMessageAccepted({ clientContext }: { clientContext?: Record<string, unknown> }): void {
 	starterReferences = [];
-	messageTelemetry.onMessageAccepted(fromComposer);
 	// A newer hand-off that arrived during the send stays for the next message.
 	if (handoffContext.value && clientContext?.context === handoffContext.value) clearHandoff();
 }
@@ -270,6 +262,7 @@ defineExpose({
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
 		@message-sending="messageTelemetry.trackSend"
+		@draft-cleared="messageTelemetry.setPrefill(null)"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"
 	>

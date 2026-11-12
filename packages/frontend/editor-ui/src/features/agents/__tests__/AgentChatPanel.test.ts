@@ -4786,9 +4786,7 @@ describe('AgentChatPanel', () => {
 				input.vm.$emit('submit');
 				await flushPromises();
 
-				expect(wrapper.emitted('message-accepted')).toEqual([
-					[{ text: 'hello', files: [file], fromComposer: true }],
-				]);
+				expect(wrapper.emitted('message-accepted')).toEqual([[{ text: 'hello', files: [file] }]]);
 			});
 
 			it('does not emit when the server does not accept the message', async () => {
@@ -4799,6 +4797,25 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				expect(wrapper.emitted('message-accepted')).toBeUndefined();
+			});
+		});
+
+		describe('draft-cleared', () => {
+			it('emits when typed text that cancels an open question leaves the composer', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'go another direction');
+				await nextTick();
+				input.vm.$emit('submit');
+				await flushPromises();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+
+				cancelAndSteerMock.mock.lastCall?.[1]?.();
+				await flushPromises();
+
+				expect(wrapper.emitted('draft-cleared')).toHaveLength(1);
 			});
 		});
 
@@ -5047,7 +5064,7 @@ describe('AgentChatPanel', () => {
 				clientContext,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
-				[{ text: 'use these', files: [], clientContext, fromComposer: true }],
+				[{ text: 'use these', files: [], clientContext }],
 			]);
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
 
@@ -5101,7 +5118,7 @@ describe('AgentChatPanel', () => {
 				clientContext,
 			);
 			expect(wrapper.emitted('message-accepted')).toEqual([
-				[{ text: 'use these', files: [], clientContext, fromComposer: true }],
+				[{ text: 'use these', files: [], clientContext }],
 			]);
 		});
 
@@ -5126,9 +5143,10 @@ describe('AgentChatPanel', () => {
 					clientContext,
 				);
 				expect(wrapper.emitted('message-accepted')).toEqual([
-					[{ text: 'fix it', files: [], clientContext, fromComposer: false }],
+					[{ text: 'fix it', files: [], clientContext }],
 				]);
 				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
 				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
 			});
 
