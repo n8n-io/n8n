@@ -1,0 +1,51 @@
+{
+	"name": "APITemplate.io V2 account get",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "55555555-5555-4555-8555-555555555551",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "accountv2",
+				"operation": "get",
+				"region": "rest-de"
+			},
+			"id": "55555555-5555-4555-8555-555555555552",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"plan": "starter",
+					"available_credits": 100
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

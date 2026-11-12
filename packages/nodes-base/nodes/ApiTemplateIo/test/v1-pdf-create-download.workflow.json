@@ -1,0 +1,67 @@
+{
+	"name": "APITemplate.io V1 PDF create with download",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "33333333-3333-4333-8333-333333333331",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdf",
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"jsonParameters": true,
+				"propertiesJson": "{\"invoice_number\": \"INV38379\"}",
+				"download": true,
+				"binaryProperty": "data",
+				"options": {
+					"fileName": "invoice.pdf"
+				}
+			},
+			"id": "33333333-3333-4333-8333-333333333332",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/generated.pdf"
+				},
+				"binary": {
+					"data": {
+						"mimeType": "application/pdf",
+						"fileType": "pdf",
+						"fileExtension": "pdf",
+						"data": "JVBERi0xLjQKdGVzdC1wZGY=",
+						"fileName": "invoice.pdf",
+						"fileSize": "17 B"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
