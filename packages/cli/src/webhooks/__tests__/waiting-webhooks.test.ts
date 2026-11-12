@@ -7,6 +7,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	INode,
+	INodeExecutionData,
 	INodeParameters,
 	IRunData,
 	IWebhookData,
@@ -2457,6 +2458,73 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
 
 		expect(execution.data.resultData.runData.Wait).toEqual([earlierRun]);
+	});
+
+	it('gives the waiting node the items its parents fed it, with their sources', async () => {
+		const items = [{ json: { name: 'Ada' } }];
+		const source = { previousNode: 'Set', previousNodeOutput: 1 };
+		const { executeWebhookSpy } = acceptResume({
+			runData: {
+				Set: [
+					{
+						startTime: 1,
+						executionTime: 1,
+						executionIndex: 0,
+						source: [],
+						data: { main: [[{ json: { name: 'other branch' } }], items] },
+					},
+				],
+				Wait: [{ startTime: 2, executionTime: 0, executionIndex: 1, source: [source] }],
+			},
+		});
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		const [, , , , , , runExecutionData] = executeWebhookSpy.mock.calls[0];
+		expect(runExecutionData?.executionData?.nodeExecutionStack[0]).toMatchObject({
+			data: { main: [items] },
+			source: { main: [source] },
+		});
+	});
+
+	it('reads the parent pass that fed the waiting node inside a loop', async () => {
+		const secondPass = [{ json: { pass: 2 } }];
+		const source = { previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 };
+		const run = (items: INodeExecutionData[], executionIndex: number) => ({
+			startTime: 1,
+			executionTime: 1,
+			executionIndex,
+			source: [],
+			data: { main: [items] },
+		});
+		const { executeWebhookSpy } = acceptResume({
+			runData: {
+				Loop: [run([{ json: { pass: 1 } }], 0), run(secondPass, 2)],
+				Wait: [
+					{ startTime: 2, executionTime: 1, executionIndex: 1, source: [] },
+					{ startTime: 3, executionTime: 0, executionIndex: 3, source: [source] },
+				],
+			},
+		});
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		const [, , , , , , runExecutionData] = executeWebhookSpy.mock.calls[0];
+		expect(runExecutionData?.executionData?.nodeExecutionStack[0]?.data).toEqual({
+			main: [secondPass],
+		});
+	});
+
+	it('seeds an empty input for a waiting node without a recorded source', async () => {
+		const { executeWebhookSpy } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		const [, , , , , , runExecutionData] = executeWebhookSpy.mock.calls[0];
+		expect(runExecutionData?.executionData?.nodeExecutionStack[0]).toMatchObject({
+			data: { main: [] },
+			source: { main: [] },
+		});
 	});
 
 	it('disables a copy of the waiting node, not the workflow node', async () => {

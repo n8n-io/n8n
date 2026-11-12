@@ -10,7 +10,10 @@ import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } fro
 import {
 	FORM_NODE_TYPE,
 	type INode,
+	type INodeExecutionData,
 	type INodes,
+	type IRunData,
+	type ISourceData,
 	type IWebhookData,
 	type IWorkflowBase,
 	NodeConnectionTypes,
@@ -90,21 +93,38 @@ const showsNoActionPage = ({ status }: ExecutionSnapshot): boolean =>
  * Puts the waiting node where the v1 resume path expects it. The data plane
  * keeps no stack, so the execution gets one entry. `preserveInputOverride`
  * pops the node's last run, so one must exist.
+ *
+ * The entry carries the node's input items, as v1 does: `webhook()` resolves
+ * `$json` and `.item` against them. The data plane stores no step input, so
+ * the items are read back from the parents' outputs through the run's sources.
  */
 function seedResumingNode(execution: IExecutionResponse, node: INode): void {
 	const { data } = execution;
 	data.resultData.lastNodeExecuted = node.name;
-	data.resultData.runData[node.name] ??= [
+	const runs = (data.resultData.runData[node.name] ??= [
 		{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
-	];
+	]);
+	const sources = runs.at(-1)?.source ?? [];
 	data.executionData = {
 		contextData: {},
-		// TODO(CET-538): carry the waiting node's input items and their sources, as v1 does.
-		nodeExecutionStack: [{ node: structuredClone(node), data: { main: [[]] }, source: null }],
+		nodeExecutionStack: [
+			{
+				node: structuredClone(node),
+				data: { main: sources.map((source) => itemsFrom(data.resultData.runData, source)) },
+				source: { main: sources },
+			},
+		],
 		metadata: {},
 		waitingExecution: {},
 		waitingExecutionSource: null,
 	};
+}
+
+/** The items a source fed into an input slot, as the parent's run recorded them. */
+function itemsFrom(runData: IRunData, source: ISourceData | null): INodeExecutionData[] {
+	if (source === null) return [];
+	const run = runData[source.previousNode]?.[source.previousNodeRun ?? 0];
+	return run?.data?.main[source.previousNodeOutput ?? 0] ?? [];
 }
 
 /**
