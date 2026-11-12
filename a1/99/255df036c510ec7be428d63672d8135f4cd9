@@ -1,0 +1,31 @@
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.vue
+  s_6c2341b8f2ea7f::t_96877e26149016 59-60,62,73,75,80
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_6c2341b8f2ea7f::t_96877e26149016 173
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_6c2341b8f2ea7f::t_96877e26149016 384,390
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_6c2341b8f2ea7f::t_1b0178c3e02cdc 4,312-314,316
+  s_6c2341b8f2ea7f::t_5b7f316c11364c 296-311,315,317-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a199255df036c510ec7be428d63672d8135f4cd9",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c2341b8f2ea7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95848dd9-6fd9-47d0-92e9-82bbc662db10",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
