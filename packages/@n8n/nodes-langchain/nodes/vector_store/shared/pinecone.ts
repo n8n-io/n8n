@@ -7,7 +7,7 @@ import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IExecuteFunctions, IHttpRequestOptions, ISupplyDataFunctions } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 // @langchain/pinecone needs SDK 5 (API 2025-01), and the first SDK with the documents API (v9)
 // can't be installed next to it (pnpm deploy rejects two versions of one peer). So the
