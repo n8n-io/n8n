@@ -247,6 +247,20 @@ describe('EngineLifecycleEventPushRelay', () => {
 			});
 		});
 
+		it('reports success without data when the engine withheld the outputs', () => {
+			register();
+
+			relay.relay([
+				stepStarted,
+				{ ...stepFields, type: 'step:completed', at: '2026-08-25T10:00:01.500Z' },
+			]);
+
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('success');
+			expect(after.data.data).not.toHaveProperty('error');
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
+		});
+
 		it('still reports the outcome when the start was lost', () => {
 			register();
 

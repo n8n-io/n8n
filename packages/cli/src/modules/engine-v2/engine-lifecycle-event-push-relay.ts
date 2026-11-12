@@ -15,6 +15,14 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
+ * How a step settled. A completed step may have no outputs: the channel
+ * sender drops them from the event when the frame is over its size limit.
+ */
+type StepOutcome =
+	| { status: 'success'; outputs: INodeExecutionData[][] | undefined }
+	| { status: 'error' };
+
+/**
  * Placeholder error: no failure detail is available yet, and without an
  * `error` the editor would show a failed step as successful.
  *
@@ -64,9 +72,12 @@ export class EngineLifecycleEventPushRelay {
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
-				return this.onStepSettled(update, session, fromStepInputs(update.outputs));
+				return this.onStepSettled(update, session, {
+					status: 'success',
+					outputs: update.outputs && fromStepInputs(update.outputs),
+				});
 			case 'step:failed':
-				return this.onStepSettled(update, session, undefined);
+				return this.onStepSettled(update, session, { status: 'error' });
 			case 'step:waiting':
 				return this.onStepWaiting(update, session);
 			case 'execution:completed':
@@ -122,13 +133,10 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(update.executionId, update.nodeName, run, session);
 	}
 
-	/**
-	 * @param outputs The step's output slots, or `undefined` when it failed.
-	 */
 	private onStepSettled(
 		update: StepUpdate,
 		session: EngineV2PushSession,
-		outputs: INodeExecutionData[][] | undefined,
+		outcome: StepOutcome,
 	): void {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
@@ -136,8 +144,8 @@ export class EngineLifecycleEventPushRelay {
 		const run = this.runFor(update, session);
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
 			executionTime: this.executionTimeOf(update, run),
-			executionStatus: outputs ? 'success' : 'error',
-			outputs,
+			executionStatus: outcome.status,
+			outputs: outcome.status === 'success' ? outcome.outputs : undefined,
 		});
 
 		run.settled = true;
@@ -262,7 +270,7 @@ export class EngineLifecycleEventPushRelay {
 			session.pushRef,
 		);
 
-		// A failed or waiting step has no data, so there's no second message to send.
+		// No data, no second message: the step failed, waits, or its outputs were withheld.
 		if (!data) return;
 
 		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved
