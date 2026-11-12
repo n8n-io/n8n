@@ -10,7 +10,7 @@ import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi'
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentListItem } from '@/features/agents/agent.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { mockedStore } from '@/__tests__/utils';
@@ -46,17 +46,21 @@ vi.mock('@/features/agents/composables/useCreateAgent', () => ({
 
 const toListItem = (project: Project): ProjectListItem => ({ ...project, role: 'project:editor' });
 
-const createAgent = (overrides: Partial<AgentResource> = {}): AgentResource =>
-	({
-		id: 'agent-1',
-		name: 'Support Agent',
-		resourceType: 'agent',
-		projectId: 'project-1',
-		project: { id: 'project-1', name: 'Team Project', type: 'team' },
-		createdAt: '2026-01-01T00:00:00.000Z',
-		updatedAt: '2026-01-02T00:00:00.000Z',
-		...overrides,
-	}) as AgentResource;
+const createAgent = (overrides: Partial<AgentListItem> = {}): AgentListItem => ({
+	id: 'agent-1',
+	name: 'Support Agent',
+	projectId: 'project-1',
+	project: { id: 'project-1', name: 'Team Project', type: 'team' },
+	availableInMCP: false,
+	isArchived: false,
+	versionId: null,
+	activeVersionId: null,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-02T00:00:00.000Z',
+	personalisation: null,
+	hasConfig: false,
+	...overrides,
+});
 
 describe('useAgentNavigationCommands', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;

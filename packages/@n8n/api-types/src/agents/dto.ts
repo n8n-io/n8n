@@ -12,8 +12,14 @@ import {
 	AgentApprovalSchema,
 	AgentTeamsSettingsSchema,
 	WEBHOOK_INTEGRATION_TYPE,
+	type AgentIntegrationConfig,
 } from './agent-integration.schema';
-import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
+import {
+	AgentVectorStoreConfigSchema,
+	AgentJsonConfigSchema,
+	type AgentJsonConfig,
+} from './agent-json-config.schema';
+import type { AgentPersonalisation } from './agent-personalisation';
 import {
 	agentSkillAvailabilitySchema,
 	agentSkillSchema,
@@ -25,9 +31,12 @@ import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
 	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentSkill,
+	type AgentSkillVersionInfo,
 } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 import {
@@ -266,6 +275,170 @@ export class UpdateAgentConfigDto extends Z.class({
 	 */
 	tags: z.array(z.string().min(1)).max(50).optional(),
 }) {}
+
+function isPlainObject(value: unknown): boolean {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Stored configs predate the current write schema. A response check that
+ * reused that schema would reject a saved row and turn GET into a 500.
+ */
+const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>();
+
+const agentProjectResponseSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		type: z.string(),
+	})
+	.nullable();
+
+const agentActiveVersionResponseSchema = z
+	.object({
+		versionId: z.string(),
+		integrations: z.array(z.custom<AgentIntegrationConfig>(isPlainObject)),
+	})
+	.nullable();
+
+const agentToolEntrySchema = z.custom<{ code: string; descriptor: { name: string } }>(
+	isPlainObject,
+);
+
+const agentPublicShape = {
+	id: z.string(),
+	name: z.string(),
+	projectId: z.string(),
+	project: agentProjectResponseSchema,
+	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
+	versionId: z.string().nullable(),
+	activeVersionId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	config: agentConfigResponseSchema,
+	configHash: z.string().nullable(),
+	tools: z.record(agentToolEntrySchema),
+	activeVersion: agentActiveVersionResponseSchema,
+};
+
+/** The draft, published, and latest version of each attached skill, keyed by skill id. */
+const agentSkillVersionsSchema = z.record(z.custom<AgentSkillVersionInfo>(isPlainObject));
+
+const agentBuilderStateShape = {
+	isRunnable: z.boolean(),
+	hasPublishHistory: z.boolean(),
+	hasVersionHistory: z.boolean(),
+	skills: z.record(z.custom<AgentSkill>(isPlainObject)),
+	skillHashes: z.record(z.string()),
+	outdatedSkillIds: z.array(z.string()),
+	skillVersions: agentSkillVersionsSchema,
+};
+
+/** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
+export class AgentPublicDto extends Z.class(agentPublicShape) {}
+
+/** Single-agent response. `config` is the document `PUT` writes back. */
+export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+
+const agentListItemShape = {
+	id: z.string(),
+	name: z.string(),
+	projectId: z.string(),
+	project: agentProjectResponseSchema,
+	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
+	versionId: z.string().nullable(),
+	activeVersionId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	personalisation: nullableObjectGuardSchema<AgentPersonalisation>(),
+	/** `false` when the draft has no stored config. The list does not carry `config`. */
+	hasConfig: z.boolean(),
+	/**
+	 * Present when the list attaches skill versions, so a card can flag
+	 * skill-only changes without loading the agent.
+	 */
+	skillVersions: agentSkillVersionsSchema.optional(),
+};
+
+/**
+ * Overview and project lists. `config` is omitted so a list row cannot be
+ * sent as a full replace and drop skill refs the list never loaded.
+ */
+export class AgentListItemDto extends Z.class(agentListItemShape) {}
+
+const strippedAgentField = z.unknown().optional();
+
+const updateAgentObjectSchema = z
+	.object({
+		config: z.record(z.unknown()),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		id: strippedAgentField,
+		name: strippedAgentField,
+		projectId: strippedAgentField,
+		project: strippedAgentField,
+		availableInMCP: strippedAgentField,
+		isArchived: strippedAgentField,
+		versionId: strippedAgentField,
+		activeVersionId: strippedAgentField,
+		createdAt: strippedAgentField,
+		updatedAt: strippedAgentField,
+		tools: strippedAgentField,
+		skills: strippedAgentField,
+		skillHashes: strippedAgentField,
+		outdatedSkillIds: strippedAgentField,
+		skillVersions: strippedAgentField,
+		isRunnable: strippedAgentField,
+		hasPublishHistory: strippedAgentField,
+		hasVersionHistory: strippedAgentField,
+		activeVersion: strippedAgentField,
+		adopted: strippedAgentField,
+	})
+	.strict();
+
+const updateAgentSchema = updateAgentObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgent = z.infer<typeof updateAgentSchema>;
+
+/**
+ * Accepts a GET `AgentDto` or the editor body `{ config, baseConfigHash }`.
+ * Server-managed fields are ignored. `configHash` is the concurrency token
+ * when `baseConfigHash` is absent.
+ */
+export class UpdateAgentDto implements UpdateAgent {
+	declare config: UpdateAgent['config'];
+
+	declare baseConfigHash: UpdateAgent['baseConfigHash'];
+
+	static schema = updateAgentSchema;
+
+	constructor(data: z.input<typeof updateAgentObjectSchema>) {
+		Object.assign(this, updateAgentSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentSchema.parse(data);
+	}
+}
 
 export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,

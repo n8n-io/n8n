@@ -3043,9 +3043,9 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
-		schema: personalisation ? { personalisation } : null,
+		project: null,
+		isArchived: false,
 		availableInMCP: false,
-		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
 		hasVersionHistory: false,
@@ -3053,8 +3053,20 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		updatedAt: now,
 		versionId: null,
 		activeVersionId: null,
+		config: personalisation
+			? {
+					name: locale.baseText('agents.new.defaultName'),
+					model: '',
+					instructions: '',
+					personalisation,
+				}
+			: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
 		activeVersion: null,
 	};
 }
