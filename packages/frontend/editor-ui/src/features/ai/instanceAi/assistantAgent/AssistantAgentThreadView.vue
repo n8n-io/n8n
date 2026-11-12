@@ -162,7 +162,7 @@ function readPendingHandoff() {
 	];
 	return {
 		firstMessage,
-		draft: draft?.text,
+		draft,
 		nodes,
 		context,
 		references,
@@ -238,7 +238,8 @@ watch(panel, (current) => {
 		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
 	} else if (handoff.draft) {
-		current.setDraft(handoff.draft);
+		messageTelemetry.setPrefill(handoff.draft);
+		current.setDraft(handoff.draft.text);
 	}
 });
 
@@ -362,19 +363,21 @@ async function handleFixWithAiFromOffer(): Promise<void> {
 	// Sent past the composer, so the user's draft and staged chips stay. Names the
 	// failed run, so the agent reads that execution instead of guessing from the
 	// list. A run that n8n did not save has no list entry.
-	const result = await panel.value.sendHostMessage(
-		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		{
-			attachments: [
-				{
-					type: 'workflow',
-					id: offer.workflowId,
-					...(offer.workflowName ? { name: offer.workflowName } : {}),
-					executionId: offer.executionId,
-				},
-			],
-		},
-	);
+	const text = buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors });
+	messageTelemetry.expectHostSend({
+		text,
+		authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+	});
+	const result = await panel.value.sendHostMessage(text, {
+		attachments: [
+			{
+				type: 'workflow',
+				id: offer.workflowId,
+				...(offer.workflowName ? { name: offer.workflowName } : {}),
+				executionId: offer.executionId,
+			},
+		],
+	});
 	// A refused send leaves the user nothing to retry with, so offer it again.
 	if (result !== 'sent' && dismissedExecutionId.value === offer.executionId) {
 		dismissedExecutionId.value = null;
@@ -454,7 +457,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 	lastHandoffSession.value = { agentId: context.agentId, threadId: context.threadId };
 	const { chip, clientContextPatch } = toAgentPreviewComposerAttachment(context, label);
 	current.addComposerAttachment(chip, clientContextPatch);
-	if (params.initialDraft) current.setDraft(params.initialDraft.text);
+	if (params.initialDraft) {
+		messageTelemetry.setPrefill(params.initialDraft);
+		current.setDraft(params.initialDraft.text);
+	}
 	current.focusInput();
 	params.onAccepted?.();
 }

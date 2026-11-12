@@ -777,6 +777,12 @@ describe('AssistantAgentThreadView', () => {
 				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
 			});
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: prompt, files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'handoff_fix_with_ai', prompt_modified: false }),
+			);
 		});
 
 		it('offers the fix again when the chat refuses the send', async () => {
@@ -1306,6 +1312,19 @@ describe('AssistantAgentThreadView', () => {
 				attachments: [reference],
 				context: credentialContext,
 			});
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({
+				text: 'Where do I find the Slack token?',
+				files: [],
+				isFirstMessage: true,
+			});
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: true,
+					prefill_type: 'handoff_credential_setup',
+				}),
+			);
 
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 			onMessageAccepted({ clientContext: clientContext() });
@@ -1342,6 +1361,15 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Suggest my preferences', files: [], isFirstMessage: true });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					prefill_type: 'preferences_suggestion',
+					prompt_modified: false,
+				}),
+			);
 		});
 
 		it('adds handed-off canvas nodes to the composer', async () => {
@@ -1569,6 +1597,12 @@ describe('AssistantAgentThreadView', () => {
 			]);
 			expect(setDraft).toHaveBeenCalledWith('Why did it refuse?');
 			expect(onAccepted).toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Why did it refuse? Be brief.', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'agent_preview', prompt_modified: true }),
+			);
 			// The staged session is the one that the preview shows.
 			expect(agentPreview.props).toMatchObject({
 				'preview-open': false,
