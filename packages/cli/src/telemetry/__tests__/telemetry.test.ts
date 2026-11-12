@@ -1100,8 +1100,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1111,8 +1111,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1122,8 +1122,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'POST',
 				path: '/executions',
+				method: 'POST',
 				route: 'POST /executions',
 				result: '2xx',
 				api_version: 'v1',
@@ -1145,8 +1145,8 @@ describe('Telemetry', () => {
 		test('should count calls per route, result and caller', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows/{workflowId}',
+				method: 'GET',
 				route: 'GET /workflows/{workflowId}',
 				result: '2xx',
 				api_version: 'v1',
@@ -1155,8 +1155,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows/{workflowId}',
+				method: 'GET',
 				route: 'GET /workflows/{workflowId}',
 				result: '4xx',
 				api_version: 'v1',
@@ -1165,8 +1165,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows/{workflowId}',
+				method: 'GET',
 				route: 'GET /workflows/{workflowId}',
 				result: '2xx',
 				api_version: 'v1',
@@ -1186,8 +1186,8 @@ describe('Telemetry', () => {
 		test('should handle missing user_agent', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1203,8 +1203,8 @@ describe('Telemetry', () => {
 		test('should track multiple users independently', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1214,8 +1214,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user2',
-				method: 'POST',
 				path: '/executions',
+				method: 'POST',
 				route: 'POST /executions',
 				result: '2xx',
 				api_version: 'v1',
@@ -1234,8 +1234,8 @@ describe('Telemetry', () => {
 		test('should count calls for the editor_ui client in the same entry', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1244,8 +1244,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1254,8 +1254,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/executions',
+				method: 'GET',
 				route: 'GET /executions',
 				result: '2xx',
 				api_version: 'v1',
@@ -1289,8 +1289,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1718,8 +1718,8 @@ describe('Telemetry', () => {
 		test('should send the buffered events and empty the buffers', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				method: 'GET',
 				path: '/workflows',
+				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -1746,8 +1746,8 @@ describe('Telemetry', () => {
 			for (let call = 0; call < 1000; call++) {
 				telemetry.trackApiInvocation({
 					user_id: 'user1',
-					method: 'GET',
 					path: '/executions/{executionId}',
+					method: 'GET',
 					route: 'GET /executions/{executionId}',
 					result: '2xx',
 					api_version: 'v1',

@@ -27,7 +27,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
-import type { PublicApiResult } from '@/public-api/public-api-result';
+import type { PublicApiResult } from '@/public-api/types';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';

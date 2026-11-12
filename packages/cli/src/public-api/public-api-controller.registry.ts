@@ -49,7 +49,6 @@ import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/publ
 import { toPublicApiResult } from '@/public-api/public-api-result';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
 	const output = z.object({ [key]: schema }).safeParse(params);
@@ -384,19 +383,6 @@ export class PublicApiControllerRegistry {
 
 			next();
 		};
-	}
-
-	/** Counts the call once the answer is sent, so the result is the status the caller received. */
-	private emitInvocationOnFinish(
-		res: Response,
-		invocation: Omit<RelayEventMap['public-api-invoked'], 'result'>,
-	): void {
-		res.once('finish', () => {
-			this.eventService.emit('public-api-invoked', {
-				...invocation,
-				result: toPublicApiResult(res.statusCode),
-			});
-		});
 	}
 
 	/**
