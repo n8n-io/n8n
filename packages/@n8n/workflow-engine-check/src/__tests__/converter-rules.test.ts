@@ -203,28 +203,50 @@ describe('converter rules', () => {
 		]);
 	});
 
-	describe('several live triggers', () => {
+	it('names the connection type in the non-main connection reason', () => {
+		const [reason] = check(node({}), toolConnection).reasons;
+
+		expect(reason.message).toContain('"ai_tool"');
+	});
+
+	it('does not apply the node rules to a trigger, as the converter turns it into a trigger step', () => {
+		const erroringTrigger: INode = { ...trigger, onError: 'continueErrorOutput' };
+
+		expect(
+			checkEngineV2Eligibility(
+				{ nodes: [erroringTrigger], connections: {}, settings: {} },
+				nodeTypes,
+			),
+		).toEqual({ eligible: true, reasons: [] });
+	});
+
+	describe('several enabled triggers', () => {
 		const secondTrigger: INode = { ...trigger, id: 'second-id', name: 'Second Trigger' };
 
-		it('warns, because the converter needs the caller to name the trigger that fired', () => {
+		it('reports no reason, because the dispatcher names the trigger that fired', () => {
 			expect(
 				checkEngineV2Eligibility(
 					{ nodes: [trigger, secondTrigger], connections: {}, settings: {} },
 					nodeTypes,
 				),
-			).toEqual({
-				eligible: true,
-				reasons: [{ code: 'MULTIPLE_TRIGGERS', severity: 'warning', message: expect.any(String) }],
-			});
+			).toEqual({ eligible: true, reasons: [] });
 		});
 
-		it('does not warn when only one trigger is enabled', () => {
+		it('checks a node that only the second trigger reaches', () => {
+			const target = node({ onError: 'continueErrorOutput' });
+
 			expect(
 				checkEngineV2Eligibility(
-					{ nodes: [trigger, { ...secondTrigger, disabled: true }], connections: {}, settings: {} },
+					{
+						nodes: [trigger, secondTrigger, target],
+						connections: {
+							[secondTrigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
+						},
+						settings: {},
+					},
 					nodeTypes,
-				),
-			).toEqual({ eligible: true, reasons: [] });
+				).reasons,
+			).toEqual([expect.objectContaining({ code: 'CONTINUE_ERROR_OUTPUT', nodeName: 'Node' })]);
 		});
 	});
 });
