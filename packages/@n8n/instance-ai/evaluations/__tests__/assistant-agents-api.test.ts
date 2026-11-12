@@ -123,7 +123,8 @@ describe('N8nClient on the Agents runtime', () => {
 			{
 				path: '/rest/assistant/eval/threads/t-1/overrides',
 				method: 'PUT',
-				body: { mode: 'default', promptVersion: 'v7', observerThresholdTokens: 1000 },
+				// The Assistant agent has no observer threshold override.
+				body: { mode: 'default', promptVersion: 'v7' },
 			},
 			{
 				path: '/rest/agents/system/assistant/chat?projectId=p-1',
@@ -278,9 +279,7 @@ describe('N8nClient on the Agents runtime', () => {
 	});
 
 	it('sends the thread eval routes to the Assistant eval prefix', async () => {
-		const memory = { observations: [], cursor: null };
 		const calls = mockN8n([
-			['GET', '/rest/assistant/eval/threads/t-1/memory', { json: { data: memory } }],
 			[
 				'POST',
 				'/rest/assistant/eval/restore-execution',
@@ -289,7 +288,6 @@ describe('N8nClient on the Agents runtime', () => {
 		]);
 		const client = await agentsClient();
 
-		await expect(client.getThreadMemory('t-1')).resolves.toEqual(memory);
 		await client.setThreadCredentialAllowlist('t-1', ['c-1']);
 		await client.setThreadCredentialTestTarget('t-1', {
 			credentialType: 'slackApi',
@@ -300,7 +298,6 @@ describe('N8nClient on the Agents runtime', () => {
 		await client.restoreExecution('t-1', 'wf-1', {} as never);
 
 		expect(afterLogin(calls).map((call) => `${call.method} ${call.path}`)).toEqual([
-			'GET /rest/assistant/eval/threads/t-1/memory',
 			'POST /rest/assistant/eval/thread-credential-allowlist',
 			'POST /rest/assistant/eval/thread-credential-test-target',
 			'POST /rest/assistant/eval/seed-data-table-rows',
@@ -332,6 +329,9 @@ describe('N8nClient on the Agents runtime', () => {
 		);
 		await expect(client.confirmAction('r-1', { kind: 'approval', approved: true })).rejects.toThrow(
 			/not available on the Agents runtime/,
+		);
+		await expect(client.getThreadMemory('t-1')).rejects.toThrow(
+			'N8nClient.getThreadMemory is not available on the Agents runtime',
 		);
 		await expect(client.getThreadMessages('t-1')).resolves.toEqual({
 			threadId: 't-1',

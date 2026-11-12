@@ -389,11 +389,8 @@ export class N8nClient {
 			await this.agents.sendMessage(threadId, message, {
 				attachments,
 				context: handoffContext,
-				overrides: {
-					mode,
-					...(promptVersion ? { promptVersion } : {}),
-					...(observerThresholdTokens ? { observerThresholdTokens } : {}),
-				},
+				// The Assistant agent has no observer threshold override.
+				overrides: { mode, ...(promptVersion ? { promptVersion } : {}) },
 			});
 			// v2 has no run id before the turn starts. The events carry the execution id.
 			return { runId: '' };
@@ -505,7 +502,8 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiEvalThreadMemoryResponse> {
-		if (this.agents) return await this.agents.getThreadMemory(threadId, timeoutMs);
+		// The Assistant agent has no memory read route. Compaction cases are skipped on it.
+		this.assertV1Only('getThreadMemory');
 		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
 			await this.fetch(`${INSTANCE_AI_EVAL_BASE}/threads/${threadId}/memory`, { timeoutMs }),
 		);

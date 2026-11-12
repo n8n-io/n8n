@@ -13,7 +13,6 @@ import type {
 	InstanceAiAssistantEvalCreateThreadRequest,
 	InstanceAiAssistantEvalThreadOverridesRequest,
 	InstanceAiConfirmRequest,
-	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiHandoffContext,
 	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
@@ -29,7 +28,7 @@ export const ASSISTANT_AGENT_BASE = '/rest/agents/system/assistant';
 /** Eval-only routes of the Assistant agent. Same bodies as `/rest/instance-ai/eval`. */
 export const ASSISTANT_AGENT_EVAL_BASE = '/rest/assistant/eval';
 
-/** Turn overrides of a thread: build mode, prompt version and observer threshold. */
+/** Turn overrides of a thread: build mode and prompt version. */
 export type AssistantEvalThreadOverridesBody = InstanceAiAssistantEvalThreadOverridesRequest;
 
 /** The fields of a v2 chat message that the harness sets. */
@@ -138,17 +137,6 @@ const threadUsageResponseSchema = z.object({
 	total: usageSchema,
 });
 
-const threadMemoryResponseSchema = z.object({
-	observations: z.array(
-		z.object({
-			marker: z.enum(['critical', 'important', 'info', 'completion']),
-			text: z.string(),
-			tokenCount: z.number(),
-		}),
-	),
-	cursor: z.object({ lastObservedMessageId: z.string(), lastObservedAt: z.string() }).nullable(),
-});
-
 const moduleSettingsSchema = z.object({
 	'instance-ai': z.object({ assistantAgentEnabled: z.boolean().optional() }).optional(),
 });
@@ -210,18 +198,6 @@ export class AssistantAgentsApi {
 			body: overrides satisfies AssistantEvalThreadOverridesBody,
 		});
 		this.overridesSent.add(threadId);
-	}
-
-	/** GET /rest/assistant/eval/threads/:threadId/memory */
-	async getThreadMemory(
-		threadId: string,
-		timeoutMs?: number,
-	): Promise<InstanceAiEvalThreadMemoryResponse> {
-		return threadMemoryResponseSchema.parse(
-			unwrapData(
-				await this.transport.request(`${this.evalBase}/threads/${threadId}/memory`, { timeoutMs }),
-			),
-		);
 	}
 
 	/**

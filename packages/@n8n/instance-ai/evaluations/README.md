@@ -431,7 +431,8 @@ Comparison is logged and skipped on any LangSmith failure — it never fails the
 ## Running against the Assistant agent (`--assistant-runtime agents`)
 
 With `--assistant-runtime agents`, the harness drives the Assistant agent on the
-Agents runtime instead of the v1 Assistant. The same cases run on both runtimes.
+Agents runtime instead of the v1 Assistant. The same cases run on both runtimes,
+except compaction cases (see below).
 Lane setup reads `/rest/module-settings` and stops when
 `assistantAgentEnabled` is not true.
 
@@ -442,13 +443,15 @@ the flag is set:
 | Step | v1 | Agents runtime |
 |------|----|----------------|
 | Thread create / delete | `/rest/instance-ai/threads` | `/rest/assistant/eval/threads` (no source context) |
-| Mode, prompt version, observer threshold | On each message | Once per thread, `PUT /rest/assistant/eval/threads/:id/overrides`, before the first message |
+| Mode, prompt version | On each message | Once per thread, `PUT /rest/assistant/eval/threads/:id/overrides`, before the first message |
+| Observer threshold | On each message | None. Memory uses the configured policy |
 | Send | `POST /rest/instance-ai/chat/:id` | `POST /rest/agents/system/assistant/chat` (SSE, closed after `message-queued`) |
 | Wait | SSE event log + status polls | Poll `.../chat/:id/messages` until no active execution and no open card for 3 polls |
 | Cards | `POST /rest/instance-ai/confirm/:requestId` | `POST .../chat/resume` with the same confirmation strategies |
 | Cancel | `POST .../chat/:id/cancel` | `DELETE .../chat/:id/executions/:activeExecutionId` |
 | Tokens and cost | Run debug | `.../chat/:id/usage`, one record per turn |
-| Thread eval routes (memory, credential pin, seeds, executions) | `/rest/instance-ai/eval/...` | `/rest/assistant/eval/...` |
+| Thread eval routes (credential pin, seeds, executions) | `/rest/instance-ai/eval/...` | `/rest/assistant/eval/...` |
+| Memory read | `GET /rest/instance-ai/eval/threads/:id/memory` | None |
 
 The wait loop rebuilds v1-shaped events from the history, so the outcome,
 transcript and metrics code is the same for both runtimes. Some data is not
@@ -458,8 +461,12 @@ available on v2:
   The run-debug report has no prompts and no workflow code.
 - The build trace has no prompt configuration (v2 has no status route).
 - Delegated sub-agent tool calls are not rebuilt, only the top-level ones.
-- Memory tasks are not visible. The quiet polls give the observer time, but a
-  compaction case can read memory before the observer finishes.
+- Memory tasks are not visible.
+
+Compaction cases (`requiresMemoryCompaction: true`) are skipped, and the run
+logs a warning that names them. The Assistant agent has no observer threshold
+override, so a case cannot make its short thread compact. The run stops when
+all selected cases are compaction cases.
 
 ## Running evals against pre-built workflows
 
