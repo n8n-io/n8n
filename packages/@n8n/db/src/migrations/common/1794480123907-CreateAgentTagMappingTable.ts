@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * `folder_tag`. Both foreign keys cascade: deleting an agent or a tag
  * removes its mappings.
  */
-export class CreateAgentTagMappingTable1794239569285 implements ReversibleMigration {
+export class CreateAgentTagMappingTable1794480123907 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agents_tags')
 			.withColumns(column('agentId').varchar(36).primary, column('tagId').varchar(36).primary)

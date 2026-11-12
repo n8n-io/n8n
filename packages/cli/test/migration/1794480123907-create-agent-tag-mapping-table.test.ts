@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'CreateAgentTagMappingTable1794239569285';
+const MIGRATION_NAME = 'CreateAgentTagMappingTable1794480123907';
 
 describe('CreateAgentTagMappingTable Migration', () => {
 	let dataSource: DataSource;

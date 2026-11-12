@@ -471,6 +471,9 @@ describe('AgentRepository', () => {
 				agentId: 'agent-1',
 			});
 			expect(entityManager.insert).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findN8nChatListPaginated', () => {
 		it('excludes archived agents when the filter requests them', async () => {
 			const mockQb = {
