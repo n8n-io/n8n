@@ -705,22 +705,40 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
-			const { userId, staticData } = webhook;
-
-			if (userId) {
-				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase({
-					userId,
-					workflowId: workflow.id,
-				});
-			}
+			const { staticData } = webhook;
 
 			if (staticData) workflow.staticData = staticData;
 
-			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
+			await this.webhookService.deleteWebhook(
+				workflow,
+				await this.withAdditionalData(webhook, workflow.id),
+				'internal',
+				'update',
+			);
 
 			// Deregister only this webhook, not all webhooks from other running workflows
 			await this.registrations.deregister(webhook);
 		}
+	}
+
+	/**
+	 * Returns a copy of the webhook that carries the additional data of its user.
+	 * The given webhook is not changed, because a cached webhook must stay cloneable.
+	 */
+	private async withAdditionalData(webhook: IWebhookData, workflowId: string) {
+		const { userId } = webhook;
+
+		if (userId) {
+			return {
+				...webhook,
+				workflowExecuteAdditionalData: await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					workflowId,
+				}),
+			};
+		}
+
+		return webhook;
 	}
 
 	/**
