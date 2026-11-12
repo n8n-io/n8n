@@ -625,7 +625,7 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 export const AgentJsonConfigBaseSchema = z.object({
-	name: z.string().min(1).max(128),
+	name: z.string().trim().min(1).max(128),
 	/** An empty string is a deliberate clear of a previously stored value. */
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
