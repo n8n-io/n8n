@@ -51,6 +51,7 @@ jobs:
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       affected_base: ${{ steps.affected-base.outputs.sha }}
+      affected_head: ${{ steps.affected-base.outputs.head }}
       # The merge base, or the last green commit when this run tests only the newer commits.
       diff_base: ${{ steps.ci-filter.outputs.diff-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
@@ -69,15 +70,6 @@ jobs:
       - name: Capture commit SHA for cache consistency
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      # Lint and typecheck compare the checked-out commit against this base. On a
-      # PR it is the first parent of the merge commit. A merge group can hold more
-      # than one PR, so it uses the queue base.
-      - name: Resolve affected base
-        id: affected-base
-        env:
-          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
-        run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
 
       # Finds the newest PR commit that passed this workflow, so that ci-filter tests
       # only the newer commits. The merge queue tests the whole PR on the latest master.
@@ -280,6 +272,25 @@ jobs:
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
 
+      # Lint and typecheck compare these two commits. On a PR, the base is the first
+      # parent of the merge commit. A merge group can hold more than one PR, so it
+      # uses the queue base. An incremental run compares the last green commit with
+      # the PR head: the merge commit also holds the master changes since that commit.
+      - name: Resolve affected base
+        id: affected-base
+        env:
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          INCREMENTAL: ${{ steps.ci-filter.outputs.incremental }}
+          DIFF_BASE: ${{ steps.ci-filter.outputs.diff-base }}
+        run: |
+          if [ "$INCREMENTAL" = 'true' ]; then
+            echo "sha=$DIFF_BASE" >> "$GITHUB_OUTPUT"
+            echo "head=$(git rev-parse HEAD^2)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
+            echo "head=HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Report incremental scope
         if: steps.ci-filter.outputs.incremental == 'true'
         env:
@@ -384,7 +395,7 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=6144
       # Read by `turbo --affected`. If the base is missing, turbo checks every package.
       TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
-      TURBO_SCM_HEAD: HEAD
+      TURBO_SCM_HEAD: ${{ needs.install-and-build.outputs.affected_head || 'HEAD' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -415,6 +426,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       affectedBase: ${{ needs.install-and-build.outputs.affected_base }}
+      affectedHead: ${{ needs.install-and-build.outputs.affected_head }}
 
   check-packaging:
     name: Check packaging
