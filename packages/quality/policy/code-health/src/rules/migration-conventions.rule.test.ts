@@ -200,6 +200,18 @@ describe('MigrationConventionsRule', () => {
 			);
 		});
 
+		it('flags lowercase SQL that a variable passes to a query function', async () => {
+			const violations = await analyzeAdded(
+				migration(
+					"const query = 'select id from workflow_entity';\n" +
+						'await context.runInBatches(query, async () => {});',
+				),
+			);
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].message).toContain('Hand-written table name `workflow_entity`');
+		});
+
 		it('flags a hand-written tablePrefix in a table position', async () => {
 			const violations = await analyzeAdded(
 				migration(

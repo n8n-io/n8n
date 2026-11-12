@@ -140,6 +140,19 @@ describe('MigrationBusyTableRule', () => {
 			);
 		});
 
+		it('flags the copy out of a busy table and its drop in a raw rebuild', async () => {
+			const up = [
+				"await runQuery(`INSERT INTO #{escape.tableName('tmp')} SELECT * FROM #{escape.tableName('execution_entity')}`);",
+				"await runQuery(`DROP TABLE IF EXISTS #{escape.tableName('execution_entity')}`);",
+			].join('\n\t\t');
+
+			const violations = await analyzeAdded(up);
+
+			expect(
+				violations.map((v) => v.message.split(' of the busy')[0].split(' on the busy')[0]),
+			).toEqual(['`INSERT ... SELECT`', '`DROP TABLE`']);
+		});
+
 		it('accepts reads, single-row inserts, trigger bodies and quiet tables', async () => {
 			const up = [
 				"const table = escape.tableName('execution_entity');",

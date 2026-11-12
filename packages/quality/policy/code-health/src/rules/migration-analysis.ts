@@ -127,7 +127,7 @@ export function isPostgresOnlyBranch(node: Node): boolean {
 }
 
 const PLACEHOLDER = '\u0000';
-const SQL_START = /^\s*(?:SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|WITH|PRAGMA|TRUNCATE)\b/;
+const SQL_START = /^\s*(?:SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|WITH|PRAGMA|TRUNCATE)\b/i;
 const QUERY_FUNCTIONS = new Set(['runQuery', 'query', 'runInBatches']);
 
 export interface SqlLiteral {

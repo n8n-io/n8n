@@ -60,9 +60,14 @@ function createdTables({ file }: AddedMigration): Set<string> {
 function bulkWrite(reference: TableReference, before: string, isInsertSelect: boolean) {
 	if (reference.keyword === 'UPDATE') return 'UPDATE';
 	if (reference.keyword === 'FROM' && /\bDELETE\s+FROM\s*$/i.test(before)) return 'DELETE';
-	if (reference.keyword === 'INTO' && isInsertSelect) return 'INSERT ... SELECT';
+	// Both ends of a copy: a raw table rebuild reads every row out of the old table.
+	if ((reference.keyword === 'INTO' || reference.keyword === 'FROM') && isInsertSelect) {
+		return 'INSERT ... SELECT';
+	}
 	return undefined;
 }
+
+const DROP_TABLE_END = /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?$/i;
 
 const PR_NOTE =
 	'Write in the PR description why the change is necessary and how long it takes on a large instance.';
@@ -133,6 +138,17 @@ export class MigrationBusyTableRule extends BaseRule<CodeHealthContext> {
 					continue;
 				}
 				const before = literal.text.slice(0, reference.offset);
+				if (reference.keyword === 'TABLE' && DROP_TABLE_END.test(before)) {
+					violations.push(
+						this.createViolation(
+							file.getFilePath(),
+							line,
+							1,
+							`\`DROP TABLE\` of the busy table \`${table}\` is part of a table rebuild, which copies every row. ${PR_NOTE} ${skillLink('sqlite-table-recreation-risk', 'SQLite table recreation risk')}`,
+						),
+					);
+					continue;
+				}
 				const statement = bulkWrite(reference, before, isInsertSelect);
 				if (!statement) continue;
 				violations.push(
