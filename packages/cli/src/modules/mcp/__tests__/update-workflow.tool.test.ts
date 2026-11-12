@@ -5,6 +5,7 @@ import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
+	NodeVersionNotFoundError,
 	type IConnections,
 	type INode,
 } from 'n8n-workflow';
@@ -3161,25 +3162,38 @@ describe('update-workflow MCP tool', () => {
 
 			describe('a node type the instance does not load', () => {
 				const unloadedType = 'n8n-nodes-base.executeCommand';
+				const unloadedNode = makeNode({
+					id: 'c',
+					name: 'Run Command',
+					type: unloadedType,
+					position: [400, 0],
+				});
 
 				beforeEach(() => {
 					const existing = buildExistingWorkflow();
-					existing.nodes.push(
-						makeNode({ id: 'c', name: 'Run Command', type: unloadedType, position: [400, 0] }),
-					);
+					existing.nodes.push(unloadedNode);
 					findWorkflowMock.mockResolvedValue(existing);
-					nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					nodeTypes.getByNameAndVersion.mockImplementation(((type: string, version: number) => {
 						if (type.startsWith(unloadedType)) {
 							throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+						}
+						if (version === 999) {
+							throw new NodeVersionNotFoundError(type, version, [1]);
 						}
 						return { description: { group: ['transform'] } };
 					}) as typeof nodeTypes.getByNameAndVersion);
 					mockValidateJSON.mockImplementation(
 						(json: { nodes: INode[] }, config: { nodeTypesProvider: NodeTypes }) => {
+							const warnings = [];
 							for (const node of json.nodes) {
-								config.nodeTypesProvider.getByNameAndVersion(node.type, node.typeVersion);
+								try {
+									config.nodeTypesProvider.getByNameAndVersion(node.type, node.typeVersion);
+								} catch (error) {
+									if (!(error instanceof NodeVersionNotFoundError)) throw error;
+									warnings.push({ code: 'UNKNOWN_NODE_VERSION', nodeName: node.name });
+								}
 							}
-							return [];
+							return warnings;
 						},
 					);
 				});
@@ -3197,25 +3211,38 @@ describe('update-workflow MCP tool', () => {
 					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 					expect(saved.name).toBe('Renamed');
 					expect(saved.nodes.find((n) => n.name === 'B')?.parameters.url).toBe('https://new');
-					expect(saved.nodes.find((n) => n.name === 'Run Command')).toEqual(
-						makeNode({ id: 'c', name: 'Run Command', type: unloadedType, position: [400, 0] }),
-					);
+					expect(saved.nodes.find((n) => n.name === 'Run Command')).toEqual(unloadedNode);
 				});
 
-				test('still fails when the batch adds a node of a type the instance does not load', async () => {
+				test.each([
+					{ name: 'Typo', type: 'n8n-nodes-base.executeCommandd' },
+					{ name: 'Run Command 2', type: unloadedType },
+				])('still fails when the batch adds a node of type $type', async (node) => {
 					const result = await callHandler({
 						workflowId: 'wf-1',
-						operations: [
-							{
-								type: 'addNode',
-								node: { name: 'Typo', type: 'n8n-nodes-base.executeCommandd', typeVersion: 1 },
-							},
-						],
+						operations: [{ type: 'addNode', node: { ...node, typeVersion: 1 } }],
 					});
 
 					expect(result.isError).toBe(true);
 					expect(parseResult(result).error).toContain('Unrecognized node type');
 					expect(updateMock).not.toHaveBeenCalled();
+				});
+
+				test('keeps the warning for a node version the instance does not have', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'addNode',
+								node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 999 },
+							},
+						],
+					});
+
+					expect(result.isError).toBeUndefined();
+					expect(parseResult(result).validationWarnings).toEqual([
+						{ code: 'UNKNOWN_NODE_VERSION', nodeName: 'C' },
+					]);
 				});
 			});
 

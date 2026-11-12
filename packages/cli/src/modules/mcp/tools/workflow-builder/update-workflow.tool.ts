@@ -9,6 +9,7 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import {
 	NodeConnectionTypes,
 	type INode,
@@ -948,11 +949,13 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
-function skipUnresolvableExistingNodeTypes(
+function skipUnrecognizedExistingNodeTypes(
 	nodeTypes: INodeTypes,
 	existingNodes: INode[],
+	addedNodes: INode[],
 ): INodeTypes {
 	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
+	const addedNodeTypeNames = new Set(addedNodes.map((node) => node.type));
 
 	return {
 		getByName: (nodeType) => nodeTypes.getByName(nodeType),
@@ -961,7 +964,11 @@ function skipUnresolvableExistingNodeTypes(
 			try {
 				return nodeTypes.getByNameAndVersion(nodeType, version);
 			} catch (error) {
-				if (existingNodeTypeNames.has(nodeType)) {
+				if (
+					error instanceof UnrecognizedNodeTypeError &&
+					existingNodeTypeNames.has(nodeType) &&
+					!addedNodeTypeNames.has(nodeType)
+				) {
 					return undefined as unknown as INodeType;
 				}
 				throw error;
@@ -989,12 +996,13 @@ async function collectValidationWarnings(
 	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	nodeTypes: INodeTypes,
+	addedNodes: INode[],
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: skipUnresolvableExistingNodeTypes(nodeTypes, existing.nodes),
+		nodeTypesProvider: skipUnrecognizedExistingNodeTypes(nodeTypes, existing.nodes, addedNodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
@@ -1302,11 +1310,16 @@ export const createUpdateWorkflowTool = (
 					{ user, nodeTypes, credentialsService, aiGatewayService },
 				);
 
+				const addedNodes = workflowUpdateData.nodes.filter((node) =>
+					result.addedNodeNames.includes(node.name),
+				);
+
 				// After auto-assign, so the nodes being validated carry their credentials.
 				const validationWarnings = await collectValidationWarnings(
 					workflowUpdateData,
 					existingWorkflow,
 					nodeTypes,
+					addedNodes,
 				);
 
 				for (const link of addedSubnodeLinks) {
@@ -1315,7 +1328,7 @@ export const createUpdateWorkflowTool = (
 
 				validationWarnings.push(
 					...(await buildUninstalledNodeWarnings(
-						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						addedNodes,
 						options.findUninstalledNodeTypes,
 						options.installToolAvailable,
 					)),
