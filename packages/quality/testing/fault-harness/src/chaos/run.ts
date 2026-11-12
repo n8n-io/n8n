@@ -150,9 +150,11 @@ export async function chaosRun(
 		scale: 6,
 		hooks: CHAOS_HOOKS,
 	});
+	let started: Workload | undefined;
 	try {
 		await harness.api.signIn();
 		const workload = await Workload.setup(harness);
+		started = workload;
 		workload.start(options.perSecond);
 		const applied = await runSchedule(schedule, harnessExecutor(harness), { now: Date.now, sleep });
 		const remaining = options.durationMs - Math.max(0, ...applied.map((a) => a.endedMs));
@@ -181,6 +183,7 @@ export async function chaosRun(
 			violations: checkWorkload(record),
 		};
 	} finally {
+		await started?.stop();
 		await harness.stop();
 	}
 }
