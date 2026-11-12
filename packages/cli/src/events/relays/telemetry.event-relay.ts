@@ -703,6 +703,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowCount,
 		dataTableCount,
 		agentCount,
+		credentialCount,
 		addedCount,
 		removedCount,
 	}: RelayEventMap['app-bindings-changed']) {
@@ -714,6 +715,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_count: workflowCount,
 			data_table_count: dataTableCount,
 			agent_count: agentCount,
+			credential_count: credentialCount,
 			added_count: addedCount,
 			removed_count: removedCount,
 		});

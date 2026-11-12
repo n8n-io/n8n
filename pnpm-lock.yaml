@@ -7164,6 +7164,9 @@ importers:
       '@n8n/inbound-auth':
         specifier: workspace:*
         version: link:../../../@n8n/inbound-auth
+      '@n8n/json-schema-to-zod':
+        specifier: workspace:*
+        version: link:../../../@n8n/json-schema-to-zod
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../../@n8n/permissions

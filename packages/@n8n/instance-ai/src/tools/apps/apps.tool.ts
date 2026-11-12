@@ -6,6 +6,7 @@ import {
 	appBlueprintErrorsSchema,
 	appBlueprintResumeSchema,
 	appBlueprintSchema,
+	appCredentialBindingSchema,
 	appDataTableBindingSchema,
 	type AppBinding,
 	type AppBuildResponse,
@@ -54,9 +55,14 @@ const inputSchema = z.discriminatedUnion('action', [
 		action: z.literal('bind'),
 		appId: appIdSchema,
 		binding: z
-			.union([appWorkflowBindingSchema, appDataTableBindingSchema, appAgentBindingSchema])
+			.union([
+				appWorkflowBindingSchema,
+				appDataTableBindingSchema,
+				appAgentBindingSchema,
+				appCredentialBindingSchema,
+			])
 			.describe(
-				'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table or agent in the app project.',
+				'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table, agent or credential in the app project. A credential binding defines its HTTP operations as an OpenAPI 3.1 fragment (`servers` and `paths`).',
 			),
 	}),
 	z.object({
@@ -266,7 +272,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				'If the user cancels, do not create the app. ' +
 				'`open` puts the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
 				'`commit` saves the folder as one version and builds it. ' +
-				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
+				'`bindings` lists the workflows, data tables, agents and credential operations that the app can call. ' +
 				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version.',
 		)
 		.input(sanitizeInputSchema(inputSchema))

@@ -6,6 +6,7 @@ const KIND_PREFIX: Record<AppBindingKind, string> = {
 	workflow: 'workflow',
 	dataTable: 'table',
 	agent: 'agent',
+	credential: 'api',
 };
 
 function camelCase(name: string) {

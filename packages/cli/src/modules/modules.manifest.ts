@@ -16,12 +16,14 @@ export const packagedModules: PackagedModules = {
 		const { AppDataTableAdapter } = await import('./apps/bindings/app-data-table.adapter.js');
 		const { AppWorkflowAdapter } = await import('./apps/bindings/app-workflow.adapter.js');
 		const { AppAgentAdapter } = await import('./apps/bindings/app-agent.adapter.js');
+		const { AppCredentialAdapter } = await import('./apps/bindings/app-credential.adapter.js');
 		Container.set(AppSandboxSettings, { resolve: resolveAppSandboxConfig });
 		Container.set(AppBindingAdapters, {
 			resolve: () => ({
 				dataTables: Container.get(AppDataTableAdapter),
 				workflows: Container.get(AppWorkflowAdapter),
 				agents: Container.get(AppAgentAdapter),
+				credentials: Container.get(AppCredentialAdapter),
 			}),
 		});
 		return await import('@n8n/backend-module-apps/module');

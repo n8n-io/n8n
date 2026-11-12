@@ -9,13 +9,18 @@ export class AppsModule implements ModuleInterface {
 		const { AppHostService } = await import('./serving/app-host.service.js');
 		// Validate required hosting settings before storage initialization.
 		Container.get(AppHostService);
-		const { AppBindingAdapters, AppDataTablePort, AppWorkflowPort, AppAgentPort } = await import(
-			'./bindings/app-binding-ports.js'
-		);
+		const {
+			AppBindingAdapters,
+			AppDataTablePort,
+			AppWorkflowPort,
+			AppAgentPort,
+			AppCredentialPort,
+		} = await import('./bindings/app-binding-ports.js');
 		const adapters = Container.get(AppBindingAdapters).resolve();
 		Container.set(AppDataTablePort, adapters.dataTables);
 		Container.set(AppWorkflowPort, adapters.workflows);
 		Container.set(AppAgentPort, adapters.agents);
+		Container.set(AppCredentialPort, adapters.credentials);
 		await import('./apps.controller.js');
 		await import('./apps-list.controller.js');
 		await import('./build/app-build.controller.js');

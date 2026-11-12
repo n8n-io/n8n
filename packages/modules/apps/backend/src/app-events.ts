@@ -6,7 +6,11 @@ export type AppActor = { userId?: string; threadId?: string };
 export type AppChangeSource = 'initial' | 'chat' | 'restore' | 'retry' | 'bindings';
 
 /** Data table reads are not counted. */
-export type AppInteractionType = 'workflow_run' | 'data_table_write' | 'agent_message';
+export type AppInteractionType =
+	| 'workflow_run'
+	| 'data_table_write'
+	| 'agent_message'
+	| 'http_request';
 
 export type AppBuildOrigin = AppActor & { changeSource?: AppChangeSource };
 
@@ -42,6 +46,7 @@ export interface AppEventMap {
 		workflowCount: number;
 		dataTableCount: number;
 		agentCount: number;
+		credentialCount: number;
 		addedCount: number;
 		removedCount: number;
 	};

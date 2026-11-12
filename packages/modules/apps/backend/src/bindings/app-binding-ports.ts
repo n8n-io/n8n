@@ -4,8 +4,10 @@ import type {
 	AppAgentBinding,
 	AppAgentChatRequest,
 	AppAgentResumeRequest,
+	AppCredentialBinding,
 	AppDataTableBinding,
 	AppDescribedAgentBinding,
+	AppDescribedCredentialBinding,
 	AppDescribedDataTableBinding,
 	AppDescribedWorkflowBinding,
 	AppRuntimeRowInput,
@@ -115,7 +117,42 @@ export abstract class AppBindingAdapters {
 		dataTables: AppDataTablePort;
 		workflows: AppWorkflowPort;
 		agents: AppAgentPort;
+		credentials: AppCredentialPort;
 	};
+}
+
+export interface AppHttpRequest {
+	method: string;
+	url: string;
+	headers: Record<string, string>;
+	body?: unknown;
+}
+
+export interface AppHttpResponse {
+	status: number;
+	contentType?: string;
+	body: unknown;
+}
+
+export abstract class AppCredentialPort {
+	abstract assertCanBind(
+		user: User,
+		projectId: string,
+		binding: AppCredentialBinding,
+	): Promise<void>;
+
+	/** Returns `null` when the credential is not available to the project. */
+	abstract describe(
+		projectId: string,
+		binding: AppCredentialBinding,
+	): Promise<AppDescribedCredentialBinding | null>;
+
+	/** Signs the request with the credential and sends it. Does not follow redirects. */
+	abstract send(
+		ctx: AppCallContext,
+		credentialId: string,
+		request: AppHttpRequest,
+	): Promise<AppHttpResponse>;
 }
 
 export abstract class AppAgentPort {

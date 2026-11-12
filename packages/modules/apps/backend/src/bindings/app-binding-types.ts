@@ -1,4 +1,11 @@
-import type { AppDescribedBinding, AppJsonSchema } from '@n8n/api-types';
+import {
+	listAppCredentialOperations,
+	type AppCredentialBinding,
+	type AppDescribedBinding,
+	type AppJsonSchema,
+} from '@n8n/api-types';
+
+import { isFixed, operationParams, responseSchema } from './app-credential-operation';
 
 const MAX_DEPTH = 8;
 
@@ -65,6 +72,25 @@ export function jsonSchemaToTs(schema: unknown, depth = 0): string {
 	return 'unknown';
 }
 
+/** The server fills in `const` values, so the app sends only the other parameters. */
+function credentialOperationTypes(binding: AppCredentialBinding): string {
+	return listAppCredentialOperations(binding)
+		.map(({ operationId, operation }) => {
+			const params = operationParams(operation).filter((param) => !isFixed(param.schema));
+			const paramsType =
+				params.length === 0
+					? 'Record<string, never>'
+					: `{ ${params
+							.map(
+								(param) =>
+									`${quote(param.name)}${param.required ? '' : '?'}: ${jsonSchemaToTs(param.schema, 1)}`,
+							)
+							.join('; ')} }`;
+			return `${quote(operationId)}: { params: ${paramsType}; response: ${jsonSchemaToTs(responseSchema(operation))} };`;
+		})
+		.join(' ');
+}
+
 /**
  * Renders `src/n8n-bindings.d.ts` for an app. The file augments the `Bindings`
  * interface of `@n8n/app-sdk`, so binding keys and payloads are type-checked.
@@ -74,6 +100,7 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 	const workflows: string[] = [];
 	const tables: string[] = [];
 	const agents: string[] = [];
+	const http: string[] = [];
 
 	for (const binding of bindings) {
 		if (binding.missing) continue;
@@ -86,6 +113,8 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 			tables.push(
 				`${key}: { row: ${jsonSchemaToTs(binding.row)}; permissions: ${JSON.stringify(binding.permissions)} };`,
 			);
+		} else if (binding.kind === 'credential') {
+			http.push(`${key}: { ${credentialOperationTypes(binding)} };`);
 		} else {
 			agents.push(`${key}: { permissions: ${JSON.stringify(binding.permissions)} };`);
 		}
@@ -103,6 +132,7 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 		section('workflows', workflows),
 		section('tables', tables),
 		section('agents', agents),
+		section('http', http),
 		'\t}',
 		'}',
 		'',

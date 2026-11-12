@@ -4,6 +4,7 @@ import {
 	appAgentMessagesQuerySchema,
 	appAgentResumeRequestSchema,
 	appRuntimeDeleteRowsSchema,
+	appRuntimeHttpRequestSchema,
 	appRuntimeInsertRowsSchema,
 	appRuntimeUpdateRowsSchema,
 	ListDataTableContentQueryDto,
@@ -45,6 +46,7 @@ import type { App } from '../app.entity';
 import { AppAuthService } from '../auth/app-auth.service';
 import {
 	AppAgentPort,
+	AppCredentialPort,
 	AppDataTablePort,
 	AppWorkflowPort,
 	type AppAgentTurn,
@@ -52,6 +54,7 @@ import {
 	type AppRow,
 } from '../bindings/app-binding-ports';
 import { toRuntimeBinding } from '../bindings/app-bindings.service';
+import { buildOperationRequest } from '../bindings/app-credential-operation';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
 import { AppPreviewService } from '../preview/app-preview.service';
 import { AppHostService } from '../serving/app-host.service';
@@ -97,6 +100,7 @@ export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P
 
 type KeyRequest = AppRuntimeRequest<{ key: string }>;
 type RunRequest = AppRuntimeRequest<{ key: string; executionId: string }>;
+type OperationRequest = AppRuntimeRequest<{ key: string; operation: string }>;
 
 async function run(handler: RequestHandler, req: Request, res: Response) {
 	await new Promise<void>((resolve, reject) => {
@@ -133,6 +137,7 @@ export class AppRuntimeController {
 		private readonly dataTables: AppDataTablePort,
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
+		private readonly credentials: AppCredentialPort,
 		private readonly logger: Logger,
 		private readonly events: EventService,
 	) {}
@@ -254,6 +259,22 @@ export class AppRuntimeController {
 			const result = await this.workflows.getRun(ctx, binding.workflowId, req.params.executionId);
 			if (result.status === 'running') res.status(202);
 			return result;
+		});
+	}
+
+	@Post('/http/:key/:operation', routeOptions)
+	async callOperation(req: OperationRequest, res: Response) {
+		await this.answer(res, async () => {
+			const { ctx, binding } = this.resolve(req, 'credential');
+			const { params } = parse(
+				appRuntimeHttpRequestSchema,
+				req.body ?? {},
+				'The request is invalid.',
+			);
+			const request = buildOperationRequest(binding, req.params.operation, params);
+			const response = await this.credentials.send(ctx, binding.credentialId, request);
+			this.interacted(req, 'http_request');
+			return { status: response.status, body: response.body };
 		});
 	}
 

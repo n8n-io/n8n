@@ -127,8 +127,8 @@ the existing resources before the first commit and use the real data.
 
 ## Call n8n
 
-A binding gives the app access to one workflow, data table or agent of its
-project under a key. The app uses the key, never a resource ID.
+A binding gives the app access to one workflow, data table, agent or
+credential of its project under a key. The app uses the key, never a resource ID.
 
 1. Call `bindings` with the `appId`. The result lists each binding with its
    `key`, `kind`, resource name and permissions, and `types` describes the
@@ -139,6 +139,8 @@ project under a key. The app uses the key, never a resource ID.
    - `{ key, kind: 'workflow', workflowId }`.
    - `{ key, kind: 'agent', agentId, permissions }` with permissions from
      `chat` and `history`.
+   - `{ key, kind: 'credential', credentialId, servers, paths }`. See
+     [Call an external API](#call-an-external-api).
 
    Find the ID with the data table, workflow or agent tools. The resource must
    be in the project of the app. The key is a short camelCase name, for
@@ -183,6 +185,116 @@ const { user } = await n8n.me();
 
 Every call throws `N8nAppError` with `status`, `code` and `message` on failure.
 Show the user a short error message, and a loading state while a call runs.
+
+### Call an external API
+
+Use a credential binding when the app reads from or writes to one external API
+with simple requests, for example a calendar, a CRM list or GitHub issues. A
+credential binding starts no workflow execution. Use a workflow when the task
+has more than one step, combines several sources, or transforms data.
+
+The app never sends a URL. The binding defines each request as an operation,
+and the app sends only the operation ID and its parameters. n8n builds the
+request and signs it with the credential. The secret never reaches the app.
+
+1. Find the credential with `list_credentials`. It must be in the app project.
+   If there is none, use the credential setup flow first.
+2. Define only the operations that the app uses. Write them as an OpenAPI 3.1
+   fragment: `servers` holds one https base URL, and `paths` holds each path
+   with its method and operation.
+3. Use the narrowest request for the task. For free time slots, use the
+   free/busy endpoint, not the full event list.
+4. Fix every value that the app does not need to change with a JSON Schema
+   `const`: a calendar ID, a field mask such as `fields`, a page size. n8n fills
+   in each `const` value. The app does not send it and cannot change it.
+5. Add `responses['200']` with the schema of the fields that the app reads. The
+   SDK types the result from it.
+6. Ask the user before you add an operation that changes data (any method
+   other than `get`). Name it with its one-line summary, for example
+   `createEvent: POST /calendar/v3/calendars/primary/events`.
+
+Every visitor of the app can run every operation of the binding with this
+credential. Tell the user which operations you added, one line each.
+
+```json
+{
+  "key": "calendar",
+  "kind": "credential",
+  "credentialId": "<credential ID>",
+  "servers": [{ "url": "https://www.googleapis.com/calendar/v3" }],
+  "paths": {
+    "/freeBusy": {
+      "post": {
+        "operationId": "getBusySlots",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeMin": { "type": "string", "format": "date-time" },
+                  "timeMax": { "type": "string", "format": "date-time" },
+                  "items": { "const": [{ "id": "primary" }] }
+                },
+                "required": ["timeMin", "timeMax"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendars": {
+                      "type": "object",
+                      "properties": {
+                        "primary": {
+                          "type": "object",
+                          "properties": {
+                            "busy": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "start": { "type": "string" },
+                                  "end": { "type": "string" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Parameters go in `parameters` with `in: path`, `in: query` or `in: header`, or
+in the JSON body schema. A path parameter is one path segment, for example
+`/calendars/primary/events/{eventId}`. A header must be a `const`. The app sends
+all parameters as one flat object:
+
+```js
+const { status, body } = await n8n.http.calendar.call('getBusySlots', {
+  timeMin: start.toISOString(),
+  timeMax: end.toISOString(),
+});
+if (status !== 200) throw new Error(`Calendar request failed (${status})`);
+const busy = body.calendars.primary.busy;
+```
+
+An error of the external API does not throw. Check `status`.
 
 ## Several apps
 

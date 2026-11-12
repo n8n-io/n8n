@@ -2,10 +2,12 @@ import {
 	appAgentPermissionSchema,
 	appBindingSchema,
 	appDataTablePermissionSchema,
+	listAppCredentialOperations,
 	type AppAgentPermission,
 	type AppBinding,
 	type AppBindingKind,
 	type AppBindingWarning,
+	type AppCredentialBinding,
 	type AppDataTablePermission,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
@@ -20,13 +22,19 @@ export type BindingPermission = AppDataTablePermission | AppAgentPermission;
 type BindingKindConfig = {
 	icon: IconName;
 	label: BaseTextKey;
-	addLabel: BaseTextKey;
+	/** Kinds without an add label are added by the n8n Assistant only. */
+	addLabel?: BaseTextKey;
 	permissions: readonly BindingPermission[];
 	defaultPermissions: readonly BindingPermission[];
 	route: (projectId: string, resourceId: string) => RouteLocationRaw;
 };
 
-export const BINDING_KIND_ORDER: readonly AppBindingKind[] = ['workflow', 'dataTable', 'agent'];
+export const BINDING_KIND_ORDER: readonly AppBindingKind[] = [
+	'workflow',
+	'dataTable',
+	'agent',
+	'credential',
+];
 
 export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
 	workflow: {
@@ -53,6 +61,16 @@ export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
 		defaultPermissions: ['chat'],
 		route: (projectId, agentId) => ({ name: AGENT_VIEW, params: { projectId, agentId } }),
 	},
+	credential: {
+		icon: 'key-round',
+		label: 'apps.configure.connections.credentials',
+		permissions: [],
+		defaultPermissions: [],
+		route: (projectId, credentialId) => ({
+			name: VIEWS.PROJECTS_CREDENTIALS,
+			params: { projectId, credentialId },
+		}),
+	},
 };
 
 export const PERMISSION_LABELS: Record<BindingPermission, BaseTextKey> = {
@@ -73,6 +91,7 @@ const RESOURCE_ID_FIELD = {
 	workflow: 'workflowId',
 	dataTable: 'dataTableId',
 	agent: 'agentId',
+	credential: 'credentialId',
 } as const satisfies Record<AppBindingKind, string>;
 
 export function resourceIdOf(binding: AppBinding): string {
@@ -83,11 +102,13 @@ export function resourceIdOf(binding: AppBinding): string {
 			return binding.dataTableId;
 		case 'agent':
 			return binding.agentId;
+		case 'credential':
+			return binding.credentialId;
 	}
 }
 
 export function permissionsOf(binding: AppBinding): readonly BindingPermission[] {
-	return binding.kind === 'workflow' ? [] : binding.permissions;
+	return binding.kind === 'dataTable' || binding.kind === 'agent' ? binding.permissions : [];
 }
 
 export function togglePermission(
@@ -111,7 +132,7 @@ export function createBinding(
 		kind,
 		key,
 		[RESOURCE_ID_FIELD[kind]]: resourceId,
-		...(kind !== 'workflow' && { permissions }),
+		...((kind === 'dataTable' || kind === 'agent') && { permissions }),
 	});
 }
 
@@ -120,4 +141,23 @@ export function withPermissions(
 	permissions: readonly BindingPermission[],
 ): AppBinding {
 	return createBinding(binding.kind, binding.key, resourceIdOf(binding), permissions);
+}
+
+/** Returns `null` when the binding has no operation left. */
+export function withoutOperation(
+	binding: AppCredentialBinding,
+	operationId: string,
+): AppCredentialBinding | null {
+	const paths = Object.fromEntries(
+		Object.entries(binding.paths)
+			.map(([path, item]) => [
+				path,
+				Object.fromEntries(
+					Object.entries(item).filter(([, operation]) => operation?.operationId !== operationId),
+				),
+			])
+			.filter(([, item]) => Object.keys(item).length > 0),
+	);
+	const next = { ...binding, paths };
+	return listAppCredentialOperations(next).length > 0 ? next : null;
 }

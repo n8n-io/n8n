@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AppBindingWarning, AppDescribedBinding } from '@n8n/api-types';
+import {
+	describeAppCredentialOperation,
+	listAppCredentialOperations,
+	type AppBindingWarning,
+	type AppDescribedBinding,
+} from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -33,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	update: [permissions: BindingPermission[]];
 	remove: [];
+	removeOperation: [operationId: string];
 }>();
 
 const i18n = useI18n();
@@ -44,6 +50,15 @@ const draftChanged = ref(false);
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
 const permissions = computed(() => permissionsOf(props.binding));
 const missing = computed(() => 'missing' in props.binding);
+const operations = computed(() => {
+	const binding = props.binding;
+	if (binding.kind !== 'credential') return [];
+	return listAppCredentialOperations(binding).map((entry) => ({
+		id: entry.operationId,
+		summary: describeAppCredentialOperation(binding, entry),
+		changesData: entry.method !== 'get',
+	}));
+});
 const href = computed(() =>
 	missing.value
 		? undefined
@@ -95,7 +110,12 @@ watch(permissions, (value) => {
 </script>
 
 <template>
-	<N8nPopover :open="open" width="260px" align="start" @update:open="onOpen">
+	<N8nPopover
+		:open="open"
+		:width="operations.length > 0 ? '420px' : '260px'"
+		align="start"
+		@update:open="onOpen"
+	>
 		<template #trigger>
 			<button
 				type="button"
@@ -136,6 +156,33 @@ watch(permissions, (value) => {
 						:data-test-id="`app-binding-${binding.key}-permission-${permission}`"
 						@update:model-value="toggle(permission, $event)"
 					/>
+				</div>
+				<div v-if="operations.length > 0" :class="$style.section">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('apps.configure.connections.operations') }}
+					</N8nText>
+					<div
+						v-for="operation in operations"
+						:key="operation.id"
+						:class="$style.operation"
+						:data-test-id="`app-binding-${binding.key}-operation-${operation.id}`"
+					>
+						<code :class="$style.summary">{{ operation.summary }}</code>
+						<N8nTooltip v-if="operation.changesData" placement="top">
+							<N8nIcon icon="pencil" :size="12" :class="$style.changesData" />
+							<template #content>
+								{{ i18n.baseText('apps.configure.connections.operationChangesData') }}
+							</template>
+						</N8nTooltip>
+						<N8nButton
+							v-if="canUpdate"
+							variant="ghost"
+							size="mini"
+							icon="x"
+							:aria-label="i18n.baseText('apps.configure.connections.removeOperation')"
+							@click="emit('removeOperation', operation.id)"
+						/>
+					</div>
 				</div>
 				<div :class="$style.actions">
 					<N8nLink v-if="href" :to="href" :new-window="true" size="small">
@@ -212,6 +259,26 @@ watch(permissions, (value) => {
 .key {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--sm);
+}
+
+.operation {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.summary {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+}
+
+.changesData {
+	color: var(--color--warning);
 }
 
 .actions {

@@ -50,6 +50,7 @@ const selected = ref<BindableResource>();
 const permissions = ref<BindingPermission[]>([]);
 
 const config = computed(() => BINDING_KINDS[props.kind]);
+const addLabel = computed(() => config.value.addLabel ?? config.value.label);
 const moreResults = computed(() => Math.max(0, resourceCount.value - resources.value.length));
 
 async function fetchResources(query: string) {
@@ -128,12 +129,12 @@ onScopeDispose(() => {
 	<N8nPopover :open="open" width="280px" max-height="320px" align="start" @update:open="onOpen">
 		<template #trigger>
 			<span>
-				<N8nTooltip :content="i18n.baseText(config.addLabel)" placement="top">
+				<N8nTooltip :content="i18n.baseText(addLabel)" placement="top">
 					<N8nIconButton
 						icon="plus"
 						variant="ghost"
 						size="small"
-						:aria-label="i18n.baseText(config.addLabel)"
+						:aria-label="i18n.baseText(addLabel)"
 						:data-test-id="`app-binding-add-${kind}`"
 					/>
 				</N8nTooltip>

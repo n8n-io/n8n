@@ -25,6 +25,8 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		try {
 			await this.managerFor(ctx).insert(AppVersion, {
 				...data,
+				// TypeORM's deep partial type cannot express the JSON Schema values of credential bindings.
+				bindings: data.bindings as never,
 				bundleArtifactId: null,
 				buildStatus: 'queued',
 			});
@@ -44,6 +46,7 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	): Promise<void> {
 		await this.managerFor(ctx).insert(AppVersion, {
 			...data,
+			bindings: data.bindings as never,
 			appId: source.appId,
 			sourceArtifactId: source.sourceArtifactId,
 			bundleArtifactId: source.bundleArtifactId,

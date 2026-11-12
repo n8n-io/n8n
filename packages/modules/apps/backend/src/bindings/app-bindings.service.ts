@@ -1,5 +1,6 @@
 import {
 	appSchema,
+	listAppCredentialOperations,
 	appVersionSchema,
 	type AppBinding,
 	type AppBindingWarning,
@@ -13,7 +14,13 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
-import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-ports';
+import {
+	AppAgentPort,
+	AppCredentialPort,
+	AppDataTablePort,
+	AppWorkflowPort,
+} from './app-binding-ports';
+import { assertValidOperations } from './app-credential-operation';
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
@@ -25,6 +32,13 @@ export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
 	if (binding.kind === 'workflow') return { key: binding.key, kind: binding.kind };
 	if (binding.kind === 'dataTable') {
 		return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
+	}
+	if (binding.kind === 'credential') {
+		return {
+			key: binding.key,
+			kind: binding.kind,
+			operations: listAppCredentialOperations(binding).map((op) => op.operationId),
+		};
 	}
 	return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
 }
@@ -43,6 +57,7 @@ export class AppBindingsService {
 		private readonly dataTables: AppDataTablePort,
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
+		private readonly credentials: AppCredentialPort,
 		private readonly logger: Logger,
 		private readonly events: EventService,
 	) {}
@@ -95,6 +110,7 @@ export class AppBindingsService {
 			workflowCount: count('workflow'),
 			dataTableCount: count('dataTable'),
 			agentCount: count('agent'),
+			credentialCount: count('credential'),
 			addedCount: [...nextKeys].filter((key) => !previousKeys.has(key)).length,
 			removedCount: [...previousKeys].filter((key) => !nextKeys.has(key)).length,
 		});
@@ -190,6 +206,8 @@ export class AppBindingsService {
 				return await this.dataTables.describe(projectId, binding);
 			case 'agent':
 				return await this.agents.describe(projectId, binding);
+			case 'credential':
+				return await this.credentials.describe(projectId, binding);
 		}
 	}
 
@@ -201,6 +219,9 @@ export class AppBindingsService {
 				return await this.dataTables.assertCanBind(user, projectId, binding);
 			case 'agent':
 				return await this.agents.assertCanBind(user, projectId, binding);
+			case 'credential':
+				assertValidOperations(binding);
+				return await this.credentials.assertCanBind(user, projectId, binding);
 		}
 	}
 

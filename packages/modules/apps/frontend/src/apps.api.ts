@@ -195,10 +195,15 @@ async function listBindableAgents(context: IRestApiContext, projectId: string, q
 	);
 }
 
+async function listNoResources(): Promise<BindableResourceList> {
+	return { data: [], count: 0 };
+}
+
 const BINDABLE_RESOURCE_LISTS = {
 	workflow: listBindableWorkflows,
 	dataTable: listBindableDataTables,
 	agent: listBindableAgents,
+	credential: listNoResources,
 } satisfies Record<
 	AppBindingKind,
 	(context: IRestApiContext, projectId: string, query?: string) => Promise<BindableResourceList>

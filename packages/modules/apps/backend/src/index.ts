@@ -12,10 +12,13 @@ export { AppSandboxSettings, type AppSandboxResolveOptions } from './build/app-s
 export {
 	AppAgentPort,
 	AppBindingAdapters,
+	AppCredentialPort,
 	AppDataTablePort,
 	AppWorkflowPort,
 	type AppAgentTurn,
 	type AppCallContext,
+	type AppHttpRequest,
+	type AppHttpResponse,
 	type AppRow,
 } from './bindings/app-binding-ports';
 export { AppRuntimeError } from './bindings/app-runtime.error';

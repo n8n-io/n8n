@@ -28,6 +28,27 @@ type AnyAgents = Record<string, unknown>;
 export type Agents = Bindings extends { agents: infer A extends AnyAgents } ? A : AnyAgents;
 export type AgentKey = Extract<keyof Agents, string>;
 
+type AnyHttp = Record<string, Record<string, { params: unknown; response: unknown }>>;
+export type Http = Bindings extends { http: infer H extends AnyHttp } ? H : AnyHttp;
+export type HttpKey = Extract<keyof Http, string>;
+export type HttpOperation<K extends HttpKey> = Extract<keyof Http[K], string>;
+export type HttpParams<K extends HttpKey, O extends HttpOperation<K>> = Http[K][O] extends {
+	params: infer P;
+}
+	? P
+	: never;
+export type HttpResponse<K extends HttpKey, O extends HttpOperation<K>> = Http[K][O] extends {
+	response: infer R;
+}
+	? R
+	: unknown;
+
+export interface HttpResult<T> {
+	/** The status of the API response. Errors of the API keep their status, they do not throw. */
+	status: number;
+	body: T;
+}
+
 export interface AppUser {
 	id: string;
 	email: string | null;
@@ -43,7 +64,8 @@ export interface MeResponse {
 export type RuntimeBinding =
 	| { key: string; kind: 'workflow' }
 	| { key: string; kind: 'dataTable'; permissions: Array<'read' | 'insert' | 'update' | 'delete'> }
-	| { key: string; kind: 'agent'; permissions: Array<'chat' | 'history'> };
+	| { key: string; kind: 'agent'; permissions: Array<'chat' | 'history'> }
+	| { key: string; kind: 'credential'; operations: string[] };
 
 export type RunStatus = 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
 

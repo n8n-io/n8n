@@ -2,6 +2,11 @@ import type {
 	AgentChatMessagesResponse,
 	AgentKey,
 	AgentSseEvent,
+	HttpKey,
+	HttpOperation,
+	HttpParams,
+	HttpResponse,
+	HttpResult,
 	MeResponse,
 	NewRow,
 	Row,
@@ -90,12 +95,32 @@ export interface WorkflowClient<K extends WorkflowKey> {
 	): Promise<RunResult<Workflows[K]['output']>>;
 }
 
+/** Operations without required parameters can omit them. */
+type HttpCallArgs<K extends HttpKey, O extends HttpOperation<K>> = Record<
+	string,
+	never
+> extends HttpParams<K, O>
+	? [params?: HttpParams<K, O>, opts?: { signal?: AbortSignal }]
+	: [params: HttpParams<K, O>, opts?: { signal?: AbortSignal }];
+
+export interface HttpClient<K extends HttpKey> {
+	/**
+	 * Runs one operation of the credential binding. n8n builds the request and
+	 * signs it with the bound credential. The app sends only the parameters.
+	 */
+	call<O extends HttpOperation<K>>(
+		operation: O,
+		...args: HttpCallArgs<K, O>
+	): Promise<HttpResult<HttpResponse<K, O>>>;
+}
+
 export interface N8nAppClient {
 	me(opts?: { signal?: AbortSignal }): Promise<MeResponse>;
 	bindings(opts?: { signal?: AbortSignal }): Promise<RuntimeBinding[]>;
 	workflows: { [K in WorkflowKey]: WorkflowClient<K> };
 	tables: { [K in TableKey]: TableClient<K> };
 	agents: { [K in AgentKey]: AgentClient };
+	http: { [K in HttpKey]: HttpClient<K> };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -126,6 +151,8 @@ const isRowList = <R>(value: unknown): value is { data: R[] } =>
 	isRecord(value) && Array.isArray(value.data);
 const isRowPage = <R>(value: unknown): value is { count: number; data: R[] } =>
 	isRecord(value) && Array.isArray(value.data) && typeof value.count === 'number';
+const isHttpResult = (value: unknown): value is HttpResult<unknown> =>
+	isRecord(value) && typeof value.status === 'number';
 const isMe = (value: unknown): value is MeResponse => isRecord(value) && isRecord(value.user);
 const isBindingList = (value: unknown): value is RuntimeBinding[] => Array.isArray(value);
 const isMessages = (value: unknown): value is AgentChatMessagesResponse =>
@@ -408,6 +435,21 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 		};
 	}
 
+	function httpClient(key: string): HttpClient<HttpKey> {
+		return {
+			async call(operation, ...[params, callOpts]) {
+				const path = `/http/${encodeURIComponent(key)}/${encodeURIComponent(operation)}`;
+				return expect(isHttpResult)(
+					await call(path, {
+						method: 'POST',
+						body: { params: params ?? {} },
+						signal: callOpts?.signal,
+					}),
+				);
+			},
+		};
+	}
+
 	return {
 		me: async (meOpts) =>
 			expect(isMe)(await call('/me', { method: 'GET', signal: meOpts?.signal })),
@@ -418,6 +460,7 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 		workflows: keyedProxy(workflowClient),
 		tables: keyedProxy(tableClient),
 		agents: keyedProxy(agentClient),
+		http: keyedProxy(httpClient),
 	};
 }
 

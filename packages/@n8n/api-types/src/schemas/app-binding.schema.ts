@@ -48,10 +48,110 @@ export const appAgentBindingSchema = z.object({
 	permissions: uniquePermissions(appAgentPermissionSchema),
 });
 
+export const APP_HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
+export type AppHttpMethod = (typeof APP_HTTP_METHODS)[number];
+
+export const MAX_APP_CREDENTIAL_OPERATIONS = 20;
+
+const jsonSchemaSchema = z.record(z.unknown());
+
+const jsonContentSchema = z.object({
+	content: z.object({ 'application/json': z.object({ schema: jsonSchemaSchema }) }),
+});
+
+export const appCredentialOperationSchema = z.object({
+	operationId: appBindingKeySchema,
+	summary: z.string().max(200).optional(),
+	parameters: z
+		.array(
+			z.object({
+				name: z.string().min(1).max(64),
+				in: z.enum(['path', 'query', 'header']),
+				required: z.boolean().optional(),
+				schema: jsonSchemaSchema,
+			}),
+		)
+		.optional(),
+	requestBody: jsonContentSchema.extend({ required: z.boolean().optional() }).optional(),
+	responses: z.record(jsonContentSchema.partial()).optional(),
+});
+export type AppCredentialOperation = z.infer<typeof appCredentialOperationSchema>;
+
+const pathItemSchema = z
+	.object(
+		Object.fromEntries(
+			APP_HTTP_METHODS.map((method) => [method, appCredentialOperationSchema.optional()]),
+		) as Record<AppHttpMethod, z.ZodOptional<typeof appCredentialOperationSchema>>,
+	)
+	.strict();
+
+export const appCredentialBindingSchema = z.object({
+	key: appBindingKeySchema,
+	kind: z.literal('credential'),
+	credentialId: resourceIdSchema,
+	servers: z
+		.array(
+			z.object({
+				url: z
+					.string()
+					.url()
+					.refine((url) => url.startsWith('https://'), 'The server URL must use https.'),
+			}),
+		)
+		.length(1),
+	paths: z.record(
+		z.string().regex(/^\/[^?#]*$/, 'A path starts with "/" and has no query or fragment.'),
+		pathItemSchema,
+	),
+});
+
+function credentialBindingIssues(binding: AppCredentialBinding): string[] {
+	const ids = listAppCredentialOperations(binding).map((op) => op.operationId);
+	const issues: string[] = [];
+	if (ids.length === 0) issues.push(`Binding "${binding.key}": add at least one operation.`);
+	if (ids.length > MAX_APP_CREDENTIAL_OPERATIONS) {
+		issues.push(
+			`Binding "${binding.key}": use at most ${MAX_APP_CREDENTIAL_OPERATIONS} operations.`,
+		);
+	}
+	if (new Set(ids).size !== ids.length) {
+		issues.push(`Binding "${binding.key}": operation IDs must be unique.`);
+	}
+	return issues;
+}
+
+export type AppCredentialOperationEntry = {
+	operationId: string;
+	method: AppHttpMethod;
+	path: string;
+	operation: AppCredentialOperation;
+};
+
+export function listAppCredentialOperations(
+	binding: Pick<AppCredentialBinding, 'paths'>,
+): AppCredentialOperationEntry[] {
+	return Object.entries(binding.paths).flatMap(([path, item]) =>
+		APP_HTTP_METHODS.flatMap((method) => {
+			const operation = item[method];
+			return operation ? [{ operationId: operation.operationId, method, path, operation }] : [];
+		}),
+	);
+}
+
+/** One line for the UI, e.g. `getBusySlots: POST /calendar/v3/freeBusy`. */
+export function describeAppCredentialOperation(
+	binding: Pick<AppCredentialBinding, 'servers'>,
+	entry: AppCredentialOperationEntry,
+): string {
+	const basePath = new URL(binding.servers[0].url).pathname.replace(/\/$/, '');
+	return `${entry.operationId}: ${entry.method.toUpperCase()} ${basePath}${entry.path}`;
+}
+
 export const appBindingSchema = z.discriminatedUnion('kind', [
 	appWorkflowBindingSchema,
 	appDataTableBindingSchema,
 	appAgentBindingSchema,
+	appCredentialBindingSchema,
 ]);
 
 export const MAX_APP_BINDINGS = 50;
@@ -62,13 +162,22 @@ export const appBindingsSchema = z
 	.refine(
 		(bindings) => new Set(bindings.map((b) => b.key)).size === bindings.length,
 		'Binding keys must be unique.',
-	);
+	)
+	.superRefine((bindings, ctx) => {
+		for (const binding of bindings) {
+			if (binding.kind !== 'credential') continue;
+			for (const message of credentialBindingIssues(binding)) {
+				ctx.addIssue({ code: 'custom', message });
+			}
+		}
+	});
 
 export type AppBinding = z.infer<typeof appBindingSchema>;
 export type AppBindingKind = AppBinding['kind'];
 export type AppWorkflowBinding = z.infer<typeof appWorkflowBindingSchema>;
 export type AppDataTableBinding = z.infer<typeof appDataTableBindingSchema>;
 export type AppAgentBinding = z.infer<typeof appAgentBindingSchema>;
+export type AppCredentialBinding = z.infer<typeof appCredentialBindingSchema>;
 
 /** A JSON Schema document. Kept opaque so this package needs no JSON Schema types. */
 export type AppJsonSchema = Record<string, unknown>;
@@ -97,6 +206,12 @@ export type AppDescribedAgentBinding = AppAgentBinding & {
 	missing?: false;
 };
 
+export type AppDescribedCredentialBinding = AppCredentialBinding & {
+	name: string;
+	credentialType: string;
+	missing?: false;
+};
+
 /** The bound resource no longer exists in the app project. */
 export type AppDescribedMissingBinding = AppBinding & { name: string; missing: true };
 
@@ -104,6 +219,7 @@ export type AppDescribedBinding =
 	| AppDescribedWorkflowBinding
 	| AppDescribedDataTableBinding
 	| AppDescribedAgentBinding
+	| AppDescribedCredentialBinding
 	| AppDescribedMissingBinding;
 
 export type AppBindingWarning = {
@@ -123,7 +239,8 @@ export type AppBindingsResponse = {
 export type AppRuntimeBinding =
 	| { key: string; kind: 'workflow' }
 	| { key: string; kind: 'dataTable'; permissions: AppDataTablePermission[] }
-	| { key: string; kind: 'agent'; permissions: AppAgentPermission[] };
+	| { key: string; kind: 'agent'; permissions: AppAgentPermission[] }
+	| { key: string; kind: 'credential'; operations: string[] };
 
 export type AppRuntimeMeResponse = {
 	user: {
@@ -155,6 +272,8 @@ export const APP_RUNTIME_ERROR_CODES = [
 	'unauthenticated',
 	'forbidden',
 	'execution_failed',
+	'operation_not_found',
+	'request_failed',
 ] as const;
 export type AppRuntimeErrorCode = (typeof APP_RUNTIME_ERROR_CODES)[number];
 
@@ -220,5 +339,14 @@ export const appAgentResumeRequestSchema = z.object({
 	resumeData: z.unknown(),
 });
 export type AppAgentResumeRequest = z.infer<typeof appAgentResumeRequestSchema>;
+
+export const appRuntimeHttpRequestSchema = z.object({
+	params: z.record(z.unknown()).default({}),
+});
+
+export type AppHttpOperationResult = {
+	status: number;
+	body: unknown;
+};
 
 export const appAgentMessagesQuerySchema = appAgentChatRequestSchema.pick({ sessionId: true });

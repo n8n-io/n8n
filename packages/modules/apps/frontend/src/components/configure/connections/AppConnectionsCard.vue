@@ -16,6 +16,7 @@ import {
 	BINDING_KINDS,
 	createBinding,
 	resourceIdOf,
+	withoutOperation,
 	withPermissions,
 	type BindingPermission,
 } from './bindingKinds';
@@ -77,6 +78,16 @@ async function update(key: string, permissions: BindingPermission[]) {
 	);
 }
 
+async function removeOperation(key: string, operationId: string) {
+	await persist((current) =>
+		current.flatMap((binding) => {
+			if (binding.key !== key || binding.kind !== 'credential') return [binding];
+			const next = withoutOperation(binding, operationId);
+			return next ? [next] : [];
+		}),
+	);
+}
+
 async function remove(key: string) {
 	await persist((current) => current.filter((binding) => binding.key !== key));
 }
@@ -107,9 +118,10 @@ onMounted(load);
 						:can-update="canUpdate"
 						@update="update(binding.key, $event)"
 						@remove="remove(binding.key)"
+						@remove-operation="removeOperation(binding.key, $event)"
 					/>
 					<AppBindingPicker
-						v-if="canUpdate"
+						v-if="canUpdate && BINDING_KINDS[row.kind].addLabel"
 						:kind="row.kind"
 						:project-id="app.projectId"
 						:bound-ids="row.boundIds"
