@@ -29,6 +29,7 @@ import type {
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
+	ExecutionBlockedReason,
 	ExecutionError,
 	ExecutionStatus,
 	IDataObject,
@@ -651,6 +652,8 @@ async function startExecution(
 	let hooks: ExecutionLifecycleHooks | undefined;
 	let callerAllowed = false;
 	let credentialChecksPassed = false;
+	// Why the run stopped, while no node of the sub-workflow can have run.
+	let blockedReason: ExecutionBlockedReason | undefined = 'startFailed';
 
 	let data;
 	try {
@@ -681,6 +684,7 @@ async function startExecution(
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
 
 		// A refused caller must not start executions in this workflow's project.
+		blockedReason = 'callerPolicy';
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
@@ -688,6 +692,7 @@ async function startExecution(
 			additionalData.userId,
 		);
 		callerAllowed = true;
+		blockedReason = 'credentialAccess';
 
 		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
@@ -716,6 +721,7 @@ async function startExecution(
 			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
 		credentialChecksPassed = true;
+		blockedReason = 'startFailed';
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -771,6 +777,8 @@ async function startExecution(
 			runExecutionData,
 			Container.get(StorageConfig).modeTag,
 		);
+		// From here the engine marks its own early failures.
+		blockedReason = undefined;
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
@@ -782,6 +790,7 @@ async function startExecution(
 			'node' in executionError ? executionError.node : undefined,
 			startTime,
 		);
+		if (blockedReason) fullRunData.data.resultData.failedBeforeStart = blockedReason;
 
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.

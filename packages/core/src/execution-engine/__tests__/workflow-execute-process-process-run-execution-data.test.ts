@@ -115,7 +115,7 @@ describe('processRunExecutionData', () => {
 
 		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node.name, sourceData: null }] },
-			resultData: { failedBeforeStart: true },
+			resultData: { failedBeforeStart: 'startFailed' },
 			executionData: {
 				nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
 			},
@@ -201,8 +201,48 @@ describe('processRunExecutionData', () => {
 			);
 
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('contextHook');
 			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
+
+		const blockedStartData = () =>
+			createRunExecutionData({
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+				},
+			});
+
+		test('marks the run as a policy refusal when the error carries the refusal marker', async () => {
+			const refusal = Object.assign(new UnexpectedError('refused by policy'), {
+				isPolicyRefusal: true,
+			});
+			runHook.mockImplementation(async (hookName: string) => {
+				if (hookName === 'workflowExecuteBefore') throw refusal;
+			});
+
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				blockedStartData(),
+			).processRunExecutionData(workflow);
+
+			expect(result.data.resultData.failedBeforeStart).toBe('policy');
+		});
+
+		test('marks the run as start failed when the expression isolate cannot be acquired', async () => {
+			vi.spyOn(workflow.expression, 'acquireIsolate').mockRejectedValueOnce(
+				new Error('No isolate'),
+			);
+
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				blockedStartData(),
+			).processRunExecutionData(workflow);
+
+			expect(result.data.resultData.error?.message).toBe('No isolate');
+			expect(result.data.resultData.failedBeforeStart).toBe('startFailed');
 		});
 
 		const withEarlierRunData = () =>
@@ -217,7 +257,7 @@ describe('processRunExecutionData', () => {
 		test('flags a retry that carries the run data of the original execution', async () => {
 			const { result } = await runBlocked(withEarlierRunData(), workflow, { mode: 'retry' });
 
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		test('does not flag a resumed run whose nodes ran before it waited', async () => {
@@ -242,7 +282,7 @@ describe('processRunExecutionData', () => {
 				{ restartExecutionId: 'claimed-execution' },
 			);
 
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		test('flags the run when establishing the execution context fails', async () => {
@@ -260,7 +300,7 @@ describe('processRunExecutionData', () => {
 			).processRunExecutionData(workflow);
 
 			expect(result.data.resultData.error?.message).toBe('No identity');
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('contextHook');
 			expect(hookNames()).toEqual(['workflowExecuteAfter']);
 		});
 
@@ -271,7 +311,7 @@ describe('processRunExecutionData', () => {
 			);
 
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('contextHook');
 			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 
@@ -584,7 +624,7 @@ describe('processRunExecutionData', () => {
 			expect(result.data.resultData.error?.message).toMatch(
 				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
-			expect(result.data.resultData.failedBeforeStart).toBe(true);
+			expect(result.data.resultData.failedBeforeStart).toBe('invalidWorkflow');
 			expect(hookNames()).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 

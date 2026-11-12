@@ -636,7 +636,7 @@ export class ScalingService {
 									lastNodeExecuted: msg.lastNodeExecuted,
 									usedDynamicCredentials: msg.usedDynamicCredentials,
 									metadata: msg.metadata,
-									...(msg.failedBeforeStart && { failedBeforeStart: true }),
+									...(msg.failedBeforeStart && { failedBeforeStart: msg.failedBeforeStart }),
 									startedAt: new Date(msg.startedAt),
 									stoppedAt: new Date(msg.stoppedAt),
 									// Dropping `waitTill` here makes main mistake a waiting execution

@@ -2,6 +2,7 @@ import {
 	ExecutionStatusList,
 	isCompletedExecutionStatus,
 	WorkflowExecuteModeList,
+	type ExecutionBlockedReason,
 	type ExecutionStatus,
 	type WorkflowExecuteMode,
 	type WorkflowExecutionSource,
@@ -20,6 +21,7 @@ import {
 import type {
 	CompletedRun,
 	LedgerEntityType,
+	LedgerBlockedBy,
 	LedgerEvent,
 	LedgerFact,
 	LedgerOutcome,
@@ -264,33 +266,86 @@ describe('toLedgerOutcome', () => {
 		['running', 'none'],
 		['unknown', 'none'],
 		['waiting', 'none'],
-	])('maps status %s to outcome %s', (status, expected) => {
-		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt })).toBe(expected);
+	])('maps status %s to outcome %s with no blocker', (status, outcome) => {
+		expect(toLedgerOutcome({ mode: 'webhook', status, startedAt })).toEqual({
+			outcome,
+			blockedBy: 'none',
+		});
 	});
 
-	test('returns blocked for an error that failed before start', () => {
+	test.each<[ExecutionBlockedReason, LedgerBlockedBy]>([
+		['policy', 'policy'],
+		['callerPolicy', 'policy'],
+		['credentialAccess', 'credentialAccess'],
+		['invalidWorkflow', 'invalidWorkflow'],
+		['contextHook', 'contextHook'],
+		['startFailed', 'startFailed'],
+	])('returns blocked by the stored value of reason %s', (reason, blockedBy) => {
+		const data = { resultData: { failedBeforeStart: reason } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy,
+		});
+	});
+
+	test('returns blocked for a crash that carries a reason', () => {
+		const data = { resultData: { failedBeforeStart: 'policy' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'policy',
+		});
+	});
+
+	test('treats the legacy true marker as start failed', () => {
 		const data = { resultData: { failedBeforeStart: true as const } };
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toBe('blocked');
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
 	});
 
-	test('returns blocked for a crash that no runner took', () => {
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt: null })).toBe(
-			'blocked',
-		);
+	test('returns blocked as start failed for a crash that no runner took', () => {
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'crashed', startedAt: null })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
+	});
+
+	test('keeps the marker reason over the missing start time', () => {
+		const data = { resultData: { failedBeforeStart: 'credentialAccess' as const } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt: null, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'credentialAccess',
+		});
 	});
 
 	test('keeps canceled when no runner took the run', () => {
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'canceled', startedAt: null })).toBe(
-			'canceled',
-		);
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'canceled', startedAt: null })).toEqual({
+			outcome: 'canceled',
+			blockedBy: 'none',
+		});
 	});
 
-	test('keeps success when the run carries failedBeforeStart', () => {
-		const data = { resultData: { failedBeforeStart: true as const } };
-		expect(toLedgerOutcome({ mode: 'webhook', status: 'success', startedAt, data })).toBe(
-			'success',
-		);
-	});
+	test.each<ExecutionStatus>(['success', 'canceled', 'running', 'waiting'])(
+		'keeps status %s when the run carries a reason',
+		(status) => {
+			const data = { resultData: { failedBeforeStart: 'policy' as const } };
+			const result = toLedgerOutcome({ mode: 'webhook', status, startedAt, data });
+			expect(result.blockedBy).toBe('none');
+			expect(result.outcome).not.toBe('blocked');
+		},
+	);
+
+	test.each([() => true, 'unknown-reason', 1, false])(
+		'does not block on a marker value that is not a reason (%s)',
+		(marker) => {
+			const data = { resultData: { failedBeforeStart: marker as never } };
+			expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+				outcome: 'error',
+				blockedBy: 'none',
+			});
+		},
+	);
 });
 
 describe('isBillableExecution (run)', () => {
@@ -298,7 +353,7 @@ describe('isBillableExecution (run)', () => {
 		expect(
 			isBillableExecution({
 				...run('webhook', 'error'),
-				data: { resultData: { failedBeforeStart: true } },
+				data: { resultData: { failedBeforeStart: 'policy' } },
 			}),
 		).toBe(false);
 	});

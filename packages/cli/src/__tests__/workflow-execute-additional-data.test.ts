@@ -735,6 +735,47 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(executionId).toBe(EXECUTION_ID);
 			});
 
+			it('marks the run as blocked by credential access when the credential check fails', async () => {
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+
+				const [, fullRunData] = executeErrorWorkflow.mock.calls[0];
+				expect(fullRunData.data.resultData.failedBeforeStart).toBe('credentialAccess');
+			});
+
+			it('marks the run as blocked by the caller policy when the policy refuses the caller', async () => {
+				failPolicyCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('cannot be called by this workflow');
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					EXECUTION_ID,
+					expect.objectContaining({
+						data: expect.objectContaining({
+							resultData: expect.objectContaining({ failedBeforeStart: 'callerPolicy' }),
+						}),
+					}),
+				);
+			});
+
+			it('marks the run as start failed when it cannot be set to running', async () => {
+				executionRepository.setRunning.mockRejectedValueOnce(new Error('database unavailable'));
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await vi.waitFor(() =>
+					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
+						EXECUTION_ID,
+						expect.objectContaining({
+							data: expect.objectContaining({
+								resultData: expect.objectContaining({ failedBeforeStart: 'startFailed' }),
+							}),
+						}),
+					),
+				);
+			});
+
 			it('starts the sub-workflow error workflow when the caller does not wait', async () => {
 				failCredentialCheck();
 

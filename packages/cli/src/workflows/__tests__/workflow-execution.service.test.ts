@@ -26,6 +26,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
+	type IRun,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -38,6 +39,9 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { FailedRunFactory } from '@/executions/failed-run-factory';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -1874,6 +1878,82 @@ describe('WorkflowExecutionService', () => {
 			);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
+		});
+
+		test('marks the stored refusal as blocked by the caller policy when the sub-workflow policy refuses', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				pinData: {},
+				staticData: {},
+				nodes: [errorTriggerNode],
+				connections: {},
+				activeVersion: { nodes: [errorTriggerNode], connections: {} },
+			});
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { properties: [] } }),
+			);
+			const policyChecker = mock<SubworkflowPolicyChecker>();
+			policyChecker.check.mockRejectedValue(new Error('refused'));
+			const failedRunFactory = mock<FailedRunFactory>();
+			failedRunFactory.generateFailedExecutionFromError.mockReturnValue({
+				mode: 'error',
+				status: 'error',
+				data: createRunExecutionData({}),
+			} as IRun);
+			const executionPersistence = mock<ExecutionPersistence>();
+			const workflowRunnerMock = mock<WorkflowRunner>();
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				executionPersistence,
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				mock<GlobalConfig>({ nodes: { errorTriggerType } }),
+				policyChecker,
+				failedRunFactory,
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
+				pollCursorService,
+				mock(),
+				mock(),
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
+			const [payload] = executionPersistence.create.mock.calls[0];
+			expect(payload.data.resultData.failedBeforeStart).toBe('callerPolicy');
 		});
 
 		test('should not run the error workflow when it has no published version (flag on)', async () => {

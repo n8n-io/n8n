@@ -1,11 +1,15 @@
 import type {
+	ExecutionLedgerBlockedBy,
 	ExecutionLedgerEntityType,
 	ExecutionLedgerEvent,
 	ExecutionLedgerOutcome,
 } from '@n8n/db';
 import {
+	isExecutionBlockedReason,
 	isTerminalExecutionStatus,
+	type ExecutionBlockedReason,
 	type ExecutionStatus,
+	type FailedBeforeStartMarker,
 	type WorkflowExecuteMode,
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
@@ -14,6 +18,7 @@ export type LedgerEntityType = ExecutionLedgerEntityType;
 export type LedgerEvent = ExecutionLedgerEvent;
 /** `none` for `started` rows. `blocked`: the run stopped before its first node. */
 export type LedgerOutcome = ExecutionLedgerOutcome;
+export type LedgerBlockedBy = ExecutionLedgerBlockedBy;
 export type LedgerSource = WorkflowExecutionSource | 'none';
 
 /** The ledger row columns that decide whether a run counts. */
@@ -31,7 +36,7 @@ export type CompletedRun = {
 	status: ExecutionStatus;
 	/** Null while no runner has taken the execution. */
 	startedAt: Date | null;
-	data?: { resultData?: { failedBeforeStart?: true } };
+	data?: { resultData?: { failedBeforeStart?: FailedBeforeStartMarker } };
 };
 
 type CountingRule = {
@@ -191,12 +196,34 @@ export function isLedgerFact(row: Record<keyof LedgerFact, string>): row is Ledg
 	);
 }
 
-export function toLedgerOutcome(run: CompletedRun): LedgerOutcome {
+// The ledger stores a refused caller as `policy`.
+const ledgerBlockedBy = {
+	policy: 'policy',
+	callerPolicy: 'policy',
+	credentialAccess: 'credentialAccess',
+	invalidWorkflow: 'invalidWorkflow',
+	contextHook: 'contextHook',
+	startFailed: 'startFailed',
+} satisfies Record<ExecutionBlockedReason, Exclude<LedgerBlockedBy, 'none'>>;
+
+function toBlockedReason(run: CompletedRun): ExecutionBlockedReason | undefined {
+	const marker = run.data?.resultData?.failedBeforeStart;
+	if (isExecutionBlockedReason(marker)) return marker;
+	// No runner took the run, or the marker has no reason.
+	if (run.startedAt === null || marker === true) return 'startFailed';
+	return undefined;
+}
+
+/** The one place that decides whether a run was blocked before its first node, and why. */
+export function toLedgerOutcome(run: CompletedRun): {
+	outcome: LedgerOutcome;
+	blockedBy: LedgerBlockedBy;
+} {
 	const outcome = isTerminalExecutionStatus(run.status) ? run.status : 'none';
 	const isFailure = outcome === 'error' || outcome === 'crashed';
-	// A run that no runner took, or that failed before its first node, did no work.
-	const didNoWork = run.startedAt === null || run.data?.resultData?.failedBeforeStart === true;
-	return isFailure && didNoWork ? 'blocked' : outcome;
+	const reason = isFailure ? toBlockedReason(run) : undefined;
+	if (!reason) return { outcome, blockedBy: 'none' };
+	return { outcome: 'blocked', blockedBy: ledgerBlockedBy[reason] };
 }
 
 export function toLedgerFact(run: CompletedRun, source?: WorkflowExecutionSource): LedgerFact {
@@ -205,7 +232,7 @@ export function toLedgerFact(run: CompletedRun, source?: WorkflowExecutionSource
 		mode: run.mode,
 		source: source ?? 'none',
 		event: 'ended',
-		outcome: toLedgerOutcome(run),
+		outcome: toLedgerOutcome(run).outcome,
 	};
 }
 
