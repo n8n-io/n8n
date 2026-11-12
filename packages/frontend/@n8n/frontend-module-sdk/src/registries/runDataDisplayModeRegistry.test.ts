@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 import { computed } from 'vue';
 import type { Component } from 'vue';
 
@@ -35,8 +35,15 @@ describe('runDataDisplayModeRegistry', () => {
 		canRender: () => true,
 	};
 
+	let warnSpy: MockInstance<typeof console.warn>;
+
 	beforeEach(() => {
 		runDataDisplayModeRegistry.clear();
+		warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		warnSpy.mockRestore();
 	});
 
 	describe('register', () => {
@@ -53,46 +60,51 @@ describe('runDataDisplayModeRegistry', () => {
 			expect(runDataDisplayModeRegistry.get('lazy')?.component).toBe(asyncComponent);
 		});
 
+		it.each(['chart', 'geo-map', 'chart2', 'a-b-c'])('should accept the id "%s"', (id) => {
+			runDataDisplayModeRegistry.register({ ...chart, id });
+
+			expect(runDataDisplayModeRegistry.has(id)).toBe(true);
+			expect(warnSpy).not.toHaveBeenCalled();
+		});
+
+		it.each(['', ' json', 'Table', 'geo_map', 'geo--map', '-chart', 'chart-', '2chart'])(
+			'should warn and skip the id "%s", which is not lowercase kebab-case',
+			(id) => {
+				runDataDisplayModeRegistry.register({ ...chart, id });
+
+				expect(warnSpy).toHaveBeenCalledWith(
+					`Display mode id "${id}" is not lowercase kebab-case. Skipping.`,
+				);
+				expect(runDataDisplayModeRegistry.getAll()).toHaveLength(0);
+			},
+		);
+
 		it.each(['table', 'json', 'binary', 'schema', 'html', 'ai'])(
 			'should warn and skip the built-in id "%s"',
 			(id) => {
-				const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 				runDataDisplayModeRegistry.register({ ...chart, id });
 
-				expect(consoleSpy).toHaveBeenCalledWith(
+				expect(warnSpy).toHaveBeenCalledWith(
 					`Display mode "${id}" is a built-in display mode and cannot be registered. Skipping.`,
 				);
 				expect(runDataDisplayModeRegistry.has(id)).toBe(false);
-
-				consoleSpy.mockRestore();
 			},
 		);
 
 		it('should warn and skip when a different contribution claims a taken id', () => {
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			runDataDisplayModeRegistry.register(chart);
 			runDataDisplayModeRegistry.register({ ...map, id: 'chart' });
 
-			expect(consoleSpy).toHaveBeenCalledWith(
-				'Display mode "chart" is already registered. Skipping.',
-			);
+			expect(warnSpy).toHaveBeenCalledWith('Display mode "chart" is already registered. Skipping.');
 			expect(runDataDisplayModeRegistry.get('chart')?.component).toBe(chartComponent);
-
-			consoleSpy.mockRestore();
 		});
 
 		it('should treat a replay of the same contribution as a no-op', () => {
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			runDataDisplayModeRegistry.register(chart);
 			runDataDisplayModeRegistry.register(chart);
 
-			expect(consoleSpy).not.toHaveBeenCalled();
+			expect(warnSpy).not.toHaveBeenCalled();
 			expect(runDataDisplayModeRegistry.getAll()).toHaveLength(1);
-
-			consoleSpy.mockRestore();
 		});
 	});
 
@@ -152,14 +164,33 @@ describe('runDataDisplayModeRegistry', () => {
 	});
 
 	describe('reactivity', () => {
-		it('should re-evaluate a computed when a contribution is registered', () => {
-			const ids = computed(() => runDataDisplayModeRegistry.getAll().map((mode) => mode.id));
+		const ids = computed(() => runDataDisplayModeRegistry.getAll().map((mode) => mode.id));
 
+		it('should re-evaluate a computed when a contribution is registered', () => {
 			expect(ids.value).toEqual([]);
 
 			runDataDisplayModeRegistry.register(chart);
 
 			expect(ids.value).toEqual(['chart']);
+		});
+
+		it('should re-evaluate a computed when a contribution is unregistered', () => {
+			runDataDisplayModeRegistry.register(chart);
+			runDataDisplayModeRegistry.register(map);
+			expect(ids.value).toEqual(['chart', 'map']);
+
+			runDataDisplayModeRegistry.unregister('chart');
+
+			expect(ids.value).toEqual(['map']);
+		});
+
+		it('should re-evaluate a computed when the registry is cleared', () => {
+			runDataDisplayModeRegistry.register(chart);
+			expect(ids.value).toEqual(['chart']);
+
+			runDataDisplayModeRegistry.clear();
+
+			expect(ids.value).toEqual([]);
 		});
 
 		it('should not wrap the component in a reactive proxy', () => {
@@ -168,38 +199,6 @@ describe('runDataDisplayModeRegistry', () => {
 			// Shallow registry: a reactive component logs "Vue received a Component
 			// that was made a reactive object" and breaks `<component :is>`.
 			expect(runDataDisplayModeRegistry.get('chart')?.component).toBe(chartComponent);
-		});
-	});
-
-	describe('subscribe', () => {
-		it('should notify listeners on register and unregister', () => {
-			const listener = vi.fn<(entries: RunDataDisplayModeContribution[]) => void>();
-			const unsubscribe = runDataDisplayModeRegistry.subscribe(listener);
-
-			runDataDisplayModeRegistry.register(chart);
-			expect(listener).toHaveBeenCalledTimes(1);
-			expect(listener.mock.calls[0]?.[0]).toEqual([chart]);
-
-			runDataDisplayModeRegistry.unregister('chart');
-			expect(listener).toHaveBeenCalledTimes(2);
-
-			unsubscribe();
-			runDataDisplayModeRegistry.register(map);
-			expect(listener).toHaveBeenCalledTimes(2);
-		});
-
-		it('should not notify when a registration is skipped', () => {
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-			const listener = vi.fn();
-			const unsubscribe = runDataDisplayModeRegistry.subscribe(listener);
-
-			runDataDisplayModeRegistry.register({ ...chart, id: 'table' });
-			runDataDisplayModeRegistry.unregister('never-registered');
-
-			expect(listener).not.toHaveBeenCalled();
-
-			unsubscribe();
-			consoleSpy.mockRestore();
 		});
 	});
 });
