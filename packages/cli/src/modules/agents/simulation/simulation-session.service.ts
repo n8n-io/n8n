@@ -27,16 +27,13 @@ export interface OpenSimulationInput {
 	user: User;
 	agentId: string;
 	projectId: string;
-	/** The test chat (thread) ID. One world for each test chat. */
+	/** The thread ID. One world per test chat. */
 	testChatId: string;
-	/** The user message of this turn. Seeds a new world. */
+	/** Seeds a new world. */
 	message: string;
 }
 
-/**
- * Decides whether a draft run is a test run and gives it the session of its
- * test chat. With the flag off, draft runs stay live.
- */
+/** Decides whether a draft run is a test run, and gives it its test chat's session. */
 @Service()
 export class SimulationSessionService {
 	private readonly sessions = new TtlMap<string, SimulationSession>(
@@ -53,7 +50,6 @@ export class SimulationSessionService {
 		private readonly executionRepository: AgentExecutionRepository,
 	) {}
 
-	/** The session of a test run, or `undefined` for a live run. */
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 		const cached = this.sessions.get(input.testChatId);
@@ -103,12 +99,11 @@ export class SimulationSessionService {
 		await this.executionRepository.update({ id: executionId }, { simulated: true });
 	}
 
-	/** Which tools of an agent can run in a test run, before the run starts. */
+	/** Testability of each tool, before the run starts. */
 	async describeTools(agentId: string, projectId: string): Promise<ToolTestCapability[]> {
 		return await this.capabilitiesFor(await this.describeAgent(agentId, projectId));
 	}
 
-	/** The agent's tools, plus the reason n8n blocks a tool before any backend sees it. */
 	private async describeAgent(agentId: string, projectId: string): Promise<DescribedAgent> {
 		const saved = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!saved?.schema) throw new NotFoundError(`Agent ${agentId} not found`);
