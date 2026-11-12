@@ -45,15 +45,19 @@ Use the first option that applies:
 
 When the module needs part of a large cli service, do these steps in order:
 
-1. Examine if you can extract the methods and their dependencies into a
+1. Examine if you can move the whole service to `@n8n/backend-services`.
+   List its `@/` imports. If shared packages already supply them, or a few
+   small changes remove them, move the service. Examples: `RoleService`,
+   `UrlService`, `WorkflowSharingService`.
+2. Examine if you can extract the methods and their dependencies into a
    separate service in `@n8n/backend-services`. Example:
    `ProjectScopeService.hasScopes` replaced the module calls to
    `userHasScopes` and merged in one PR.
-2. Examine if a larger refactor of the cli service is worth the cost. Tell
+3. Examine if a larger refactor of the cli service is worth the cost. Tell
    the user how many PRs it needs and which other modules it unblocks. The
-   full moves of `ProjectService`, `OwnershipService` and `userHasScopes`
+   refactors of `ProjectService`, `OwnershipService` and `userHasScopes`
    stalled, so get approval first.
-3. As a fallback, add a `*Proxy` in
+4. As a fallback, add a `*Proxy` in
    `@n8n/backend-services` that cli registers (for example
    `NodeTypesProxy`).
 
