@@ -30,3 +30,9 @@ describe('WebhookIntegration.validateConfig', () => {
 		expect(() => integration.validateConfig(entry)).toThrow(BadRequestError);
 	});
 });
+
+describe('WebhookIntegration.actionToolDefinitions', () => {
+	it('has no channel actions to approve', () => {
+		expect(new WebhookIntegration().actionToolDefinitions).toEqual([]);
+	});
+});
