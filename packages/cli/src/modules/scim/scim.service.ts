@@ -72,7 +72,8 @@ export class ScimService {
 		)?.providerId;
 
 		// Entra ID maps `name.formatted` by default and sends it again on every
-		// sync cycle when the response does not contain it.
+		// sync cycle when the response does not contain it. Not `accountFullName`:
+		// SCIM and invited users can have empty or null name parts.
 		const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined;
 
 		const scimUser: ScimUser = {
@@ -295,8 +296,10 @@ export class ScimService {
 				// SSO role mapping owns the instance role, so SCIM roles are ignored.
 				return;
 			case 'active': {
+				// Deactivation must not fail silently: an unreadable value returns 400, as on POST and PUT.
 				const active = toScimBoolean(value);
-				if (active !== undefined) this.setField(person, 'disabled', !active, changes);
+				if (active === undefined) throw new ScimInvalidValueError('"active" must be true or false');
+				this.setField(person, 'disabled', !active, changes);
 				return;
 			}
 			case 'userName':

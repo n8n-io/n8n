@@ -455,18 +455,20 @@ describe('ScimService', () => {
 			expect(user.disabled).toBe(disabled);
 		});
 
-		it('should ignore an active value that is not a boolean', async () => {
-			const user = createTestUser();
-			userRepository.findOne.mockResolvedValue(user);
+		it.each(['no', 0, null, ' false'])(
+			'should reject an active value that is not a boolean (%j)',
+			async (value) => {
+				const user = createTestUser();
+				userRepository.findOne.mockResolvedValue(user);
 
-			await service.patchUser(
-				'user-1',
-				patchRequest([{ op: 'replace', path: 'active', value: 'no' }]),
-			);
+				await expect(
+					service.patchUser('user-1', patchRequest([{ op: 'replace', path: 'active', value }])),
+				).rejects.toThrow(ScimInvalidValueError);
 
-			expect(user.disabled).toBe(false);
-			expect(personRepository.save).not.toHaveBeenCalled();
-		});
+				expect(user.disabled).toBe(false);
+				expect(personRepository.save).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should take the email whose primary flag is true, also as a string', async () => {
 			const user = createTestUser();

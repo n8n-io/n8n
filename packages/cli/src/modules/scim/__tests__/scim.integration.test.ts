@@ -376,6 +376,17 @@ describe('SCIM /scim/v2/Users', () => {
 		expect((await reload(member.id)).disabled).toBe(false);
 	});
 
+	it('returns 400 for an active value that is not a boolean and keeps the user', async () => {
+		const member = await createMember();
+
+		const response = await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({ op: 'replace', path: 'active', value: 'no' }),
+		}).expect(400);
+
+		expect(response.body.scimType).toBe('invalidValue');
+		expect((await reload(member.id)).disabled).toBe(false);
+	});
+
 	it('returns the formatted name', async () => {
 		const response = await scimRequest('post', '/Users', {
 			body: {
