@@ -56,12 +56,25 @@ describe('shrink', () => {
 		expect(result.runs).toBe(3);
 	});
 
-	it('reports a budget that ran out on the last candidate', async () => {
-		const result = await shrink([fault(1), fault(2)], async () => await Promise.resolve(false), {
-			...options,
-			maxRuns: 2,
-		});
+	it('reports a time budget that ran out on the last candidate', async () => {
+		let now = 0;
+		const result = await shrink(
+			[fault(1), fault(2)],
+			async () => {
+				now += 10;
+				return await Promise.resolve(false);
+			},
+			{ ...options, budgetMs: 15, now: () => now },
+		);
 		expect(result).toMatchObject({ runs: 2, exhausted: true });
+	});
+
+	it('does not report an exhausted budget when the last run empties the schedule', async () => {
+		const result = await shrink([fault(1)], async () => await Promise.resolve(true), {
+			...options,
+			maxRuns: 1,
+		});
+		expect(result).toMatchObject({ schedule: [], runs: 1, exhausted: false });
 	});
 
 	it('stops repeating a candidate once it can no longer reach the failure count', async () => {
