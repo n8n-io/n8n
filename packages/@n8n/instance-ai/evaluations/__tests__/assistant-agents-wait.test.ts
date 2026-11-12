@@ -6,10 +6,10 @@ import type {
 import { vi } from 'vitest';
 
 import {
-	waitForAssistantV2Activity,
-	type AssistantV2WaitConfig,
-	type AssistantV2WaitClient,
-} from '../harness/assistant-v2';
+	waitForAssistantAgentActivity,
+	type AssistantAgentWaitConfig,
+	type AssistantAgentWaitClient,
+} from '../harness/assistant-agents';
 import { RunTimeoutError } from '../harness/timeouts';
 import type { CapturedEvent } from '../types';
 
@@ -49,7 +49,7 @@ function scriptedClient(snapshots: AgentChatMessagesResponse[], usage = noUsage)
 			async (_runId: string, _toolCallId: string, _body: InstanceAiConfirmRequest) => {},
 		),
 		getUsage: vi.fn(async () => usage),
-	} satisfies AssistantV2WaitClient;
+	} satisfies AssistantAgentWaitClient;
 	return client;
 }
 
@@ -85,9 +85,9 @@ function usageWith(status: 'error' | 'success'): AgentThreadUsageResponse {
 }
 
 function config(
-	client: AssistantV2WaitClient,
-	overrides: Partial<AssistantV2WaitConfig> = {},
-): AssistantV2WaitConfig {
+	client: AssistantAgentWaitClient,
+	overrides: Partial<AssistantAgentWaitConfig> = {},
+): AssistantAgentWaitConfig {
 	return {
 		client,
 		threadId: 'thread-1',
@@ -109,7 +109,7 @@ function config(
 	};
 }
 
-describe('waitForAssistantV2Activity', () => {
+describe('waitForAssistantAgentActivity', () => {
 	it('waits through a busy thread and returns after the quiet polls', async () => {
 		const client = scriptedClient([
 			history({ activeExecutionId: 'exec-1' }),
@@ -118,7 +118,7 @@ describe('waitForAssistantV2Activity', () => {
 		]);
 		const events: CapturedEvent[] = [];
 
-		await waitForAssistantV2Activity(config(client, { events }));
+		await waitForAssistantAgentActivity(config(client, { events }));
 
 		// Two busy polls, then three quiet ones.
 		expect(client.getHistory).toHaveBeenCalledTimes(5);
@@ -133,7 +133,7 @@ describe('waitForAssistantV2Activity', () => {
 			history({ messages: [finishedTurn] }),
 		]);
 
-		await waitForAssistantV2Activity(config(client));
+		await waitForAssistantAgentActivity(config(client));
 
 		// Two idle polls before the turn starts do not count toward the three quiet ones.
 		expect(client.getHistory).toHaveBeenCalledTimes(6);
@@ -142,7 +142,7 @@ describe('waitForAssistantV2Activity', () => {
 	it('returns for a turn that finished before the first poll', async () => {
 		const client = scriptedClient([history({ messages: [finishedTurn] })]);
 
-		await waitForAssistantV2Activity(config(client));
+		await waitForAssistantAgentActivity(config(client));
 
 		expect(client.getHistory).toHaveBeenCalledTimes(3);
 	});
@@ -156,7 +156,7 @@ describe('waitForAssistantV2Activity', () => {
 		};
 		const client = scriptedClient([history({ messages: [failedTurn] })]);
 
-		await expect(waitForAssistantV2Activity(config(client))).rejects.toThrow(
+		await expect(waitForAssistantAgentActivity(config(client))).rejects.toThrow(
 			'Assistant agent turn failed: Something went wrong',
 		);
 	});
@@ -169,13 +169,13 @@ describe('waitForAssistantV2Activity', () => {
 		};
 		const client = scriptedClient([history({ messages: [partialTurn] })]);
 
-		await expect(waitForAssistantV2Activity(config(client))).resolves.toBeUndefined();
+		await expect(waitForAssistantAgentActivity(config(client))).resolves.toBeUndefined();
 	});
 
 	it('fails a turn that the history leaves out because it failed without output or message', async () => {
 		const client = scriptedClient([history({ messages: [takenUserMessage] })], usageWith('error'));
 
-		await expect(waitForAssistantV2Activity(config(client))).rejects.toThrow(
+		await expect(waitForAssistantAgentActivity(config(client))).rejects.toThrow(
 			'Assistant agent turn failed: the execution ended with status "error" and no error message',
 		);
 		expect(client.getUsage).toHaveBeenCalledWith('thread-1');
@@ -187,13 +187,13 @@ describe('waitForAssistantV2Activity', () => {
 			usageWith('success'),
 		);
 
-		await expect(waitForAssistantV2Activity(config(client))).resolves.toBeUndefined();
+		await expect(waitForAssistantAgentActivity(config(client))).resolves.toBeUndefined();
 	});
 
 	it('reads no usage when the turn has a reply', async () => {
 		const client = scriptedClient([history({ messages: [takenUserMessage, finishedTurn] })]);
 
-		await waitForAssistantV2Activity(config(client));
+		await waitForAssistantAgentActivity(config(client));
 
 		expect(client.getUsage).not.toHaveBeenCalled();
 	});
@@ -215,7 +215,7 @@ describe('waitForAssistantV2Activity', () => {
 		const approvedRequests = new Set<string>();
 		const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
 
-		await waitForAssistantV2Activity(
+		await waitForAssistantAgentActivity(
 			config(client, { confirmationStrategy: strategy, approvedRequests, proxyResponses }),
 		);
 
@@ -239,7 +239,7 @@ describe('waitForAssistantV2Activity', () => {
 		const breach = { kind: 'inactivity' as const, turn: 1, elapsedMs: 240_001 };
 
 		await expect(
-			waitForAssistantV2Activity(
+			waitForAssistantAgentActivity(
 				config(client, {
 					confirmationRetries: retries,
 					maxConfirmationRetries: 2,
@@ -262,7 +262,7 @@ describe('waitForAssistantV2Activity', () => {
 		});
 
 		await expect(
-			waitForAssistantV2Activity(config(client, { timeoutBreach: () => breach, onTimeout })),
+			waitForAssistantAgentActivity(config(client, { timeoutBreach: () => breach, onTimeout })),
 		).rejects.toBeInstanceOf(RunTimeoutError);
 
 		expect(onTimeout).toHaveBeenCalledWith(breach);

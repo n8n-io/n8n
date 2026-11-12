@@ -53,7 +53,7 @@ setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
  *  REST call — slower callers pass their own. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
-/** Eval routes of the v1 Assistant. The Agents runtime has its own base. */
+/** Eval routes of the Instance AI runtime. The Agents runtime has its own base. */
 const INSTANCE_AI_EVAL_BASE = '/rest/instance-ai/eval';
 
 /** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
@@ -283,7 +283,7 @@ export class N8nClient {
 	readonly assistantRuntime: AssistantRuntime;
 
 	/** Set only on the Agents runtime. Every thread-tied method checks this one
-	 *  field and sends the call to the v2 transport when it is set. */
+	 *  field and sends the call to the Agents transport when it is set. */
 	private readonly agents?: AssistantAgentsApi;
 
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
@@ -292,7 +292,7 @@ export class N8nClient {
 		readonly baseUrl: string,
 		options: { assistantRuntime?: AssistantRuntime } = {},
 	) {
-		this.assistantRuntime = options.assistantRuntime ?? 'v1';
+		this.assistantRuntime = options.assistantRuntime ?? 'instance-ai';
 		if (this.assistantRuntime === 'agents') {
 			this.agents = new AssistantAgentsApi({
 				request: async (path, requestOptions) => await this.fetch(path, requestOptions),
@@ -353,7 +353,7 @@ export class N8nClient {
 		sourceContext?: Record<string, string | number | boolean>,
 	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
-		// The v2 eval route takes no source context yet.
+		// The Agents eval route takes no source context yet.
 		if (this.agents) return await this.agents.createThread(threadId, resolvedProjectId);
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
@@ -385,14 +385,14 @@ export class N8nClient {
 		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
 		if (this.agents) {
-			// v2 sets the overrides once per thread, so a repeat here is ignored.
+			// The Agents runtime sets the overrides once per thread, so a repeat here is ignored.
 			await this.agents.sendMessage(threadId, message, {
 				attachments,
 				context: handoffContext,
 				// The Assistant agent has no observer threshold override.
 				overrides: { mode, ...(promptVersion ? { promptVersion } : {}) },
 			});
-			// v2 has no run id before the turn starts. The events carry the execution id.
+			// The Agents runtime has no run id before the turn starts. The events carry the execution id.
 			return { runId: '' };
 		}
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
@@ -416,7 +416,7 @@ export class N8nClient {
 	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
 	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
-		// v2 answers cards through `/chat/resume` in the v2 wait loop.
+		// The Agents runtime answers cards through `/chat/resume` in its wait loop.
 		this.assertV1Only('confirmAction');
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
@@ -454,7 +454,7 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/messages
 	 */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
-		// v2 builds the outcome from the events that the wait loop rebuilds from history.
+		// The Agents runtime builds the outcome from the events that the wait loop rebuilds from history.
 		if (this.agents) return { threadId, messages: [], nextEventId: 0 };
 		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/messages`)) as {
 			data: InstanceAiRichMessagesResponse;
@@ -479,7 +479,7 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiThreadDebugRunsResponse> {
-		// v2 has no run debug. `captureThreadRunDebug` reads the usage route instead.
+		// The Agents runtime has no run debug. `captureThreadRunDebug` reads the usage route instead.
 		this.assertV1Only('listThreadDebugRuns');
 		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
 			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
@@ -1497,7 +1497,7 @@ export class N8nClient {
 
 	// -- Runtime switch ------------------------------------------------------
 
-	/** The v2 transport on the Agents runtime, else undefined. The harness code
+	/** The transport on the Agents runtime, else undefined. The harness code
 	 *  outside this client branches on this call only. */
 	assistantAgents(): AssistantAgentsApi | undefined {
 		return this.agents;
@@ -1508,7 +1508,7 @@ export class N8nClient {
 		return this.agents?.evalBase ?? INSTANCE_AI_EVAL_BASE;
 	}
 
-	/** v1-only routes have no v2 route. Fail loudly when a caller reaches one on v2. */
+	/** Instance AI routes with no Agents route. Fail loudly when a caller reaches one on the Agents runtime. */
 	private assertV1Only(method: string): void {
 		if (this.agents) {
 			throw new Error(`N8nClient.${method} is not available on the Agents runtime`);

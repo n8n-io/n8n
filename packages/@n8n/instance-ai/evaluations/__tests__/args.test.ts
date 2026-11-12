@@ -309,16 +309,16 @@ describe('parseCliArgs --build-via-mcp', () => {
 describe('parseCliArgs --assistant-runtime', () => {
 	afterEach(() => vi.unstubAllEnvs());
 
-	it('defaults to v1', () => {
-		expect(parseCliArgs([]).assistantRuntime).toBe('v1');
+	it('defaults to instance-ai', () => {
+		expect(parseCliArgs([]).assistantRuntime).toBe('instance-ai');
 	});
 
-	it.each(['v1', 'agents'] as const)('accepts %s', (runtime) => {
+	it.each(['instance-ai', 'agents'] as const)('accepts %s', (runtime) => {
 		expect(parseCliArgs(['--assistant-runtime', runtime]).assistantRuntime).toBe(runtime);
 	});
 
 	it('rejects an unknown runtime', () => {
-		expect(() => parseCliArgs(['--assistant-runtime', 'v2'])).toThrow();
+		expect(() => parseCliArgs(['--assistant-runtime', 'v1'])).toThrow();
 	});
 
 	it('requires a value', () => {
@@ -341,10 +341,10 @@ describe('parseCliArgs --assistant-runtime', () => {
 		).toThrow(/--prebuilt-workflows grades existing workflows/);
 	});
 
-	it('accepts the v1 runtime with --prebuilt-workflows', () => {
+	it('accepts the instance-ai runtime with --prebuilt-workflows', () => {
 		expect(
-			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'v1'])
+			parseCliArgs(['--prebuilt-workflows', 'manifest.json', '--assistant-runtime', 'instance-ai'])
 				.assistantRuntime,
-		).toBe('v1');
+		).toBe('instance-ai');
 	});
 });

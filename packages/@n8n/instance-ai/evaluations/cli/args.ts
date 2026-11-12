@@ -123,7 +123,7 @@ export interface CliArgs {
 	 *  (`--build-via-mcp`). On expiry the process is killed so a hung build can't
 	 *  hold its lane. 0 disables. Distinct from `buildMcpTimeoutMs` (per MCP call). */
 	buildTimeoutMs: number;
-	/** Which Assistant runtime the builds drive: `v1` (default) or `agents`, the
+	/** Which Assistant runtime the builds drive: `instance-ai` (default) or `agents`, the
 	 *  Assistant agent on the Agents runtime. See clients/assistant-agents-api.ts. */
 	assistantRuntime: AssistantRuntime;
 }
@@ -170,7 +170,7 @@ const cliArgsSchema = z.object({
 	buildMaxAttempts: z.number().int().positive().default(3),
 	buildMcpTimeoutMs: z.number().int().positive().default(120_000),
 	buildTimeoutMs: z.number().int().nonnegative().default(DEFAULT_MCP_BUILD_TIMEOUT_MS),
-	assistantRuntime: z.enum(ASSISTANT_RUNTIMES).default('v1'),
+	assistantRuntime: z.enum(ASSISTANT_RUNTIMES).default('instance-ai'),
 });
 
 // ---------------------------------------------------------------------------
@@ -212,13 +212,13 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		);
 	}
 	// MCP builds never talk to the Assistant, so the runtime would be silently ignored.
-	if (validated.buildViaMcp && validated.assistantRuntime !== 'v1') {
+	if (validated.buildViaMcp && validated.assistantRuntime !== 'instance-ai') {
 		throw new Error(
 			'--assistant-runtime applies to Assistant builds. --build-via-mcp builds through the MCP server instead.',
 		);
 	}
 	// Prebuilt runs only fetch existing workflows, so the runtime would be silently ignored.
-	if (validated.prebuiltWorkflows && validated.assistantRuntime !== 'v1') {
+	if (validated.prebuiltWorkflows && validated.assistantRuntime !== 'instance-ai') {
 		throw new Error(
 			'--assistant-runtime applies to Assistant builds. --prebuilt-workflows grades existing workflows instead.',
 		);
@@ -371,7 +371,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		buildMaxAttempts: 3,
 		buildMcpTimeoutMs: 120_000,
 		buildTimeoutMs: DEFAULT_MCP_BUILD_TIMEOUT_MS,
-		assistantRuntime: 'v1',
+		assistantRuntime: 'instance-ai',
 		datasetProvided: false,
 		baselineProvided: false,
 		buildOnlyFlags: [],

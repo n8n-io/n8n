@@ -73,9 +73,9 @@ function afterLogin(calls: Call[]): Call[] {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('N8nClient on the Agents runtime', () => {
-	it('defaults to v1 and has no v2 transport', () => {
+	it('defaults to instance-ai and has no Agents transport', () => {
 		const client = new N8nClient(BASE);
-		expect(client.assistantRuntime).toBe('v1');
+		expect(client.assistantRuntime).toBe('instance-ai');
 		expect(client.assistantAgents()).toBeUndefined();
 	});
 
@@ -305,7 +305,7 @@ describe('N8nClient on the Agents runtime', () => {
 		]);
 	});
 
-	it('keeps the mock-execution routes on the v1 prefix', async () => {
+	it('keeps the mock-execution routes on the Instance AI prefix', async () => {
 		const calls = mockN8n([
 			[
 				'POST',
@@ -320,7 +320,7 @@ describe('N8nClient on the Agents runtime', () => {
 		expect(afterLogin(calls)[0].path).toBe('/rest/instance-ai/eval/execute-with-llm-mock/wf-1');
 	});
 
-	it('fails loudly on v1-only routes', async () => {
+	it('fails loudly on Instance AI-only routes', async () => {
 		mockN8n([]);
 		const client = await agentsClient();
 

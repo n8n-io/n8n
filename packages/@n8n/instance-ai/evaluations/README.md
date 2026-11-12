@@ -163,7 +163,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
-| `--assistant-runtime` | `v1` | Which Assistant the builds drive: `v1` or `agents` (the Assistant agent on the Agents runtime). See [Running against the Assistant agent](#running-against-the-assistant-agent---assistant-runtime-agents). Not allowed with `--build-via-mcp` |
+| `--assistant-runtime` | `instance-ai` | Which Assistant the builds drive: `instance-ai` or `agents` (the Assistant agent on the Agents runtime). See [Running against the Assistant agent](#running-against-the-assistant-agent---assistant-runtime-agents). Not allowed with `--build-via-mcp` or `--prebuilt-workflows` |
 
 ### Eval LLM settings (env)
 
@@ -431,17 +431,18 @@ Comparison is logged and skipped on any LangSmith failure — it never fails the
 ## Running against the Assistant agent (`--assistant-runtime agents`)
 
 With `--assistant-runtime agents`, the harness drives the Assistant agent on the
-Agents runtime instead of the v1 Assistant. The same cases run on both runtimes,
+Agents runtime instead of the Instance AI runtime (`--assistant-runtime instance-ai`,
+the default). The same cases run on both runtimes,
 except compaction cases (see below).
 Lane setup reads `/rest/module-settings` and stops when
 `assistantAgentEnabled` is not true.
 
-The v2 transport is in `clients/assistant-agents-api.ts` and
-`harness/assistant-v2.ts`. `N8nClient` sends each thread-tied call there when
+The Agents transport is in `clients/assistant-agents-api.ts` and
+`harness/assistant-agents.ts`. `N8nClient` sends each thread-tied call there when
 the flag is set:
 
-| Step | v1 | Agents runtime |
-|------|----|----------------|
+| Step | `instance-ai` | `agents` |
+|------|---------------|----------|
 | Thread create / delete | `/rest/instance-ai/threads` | `/rest/assistant/eval/threads` (no source context) |
 | Mode, prompt version | On each message | Once per thread, `PUT /rest/assistant/eval/threads/:id/overrides`, before the first message |
 | Observer threshold | On each message | None. Memory uses the configured policy |
@@ -453,13 +454,13 @@ the flag is set:
 | Thread eval routes (credential pin, seeds, executions) | `/rest/instance-ai/eval/...` | `/rest/assistant/eval/...` |
 | Memory read | `GET /rest/instance-ai/eval/threads/:id/memory` | None |
 
-The wait loop rebuilds v1-shaped events from the history, so the outcome,
+The wait loop rebuilds Instance AI events from the history, so the outcome,
 transcript and metrics code is the same for both runtimes. Some data is not
-available on v2:
+available on the Agents runtime:
 
 - Usage has one synthetic step for each turn, so step counts are turn counts.
   The run-debug report has no prompts and no workflow code.
-- The build trace has no prompt configuration (v2 has no status route).
+- The build trace has no prompt configuration (the Agents runtime has no status route).
 - Delegated sub-agent tool calls are not rebuilt, only the top-level ones.
 - Memory tasks are not visible.
 

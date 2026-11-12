@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Turn wait and event rebuild for the Assistant agent on the Agents runtime.
 //
-// v2 has no thread event log. The harness polls the history route until the
+// The Agents runtime has no thread event log. The harness polls the history route until the
 // thread is quiet, answers open cards through `/chat/resume`, and rebuilds the
 // legacy event shapes from the history. The outcome, transcript and metrics
 // code reads those events and stays the same for both runtimes.
@@ -23,22 +23,22 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { BuildTimeout, CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 
-/** v1 tags orchestrator events with this agent id. The outcome code expects it. */
+/** Instance AI tags orchestrator events with this agent id. The outcome code expects it. */
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 /** Consecutive idle polls before a turn counts as finished. */
-export const ASSISTANT_V2_QUIET_POLLS = 3;
-export const ASSISTANT_V2_POLL_INTERVAL_MS = 1_500;
+export const ASSISTANT_AGENT_QUIET_POLLS = 3;
+export const ASSISTANT_AGENT_POLL_INTERVAL_MS = 1_500;
 
-/** The v2 calls that the wait loop makes. `AssistantAgentsApi` implements them. */
-export interface AssistantV2WaitClient {
+/** The Agents runtime calls that the wait loop makes. `AssistantAgentsApi` implements them. */
+export interface AssistantAgentWaitClient {
 	getHistory(threadId: string): Promise<AgentChatMessagesResponse>;
 	resume(runId: string, toolCallId: string, resumeData: InstanceAiConfirmRequest): Promise<void>;
 	getUsage(threadId: string): Promise<AgentThreadUsageResponse>;
 }
 
-export interface AssistantV2WaitConfig {
-	client: AssistantV2WaitClient;
+export interface AssistantAgentWaitConfig {
+	client: AssistantAgentWaitClient;
 	threadId: string;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
@@ -65,11 +65,13 @@ export interface AssistantV2WaitConfig {
  * `quietPolls` polls in a row. Answers open cards on the way.
  *
  * A card at the retry cap stays unanswered, so the thread stays busy until a
- * budget fires. v1 does the same: its run never finishes.
+ * budget fires. Instance AI does the same: its run never finishes.
  */
-export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig): Promise<void> {
-	const quietPolls = config.quietPolls ?? ASSISTANT_V2_QUIET_POLLS;
-	const pollIntervalMs = config.pollIntervalMs ?? ASSISTANT_V2_POLL_INTERVAL_MS;
+export async function waitForAssistantAgentActivity(
+	config: AssistantAgentWaitConfig,
+): Promise<void> {
+	const quietPolls = config.quietPolls ?? ASSISTANT_AGENT_QUIET_POLLS;
+	const pollIntervalMs = config.pollIntervalMs ?? ASSISTANT_AGENT_POLL_INTERVAL_MS;
 	const pause = config.pause ?? delay;
 	let quiet = 0;
 	let sawActivity = false;
@@ -102,7 +104,7 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 			};
 			try {
 				const body = await config.confirmationStrategy(event);
-				config.log(`[v2] Answering card ${requestId} with ${body.kind}`);
+				config.log(`[agents] Answering card ${requestId} with ${body.kind}`);
 				await config.client.resume(suspension.runId, suspension.toolCallId, body);
 				config.approvedRequests.add(requestId);
 				config.proxyResponses?.set(requestId, body);
@@ -111,7 +113,7 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 			} catch (error: unknown) {
 				config.confirmationRetries.set(requestId, retryCount + 1);
 				config.log(
-					`[v2] Failed to answer card ${requestId} (attempt ${String(retryCount + 1)}/${String(config.maxConfirmationRetries)}): ${error instanceof Error ? error.message : String(error)}`,
+					`[agents] Failed to answer card ${requestId} (attempt ${String(retryCount + 1)}/${String(config.maxConfirmationRetries)}): ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
@@ -123,8 +125,8 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 		} else if (sawActivity || executionMessagesSince(history.messages, config.sentAt).length > 0) {
 			quiet++;
 			if (quiet >= quietPolls) {
-				config.log(`[v2] Thread ${config.threadId} is quiet`);
-				// v1 rejects a turn that cannot run, so the build fails. v2 queues the
+				config.log(`[agents] Thread ${config.threadId} is quiet`);
+				// Instance AI rejects a turn that cannot run, so the build fails. The Agents runtime queues the
 				// message first and the turn fails later, so report that failure here.
 				const failure =
 					failedTurnWithoutOutput(history.messages, config.sentAt) ??
@@ -137,7 +139,7 @@ export async function waitForAssistantV2Activity(config: AssistantV2WaitConfig):
 	}
 }
 
-/** The card id the v1 code keys answers by. v2 cards without one use the tool call id. */
+/** The card id the Instance AI code keys answers by. Cards without one use the tool call id. */
 function requestIdOf(payload: Record<string, unknown>, toolCallId: string): string {
 	return typeof payload.requestId === 'string' && payload.requestId
 		? payload.requestId
@@ -147,7 +149,7 @@ function requestIdOf(payload: Record<string, unknown>, toolCallId: string): stri
 /**
  * The error of the latest turn since `since` when that turn failed before it
  * wrote any text or tool call. Undefined in every other case, so a turn that
- * fails part-way is graded on what it produced, like on v1.
+ * fails part-way is graded on what it produced, like on Instance AI.
  */
 export function failedTurnWithoutOutput(
 	messages: AgentPersistedMessageDto[],
@@ -191,7 +193,7 @@ function executionMessagesSince(
  * route, which lists every execution.
  */
 async function failedTurnWithoutMessage(
-	config: AssistantV2WaitConfig,
+	config: AssistantAgentWaitConfig,
 	messages: AgentPersistedMessageDto[],
 ): Promise<string | undefined> {
 	const latestExecutionId = executionMessagesSince(messages, config.sentAt).at(-1)?.executionId;
@@ -223,7 +225,7 @@ export function syncEventsFromHistory(
 	events.push(...merged);
 }
 
-/** v1 `run-finish` status for a settled v2 execution. Undefined while it still runs. */
+/** Instance AI `run-finish` status for a settled Agents execution. Undefined while it still runs. */
 function runFinishStatus(status: AgentExecutionStatus): string | undefined {
 	switch (status) {
 		case 'success':
@@ -240,7 +242,7 @@ function runFinishStatus(status: AgentExecutionStatus): string | undefined {
 }
 
 /**
- * Rebuild v1-shaped events from the assistant messages of live turns. A
+ * Rebuild Instance AI events from the assistant messages of live turns. A
  * message without `executionStatus` did not come from an execution of this
  * run (seeded history), so it is skipped: the seeded transcript covers it.
  */
@@ -291,7 +293,7 @@ export function eventsFromHistory(messages: AgentPersistedMessageDto[]): Capture
 			}
 		}
 		const status = runFinishStatus(message.executionStatus);
-		// v1 sends a run-level `error` event for a failed run. The failure summary
+		// Instance AI sends a run-level `error` event for a failed run. The failure summary
 		// and the provider-outage check read it.
 		if (status === 'error' && message.executionError) {
 			push(last, 'error', { content: message.executionError });
@@ -316,10 +318,10 @@ function firstTimestamp(message: AgentPersistedMessageDto): number {
 }
 
 /**
- * Express v2 thread usage in the run-debug shape, so the transcript headings
+ * Express Agents thread usage in the run-debug shape, so the transcript headings
  * and token totals work on both runtimes. One record per turn, keyed by the
  * execution id that the rebuilt events carry as `runId`. Each record has one
- * synthetic step with the turn total (its delegated runs included): v2 does
+ * synthetic step with the turn total (its delegated runs included): the Agents runtime does
  * not report LLM calls one by one, so step counts are turn counts here, and
  * the records carry no prompts and no workflow code.
  */

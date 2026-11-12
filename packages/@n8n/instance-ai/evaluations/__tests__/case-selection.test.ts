@@ -58,8 +58,8 @@ describe('selectCases on the Assistant agent', () => {
 		);
 	});
 
-	it('keeps the compaction cases on the v1 Assistant', () => {
-		const { args, logger } = setup('v1');
+	it('keeps the compaction cases on the Instance AI runtime', () => {
+		const { args, logger } = setup('instance-ai');
 
 		const { testCasesWithFiles } = selectCases(
 			args,

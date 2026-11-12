@@ -4,7 +4,7 @@ import {
 	eventsFromHistory,
 	runDebugFromUsage,
 	syncEventsFromHistory,
-} from '../harness/assistant-v2';
+} from '../harness/assistant-agents';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { USER_TURN_EVENT, type CapturedEvent } from '../types';
@@ -102,7 +102,7 @@ describe('eventsFromHistory', () => {
 		expect(events[7].data.payload).toEqual({ status: 'completed' });
 	});
 
-	it('feeds the outcome parser the same shapes as the v1 event log', () => {
+	it('feeds the outcome parser the same shapes as the Instance AI event log', () => {
 		const outcome = extractOutcomeFromEvents(eventsFromHistory([buildTurn]));
 
 		expect(outcome.toolCalls.map((call) => [call.toolName, call.error ?? 'ok'])).toEqual([
@@ -241,7 +241,7 @@ describe('eventsFromHistory', () => {
 			['exec-a', { status: 'error', error: 'Provider overloaded' }],
 			['exec-b', { status: 'cancelled' }],
 		]);
-		// A failed run also gets the run-level error event of v1.
+		// A failed run also gets the run-level error event of Instance AI.
 		expect(
 			events
 				.filter((event) => event.type === 'error')

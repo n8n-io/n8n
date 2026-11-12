@@ -1,6 +1,6 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
-import { runDebugFromUsage } from './assistant-v2';
+import { runDebugFromUsage } from './assistant-agents';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 
@@ -45,7 +45,7 @@ async function captureAllRuns(
 	logger?: EvalLogger,
 ): Promise<InstanceAiRunDebugResponse[]> {
 	try {
-		// v2 has no run debug. Its usage route gives tokens and cost for each turn.
+		// The Agents runtime has no run debug. Its usage route gives tokens and cost for each turn.
 		const agents = client.assistantAgents();
 		if (agents) {
 			const usage = await agents.getUsage(threadId, REQUEST_TIMEOUT_MS);

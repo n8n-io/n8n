@@ -16,7 +16,7 @@ import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { waitForAssistantV2Activity } from './assistant-v2';
+import { waitForAssistantAgentActivity } from './assistant-agents';
 import type { EvalLogger } from './logger';
 import { MIN_TURN_BUDGET_MS, RunTimeoutError } from './timeouts';
 import type { N8nClient } from '../clients/n8n-client';
@@ -133,9 +133,9 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 
 	const agents = config.client.assistantAgents();
 	if (agents) {
-		// No hidden follow-up turns and no background tasks on v2, and no route
+		// No hidden follow-up turns and no background tasks on the Agents runtime, and no route
 		// that reports memory tasks: the quiet polls give the observer its time.
-		await waitForAssistantV2Activity({
+		await waitForAssistantAgentActivity({
 			client: agents,
 			threadId: config.threadId,
 			events: config.events,
@@ -145,7 +145,7 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 			confirmationRetries: config.confirmationRetries,
 			maxConfirmationRetries: MAX_CONFIRMATION_RETRIES,
 			proxyResponses: config.proxyResponses,
-			// No inactivity bound: v2 events come from the stored history, which can
+			// No inactivity bound: these events come from the stored history, which can
 			// stay the same for minutes while a long tool call runs. The turn and
 			// conversation budgets still stop a turn that hangs.
 			timeoutBreach: () => elapsedBudgetBreach(config),

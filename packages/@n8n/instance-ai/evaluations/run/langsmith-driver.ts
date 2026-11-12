@@ -360,7 +360,7 @@ async function updateExperimentAggregates(config: {
 	 *  next to build_model so the experiment carries its own cost record — the
 	 *  external build isn't traced, so LangSmith can't compute this itself. */
 	mcpBuildSpend?: McpBuildSpend[];
-	/** Recorded only for the Agents runtime, so v1 experiments keep their metadata. */
+	/** Recorded only for the Agents runtime, so Instance AI experiments keep their metadata. */
 	assistantRuntime?: AssistantRuntime;
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =

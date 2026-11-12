@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// HTTP transport for the Assistant agent on the Agents runtime (v2).
+// HTTP transport for the Assistant agent on the Agents runtime.
 //
 // `N8nClient` owns one instance when the harness runs with
-// `--assistant-runtime agents`, and sends every thread-tied call here. The v1
-// routes stay in `n8n-client.ts`. To drop v1 later, keep this module and
-// delete the v1 branches there.
+// `--assistant-runtime agents`, and sends every thread-tied call here. The
+// Instance AI routes stay in `n8n-client.ts`. To drop that runtime later, keep
+// this module and delete the Instance AI branches there.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -19,7 +19,7 @@ import type {
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
-export const ASSISTANT_RUNTIMES = ['v1', 'agents'] as const;
+export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
 export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
 
 /** System-agent chat routes of the Assistant agent. */
@@ -31,7 +31,7 @@ export const ASSISTANT_AGENT_EVAL_BASE = '/rest/assistant/eval';
 /** Turn overrides of a thread: build mode and prompt version. */
 export type AssistantEvalThreadOverridesBody = InstanceAiAssistantEvalThreadOverridesRequest;
 
-/** The fields of a v2 chat message that the harness sets. */
+/** The fields of an Agents chat message that the harness sets. */
 export interface AssistantAgentMessageOptions {
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
@@ -168,7 +168,7 @@ export class AssistantAgentsApi {
 		throw new Error(
 			'--assistant-runtime agents needs the Assistant agent, but this instance reports ' +
 				"`module-settings['instance-ai'].assistantAgentEnabled` as not true. " +
-				'Enable the Assistant agent on the instance, or run with --assistant-runtime v1.',
+				'Enable the Assistant agent on the instance, or run with --assistant-runtime instance-ai.',
 		);
 	}
 
