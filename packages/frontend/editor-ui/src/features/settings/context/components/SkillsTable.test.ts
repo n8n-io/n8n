@@ -12,6 +12,8 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 
 import SkillsTable from './SkillsTable.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
@@ -122,6 +124,36 @@ describe('SkillsTable', () => {
 		const { getByTestId } = render([row]);
 
 		expect(getByTestId('skill-scope-badge')).toHaveTextContent(label);
+	});
+
+	it('shows the project icon beside a skill scope', () => {
+		mockedStore(useProjectsStore).myProjects = [
+			{ id: 'team-1', name: 'Marketing', type: 'team', icon: { type: 'emoji', value: '🚀' } },
+		] as ProjectListItem[];
+		const { getByTestId } = render([
+			skill({
+				scope: 'project',
+				projectId: 'team-1',
+				projectName: 'Marketing',
+				projectType: 'team',
+			}),
+		]);
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
+	});
+
+	it('shows the project icon from the server when the project is not listed', () => {
+		const { getByTestId } = render([
+			skill({
+				scope: 'project',
+				projectId: 'team-unlisted',
+				projectName: 'Finance',
+				projectType: 'team',
+				projectIcon: { type: 'emoji', value: '💰' },
+			}),
+		]);
+
+		expect(getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Finance/);
 	});
 
 	it('shows the creator name and email without an avatar', () => {

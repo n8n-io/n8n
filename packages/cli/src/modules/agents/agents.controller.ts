@@ -53,6 +53,7 @@ export class AgentsController {
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
 				config: payload.config,
+				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
 				// Keep the config name in sync with the entity name so the list and
 				// builder never disagree on a directly-seeded create. Narrowing
@@ -125,7 +126,9 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId, {
+			requireArchived: true,
+		});
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

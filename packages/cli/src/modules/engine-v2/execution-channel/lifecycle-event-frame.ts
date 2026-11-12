@@ -7,7 +7,7 @@ import {
 	type LifecycleEvent,
 } from '@n8n/engine';
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * The codec of the `lifecycle` topic. Each frame holds one event.

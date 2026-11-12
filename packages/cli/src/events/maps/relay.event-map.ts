@@ -28,7 +28,10 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
+import type {
+	ClosedHostStatus,
+	PromotionFailureKind,
+} from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -174,7 +177,7 @@ export type RelayEventMap = ModuleEventMap & {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
-		includeArchivedWorkflows: boolean;
+		includeArchived: boolean;
 	};
 
 	'n8n-package-export-failed': {
@@ -1349,6 +1352,18 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string;
 	};
 
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
@@ -1588,6 +1603,21 @@ export type RelayEventMap = ModuleEventMap & {
 		/** Time from the review opening to this approval. */
 		reviewAgeMs: number;
 		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-review-closed': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this close. */
+		reviewAgeMs: number;
+		/** What the host reported at close time. Null when the close failed before n8n asked the host. */
+		hostStatus: ClosedHostStatus | null;
+		outcome: 'closed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 	};

@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation, Role, User } from '../entities';

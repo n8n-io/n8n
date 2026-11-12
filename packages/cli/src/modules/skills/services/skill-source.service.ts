@@ -269,14 +269,17 @@ export class SkillSourceService {
 		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
 			throw new NotFoundError('Source not found');
 		}
-		if (!(await this.skillAccess.canOnSource(user, source, 'disconnect'))) {
+		// Resolve permissions before the transaction so a one-connection pool can run the delete.
+		const canDelete = await this.skillAccess.accessCheck(user, 'delete');
+		if (!canDelete(source)) {
 			throw new ForbiddenError('You are not allowed to delete this source.');
 		}
+		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
 				if (!locked) throw new NotFoundError('Source not found');
-				if (!(await this.skillAccess.canOnSource(user, locked, 'disconnect'))) {
+				if (!canDelete(locked)) {
 					throw new ForbiddenError('You are not allowed to delete this source.');
 				}
 				const links = await this.sourceRepository.findLinksBySource(sourceId, ctx);
@@ -292,7 +295,6 @@ export class SkillSourceService {
 					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);
 				}
 				if (agentIds.size > 0) {
-					const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 					const agents = await this.skillUsage.findAgents([...agentIds], ctx);
 					const visible = [...agents].filter(
 						([, agent]) => readable === null || readable.includes(agent.projectId),

@@ -1,4 +1,5 @@
 import { SKILL_SYNC_FLAG, type SkillSourceDeleteBlock } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -15,7 +16,6 @@ import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';

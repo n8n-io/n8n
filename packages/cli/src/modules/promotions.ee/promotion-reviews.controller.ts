@@ -32,6 +32,17 @@ export class PromotionReviewsController {
 		return await this.reviews.approve(req.user, reviewId, body);
 	}
 
+	@Post('/:reviewId/close')
+	@GlobalScope('promotions:approveReviews')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	async close(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('reviewId') reviewId: string,
+	): Promise<InboxPromotionReviewItem> {
+		return await this.reviews.close(req.user, reviewId);
+	}
+
 	@Get('/:reviewId/changes')
 	@GlobalScope('promotions:readReviews')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)

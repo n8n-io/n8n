@@ -13,7 +13,8 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, UnexpectedError, UserError, type IWorkflowSettings } from 'n8n-workflow';
+import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';

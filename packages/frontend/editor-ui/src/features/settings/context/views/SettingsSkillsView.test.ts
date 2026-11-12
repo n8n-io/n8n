@@ -920,6 +920,25 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
+		it('passes the fetched project type to the modal for an unlisted personal project', async () => {
+			const projectSkill = {
+				scope: 'project' as const,
+				projectId: 'other-personal',
+				projectName: 'Ada Lovelace <ada@example.com>',
+				projectType: 'personal' as const,
+			};
+			skillsStore.skills = [skill(projectSkill)];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail(projectSkill));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+
+			await waitFor(() => expect(lastModalData().projectType).toBe('personal'));
+			expect(lastModalData().initialScope).toBe('project:other-personal');
+		});
+
 		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
 			const usedBy = {
 				drafts: [
@@ -1321,6 +1340,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: false,
 			};
@@ -1680,6 +1700,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: true,
 			};

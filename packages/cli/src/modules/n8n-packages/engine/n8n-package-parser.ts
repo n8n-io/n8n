@@ -214,6 +214,7 @@ export class N8nPackageParser {
 			name: agent.name,
 			config: agent.config,
 			availableInMCP: agent.availableInMCP,
+			isArchived: agent.isArchived ?? false,
 			metadata,
 			tools: agent.tools,
 			tasks: agent.tasks,

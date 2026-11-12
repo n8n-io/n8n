@@ -17,14 +17,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
         title="Copy to Clipboard"
         type="button"
       >
-        <transition-stub
-          appear="false"
-          css="true"
-          name="n8n-button-fade"
-          persisted="false"
-        >
-          <!--v-if-->
-        </transition-stub>
+        <!--v-if-->
         <div
           class="button-inner"
         >
