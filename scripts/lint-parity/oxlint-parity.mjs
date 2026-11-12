@@ -209,21 +209,27 @@ async function declaredJsPluginRules() {
 	};
 	visit(mod.default);
 
-	// Resolve each sampled file on its own, as for native rules. A rule that an
-	// override turns down on every sampled file is enforced on none of them.
+	// Resolve each sampled file on its own, as for native rules. Oxlint merges the
+	// top-level `rules` of every config in `extends` first, then applies each
+	// matching override in order, so an override wins over a top-level rule of the
+	// config that extends it. A rule that an override turns down on every sampled
+	// file is enforced on none of them.
+	const topLevel = new Map();
+	const overrides = [];
+	const collect = (config) => {
+		for (const parent of config.extends ?? []) collect(parent);
+		for (const [id, severity] of Object.entries(config.rules ?? {})) topLevel.set(id, severity);
+		overrides.push(...(config.overrides ?? []));
+	};
+	collect(mod.default);
 	const severitiesFor = (file) => {
-		const severities = new Map();
-		const apply = (config) => {
-			for (const parent of config.extends ?? []) apply(parent);
-			for (const [id, severity] of Object.entries(config.rules ?? {})) severities.set(id, severity);
-			for (const override of config.overrides ?? []) {
-				if (!overrideMatchesFile(override, file)) continue;
-				for (const [id, severity] of Object.entries(override.rules ?? {})) {
-					severities.set(id, severity);
-				}
+		const severities = new Map(topLevel);
+		for (const override of overrides) {
+			if (!overrideMatchesFile(override, file)) continue;
+			for (const [id, severity] of Object.entries(override.rules ?? {})) {
+				severities.set(id, severity);
 			}
-		};
-		apply(mod.default);
+		}
 		return severities;
 	};
 	const ids = new Set();
