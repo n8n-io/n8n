@@ -53,6 +53,7 @@ export class SimulationSessionService {
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
+		// A chat that is already a test run stays one, even if the flag reads off for a moment.
 		const cached = this.sessions.get(input.testChatId);
 		if (cached) {
 			this.sessions.touch(input.testChatId);
@@ -100,6 +101,8 @@ export class SimulationSessionService {
 				tool.kind === 'mcp' && tool.url ? [{ name: tool.toolName, url: tool.url }] : [],
 			),
 			recordTestChat: async (current) => await this.saveTestChat(current),
+			queueMode: this.executionsConfig.mode === 'queue',
+			previousWorld: savedWorld,
 		});
 		this.sessions.set(input.testChatId, session);
 		return session;

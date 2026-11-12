@@ -106,6 +106,10 @@ export interface SimulationSessionInit {
 	mcpServers?: McpServerRef[];
 	/** Stores the test chat marker. Runs before each turn starts. */
 	recordTestChat?: (session: SimulationSession) => Promise<void>;
+	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
+	queueMode?: boolean;
+	/** The world stored earlier, kept when a new one fails to open. */
+	previousWorld?: StoredSimulationWorld;
 }
 
 /** Guards every tool call of one test chat and records each call's route. Fails closed. */
@@ -123,6 +127,10 @@ export class SimulationSession {
 	private capabilities: Map<string, ToolTestCapability>;
 
 	private readonly recordTestChat: SimulationSessionInit['recordTestChat'];
+
+	private readonly queueMode: boolean;
+
+	private readonly previousWorld: StoredSimulationWorld | undefined;
 
 	// A cached runtime keeps this session's hooks, so a replacement session needs its own runtime.
 	private readonly instanceId = randomUUID();
@@ -144,6 +152,8 @@ export class SimulationSession {
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
 		this.mcpServers = init.mcpServers ?? [];
 		this.recordTestChat = init.recordTestChat;
+		this.queueMode = init.queueMode ?? false;
+		this.previousWorld = init.previousWorld;
 	}
 
 	/**
@@ -156,7 +166,8 @@ export class SimulationSession {
 
 	/** The marker and world to store on the test chat's thread. */
 	storedTestChat(): StoredTestChat {
-		const world = this.storedWorld();
+		// After an outage, keep the earlier world so the chat can continue it later.
+		const world = this.storedWorld() ?? this.previousWorld;
 		return { testRun: true, ...(world ? { world } : {}) };
 	}
 
@@ -237,8 +248,15 @@ export class SimulationSession {
 			);
 			if (gap) return blocked('not_simulatable', gap);
 		}
+		// Checked on the runtime tool, so a stale or same-name list entry cannot allow it.
+		if (classification.kind === 'workflow' && this.queueMode) {
+			return blocked(
+				'not_simulatable',
+				'Workflow tools cannot run in a test run in queue mode yet.',
+			);
+		}
 		const capability = this.capabilities.get(classification.key);
-		if (!capability) {
+		if (!capability || capability.kind !== classification.kind) {
 			return blocked('not_simulatable', 'This kind of tool cannot run in a test run yet.');
 		}
 		if (capability.testability === 'blocked') {
@@ -381,12 +399,25 @@ function blocked(reason: ToolCallReason, detail?: string): ToolCallSimulation {
 }
 
 function requestUrl(options: IHttpRequestOptions): string {
-	if (!options.baseURL) return options.url;
+	// Join like axios: a relative path is appended to `baseURL`, keeping the base path.
+	const joined =
+		options.baseURL && !/^[a-z][a-z\d+.-]*:\/\//i.test(options.url)
+			? `${options.baseURL.replace(/\/+$/, '')}/${options.url.replace(/^\/+/, '')}`
+			: options.url;
+	let url: URL;
 	try {
-		return new URL(options.url, options.baseURL).toString();
+		url = new URL(joined);
 	} catch {
-		return `${options.baseURL}${options.url}`;
+		return joined;
 	}
+	// Nodes often pass search terms, filters and ids in `qs` instead of the URL.
+	for (const [name, value] of Object.entries(options.qs ?? {})) {
+		for (const item of Array.isArray(value) ? value : [value]) {
+			if (item === undefined || item === null) continue;
+			url.searchParams.append(name, typeof item === 'object' ? JSON.stringify(item) : `${item}`);
+		}
+	}
+	return url.toString();
 }
 
 function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
