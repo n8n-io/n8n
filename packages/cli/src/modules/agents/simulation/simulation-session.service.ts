@@ -15,6 +15,7 @@ import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { summarizeTools } from '../evaluation/evaluation-config';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 import { toAgentDocument } from '../json-config/agent-document';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { nodeSimulationGap } from './non-http-node-types';
@@ -35,7 +36,8 @@ export interface OpenSimulationInput {
 
 /**
  * Decides whether a draft run is a test run and gives it the session of its
- * test chat. With the flag off, draft runs stay live.
+ * test chat. A test chat stays a test run after the flag turns off, so a
+ * resumed approval never runs for real.
  */
 @Service()
 export class SimulationSessionService {
@@ -50,12 +52,12 @@ export class SimulationSessionService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRefs: AgentSkillRefsService,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 	) {}
 
 	/** The session of a test run, or `undefined` for a live run. */
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 		const cached = this.sessions.get(input.testChatId);
 		if (cached) {
 			this.sessions.touch(input.testChatId);
@@ -65,6 +67,10 @@ export class SimulationSessionService {
 			);
 			return cached;
 		}
+		const thread = await this.threadRepository.findOneBy({ id: input.testChatId });
+		const stored = thread?.simulation ?? undefined;
+		if (!stored && !(await this.flagGate.isEnabled(input.user))) return undefined;
+		const savedWorld = stored?.world;
 
 		const described = await this.describeAgent(input.agentId, input.projectId);
 		const capabilities = await this.capabilitiesFor(described);
@@ -80,6 +86,7 @@ export class SimulationSessionService {
 					testChatId: input.testChatId,
 					agent,
 					firstMessage: input.message,
+					...(savedWorld?.backend === backend.id ? { saved: savedWorld.state } : {}),
 				});
 			} catch (error) {
 				unavailableDetail = 'The simulator could not start.';
@@ -94,9 +101,22 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
+			recordTestChat: async (current) => await this.saveTestChat(current),
 		});
 		this.sessions.set(input.testChatId, session);
 		return session;
+	}
+
+	/**
+	 * Store the test chat marker and the world on the thread, so later turns,
+	 * restarts and other mains continue the same test run. A failed write fails
+	 * the turn rather than letting a later turn run live.
+	 */
+	async saveTestChat(session: SimulationSession): Promise<void> {
+		await this.threadRepository.update(
+			{ id: session.testChatId },
+			{ simulation: session.storedTestChat() },
+		);
 	}
 
 	async markExecutionSimulated(executionId: string): Promise<void> {

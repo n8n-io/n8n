@@ -1,4 +1,5 @@
 import type { ToolTestCapability, ToolTestKind } from '@n8n/api-types';
+import type { JsonObject } from 'n8n-workflow';
 
 /**
  * The contract between n8n and a simulation backend.
@@ -18,8 +19,10 @@ export interface SimulationBackend {
 	describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]>;
 
 	/**
-	 * Open the world of one test chat. n8n keeps the world for the chat's later
-	 * turns. A new test chat gets a new world.
+	 * Open the world of one test chat. `saved` is what an earlier
+	 * `SimulationWorld.save()` returned for the same test chat, so the same
+	 * world continues on each turn and after a restart. A new test chat has no
+	 * saved state and gets a new world.
 	 */
 	openWorld(input: OpenWorldInput): Promise<SimulationWorld>;
 }
@@ -31,6 +34,26 @@ export interface OpenWorldInput {
 	agent: SimulatedAgent;
 	/** The first message of the test chat. A backend can use it to seed the world. */
 	firstMessage: string;
+	saved?: SavedSimulationWorld;
+}
+
+/** JSON that n8n stores with the test chat. */
+export type SavedSimulationWorld = JsonObject;
+
+/** A simulated world as n8n stores it with the test chat. */
+export interface StoredSimulationWorld {
+	backend: SimulationBackendId;
+	worldId: string;
+	state: SavedSimulationWorld;
+}
+
+/**
+ * What n8n stores on the test chat's thread row. Its presence alone makes every
+ * later turn and resume of the chat a test run, also without a world.
+ */
+export interface StoredTestChat {
+	testRun: true;
+	world?: StoredSimulationWorld;
 }
 
 export interface SimulationWorld {
@@ -39,6 +62,9 @@ export interface SimulationWorld {
 
 	/** Answer one request that a tool would have sent. Never send it anywhere real. */
 	handleRequest(request: OutboundRequest, call: ToolCallContext): Promise<SimulatedReply>;
+
+	/** The state to store with the test chat, so that `openWorld` can continue this world. */
+	save(): SavedSimulationWorld;
 }
 
 export interface OutboundRequest {

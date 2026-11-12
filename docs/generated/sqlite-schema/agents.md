@@ -218,6 +218,7 @@ erDiagram
   varchar_128_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
+  TEXT simulation
   varchar_32_ taskId
   TEXT taskStop
   varchar_36_ taskVersionId FK

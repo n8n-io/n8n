@@ -2298,6 +2298,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(simulation).toHaveBeenCalledWith('thread-1');
+		expect(session.markTestChat).toHaveBeenCalled();
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({ simulation: session, allowBackgroundTasks: false }),
 		);

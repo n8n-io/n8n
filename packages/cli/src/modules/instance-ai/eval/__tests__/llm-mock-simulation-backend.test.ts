@@ -103,4 +103,23 @@ describe('LlmMockSimulationBackend', () => {
 			),
 		).resolves.toMatchObject({ outcome: 'unsupported' });
 	});
+
+	it('continues a saved world without generating a new seed', async () => {
+		const { backend } = setup();
+		const first = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		vi.mocked(generateAgentScenarioSeed).mockClear();
+
+		const second = await backend.openWorld({
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'a later turn',
+			saved: first.save(),
+		});
+
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(second.worldId).toBe(first.worldId);
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ scenarioHints: 'hi', globalContext: seed.globalContext }),
+		);
+	});
 });

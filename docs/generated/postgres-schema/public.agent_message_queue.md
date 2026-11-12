@@ -123,6 +123,7 @@ erDiagram
   varchar_128_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
+  json simulation
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK

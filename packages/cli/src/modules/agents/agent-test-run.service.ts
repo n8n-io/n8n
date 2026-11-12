@@ -506,13 +506,16 @@ export class AgentTestRunService {
 		return { ...chunk, simulation };
 	}
 
-	/** Marks the execution as a test run. */
+	/** Marks the execution as a test run and stores the world on the test chat. */
 	private async recordSimulation(
 		session: SimulationSession | undefined,
 		executionId: string | undefined,
 	): Promise<void> {
-		if (!session || !executionId) return;
-		await this.simulationSessions.markExecutionSimulated(executionId);
+		if (!session) return;
+		await Promise.all([
+			executionId ? this.simulationSessions.markExecutionSimulated(executionId) : undefined,
+			this.simulationSessions.saveTestChat(session),
+		]);
 	}
 
 	private observeDraftChunk(

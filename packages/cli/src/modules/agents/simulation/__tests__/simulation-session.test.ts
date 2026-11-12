@@ -14,6 +14,7 @@ function makeWorld(
 		worldId: 'world-1',
 		backend: 'llm-mock',
 		handleRequest: vi.fn(async () => (typeof reply === 'function' ? await reply() : reply)),
+		save: vi.fn(() => ({ seed: 'abc' })),
 	};
 }
 
@@ -299,19 +300,24 @@ describe('SimulationSession', () => {
 		expect(world.handleRequest).not.toHaveBeenCalled();
 	});
 
-	it('gives each session its own runtime cache key', () => {
+	it('keeps the world state for the test chat', () => {
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
 			capabilities: [],
 		});
+
+		expect(session.storedWorld()).toEqual({
+			backend: 'llm-mock',
+			worldId: 'world-1',
+			state: { seed: 'abc' },
+		});
+		expect(session.runtimeCacheKey).toMatch(/^simulation:chat-1:/);
 		const replacement = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
 			capabilities: [],
 		});
-
-		expect(session.runtimeCacheKey).toMatch(/^simulation:chat-1:/);
 		expect(replacement.runtimeCacheKey).not.toBe(session.runtimeCacheKey);
 	});
 

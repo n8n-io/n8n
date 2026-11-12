@@ -1493,6 +1493,9 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
+			...(config.simulationSession
+				? { onAdmitted: async () => await config.simulationSession?.markTestChat() }
+				: {}),
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
@@ -1808,12 +1811,15 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
-			onAdmitted: async () =>
+			onAdmitted: async () => {
 				await this.integrationMessageContextService.setLatest(
 					memory.threadId,
 					memory.resourceId,
 					messageContext,
-				),
+				);
+				// Before the agent runs: a later turn of this chat must never run live.
+				await config.simulationSession?.markTestChat();
+			},
 			access: setup.access,
 			messageContext,
 			agentInstance: runtime.agent,

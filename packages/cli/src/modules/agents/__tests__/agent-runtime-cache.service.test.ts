@@ -154,6 +154,7 @@ describe('AgentRuntimeCacheService', () => {
 			worldId: 'world-1',
 			backend: 'llm-mock' as const,
 			handleRequest: vi.fn(),
+			save: () => ({}),
 		};
 		const session = new SimulationSession({ testChatId: 'chat-1', world, capabilities: [] });
 		const otherSession = new SimulationSession({ testChatId: 'chat-2', world, capabilities: [] });

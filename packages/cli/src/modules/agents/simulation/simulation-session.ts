@@ -24,6 +24,8 @@ import type {
 	SimulatedReply,
 	SimulationBackendId,
 	SimulationWorld,
+	StoredSimulationWorld,
+	StoredTestChat,
 } from './tool-simulation.contracts';
 
 /**
@@ -99,6 +101,8 @@ export interface SimulationSessionInit {
 	unavailableDetail?: string;
 	/** Testability of each tool, keyed by tool name (MCP: server name). */
 	capabilities: ToolTestCapability[];
+	/** Stores the test chat marker. Runs before each turn starts. */
+	recordTestChat?: (session: SimulationSession) => Promise<void>;
 }
 
 /**
@@ -121,6 +125,8 @@ export class SimulationSession {
 
 	private capabilities: Map<string, ToolTestCapability>;
 
+	private readonly recordTestChat: SimulationSessionInit['recordTestChat'];
+
 	/**
 	 * A runtime keeps the hooks of the session it was built for. A session that
 	 * replaces an expired one for the same chat must not reuse that runtime.
@@ -138,6 +144,27 @@ export class SimulationSession {
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
+		this.recordTestChat = init.recordTestChat;
+	}
+
+	/**
+	 * Store that this chat is a test chat before the turn runs, so that a later
+	 * turn never runs live, even after a restart or with the flag off.
+	 */
+	async markTestChat(): Promise<void> {
+		await this.recordTestChat?.(this);
+	}
+
+	/** The marker and world to store on the test chat's thread. */
+	storedTestChat(): StoredTestChat {
+		const world = this.storedWorld();
+		return { testRun: true, ...(world ? { world } : {}) };
+	}
+
+	/** What to store on the test chat's thread. `undefined` when no world is open. */
+	storedWorld(): StoredSimulationWorld | undefined {
+		if (!this.world) return undefined;
+		return { backend: this.world.backend, worldId: this.world.worldId, state: this.world.save() };
 	}
 
 	/** Separates this chat's runtime from every other runtime in the cache. */

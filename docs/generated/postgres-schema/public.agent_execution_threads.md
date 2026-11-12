@@ -15,6 +15,7 @@
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
 | sessionNumber | integer | 0 | false |  |  |  |
+| simulation | json |  | true |  |  | Test chat marker and simulated world (backend, worldId, state). Null for a live chat. |
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
 | taskStop | json |  | true |  |  | Latest task stop boundary and unresolved stop errors |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
@@ -84,6 +85,7 @@ erDiagram
   varchar_128_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
+  json simulation
   varchar_32_ taskId
   json taskStop
   varchar_36_ taskVersionId FK

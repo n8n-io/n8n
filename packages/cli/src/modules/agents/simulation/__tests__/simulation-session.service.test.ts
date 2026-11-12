@@ -5,7 +5,9 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
+import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { ProjectAgent } from '../../entities/agent.entity';
+import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { SafeTestingFlagGate } from '../safe-testing-flag-gate';
@@ -48,14 +50,17 @@ const world: SimulationWorld = {
 	worldId: 'world-1',
 	backend: 'llm-mock',
 	handleRequest: vi.fn(),
+	save: () => ({ seed: 'abc' }),
 };
 
 function setup({
 	flagOn = true,
+	stored,
 	backend,
 	queueMode = false,
 }: {
 	flagOn?: boolean;
+	stored?: AgentExecutionThread['simulation'];
 	backend?: SimulationBackend;
 	queueMode?: boolean;
 } = {}) {
@@ -72,6 +77,10 @@ function setup({
 	} as unknown as ProjectAgent);
 	const skillRefs = mock<AgentSkillRefsService>();
 	skillRefs.refsForDraft.mockResolvedValue([] as never);
+	const threadRepository = mock<AgentExecutionThreadRepository>();
+	threadRepository.findOneBy.mockResolvedValue(
+		stored === undefined ? null : ({ simulation: stored } as AgentExecutionThread),
+	);
 	const executionRepository = mock<AgentExecutionRepository>();
 	const service = new SimulationSessionService(
 		mock<Logger>(),
@@ -80,9 +89,10 @@ function setup({
 		mock<ExecutionsConfig>({ mode: queueMode ? 'queue' : 'regular' }),
 		agentRepository,
 		skillRefs,
+		threadRepository,
 		executionRepository,
 	);
-	return { service, executionRepository };
+	return { service, threadRepository, executionRepository };
 }
 
 function llmBackend(): SimulationBackend {
@@ -116,6 +126,22 @@ describe('SimulationSessionService', () => {
 		expect(backend.openWorld).not.toHaveBeenCalled();
 	});
 
+	it('keeps a test chat simulated after the flag turns off', async () => {
+		const backend = llmBackend();
+		const stored = {
+			testRun: true as const,
+			world: { backend: 'llm-mock' as const, worldId: 'world-1', state: { seed: 'abc' } },
+		};
+		const { service } = setup({ flagOn: false, stored, backend });
+
+		const session = await service.openForDraftRun(openInput);
+
+		expect(session?.worldId).toBe('world-1');
+		expect(backend.openWorld).toHaveBeenCalledWith(
+			expect.objectContaining({ testChatId: 'chat-1', saved: { seed: 'abc' } }),
+		);
+	});
+
 	it('opens one world for each test chat and reuses it on the next turn', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ backend });
@@ -138,6 +164,7 @@ describe('SimulationSessionService', () => {
 		const session = await service.openForDraftRun(openInput);
 
 		expect(session?.worldId).toBeUndefined();
+		expect(session?.storedWorld()).toBeUndefined();
 	});
 
 	it('blocks every call when the world fails to open, without falling back', async () => {
@@ -192,14 +219,46 @@ describe('SimulationSessionService', () => {
 		});
 	});
 
-	it('marks the execution as a test run', async () => {
-		const { service, executionRepository } = setup({ backend: llmBackend() });
+	it('stores the world on the test chat and marks the execution', async () => {
+		const { service, threadRepository, executionRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
 
+		await session!.markTestChat();
 		await service.markExecutionSimulated('execution-1');
 
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{
+				simulation: {
+					testRun: true,
+					world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'abc' } },
+				},
+			},
+		);
 		expect(executionRepository.update).toHaveBeenCalledWith(
 			{ id: 'execution-1' },
 			{ simulated: true },
 		);
+	});
+
+	it('keeps a chat that started without a simulator a test chat', async () => {
+		const { service, threadRepository } = setup();
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat();
+
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{ simulation: { testRun: true } },
+		);
+	});
+
+	it('keeps a marked chat a test run with the flag off, even without a stored world', async () => {
+		const { service } = setup({ flagOn: false, stored: { testRun: true } });
+
+		const session = await service.openForDraftRun(openInput);
+
+		expect(session).toBeDefined();
+		expect(session?.worldId).toBeUndefined();
 	});
 });
