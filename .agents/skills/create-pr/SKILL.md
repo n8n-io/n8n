@@ -74,6 +74,8 @@ comma and a space: `fix(core, editor): ...`.
    - Type: What kind of change is this?
    - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
    - Summary: What does the change do? Start it with a capital letter.
+   - Insights: What did the session (debugging, measurements, user
+     discussion) find that a reviewer would otherwise miss?
 
 5. **Identify feature flag test settings**: Inspect the full PR diff for new
    PostHog flags. Record the keys and values needed to test the new behavior
@@ -176,6 +178,10 @@ plain technical verbs, no metaphors.
      that forced the design, a workaround, or a known gap or follow-up.
    - **Rejected alternative:** only when a reviewer would suggest it. Give one
      sentence with the concrete reason it fails.
+   - **Insight from the work:** a surprising fact that you found while you
+     made the change and that the diff and the ticket do not show. For
+     example, a measurement, a reproduction detail, a cause found while
+     debugging, or an error in the ticket.
 3. Leave out what the diff shows: file lists, renamed fields, call order, test
    names, error cases, and descriptions of the code. Leave out framework
    behaviour that reviewers know.
