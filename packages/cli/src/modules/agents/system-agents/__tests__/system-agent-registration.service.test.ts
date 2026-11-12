@@ -36,6 +36,7 @@ describe('SystemAgentRegistrationService', () => {
 
 	it('gives the instance agent an identity before it registers the provider', async () => {
 		const { service, agentServiceAccount, registry, provider } = setup();
+		const registerSpy = vi.spyOn(registry, 'register');
 
 		await service.register(provider);
 
@@ -43,7 +44,18 @@ describe('SystemAgentRegistrationService', () => {
 			'other-agent',
 			'Other Agent',
 		);
+		expect(agentServiceAccount.assignToInstanceAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			registerSpy.mock.invocationCallOrder[0],
+		);
 		expect(registry.get('other-agent')).toBe(provider);
+	});
+
+	it('does not register a provider whose instance agent cannot get an identity', async () => {
+		const { service, agentServiceAccount, registry, provider } = setup();
+		agentServiceAccount.assignToInstanceAgent.mockRejectedValue(new Error('identity failed'));
+
+		await expect(service.register(provider)).rejects.toThrow('identity failed');
+		expect(registry.has('other-agent')).toBe(false);
 	});
 
 	it('does not register a provider whose agent row cannot be seeded', async () => {
