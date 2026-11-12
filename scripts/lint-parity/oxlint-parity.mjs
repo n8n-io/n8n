@@ -160,14 +160,21 @@ function resolvedNativeRules() {
 		throw new Error(`oxlint --print-config failed: ${(out.stderr || out.stdout).trim()}`);
 	}
 	const parsed = JSON.parse(out.stdout.slice(start));
-	return [
-		...Object.entries(parsed.rules ?? {}),
-		...(parsed.overrides ?? [])
-			.filter(overrideMatchesSample)
-			.flatMap(({ rules }) => Object.entries(rules ?? {})),
-	]
-		.filter(([, severity]) => isEnabled(severity))
-		.map(([id]) => id);
+	// Resolve each sampled file on its own: the top-level table, then each
+	// override that matches the file, in order. A rule that an override turns
+	// down on every sampled file is enforced on none of them.
+	const ids = new Set();
+	for (const file of sampledFiles) {
+		const severities = new Map(Object.entries(parsed.rules ?? {}));
+		for (const override of parsed.overrides ?? []) {
+			if (!overrideMatchesFile(override, file)) continue;
+			for (const [id, severity] of Object.entries(override.rules ?? {})) {
+				severities.set(id, severity);
+			}
+		}
+		for (const [id, severity] of severities) if (isEnabled(severity)) ids.add(id);
+	}
+	return [...ids];
 }
 
 /**
