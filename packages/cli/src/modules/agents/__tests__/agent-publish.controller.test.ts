@@ -54,6 +54,8 @@ describe('AgentPublishController route access scopes', () => {
 	it.each([
 		['publish', 'agent:publish'],
 		['unpublish', 'agent:unpublish'],
+		['archive', 'agent:delete'],
+		['unarchive', 'agent:delete'],
 		['revertToPublished', 'agent:update'],
 		['revertToVersion', 'agent:update'],
 		['listVersions', 'agent:read'],
@@ -185,6 +187,48 @@ describe('AgentPublishController revert to version', () => {
 		).rejects.toThrow(LockedError);
 
 		expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentPublishController archive state', () => {
+	it.each([
+		['archive', 'archiveAgent'],
+		['unarchive', 'unarchiveAgent'],
+	] as const)('%s validates the write lock and calls %s', async (handlerName, serviceMethod) => {
+		const { controller, collaborationService, agentPublishService, agentValidationService } =
+			makeController();
+		agentPublishService[serviceMethod].mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+
+		await controller[handlerName](
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			'project-1',
+			'agent-1',
+			handlerName,
+		);
+		expect(agentPublishService[serviceMethod]).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ id: 'user-1' },
+			'push-ref-1',
+		);
 	});
 });
 

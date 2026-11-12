@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
@@ -44,7 +44,6 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
@@ -3867,7 +3866,7 @@ describe('TelemetryEventRelay', () => {
 					tags: 2,
 				},
 				credentialExportPolicy: 'expression-values-only',
-				includeArchivedWorkflows: true,
+				includeArchived: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);

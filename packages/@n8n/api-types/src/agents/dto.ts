@@ -96,6 +96,7 @@ const agentListFilterSchema = z
 		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
+		includeArchived: z.boolean().optional(),
 	})
 	.strict();
 
@@ -299,6 +300,7 @@ const agentPublicShape = {
 	projectId: z.string(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
 	versionId: z.string().nullable(),
 	activeVersionId: z.string().nullable(),
 	createdAt: z.string(),
@@ -334,6 +336,7 @@ const agentListItemShape = {
 	projectId: z.string(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
 	versionId: z.string().nullable(),
 	activeVersionId: z.string().nullable(),
 	createdAt: z.string(),
@@ -366,6 +369,7 @@ const updateAgentObjectSchema = z
 		projectId: strippedAgentField,
 		project: strippedAgentField,
 		availableInMCP: strippedAgentField,
+		isArchived: strippedAgentField,
 		versionId: strippedAgentField,
 		activeVersionId: strippedAgentField,
 		createdAt: strippedAgentField,

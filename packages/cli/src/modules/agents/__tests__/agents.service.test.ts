@@ -926,6 +926,19 @@ describe('AgentsService', () => {
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
+	it('deletes only an archived agent when the caller requires the archive', async () => {
+		const { service, agentRepository } = makeService();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await expect(service.delete(agentId, projectId, { requireArchived: true })).rejects.toThrow(
+			'Agent must be archived before it can be deleted.',
+		);
+		expect(agentRepository.remove).not.toHaveBeenCalled();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		await expect(service.delete(agentId, projectId, { requireArchived: true })).resolves.toBe(true);
+	});
+
 	it('returns false when deleting a missing agent', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);

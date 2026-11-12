@@ -105,6 +105,7 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		projectId: 'project-1',
 		project: null,
 		availableInMCP: false,
+		isArchived: false,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',

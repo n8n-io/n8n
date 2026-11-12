@@ -2,6 +2,7 @@
 import debounce from 'lodash/debounce';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -28,7 +29,7 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import type { AgentTemplate } from '../agentTemplates';
 import { toAgentListItem, type Agent, type AgentListItem } from '../agent.types';
-import type { AgentListRowResource } from '../types';
+import type { AgentListRowResource, AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 import AgentsListIntro from '../components/AgentsListIntro.vue';
@@ -77,7 +78,11 @@ const allAgents = ref<AgentListItem[]>([]);
 const agentRows = computed<AgentListRowResource[]>(() =>
 	allAgents.value.map((agent) => ({ ...agent, resourceType: 'agent' })),
 );
-const filters = ref<BaseFilters>({ search: '', homeProject: '' });
+const filters = ref<BaseFilters>({
+	search: '',
+	homeProject: '',
+	showArchived: route.query.showArchived === 'true',
+});
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
@@ -110,6 +115,14 @@ const sortFns = {
 	nameDesc: (a: AgentListItem, b: AgentListItem) => b.name.localeCompare(a.name),
 };
 
+function buildListFilter() {
+	const filter = {
+		...(filters.value.search ? { query: filters.value.search } : {}),
+		...(filters.value.showArchived === true ? { includeArchived: true } : {}),
+	};
+	return Object.keys(filter).length > 0 ? filter : undefined;
+}
+
 async function fetchAgents() {
 	const shouldDelayLoading = allAgents.value.length > 0;
 	const delayedLoading = debounce(() => {
@@ -127,7 +140,7 @@ async function fetchAgents() {
 			skip: (currentPage.value - 1) * pageSize.value,
 			take: pageSize.value,
 			sortBy: currentSort.value,
-			filter: filters.value.search ? { query: filters.value.search } : undefined,
+			filter: buildListFilter(),
 		};
 		const { count, data } = projectId.value
 			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
@@ -225,6 +238,29 @@ function onAgentDeleted(agentId: string) {
 	void fetchAgents();
 }
 
+function onAgentArchived(updated: AgentResource) {
+	if (filters.value.showArchived === true) {
+		onAgentUnpublished(updated);
+		return;
+	}
+	onAgentDeleted(updated.id);
+}
+
+watch(
+	() => filters.value.showArchived === true,
+	async (showArchived) => {
+		const query = { ...route.query };
+		if (showArchived) {
+			query.showArchived = 'true';
+		} else {
+			delete query.showArchived;
+		}
+		await router.replace({ query });
+		currentPage.value = 1;
+		await fetchAgents();
+	},
+);
+
 async function onSearchUpdated(search: string) {
 	filters.value = { ...filters.value, search };
 	currentPage.value = 1;
@@ -305,7 +341,7 @@ onMounted(async () => {
 		:total-items="totalAgents"
 		:dont-perform-sorting-and-filtering="true"
 		:shareable="false"
-		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
+		:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
 		:display-name="(agent: AgentListItem) => agent.name"
 		tab-key="agents"
 		@update:search="onSearchUpdated"
@@ -338,6 +374,15 @@ onMounted(async () => {
 			/>
 		</template>
 
+		<template #filters="{ setKeyValue }">
+			<N8nCheckbox
+				:label="locale.baseText('agents.list.filters.showArchived')"
+				:model-value="filters.showArchived === true"
+				data-test-id="agents-show-archived-checkbox"
+				@update:model-value="setKeyValue('showArchived', $event)"
+			/>
+		</template>
+
 		<template #item="{ item: data }">
 			<AgentCard
 				v-if="isAgentListItem(data)"
@@ -349,6 +394,8 @@ onMounted(async () => {
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"
+				@archived="onAgentArchived"
+				@unarchived="onAgentUnpublished"
 				@duplicate="onAgentDuplicate"
 			/>
 		</template>

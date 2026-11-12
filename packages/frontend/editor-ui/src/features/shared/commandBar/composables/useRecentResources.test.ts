@@ -428,6 +428,7 @@ describe('useRecentResources', () => {
 			projectId: 'project-1',
 			project: null,
 			availableInMCP: false,
+			isArchived: false,
 			versionId: null,
 			activeVersionId: null,
 			createdAt: '2026-01-01T00:00:00.000Z',

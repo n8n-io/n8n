@@ -62,6 +62,15 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => ({ canCreate: canCreateAgentRef }),
 }));
 
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+const listAgentsPageSpy = vi.hoisted(() => vi.fn());
+vi.mock('../composables/useAgentApi', () => ({
+	listAgentsPage: listAgentsPageSpy,
+}));
+
 const showErrorSpy = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
@@ -157,6 +166,7 @@ function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		project: null,
 		resourceType: 'agent',
 		availableInMCP: false,
+		isArchived: false,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 		versionId: 'version-2',
@@ -931,6 +941,83 @@ describe('AgentCapabilitiesSection', () => {
 		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
 		expect(wrapper.text()).toContain('Notion Research Agent');
 		expect(wrapper.text()).not.toContain(child.id);
+	});
+
+	it('loads an archived sub-agent by id and shows the Archived badge', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		refreshProjectAgentsSpy.mockResolvedValueOnce([]);
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{
+				name: 'Parent Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: archived.id }] },
+			},
+			[],
+			[],
+		);
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledWith({}, expect.any(String), {
+			filter: { ids: [archived.id], includeArchived: true },
+		});
+		expect(wrapper.text()).toContain('Old Agent');
+		expect(wrapper.find('[data-testid="agent-capabilities-sub-agent-archived"]').exists()).toBe(
+			true,
+		);
+	});
+
+	it('does not look up a resolved archived sub-agent again when the config changes', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
+		const makeConfig = (instructions: string) => ({
+			name: 'Parent Agent',
+			model: '',
+			instructions,
+			tools: [],
+			subAgents: { agents: [{ agentId: archived.id }] },
+		});
+
+		const wrapper = mountSection([], {}, makeConfig(''), [], []);
+		await flushPromises();
+		await wrapper.setProps({ config: makeConfig('Changed') });
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledOnce();
+		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
+		expect(wrapper.text()).toContain('Old Agent');
+	});
+
+	it('keeps the archived sub-agents of the latest selection when an older lookup resolves last', async () => {
+		const first = makeAgent({ id: 'agent-first', name: 'First Agent', isArchived: true });
+		const second = makeAgent({ id: 'agent-second', name: 'Second Agent', isArchived: true });
+		let resolveFirst: (page: { count: number; data: AgentResource[] }) => void = () => {};
+		listAgentsPageSpy
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValueOnce({ count: 1, data: [second] });
+		const config = { name: 'Parent Agent', model: '', instructions: '', tools: [] };
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{ ...config, subAgents: { agents: [{ agentId: first.id }] } },
+			[],
+			[],
+		);
+		await flushPromises();
+		await wrapper.setProps({
+			config: { ...config, subAgents: { agents: [{ agentId: second.id }] } },
+		});
+		await flushPromises();
+		resolveFirst({ count: 1, data: [first] });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Second Agent');
 	});
 
 	it('never exposes an unresolved sub-agent id as the chip label', async () => {

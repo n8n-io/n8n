@@ -132,6 +132,7 @@ export type ListAgentsOptions = {
 		query?: string;
 		ids?: string[];
 		availableInMCP?: boolean;
+		includeArchived?: boolean;
 	};
 };
 
@@ -691,6 +692,30 @@ export const unpublishAgent = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/unpublish`,
+	);
+};
+
+export const archiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/archive`,
+	);
+};
+
+export const unarchiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/unarchive`,
 	);
 };
 

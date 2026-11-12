@@ -162,7 +162,9 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId, {
+			requireArchived: true,
+		});
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

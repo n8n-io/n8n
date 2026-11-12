@@ -339,5 +339,30 @@ describe('useAgentResourcesLocator', () => {
 
 			await expect(refreshAgentName('a1')).resolves.toBeNull();
 		});
+
+		it('keeps the archived selection of the latest refresh when an older response resolves last', async () => {
+			let resolveFirst: (value: unknown) => void = () => {};
+			const firstResponse = new Promise((resolve) => (resolveFirst = resolve));
+			getAgent.mockReturnValueOnce(firstResponse).mockResolvedValueOnce({
+				id: 'a2',
+				name: 'Archived Agent',
+				projectId: 'proj-1',
+				isArchived: true,
+			});
+
+			const { refreshAgentName, archivedSelection } = useAgentResourcesLocator(
+				ref('proj-1'),
+				noProjectName,
+			);
+
+			const stale = refreshAgentName('a1');
+			await refreshAgentName('a2');
+			resolveFirst({ id: 'a1', name: 'Active Agent', projectId: 'proj-1' });
+			await stale;
+
+			expect(archivedSelection.value).toEqual(
+				expect.objectContaining({ value: 'a2', isArchived: true }),
+			);
+		});
 	});
 });

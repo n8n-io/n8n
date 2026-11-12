@@ -52,6 +52,7 @@ const createAgent = (overrides: Partial<AgentListItem> = {}): AgentListItem => (
 	projectId: 'project-1',
 	project: { id: 'project-1', name: 'Team Project', type: 'team' },
 	availableInMCP: false,
+	isArchived: false,
 	versionId: null,
 	activeVersionId: null,
 	createdAt: '2026-01-01T00:00:00.000Z',

@@ -18,6 +18,16 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
+/**
+ * `AgentDto` and `AgentListItemDto` are classes, and class types get no
+ * implicit index signatures. These structural copies keep agent rows
+ * assignable to generic list components that type their rows against
+ * index-signature shapes.
+ *
+ * `tools` is re-typed with the frontend's `CustomToolEntry`: the wire carries
+ * the full tool descriptor per entry, while the response schema only asserts
+ * the field the API contract needs.
+ */
 /** Single-agent response. `config` is the document a PUT writes back. */
 export type Agent = Omit<{ [K in keyof AgentDto]: AgentDto[K] }, 'tools'> & {
 	tools: Record<string, CustomToolEntry>;
@@ -38,6 +48,7 @@ export function toAgentListItem(agent: Agent | AgentListItem): AgentListItem {
 		projectId: agent.projectId,
 		project: agent.project,
 		availableInMCP: agent.availableInMCP,
+		isArchived: agent.isArchived,
 		versionId: agent.versionId,
 		activeVersionId: agent.activeVersionId,
 		createdAt: agent.createdAt,

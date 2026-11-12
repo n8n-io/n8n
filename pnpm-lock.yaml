@@ -1121,7 +1121,7 @@ patchedDependencies:
   multer@2.5.0: 1e0d32774abe65ea5bd9f2b3eb1950d22dd6e9ce84aa58778d9167124c91a22c
   pdf-parse@2.4.5: 3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82
   pkce-challenge@5.0.0: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
-  reka-ui@2.5.0: f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f
+  reka-ui@2.5.0: aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6
   v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
   vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
   vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
@@ -1950,6 +1950,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -1971,6 +1974,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      posthog-node:
+        specifier: 'catalog:'
+        version: 5.49.1(rxjs@7.8.1)
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -5152,9 +5158,6 @@ importers:
       pkce-challenge:
         specifier: 5.0.0
         version: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
-      posthog-node:
-        specifier: 'catalog:'
-        version: 5.49.1(rxjs@7.8.1)
       prom-client:
         specifier: 15.1.3
         version: 15.1.3
@@ -5887,7 +5890,7 @@ importers:
         version: 0.11.1
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
         version: 2.18.0
@@ -6965,7 +6968,7 @@ importers:
         version: 0.14.1
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sass-embedded:
         specifier: 'catalog:'
         version: 1.98.0
@@ -7555,7 +7558,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -8003,7 +8006,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -8257,7 +8260,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -41225,7 +41228,7 @@ snapshots:
 
   reinterval@1.1.0: {}
 
-  reka-ui@2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
+  reka-ui@2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@floating-ui/dom': 1.7.0
       '@floating-ui/vue': 1.1.6(vue@3.5.26(typescript@6.0.2))
