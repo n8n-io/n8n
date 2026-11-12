@@ -1774,17 +1774,20 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should keep built-in attributes when custom attributes use the same keys', () => {
 			tracer = makeTracer({ prefixes: noPrefixes });
+			logger.warn.mockClear();
+			const projectWithBuiltInKeys = {
+				id: 'proj-1',
+				customAttributes: { 'n8n.project.id': 'forged', 'n8n.node.name': 'forged' },
+			};
+			const tagsWithBuiltInKeys = {
+				workflow: { 'n8n.workflow.version_id': 'forged' },
+				node: { 'n8n.execution.id': 'forged', 'n8n.node.items.output': 'forged' },
+			};
 
 			const { workflowSpan, nodeSpan } = runSingleNodeExecution(
 				'exec-prefixes',
-				{
-					id: 'proj-1',
-					customAttributes: { 'n8n.project.id': 'forged', 'n8n.node.name': 'forged' },
-				},
-				{
-					workflow: { 'n8n.workflow.version_id': 'forged' },
-					node: { 'n8n.execution.id': 'forged', 'n8n.node.items.output': 'forged' },
-				},
+				projectWithBuiltInKeys,
+				tagsWithBuiltInKeys,
 			);
 
 			expect(workflowSpan.attributes['n8n.project.id']).toBe('proj-1');
@@ -1792,6 +1795,15 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['n8n.node.name']).toBe('MyNode');
 			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-prefixes');
 			expect(nodeSpan.attributes['n8n.node.items.output']).toBe(1);
+			expect(logger.warn).toHaveBeenCalledTimes(5);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Dropped the node custom telemetry tag "n8n.execution.id" because the key matches a built-in attribute key. n8n keeps the built-in value.',
+				{ level: 'node', key: 'n8n.execution.id' },
+			);
+
+			runSingleNodeExecution('exec-prefixes-repeat', projectWithBuiltInKeys, tagsWithBuiltInKeys);
+
+			expect(logger.warn).toHaveBeenCalledTimes(5);
 		});
 	});
 });
