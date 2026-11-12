@@ -82,7 +82,7 @@ describe('WorkflowPublishTimelineContent', () => {
 		expect(await findByText('Published Release 1')).toBeInTheDocument();
 	});
 
-	it('should show the engine only on published versions that still exist', async () => {
+	it('should show the engine on every entry that still has its version', async () => {
 		const now = Date.now();
 		const { findByText, getAllByTestId } = renderWithEvents(
 			[
@@ -91,18 +91,25 @@ describe('WorkflowPublishTimelineContent', () => {
 					event: 'activated',
 					versionName: 'Release 1',
 					settings: { engineType: 'v2' },
-					createdAt: new Date(now - 20_000).toISOString(),
+					createdAt: new Date(now - 30_000).toISOString(),
 				}),
 				buildEvent({
 					id: 2,
 					event: 'deactivated',
+					versionName: 'Release 1',
 					settings: { engineType: 'v2' },
-					createdAt: new Date(now - 10_000).toISOString(),
+					createdAt: new Date(now - 20_000).toISOString(),
 				}),
 				// A deleted version: its engine is unknown.
 				buildEvent({
 					id: 3,
 					event: 'activated',
+					versionId: null,
+					createdAt: new Date(now - 10_000).toISOString(),
+				}),
+				buildEvent({
+					id: 4,
+					event: 'deactivated',
 					versionId: null,
 					createdAt: new Date(now).toISOString(),
 				}),
@@ -110,10 +117,28 @@ describe('WorkflowPublishTimelineContent', () => {
 			{ engineV2ModuleActive: true },
 		);
 
-		await findByText('Unpublished');
+		await findByText('Unpublished Release 1');
 		const badges = getAllByTestId('workflow-history-engine-badge');
-		expect(badges).toHaveLength(1);
-		expect(badges[0]).toHaveTextContent('Engine v2');
+		expect(badges).toHaveLength(2);
+		badges.forEach((badge) => expect(badge).toHaveTextContent('Engine v2'));
+	});
+
+	it('should emit selectVersion when clicking an unpublished version', async () => {
+		const now = Date.now();
+		const { findByText, emitted } = renderWithEvents([
+			buildEvent({ id: 1, versionId: 'v7', createdAt: new Date(now - 10_000).toISOString() }),
+			buildEvent({
+				id: 2,
+				event: 'deactivated',
+				versionId: 'v7',
+				versionName: 'Release 7',
+				createdAt: new Date(now).toISOString(),
+			}),
+		]);
+
+		await userEvent.click(await findByText('Unpublished Release 7'));
+
+		expect(emitted().selectVersion).toEqual([['v7']]);
 	});
 
 	it('should render a deactivated entry', async () => {

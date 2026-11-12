@@ -85,7 +85,11 @@ const formatShortDate = (date: Date) => {
 
 const titleFor = (event: PublishTimelineEvent): string => {
 	if (event.event === 'deactivated') {
-		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
+		return event.versionName
+			? i18n.baseText('workflowHistory.publishTimeline.event.deactivatedVersion', {
+					interpolate: { version: event.versionName },
+				})
+			: i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
 	}
 	if (!event.versionId) {
 		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
@@ -99,11 +103,10 @@ const titleFor = (event: PublishTimelineEvent): string => {
 };
 
 const tooltipLabelFor = (event: PublishTimelineEvent): string => {
-	if (event.event === 'deactivated') {
-		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
-	}
 	if (!event.versionId) {
-		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
+		return event.event === 'deactivated'
+			? i18n.baseText('workflowHistory.publishTimeline.event.deactivated')
+			: i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
 	}
 	return event.versionName ?? generateVersionLabelFromId(event.versionId);
 };
@@ -135,7 +138,7 @@ const buildEntry = (
 	const status: EntryStatus = event.event === 'activated' ? 'published' : 'unpublished';
 	const startedAt = new Date(event.createdAt);
 	const endedAt = next ? new Date(next.createdAt) : null;
-	const versionId = status === 'published' ? event.versionId : null;
+	const versionId = event.versionId;
 	const user = event.user ? `${event.user.firstName} ${event.user.lastName}` : null;
 	const isLatest = !next;
 	const durationKey =
@@ -150,7 +153,7 @@ const buildEntry = (
 		versionId,
 		user,
 		isLatest,
-		isClickable: status === 'published' && !!versionId,
+		isClickable: !!versionId,
 		isSelected: !!versionId && versionId === props.selectedVersionId,
 		isDeletedVersion: status === 'published' && !versionId,
 		settings: event.settings,
@@ -313,7 +316,7 @@ onBeforeUnmount(() => {
 									idx === 0 && $style.timelineLineHidden,
 								]"
 							/>
-							<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
+							<span v-if="entry.status === 'unpublished'" :class="$style.timelineUnpublished">
 								<N8nIcon icon="x" size="small" />
 							</span>
 							<span
@@ -336,6 +339,12 @@ onBeforeUnmount(() => {
 								<N8nText size="xsmall" color="text-base">
 									{{ entry.durationLabel }}
 								</N8nText>
+								<WorkflowVersionEngineBadge
+									v-if="entry.versionId"
+									:settings="entry.settings"
+									size="xxsmall"
+									:class="$style.engineBadge"
+								/>
 							</div>
 							<div :class="$style.timelineHeader">
 								<div :class="$style.timelineTitle">
@@ -347,10 +356,6 @@ onBeforeUnmount(() => {
 									>
 										{{ entry.title }}
 									</N8nText>
-									<WorkflowVersionEngineBadge
-										v-if="entry.status === 'published' && !entry.isDeletedVersion"
-										:settings="entry.settings"
-									/>
 									<N8nTooltip
 										v-if="entry.isDeletedVersion"
 										placement="top"
@@ -434,7 +439,14 @@ onBeforeUnmount(() => {
 .timelineItem {
 	// The vertical padding of the item. The timeline line spans it.
 	--timeline-item-padding: var(--spacing--xs);
-	--timeline-indicator-padding: 6px;
+	// Fixed row heights keep rows with and without the engine badge the same height.
+	--timeline-row-height: var(--height--2xs);
+	--timeline-header-height: var(--timeline-row-height);
+	--timeline-marker-size: 12px;
+	// Centers the marker on the header row.
+	--timeline-indicator-padding: calc(
+		(var(--timeline-header-height) - var(--timeline-marker-size)) / 2
+	);
 
 	display: flex;
 	gap: var(--spacing--xs);
@@ -481,12 +493,13 @@ onBeforeUnmount(() => {
 	border: var(--border-width) solid var(--color--text--tint-2);
 }
 
-.timelineMarker {
+.timelineUnpublished {
 	display: flex;
-	place-content: center;
-	width: 13px;
-	height: 13px;
+	align-items: center;
+	justify-content: center;
 	flex-shrink: 0;
+	width: var(--timeline-marker-size);
+	height: var(--timeline-marker-size);
 	color: var(--color--warning);
 }
 
@@ -527,6 +540,7 @@ onBeforeUnmount(() => {
 .timelineHeader {
 	display: flex;
 	align-items: center;
+	min-height: var(--timeline-header-height);
 	gap: var(--spacing--2xs);
 }
 
@@ -558,8 +572,13 @@ onBeforeUnmount(() => {
 .durationRow {
 	display: flex;
 	align-items: center;
+	min-height: var(--timeline-row-height);
 	gap: var(--spacing--4xs);
 	color: var(--color--text--tint-2);
+}
+
+.engineBadge {
+	margin-left: auto;
 }
 
 .deletedVersionsDisclaimer {

@@ -6157,6 +6157,7 @@
 	"workflowHistory.publishTimeline.event.activatedDeletedVersion": "Published a version",
 	"workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip": "The published version has since been pruned.",
 	"workflowHistory.publishTimeline.event.deactivated": "Unpublished",
+	"workflowHistory.publishTimeline.event.deactivatedVersion": "Unpublished {version}",
 	"workflowHistory.publishTimeline.activeDuration": "Active for {duration}",
 	"workflowHistory.publishTimeline.inactiveDuration": "Inactive for {duration}",
 	"workflowHistory.publishTimeline.tooltip.byUser": "{action} by {user}, {datetime}",

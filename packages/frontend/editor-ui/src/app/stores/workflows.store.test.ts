@@ -773,6 +773,37 @@ describe('useWorkflowsStore', () => {
 				expect.objectContaining({ engineType: 'v1', timezone: 'Europe/Berlin' }),
 			);
 		});
+
+		it.each([
+			{ when: 'clears', savedVersionId: 'v2', expected: { name: null, description: null } },
+			{
+				when: 'keeps',
+				savedVersionId: 'v1',
+				expected: { name: 'Version v1', description: 'Notes' },
+			},
+		])(
+			'$when the version name when the save returns version $savedVersionId',
+			async ({ savedVersionId, expected }) => {
+				workflowsStore.setWorkflowId('w1');
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: 'Version v1',
+					description: 'Notes',
+				});
+
+				vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+					createTestWorkflow({ id: 'w1', versionId: savedVersionId, checksum: 'checksum-2' }),
+				);
+
+				await workflowsStore.updateWorkflow('w1', { settings: { engineType: 'v2' } });
+
+				expect(workflowDocumentStore.versionData).toEqual({
+					versionId: savedVersionId,
+					...expected,
+				});
+			},
+		);
 	});
 
 	describe('fetchPublicationStatus', () => {

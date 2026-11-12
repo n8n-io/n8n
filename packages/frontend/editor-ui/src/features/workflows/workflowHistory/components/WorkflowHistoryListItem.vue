@@ -352,6 +352,9 @@ $hoverBackground: var(--color--background--light-1);
 }
 
 .mainLine {
+	// Fill the row so the engine badge sits at the right edge.
+	flex: 1 1 auto;
+	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

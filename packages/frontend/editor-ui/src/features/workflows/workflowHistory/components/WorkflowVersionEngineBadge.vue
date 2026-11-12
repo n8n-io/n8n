@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nBadge } from '@n8n/design-system';
+import { N8nBadge, type BadgeSize } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { pickVersionedSettings, type VersionedWorkflowSettings } from 'n8n-workflow';
 
 const props = defineProps<{
 	settings?: VersionedWorkflowSettings | null;
+	size?: BadgeSize;
 }>();
 
 const i18n = useI18n();
@@ -21,7 +22,12 @@ const label = computed(() => {
 </script>
 
 <template>
-	<N8nBadge v-if="label" :class="$style.badge" data-test-id="workflow-history-engine-badge">
+	<N8nBadge
+		v-if="label"
+		:size="props.size"
+		:class="$style.badge"
+		data-test-id="workflow-history-engine-badge"
+	>
 		{{ label }}
 	</N8nBadge>
 </template>
@@ -29,5 +35,7 @@ const label = computed(() => {
 <style module lang="scss">
 .badge {
 	flex: none;
+	// The label renders slightly above the vertical center. Push it down by 1px.
+	padding-top: var(--spacing--5xs);
 }
 </style>
