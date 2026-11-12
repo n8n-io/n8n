@@ -91,6 +91,7 @@ export default {
 	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',
 	'askAssistantButton.askAssistant': 'n8n AI',
+	'chatScrollArea.scrollToBottom': 'Scroll to bottom',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',
 	'assistantChat.builder.configuredNodes': 'Configured nodes',

@@ -157,6 +157,12 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatScrollArea } from './N8nChatScrollArea';
+export type {
+	ChatScrollAreaEmits,
+	ChatScrollAreaProps,
+	ChatScrollAreaSlots,
+} from './N8nChatScrollArea/ChatScrollArea.types';
 export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
 export type {
 	ChatActionCopyResult,
