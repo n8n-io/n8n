@@ -19,12 +19,12 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
+	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as externalSecretsApi from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ElSwitch } from 'element-plus';
 import { computed, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
@@ -269,9 +269,10 @@ function goToUpgrade() {
 							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
 						</N8nText>
 					</div>
-					<ElSwitch
+					<N8nSwitch
+						size="large"
 						:model-value="systemRolesEnabled"
-						:loading="systemRolesToggleLoading"
+						:disabled="systemRolesToggleLoading"
 						data-test-id="external-secrets-system-roles-switch"
 						@update:model-value="onSystemRolesToggle"
 					/>
