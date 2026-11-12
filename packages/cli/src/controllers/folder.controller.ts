@@ -130,7 +130,6 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			await this.folderService.assertWorkflowFolder(folderId, projectId);
 			const credentials = await this.enterpriseWorkflowService.getFolderUsedCredentials(
 				req.user,
 				folderId,
@@ -181,22 +180,20 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			const { folder, ...counts } = await this.folderService.findFolderWithContentCounts(
+			const resourceType = await this.folderService.deleteFolder(
+				req.user,
 				folderId,
 				projectId,
+				payload,
 			);
-			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
 			this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
 				user_id: req.user.id,
 				project_id: projectId,
-				resource_type: folder.resourceType,
+				resource_type: resourceType,
 				action: payload.transferToFolderId ? 'relocated' : 'deleted',
 				source: 'rest',
 				folder_id: folderId,
 				target_folder_id: payload.transferToFolderId ?? null,
-				folder_count: payload.transferToFolderId ? 1 : counts.totalSubFolders + 1,
-				resource_count:
-					folder.resourceType === 'agent' ? counts.totalAgents : counts.totalWorkflows,
 			});
 		} catch (e) {
 			throw toResponseError(e) ?? new InternalServerError(undefined, e);
@@ -254,7 +251,6 @@ export class ProjectController {
 		@Query query: TransferPreviewQueryDto,
 	): Promise<FolderTransferPreview> {
 		try {
-			await this.folderService.assertWorkflowFolder(sourceFolderId, sourceProjectId);
 			return await this.enterpriseWorkflowService.previewFolderTransfer(
 				req.user,
 				sourceProjectId,
@@ -276,8 +272,6 @@ export class ProjectController {
 		@Param('projectId') sourceProjectId: string,
 		@Body body: TransferFolderBodyDto,
 	) {
-		await this.folderService.assertWorkflowFolder(sourceFolderId, sourceProjectId);
-
 		return await this.enterpriseWorkflowService.transferFolder(
 			req.user,
 			sourceProjectId,

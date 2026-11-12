@@ -35,7 +35,7 @@ describe('Agent folder operations', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		const content = new FolderContentService();
-		content.register('agent', handler);
+		content.setAgentHandler(handler);
 		service = new FolderService(
 			repository,
 			mock<FolderTagMappingRepository>(),

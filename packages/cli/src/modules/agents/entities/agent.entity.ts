@@ -1,13 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
-import {
-	DateTimeColumn,
-	Folder,
-	JsonColumn,
-	Project,
-	TagEntity,
-	WithTimestampsAndStringId,
-} from '@n8n/db';
+import { DateTimeColumn, JsonColumn, Project, TagEntity, WithTimestampsAndStringId } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -47,10 +40,6 @@ export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	parentFolderId: string | null;
-
-	@ManyToOne(() => Folder, { nullable: true, onDelete: 'RESTRICT' })
-	@JoinColumn({ name: 'parentFolderId', foreignKeyConstraintName: 'FK_agents_parent_folder' })
-	parentFolder: Relation<Folder> | null;
 
 	@Column({ type: 'varchar', length: 128 })
 	name: string;

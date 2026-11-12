@@ -151,10 +151,6 @@ export class FolderService {
 		}
 	}
 
-	async assertWorkflowFolder(folderId: string, projectId: string): Promise<void> {
-		this.assertResourceType(await this.findFolderInProjectOrFail(folderId, projectId), 'workflow');
-	}
-
 	async assertContentAccess(
 		user: User,
 		folderId: string,
@@ -164,7 +160,7 @@ export class FolderService {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
 		if (folder.resourceType === 'agent') {
-			await this.folderContentService.get('agent').assertAccess(user, projectId, operation);
+			await this.folderContentService.getAgentHandler().assertAccess(user, projectId, operation);
 		}
 	}
 
@@ -173,7 +169,7 @@ export class FolderService {
 		projectId: string,
 		operation: 'read' | 'update' | 'delete',
 	): Promise<void> {
-		await this.folderContentService.get('agent').assertAccess(user, projectId, operation);
+		await this.folderContentService.getAgentHandler().assertAccess(user, projectId, operation);
 	}
 
 	async validateDestination(
@@ -214,6 +210,10 @@ export class FolderService {
 		return await this.folderRepository.getAncestorPath(folderId, projectId, folder.resourceType);
 	}
 
+	async getFolderPathsToRoot(folderIds: string[]): Promise<Map<string, string[]>> {
+		return await this.folderRepository.getFolderPathsToRoot(folderIds);
+	}
+
 	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
 		const path = await this.getFolderPath(folderId, projectId);
 
@@ -250,20 +250,21 @@ export class FolderService {
 		folderId: string,
 		projectId: string,
 		{ transferToFolderId }: DeleteFolderDto,
-	) {
+	): Promise<FolderResourceType> {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
 		if (folder.resourceType === 'agent') {
 			await this.deleteAgentFolder(user, folder, projectId, transferToFolderId);
 
-			return;
+			return folder.resourceType;
 		}
 
 		if (!transferToFolderId) {
 			await this.flattenAndArchive(user, folderId, projectId);
 			await this.folderRepository.delete({ id: folderId });
 			this.eventService.emit('folder-deleted', { folderId, projectId });
-			return;
+
+			return folder.resourceType;
 		}
 
 		await this.validateRelocation(folder, projectId, transferToFolderId);
@@ -274,6 +275,8 @@ export class FolderService {
 			await tx.delete(Folder, { id: folderId });
 		});
 		this.eventService.emit('folder-deleted', { folderId, projectId });
+
+		return folder.resourceType;
 	}
 
 	private async validateRelocation(
@@ -303,7 +306,7 @@ export class FolderService {
 		projectId: string,
 		targetId?: string,
 	): Promise<void> {
-		const handler = this.folderContentService.get('agent');
+		const handler = this.folderContentService.getAgentHandler();
 		await handler.assertAccess(user, projectId, targetId ? 'update' : 'delete');
 
 		if (targetId) {
@@ -406,7 +409,7 @@ export class FolderService {
 				'agent',
 			);
 			const counts = await this.folderContentService
-				.get('agent')
+				.getAgentHandler()
 				.directCounts(projectId, [folderId, ...descendants]);
 			const totalAgents = [...counts.values()].reduce((total, count) => total + count, 0);
 
@@ -503,7 +506,7 @@ export class FolderService {
 		// eslint-disable-next-line prefer-const
 		let [folders, count] = await this.folderRepository.getManyAndCount(options);
 		if (options.resourceType === 'agent' && folders.length > 0) {
-			const counts = await this.folderContentService.get('agent').directCounts(
+			const counts = await this.folderContentService.getAgentHandler().directCounts(
 				projectId,
 				folders.map(({ id }) => id),
 			);

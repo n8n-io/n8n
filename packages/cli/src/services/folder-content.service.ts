@@ -1,4 +1,3 @@
-import type { FolderResourceType } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
@@ -22,19 +21,17 @@ export interface FolderContentHandler {
 
 @Service()
 export class FolderContentService {
-	private readonly handlers = new Map<FolderResourceType, FolderContentHandler>();
+	private agentHandler: FolderContentHandler | null = null;
 
-	register(resourceType: FolderResourceType, handler: FolderContentHandler): void {
-		this.handlers.set(resourceType, handler);
+	setAgentHandler(handler: FolderContentHandler): void {
+		this.agentHandler = handler;
 	}
 
-	get(resourceType: FolderResourceType): FolderContentHandler {
-		const handler = this.handlers.get(resourceType);
-
-		if (!handler) {
+	getAgentHandler(): FolderContentHandler {
+		if (!this.agentHandler) {
 			throw new BadRequestError('Folder contents are not available for this resource type');
 		}
 
-		return handler;
+		return this.agentHandler;
 	}
 }

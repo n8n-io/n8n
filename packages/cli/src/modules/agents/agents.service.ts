@@ -544,16 +544,7 @@ export class AgentsService {
 				result.data.flatMap((agent) => (agent.parentFolderId ? [agent.parentFolderId] : [])),
 			),
 		];
-		const paths = new Map<string, string[]>();
-
-		for (const folderId of folderIds) {
-			const path = await this.folderService.getFolderPath(folderId, projectId);
-
-			paths.set(
-				folderId,
-				path.map((folder) => folder.name),
-			);
-		}
+		const paths = await this.folderService.getFolderPathsToRoot(folderIds);
 
 		return {
 			...result,

@@ -1,6 +1,7 @@
 import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { FolderRepository, ProjectRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { AgentFolderService } from '@/modules/agents/agent-folder.service';
@@ -16,6 +17,7 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { FolderService } from '@/services/folder.service';
+import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember } from '@test-integration/db/users';
@@ -28,6 +30,7 @@ const server = setupTestServer({ endpointGroups: ['folder'] });
 mockInstance(AgentUpdateBroadcaster);
 const channels = mockInstance(ChatIntegrationService);
 const tasks = mockInstance(AgentTaskService);
+const telemetry = mockInstance(Telemetry);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;
@@ -40,7 +43,7 @@ beforeEach(async () => {
 	agents = Container.get(AgentRepository);
 	folders = Container.get(FolderRepository);
 	service = Container.get(FolderService);
-	Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
+	Container.get(FolderContentService).setAgentHandler(Container.get(AgentFolderService));
 	await agents.delete({});
 	await Container.get(AgentThreadRepository).delete({});
 	await testDb.truncate(['Folder', 'ProjectRelation', 'Project']);
@@ -110,6 +113,30 @@ it('requires Agent access before it returns Agent content counts', async () => {
 
 	await http.get(`/projects/${project.id}/folders/${folder.id}/content`).expect(403);
 	await http.get(`/projects/${project.id}/folders`).query({ resourceType: 'agent' }).expect(403);
+});
+
+it('keeps workflow-only actions outside the Agent folder tree', async () => {
+	const folder = await createFolder(project, { resourceType: 'agent' });
+	const destination = await createTeamProject('Destination', owner);
+	const http = server.authAgentFor(owner);
+
+	await http.get(`/projects/${project.id}/folders/${folder.id}/credentials`).expect(404);
+	await http
+		.get(`/projects/${project.id}/folders/${folder.id}/transfer-preview`)
+		.query({ destinationProjectId: destination.id })
+		.expect(404);
+	await http
+		.put(`/projects/${project.id}/folders/${folder.id}/transfer`)
+		.send({
+			destinationProjectId: destination.id,
+			destinationParentFolderId: PROJECT_ROOT,
+		})
+		.expect(400);
+
+	expect(await folders.findOneOrFailFolderInProject(folder.id, project.id)).toMatchObject({
+		id: folder.id,
+		resourceType: 'agent',
+	});
 });
 
 it('moves direct Agents and child folders together and keeps nested membership', async () => {
@@ -260,10 +287,23 @@ it('archives a folder tree at root and preserves Agent definitions, versions, se
 	expect(listed.find(({ id }) => id === folder.id)?.agentCount).toBe(1);
 	expect(listed.find(({ id }) => id === child.id)?.agentCount).toBe(0);
 
+	const countContents = vi.spyOn(service, 'findFolderWithContentCounts');
+
 	await server
 		.authAgentFor(owner)
 		.delete(`/projects/${project.id}/folders/${folder.id}`)
 		.expect(200);
+
+	expect(countContents).not.toHaveBeenCalled();
+	expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+		user_id: owner.id,
+		project_id: project.id,
+		resource_type: 'agent',
+		action: 'deleted',
+		source: 'rest',
+		folder_id: folder.id,
+		target_folder_id: null,
+	});
 
 	for (const id of [direct.id, archived.id]) {
 		expect(await agents.findOneByOrFail({ id })).toMatchObject({
@@ -477,4 +517,39 @@ it('filters direct and descendant contents and validates placement before a move
 		parentFolderId: null,
 		versionId: 'draft-version',
 	});
+});
+
+it('loads search paths for all result folders together', async () => {
+	const parent = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+	const nested = await createFolder(project, {
+		name: 'Triage',
+		resourceType: 'agent',
+		parentFolder: parent,
+	});
+	const other = await createFolder(project, { name: 'Sales', resourceType: 'agent' });
+
+	await agents.save([
+		{ id: 'root', name: 'Support root', projectId: project.id },
+		{ id: 'triage', name: 'Support triage', projectId: project.id, parentFolderId: nested.id },
+		{ id: 'backup', name: 'Support backup', projectId: project.id, parentFolderId: nested.id },
+		{ id: 'sales', name: 'Support sales', projectId: project.id, parentFolderId: other.id },
+	]);
+	const loadPaths = vi.spyOn(folders, 'getFolderPathsToRoot');
+	const result = await Container.get(AgentsService).findByProjectIdPaginated(project.id, {
+		skip: 0,
+		take: 20,
+		filter: { query: 'Support' },
+	});
+
+	expect(loadPaths).toHaveBeenCalledExactlyOnceWith(expect.arrayContaining([nested.id, other.id]));
+	expect(loadPaths.mock.calls[0][0]).toHaveLength(2);
+	expect(result.count).toBe(4);
+	expect(result.data).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ id: 'root', folderPath: [] }),
+			expect.objectContaining({ id: 'triage', folderPath: ['Support', 'Triage'] }),
+			expect.objectContaining({ id: 'backup', folderPath: ['Support', 'Triage'] }),
+			expect.objectContaining({ id: 'sales', folderPath: ['Sales'] }),
+		]),
+	);
 });
