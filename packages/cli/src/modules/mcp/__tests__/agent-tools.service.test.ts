@@ -323,6 +323,7 @@ describe('McpAgentToolsService', () => {
 					'archive_agent',
 					'call_agent',
 					'create_agent',
+					'move_agent',
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
@@ -986,6 +987,32 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ error: 'write failed' });
 			expect(agentsService.delete).not.toHaveBeenCalled();
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('move_agent', () => {
+		it('moves an Agent to a folder or the project root', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+			agentsService.move.mockResolvedValue(true);
+
+			for (const parentFolderId of ['agent-folder', null]) {
+				const result = await callTool('move_agent', { agentId: 'agent-1', parentFolderId });
+
+				expect(result.isError).toBeUndefined();
+				expect(agentsService.move).toHaveBeenLastCalledWith('agent-1', 'project-1', parentFolderId);
+			}
+		});
+
+		it('reports a failed placement', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+			agentsService.move.mockRejectedValue(new Error('Invalid destination'));
+
+			const result = await callTool('move_agent', {
+				agentId: 'agent-1',
+				parentFolderId: 'invalid',
+			});
+
+			expect(result.isError).toBe(true);
 		});
 	});
 

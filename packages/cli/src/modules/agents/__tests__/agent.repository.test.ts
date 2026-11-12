@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
-import { AgentTagMapping, LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
+import {
+	AgentTagMapping,
+	LIKE_ESCAPE_CLAUSE,
+	type FolderRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,6 +29,7 @@ describe('AgentRepository', () => {
 			mockDataSource as never,
 			mock<TransactionRunner>(),
 			globalConfig,
+			mock<FolderRepository>(),
 		);
 	});
 
@@ -158,6 +164,7 @@ describe('AgentRepository', () => {
 				'agent.activeVersionId',
 				'agent.availableInMCP',
 				'agent.updatedAt',
+				'agent.parentFolderId',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
@@ -443,6 +450,7 @@ describe('AgentRepository', () => {
 				mockDataSource as never,
 				transactionRunner,
 				globalConfig,
+				mock<FolderRepository>(),
 			);
 
 			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
@@ -463,6 +471,7 @@ describe('AgentRepository', () => {
 				mockDataSource as never,
 				makeTransactionRunner(),
 				globalConfig,
+				mock<FolderRepository>(),
 			);
 
 			await repository.overwriteTagMappings('agent-1', []);

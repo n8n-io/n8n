@@ -24,6 +24,7 @@ export type FolderShortInfo = {
 };
 
 export type BaseFolderItem = BaseResource & {
+	agentCount?: number;
 	createdAt: string;
 	updatedAt: string;
 	workflowCount: number;

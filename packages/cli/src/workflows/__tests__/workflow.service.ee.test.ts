@@ -2,6 +2,7 @@ import type {
 	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
+	Folder,
 	Project,
 	SharedWorkflow,
 	User,
@@ -53,6 +54,9 @@ describe('EnterpriseWorkflowService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+			mock<Folder>({ resourceType: 'workflow' }),
+		);
 		nodeTypes.getByNameAndVersion.mockReset();
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
@@ -1530,6 +1534,19 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
+		it('keeps Agent folders out of workflow transfers', async () => {
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+				mock<Folder>({ resourceType: 'agent' }),
+			);
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow('This action requires a workflow folder');
+
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
+		});
+
 		it('moves the folder without asking the transfer policy', async () => {
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
@@ -1616,7 +1633,9 @@ describe('EnterpriseWorkflowService', () => {
 			await service.previewFolderTransfer(user, 'proj-source', 'folder-1', 'proj-dest');
 
 		beforeEach(() => {
-			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(mock());
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+				mock<Folder>({ resourceType: 'workflow' }),
+			);
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.hasChecksFor.mockReturnValue(true);

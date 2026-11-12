@@ -83,7 +83,13 @@ export async function saveThreadTabs(
 export async function persistPendingAgent(
 	context: IRestApiContext,
 	threadId: string,
-	payload: { projectId: string; agentId: string; name: string; config?: AgentJsonConfig },
+	payload: {
+		projectId: string;
+		agentId: string;
+		name: string;
+		config?: AgentJsonConfig;
+		parentFolderId?: string | null;
+	},
 ): Promise<{ agent: AgentCreationResource; thread: InstanceAiThreadInfo }> {
 	return await makeRestApiRequest(
 		context,

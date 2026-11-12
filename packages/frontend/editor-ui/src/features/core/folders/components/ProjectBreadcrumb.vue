@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
@@ -11,6 +12,8 @@ type Props = {
 	isDragging?: boolean;
 	isShared?: boolean;
 	icon?: IconOrEmoji;
+	/** Replaces the default link to the project. */
+	to?: RouteLocationRaw;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -18,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isDragging: false,
 	isShared: false,
 	icon: undefined,
+	to: undefined,
 });
 
 const emit = defineEmits<{
@@ -61,6 +65,10 @@ const projectName = computed(() => {
 });
 
 const projectLink = computed(() => {
+	if (props.to) {
+		return props.to;
+	}
+
 	if (props.isShared) {
 		return '/shared';
 	}

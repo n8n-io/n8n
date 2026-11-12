@@ -3,6 +3,22 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const PLATFORM_TELEMETRY = defineTelemetryEvents({
+	RESOURCE_FOLDER_CHANGED: {
+		name: 'User changed resource folder',
+		description: 'A folder or resource placement changed successfully.',
+		properties: z.object({
+			user_id: z.string(),
+			project_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+			action: z.enum(['created', 'updated', 'deleted', 'relocated', 'placed', 'moved']),
+			source: z.enum(['rest', 'mcp', 'package']),
+			folder_id: z.string().nullable(),
+			resource_id: z.string().optional(),
+			target_folder_id: z.string().nullable().optional(),
+			resource_count: z.number().int().nonnegative().optional(),
+			folder_count: z.number().int().nonnegative().optional(),
+		}),
+	},
 	USER_IS_PART_OF_EXPERIMENT: {
 		name: 'User is part of experiment',
 		description:

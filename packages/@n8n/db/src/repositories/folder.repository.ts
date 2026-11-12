@@ -1,20 +1,81 @@
 import { Service } from '@n8n/di';
+import type { FolderResourceType } from '@n8n/api-types';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
 import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
+import { BaseRepository } from './base-repository';
+import { TransactionRunner, type OperationContext } from '../services/transaction';
 
 // oxlint-disable-next-line typescript/no-deprecated
 type FolderListQueryOptions = ListQuery.Options;
 
+/**
+ * Joins a `child` folder to its `parent` row in a recursive folder CTE.
+ * The CTE must select `project_id` and `resource_type`, so that a tree stays
+ * in one project and one resource type.
+ */
+export const FOLDER_TREE_JOIN =
+	'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type';
+
 @Service()
-export class FolderRepository extends Repository<Folder> {
-	constructor(dataSource: DataSource) {
-		super(Folder, dataSource.manager);
+export class FolderRepository extends BaseRepository<Folder> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Folder, dataSource.manager, transactionRunner);
+	}
+
+	async relocateChildrenAndDelete(
+		folderId: string,
+		projectId: string,
+		resourceType: FolderResourceType,
+		targetId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+
+		await manager.update(
+			Folder,
+			{ parentFolderId: folderId, homeProject: { id: projectId }, resourceType },
+			{ parentFolderId: targetId },
+		);
+		await manager.delete(Folder, { id: folderId, homeProject: { id: projectId }, resourceType });
+	}
+
+	async deleteFolderSubtree(
+		folderId: string,
+		projectId: string,
+		resourceType: FolderResourceType,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).delete(Folder, {
+			id: folderId,
+			homeProject: { id: projectId },
+			resourceType,
+		});
+	}
+
+	async getAncestorPath(
+		folderId: string,
+		projectId: string,
+		resourceType: FolderResourceType,
+	): Promise<Folder[]> {
+		const folders = await this.find({ where: { homeProject: { id: projectId }, resourceType } });
+		const byId = new Map(folders.map((folder) => [folder.id, folder]));
+		const path: Folder[] = [];
+		const visited = new Set<string>();
+		let current = byId.get(folderId);
+
+		while (current && !visited.has(current.id)) {
+			visited.add(current.id);
+			path.unshift(current);
+			current = current.parentFolderId ? byId.get(current.parentFolderId) : undefined;
+		}
+
+		return path;
 	}
 
 	async findExistingIds(folderIds: string[]): Promise<Set<string>> {
@@ -119,6 +180,10 @@ export class FolderRepository extends Repository<Folder> {
 	): void {
 		const selections = ['folder.id'];
 
+		if (select?.resourceType) {
+			selections.push('folder.resourceType');
+		}
+
 		this.addBasicFields(selections, select);
 		this.addRelationFields(query, selections, select, filter);
 
@@ -179,6 +244,10 @@ export class FolderRepository extends Repository<Folder> {
 		query: SelectQueryBuilder<Folder>,
 		filter?: FolderListQueryOptions['filter'],
 	): void {
+		query.andWhere('folder.resourceType = :resourceType', {
+			resourceType: filter?.resourceType ?? 'workflow',
+		});
+
 		if (!filter) return;
 
 		this.applyBasicFilters(query, filter);
@@ -291,10 +360,16 @@ export class FolderRepository extends Repository<Folder> {
 	 *  Ordered by id: every match shares the same name by construction, so name
 	 *  gives no tiebreaker, and leaving order to the query planner would make a
 	 *  capped page non-deterministic across calls or database backends. */
-	async findManyByExactName(projectId: string, name: string, take: number): Promise<Folder[]> {
+	async findManyByExactName(
+		projectId: string,
+		name: string,
+		take: number,
+		resourceType: FolderResourceType = 'workflow',
+	): Promise<Folder[]> {
 		return await this.createQueryBuilder('folder')
 			.select(['folder.id', 'folder.name'])
 			.where('folder.projectId = :projectId', { projectId })
+			.andWhere('folder.resourceType = :resourceType', { resourceType })
 			.andWhere('LOWER(folder.name) = LOWER(:name)', { name })
 			.orderBy('folder.id', 'ASC')
 			.take(take)
@@ -346,6 +421,7 @@ export class FolderRepository extends Repository<Folder> {
 			Folder,
 			{
 				homeProject: { id: fromProjectId },
+				resourceType: 'workflow',
 			},
 			{
 				homeProject: { id: toProjectId },
@@ -366,12 +442,16 @@ export class FolderRepository extends Repository<Folder> {
 		const baseQuery = this.createQueryBuilder('f')
 			.select('f.id', 'id')
 			.addSelect('f.parentFolderId', 'parentFolderId')
+			.addSelect('f.projectId', 'project_id')
+			.addSelect('f.resourceType', 'resource_type')
 			.where('f.id = :excludeFolderIdAndDescendants', { excludeFolderIdAndDescendants });
 
 		const recursiveQuery = this.createQueryBuilder('child')
 			.select('child.id', 'id')
 			.addSelect('child.parentFolderId', 'parentFolderId')
-			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+			.addSelect('child.projectId', 'project_id')
+			.addSelect('child.resourceType', 'resource_type')
+			.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 
 		const subQuery = this.createQueryBuilder()
 			.select('tree.id')
@@ -393,11 +473,19 @@ export class FolderRepository extends Repository<Folder> {
 	 * @param projectId Optional project ID to restrict search to a project
 	 * @returns Array of unique folder IDs including direct children and all descendants
 	 */
-	async getAllFolderIdsInHierarchy(parentFolderId: string, projectId?: string): Promise<string[]> {
+	async getAllFolderIdsInHierarchy(
+		parentFolderId: string,
+		projectId?: string,
+		resourceType: FolderResourceType = 'workflow',
+	): Promise<string[]> {
 		// Start with direct children as the base case
 		const baseQuery = this.createQueryBuilder('f')
 			.select('f.id', 'id')
+			.addSelect('f.projectId', 'project_id')
+			.addSelect('f.resourceType', 'resource_type')
 			.where('f.parentFolderId = :parentFolderId', { parentFolderId });
+
+		baseQuery.andWhere('f.resourceType = :resourceType', { resourceType });
 
 		// Add project filter if provided
 		if (projectId) {
@@ -407,7 +495,11 @@ export class FolderRepository extends Repository<Folder> {
 		// Create the recursive query for descendants
 		const recursiveQuery = this.createQueryBuilder('child')
 			.select('child.id', 'id')
-			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+			.addSelect('child.projectId', 'project_id')
+			.addSelect('child.resourceType', 'resource_type')
+			.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
+
+		recursiveQuery.andWhere('child.resourceType = :resourceType', { resourceType });
 
 		// Add project filter if provided
 		if (projectId) {
@@ -446,13 +538,22 @@ export class FolderRepository extends Repository<Folder> {
 		for (const chunk of chunkIds(parentFolderIds)) {
 			// Base case: the direct children of any requested parent.
 			const baseQuery = this.createQueryBuilder('f')
-				.select('f.id', 'id')
+				.select(['f.id AS id', 'f.projectId AS project_id', 'f.resourceType AS resource_type'])
+				.innerJoin(
+					Folder,
+					'anchor',
+					'f.parentFolderId = anchor.id AND f.projectId = anchor.projectId AND f.resourceType = anchor.resourceType',
+				)
 				.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds: chunk });
 
 			// Recursive case: descendants of folders already in the tree.
 			const recursiveQuery = this.createQueryBuilder('child')
-				.select('child.id', 'id')
-				.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+				.select([
+					'child.id AS id',
+					'child.projectId AS project_id',
+					'child.resourceType AS resource_type',
+				])
+				.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 
 			const query = this.createQueryBuilder()
 				.addCommonTableExpression(
@@ -481,6 +582,8 @@ export class FolderRepository extends Repository<Folder> {
 				'folder.id as id',
 				'folder.name as name',
 				'folder.parentFolderId as parentFolderId',
+				'folder.projectId as project_id',
+				'folder.resourceType as resource_type',
 				'CONCAT(folder.name) as path',
 				'1 as level',
 			])
@@ -491,10 +594,12 @@ export class FolderRepository extends Repository<Folder> {
 				'child.id as id',
 				'child.name as name',
 				'child.parentFolderId as parentFolderId',
+				'child.projectId as project_id',
+				'child.resourceType as resource_type',
 				"CONCAT(parent.path, '/', child.name) as path",
 				'parent.level + 1 as level',
 			])
-			.innerJoin('folder_paths', 'parent', 'child.parentFolderId = parent.id');
+			.innerJoin('folder_paths', 'parent', FOLDER_TREE_JOIN);
 
 		const mainQuery = this.createQueryBuilder()
 			.addCommonTableExpression(

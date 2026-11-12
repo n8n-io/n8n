@@ -1,4 +1,5 @@
 import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
@@ -78,9 +79,22 @@ export const createUpdateFolderTool = (
 				return fail('Project not found or access denied');
 			}
 
+			await folderService.assertContentAccess(user, folderId, projectId, 'update');
+
 			const folder = await folderService.updateFolder(folderId, projectId, {
 				name,
 				parentFolderId,
+			});
+
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: user.id,
+				project_id: projectId,
+				resource_type: folder.resourceType,
+				action: 'updated',
+				source: 'mcp',
+				folder_id: folder.id,
+				target_folder_id: folder.parentFolderId ?? null,
+				folder_count: 1,
 			});
 
 			telemetryPayload.results = { success: true, data: { folderId } };

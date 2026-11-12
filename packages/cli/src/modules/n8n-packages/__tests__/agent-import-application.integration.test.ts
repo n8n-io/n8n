@@ -11,6 +11,7 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	CredentialsRepository,
+	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
 	type Project,
@@ -157,6 +158,7 @@ beforeEach(async () => {
 	// Skills belong to projects and outlive their Agents.
 	await deleteAllSkills();
 	await testDb.truncate([
+		'Folder',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'SharedWorkflow',
@@ -1433,3 +1435,68 @@ it.each(['body', 'task', 'credential', 'policy'] as const)(
 		expect(effects).not.toHaveBeenCalled();
 	},
 );
+
+it('imports Agent placement and empty folders and preserves additional Agent resources on overwrite', async () => {
+	const input = fixture(true);
+	const prefix = 'projects/operations';
+	const sourceProject = input.manifest.projects![0];
+	sourceProject.id = project.id;
+	input.files[`${prefix}/project.json`] = { id: project.id, name: project.name };
+	input.manifest.folders = [
+		{ id: 'agent-parent', name: 'Team', target: `${prefix}/folders/team` },
+		{ id: 'agent-child', name: 'Support', target: `${prefix}/folders/team/support` },
+		{ id: 'agent-empty', name: 'Empty', target: `${prefix}/folders/empty` },
+	];
+
+	for (const entry of input.manifest.folders) {
+		input.files[`${entry.target}/folder.json`] = {
+			id: entry.id,
+			name: entry.name,
+			parentFolderId: entry.id === 'agent-child' ? 'agent-parent' : null,
+			resourceType: 'agent',
+		};
+	}
+
+	const entry = input.manifest.agents[0];
+	const previousTarget = entry.target;
+	entry.target = `${prefix}/folders/team/support/agents/support`;
+
+	for (const file of ['agent.json', 'agent-metadata.json']) {
+		input.files[`${entry.target}/${file}`] = input.files[`${previousTarget}/${file}`];
+		delete input.files[`${previousTarget}/${file}`];
+	}
+
+	const importer = Container.get(ProjectPackageImporter);
+	const options = request({
+		projectId: undefined,
+		projectConflictPolicy: 'overwrite',
+		overwriteDeletionPolicy: 'hard-delete',
+	});
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+	const folders = Container.get(FolderRepository);
+	expect(await folders.findOneByOrFail({ id: 'agent-empty' })).toMatchObject({
+		resourceType: 'agent',
+		parentFolderId: null,
+	});
+	await folders.save({
+		id: 'additional-agent-folder',
+		name: 'Keep',
+		resourceType: 'agent',
+		homeProject: project,
+	});
+	await agents.save({
+		id: 'additional-agent',
+		name: 'Keep',
+		projectId: project.id,
+		parentFolderId: 'additional-agent-folder',
+	});
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	expect(await agents.findById('additional-agent')).toMatchObject({
+		parentFolderId: 'additional-agent-folder',
+	});
+	expect(await folders.existsBy({ id: 'additional-agent-folder' })).toBe(true);
+	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+});

@@ -29,6 +29,8 @@ const ENTITY_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
 } as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
@@ -135,7 +137,13 @@ export class WorkingCopyUpdater {
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
 		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
-		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchLayout> = {
+			projects: [],
+			folders: [],
+			workflows: [],
+			agents: [],
+			skills: [],
+		};
 		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -183,6 +191,8 @@ export class WorkingCopyUpdater {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
+			...(collected.agents.length > 0 ? { agents: collected.agents } : {}),
+			...(collected.skills.length > 0 ? { skills: collected.skills } : {}),
 		};
 		return { state, dependencies };
 	}
@@ -196,6 +206,8 @@ export class WorkingCopyUpdater {
 			['projects', state.projects],
 			['folders', state.folders],
 			['workflows', state.workflows],
+			['agents', state.agents],
+			['skills', state.skills],
 		] as const) {
 			const seen = new Map<string, string>();
 			for (const entry of entries ?? []) {
@@ -508,7 +520,11 @@ export class WorkingCopyUpdater {
 		const resolved = await this.resolveLeafTarget(exportFolder, target, 'Manifest');
 
 		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
-		for (const entry of remaining.workflows ?? []) {
+		for (const entry of [
+			...(remaining.workflows ?? []),
+			...(remaining.agents ?? []),
+			...(remaining.skills ?? []),
+		]) {
 			if (isUnder(entry.target, target)) {
 				throw new BadRequestError(
 					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,

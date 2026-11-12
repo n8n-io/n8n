@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import type {
 	CredentialsFinderService,
@@ -410,6 +411,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentDefinitionService>(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
+			mock<FolderService>(),
+			mock(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

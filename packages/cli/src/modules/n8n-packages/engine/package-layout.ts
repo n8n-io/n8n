@@ -151,19 +151,20 @@ export function placeByLayout(
 }
 
 export function deriveParentFolderId(
-	workflowTarget: string,
+	resourceTarget: string,
 	folderTargetToId: Map<string, string>,
+	collection: 'workflows' | 'agents' = 'workflows',
 ): string | null {
-	const idx = workflowTarget.lastIndexOf('/workflows/');
+	const idx = resourceTarget.lastIndexOf(`/${collection}/`);
 	if (idx === -1) return null;
 
-	const containerTarget = workflowTarget.slice(0, idx);
+	const containerTarget = resourceTarget.slice(0, idx);
 
 	if (!containerTarget.includes('folders/')) return null;
 	const folderId = folderTargetToId.get(containerTarget);
 	if (folderId === undefined) {
 		throw new UserError(
-			`Package workflow at "${workflowTarget}" is nested under folder "${containerTarget}", which is missing from the manifest.`,
+			`Package ${collection} entry at "${resourceTarget}" is nested under folder "${containerTarget}", which is missing from the manifest.`,
 		);
 	}
 	return folderId;

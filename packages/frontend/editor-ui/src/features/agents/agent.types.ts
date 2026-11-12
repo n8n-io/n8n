@@ -30,6 +30,8 @@ export type Agent = {
 	id: string;
 	name: string;
 	projectId: string;
+	parentFolderId?: string | null;
+	folderPath?: string[];
 	// Narrow declaration of the eagerly-loaded home project relation — only
 	// the fields list consumers (e.g. the MCP agents table) read are typed.
 	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;

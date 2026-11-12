@@ -6,6 +6,10 @@ import { ref } from 'vue';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
 
+vi.mock('../composables/useAgentFolderBreadcrumb', () => ({
+	useAgentFolderBreadcrumb: () => ref([]),
+}));
+
 const trackClickedNewAgentMock = vi.fn();
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
@@ -35,6 +39,7 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
+	useRoute: () => ({ query: {} }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 

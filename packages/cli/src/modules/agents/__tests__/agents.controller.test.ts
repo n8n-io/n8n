@@ -1,3 +1,4 @@
+import type { Telemetry } from '@/telemetry';
 import type { Mocked } from 'vitest';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -58,6 +59,7 @@ function makeController({
 			agentRunnableStateService,
 			agentDefaultModelResolverService,
 			collaborationService,
+			mock<Telemetry>(),
 		),
 		agentsService,
 		agentPublishService,

@@ -2,9 +2,12 @@
 import debounce from 'lodash/debounce';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nCheckbox } from '@n8n/design-system';
+import { N8nCheckbox, N8nInfoTip, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -33,6 +36,13 @@ import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from
 import AgentCard from '../components/AgentCard.vue';
 import AgentsListIntro from '../components/AgentsListIntro.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import AgentFolderBrowser from '../components/AgentFolderBrowser.vue';
+import AgentFolderToolbar from '../components/AgentFolderToolbar.vue';
+import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
+import { N8nEmptyState, N8nText } from '@n8n/design-system';
+import { getProjectFolders } from '@/features/core/folders/folders.api';
+import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 
 function isAgentResource(value: unknown): value is AgentResource {
 	return typeof value === 'object' && value !== null && 'id' in value;
@@ -51,6 +61,15 @@ const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
+const folderBrowser = ref<InstanceType<typeof AgentFolderBrowser>>();
+const folders = ref<ChangeLocationSearchResponseItem[]>([]);
+const folderAction = ref<AgentFolderAction | null>(null);
+const folderActionProjectId = ref('');
+const folderId = computed(() =>
+	typeof route.query.folderId === 'string' ? route.query.folderId : null,
+);
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
@@ -81,10 +100,29 @@ const filters = ref<BaseFilters>({
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
-const totalAgents = ref(0);
+const totalItems = ref(0);
+const hasArchivedAgents = ref(false);
 const loading = ref(true);
 
-const projectId = computed(() => route.params.projectId as string | undefined);
+const projectId = computed(() =>
+	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
+);
+const folderPermissions = computed(() => {
+	const global = getResourcePermissions(usersStore.currentUser?.globalScopes).folder;
+	const project = getResourcePermissions(
+		projectsStore.myProjects.find((item) => item.id === projectId.value)?.scopes,
+	).folder;
+
+	return {
+		create: Boolean(global.create || project.create),
+		update: Boolean(global.update || project.update),
+		delete: Boolean(global.delete || project.delete),
+		list: Boolean(global.list || project.list),
+	};
+});
+const showFolders = computed(() =>
+	Boolean(projectId.value && settingsStore.isFoldersFeatureEnabled && folderPermissions.value.list),
+);
 
 // Exposure covers both arms: control users see the default empty state, test users
 // the templates intro. The source mirrors the layout's empty-state condition, so a
@@ -93,7 +131,7 @@ const projectId = computed(() => route.params.projectId as string | undefined);
 watch(
 	() =>
 		!loading.value &&
-		allAgents.value.length === 0 &&
+		totalItems.value === 0 &&
 		!filters.value.search &&
 		templatesVariant.value !== undefined,
 	(surfaceVisible) => {
@@ -111,17 +149,37 @@ const sortFns = {
 };
 
 function buildListFilter() {
+	const folderFilter = filters.value.search
+		? showFolders.value && folderId.value
+			? { parentFolderId: folderId.value, includeDescendants: true }
+			: {}
+		: showFolders.value
+			? { parentFolderId: folderId.value }
+			: {};
 	const filter = {
+		...folderFilter,
 		...(filters.value.search ? { query: filters.value.search } : {}),
 		...(filters.value.showArchived === true ? { includeArchived: true } : {}),
 	};
+
 	return Object.keys(filter).length > 0 ? filter : undefined;
 }
 
+let fetchGeneration = 0;
+
 async function fetchAgents() {
-	const shouldDelayLoading = allAgents.value.length > 0;
+	const requestGeneration = ++fetchGeneration;
+	const requestProjectId = projectId.value;
+	const requestFolderId = folderId.value;
+	const search = filters.value.search;
+	const skip = (currentPage.value - 1) * pageSize.value;
+	const take = pageSize.value;
+	const sortBy = currentSort.value;
+	const includeFolders = showFolders.value;
+	const filter = buildListFilter();
+	const shouldDelayLoading = allAgents.value.length > 0 || folders.value.length > 0;
 	const delayedLoading = debounce(() => {
-		loading.value = true;
+		if (requestGeneration === fetchGeneration) loading.value = true;
 	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 	if (shouldDelayLoading) {
@@ -131,20 +189,81 @@ async function fetchAgents() {
 	}
 
 	try {
+		const folderPage =
+			requestProjectId && includeFolders
+				? await getProjectFolders(
+						rootStore.restApiContext,
+						requestProjectId,
+						{ resourceType: 'agent', skip, take, sortBy },
+						{
+							parentFolderId: requestFolderId ?? PROJECT_ROOT,
+							...(search ? { name: search } : {}),
+						},
+						[
+							'id',
+							'name',
+							'parentFolder',
+							'agentCount',
+							'subFolderCount',
+							'path',
+							'updatedAt',
+							'createdAt',
+						],
+					)
+				: { data: [], count: 0 };
+
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
+		// Workflows list folders first. Share the remaining page slots with Agents.
+		const agentSlots = take - folderPage.data.length;
 		const fetchOptions = {
-			skip: (currentPage.value - 1) * pageSize.value,
-			take: pageSize.value,
-			sortBy: currentSort.value,
-			filter: buildListFilter(),
+			skip: Math.max(0, skip - folderPage.count),
+			// The API requires a positive take. Folder-only pages still need the Agent count.
+			take: Math.max(1, agentSlots),
+			sortBy,
+			filter,
 		};
-		const { count, data } = projectId.value
-			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
+		const { count, data } = requestProjectId
+			? await listAgentsPage(rootStore.restApiContext, requestProjectId, fetchOptions)
 			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
-		allAgents.value = data;
-		totalAgents.value = count;
+
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
+		let archivedAgentsExist = false;
+
+		if (
+			!search &&
+			!filter?.includeArchived &&
+			count === 0 &&
+			folderPage.count === 0 &&
+			(!includeFolders || !requestFolderId)
+		) {
+			const archivedOptions = {
+				skip: 0,
+				take: 1,
+				filter: { ...filter, includeArchived: true },
+			};
+			const archivedPage = requestProjectId
+				? await listAgentsPage(rootStore.restApiContext, requestProjectId, archivedOptions)
+				: await listAgentsPageGlobal(rootStore.restApiContext, archivedOptions);
+			archivedAgentsExist = archivedPage.count > 0;
+		}
+
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
+		folders.value = folderPage.data;
+		allAgents.value = agentSlots > 0 ? data : [];
+		totalItems.value = folderPage.count + count;
+		hasArchivedAgents.value = archivedAgentsExist;
 	} finally {
 		delayedLoading.cancel();
-		loading.value = false;
+		if (requestGeneration === fetchGeneration) loading.value = false;
 	}
 }
 
@@ -217,6 +336,33 @@ function onAgentPublished(updated: AgentResource) {
 	void fetchAgents();
 }
 
+function createFolder() {
+	if (!projectId.value || !showFolders.value) return;
+
+	folderActionProjectId.value = projectId.value;
+	folderAction.value = { mode: 'create', parentFolderId: folderId.value };
+}
+
+function openMove(agent: AgentResource) {
+	folderActionProjectId.value = agent.projectId;
+	folderAction.value = {
+		mode: 'moveAgent',
+		id: agent.id,
+		name: agent.name,
+		parentFolderId: agent.parentFolderId,
+	};
+}
+
+watch([projectId, folderId, showFolders], () => {
+	currentPage.value = 1;
+	folders.value = [];
+	allAgents.value = [];
+	totalItems.value = 0;
+	hasArchivedAgents.value = false;
+
+	void fetchAgents();
+});
+
 function onAgentUnpublished(updated: AgentResource) {
 	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
 	void fetchAgents();
@@ -224,8 +370,9 @@ function onAgentUnpublished(updated: AgentResource) {
 
 function onAgentDeleted(agentId: string) {
 	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
-	totalAgents.value = Math.max(0, totalAgents.value - 1);
-	if (allAgents.value.length === 0 && currentPage.value > 1) {
+	totalItems.value = Math.max(0, totalItems.value - 1);
+
+	if (allAgents.value.length === 0 && folders.value.length === 0 && currentPage.value > 1) {
 		currentPage.value -= 1;
 	}
 	void fetchAgents();
@@ -318,79 +465,149 @@ onMounted(async () => {
 </script>
 
 <template>
-	<ResourcesListLayout
-		v-model:filters="filters"
-		resource-key="agents"
-		type="list-paginated"
-		:resources="allAgents"
-		:initialize="fetchAgents"
-		:loading="false"
-		:resources-refreshing="loading"
-		:disabled="false"
-		:sort-fns="sortFns"
-		:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
-		:type-props="{ itemSize: 80 }"
-		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="totalAgents"
-		:dont-perform-sorting-and-filtering="true"
-		:shareable="false"
-		:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
-		:display-name="(agent: AgentResource) => agent.name"
-		tab-key="agents"
-		@update:search="onSearchUpdated"
-		@update:pagination-and-sort="setPaginationAndSort"
-	>
-		<template #header>
-			<ProjectHeader main-button="agent">
-				<InsightsSummary
-					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.weeklySummary.isLoading"
-					:summary="insightsStore.weeklySummary.state"
-					time-range="week"
+	<div style="display: contents">
+		<ResourcesListLayout
+			v-model:filters="filters"
+			resource-key="agents"
+			type="list-paginated"
+			:resources="allAgents"
+			:initialize="fetchAgents"
+			:loading="false"
+			:resources-refreshing="loading"
+			:disabled="false"
+			:sort-fns="sortFns"
+			:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
+			:type-props="{ itemSize: 80 }"
+			:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
+			:total-items="totalItems"
+			:has-empty-state="!showFolders || (totalItems === 0 && !folderId)"
+			:dont-perform-sorting-and-filtering="true"
+			:shareable="false"
+			:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
+			:display-name="(agent: AgentResource) => agent.name"
+			tab-key="agents"
+			@update:search="onSearchUpdated"
+			@update:pagination-and-sort="setPaginationAndSort"
+		>
+			<template #header>
+				<ProjectHeader main-button="agent" @create-folder="createFolder">
+					<InsightsSummary
+						v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
+						:loading="insightsStore.weeklySummary.isLoading"
+						:summary="insightsStore.weeklySummary.state"
+						time-range="week"
+					/>
+				</ProjectHeader>
+			</template>
+
+			<template v-if="showFolders" #breadcrumbs>
+				<AgentFolderToolbar
+					:project="homeProject ?? undefined"
+					:items="folderBrowser?.breadcrumbs ?? []"
+					:folder-id="folderId"
+					:can-create="folderPermissions.create"
+					:drag-active="folderBrowser?.isDragging ?? false"
+					@navigate="folderBrowser?.navigate($event)"
+					@drop="folderBrowser?.drop($event)"
+					@create="createFolder"
 				/>
-			</ProjectHeader>
-		</template>
+			</template>
 
-		<template #empty>
-			<AgentsListIntro
-				v-if="showTemplatesIntro"
-				:disabled="!canCreateAgent"
-				@create-blank="onCreateBlank"
-				@submit="onCreateFromPrompt"
-				@select="onCreateFromTemplate"
-			/>
-			<ResourcesListEmptyState
-				v-else
-				resource-key="agents"
-				:button-disabled="!canCreateAgent"
-				@click:button="onCreateAgentClick"
-			/>
-		</template>
+			<template v-if="showFolders && projectId" #list-prepend>
+				<AgentFolderBrowser
+					ref="folderBrowser"
+					:project-id="projectId"
+					:folder-id="folderId"
+					:folders="folders"
+					:search="filters.search"
+					:folder-permissions="folderPermissions"
+					@changed="fetchAgents"
+				/>
+				<template v-if="!loading && totalItems === 0">
+					<N8nText v-if="filters.search" color="text-base" size="medium">
+						{{ locale.baseText('agents.noResults') }}
+					</N8nText>
+					<N8nEmptyState
+						v-else-if="folderId"
+						data-test-id="empty-agent-folder-action-box"
+						:heading="
+							locale.baseText('folders.empty.actionbox.title', {
+								interpolate: { folderName: folderBrowser?.breadcrumbs.at(-1)?.label ?? '' },
+							})
+						"
+						:button-text="locale.baseText('projects.header.create.agent')"
+						button-type="secondary"
+						:button-disabled="!canCreateAgent"
+						@click:button="onCreateAgentClick"
+					/>
+				</template>
+			</template>
 
-		<template #filters="{ setKeyValue }">
-			<N8nCheckbox
-				:label="locale.baseText('agents.list.filters.showArchived')"
-				:model-value="filters.showArchived === true"
-				data-test-id="agents-show-archived-checkbox"
-				@update:model-value="setKeyValue('showArchived', $event)"
-			/>
-		</template>
+			<template #empty>
+				<N8nInfoTip v-if="hasArchivedAgents" class="mb-s" :bold="false">
+					{{ locale.baseText('agents.list.archivedOnly.hint') }}
+					<N8nLink
+						size="small"
+						data-test-id="show-archived-agents"
+						@click="filters.showArchived = true"
+					>
+						{{ locale.baseText('agents.list.filters.showArchived') }}
+					</N8nLink>
+				</N8nInfoTip>
+				<AgentsListIntro
+					v-if="showTemplatesIntro"
+					:disabled="!canCreateAgent"
+					@create-blank="onCreateBlank"
+					@submit="onCreateFromPrompt"
+					@select="onCreateFromTemplate"
+				/>
+				<ResourcesListEmptyState
+					v-else
+					resource-key="agents"
+					:button-disabled="!canCreateAgent"
+					@click:button="onCreateAgentClick"
+				/>
+			</template>
 
-		<template #item="{ item: data }">
-			<AgentCard
-				v-if="isAgentResource(data)"
-				class="mb-2xs"
-				:agent="data"
-				:project-id="data.projectId"
-				@select="onSelectAgent(data.id, data.projectId)"
-				@new-chat="onNewAgentChat"
-				@published="onAgentPublished"
-				@unpublished="onAgentUnpublished"
-				@deleted="onAgentDeleted"
-				@archived="onAgentArchived"
-				@unarchived="onAgentUnpublished"
-				@duplicate="onAgentDuplicate"
-			/>
-		</template>
-	</ResourcesListLayout>
+			<template #filters="{ setKeyValue }">
+				<N8nCheckbox
+					:label="locale.baseText('agents.list.filters.showArchived')"
+					:model-value="filters.showArchived === true"
+					data-test-id="agents-show-archived-checkbox"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</template>
+
+			<template #item="{ item: data }">
+				<div
+					v-if="isAgentResource(data)"
+					:draggable="showFolders"
+					@dragstart="folderBrowser?.startAgentDrag(data.id)"
+					@dragend="folderBrowser?.endDrag()"
+				>
+					<AgentCard
+						class="mb-2xs"
+						:agent="data"
+						:show-folder-path="Boolean(filters.search)"
+						:project-id="data.projectId"
+						@select="onSelectAgent(data.id, data.projectId)"
+						@new-chat="onNewAgentChat"
+						@published="onAgentPublished"
+						@unpublished="onAgentUnpublished"
+						@deleted="onAgentDeleted"
+						@archived="onAgentArchived"
+						@unarchived="onAgentUnpublished"
+						@duplicate="onAgentDuplicate"
+						@move="openMove(data)"
+					/>
+				</div>
+			</template>
+		</ResourcesListLayout>
+		<AgentFolderDialog
+			:project-id="folderActionProjectId"
+			:action="folderAction"
+			@close="folderAction = null"
+			@saved="fetchAgents"
+		/>
+	</div>
 </template>

@@ -68,6 +68,16 @@ export class AgentDraftService {
 			creationResult = await this.createPendingDraft(user, projectId, options);
 		}
 		const { agent, ...creationState } = creationResult;
+
+		if (
+			creationState.adopted &&
+			options.parentFolderId !== undefined &&
+			agent.parentFolderId !== options.parentFolderId
+		) {
+			await this.agents.move(agent.id, projectId, options.parentFolderId);
+			agent.parentFolderId = options.parentFolderId;
+		}
+
 		return {
 			id: agent.id,
 			name: agent.name,
@@ -93,6 +103,7 @@ export class AgentDraftService {
 			user,
 			createdBy: 'user',
 			id: options.id,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			adoptOnCollision: options.adoptOnCollision,
 			config: options.config,
 			pushRef: options.pushRef,

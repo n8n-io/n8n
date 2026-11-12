@@ -361,7 +361,13 @@ export function dataTableRequirement(
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {
-	return { id: 'folder-id', name: 'Folder', parentFolderId: null, ...overrides };
+	return {
+		id: 'folder-id',
+		name: 'Folder',
+		resourceType: 'workflow',
+		parentFolderId: null,
+		...overrides,
+	};
 }
 
 export function serializedProject(overrides: Partial<SerializedProject> = {}): SerializedProject {

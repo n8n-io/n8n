@@ -269,6 +269,7 @@ const stopSessionAutoRefreshMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
+	moveAgent: vi.fn(),
 	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
@@ -1077,6 +1078,26 @@ describe('AgentBuilderView — preview routing', () => {
 		},
 	);
 
+	it('includes the Agent name when opening the move dialog from the builder', async () => {
+		const wrapper = await renderView({
+			stubs: {
+				AgentFolderDialog: {
+					name: 'AgentFolderDialog',
+					props: ['projectId', 'action'],
+					template: '<div />',
+				},
+			},
+		});
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'move-folder');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toMatchObject({
+			mode: 'moveAgent',
+			id: 'a1',
+			name: 'Agent One',
+		});
+	});
+
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
@@ -1121,6 +1142,20 @@ describe('AgentBuilderView — preview routing', () => {
 		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
 		expect(editor.props('agentUnsaved')).toBe(false);
 		expect(unsavedAgentIds.has('a1')).toBe(false);
+	});
+
+	it('keeps folder placement on the first save of a pending Agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.folderId = 'support-folder';
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		expect(createAgentMock.mock.calls[0]?.[3]).toMatchObject({
+			id: 'a1',
+			parentFolderId: 'support-folder',
+		});
 	});
 
 	it('does not persist a pending agent for an auto-applied default model', async () => {
@@ -1172,6 +1207,7 @@ describe('AgentBuilderView — preview routing', () => {
 	it('uses the agent the Assistant agent already created under the pending id', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'assistant-agent-thread';
+		routeQuery.folderId = 'support-folder';
 		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
 		createAgentMock.mockRejectedValueOnce(
 			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
@@ -1185,6 +1221,8 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 
 		expect(createAgentMock).toHaveBeenCalledOnce();
+		const { moveAgent } = await import('../composables/useAgentApi');
+		expect(moveAgent).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', 'support-folder');
 		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
 		expect(editor.props('agentUnsaved')).toBe(false);

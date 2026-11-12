@@ -78,7 +78,7 @@ describe('FolderCard', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
 		expect(getByTestId('folder-card-name')).toHaveTextContent(DEFAULT_FOLDER.name);
-		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('2');
+		expect(getByTestId('folder-card-resource-count')).toHaveTextContent('2');
 		expect(getByTestId('folder-card-folder-count')).toHaveTextContent('2');
 		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('Last updated just now');
 		expect(getByTestId('folder-card-created')).toHaveTextContent('Created just now');
@@ -94,7 +94,7 @@ describe('FolderCard', () => {
 				},
 			},
 		});
-		expect(queryByTestId('folder-card-workflow-count')).not.toBeInTheDocument();
+		expect(queryByTestId('folder-card-resource-count')).not.toBeInTheDocument();
 		expect(queryByTestId('folder-card-folder-count')).not.toBeInTheDocument();
 	});
 

@@ -1,10 +1,11 @@
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { AgentStarter } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
 	PENDING_AGENT_ID_STATE,
 	PENDING_AGENT_STARTER_STATE,
+	PROJECT_AGENTS,
 } from '../constants';
 import { useAgentTelemetry, type AgentCreateSource } from './useAgentTelemetry';
 
@@ -25,6 +26,7 @@ export const unsavedAgentIds = new Set<string>();
  */
 export function useCreateAgent() {
 	const router = useRouter();
+	const route = useRoute();
 	const agentTelemetry = useAgentTelemetry();
 
 	function createAgent(source: AgentCreateSource, projectId: string, starter?: AgentStarter): void {
@@ -39,6 +41,11 @@ export function useCreateAgent() {
 		void router.push({
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId, agentId },
+			...(route?.name === PROJECT_AGENTS &&
+			route.params.projectId === projectId &&
+			typeof route.query.folderId === 'string'
+				? { query: { folderId: route.query.folderId } }
+				: {}),
 			state: {
 				[PENDING_AGENT_ID_STATE]: agentId,
 				...(starter ? { [PENDING_AGENT_STARTER_STATE]: starter } : {}),

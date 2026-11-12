@@ -561,6 +561,7 @@ onMounted(async () => {
 						:parent-folder-id="props.data.resource.parentFolderId"
 						:exclude-only-parent="props.data.resourceType === 'workflow'"
 						@location:selected="onFolderSelected"
+						@load:error="toast.showError($event, i18n.baseText('folders.open.error.title'))"
 					/>
 				</div>
 			</template>

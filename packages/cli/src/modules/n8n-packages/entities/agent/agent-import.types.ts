@@ -50,6 +50,7 @@ export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${str
 export interface PreparedAgent extends Omit<SerializedAgent, 'id' | 'isArchived'> {
 	/** The package omits the key for an agent that is not archived. */
 	isArchived: boolean;
+	parentFolderId?: string | null;
 	sourceAgentId: string;
 	metadata: SerializedAgentMetadata;
 }

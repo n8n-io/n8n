@@ -90,10 +90,25 @@ export class N8nPackageParser {
 
 	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
 		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map(
+			(manifest.folders ?? []).map((folder) => [folder.target, folder.id]),
+		);
+		const folders = await this.getFolders(reader, basePrefix);
 		const agents: PreparedAgent[] = [];
 		for (const entry of manifest.agents ?? []) {
-			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
-			agents.push(await this.readAgent(reader, entry));
+			if (
+				!entry.target.startsWith(`${basePrefix}agents/`) &&
+				!entry.target.startsWith(`${basePrefix}folders/`)
+			)
+				continue;
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId, 'agents');
+			const parent = folders.find((folder) => folder.sourceFolderId === parentFolderId);
+
+			if (parentFolderId && parent?.resourceType !== 'agent') {
+				throw new UserError('An Agent must be in an Agent folder');
+			}
+
+			agents.push({ ...(await this.readAgent(reader, entry)), parentFolderId });
 		}
 		return agents;
 	}
@@ -363,6 +378,7 @@ export class N8nPackageParser {
 
 		return {
 			sourceFolderId: folder.id,
+			resourceType: folder.resourceType,
 			name: folder.name,
 			parentFolderId: folder.parentFolderId,
 		};

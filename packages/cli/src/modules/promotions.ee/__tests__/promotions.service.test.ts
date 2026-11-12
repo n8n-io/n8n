@@ -657,7 +657,7 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectIds: ['project-a', 'project-b'],
-					includeAgents: false,
+					includeAgents: true,
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
@@ -1968,6 +1968,7 @@ describe('PromotionsService', () => {
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 					pathspecs: [
 						'n8n/projects/',
+						'n8n/skills/',
 						'n8n/credentials/',
 						'n8n/data-tables/',
 						'n8n/variables/',
@@ -2177,7 +2178,7 @@ describe('PromotionsService', () => {
 				folders: folders.map((entry) => ({
 					path: 'projects/any/folders/payments/folder.json',
 					...entry,
-					folder: { ...entry.folder, parentFolderId: null },
+					folder: { ...entry.folder, parentFolderId: null, resourceType: 'workflow' as const },
 				})),
 				credentials: [],
 				variables: [],
@@ -2540,7 +2541,12 @@ describe('PromotionsService', () => {
 			const payments = (projectId: string) => ({
 				path: 'projects/any/folders/payments/folder.json',
 				projectId,
-				folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+				folder: {
+					id: 'f1',
+					name: 'Payments',
+					parentFolderId: null,
+					resourceType: 'workflow' as const,
+				},
 			});
 
 			beforeEach(async () => {

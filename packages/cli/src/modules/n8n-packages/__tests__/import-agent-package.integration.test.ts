@@ -139,11 +139,7 @@ describe('Agent package import boundary', () => {
 			});
 
 			await expect(result).rejects.toThrow(BadRequestError);
-			await expect(result).rejects.toThrow(
-				entryPoint === 'archive'
-					? 'The Agents module is not enabled.'
-					: 'Agent packages require the ordinary archive import endpoint.',
-			);
+			await expect(result).rejects.toThrow('The Agents module is not enabled.');
 			expect(await destinationRecords()).toEqual(before);
 		},
 	);
@@ -156,7 +152,7 @@ describe('Agent package import boundary', () => {
 					selectedProjectId: 'unused',
 					selectedWorkflowIds: [],
 				}),
-			).rejects.toThrow('Agent packages require the ordinary archive import endpoint.');
+			).rejects.toThrow('The Agents module is not enabled.');
 		},
 	);
 

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "folder" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "parentFolderId" varchar(36), "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_a8260b0b36939c6247f385b8221" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_804ea52f6729e3940498bd54d78" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE CASCADE)
+CREATE TABLE "folder" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "parentFolderId" varchar(36), "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resourceType" varchar(16) NOT NULL DEFAULT ('workflow'), CONSTRAINT "CHK_folder_resourceType" CHECK ("resourceType" IN ('workflow', 'agent')), CONSTRAINT "FK_804ea52f6729e3940498bd54d78" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_a8260b0b36939c6247f385b8221" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,18 +16,20 @@ CREATE TABLE "folder" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [folder](folder.md) [folder_tag](folder_tag.md) [workflow_entity](workflow_entity.md) |  |  |
+| id | varchar(36) |  | false | [agents](agents.md) [folder](folder.md) [folder_tag](folder_tag.md) [workflow_entity](workflow_entity.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | parentFolderId | varchar(36) |  | true |  | [folder](folder.md) |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| resourceType | varchar(16) | 'workflow' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - | CHECK | CHECK ("resourceType" IN ('workflow', 'agent')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_folder_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -43,6 +45,7 @@ CREATE TABLE "folder" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 ```mermaid
 erDiagram
 
+"agents" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "folder" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "folder" : "FOREIGN KEY (folderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -54,7 +57,28 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   datetime_3_ updatedAt
+}
+"agents" {
+  varchar_36_ activeVersionId FK
+  boolean availableInMCP
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  TEXT integrations
+  boolean isArchived
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_255_ projectId FK
+  INTEGER publicationRevision
+  INTEGER revision
+  TEXT schema
+  varchar_16_ scope
+  datetime_3_ setupCompletedAt
+  TEXT skills
+  TEXT tools
+  datetime_3_ updatedAt
+  varchar_36_ versionId
 }
 "folder_tag" {
   varchar_36_ folderId PK

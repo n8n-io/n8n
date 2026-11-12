@@ -7,7 +7,7 @@ import type { UserFavorite } from '@/app/api/favorites';
 import { useFavoriteNavItems } from './useFavoriteNavItems';
 import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
@@ -163,6 +163,27 @@ describe('useFavoriteNavItems', () => {
 	});
 
 	describe('favoriteFolderItems', () => {
+		it('opens Agent folders in the Agent tree', () => {
+			favoritesStore.favorites = [
+				makeFavorite({
+					resourceId: 'folder-1',
+					resourceType: 'folder',
+					resourceProjectId: 'proj-1',
+					folderResourceType: 'agent',
+				}),
+			];
+
+			const { favoriteFolderItems } = useFavoriteNavItems();
+
+			expect(favoriteFolderItems.value[0].menuItem.route).toEqual({
+				to: {
+					name: PROJECT_AGENTS,
+					params: { projectId: 'proj-1' },
+					query: { folderId: 'folder-1' },
+				},
+			});
+		});
+
 		it('should map folder favorites with projectId to menu items', () => {
 			favoritesStore.favorites = [
 				makeFavorite({

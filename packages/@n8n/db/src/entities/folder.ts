@@ -1,3 +1,4 @@
+import type { FolderResourceType } from '@n8n/api-types';
 import {
 	Column,
 	Entity,
@@ -15,6 +16,9 @@ import type { WorkflowEntity } from './workflow-entity';
 
 @Entity()
 export class Folder extends WithTimestampsAndStringId {
+	@Column({ type: 'varchar', length: 16, default: 'workflow' })
+	resourceType: FolderResourceType;
+
 	@Column()
 	name: string;
 

@@ -261,6 +261,8 @@ describe('import-manifest-bridge', () => {
 			{
 				name: 'REGION',
 				usedBy: [
+					{ kind: 'agent', id: 'w1' },
+					{ kind: 'agent', id: 'w2' },
 					{ kind: 'workflow', id: 'w1' },
 					{ kind: 'workflow', id: 'w2' },
 				],

@@ -11,7 +11,7 @@ import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
-import TimeAgo from '@/app/components/TimeAgo.vue';
+import FolderCardSubtitle from './FolderCardSubtitle.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {
@@ -237,50 +237,15 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</div>
 				</template>
 				<template #footer>
-					<div :class="$style['card-footer']">
-						<N8nText
-							v-if="data.workflowCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-folder-count"
-						>
-							{{
-								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
-							}}
-						</N8nText>
-						<N8nText
-							v-if="data.subFolderCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
-						>
-							{{
-								i18n.baseText('generic.folderCount', {
-									interpolate: { count: data.subFolderCount },
-								})
-							}}
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--updated']]"
-							data-test-id="folder-card-last-updated"
-						>
-							{{ i18n.baseText('workerList.item.lastUpdated') }}
-							<TimeAgo :date="String(data.updatedAt)" />
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--created']]"
-							data-test-id="folder-card-created"
-						>
-							{{ i18n.baseText('workflows.item.created') }}
-							<TimeAgo :date="String(data.createdAt)" />
-						</N8nText>
-					</div>
+					<FolderCardSubtitle
+						:resource-count="data.workflowCount"
+						:resource-label="
+							i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
+						"
+						:sub-folder-count="data.subFolderCount"
+						:updated-at="data.updatedAt"
+						:created-at="data.createdAt"
+					/>
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.stop.prevent>
@@ -388,19 +353,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.card-footer {
-	display: flex;
-}
-
-.info-cell {
-	& + & {
-		&::before {
-			content: '|';
-			margin: 0 var(--spacing--4xs);
-		}
-	}
-}
-
 .cardBadge.with-breadcrumbs {
 	:global(.n8n-badge) {
 		padding-right: 0;
@@ -432,9 +384,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 			width: 100%;
 			justify-content: space-between;
 		}
-	}
-	.info-cell--created {
-		display: none;
 	}
 }
 </style>

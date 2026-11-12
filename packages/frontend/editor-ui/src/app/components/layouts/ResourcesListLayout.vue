@@ -107,6 +107,7 @@ const slots = defineSlots<{
 	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
+	'list-prepend'(): unknown;
 }>();
 
 //computed
@@ -664,7 +665,7 @@ defineExpose({
 
 				<ResourcesListSkeleton v-if="resourcesRefreshing" :rows="rowsPerPage" immediate />
 				<div
-					v-else-if="filteredAndSortedResources.length > 0"
+					v-else-if="filteredAndSortedResources.length > 0 || slots['list-prepend']"
 					ref="listWrapperRef"
 					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
@@ -688,13 +689,14 @@ defineExpose({
 						data-test-id="paginated-list"
 					>
 						<div ref="listItemsRef" :class="$style.listItems">
+							<slot name="list-prepend" />
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}
 								</slot>
 							</div>
 						</div>
-						<div :class="$style.listPagination">
+						<div v-if="!slots['list-prepend'] || totalItems > 0" :class="$style.listPagination">
 							<N8nPagination
 								:page="currentPage"
 								:items-per-page="rowsPerPage"
@@ -781,6 +783,10 @@ defineExpose({
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+
+		.sort-and-filter input {
+			width: 100%;
+		}
 	}
 }
 
