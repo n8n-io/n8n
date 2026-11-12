@@ -42,7 +42,9 @@ describe('TaskRunnerModule in internal mode', () => {
 			expect(wsServer.getDisconnectAnalyzer()).toBeInstanceOf(InternalTaskRunnerDisconnectAnalyzer);
 		});
 
-		it('should use task runners as the code execution backend', () => {
+		it('should use task runners as the code execution backend', async () => {
+			await module.start();
+
 			expect(Container.get(CodeExecutionBackend)).toBeInstanceOf(TaskRunnerCodeExecutionBackend);
 		});
 	});
