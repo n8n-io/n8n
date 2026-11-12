@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), "publicationRevision" integer NOT NULL DEFAULT (0), "isArchived" boolean NOT NULL DEFAULT (false), CONSTRAINT "CHK_agents_scope" CHECK ((("scope" IN ('project', 'instance')))), CONSTRAINT "CHK_agents_scope_project" CHECK ((("scope" = 'instance') = ("projectId" IS NULL))), CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION)
+CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), "publicationRevision" integer NOT NULL DEFAULT (0), "isArchived" boolean NOT NULL DEFAULT (false), "serviceAccountId" varchar, CONSTRAINT "CHK_agents_scope" CHECK ((("scope" IN ('project', 'instance')))), CONSTRAINT "CHK_agents_scope_project" CHECK ((("scope" = 'instance') = ("projectId" IS NULL))), CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_agents_service_account" FOREIGN KEY ("serviceAccountId") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -27,6 +27,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | revision | INTEGER | 0 | false |  |  |  |
 | schema | TEXT |  | true |  |  |  |
 | scope | varchar(16) | 'project' | false |  |  |  |
+| serviceAccountId | varchar |  | true |  | [user](user.md) |  |
 | setupCompletedAt | datetime(3) |  | true |  |  |  |
 | skills | TEXT | '{}' | false |  |  |  |
 | tools | TEXT | '{}' | false |  |  |  |
@@ -39,8 +40,9 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ((("scope" IN ('project', 'instance')))) |
 | - | CHECK | CHECK ((("scope" = 'instance') = ("projectId" IS NULL))) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (serviceAccountId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agents_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -50,6 +52,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON "agents" ("projectId")  |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON "agents" ("projectId")  |
+| IDX_agents_serviceAccountId | CREATE UNIQUE INDEX "IDX_agents_serviceAccountId" ON "agents" ("serviceAccountId") WHERE "serviceAccountId" IS NOT NULL |
 | sqlite_autoindex_agents_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -82,6 +85,7 @@ erDiagram
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "user" : "FOREIGN KEY (serviceAccountId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "agents" {
   varchar_36_ activeVersionId FK
@@ -96,6 +100,7 @@ erDiagram
   INTEGER revision
   TEXT schema
   varchar_16_ scope
+  varchar serviceAccountId FK
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
@@ -378,6 +383,24 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
+  datetime_3_ updatedAt
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  VARCHAR_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

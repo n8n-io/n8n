@@ -82,6 +82,7 @@ erDiagram
   INTEGER revision
   TEXT schema
   varchar_16_ scope
+  varchar serviceAccountId FK
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools

@@ -1,9 +1,17 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
-import { DateTimeColumn, JsonColumn, Project, TagEntity, WithTimestampsAndStringId } from '@n8n/db';
+import {
+	DateTimeColumn,
+	JsonColumn,
+	Project,
+	TagEntity,
+	User,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
 import {
 	Column,
 	Entity,
+	Index,
 	JoinTable,
 	ManyToMany,
 	ManyToOne,
@@ -104,6 +112,18 @@ export class Agent extends WithTimestampsAndStringId {
 	@ManyToOne('AgentHistory', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;
+
+	/**
+	 * The service account that acts for this agent. Null for an instance agent,
+	 * and for an agent created while agent service accounts were off.
+	 */
+	@Index({ unique: true, where: '"serviceAccountId" IS NOT NULL' })
+	@Column({ type: 'uuid', nullable: true })
+	serviceAccountId: string | null;
+
+	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'serviceAccountId', foreignKeyConstraintName: 'FK_agents_service_account' })
+	serviceAccount?: Relation<User> | null;
 
 	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })
