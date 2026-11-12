@@ -28,7 +28,7 @@ import {
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -98,7 +98,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -2575,7 +2575,7 @@ export class InstanceAiService {
 					input: traceInput,
 					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
-					n8nVersion: N8N_VERSION,
+					n8nVersion: getN8nVersion(),
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
 					browserExtension,
 				});
@@ -5124,7 +5124,7 @@ export class InstanceAiService {
 				},
 				proxyConfig: baseTracing?.proxyConfig,
 				metadata: {
-					n8n_version: N8N_VERSION || undefined,
+					n8n_version: getN8nVersion() || undefined,
 					operation_name: 'thread_title',
 					trigger: 'run_completed',
 				},

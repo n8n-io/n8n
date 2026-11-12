@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
@@ -14,15 +16,14 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { EngineTlsMaterial } from '@/modules/engine-v2/engine-tls-material';
+import { EngineMtls } from '@/modules/engine-v2/engine-mtls';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
 import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
-import { PostHogClient } from '@/posthog';
-import { RedisClientService } from '@n8n/backend-services';
+import { RedisClientService, PostHogClient } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -61,10 +62,13 @@ mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
 /** The real boot check, over files this test does not need to write. */
-const useTls = (value: EngineTlsMaterial['tls']) => {
-	const material = new EngineTlsMaterial(Container.get(EngineConfig));
-	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
-	Container.set(EngineTlsMaterial, material);
+const useTls = (enabled: boolean) => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const mtls = new EngineMtls(Container.get(EngineConfig), mock<OutboundHttp>(), logger);
+	vi.spyOn(mtls, 'enabled', 'get').mockReturnValue(enabled);
+	Container.set(EngineMtls, mtls);
+	return mtls;
 };
 
 describe('Engine', () => {
@@ -91,7 +95,7 @@ describe('Engine', () => {
 			controlPlaneBaseUrl: 'http://n8n-main:3001',
 			tlsInsecureAllowPlainHttp: true,
 		});
-		useTls(undefined);
+		useTls(false);
 	});
 
 	afterEach(() => {
@@ -184,7 +188,7 @@ describe('Engine', () => {
 		});
 
 		it('refuses an http control plane address when TLS is on', async () => {
-			useTls({ cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') });
+			useTls(true);
 
 			await expect(createEngine().init()).rejects.toThrow(
 				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
@@ -205,11 +209,11 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts no task runner', async () => {
+		it('loads the nodes and starts the task runner module', async () => {
 			await createEngine().init();
 
 			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).not.toHaveBeenCalled();
+			expect(taskRunnerModule.start).toHaveBeenCalled();
 		});
 
 		it('sends execution responses and lifecycle events over Redis', async () => {

@@ -273,19 +273,20 @@ jobs:
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
-      # PRs run SQLite plus the primary Postgres leg.
+      # PRs and the merge queue run SQLite plus the primary Postgres leg.
       # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
       # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
-        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).db
+        if: fromJSON(steps.ci-filter.outputs.results).db
         env:
+          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'queue' || 'pr' }}
           CLI_INTEGRATION_RUNS: ${{ fromJSON(steps.ci-filter.outputs.results).unit }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope=pr --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE" --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
-        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit
+        if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
@@ -328,14 +329,16 @@ jobs:
       - name: Run format check
         run: pnpm format:check
 
+  # The merge queue runs the affected tests to catch conflicts between queued PRs.
   unit-test:
     name: Unit tests
-    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.unit == 'true'
+    if: needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: true
+      collectCoverage: ${{ github.event_name != 'merge_group' }}
+      testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
       lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
@@ -440,14 +443,19 @@ jobs:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
           fetch-depth: 1
 
-      # Impact selection reads package.json at the merge base.
-      - name: Fetch merge base
+      # Impact selection reads package.json at the merge base, and pnpm-lock.yaml at
+      # the affected base: the merge commit's first parent, so lockfile changes that
+      # master made after the merge base do not count as the PR's.
+      - name: Fetch merge base and affected base
         env:
           MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          AFFECTED_BASE: ${{ needs.install-and-build.outputs.affected_base }}
         run: |
-          if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$MERGE_BASE"
-          fi
+          for sha in "$MERGE_BASE" "$AFFECTED_BASE"; do
+            if [ -n "$sha" ] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$sha"
+            fi
+          done
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -463,6 +471,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
           MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.affected_base }}
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
@@ -543,7 +552,7 @@ jobs:
   db-tests:
     name: DB Tests
     needs: [install-and-build, format-check]
-    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true'
+    if: needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
