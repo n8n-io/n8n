@@ -14,10 +14,13 @@ describe('Scenario', () => {
 	afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 	it('fails the run on a failed check, after it stops the stack and attaches the record', async () => {
-		const stop = vi.fn(async () => await Promise.resolve());
-		const attached: string[] = [];
+		const events: string[] = [];
+		const stop = async () => {
+			events.push('stop');
+			await Promise.resolve();
+		};
 		const attach = async (_name: string, { body }: { body: string }) => {
-			attached.push(body);
+			events.push(body);
 			await Promise.resolve();
 		};
 		const s = new Scenario('demo', { n8nContainers: () => [], stop }, dir);
@@ -28,12 +31,9 @@ describe('Scenario', () => {
 				await Promise.resolve();
 			}),
 		).rejects.toThrow('failed checks: exit code: 1 is 0');
-		expect(stop).toHaveBeenCalledTimes(1);
-		expect(attached.map((body) => JSON.parse(body) as unknown)).toMatchObject([
-			{
-				scenario: 'demo',
-				failedChecks: ['exit code: 1 is 0'],
-			},
+		expect(events[0]).toBe('stop');
+		expect(events.slice(1).map((body) => JSON.parse(body) as unknown)).toMatchObject([
+			{ scenario: 'demo', failedChecks: ['exit code: 1 is 0'] },
 		]);
 	});
 
