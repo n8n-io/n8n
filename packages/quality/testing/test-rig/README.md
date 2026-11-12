@@ -63,7 +63,7 @@ docker network prune -f --filter 'label=org.testcontainers=true'
 ## Test the rig
 
 ```bash
-pnpm test:docker
+pnpm --filter @n8n/test-rig test:docker
 ```
 
 The Docker test starts a real stack on `n8nio/n8n:2.42.2`, or on the image in `TEST_IMAGE_N8N`.
