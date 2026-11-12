@@ -323,7 +323,7 @@ describe('GmailTrigger', () => {
 		};
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { parameters: { simple: true } },
+			node: { typeVersion: 1, parameters: { simple: true } },
 			workflowStaticData,
 		});
 
@@ -333,11 +333,46 @@ describe('GmailTrigger', () => {
 		expect(workflowStaticData.possibleDuplicates).toBeUndefined();
 		expect(workflowStaticData['Gmail Trigger']).toEqual({
 			lastTimeChecked: 2000000000,
+			lastTimeCheckedIsBounded: true,
 			noProgressTicks: 0,
-			possibleDuplicates: ['2'],
+			possibleDuplicates: ['1', '2'],
 			pendingMessageIds: [],
 		});
 	});
+
+	it.each([false, true])(
+		'should migrate the v1 cursor with its bounded marker set to %s',
+		async (lastTimeCheckedIsBounded) => {
+			const pollTime = Date.parse('2026-10-26T12:00:00.000Z');
+			vi.setSystemTime(pollTime);
+			const lastTimeChecked = pollTime / 1000 + 600;
+			const expectedCursor = lastTimeCheckedIsBounded ? lastTimeChecked : pollTime / 1000;
+			const workflowStaticData: IDataObject = {
+				lastTimeChecked,
+				lastTimeCheckedIsBounded,
+				possibleDuplicates: ['handled'],
+			};
+			const api = nock(baseUrl)
+				.get('/gmail/v1/users/me/messages')
+				.query((query) => String(query.q).split(' ').includes(`after:${expectedCursor}`))
+				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1, parameters: { simple: true } },
+				workflowStaticData,
+			});
+
+			api.done();
+			expect(response).toBeNull();
+			expect(workflowStaticData).toEqual({
+				'Gmail Trigger': {
+					lastTimeChecked: expectedCursor,
+					lastTimeCheckedIsBounded: true,
+					possibleDuplicates: ['handled'],
+				},
+			});
+		},
+	);
 
 	it('should reject node names that clash with built-in object properties', async () => {
 		await expect(
@@ -372,6 +407,7 @@ describe('GmailTrigger', () => {
 		expect(Object.hasOwn(workflowStaticData, 'toString')).toBe(true);
 		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
 			lastTimeChecked: 2000000000,
+			lastTimeCheckedIsBounded: true,
 			noProgressTicks: 0,
 			possibleDuplicates: ['1'],
 			pendingMessageIds: [],
@@ -786,10 +822,7 @@ describe('GmailTrigger', () => {
 		expect(response?.[0]?.[1]?.json?.id).toBe('3');
 	});
 
-<<<<<<< HEAD
-	describe('maxResults limit', () => {
-=======
-	describe('v1.4 - cursor across polls', () => {
+	describe.each([1, 1.4])('v%s - cursor across polls', (typeVersion) => {
 		afterEach(() => {
 			nock.cleanAll();
 		});
@@ -856,7 +889,7 @@ describe('GmailTrigger', () => {
 				for (const pollTime of pollTimes) {
 					vi.setSystemTime(pollTime);
 					const { response } = await testPollingTriggerNode(GmailTrigger, {
-						node: { typeVersion: 1.4, parameters: { simple: true } },
+						node: { typeVersion, parameters: { simple: true } },
 						workflowStaticData,
 					});
 					emittedIdsByPoll.push(response?.[0].map(({ json }) => json.id) ?? []);
@@ -941,7 +974,7 @@ describe('GmailTrigger', () => {
 				for (pollIndex = 0; pollIndex < scannedPagesByPoll.length; pollIndex++) {
 					vi.setSystemTime(firstPollTime + pollIndex * 60_000);
 					const { response } = await testPollingTriggerNode(GmailTrigger, {
-						node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 50 } },
+						node: { typeVersion, parameters: { simple: true, maxResults: 50 } },
 						workflowStaticData,
 						// Stop after page one only on the three no-progress polls.
 						pollBudgetMs: pollIndex >= 3 && pollIndex <= 5 ? 0 : undefined,
@@ -1189,8 +1222,7 @@ describe('GmailTrigger', () => {
 		});
 	});
 
-	describe('v1.4 - maxResults limit', () => {
->>>>>>> 0ab1817ba41c63f76a949d9b2aab9c33ec1c424a
+	describe('maxResults limit', () => {
 		it('should fetch only maxResults messages from a larger list', async () => {
 			// Gmail list returns 3 IDs, but maxResults=2 so only 2 full messages are fetched
 			const messageListResponse: MessageListResponse = {

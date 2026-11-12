@@ -331,9 +331,11 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		if (staticData.lastTimeChecked !== undefined && !Object.hasOwn(staticData, node.name)) {
 			staticData[node.name] = {
 				lastTimeChecked: staticData.lastTimeChecked,
+				lastTimeCheckedIsBounded: staticData.lastTimeCheckedIsBounded,
 				possibleDuplicates: staticData.possibleDuplicates,
 			};
 			delete staticData.lastTimeChecked;
+			delete staticData.lastTimeCheckedIsBounded;
 			delete staticData.possibleDuplicates;
 		}
 		const workflowStaticData = staticData as GmailWorkflowStaticDataDictionary;
@@ -345,17 +347,13 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const now = Math.floor(DateTime.now().toSeconds());
 
 		if (this.getMode() !== 'manual') {
-<<<<<<< HEAD
 			nodeStaticData.lastTimeChecked ??= now;
-=======
-			nodeStaticData.lastTimeChecked ??= +now;
 			// A legacy cursor can come from future mail or a clock rollback. Repair it once.
 			// Preserve bounded cursors on later clock rollbacks to avoid repeat delivery.
 			if (!nodeStaticData.lastTimeCheckedIsBounded) {
-				nodeStaticData.lastTimeChecked = Math.min(nodeStaticData.lastTimeChecked, +now);
+				nodeStaticData.lastTimeChecked = Math.min(nodeStaticData.lastTimeChecked, now);
 				nodeStaticData.lastTimeCheckedIsBounded = true;
 			}
->>>>>>> 0ab1817ba41c63f76a949d9b2aab9c33ec1c424a
 		}
 		const startDate = nodeStaticData.lastTimeChecked ?? now;
 
@@ -712,27 +710,15 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							nodeStaticData.noProgressTicks = noProgressTicks;
 							return null;
 						}
-<<<<<<< HEAD
-						this.logger.warn(
-							"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
-							{ node: node.name },
-						);
-						nodeStaticData.lastTimeChecked = now;
-						// The cursor jumped to now, so ids from the old window are no longer
-						// at the boundary. Keeping them would grow the stored-id count for
-						// nothing — every other path merges the set instead.
-						nodeStaticData.possibleDuplicates = [];
-=======
 						// Preserve the cursor on clock rollbacks. Keep handled IDs because
 						// an incomplete scan cannot rule out future-dated mail.
-						if (+now > +startDate) {
+						if (now > startDate) {
 							this.logger.warn(
 								"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
 								{ node: node.name },
 							);
-							nodeStaticData.lastTimeChecked = +now;
+							nodeStaticData.lastTimeChecked = now;
 						}
->>>>>>> 0ab1817ba41c63f76a949d9b2aab9c33ec1c424a
 						nodeStaticData.noProgressTicks = 0;
 					} else if (nodeStaticData.noProgressTicks) {
 						// The scan exhausted the token, so nothing is out of reach and the
@@ -852,12 +838,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 		}
 
-<<<<<<< HEAD
 		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, startDate)) || startDate;
-=======
-		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
-		effectiveLastTimeChecked = Math.max(+startDate, Math.min(effectiveLastTimeChecked, +now));
->>>>>>> 0ab1817ba41c63f76a949d9b2aab9c33ec1c424a
+		effectiveLastTimeChecked = Math.max(startDate, Math.min(effectiveLastTimeChecked, now));
 		if (shouldLimitMessages && !windowFullyScanned) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +

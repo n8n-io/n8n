@@ -6477,28 +6477,6 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
-<<<<<<< HEAD
-	it('wraps manual metadata into executionData in queue mode so the worker can run it', async () => {
-		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
-			{
-				id: 'wf-1',
-				// No trigger node: the adapter sets neither startNodes nor executionData,
-				// so an offloaded worker would receive an execution with no run data.
-				nodes: [
-					{
-						id: 'n1',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 3,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				settings: { executionOrder: 'v1' },
-			},
-			{ queueMode: true, execution: makeExecution({ status: 'success' }) },
-		);
-=======
 	it('refuses a run the user cannot make through their own access, before it starts', async () => {
 		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
 		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
@@ -6528,30 +6506,26 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
-	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
-		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-		try {
-			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
-				{
-					id: 'wf-1',
-					// No trigger node: the adapter sets neither startNodes nor executionData,
-					// so an offloaded worker would receive an execution with no run data.
-					nodes: [
-						{
-							id: 'n1',
-							name: 'Set',
-							type: 'n8n-nodes-base.set',
-							typeVersion: 3,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					settings: { executionOrder: 'v1' },
-				},
-				{ queueMode: true, execution: makeExecution({ status: 'success' }) },
-			);
->>>>>>> 0ab1817ba41c63f76a949d9b2aab9c33ec1c424a
+	it('wraps manual metadata into executionData in queue mode so the worker can run it', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				// No trigger node: the adapter sets neither startNodes nor executionData,
+				// so an offloaded worker would receive an execution with no run data.
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: { executionOrder: 'v1' },
+			},
+			{ queueMode: true, execution: makeExecution({ status: 'success' }) },
+		);
 
 		await adapter.run('wf-1');
 
