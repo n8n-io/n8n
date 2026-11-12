@@ -3,6 +3,17 @@ import Default from '@astrojs/starlight/components/Head.astro';
 ---
 
 <Default />
+<!-- Inline, so that the first paint has the theme background before the stylesheet loads. -->
+<style is:inline>
+	:root {
+		color-scheme: dark;
+		background-color: #1a1a1a;
+	}
+	:root[data-theme='light'] {
+		color-scheme: light;
+		background-color: #ffffff;
+	}
+</style>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://avatars.githubusercontent.com" />
