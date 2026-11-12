@@ -3,7 +3,6 @@ import { join, resolve } from 'node:path';
 
 import { z } from 'zod';
 
-/** Where the specs and their manifest live, relative to this package. */
 export const PLAYWRIGHT_DIR = resolve(__dirname, '..', '..', '..', 'playwright');
 export const SPEC_DIR = join('tests', 'infrastructure', 'test-rig');
 export const MANIFEST_PATH = join(PLAYWRIGHT_DIR, SPEC_DIR, 'scenarios.json');
@@ -30,13 +29,7 @@ export const scenarioSchema = z
 
 export const manifestSchema = z.record(z.string().regex(/^[a-z0-9-]+$/), scenarioSchema);
 
-export type Manifest = z.infer<typeof manifestSchema>;
-
-/** Reads and validates the manifest, and checks that every spec file exists. */
-export function loadManifest(
-	path = MANIFEST_PATH,
-	specDir = join(PLAYWRIGHT_DIR, SPEC_DIR),
-): Manifest {
+export function loadManifest(path = MANIFEST_PATH, specDir = join(PLAYWRIGHT_DIR, SPEC_DIR)) {
 	const manifest = manifestSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
 	for (const [name, scenario] of Object.entries(manifest)) {
 		if (!existsSync(join(specDir, scenario.spec)))
@@ -45,5 +38,4 @@ export function loadManifest(
 	return manifest;
 }
 
-/** The runners image that matches an n8n image. */
 export const runnersImage = (n8nImage: string) => n8nImage.replace(/\/n8n:/, '/runners:');

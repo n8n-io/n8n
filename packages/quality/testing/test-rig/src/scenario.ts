@@ -5,19 +5,12 @@ import { isDeepStrictEqual } from 'node:util';
 import { logs } from './process';
 import type { RigStack } from './stack';
 
-/** The part of a stack a scenario uses. */
-export type ScenarioStack = Pick<RigStack, 'n8nContainers' | 'stop'>;
-
-export interface ScenarioTestInfo {
-	attach(name: string, options: { body: string; contentType: string }): Promise<void>;
-}
-
 export type Variant = 'before' | 'after';
 
 export const variant = (): Variant =>
 	process.env.TEST_RIG_VARIANT === 'before' ? 'before' : 'after';
 
-export interface Expectation {
+interface Expectation {
 	describe: string;
 	test: (actual: unknown) => boolean;
 }
@@ -37,7 +30,6 @@ export const below = (limit: number): Expectation => ({
 	test: (actual) => typeof actual === 'number' && actual < limit,
 });
 
-/** The value is an array or string that contains `item`. */
 export const includes = (item: unknown): Expectation => ({
 	describe: `includes ${JSON.stringify(item)}`,
 	test: (actual) =>
@@ -47,25 +39,7 @@ export const includes = (item: unknown): Expectation => ({
 
 export const anything: Expectation = { describe: 'is anything', test: () => true };
 
-/** One named check: a label, the observed value and what it should be. */
-export type Check = [label: string, actual: unknown, expected: Expectation];
-
-export interface VariantChecks {
-	before?: Check[];
-	after?: Check[];
-	/** Checks for both variants. */
-	always?: Check[];
-}
-
-/** Returns a line for every failed check, so a test can assert the list is empty. */
-export function failedChecks(checks: Check[]): string[] {
-	return checks
-		.filter(([, actual, expected]) => !expected.test(actual))
-		.map(
-			([label, actual, expected]) =>
-				`${label}: ${JSON.stringify(actual) ?? 'undefined'} ${expected.describe}`,
-		);
-}
+type Check = [label: string, actual: unknown, expected: Expectation];
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -80,7 +54,7 @@ export class Scenario {
 
 	constructor(
 		readonly name: string,
-		readonly rig: ScenarioStack,
+		readonly rig: Pick<RigStack, 'n8nContainers' | 'stop'>,
 		private readonly outputDir: string,
 	) {
 		this.result = {
@@ -117,8 +91,12 @@ export class Scenario {
 	}
 
 	/** Runs the checks for this variant, records the failures and returns them. */
-	verify(checks: VariantChecks): string[] {
-		const failed = failedChecks([...(checks.always ?? []), ...(checks[this.variant] ?? [])]);
+	verify(checks: Partial<Record<Variant | 'always', Check[]>>): string[] {
+		const failed = [...(checks.always ?? []), ...(checks[this.variant] ?? [])]
+			.filter(([, actual, expected]) => !expected.test(actual))
+			.map(
+				([label, actual, expected]) => `${label}: ${JSON.stringify(actual)} ${expected.describe}`,
+			);
 		this.result.failedChecks = failed;
 		return failed;
 	}
@@ -139,7 +117,12 @@ export class Scenario {
 		return out;
 	}
 
-	async run(testInfo: ScenarioTestInfo, body: () => Promise<void>) {
+	async run(
+		testInfo: {
+			attach(name: string, options: { body: string; contentType: string }): Promise<void>;
+		},
+		body: () => Promise<void>,
+	) {
 		const errors: unknown[] = [];
 		try {
 			await body();
