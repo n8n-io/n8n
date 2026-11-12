@@ -30,16 +30,32 @@ export const ConvertToFromBinaryDataRemovedRule = createNodeReplacementRule({
 	id: 'convert-to-from-binary-data-removed',
 	removedNodeName: 'Convert to/from binary data',
 	removedNodeType: 'n8n-nodes-base.moveBinaryData',
+	assistant: 'fix',
 	recommendations: [
 		{
-			action: 'Replace with Convert to File',
+			action: 'Replace with Extract From File',
 			description:
-				'For Base64 data to a binary file, replace this node with Convert to File and select Move Base64 String to File.',
+				'For Binary to JSON with Set All Data on, replace this node with Extract From File and select Extract From JSON. The new node puts the data under the Destination Output Field, not at the root of the item. Update the expressions that read the data, or add an Edit Fields node.',
 		},
 		{
 			action: 'Replace with Extract From File',
 			description:
-				'For a binary file to Base64 data, replace this node with Extract From File and select Move File to Base64 String.',
+				'For Binary to JSON with Set All Data off, replace this node with Extract From File. Select Move File to Base64 String if Keep As Base64 is on, Extract From JSON if JSON Parse is on, or else Extract From Text File. To keep the other fields of the item, set the Keep Source option to JSON.',
+		},
+		{
+			action: 'Replace with Convert to File',
+			description:
+				'For JSON to Binary with Convert All Data on, replace this node with Convert to File, select Convert to JSON, and set Mode to Each Item to Separate File. The default mode writes all items to one file.',
+		},
+		{
+			action: 'Replace with Convert to File',
+			description:
+				'For JSON to Binary with Convert All Data off, replace this node with Convert to File. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File.',
+		},
+		{
+			action: 'Check items without the input field',
+			description:
+				'In all modes, the new node fails when the input field is missing, but the old node skipped the item.',
 		},
 	],
 });
