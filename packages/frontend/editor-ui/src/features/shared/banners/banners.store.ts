@@ -25,6 +25,26 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	// Height of the banner area
 	const bannersHeight = ref<number>(0);
 
+	// Permanent dismissal of dynamic banners is stored per user in this browser.
+	const getDismissedKey = () => `N8N_DISMISSED_DYNAMIC_BANNERS_${usersStore.currentUserId}`;
+
+	const getDismissedDynamicBanners = (): string[] => {
+		try {
+			const parsed: unknown = JSON.parse(localStorage.getItem(getDismissedKey()) ?? '[]');
+			return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+		} catch {
+			return [];
+		}
+	};
+
+	const setDismissedDynamicBanners = (ids: string[]) => {
+		try {
+			localStorage.setItem(getDismissedKey(), JSON.stringify(ids));
+		} catch {
+			// Storage unavailable: the banner is hidden for this session only.
+		}
+	};
+
 	const mapDeploymentTypeValue = (deploymentType: string) => {
 		return deploymentType === 'cloud' ? 'cloud' : 'self-hosted';
 	};
@@ -34,7 +54,7 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 			!settingsStore.settings.dynamicBanners.endpoint ||
 			!settingsStore.settings.dynamicBanners.enabled
 		) {
-			return [];
+			return null;
 		}
 		const version = settingsStore.settings.versionCli;
 		const deploymentType = mapDeploymentTypeValue(
@@ -63,7 +83,7 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 			return dynamicBanners.value;
 		} catch (e) {
 			console.error('Failed to fetch dynamic banners:', e);
-			return [];
+			return null;
 		}
 	}
 
@@ -82,6 +102,11 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	};
 
 	const dismissBanner = async (name: BannerName, type: 'temporary' | 'permanent' = 'temporary') => {
+		if (type === 'permanent' && name in dynamicBannersMap.value) {
+			setDismissedDynamicBanners([...getDismissedDynamicBanners(), name]);
+			removeBannerFromStack(name);
+			return;
+		}
 		if (type === 'permanent') {
 			await dismissBannerPermanently(rootStore.restApiContext, {
 				bannerName: name,
@@ -112,8 +137,15 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 
 	const loadDynamicBanners = async () => {
 		const banners = await fetchDynamicBanners();
+		if (!banners) return;
+
+		// Drop stored dismissals of banners that Strapi no longer returns.
+		const dismissed = getDismissedDynamicBanners();
+		const stillActive = dismissed.filter((id) => banners.some((banner) => banner.id === id));
+		if (stillActive.length !== dismissed.length) setDismissedDynamicBanners(stillActive);
+
 		banners
-			?.filter((banner) => !settingsStore.permanentlyDismissedBanners.includes(banner.id))
+			.filter((banner) => !stillActive.includes(banner.id))
 			.forEach((banner) => pushBannerToStack(banner.id));
 	};
 
