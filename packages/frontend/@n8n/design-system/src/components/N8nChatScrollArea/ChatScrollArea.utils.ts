@@ -55,6 +55,11 @@ export function getAnchoredScrollTop(
 	return snapshot.scrollTop + (viewport.scrollHeight - snapshot.scrollHeight);
 }
 
+/** Returns `true` when the bottom of the content is near the bottom of the view. */
+export function isNearBottom(element: HTMLElement): boolean {
+	return element.scrollHeight - element.scrollTop - element.clientHeight <= AT_BOTTOM_THRESHOLD_PX;
+}
+
 /** Scrolls an element to the bottom. */
 export function scrollToBottom(element: HTMLElement, behavior: ScrollBehavior = 'auto') {
 	element.scrollTo({ top: element.scrollHeight, behavior });

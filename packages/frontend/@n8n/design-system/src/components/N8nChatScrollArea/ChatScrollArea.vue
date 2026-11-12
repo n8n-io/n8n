@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useIntersectionObserver, useResizeObserver } from '@vueuse/core';
+import { useEventListener, useIntersectionObserver, useResizeObserver } from '@vueuse/core';
 import { nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
@@ -15,6 +15,7 @@ import {
 	AT_BOTTOM_THRESHOLD_PX,
 	LOAD_OLDER_ROOT_MARGIN,
 	getAnchoredScrollTop,
+	isNearBottom,
 	isNearTop,
 	scrollToBottom,
 	takeScrollSnapshot,
@@ -56,16 +57,16 @@ function requestOlder() {
 	emit('load-older');
 }
 
-useIntersectionObserver(
-	bottomSentinel,
-	([entry]) => {
-		const value = entry?.isIntersecting ?? false;
-		if (value === isAtBottom.value) return;
-		isAtBottom.value = value;
-		emit('update:atBottom', value);
-	},
-	{ root: viewport, rootMargin: `0px 0px ${AT_BOTTOM_THRESHOLD_PX}px 0px` },
-);
+function setAtBottom(value: boolean) {
+	if (value === isAtBottom.value) return;
+	isAtBottom.value = value;
+	emit('update:atBottom', value);
+}
+
+useIntersectionObserver(bottomSentinel, ([entry]) => setAtBottom(entry?.isIntersecting ?? false), {
+	root: viewport,
+	rootMargin: `0px 0px ${AT_BOTTOM_THRESHOLD_PX}px 0px`,
+});
 
 useIntersectionObserver(
 	topSentinel,
@@ -74,6 +75,16 @@ useIntersectionObserver(
 		requestOlder();
 	},
 	{ root: viewport, rootMargin: LOAD_OLDER_ROOT_MARGIN },
+);
+
+useEventListener(
+	viewport,
+	'scrollend',
+	function reconcileAtBottomAfterScrollInterrupt() {
+		if (!viewport.value) return;
+		setAtBottom(isNearBottom(viewport.value));
+	},
+	{ passive: true },
 );
 
 /** Keeps the bottom in view when content grows and the user is at the bottom. */
@@ -110,10 +121,7 @@ function onScrollToBottom(behavior: ScrollBehavior = 'smooth') {
 	if (!viewport.value) return;
 	scrollToBottom(viewport.value, behavior);
 	/** Follows content that is added in the same tick. The observer confirms the state later. */
-	if (!isAtBottom.value) {
-		isAtBottom.value = true;
-		emit('update:atBottom', true);
-	}
+	setAtBottom(true);
 }
 
 const exposed: ChatScrollAreaExposed = { scrollToBottom: () => onScrollToBottom('auto') };
