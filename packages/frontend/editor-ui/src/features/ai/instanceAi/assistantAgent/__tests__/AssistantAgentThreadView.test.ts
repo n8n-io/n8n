@@ -1604,6 +1604,14 @@ describe('AssistantAgentThreadView', () => {
 				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 				expect.objectContaining({ prefill_type: 'agent_preview', prompt_modified: true }),
 			);
+			// A cleared composer drops the pre-fill, so the next message is the user's.
+			(panelProps.current.onDraftCleared as () => void)();
+			telemetryTrack.mockClear();
+			onMessageSending({ text: 'Thanks', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: null }),
+			);
 			// The staged session is the one that the preview shows.
 			expect(agentPreview.props).toMatchObject({
 				'preview-open': false,

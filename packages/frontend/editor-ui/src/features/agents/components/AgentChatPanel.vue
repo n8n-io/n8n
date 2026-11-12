@@ -194,7 +194,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'content-change': [hasContent: boolean];
-	/** The composer text became empty: a send or the user cleared it. A host send does not. */
+	/** The composer text became empty: a send or the user cleared it. `sendHostMessage` does not. */
 	'draft-cleared': [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
