@@ -19,6 +19,8 @@ Then:
 - **Surgical changes:** don't refactor, rename, or reformat code the task didn't require, even if you'd do it differently. Remove only the imports/vars/functions your own change orphaned; if you spot unrelated dead code, flag it rather than deleting it.
 - Add or adjust tests per the plan. Run the relevant build, lint, typecheck, and tests locally using the project's own scripts (per AGENTS.md: `pnpm build > build.log 2>&1`, package-local `pnpm lint`/`pnpm typecheck`/`pnpm test`, and `pnpm test:affected` for changed-scope) and get them passing before you report done.
 - Never weaken, skip, or delete tests just to make them pass.
+- Never commit, push, or switch branches; the orchestrator owns git.
+- If the same error survives two fix attempts, stop and report it instead of looping.
 - Write only tests that verify real behaviour of the actual code. Never write made-up or meaningless tests: no asserting on a mock/stub instead of the code under test, no tautologies (`expect(x).toBe(x)`), no "renders / doesn't throw" stand-ins for logic that needs verification, no re-implementing production logic in the test, and no coverage-padding. A test must compare real output against a known-good expected value. If there is nothing meaningful to test, add nothing and say so rather than inventing a test.
 - **Test names read like a human describing the behaviour**, short and plain (`'saves the draft when the title is empty'`), not machine-speak: no implementation details, method signatures, parameter dumps, or overlong qualifier chains. If the name needs "and", split the test.
 

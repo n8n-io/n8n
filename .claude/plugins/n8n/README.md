@@ -63,6 +63,8 @@ mostly-autonomous loop. It delegates to a purpose-built agent set:
 | `n8n:autodev-test-reviewer` | Review diff: high-value missing tests, test quality |
 | `n8n:autodev-vue-reviewer` | Review diff: Vue 3 + Pinia, design-system/i18n conventions (frontend diffs only) |
 
+The reviewers preload `n8n:autodev-review-contract`, their shared input and
+output rules (diff fallback, severity tags, at most ~10 findings, read-only).
 The four review lenses run in parallel; the Vue lens is added as a fifth **only
 when the diff touches frontend code** (`.vue`, `packages/frontend/**`, or
 `@n8n/design-system`). Reviewers tag findings `[BLOCKER]`/`[MAJOR]`/`[MINOR]`; loops converge until no
