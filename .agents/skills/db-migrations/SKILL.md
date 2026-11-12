@@ -546,6 +546,19 @@ await schemaBuilder.dropIndex('my_table', ['columnA'], { skipIfMissing: true });
 - `down()` must restore the previous schema, not just drop new objects — its effect should let `up()` be re-run cleanly afterwards.
 - **Test the down migration** on both engines: `pnpm start && pnpm start -- db:revert && pnpm start`. Down failures often surface as FK-protected indexes blocking column drops.
 
+CI checks every `ReversibleMigration` on an empty database with `packages/cli/test/migration/down-round-trip.test.ts`, on SQLite and on Postgres with a table prefix:
+
+1. It runs `up`, then `down`. The schema must be the same as before `up`: columns, indexes, foreign keys, constraints and their names.
+2. It runs `up` again. The schema must be the same as after the first `up`.
+
+The test does not check data, so a data migration still needs its own test. Known failures are in `packages/@n8n/db/src/migrations/down-round-trip.baseline.json`. Do not add new entries to this file. Fix the `down`, or make the migration an `IrreversibleMigration`. When you fix a known failure, remove its entry. To regenerate the file, run the test with `UPDATE_ROUND_TRIP_BASELINE=true`, once for each database:
+
+```bash
+cd packages/cli
+UPDATE_ROUND_TRIP_BASELINE=true pnpm test:sqlite:migrations test/migration/down-round-trip.test.ts
+UPDATE_ROUND_TRIP_BASELINE=true pnpm test:postgres:migrations:tc test/migration/down-round-trip.test.ts
+```
+
 ### Schema/Entity Drift
 
 Schema, entity, and OpenAPI types must agree. Caught regularly:
