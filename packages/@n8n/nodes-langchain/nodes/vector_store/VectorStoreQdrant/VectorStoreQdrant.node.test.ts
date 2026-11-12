@@ -1,15 +1,22 @@
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+const store = vi.hoisted(() => ({
+	similaritySearch: vi.fn(),
+}));
+
 // Mock external modules that are not needed for these unit tests
 vi.mock('@langchain/qdrant', () => {
 	const state: { ctorArgs?: unknown[] } = { ctorArgs: undefined };
 	class QdrantVectorStore {
 		static fromDocuments = vi.fn();
 		static fromExistingCollection = vi.fn();
-		similaritySearch = vi.fn();
 		constructor(...args: unknown[]) {
 			state.ctorArgs = args;
+		}
+		// Prototype method, so the subclass override still reaches it through `super`.
+		async similaritySearch(...args: unknown[]) {
+			return await store.similaritySearch(...args);
 		}
 	}
 	return { QdrantVectorStore, __state: state };
@@ -422,6 +429,86 @@ describe('VectorStoreQdrant.node', () => {
 					client: mockClient,
 					collectionName: 'my-test-collection',
 				}),
+			);
+		});
+
+		const createContext = () =>
+			({
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: vi.fn((name: string) => {
+					const map: Record<string, unknown> = {
+						qdrantCollection: 'test-collection',
+						'options.contentPayloadKey': '',
+						'options.metadataPayloadKey': '',
+					};
+					return map[name];
+				}),
+				getNode: () => ({ name: 'VectorStoreQdrant' }),
+				logger: dataFunctions.logger,
+			}) as never;
+
+		// Emulates @langchain/qdrant's fromExistingCollection, which builds the
+		// store with `new this(...)`, so the subclass override stays on the instance.
+		const createInstanceBuildingCollection = () => {
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockImplementation(async function (
+				this: unknown,
+				embeddings: unknown,
+				dbConfig: unknown,
+			) {
+				const Ctor = this as new (...args: unknown[]) => unknown;
+				return new Ctor(embeddings, dbConfig);
+			});
+		};
+
+		it('should keep the default filter isolated per store instance', async () => {
+			createInstanceBuildingCollection();
+			const node = new QdrantNode.VectorStoreQdrant();
+
+			const filterA = { must: [{ key: 'metadata.tenant', match: { value: 'a' } }] };
+			const filterB = { must: [{ key: 'metadata.tenant', match: { value: 'b' } }] };
+			const storeA = await (node as any).getVectorStoreClient(createContext(), filterA, {}, 0);
+			// A second Qdrant store constructed later (e.g. another node in the same
+			// workflow or a concurrent execution on the same worker) must not
+			// overwrite the first store's filter.
+			await (node as any).getVectorStoreClient(createContext(), filterB, {}, 0);
+
+			store.similaritySearch.mockResolvedValue([]);
+			await storeA.similaritySearch('query', 4);
+
+			expect(store.similaritySearch).toHaveBeenCalledWith('query', 4, filterA, undefined);
+		});
+
+		it('should keep the default filter when another store is created without a filter', async () => {
+			createInstanceBuildingCollection();
+			const node = new QdrantNode.VectorStoreQdrant();
+
+			const filterA = { must: [{ key: 'metadata.tenant', match: { value: 'a' } }] };
+			const storeA = await (node as any).getVectorStoreClient(createContext(), filterA, {}, 0);
+			// Retrieve-as-tool builds a fresh client per tool call with no filter.
+			await (node as any).getVectorStoreClient(createContext(), undefined, {}, 0);
+
+			store.similaritySearch.mockResolvedValue([]);
+			await storeA.similaritySearch('query', 4);
+
+			expect(store.similaritySearch).toHaveBeenCalledWith('query', 4, filterA, undefined);
+		});
+
+		it('should merge the default filter with a runtime filter', async () => {
+			createInstanceBuildingCollection();
+			const node = new QdrantNode.VectorStoreQdrant();
+
+			const filterA = { must: [{ key: 'metadata.tenant', match: { value: 'a' } }] };
+			const storeA = await (node as any).getVectorStoreClient(createContext(), filterA, {}, 0);
+
+			store.similaritySearch.mockResolvedValue([]);
+			const runtimeFilter = { should: [{ key: 'metadata.batch', match: { value: 12345 } }] };
+			await storeA.similaritySearch('query', 4, runtimeFilter);
+
+			expect(store.similaritySearch).toHaveBeenCalledWith(
+				'query',
+				4,
+				{ ...filterA, ...runtimeFilter },
+				undefined,
 			);
 		});
 	});

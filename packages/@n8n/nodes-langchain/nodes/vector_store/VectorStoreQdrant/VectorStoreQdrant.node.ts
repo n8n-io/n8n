@@ -11,19 +11,22 @@ import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {
-	private static defaultFilter: IDataObject = {};
+	private defaultFilter?: IDataObject;
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: QdrantLibArgs,
 		defaultFilter: IDataObject = {},
 	): Promise<QdrantVectorStore> {
-		ExtendedQdrantVectorStore.defaultFilter = defaultFilter;
-		return await super.fromExistingCollection(embeddings, args);
+		const store = await super.fromExistingCollection(embeddings, args);
+		// Keep the filter on the instance: the class-level field would be shared
+		// by every ExtendedQdrantVectorStore in the worker process.
+		(store as ExtendedQdrantVectorStore).defaultFilter = defaultFilter;
+		return store;
 	}
 
 	async similaritySearch(query: string, k: number, filter?: IDataObject, callbacks?: Callbacks) {
-		const mergedFilter = { ...ExtendedQdrantVectorStore.defaultFilter, ...filter };
+		const mergedFilter = { ...this.defaultFilter, ...filter };
 		return await super.similaritySearch(query, k, mergedFilter, callbacks);
 	}
 }
