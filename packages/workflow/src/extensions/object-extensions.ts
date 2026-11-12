@@ -74,12 +74,22 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 }
 
 export function compact(value: object): object {
+	// Arrays are objects too, so they must be handled first: iterating their
+	// entries into a plain object would turn each index into a string key.
+	if (Array.isArray(value)) {
+		const items: unknown[] = value;
+		return items
+			.filter((item) => item !== null && item !== undefined && item !== 'nil' && item !== '')
+			.map((item) => (typeof item === 'object' && item !== null ? compact(item) : item));
+	}
+
 	const newObj: Record<string, unknown> = {};
 	for (const [key, val] of Object.entries(value) as Array<[string, unknown]>) {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
-				if (Object.keys(val).length === 0) continue;
-				defineField(newObj, key, compact(val));
+				const compacted = compact(val);
+				if (Object.keys(compacted).length === 0) continue;
+				defineField(newObj, key, compacted);
 			} else {
 				defineField(newObj, key, val);
 			}
