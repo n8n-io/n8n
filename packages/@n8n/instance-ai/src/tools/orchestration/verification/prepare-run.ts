@@ -13,6 +13,8 @@ export interface PreparedVerificationRun {
 	haltedGateNames: string[];
 	/** When set, verify runs one scripted pass per decision instead of halting. */
 	gateScript?: WaitGateScript;
+	/** Overrides on halted gates that the run ignored, with a note for the agent. */
+	ignoredGateOverrideNote?: string;
 }
 
 function getInvalidFixtureOverrideNodeNames(
@@ -115,15 +117,15 @@ export function prepareVerificationRun(
 				verdict.nodeName === nodeName && verdict.verdict === 'simulate' && verdict.haltBranch,
 		),
 	);
-	if (haltedOverrideNodeNames.length > 0) {
-		const guidance =
-			`Node(s) ${haltedOverrideNodeNames.join(', ')} pause the workflow for a human decision and sit on a loop — ` +
-			'their output cannot be overridden: a constant canned response would re-run the loop with the same ' +
-			'answer forever. Verification drives such gates with scripted decisions where possible, or halts at ' +
-			'them otherwise. Treat the scripted/halted result as authoritative and tell the user the approval ' +
-			'loop needs a manual end-to-end test for final confirmation.';
-		return blocked('halted_wait_gate_override', guidance);
-	}
+	// Rejecting these cost a whole extra verify call to drop them, so the run
+	// ignores them (buildVerificationPinData already skips halted gates) and says so.
+	const ignoredGateOverrideNote =
+		haltedOverrideNodeNames.length > 0
+			? `Ignored fixture override(s) for ${haltedOverrideNodeNames.join(', ')}: these nodes pause for a human ` +
+				'decision inside a loop, so a fixed answer would repeat the loop forever. Verification drove them ' +
+				'with scripted decisions or halted at them. This result is final for that gate: do not verify again ' +
+				'to reach it, and tell the user the approval loop needs a manual end-to-end test.'
+			: undefined;
 
 	const invalidFixtureOverrideNodeNames = getInvalidFixtureOverrideNodeNames(
 		buildOutcome,
@@ -153,5 +155,9 @@ export function prepareVerificationRun(
 		return blocked('zero_item_fixture_override', guidance);
 	}
 
-	return { kind: 'ready', prepared: buildVerificationPinData(buildOutcome, fixtureOverrides) };
+	const prepared = buildVerificationPinData(buildOutcome, fixtureOverrides);
+	return {
+		kind: 'ready',
+		prepared: ignoredGateOverrideNote ? { ...prepared, ignoredGateOverrideNote } : prepared,
+	};
 }

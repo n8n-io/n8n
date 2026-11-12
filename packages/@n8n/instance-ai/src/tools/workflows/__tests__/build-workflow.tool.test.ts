@@ -20,6 +20,7 @@ import {
 	autoImportMissingSdkSymbols,
 	buildWorkflowInputSchema,
 	createBuildWorkflowTool,
+	rewriteArrowFromAi,
 } from '../build-workflow.tool';
 import { collectHostSdkValidatorWarnings } from '../host-sdk-validation';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
@@ -3614,6 +3615,33 @@ describe('createBuildWorkflowTool', () => {
 			'You already tried this',
 		);
 		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+});
+
+describe('rewriteArrowFromAi', () => {
+	it('rewrites the parenthesised and bare arrow forms to fromAi()', () => {
+		const source = [
+			"to: ($) => $.fromAi('to', 'Recipient'),",
+			"subject: (x) => x.fromAi('subject'),",
+			"body: $ => $.fromAi('body', 'Text', 'string'),",
+		].join('\n');
+
+		const result = rewriteArrowFromAi(source);
+
+		expect(result?.count).toBe(3);
+		expect(result?.source).toBe(
+			[
+				"to: fromAi('to', 'Recipient'),",
+				"subject: fromAi('subject'),",
+				"body: fromAi('body', 'Text', 'string'),",
+			].join('\n'),
+		);
+	});
+
+	it('leaves other arrows and direct calls alone', () => {
+		const source = "a: (x) => y.fromAi('a'),\nb: fromAi('b'),\nc: myFn$ => myFn$.other(1)";
+
+		expect(rewriteArrowFromAi(source)).toBeUndefined();
 	});
 });
 
