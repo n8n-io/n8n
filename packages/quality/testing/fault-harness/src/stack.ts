@@ -76,11 +76,11 @@ export class HarnessStack {
 				N8N_RUNNERS_MODE: options.runners,
 				N8N_RUNNERS_ENABLED: 'true',
 				NODE_OPTIONS: preloadNodeOptions(),
-				FAULT_HARNESS_HOOK_DIR: HOOK_DIR,
 				FAULT_HARNESS_HOOKS: JSON.stringify(hooks),
 				...licenceEnv(mains),
 				...scaledTimeouts(options.scale),
 				...options.env,
+				FAULT_HARNESS_HOOK_DIR: HOOK_DIR,
 			},
 		}).then((stack) => {
 			const harness = new HarnessStack(stack, hooks);
