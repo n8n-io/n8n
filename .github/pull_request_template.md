@@ -9,7 +9,7 @@ https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 ## Summary
 
 <!--
-Add a concise summary of what the PR does and why, in full sentences.
+Add a concise summary of what the PR does and why, in full sentences. Use the imperative mood, for example "Fix the ..." or "Add ...".
 Keep the length in proportion to the complexity of the change. A small fix needs one or two sentences.
 Add screenshots or videos for UI changes.
 -->

@@ -98,8 +98,9 @@ comma and a space: `fix(core, editor): ...`.
    2. The length of the Summary matches the complexity of the change. Each
       sentence after the first two describes a surprise (see Summary
       Section). If not, delete it.
-   3. The first sentence states the area and the nature of the change (bug
-      fix, feature, refactor, or tests).
+   3. The first sentence is in the imperative mood ("Fix ...", not "This PR
+      fixes ...") and states the area and the nature of the change (bug fix,
+      feature, refactor, or tests).
    4. Each sentence uses exact technical terms and plain technical verbs.
    5. Each sentence is true for the diff.
 
@@ -159,7 +160,9 @@ Use ASD-STE100 Simplified Technical English: short sentences, active voice,
 plain technical verbs, no metaphors.
 
 ### Summary Section
-1. Start with one or two sentences: what the PR does and why. State the area
+1. Start with one or two sentences: what the PR does and why. Write the first
+   sentence in the imperative mood, like the PR title ("Fix the ...", "Add
+   ...", "Change the ..."). Do not start with "This PR". State the area
    of the product or code (for example, the RabbitMQ Trigger node, workflow
    history, or the CI pipeline) and the nature of the change: a bug fix, a
    feature, a refactor, or tests. Do not name functions or fields here. The
@@ -184,12 +187,11 @@ plain technical verbs, no metaphors.
 
 Examples of a complete Summary for a change with no surprises:
 
-> This PR fixes a bug in the RabbitMQ Trigger node. The node returned its
-> channel before the queue bindings were complete, so it could miss the first
-> messages.
+> Fix a bug in the RabbitMQ Trigger node. The node returned its channel before
+> the queue bindings were complete, so it could miss the first messages.
 
-> This PR fixes the documentation in `AGENTS.md`. It referred to the UI design
-> skill by an old name, so agents could not find the skill.
+> Fix the documentation in `AGENTS.md`. It referred to the UI design skill by
+> an old name, so agents could not find the skill.
 
 ### How to test Section
 - Write short steps for a person who tests the product change by hand: the
