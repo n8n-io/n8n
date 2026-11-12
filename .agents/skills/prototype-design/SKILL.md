@@ -18,8 +18,8 @@ structure, not on the visuals.
 
 - One `.html` file. Inline `<style>` and `<script>`. No build step.
 - Plain HTML, CSS, and vanilla JS. Do not add React, Vue, Tailwind, or a
-  package. The file must open with a double-click and paste into a Claude
-  artifact.
+  package. The file must open with a double-click and work in any browser or
+  HTML preview.
 - The only external resource is the Kalam font from Google Fonts. Keep the
   `'Segoe Print', 'Comic Sans MS', cursive` fallbacks.
 - Start from [template.html](template.html). It contains the theme, the
