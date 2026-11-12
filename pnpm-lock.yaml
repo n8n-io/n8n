@@ -593,9 +593,6 @@ catalogs:
     eslint-plugin-n8n-nodes-base:
       specifier: ^2.0.0
       version: 2.0.0
-    eslint-plugin-oxlint:
-      specifier: 1.78.0
-      version: 1.78.0
     express:
       specifier: 5.1.0
       version: 5.1.0
@@ -6774,9 +6771,6 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../@n8n/errors
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-config
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../@n8n/expression-runtime
@@ -6825,6 +6819,9 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../@n8n/i18n
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
@@ -7002,12 +6999,6 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      eslint-plugin-oxlint:
-        specifier: 'catalog:'
-        version: 1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1))
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -7137,6 +7128,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
+      vize:
+        specifier: 'catalog:'
+        version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -19148,11 +19142,6 @@ packages:
     engines: {node: '>=20.15', pnpm: '>=9.6'}
     peerDependencies:
       eslint: '>=8.40'
-
-  eslint-plugin-oxlint@1.78.0:
-    resolution: {integrity: sha512-kTyevY8wGGOvmOuEoWsP+MN1PEUaAbjka3MqPIcjqp3ZW3lXiu8OX/HyNFhTG8qCZi0qWYqnvgMYOUFAsu/Diw==}
-    peerDependencies:
-      oxlint: ~1.78.0
 
   eslint-plugin-playwright@2.2.2:
     resolution: {integrity: sha512-j0jKpndIPOXRRP9uMkwb9l/nSmModOU3452nrFdgFJoEv/435J1onk8+aITzjDW8DfypxgmVaDMdmVIa6F7I0w==}
@@ -36675,11 +36664,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
-
-  eslint-plugin-oxlint@1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1)):
-    dependencies:
-      jsonc-parser: 3.3.1
-      oxlint: 1.78.0(oxlint-tsgolint@0.21.1)
 
   eslint-plugin-playwright@2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1)):
     dependencies:
