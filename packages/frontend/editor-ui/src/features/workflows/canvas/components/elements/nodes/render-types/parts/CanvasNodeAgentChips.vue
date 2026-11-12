@@ -55,6 +55,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			placement="top"
 		>
 			<span :class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]">
+				<span v-if="isChipActive(chip)" :class="$style.statusRing" />
 				<AgentChipButton
 					:class="$style.chipButton"
 					:icon="chip.nodeTypeDescription ? undefined : chip.icon"
@@ -74,6 +75,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			v-if="overflowChips.length && isReadOnly"
 			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
 		>
+			<span v-if="isOverflowActive" :class="$style.statusRing" />
 			<AgentChipButton
 				:clickable="false"
 				:aria-busy="isOverflowActive"
@@ -86,26 +88,28 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 				}}
 			</AgentChipButton>
 		</span>
-		<N8nActionDropdown
+		<span
 			v-else-if="overflowChips.length"
-			:items="overflowItems"
-			placement="bottom-start"
-			:class="['nodrag', 'nowheel']"
-			data-test-id="canvas-node-agent-chips-overflow"
+			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
 		>
-			<template #activator>
-				<AgentChipButton
-					:aria-busy="isOverflowActive"
-					:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
-				>
-					{{
-						i18n.baseText('agentNode.card.moreChips', {
-							interpolate: { count: overflowChips.length },
-						})
-					}}
-				</AgentChipButton>
-			</template>
-		</N8nActionDropdown>
+			<span v-if="isOverflowActive" :class="$style.statusRing" />
+			<N8nActionDropdown
+				:items="overflowItems"
+				placement="bottom-start"
+				:class="['nodrag', 'nowheel', $style.overflowDropdown]"
+				data-test-id="canvas-node-agent-chips-overflow"
+			>
+				<template #activator>
+					<AgentChipButton :aria-busy="isOverflowActive">
+						{{
+							i18n.baseText('agentNode.card.moreChips', {
+								interpolate: { count: overflowChips.length },
+							})
+						}}
+					</AgentChipButton>
+				</template>
+			</N8nActionDropdown>
+		</span>
 	</div>
 </template>
 
@@ -137,15 +141,28 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	min-width: 0;
 }
 
+// The ring sizes to the wrapper, so the dropdown container must hug the button.
+.chipWrapper > .overflowDropdown {
+	display: inline-flex;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.running > * {
+	position: relative;
+	z-index: 1;
+}
+
 /* stylelint-disable */
-.running::after {
-	@include styles.status-animated-after;
+.running > .statusRing {
+	@include styles.status-animated-ring;
 	@include styles.status-running-animation;
 
 	// This matches the mixin's 3px inset and keeps the gradient outside the button face.
 	padding: 3px;
 	border-radius: inherit;
 	z-index: 0;
+	pointer-events: none;
 	-webkit-mask:
 		linear-gradient(#fff 0 0) content-box,
 		linear-gradient(#fff 0 0);
@@ -154,14 +171,8 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		linear-gradient(#fff 0 0);
 	-webkit-mask-composite: xor;
 	mask-composite: exclude;
-	pointer-events: none;
 }
-
-.running > * {
-	position: relative;
-	z-index: 1;
-}
+/* stylelint-enable */
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 </style>

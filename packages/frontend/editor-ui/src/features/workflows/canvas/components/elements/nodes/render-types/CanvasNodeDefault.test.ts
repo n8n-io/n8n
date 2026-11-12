@@ -369,7 +369,9 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('waiting');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('waiting');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
 		});
 	});
 
@@ -383,7 +385,16 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+			const node = getByText('Test Node').closest('.node');
+			expect(node).toHaveClass('running');
+			expect(node?.querySelector('.statusRing')).not.toBeNull();
+		});
+
+		it('should not render the status ring when node is idle', () => {
+			const { getByText } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+			expect(getByText('Test Node').closest('.node')?.querySelector('.statusRing')).toBeNull();
 		});
 	});
 

@@ -622,6 +622,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 			});
 			const root = wrapper.getByTestId('canvas-node-group');
 			expect([...root.classList].some((c) => /running/i.test(c))).toBe(true);
+			expect(root.querySelector('[class*="statusRing"]')).not.toBeNull();
+		});
+
+		it('renders no status ring when a running group is expanded', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'running', isCollapsed: false }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect(root.querySelector('[class*="statusRing"]')).toBeNull();
 		});
 
 		it('applies a hashed `waiting` class when executionStatus is waiting', () => {
@@ -630,6 +639,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			});
 			const root = wrapper.getByTestId('canvas-node-group');
 			expect([...root.classList].some((c) => /waiting/i.test(c))).toBe(true);
+			expect(root.querySelector('[class*="statusRing"]')).not.toBeNull();
 		});
 	});
 
