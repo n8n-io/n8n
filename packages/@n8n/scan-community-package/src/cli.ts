@@ -91,7 +91,7 @@ const run = async (spec: string): Promise<{ report: JsonReport; exitCode: number
 			version: null,
 			passed: false,
 			message,
-			error,
+			incomplete: true,
 			skippedChecks: isLocalPath(spec) ? LOCAL_SKIPPED_CHECKS : [],
 		});
 		return { report, exitCode: EXIT_CODES.INTERNAL_ERROR };

@@ -456,9 +456,7 @@ describe('getExitCode', () => {
 
 		expect(getExitCode({ passed: true })).toBe(EXIT_CODES.SCAN_SUCCEEDED);
 		expect(getExitCode(failed)).toBe(EXIT_CODES.SCAN_FAILED);
-		expect(getExitCode({ ...failed, error: new Error('npm pack failed') })).toBe(
-			EXIT_CODES.INTERNAL_ERROR,
-		);
+		expect(getExitCode({ ...failed, incomplete: true })).toBe(EXIT_CODES.INTERNAL_ERROR);
 	});
 });
 
@@ -625,7 +623,7 @@ describe('toJsonReport', () => {
 				version: null,
 				passed: false,
 				message: 'Analysis failed: npm pack failed',
-				error: new Error('npm pack failed'),
+				incomplete: true,
 			}),
 		).toMatchObject({ status: 'error', message: 'Analysis failed: npm pack failed' });
 	});

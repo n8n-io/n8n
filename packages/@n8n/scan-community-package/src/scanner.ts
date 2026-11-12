@@ -78,7 +78,8 @@ export type AnalysisResult =
 			readonly findings?: readonly Finding[];
 			/** The check that did not pass. Not set when the scan failed before the first check. */
 			readonly check?: Check;
-			readonly error?: unknown;
+			/** The scan could not finish, so the package was not fully checked. */
+			readonly incomplete?: boolean;
 	  };
 
 /** The result of a whole scan of one package, merged from its checks. */
@@ -119,7 +120,7 @@ export const EXIT_CODES = {
 
 export const getExitCode = (result: AnalysisResult) => {
 	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
-	return result.error === undefined ? EXIT_CODES.SCAN_FAILED : EXIT_CODES.INTERNAL_ERROR;
+	return result.incomplete ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.SCAN_FAILED;
 };
 
 const STATUSES = {
@@ -517,7 +518,7 @@ export const lintDirectory = async (
 			passed: false,
 			check: CHECKS.ESLINT,
 			message: `Analysis failed: ${errorMessage(error)}`,
-			error,
+			incomplete: true,
 		};
 	}
 };
@@ -542,10 +543,10 @@ const mergeResults = (
 
 	const sourceFindings = findingsFrom(sourceResult, 'source');
 	const packageFindings = findingsFrom(packageResult, 'package');
-	// Crashes come first, so an incomplete scan is never reported as a plain failure
-	const crashes = failures.filter((result) => result.error !== undefined);
+	// Incomplete runs come first, so an incomplete scan is never reported as a plain failure
+	const incompleteRuns = failures.filter((result) => result.incomplete);
 	const message = [
-		...crashes.map((result) => result.message),
+		...incompleteRuns.map((result) => result.message),
 		summarizeFindings(sourceFindings.length, packageFindings.length),
 	]
 		.filter((part) => part !== null)
@@ -558,7 +559,7 @@ const mergeResults = (
 		details: details || undefined,
 		findings: [...sourceFindings, ...packageFindings],
 		check: CHECKS.ESLINT,
-		error: crashes[0]?.error,
+		incomplete: incompleteRuns.length > 0,
 	};
 };
 
@@ -568,7 +569,7 @@ const writeAnalyzed = (label: string, result: AnalysisResult) => {
 		stdout.cursorTo(0);
 	}
 	stdout.write(
-		!result.passed && result.error !== undefined
+		!result.passed && result.incomplete
 			? `❌ Could not analyze "${label}" \n`
 			: `✅ Analyzed "${label}" \n`,
 	);
@@ -727,7 +728,7 @@ export const analyzePackageByName = async (
 					passed: false,
 					check: CHECKS.SOURCE_REPOSITORY,
 					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
-					error: sourceError,
+					incomplete: true,
 				};
 			}
 
@@ -778,7 +779,7 @@ export const analyzePackageByName = async (
 			version,
 			passed: false,
 			message: `Analysis failed: ${errorMessage(error)}`,
-			error,
+			incomplete: true,
 		};
 	}
 };
