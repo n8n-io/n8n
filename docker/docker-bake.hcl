@@ -15,10 +15,10 @@ variable "BUILDER_IMAGE" { default = "" }
 variable "RUNTIME_IMAGE" { default = "" }
 
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-dev@sha256:05a717732c5499d22e39221e3e34f348a310bb03b3864a46a06ed7a7fad42cfc"
+  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc-dev@sha256:c1ff9dd826920453d5ab67cb3daaa4b3efb5270cf45d65b7f393bee7c4ff1857"
 }
 variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.13.0@sha256:04d0ff20910be5ceb7cc78010318f4197e120d8806ef6e93162691ea1c70813d"
+  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc@sha256:757a7ca4022a4a2aebdc6e1f07e9d08016e446994aed1c8473922df54a14eb01"
 }
 
 variable "DHI_REF" {
