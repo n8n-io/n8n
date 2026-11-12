@@ -7,6 +7,8 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 import { computed, effectScope, nextTick, ref } from 'vue';
 
@@ -47,9 +49,18 @@ function message(tree: InstanceAiAgentNode, isStreaming = true): InstanceAiMessa
 	};
 }
 
+/** The specific progress belongs to the variant of the draft workflow preview experiment. */
+function setDraftWorkflowPreview(enabled: boolean) {
+	const { name, variant, control } = INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT;
+	mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+		flag === name ? (enabled ? variant : control) : undefined,
+	);
+}
+
 describe('useRunActivity', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 	});
 
 	it('names the running tool of the orchestrator, with its details', () => {
@@ -82,6 +93,7 @@ describe('useRunActivity', () => {
 describe('useRunActivity, specific states', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 	});
 
 	const done = (
@@ -218,6 +230,7 @@ describe('useRunActivity, specific states', () => {
 describe('useRunActivity, long steps', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn(
 			(name: string) =>
@@ -287,6 +300,7 @@ describe('useRunActivity, long steps', () => {
 describe('useRunActivity, reasoning', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 	});
 
 	const reasoningTimeline = (content: string) => [{ type: 'reasoning' as const, content }];
@@ -350,6 +364,7 @@ describe('useRunActivity, reasoning', () => {
 describe('useSteadyRunActivity', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 	});
 
 	it('follows streaming reasoning without holding each version', async () => {
@@ -374,6 +389,7 @@ describe('useCanvasRunActivity', () => {
 
 	beforeEach(() => {
 		createTestingPinia();
+		setDraftWorkflowPreview(true);
 		vi.useFakeTimers();
 	});
 
@@ -450,6 +466,54 @@ describe('useCanvasRunActivity', () => {
 
 		expect(activity?.value?.waiting).toBe(true);
 		stop();
+	});
+});
+
+describe('useRunActivity, control group of the experiment', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(false);
+	});
+
+	it('is thinking while the agent reasons', () => {
+		const tree = agent({ timeline: [{ type: 'reasoning', content: 'Gmail can filter by label' }] });
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Thinking' });
+	});
+
+	it('does not mark a run that waits on the user', () => {
+		const asking: InstanceAiToolCallState = {
+			...call('ask_user'),
+			confirmation: {
+				requestId: 'r-1',
+				severity: 'info',
+				message: 'Please answer',
+				inputType: 'questions',
+			},
+			confirmationStatus: 'pending',
+		};
+
+		expect(useRunActivity()([message(agent({ toolCalls: [asking] }))])?.waiting).toBeUndefined();
+	});
+
+	it('is thinking after a tool call ends', () => {
+		const finished = { ...call('workflow_builder_verify_built_workflow'), isLoading: false };
+
+		expect(useRunActivity()([message(agent({ toolCalls: [finished] }))])).toEqual({
+			label: 'Thinking',
+		});
+	});
+
+	it('shows each new activity at once', async () => {
+		const messages = ref([message(agent({ toolCalls: [call('search_nodes')] }))]);
+		const scope = effectScope();
+		const activity = scope.run(() => useSteadyRunActivity(() => messages.value));
+
+		messages.value = [message(agent({ toolCalls: [call('workspace_execute_command')] }))];
+		await nextTick();
+
+		expect(activity?.value?.label).toBe('Running command');
+		scope.stop();
 	});
 });
 

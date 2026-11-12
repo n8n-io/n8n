@@ -63,9 +63,8 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
-import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
 import { useCanvasRunActivity } from './composables/useRunActivity';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
@@ -252,16 +251,14 @@ watch(
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
-const posthog = usePostHog();
+const draftWorkflowPreviewEnabled = useDraftWorkflowPreviewEnabled();
 const nodeTypesStore = useNodeTypesStore();
 const describeStagingNodeType = (nodeType: string) =>
 	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
 const workflowStaging = useWorkflowStaging({
 	messages: () => thread.messages,
 	workflowDrafts: () => thread.workflowDrafts,
-	enabled: () =>
-		posthog.getVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name) ===
-		INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant,
+	enabled: () => draftWorkflowPreviewEnabled.value,
 	describeType: describeStagingNodeType,
 });
 // EOF Experiment cleanup

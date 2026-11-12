@@ -18,6 +18,7 @@ import {
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import {
 	formatToolNameForDisplay,
 	stripBuilderToolPrefix,
@@ -255,6 +256,8 @@ export function getToolIcon(rawToolName: string): IconName {
  */
 export function useToolLabel() {
 	const i18n = useI18n();
+	// The control group of the experiment keeps the short labels.
+	const specificLabels = useDraftWorkflowPreviewEnabled();
 
 	function formatList(items: string[]): string {
 		const unique = [...new Set(items)];
@@ -308,7 +311,7 @@ export function useToolLabel() {
 
 	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
 		const toolName = resolveBuilderToolName(rawToolName, args?.action);
-		const sourceLabel = getWorkflowSourceLabel(toolName, args);
+		const sourceLabel = specificLabels.value ? getWorkflowSourceLabel(toolName, args) : undefined;
 		if (sourceLabel) return sourceLabel;
 		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
@@ -319,7 +322,7 @@ export function useToolLabel() {
 			const lookupLabel = i18n.baseText(lookupKey);
 			if (lookupLabel !== lookupKey) return lookupLabel;
 		}
-		const nodeLookupLabel = getNodeLookupLabel(toolName, args);
+		const nodeLookupLabel = specificLabels.value ? getNodeLookupLabel(toolName, args) : undefined;
 		if (nodeLookupLabel) return nodeLookupLabel;
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;

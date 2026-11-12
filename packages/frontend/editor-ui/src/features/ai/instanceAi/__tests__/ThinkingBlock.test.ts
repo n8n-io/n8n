@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import ThinkingBlock from '../components/ThinkingBlock.vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -53,9 +55,18 @@ const toolEntry = (toolCallId: string): InstanceAiTimelineEntry => ({
 	toolCallId,
 });
 
+/** The live subline belongs to the variant of the draft workflow preview experiment. */
+function setDraftWorkflowPreview(enabled: boolean) {
+	const { name, variant, control } = INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT;
+	vi.spyOn(usePostHog(), 'getVariant').mockImplementation((flag) =>
+		flag === name ? (enabled ? variant : control) : undefined,
+	);
+}
+
 describe('ThinkingBlock', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
 	});
 
 	it.each(['completed', 'cancelled', 'error'] as const)(
@@ -344,6 +355,21 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label');
 	});
 
+	it('should keep "Thinking" on the subline for the control group of the experiment', () => {
+		setDraftWorkflowPreview(false);
+
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Gmail');
+	});
+
 	it('should show "Thinking" on the subline until reasoning adds to the title', () => {
 		// The title already shows the first sentence, so the subline does not repeat it.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });
@@ -500,6 +526,7 @@ describe('ThinkingBlock', () => {
 describe('collapsed subline label', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
 	});
 
 	const contextEntry = (

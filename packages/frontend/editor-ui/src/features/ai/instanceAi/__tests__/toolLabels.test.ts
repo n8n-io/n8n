@@ -1,6 +1,12 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
+
+const draftWorkflowPreview = vi.hoisted(() => ({ value: true }));
+
+vi.mock('@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled', () => ({
+	useDraftWorkflowPreviewEnabled: () => draftWorkflowPreview,
+}));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
@@ -431,5 +437,31 @@ describe('workflow source labels', () => {
 		expect(getToolLabel('workspace_write_file', { path: 'notes/plan.md' })).toBe('Writing file');
 		expect(getToolLabel('workspace_write_file')).toBe('Writing file');
 		expect(getToolLabel('workflow_builder_build_workflow')).toBe('Generating workflow');
+	});
+});
+
+describe('labels for the control group of the experiment', () => {
+	const { getToolLabel } = useToolLabel();
+
+	beforeEach(() => {
+		draftWorkflowPreview.value = false;
+		return () => {
+			draftWorkflowPreview.value = true;
+		};
+	});
+
+	test('keeps the short labels of node lookups', () => {
+		expect(getToolLabel('search_nodes', { queries: ['gmail', 'slack'] })).toBe('Searching nodes');
+		expect(getToolLabel('get_node_types', { nodeTypes: ['n8n-nodes-base.slack'] })).toBe(
+			'Reading node schema',
+		);
+	});
+
+	test('keeps the short labels of workflow source writes', () => {
+		const path = 'src/workflows/daily-invoice_processing.workflow.ts';
+		expect(getToolLabel('workspace_write_file', { path })).toBe('Writing file');
+		expect(getToolLabel('workflow_builder_build_workflow', { filePath: path })).toBe(
+			'Generating workflow',
+		);
 	});
 });

@@ -13,6 +13,7 @@ import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import { currentSentence, firstSentence } from '../../shared/thinking.utils';
 import { useActiveToolLabel } from '../composables/useRunActivity';
 import { useSteadyValue } from '../composables/useSteadyValue';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { useInstanceContextLabel } from '../instanceContextLabels';
@@ -45,6 +46,8 @@ const activeToolLabel = useActiveToolLabel();
 // A running source write rotates its label, so the label reads the clock.
 const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
+// The control group of the experiment keeps the subline as it was.
+const specificProgress = useDraftWorkflowPreviewEnabled();
 
 /** The reasoning sentence being written, unless the title already shows it. */
 function reasoningLabel(content: string): string | undefined {
@@ -90,7 +93,7 @@ const activity = computed<{ key: string; text: string } | undefined>(() => {
 	if (!props.active || props.awaitingInput) return undefined;
 	const index = props.entries.length - 1;
 	const last = props.entries[index];
-	if (last?.type === 'reasoning') {
+	if (last?.type === 'reasoning' && specificProgress.value) {
 		// One key for the whole segment, so the subline follows the stream at once.
 		const text = reasoningLabel(last.content);
 		return text === undefined ? undefined : { key: `reasoning-${index}`, text };
@@ -100,7 +103,10 @@ const activity = computed<{ key: string; text: string } | undefined>(() => {
 });
 
 // Held steady like the status bar, so short steps do not flash.
-const steadyActivity = useSteadyValue(() => activity.value, { key: (value) => value.key });
+const heldActivity = useSteadyValue(() => activity.value, { key: (value) => value.key });
+const steadyActivity = computed(() =>
+	specificProgress.value ? heldActivity.value : activity.value,
+);
 
 const segments = computed(() => {
 	return props.entries.filter(

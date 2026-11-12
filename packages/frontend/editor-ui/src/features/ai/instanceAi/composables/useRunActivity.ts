@@ -13,6 +13,7 @@ import { useIntervalFn, useNow } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 
 import { currentSentence } from '../../shared/thinking.utils';
 
@@ -151,6 +152,7 @@ function waitingLabelKey(confirmation: InstanceAiConfirmation): BaseTextKey {
 export function useActiveToolLabel() {
 	const i18n = useI18n();
 	const { getToolLabel } = useToolLabel();
+	const specificProgress = useDraftWorkflowPreviewEnabled();
 
 	function nodeTypeDisplayNames(tree: InstanceAiAgentNode): string[] {
 		const nodeTypes = readNodeTypes(tree);
@@ -163,9 +165,10 @@ export function useActiveToolLabel() {
 
 	return (toolCall: InstanceAiToolCallState, tree: InstanceAiAgentNode, now: number): string => {
 		const toolName = resolveBuilderToolName(toolCall.toolName, toolCall.args.action);
-		const key = Object.hasOwn(NODE_TYPE_ROTATION_KEYS, toolName)
-			? NODE_TYPE_ROTATION_KEYS[toolName]
-			: undefined;
+		const key =
+			specificProgress.value && Object.hasOwn(NODE_TYPE_ROTATION_KEYS, toolName)
+				? NODE_TYPE_ROTATION_KEYS[toolName]
+				: undefined;
 		const names = key ? nodeTypeDisplayNames(tree) : [];
 		if (key && names.length > 0) {
 			return i18n.baseText(key, { interpolate: { name: rotate(names, now) } });
@@ -182,6 +185,8 @@ export function useActiveToolLabel() {
 export function useRunActivity() {
 	const i18n = useI18n();
 	const runningToolLabel = useActiveToolLabel();
+	// The control group of the experiment keeps the generic "Thinking".
+	const specificProgress = useDraftWorkflowPreviewEnabled();
 
 	/** One of the nodes being fixed, a different one every few seconds. */
 	function fixingLabel(nodeNames: string[], now: number): string | undefined {
@@ -213,6 +218,7 @@ export function useRunActivity() {
 		node: InstanceAiAgentNode,
 		now: number,
 	): { text: string; streaming?: true } | undefined {
+		if (!specificProgress.value) return undefined;
 		const last = node.timeline.at(-1);
 		const sentence = last?.type === 'reasoning' ? currentSentence(last.content) : undefined;
 		if (sentence) return { text: sentence, streaming: true };
@@ -250,7 +256,7 @@ export function useRunActivity() {
 
 		const tree = lastMsg.agentTree;
 
-		const waitingOn = findWaitingConfirmation(tree);
+		const waitingOn = specificProgress.value ? findWaitingConfirmation(tree) : undefined;
 		if (waitingOn) return { label: i18n.baseText(waitingLabelKey(waitingOn)), waiting: true };
 
 		// Check active children first (sub-agents)
@@ -295,12 +301,16 @@ function runActivityKey(activity: RunActivity): string {
  */
 export function useSteadyRunActivity(messages: () => InstanceAiMessage[]) {
 	const deriveActivity = useRunActivity();
+	const specificProgress = useDraftWorkflowPreviewEnabled();
 	// Some states rotate with time (node types, fixes), not only with events.
 	const now = useNow({ interval: 1000 });
-	return useSteadyValue(() => deriveActivity(messages(), now.value.getTime()) ?? undefined, {
+	const current = () => deriveActivity(messages(), now.value.getTime()) ?? undefined;
+	const steady = useSteadyValue(current, {
 		key: runActivityKey,
 		urgent: (activity) => activity.waiting === true,
 	});
+	// The control group of the experiment shows each activity at once, as before.
+	return computed(() => (specificProgress.value ? steady.value : current()));
 }
 
 /** The canvas shows one of these while an agent reasons, not the reasoning itself. */
