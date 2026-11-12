@@ -619,6 +619,21 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
+export async function getUniqueKeyColumns(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+): Promise<string[]> {
+	const rows = await db.any<{ attname: string }>(
+		`SELECT a.attname
+		 FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+		 WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
+		   AND i.indisunique AND i.indisvalid AND i.indnkeyatts = 1 AND i.indpred IS NULL`,
+		[schema, table],
+	);
+	return rows.map((row) => row.attname);
+}
+
 export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
 	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',

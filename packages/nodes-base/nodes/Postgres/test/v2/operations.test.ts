@@ -6,6 +6,7 @@ import type {
 	INode,
 	INodeParameters,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
@@ -1121,6 +1122,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1181,6 +1183,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1242,8 +1245,180 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 		await expect(promise).rejects.toThrow('Failed to parse value to number');
+	});
+
+	describe('startAfter', () => {
+		const baseParameters: IDataObject = {
+			operation: 'select',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+				cachedResultName: 'my_table',
+			},
+			limit: 5,
+			sort: {},
+			options: {},
+		};
+		const nodeOptions = baseParameters.options as IDataObject;
+
+		const createCatalogDb = () =>
+			({ any: vi.fn().mockResolvedValue([{ attname: 'id' }]) }) as unknown as PgpDatabase;
+
+		it('first page: should add ORDER BY on the cursor column without a predicate', async () => {
+			await select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'id', value: '' } },
+				}),
+				runQueries,
+				items,
+				nodeOptions,
+				createCatalogDb(),
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query: 'SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4',
+						values: ['public', 'my_table', 'id', 5],
+					},
+				],
+				nodeOptions,
+			);
+		});
+
+		it('next page: should wrap the existing WHERE and bind the cursor value', async () => {
+			await select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					where: {
+						values: [
+							{ column: 'id', condition: '>=', value: 2 },
+							{ column: 'foo', condition: 'equal', value: 'data 2' },
+						],
+					},
+					combineConditions: 'OR',
+					startAfter: { values: { column: 'id', value: '7' } },
+				}),
+				runQueries,
+				items,
+				nodeOptions,
+				createCatalogDb(),
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query:
+							'SELECT * FROM $1:name.$2:name WHERE ($3:name >= $4 OR $5:name = $6) AND $7:name > $8 ORDER BY $9:name ASC LIMIT $10',
+						values: ['public', 'my_table', 'id', 2, 'foo', 'data 2', 'id', '7', 'id', 5],
+					},
+				],
+				nodeOptions,
+			);
+		});
+
+		it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {
+			await select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					sort: { values: [{ column: 'id', direction: 'ASC' }] },
+					startAfter: { values: { column: 'id', value: '7' } },
+				}),
+				runQueries,
+				items,
+				nodeOptions,
+				createCatalogDb(),
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+						values: ['public', 'my_table', 'id', '7', 'id', 5],
+					},
+				],
+				nodeOptions,
+			);
+		});
+
+		it('should throw when the cursor column is not unique', async () => {
+			const promise = select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'name', value: '7' } },
+				}),
+				runQueries,
+				items,
+				nodeOptions,
+				createCatalogDb(),
+			);
+
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('Column "name" in table "my_table" is not unique');
+			expect(runQueries).not.toHaveBeenCalled();
+		});
+
+		it('returnAll: should ignore the cursor and not query the catalog', async () => {
+			const db = createCatalogDb();
+
+			await select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					returnAll: true,
+					startAfter: { values: { column: 'id', value: '7' } },
+				}),
+				runQueries,
+				items,
+				nodeOptions,
+				db,
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[{ query: 'SELECT * FROM $1:name.$2:name', values: ['public', 'my_table'] }],
+				nodeOptions,
+			);
+			expect(db.any).not.toHaveBeenCalled();
+		});
+
+		it('should query the catalog once per table', async () => {
+			const db = createCatalogDb();
+
+			await select.execute.call(
+				createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'id', value: '7' } },
+				}),
+				runQueries,
+				[{ json: {} }, { json: {} }],
+				nodeOptions,
+				db,
+			);
+
+			expect(db.any).toHaveBeenCalledTimes(1);
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+						values: ['public', 'my_table', 'id', '7', 'id', 5],
+					},
+					{
+						query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+						values: ['public', 'my_table', 'id', '7', 'id', 5],
+					},
+				],
+				nodeOptions,
+			);
+		});
 	});
 });
 

@@ -1,4 +1,5 @@
 import {
+	NodeOperationError,
 	tryToParseNumber,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -19,6 +20,7 @@ import type {
 import {
 	addSortRules,
 	addWhereClauses,
+	getUniqueKeyColumns,
 	getWhereClauses,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -26,6 +28,7 @@ import {
 	combineConditionsCollection,
 	optionsCollection,
 	sortFixedCollection,
+	startAfterFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
 
@@ -58,6 +61,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	whereFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -81,11 +85,12 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: PostgresNodeOptions,
-	_db?: PgpDatabase,
+	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
+	const uniqueColumnsByTable = new Map<string, string[]>();
 
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
@@ -113,6 +118,7 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
+		const base = query;
 		[query, values] = addWhereClauses(
 			this.getNode(),
 			i,
@@ -124,10 +130,48 @@ export async function execute(
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-
-		[query, values] = addSortRules(query, sortRules, values);
+		let rules = sortRules;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
+		if (!returnAll) {
+			const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
+				{}) as IDataObject;
+			const column = String(cursor.column ?? '');
+			const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+
+			if (column !== '') {
+				const tableKey = `${schema}.${table}`;
+				let uniqueColumns = uniqueColumnsByTable.get(tableKey);
+				if (!uniqueColumns) {
+					uniqueColumns = await getUniqueKeyColumns(db, schema, table);
+					uniqueColumnsByTable.set(tableKey, uniqueColumns);
+				}
+				if (!uniqueColumns.includes(column)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
+						{ itemIndex: i },
+					);
+				}
+
+				if (value !== '') {
+					const where = query.slice(base.length);
+					values.push(column, value);
+					const predicate = `$${values.length - 1}:name > $${values.length}`;
+					query = where
+						? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
+						: `${base} WHERE ${predicate}`;
+				}
+
+				// ponytail: the walk is only correct with no Sort rules or Sort = cursor column ASC
+				rules = sortRules.some((rule) => rule.column === column)
+					? sortRules
+					: [...sortRules, { column, direction: 'ASC' }];
+			}
+		}
+
+		[query, values] = addSortRules(query, rules, values);
+
 		if (!returnAll) {
 			const limitRaw = this.getNodeParameter('limit', i, 50);
 			const limit = tryToParseNumber(limitRaw);
