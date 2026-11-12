@@ -107,22 +107,16 @@ export class Workload {
 		});
 	}
 
-	async executions(): Promise<Record<string, string>> {
-		return await this.rig.db.statusesOf(this.workflowId);
-	}
-
 	/** Waits until every execution is final and the queue is empty, or the timeout passes, then reads the run. */
 	async record(requests: WorkloadRequest[], settleTimeoutMs: number): Promise<RunRecord> {
 		const deadline = Date.now() + settleTimeoutMs;
 		for (;;) {
-			const executions = await this.executions();
+			const executions = await this.rig.db.statusesOf(this.workflowId);
 			const { wait, active } = await this.rig.redis.bull();
 			const settled =
 				wait.length === 0 &&
 				active.length === 0 &&
-				Object.values(executions).every((status) =>
-					(FINAL_STATUSES as readonly string[]).includes(status),
-				);
+				Object.values(executions).every((status) => FINAL_STATUSES.includes(status));
 			if (settled || Date.now() > deadline) {
 				return { requests, executions, effects: await this.effects(), bull: { wait, active } };
 			}
