@@ -7,7 +7,7 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	UrlService,
@@ -19,6 +19,7 @@ import {
 	AiPreferenceService,
 	CredentialsFinderService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -38,7 +39,6 @@ import type z from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
@@ -46,7 +46,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -342,7 +341,7 @@ export class McpService {
 			dataPlaneUrl: '',
 			configUrl: '',
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		if (!enabled) return { telemetry: disabledTelemetry };
@@ -357,7 +356,7 @@ export class McpService {
 			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
 			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		try {
