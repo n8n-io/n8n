@@ -61,7 +61,8 @@ test(
 			await s.step('armed', async () => await point.arm());
 
 			const hit = point.waitHit(30_000);
-			await s.step('webhook', async () => await rig.api.webhook(path));
+			const response = await s.step('webhook', async () => await rig.api.webhook(path));
+			expect(response.status, `webhook response: ${response.body}`).toBe(200);
 			const { container: draining, detail } = await hit;
 			s.mark('hit', detail);
 			await point.disarm(draining);

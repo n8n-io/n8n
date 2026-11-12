@@ -64,7 +64,8 @@ test(
 			const job = hook(workers, 'job-before-handler');
 			await s.step('armed', async () => await job.arm());
 			const hit = job.waitHit(30_000);
-			await s.step('webhook', async () => await rig.api.webhook(path));
+			const response = await s.step('webhook', async () => await rig.api.webhook(path));
+			expect(response.status, `webhook response: ${response.body}`).toBe(200);
 			const { container: draining, detail } = await hit;
 			await job.disarm(draining);
 			const executionId = String(detail.executionId);

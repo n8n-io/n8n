@@ -54,7 +54,8 @@ test(
 			await s.step('armed', async () => await point.arm());
 			const hit = point.waitHit(30_000);
 			const enqueued = waitForLog([rig.main()], 'Enqueued execution', 30_000);
-			await s.step('webhook', async () => await rig.api.webhook(path));
+			const response = await s.step('webhook', async () => await rig.api.webhook(path));
+			expect(response.status, `webhook response: ${response.body}`).toBe(200);
 			const jobId = String((await hit).detail.jobId);
 			const executionId = /Enqueued execution (\d+)/.exec((await enqueued).line)?.[1] ?? '';
 			s.mark('hit', { jobId, executionId });

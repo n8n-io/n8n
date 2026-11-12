@@ -68,7 +68,8 @@ test(
 			const point = hook([worker], 'node-before-run');
 			await s.step('armed', async () => await point.arm());
 			const hit = point.waitHit(30_000);
-			await s.step('webhook', async () => await rig.api.webhook(path));
+			const response = await s.step('webhook', async () => await rig.api.webhook(path));
+			expect(response.status, `webhook response: ${response.body}`).toBe(200);
 			const failingExecutionId = String((await hit).detail.executionId);
 			s.mark('hit', failingExecutionId);
 
