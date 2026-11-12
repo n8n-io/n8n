@@ -30,3 +30,12 @@ The rule checks named script imports and named re-exports. In Vue files it also 
 Requires `N8nTooltip` nested anywhere inside `N8nDropdownMenu` to keep teleportation enabled. Dropdown content clips overflow, so an inline tooltip can otherwise be cropped.
 
 The `teleported` prop may be omitted because it defaults to `true`, or it may be set explicitly to `true`. Dynamic values are rejected because they cannot guarantee teleportation.
+
+### `css-module-class-usage` (sample)
+
+Reports two mismatches for `<style module>`:
+
+- A class in the style block that the template and script never read.
+- A `$style.name` (or `useCssModule()` binding) that has no class in the style block.
+
+This rule is not in `recommended`. Enable `configs.cssModuleClasses` on a package to try it. A computed key such as `$style[name]` skips the unused-class check for that module, because the rule cannot know which class the key reads. `:global` selectors are ignored.
