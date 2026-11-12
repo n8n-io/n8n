@@ -123,6 +123,9 @@ export async function waitForLog(
 				const follower = spawn('docker', ['logs', '--follow', '--since', since, container.getId()]);
 				followers.push(follower);
 				follower.on('error', reject);
+				follower.on('close', (code) => {
+					if (code) reject(new Error(`docker logs ${container.getName()} exited with ${code}`));
+				});
 				for (const stream of [follower.stdout, follower.stderr]) {
 					const match = lineMatcher(wanted);
 					stream.setEncoding('utf8');
