@@ -4,6 +4,7 @@ import multer from 'multer';
 import { mock } from 'vitest-mock-extended';
 
 import { KnowledgeConfig } from '../../knowledge.config';
+import { KnowledgeUploadError } from '../knowledge-upload.error';
 import { isAllowedKnowledgeFile, KnowledgeUploadMiddleware } from '../knowledge-upload.middleware';
 
 const { multerFactoryMock, uploadArrayMock } = vi.hoisted(() => ({
@@ -51,6 +52,50 @@ describe('KnowledgeUploadMiddleware', () => {
 		void middleware.array('files')(mock<Request>(), mock<Response>(), vi.fn());
 
 		expect(uploadArrayMock).toHaveBeenCalledWith('files', 3);
+	});
+
+	it('records a multer error on the request and still continues the chain', () => {
+		const error = new multer.MulterError('LIMIT_FILE_SIZE', 'files');
+		uploadArrayMock.mockReturnValue(
+			(_req: Request, _res: Response, done: (error?: unknown) => void) => done(error),
+		);
+		const middleware = new KnowledgeUploadMiddleware(Container.get(KnowledgeConfig));
+		const req = mock<Request & { fileUploadError?: Error }>();
+		const next = vi.fn();
+
+		void middleware.array('files')(req, mock<Response>(), next);
+
+		expect(req.fileUploadError).toBe(error);
+		expect(next).toHaveBeenCalledTimes(1);
+	});
+
+	describe('file filter', () => {
+		function fileFilter() {
+			new KnowledgeUploadMiddleware(Container.get(KnowledgeConfig));
+			const [options] = multerFactoryMock.mock.calls[0] as [multer.Options];
+
+			return options.fileFilter!;
+		}
+
+		it('accepts an allowed file', () => {
+			const done = vi.fn();
+
+			fileFilter()(mock<Request>(), mock<Express.Multer.File>({ originalname: 'notes.txt' }), done);
+
+			expect(done).toHaveBeenCalledWith(null, true);
+		});
+
+		it('rejects a disallowed file with the file_type reason', () => {
+			const done = vi.fn();
+
+			fileFilter()(mock<Request>(), mock<Express.Multer.File>({ originalname: 'tool.exe' }), done);
+
+			expect(done).toHaveBeenCalledWith(expect.any(KnowledgeUploadError));
+			expect(done.mock.calls[0][0]).toMatchObject({
+				message: 'Only CSV, PDF, Markdown, and TXT files are allowed',
+				reason: 'file_type',
+			});
+		});
 	});
 
 	it.each(['data.csv', 'notes.md', 'notes.markdown', 'document.pdf', 'plain.txt'])(

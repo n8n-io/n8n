@@ -10,7 +10,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
-import { toGb, toMb } from '@n8n/utils/number/bytes';
+import { formatMbOrGb, toMb } from '@n8n/utils/number/bytes';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import type { KnowledgeUploadClientFailureReason } from './useAgentTelemetry';
@@ -154,7 +154,7 @@ export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 			showError(
 				new Error(
 					locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
-						interpolate: { size: String(toGb(maxTotalSizeBytes)) },
+						interpolate: { size: formatMbOrGb(maxTotalSizeBytes) },
 					}),
 				),
 				locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),

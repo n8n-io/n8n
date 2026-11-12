@@ -289,7 +289,7 @@ describe('useAgentKnowledge', () => {
 			await knowledge.uploadFiles([makeFile('notes.txt')]);
 
 			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
-				interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+				interpolate: { size: `${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB` },
 			});
 			expect(showErrorSpy).toHaveBeenCalledWith(
 				expect.any(Error),
@@ -403,7 +403,7 @@ describe('useAgentKnowledge', () => {
 			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
 		});
 
-		it('rejects a total above a lower configured total limit, with the limit in gigabytes', async () => {
+		it('rejects a total above a lower configured total limit, with the limit in megabytes', async () => {
 			settingsStoreState.moduleSettings = {
 				knowledge: {
 					limits: { maxFileSizeBytes: 25 * MB, maxFilesPerUpload: 10, maxTotalSizeBytes: 500 * MB },
@@ -415,10 +415,30 @@ describe('useAgentKnowledge', () => {
 			await knowledge.uploadFiles([makeFile('notes.txt')]);
 
 			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
-				interpolate: { size: '0.49' },
+				interpolate: { size: '500 MB' },
 			});
 			expect(telemetry.trackRejectedFileUpload).toHaveBeenCalledWith('total_limit', 1);
 			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('states a configured total limit above one gigabyte in gigabytes', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: {
+						maxFileSizeBytes: 25 * MB,
+						maxFilesPerUpload: 10,
+						maxTotalSizeBytes: 2000 * MB,
+					},
+				},
+			};
+			const { knowledge } = setup();
+			knowledge.agentFiles.value = [makeAgentFile({ fileSizeBytes: 2000 * MB })];
+
+			await knowledge.uploadFiles([makeFile('notes.txt')]);
+
+			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
+				interpolate: { size: '1.95 GB' },
+			});
 		});
 
 		it('accepts a total above the default limit when the configured total limit is higher', async () => {

@@ -524,16 +524,27 @@ describe('KnowledgeFileService', () => {
 	});
 
 	describe('configured limits', () => {
-		it('rejects a total above a lower configured limit that the default would accept', async () => {
+		it('rejects a total above a lower configured limit that the default would accept, stated in megabytes', async () => {
 			service = makeService(true, { maxTotalSizeMb: 500 });
 			await agentFileRepository.save(makeAgentFile({ fileSizeBytes: 500 * 1024 * 1024 }));
 
 			await expect(
 				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], reserveRow),
 			).rejects.toThrow(
-				"Knowledge base limit reached. The total size can't be larger than 0.49 GB.",
+				"Knowledge base limit reached. The total size can't be larger than 500 MB.",
 			);
 			expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
+		});
+
+		it('states a configured limit above one gigabyte in gigabytes', async () => {
+			service = makeService(true, { maxTotalSizeMb: 2000 });
+			await agentFileRepository.save(makeAgentFile({ fileSizeBytes: 2000 * 1024 * 1024 }));
+
+			await expect(
+				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], reserveRow),
+			).rejects.toThrow(
+				"Knowledge base limit reached. The total size can't be larger than 1.95 GB.",
+			);
 		});
 
 		it('accepts a total above the default limit when the configured limit is higher', async () => {

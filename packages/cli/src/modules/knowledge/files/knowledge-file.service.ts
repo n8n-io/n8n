@@ -5,7 +5,7 @@ import { isUniqueConstraintError, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { toGb } from '@n8n/utils/number/bytes';
+import { formatMbOrGb } from '@n8n/utils/number/bytes';
 import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -254,7 +254,7 @@ export class KnowledgeFileService {
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
 		if (existingTotalSizeBytes + uploadTotalSizeBytes > this.config.maxTotalSizeBytes) {
 			throw new KnowledgeUploadError(
-				`Knowledge base limit reached. The total size can't be larger than ${toGb(this.config.maxTotalSizeBytes)} GB.`,
+				`Knowledge base limit reached. The total size can't be larger than ${formatMbOrGb(this.config.maxTotalSizeBytes)}.`,
 				'total_limit',
 			);
 		}
