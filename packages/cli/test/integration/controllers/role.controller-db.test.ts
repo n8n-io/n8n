@@ -1,19 +1,27 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import {
+	GLOBAL_AGENT_ROLE,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_EDITOR_ROLE,
 	PROJECT_OWNER_ROLE,
 	PROJECT_VIEWER_ROLE,
+	Person,
 	ProjectRepository,
 	RoleRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { Person, Project } from '@n8n/db';
+import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createMember, createOwner, createUser } from '../shared/db/users';
+import {
+	createMember,
+	createOwner,
+	createServiceAccountWithProject,
+	createUser,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -242,6 +250,70 @@ describe('RoleController - Integration Tests', () => {
 			expect(response.body.data.members).toHaveLength(1);
 			expect(response.body.data.members[0].email).toBe(member.email);
 			expect(response.body.data.members[0].role).toBe('project:editor');
+		});
+
+		it('should list a service account with its name and kind', async () => {
+			const project = await createTeamProject('Service Account Members Test', owner);
+			const serviceAccount = await createServiceAccountWithProject(GLOBAL_AGENT_ROLE);
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toHaveLength(2);
+			expect(response.body.data.members).toEqual(
+				expect.arrayContaining([
+					{
+						userId: member.id,
+						firstName: member.firstName,
+						lastName: member.lastName,
+						email: member.email,
+						role: 'project:editor',
+						kind: 'person',
+					},
+					{
+						userId: serviceAccount.id,
+						firstName: 'Deploy bot',
+						lastName: null,
+						email: '',
+						role: 'project:editor',
+						kind: 'service',
+					},
+				]),
+			);
+
+			// The file shares one database, and some global role listings still fail for a service account (IAM-1888).
+			await Container.get(UserRepository).delete({ id: serviceAccount.id });
+		});
+
+		it('should list a person without an email or a name', async () => {
+			const project = await createTeamProject('Person Without Email Test', owner);
+			const person = await createUser();
+			await Container.get(DataSource).manager.update(Person, person.id, {
+				email: null,
+				firstName: null,
+				lastName: null,
+			} as unknown as Partial<Person>);
+			await linkUserToProject(person, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toEqual([
+				{
+					userId: person.id,
+					firstName: null,
+					lastName: null,
+					email: '',
+					role: 'project:editor',
+					kind: 'person',
+				},
+			]);
+
+			await Container.get(UserRepository).delete({ id: person.id });
 		});
 
 		it('should require role:manage scope (deny member)', async () => {
