@@ -514,6 +514,8 @@ export type RelayEventMap = ModuleEventMap & {
 
 	'public-api-invoked': {
 		userId: string;
+		path: string;
+		method: string;
 		/** Route template with the method, e.g. `GET /executions/{executionId}`. */
 		route: string;
 		result: PublicApiResult;

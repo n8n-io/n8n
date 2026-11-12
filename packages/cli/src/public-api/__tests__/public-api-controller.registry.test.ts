@@ -297,6 +297,8 @@ describe('PublicApiControllerRegistry', () => {
 		await vi.waitFor(() =>
 			expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
 				userId: 'user-1',
+				path: '/widgets/w-1',
+				method: 'GET',
 				route: 'GET /widgets/{widgetId}',
 				result: '2xx',
 				apiVersion: 'v1',

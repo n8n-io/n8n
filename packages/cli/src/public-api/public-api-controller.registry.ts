@@ -79,6 +79,12 @@ function matchesPathTemplate(template: string, path: string): boolean {
 	);
 }
 
+// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
+function routePath(prefix: string, req: Request): string {
+	const path = (prefix === '/' ? '' : prefix) + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 // Leaves out the version prefix. The name then matches the path that the controller declares.
 function toRouteName(method: string, prefix: string, routeTemplate: string): string {
 	const path = (prefix === '/' ? '' : prefix) + routeTemplate;
@@ -250,7 +256,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
+			middlewares.push(this.createAuthMiddleware(apiVersion, prefix, routeName));
 			middlewares.push(
 				...this.rateLimitService.createRouteLimiters(
 					route.method,
@@ -341,7 +347,11 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
+	private createAuthMiddleware(
+		apiVersion: string,
+		prefix: string,
+		routeName: string,
+	): RequestHandler {
 		return async (req, res, next) => {
 			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
@@ -363,6 +373,8 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.emitInvocationOnFinish(res, {
 					userId,
+					path: routePath(prefix, req),
+					method: req.method,
 					route: routeName,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
