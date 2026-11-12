@@ -19,6 +19,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import { nodeSimulationGap } from './non-http-node-types';
+import { OutboundRedactor } from './outbound-redaction';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -76,6 +77,11 @@ export class SimulationBlockedError extends Error {
 	}
 }
 
+interface McpServerRef {
+	name: string;
+	url: string;
+}
+
 type ReplySource = 'world_state' | 'made_up';
 
 interface ActiveToolCall {
@@ -96,6 +102,8 @@ export interface SimulationSessionInit {
 	unavailableDetail?: string;
 	/** Keyed by tool name (MCP: server name). */
 	capabilities: ToolTestCapability[];
+	/** Configured MCP servers, to name the server of each MCP request. */
+	mcpServers?: McpServerRef[];
 	/** Stores the test chat marker. Runs before each turn starts. */
 	recordTestChat?: (session: SimulationSession) => Promise<void>;
 }
@@ -119,7 +127,11 @@ export class SimulationSession {
 	// A cached runtime keeps this session's hooks, so a replacement session needs its own runtime.
 	private readonly instanceId = randomUUID();
 
+	private readonly mcpServers: McpServerRef[];
+
 	private readonly activeCalls = new AsyncLocalStorage<ActiveToolCall>();
+
+	private readonly redactor = new OutboundRedactor();
 
 	private readonly decisions = new Map<string, ToolCallSimulation>();
 
@@ -130,6 +142,7 @@ export class SimulationSession {
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
+		this.mcpServers = init.mcpServers ?? [];
 		this.recordTestChat = init.recordTestChat;
 	}
 
@@ -207,6 +220,7 @@ export class SimulationSession {
 			mcpFetch: this.mcpFetch,
 			...(this.capabilities.has(WEB_SEARCH_TOOL_NAME) ? { webSearch: this.webSearch } : {}),
 			configureToolAdditionalData: (additionalData, context) => {
+				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
 				additionalData.evalNodeMockHandler = this.nodeGuard;
 			},
@@ -277,16 +291,14 @@ export class SimulationSession {
 	// Never return `undefined`: core would then send the request to the real service.
 	private createHttpHandler(toolName: string): EvalLlmMockHandler {
 		return async (options: IHttpRequestOptions, node): Promise<EvalMockHttpResponse> => {
-			const reply = await this.ask(
-				{
-					protocol: 'http',
-					method: options.method ?? 'GET',
-					url: requestUrl(options),
-					headers: stripAuthHeaders(options.headers),
-					body: options.body,
-				},
-				{ nodeType: node.type },
-			);
+			const request = this.redactor.redact({
+				protocol: 'http',
+				method: options.method ?? 'GET',
+				url: requestUrl(options),
+				headers: stringHeaders(options.headers),
+				body: options.body,
+			});
+			const reply = await this.ask(request, { nodeType: node.type });
 			if (reply.outcome !== 'served') throw new Error(`Unexpected reply for ${toolName}`);
 			return { body: reply.body, headers: reply.headers ?? {}, statusCode: reply.status };
 		};
@@ -330,11 +342,7 @@ export class SimulationSession {
 	};
 
 	private mcpServerForUrl(url: string): string | undefined {
-		for (const capability of this.capabilities.values()) {
-			if (capability.kind === 'mcp' && url.startsWith(capability.toolName))
-				return capability.toolName;
-		}
-		return undefined;
+		return this.mcpServers.find((server) => urlIsUnder(url, server.url))?.name;
 	}
 }
 
@@ -353,6 +361,7 @@ function classifyTool(tool: BuiltTool): ToolClassification {
 		};
 	}
 	if (metadata?.kind === 'workflow') return { type: 'simulated', key: tool.name, kind: 'workflow' };
+	if (metadata?.customTool === true) return { type: 'simulated', key: tool.name, kind: 'custom' };
 	if (tool.name === WEB_SEARCH_TOOL_NAME) {
 		return { type: 'simulated', key: WEB_SEARCH_TOOL_NAME, kind: 'web_search' };
 	}
@@ -380,12 +389,9 @@ function requestUrl(options: IHttpRequestOptions): string {
 	}
 }
 
-const AUTH_HEADER = /^(authorization|proxy-authorization|cookie|x-api-key|api-key)$/i;
-
-function stripAuthHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
+function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
 	const result: Record<string, string> = {};
 	for (const [name, value] of Object.entries(headers ?? {})) {
-		if (AUTH_HEADER.test(name)) continue;
 		if (typeof value === 'string') result[name] = value;
 		else if (typeof value === 'number' || typeof value === 'boolean') result[name] = `${value}`;
 		else if (Array.isArray(value))
@@ -400,4 +406,10 @@ function parseJson(text: string): unknown {
 	} catch {
 		return text;
 	}
+}
+
+/** `url` is `base` or below it on a path boundary (`/mcp` does not match `/mcp-two`). */
+function urlIsUnder(url: string, base: string): boolean {
+	const root = base.replace(/\/+$/, '');
+	return url === base || url === root || url.startsWith(`${root}/`) || url.startsWith(`${root}?`);
 }

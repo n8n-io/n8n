@@ -4,7 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
 import { nodeNameToToolName } from 'n8n-workflow';
@@ -96,6 +96,9 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
+			mcpServers: agent.tools.flatMap((tool) =>
+				tool.kind === 'mcp' && tool.url ? [{ name: tool.toolName, url: tool.url }] : [],
+			),
 			recordTestChat: async (current) => await this.saveTestChat(current),
 		});
 		this.sessions.set(input.testChatId, session);
@@ -108,10 +111,14 @@ export class SimulationSessionService {
 	 * the turn rather than letting a later turn run live.
 	 */
 	async saveTestChat(session: SimulationSession): Promise<void> {
-		await this.threadRepository.update(
+		const result = await this.threadRepository.update(
 			{ id: session.testChatId },
 			{ simulation: session.storedTestChat() },
 		);
+		// Without a stored marker a later turn could run live, so the turn must not go on.
+		if (result?.affected === 0) {
+			throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
+		}
 	}
 
 	async markExecutionSimulated(executionId: string): Promise<void> {
