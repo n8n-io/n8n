@@ -53,7 +53,7 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 	};
 }
 
-function reasonFor(text: string, status: number, login: OAuth2Login): string {
+function reasonFor(text: string, status: number): string {
 	const stated = (() => {
 		try {
 			const parsed: unknown = JSON.parse(text);
@@ -129,7 +129,7 @@ export function createClientCredentialsTokenSource(
 		);
 		const text = await response.text();
 		if (!response.ok) {
-			const reason = reasonFor(text, response.status, login);
+			const reason = reasonFor(text, response.status);
 			throw new UserError(`Could not sign in to the gateway: ${reason}`, {
 				description: 'Check the token URL, client ID, client secret and scope on the credential.',
 			});
