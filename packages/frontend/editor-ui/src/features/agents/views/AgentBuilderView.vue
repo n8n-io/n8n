@@ -31,14 +31,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_FILES_PER_UPLOAD,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
-	type AgentFileDto,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -71,12 +65,9 @@ import {
 	createAgent,
 	createAgentTask,
 	deleteAgent,
-	listAgentFiles,
-	uploadAgentFiles,
-	deleteAgentFile,
-	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
+import { useAgentKnowledge } from '../composables/useAgentKnowledge';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
@@ -978,12 +969,6 @@ const instanceAiEmbedLaunch = computed<InstanceAiThreadLaunch>(() => ({
 	origin: 'internal',
 	sourceContext: { agentId: agentId.value },
 }));
-const agentFiles = ref<AgentFileDto[]>([]);
-const agentFilesLoading = ref(false);
-const agentFilesUploading = ref(false);
-const deletingAgentFileId = ref<string | null>(null);
-const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
-
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
 });
@@ -1246,149 +1231,27 @@ async function fetchAgent(
 	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
-async function fetchAgentFiles(
-	targetProjectId: string = projectId.value,
-	targetAgentId: string = agentId.value,
-) {
-	if (!isKnowledgeBaseEnabled.value) return;
-	agentFilesLoading.value = true;
-	try {
-		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = files;
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.loadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesLoading.value = false;
-		}
-	}
-}
-
-async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
-	builderTelemetry.trackStartedFileUpload(files.length);
-
-	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
-	if (oversizedFiles.length > 0) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
-					interpolate: { name: oversizedFiles[0].name, size: String(MAX_AGENT_FILE_SIZE_MB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
-		);
-	}
-	// Make sure each upload reports one client rejection at most: report the oversized files
-	// only when no later check rejects the upload.
-	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
-	if (filesWithinLimit.length === 0) {
-		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
-		return;
-	}
-
-	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
-		builderTelemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
-					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	const existingTotalSizeBytes = agentFiles.value.reduce(
-		(total, file) => total + file.fileSizeBytes,
-		0,
-	);
-	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
-	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-		builderTelemetry.trackRejectedFileUpload('total_limit', filesWithinLimit.length);
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
-					interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	if (oversizedFiles.length > 0) {
-		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
-	}
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	agentFilesUploading.value = true;
-	try {
-		await ensureAgentPersisted();
-		const uploadedFiles = await uploadAgentFiles(
-			rootStore.restApiContext,
-			targetProjectId,
-			targetAgentId,
-			filesWithinLimit,
-		);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		const existingById = new Map(agentFiles.value.map((file) => [file.id, file]));
-		for (const file of uploadedFiles) {
-			existingById.set(file.id, file);
-		}
-		agentFiles.value = Array.from(existingById.values()).sort(
-			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-		);
-		showMessage({
-			title: locale.baseText('agents.builder.files.uploaded'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.uploadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesUploading.value = false;
-		}
-	}
-}
-
-async function onDeleteAgentFile(file: AgentFileDto) {
-	if (deletingAgentFileId.value !== null) return;
-
-	const confirmed = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.files.deleteModal.title', {
-			interpolate: { name: file.fileName },
-		}),
-		description: locale.baseText('agents.builder.files.deleteModal.description', {
-			interpolate: { name: file.fileName },
-		}),
-		confirmButtonText: locale.baseText('agents.builder.files.deleteModal.button.delete'),
-		cancelButtonText: locale.baseText('generic.cancel'),
-	});
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	deletingAgentFileId.value = file.id;
-	try {
-		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
-		showMessage({
-			title: locale.baseText('agents.builder.files.deleted'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.deleteError'));
-	} finally {
-		if (deletingAgentFileId.value === file.id) {
-			deletingAgentFileId.value = null;
-		}
-	}
-}
+const {
+	agentFiles,
+	agentFilesLoading,
+	agentFilesUploading,
+	deletingAgentFileId,
+	fetchAgentFiles,
+	uploadFiles: onUploadAgentFiles,
+	deleteFile: onDeleteAgentFile,
+	warmKnowledgeSandbox: warmAgentKnowledgeSandboxForPage,
+	reset: resetAgentKnowledge,
+} = useAgentKnowledge({
+	projectId,
+	agentId,
+	agent,
+	initialized,
+	isUnsaved,
+	isKnowledgeBaseEnabled,
+	isStaleAgentTarget,
+	ensureAgentPersisted,
+	telemetry: builderTelemetry,
+});
 
 async function refreshAgentAfterIntegrationChange(
 	targetProjectId: string = projectId.value,
@@ -1573,26 +1436,6 @@ function selectLatestPreviewSession() {
 		return;
 	}
 	onNewChat();
-}
-
-function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
-	// No agent row to warm a sandbox for yet.
-	if (isUnsaved.value) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	const warmupKey = `${targetProjectId}:${targetAgentId}`;
-	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
-	lastKnowledgeSandboxWarmupKey.value = warmupKey;
-
-	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
-		() => {
-			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-				lastKnowledgeSandboxWarmupKey.value = null;
-			}
-		},
-	);
 }
 
 // Base hashes are captured when the edit is scheduled, not when the debounced
@@ -3138,10 +2981,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			activeChatSessionId.value = null;
 			localConfig.value = null;
 			connectedTriggers.value = [];
-			agentFiles.value = [];
-			agentFilesLoading.value = false;
-			agentFilesUploading.value = false;
-			deletingAgentFileId.value = null;
+			resetAgentKnowledge();
 			repointConfig(targetProjectId, targetAgentId);
 			repointConfigValidation(targetProjectId, targetAgentId);
 		}
