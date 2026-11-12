@@ -159,21 +159,20 @@ plain technical verbs, no metaphors.
 Write the Summary as up to three paragraphs:
 
 ```
-<one sentence: what changes and where>
+<Verb> <what> in <area>.
 
-<why>
+<Why: the product value or the problem, and the rationale for the main choices.>
 
-<important details, only if there are surprises>
+<Important details, only if there are surprises.>
 ```
 
 1. **What and where:** one sentence in the imperative mood, like the PR title
    ("Fix the ...", "Add ...", "Change the ..."). Do not start with "This PR".
-   State the area of the product or code (for example, the RabbitMQ Trigger
-   node, workflow history, or the CI pipeline) and the nature of the change: a
-   bug fix, a feature, a refactor, or tests. Do not name functions or fields.
-   The diff shows them.
-2. **Why:** one or two sentences about the problem or the constraint that
-   makes the pre-existing code unfit.
+   State the area of the product or code (for example, a node, the editor, or
+   the CI pipeline) and the nature of the change, for example a bug fix or a
+   feature. Do not name functions or fields. The diff shows them.
+2. **Why:** one or two sentences: the product value that the change adds or the
+   problem that it fixes, and the rationale for the main choices.
 3. **Important details:** add this paragraph only when the change has one of
    these surprises. Give each surprise one or two sentences:
    - **Unexpected behaviour:** a change in behaviour for users or for other
@@ -192,19 +191,7 @@ Leave out what the diff shows: file lists, renamed fields, call order, test
 names, error cases, and descriptions of the code. Leave out framework behaviour
 that reviewers know. Do not add background or a closing sentence. Define an
 n8n-internal term only if an engineer from another team would not know it.
-Include screenshots or videos for UI changes.
-
-Examples of a complete Summary for a change with no surprises:
-
-> Fix a bug in the RabbitMQ Trigger node.
->
-> The node returned its channel before the queue bindings were complete, so it
-> could miss the first messages.
-
-> Fix the documentation in `AGENTS.md`.
->
-> It referred to the UI design skill by an old name, so agents could not find
-> the skill.
+For UI changes, add screenshots or videos in a `| Before | After |` table.
 
 ### How to test Section
 - Write short steps for a person who tests the product change by hand: the

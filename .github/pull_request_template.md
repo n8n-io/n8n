@@ -11,10 +11,13 @@ https://github.com/n8n-io/n8n/blob/master/.github/backport_conventions.md
 <!--
 Write up to three short paragraphs in full sentences:
 1. One sentence: what changes and where. Use the imperative mood, for example "Fix the ..." or "Add ...".
-2. Why the change is needed.
+2. Why: the product value or the problem, and the rationale for the main choices.
 3. Important details, only if needed: unexpected behaviour, technical challenges, rejected alternatives, or insights from the work.
 Keep the length in proportion to the complexity of the change.
-Add screenshots or videos for UI changes.
+For UI changes, add screenshots or videos in a table:
+| Before | After |
+| --- | --- |
+| <image or video> | <image or video> |
 -->
 
 ## How to test
