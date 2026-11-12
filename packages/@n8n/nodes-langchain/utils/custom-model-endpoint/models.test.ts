@@ -210,19 +210,19 @@ describe('searchModels', () => {
 		} as unknown as ILoadOptionsFunctions;
 	};
 
-	it('offers every model the gateway lists', async () => {
+	it('offers every model the gateway lists, in name order as the other model fields do', async () => {
 		const result = await searchModels.call(searching(openAiStyle));
 
 		expect(result.results).toEqual([
-			{ name: 'gpt-4o', value: 'gpt-4o' },
 			{ name: 'claude-sonnet', value: 'claude-sonnet' },
+			{ name: 'gpt-4o', value: 'gpt-4o' },
 		]);
 	});
 
 	it.each([
 		['matches regardless of case', 'CLAUDE', ['claude-sonnet']],
 		['matches on a fragment', 'sonnet', ['claude-sonnet']],
-		['keeps everything when the filter is empty', '', ['gpt-4o', 'claude-sonnet']],
+		['keeps everything when the filter is empty', '', ['claude-sonnet', 'gpt-4o']],
 		['keeps nothing when nothing matches', 'mistral', []],
 	])('filters the list and %s', async (_name, filter, expected) => {
 		const result = await searchModels.call(searching(openAiStyle), filter);

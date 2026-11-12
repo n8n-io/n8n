@@ -120,6 +120,7 @@ export async function searchModels(
 		const wanted = filter
 			? ids.filter((id) => id.toLowerCase().includes(filter.toLowerCase()))
 			: ids;
+		wanted.sort((a, b) => a.localeCompare(b));
 		return { results: wanted.map((id) => ({ name: id, value: id })) };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
