@@ -142,6 +142,13 @@ describe('listGatewayModels', () => {
 				'500',
 			],
 			[
+				'it states an empty reason',
+				503,
+				'{"error":{"message":" "}}',
+				'The gateway could not list its models: it answered 503',
+				'503',
+			],
+			[
 				'the answer is not JSON',
 				200,
 				'<html>oops</html>',
