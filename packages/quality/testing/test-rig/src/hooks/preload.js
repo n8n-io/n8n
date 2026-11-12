@@ -207,14 +207,18 @@
 
 	/** @param {{ exports: any }} module @param {string} filename */
 	function onLoad(module, filename) {
-		for (const scope of scopes.values()) {
+		for (const [key, scope] of scopes) {
 			if (scope.installed || !matchesFile(filename, scope.file)) continue;
 			const owner = scope.target ? get(module.exports, scope.target) : module.exports;
 			scope.installed = patch(owner, scope.method, scopeWrapper(scope));
-			log(
-				scope.installed ? 'scope-installed' : 'missing',
-				`${scope.target || 'exports'}.${scope.method}`,
-			);
+			const name = `${scope.target || 'exports'}.${scope.method}`;
+			if (scope.installed) {
+				log('scope-installed', name);
+				continue;
+			}
+			for (const hook of hooks) {
+				if (hook.scope && scopeKey(hook.scope) === key) log('missing', hook.point, { scope: name });
+			}
 		}
 		for (const hook of hooks) {
 			if (hook.installed || !matchesFile(filename, hook.file)) continue;
