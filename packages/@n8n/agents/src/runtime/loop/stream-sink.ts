@@ -16,6 +16,7 @@ import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
+import { toPromptCacheParamsError } from '../model/prompt-cache-params-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -227,7 +228,9 @@ export class StreamSink implements RunOutputSink<void> {
 					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
 					throw error;
 				}
-				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) throw error;
+				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) {
+					throw toPromptCacheParamsError(error);
+				}
 			}
 		}
 	}
@@ -278,7 +281,11 @@ export class StreamSink implements RunOutputSink<void> {
 					)
 				: result.stream;
 
-		for await (const chunk of chunkStream) {
+		for await (const rawChunk of chunkStream) {
+			const chunk =
+				rawChunk.type === 'error'
+					? { ...rawChunk, error: toPromptCacheParamsError(rawChunk.error) }
+					: rawChunk;
 			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
