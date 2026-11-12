@@ -117,27 +117,6 @@ describe('useAssistantAgentMessageTelemetry', () => {
 		]);
 	});
 
-	it('keeps a queued host send when a later host send is refused', () => {
-		const telemetry = useAssistantAgentMessageTelemetry('thread-1');
-		telemetry.expectHostSend({
-			text: 'Set up Slack',
-			authorship: { kind: 'prefill', prefillType: 'suggestion_catalog' },
-		});
-		// The chat refuses this send, so it reports no send for it.
-		telemetry.expectHostSend({
-			text: 'Fix the run',
-			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
-		});
-
-		telemetry.trackSend(sending('Set up Slack'));
-		telemetry.trackSend(sending('Fix the run'));
-
-		expect(telemetryTrack.mock.calls.map(([, props]) => props)).toMatchObject([
-			{ prefill_type: 'suggestion_catalog' },
-			{ prefill_type: null },
-		]);
-	});
-
 	it('reports an unchanged pre-fill whose text ends with white space as not edited', () => {
 		const text = 'Build a digest\n';
 		const telemetry = useAssistantAgentMessageTelemetry('thread-1');

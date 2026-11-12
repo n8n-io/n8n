@@ -38,15 +38,14 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	let prefill: InstanceAiPrefillPayload | null = null;
-	// A queued host send can still go out after a later host send is refused.
-	let hostSends: AssistantAgentHostSend[] = [];
+	let hostSend: AssistantAgentHostSend | null = null;
 
 	function takeAuthorship(text: string): Omit<AssistantAgentHostSend, 'text'> {
-		// Only the next send can be a host send. A refused host send leaves its text
+		// Only the next send can be the host send. A refused host send leaves its text
 		// as the user's draft, so that next send is still the host text when it matches.
-		const host = hostSends.find((send) => send.text.trim() === text);
-		hostSends = [];
-		if (host) {
+		const host = hostSend;
+		hostSend = null;
+		if (host?.text.trim() === text) {
 			return { authorship: host.authorship, mentionCounts: host.mentionCounts };
 		}
 		return { authorship: resolveAuthorship(text, prefill) };
@@ -81,7 +80,7 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		},
 		/** Call before the host sends a text for the user. */
 		expectHostSend(send: AssistantAgentHostSend) {
-			hostSends.push(send);
+			hostSend = send;
 		},
 		trackSend,
 	};
