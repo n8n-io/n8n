@@ -7,6 +7,8 @@ vi.mock('n8n-workflow', async () => {
 });
 
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import { Config, Env, resetConfigWarningHandler } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { LoggerProxy } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
@@ -48,6 +50,57 @@ describe('Logger', () => {
 			new Logger(globalConfig, mock<InstanceSettingsConfig>(), { isRoot: false });
 
 			expect(LoggerProxy.init).not.toHaveBeenCalled();
+		});
+
+		describe('config warnings', () => {
+			const textGlobalConfig = mock<GlobalConfig>({
+				logging: { format: 'text', level: 'info', outputs: ['console'], scopes: [] },
+			});
+			let consoleWarnSpy: MockInstance;
+
+			beforeEach(() => {
+				consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+				process.env.LOGGER_TEST_NUMBER = 'abc';
+				Container.reset();
+			});
+
+			afterEach(() => {
+				delete process.env.LOGGER_TEST_NUMBER;
+				resetConfigWarningHandler();
+				consoleWarnSpy.mockRestore();
+			});
+
+			/** Reads an invalid env value, which makes the config package emit one warning. */
+			function readInvalidConfig() {
+				@Config
+				class TestConfig {
+					@Env('LOGGER_TEST_NUMBER')
+					count: number = 1;
+				}
+
+				return Container.get(TestConfig);
+			}
+
+			test('if root, should report config warnings as its own warn lines', () => {
+				new Logger(textGlobalConfig, mock<InstanceSettingsConfig>(), { isRoot: true });
+
+				expect(readInvalidConfig().count).toBe(1);
+				expect(stdoutSpy).toHaveBeenCalledWith(
+					'Invalid number value for LOGGER_TEST_NUMBER: abc\n',
+				);
+				expect(consoleWarnSpy).not.toHaveBeenCalled();
+			});
+
+			test('if scoped, should leave the config warnings where they are', () => {
+				new Logger(textGlobalConfig, mock<InstanceSettingsConfig>(), { isRoot: false });
+
+				readInvalidConfig();
+
+				expect(consoleWarnSpy).toHaveBeenCalledWith(
+					'Invalid number value for LOGGER_TEST_NUMBER: abc',
+				);
+				expect(stdoutSpy).not.toHaveBeenCalled();
+			});
 		});
 	});
 

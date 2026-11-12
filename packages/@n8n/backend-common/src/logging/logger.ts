@@ -1,5 +1,5 @@
 import type { LogScope } from '@n8n/config';
-import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import { GlobalConfig, InstanceSettingsConfig, setConfigWarningHandler } from '@n8n/config';
 import { Service } from '@n8n/di';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';
@@ -65,7 +65,14 @@ export class Logger implements LoggerType {
 			this.scopes = new Set();
 		}
 
-		if (isRoot) LoggerProxy.init(this);
+		if (isRoot) {
+			LoggerProxy.init(this);
+			// The config package has no logger of its own, so it warns on the console
+			// until the process has one. From here on, a config read for the first
+			// time reports an invalid env value like any other warning. Bound rather
+			// than wrapped, so the line is attributed to the config package.
+			setConfigWarningHandler(this.warn.bind(this));
+		}
 	}
 
 	private setInternalLogger(internalLogger: winston.Logger) {

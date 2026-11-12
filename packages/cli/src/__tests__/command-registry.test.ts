@@ -1,6 +1,5 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CliParser } from '@n8n/backend-common';
-import { Config, Env, positiveIntSchema, resetConfigWarningHandler } from '@n8n/config';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Mock, MockInstance } from 'vitest';
@@ -75,31 +74,6 @@ describe('CommandRegistry', () => {
 		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 
 		expect(moduleRegistry.registerPackagedModules).toHaveBeenCalledWith(packagedModules);
-	});
-
-	it('should report an invalid env value of a config read later through the logger', () => {
-		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
-
-		process.env.TEST_COMMAND_REGISTRY_LIMIT = 'abc';
-		try {
-			@Config
-			class LateConfig {
-				@Env('TEST_COMMAND_REGISTRY_LIMIT', positiveIntSchema)
-				limit: number = 10;
-			}
-
-			expect(Container.get(LateConfig).limit).toBe(10);
-		} finally {
-			delete process.env.TEST_COMMAND_REGISTRY_LIMIT;
-			resetConfigWarningHandler();
-		}
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Invalid value for TEST_COMMAND_REGISTRY_LIMIT - Expected number, received nan. Falling back to default value.',
-		);
-		expect(consoleWarnSpy).not.toHaveBeenCalled();
-		consoleWarnSpy.mockRestore();
 	});
 
 	it('should execute the specified command', async () => {
