@@ -107,7 +107,8 @@ import {
 	checkTriggerCredentialGate,
 	extractTracingContext,
 } from '../webhook-helpers';
-import { WebhookResponder } from '../webhook-responder';
+import { WebhookResponder, type WebhookResponseCallback } from '../webhook-responder';
+import { isWebhookResponse, isWebhookStaticResponse } from '../webhook-response';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
@@ -2702,6 +2703,163 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 
 		expect(responseCallback).toHaveBeenCalledTimes(1);
 	});
+});
+
+// AGENT-1495: Manual chat history must use the workflow's JSON response in every mode.
+describe('executeWebhook manual chat history', () => {
+	const historyRequest = { action: 'loadPreviousSession', sessionId: 's1' };
+	const history = {
+		data: [
+			{
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain_core', 'messages', 'HumanMessage'],
+				kwargs: { content: 'Earlier question', additional_kwargs: {} },
+			},
+			{
+				lc: 1,
+				type: 'constructor',
+				id: ['langchain_core', 'messages', 'AIMessage'],
+				kwargs: { content: 'Earlier reply', additional_kwargs: {} },
+			},
+		],
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
+		);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: historyRequest }]] });
+		workflowRunner.run.mockImplementation(
+			async (_runData, _loadStaticData, _realtime, _restartData, responsePromise) => {
+				responsePromise?.resolve({
+					body: history,
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				return EXECUTION_ID;
+			},
+		);
+	});
+
+	it.each(['lastNode', 'responseNode', 'streaming', 'responseNodes'])(
+		'returns the workflow history as plain JSON in %s mode',
+		async (responseMode) => {
+			const workflowStartNode: INode = {
+				id: 'chat-trigger',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				typeVersion: 1.4,
+				position: [0, 0],
+				parameters: {
+					public: true,
+					mode: 'webhook',
+					options: { responseMode, loadPreviousSession: 'manually', allowedOrigins: '*' },
+				},
+			};
+			const workflow = mock<Workflow>({
+				id: WORKFLOW_ID,
+				name: 'Chat history workflow',
+				nodeTypes: {
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue(mock<INodeType>({ description: { name: 'chatTrigger' } })),
+				},
+				expression: {
+					getSimpleParameterValue: vi.fn(
+						(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+							args[1] ?? args[5],
+					),
+					getComplexParameterValue: vi.fn(
+						(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) =>
+							args[1] ?? args[5],
+					),
+				},
+			});
+			const postExecute = createDeferredPromise<IRun | undefined>();
+			activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
+			const req = mock<WebhookRequest>({
+				method: 'POST',
+				contentType: 'application/json',
+				headers: {},
+			});
+			req.readRawBody.mockImplementation(async () => {
+				req.rawBody = Buffer.from(JSON.stringify(historyRequest));
+				req.encoding = 'utf8';
+			});
+			const res = mock<express.Response>({ headersSent: false });
+			const responseCallback = vi.fn<WebhookResponseCallback>();
+
+			await executeWebhook(
+				workflow,
+				{
+					httpMethod: 'POST',
+					node: workflowStartNode.name,
+					path: 'chat',
+					webhookDescription: {
+						httpMethod: 'POST',
+						path: 'chat',
+						name: 'default',
+						responseMode,
+						responseData: 'firstEntryJson',
+					},
+					workflowId: WORKFLOW_ID,
+					workflowExecuteAdditionalData: mock<IWorkflowExecuteAdditionalData>(),
+				},
+				mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Chat history workflow' }),
+				workflowStartNode,
+				'webhook',
+				undefined,
+				undefined,
+				undefined,
+				req,
+				res,
+				responseCallback,
+			);
+			postExecute.resolve({
+				mode: 'webhook',
+				status: 'success',
+				startedAt: new Date(0),
+				storedAt: 'db',
+				data: createRunExecutionData({
+					resultData: {
+						lastNodeExecuted: 'Load History',
+						runData: {
+							'Load History': [
+								{
+									startTime: 0,
+									executionIndex: 0,
+									executionTime: 0,
+									source: [],
+									data: { main: [[{ json: history }]] },
+								},
+							],
+						},
+					},
+				}),
+			});
+			await new Promise(process.nextTick);
+
+			expect(req.body).toEqual(historyRequest);
+			expect(res.send).not.toHaveBeenCalled();
+			const [runData] = workflowRunner.run.mock.calls[0];
+			expect(runData.streamingEnabled).not.toBe(true);
+			expect(runData.httpResponse).toBeUndefined();
+			expect(responseCallback).toHaveBeenCalledOnce();
+			const [error, response] = responseCallback.mock.calls[0];
+			expect(error).toBeNull();
+			let body: unknown;
+			if (isWebhookStaticResponse(response)) body = response.body;
+			else if (!isWebhookResponse(response)) body = response.data;
+			expect(body).toEqual(history);
+		},
+	);
 });
 
 describe('executeWebhook response-mode callback contract', () => {
