@@ -39,9 +39,3 @@ https://linear.app/n8n/issue/[TICKET-ID]
 <!-- Use "closes #<issue-number>", "fixes #<issue-number>", or "resolves #<issue-number>" to automatically close issues when the PR is merged. -->
 
 Docs: <!-- Link the n8n-docs PR or the follow-up ticket, or write "none needed". -->
-
-<!--
-The author is responsible for all code in this PR, also for code that an AI tool wrote.
-If an AI tool wrote a large part of the code or of this description, add this line:
-🤖 An AI tool wrote a large part of this PR.
--->

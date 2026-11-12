@@ -93,7 +93,6 @@ comma and a space: `fix(core, editor): ...`.
      Fill the `Test command:` line
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links.
      Fill the `Docs:` line
-   - Add the line "🤖 An AI tool wrote a large part of this PR." at the end of the body
 
    Before you create the PR, proofread the body with these checks. Rewrite
    each sentence that fails a check:
