@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateProjectExecutionLimitTable1794398106852';
+const MIGRATION_NAME = 'CreateProjectExecutionLimitTable1794487608531';
 const TABLE = 'project_execution_limit';
 
 describe('CreateProjectExecutionLimitTable migration', () => {
