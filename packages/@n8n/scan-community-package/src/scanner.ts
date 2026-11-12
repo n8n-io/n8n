@@ -44,7 +44,23 @@ export type Finding = {
 	readonly origin?: 'source' | 'package';
 };
 
-export type Check = 'provenance' | 'source' | 'eslint';
+export const CHECKS = {
+	PROVENANCE: 'provenance',
+	SOURCE: 'source',
+	ESLINT: 'eslint',
+} as const;
+
+export type Check = (typeof CHECKS)[keyof typeof CHECKS];
+
+const ESLINT_SEVERITY = {
+	WARNING: 1,
+	ERROR: 2,
+} as const satisfies Record<string, Linter.Severity>;
+
+/** The input cannot be scanned, for example a path without a package.json. */
+export class ScanInputError extends Error {
+	override name = 'ScanInputError';
+}
 
 export type AnalysisResult =
 	| {
@@ -64,6 +80,10 @@ export type AnalysisResult =
 			readonly error?: unknown;
 	  };
 
+/**
+ * The file format of `--output`. It is separate from `AnalysisResult` so that
+ * internal changes do not change the format that CI jobs read.
+ */
 export type ScanReport = {
 	readonly package: string;
 	readonly version: string | null;
@@ -149,7 +169,7 @@ export const resolvePackage = (
 ): { packageName: string; version: string | null } => {
 	// Validate input to prevent command injection
 	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
-		throw new Error('Invalid package specification');
+		throw new ScanInputError('Invalid package specification');
 	}
 
 	const isScoped = packageSpec.startsWith('@');
@@ -467,12 +487,12 @@ export const lintDirectory = async (
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
-				check: 'eslint',
+				check: CHECKS.ESLINT,
 				message: 'ESLint violations found',
 				details: formattedResults,
 				findings: violations.flatMap((result) =>
 					result.messages
-						.filter((message) => message.severity === 2)
+						.filter((message) => message.severity === ESLINT_SEVERITY.ERROR)
 						.map((message) => ({
 							file: path.relative(packageDir, result.filePath),
 							line: message.line,
@@ -489,7 +509,7 @@ export const lintDirectory = async (
 		console.error(error);
 		return {
 			passed: false,
-			check: 'eslint',
+			check: CHECKS.ESLINT,
 			message: `Analysis failed: ${errorMessage(error)}`,
 			error,
 		};
@@ -548,10 +568,10 @@ const readPackageJson = (packageDir: string): unknown => {
 	try {
 		stats = fs.statSync(packageDir);
 	} catch {
-		throw new Error(`No directory found at "${packageDir}"`);
+		throw new ScanInputError(`No directory found at "${packageDir}"`);
 	}
 	if (!stats.isDirectory()) {
-		throw new Error(`"${packageDir}" is not a directory`);
+		throw new ScanInputError(`"${packageDir}" is not a directory`);
 	}
 
 	const packageJsonPath = path.join(packageDir, 'package.json');
@@ -559,14 +579,16 @@ const readPackageJson = (packageDir: string): unknown => {
 	try {
 		contents = fs.readFileSync(packageJsonPath, 'utf8');
 	} catch {
-		throw new Error(`No package.json found in "${packageDir}"`);
+		throw new ScanInputError(`No package.json found in "${packageDir}"`);
 	}
 	try {
 		return JSON.parse(contents);
 	} catch (error: unknown) {
-		throw new Error(`Invalid package.json in "${packageDir}": ${errorMessage(error)}`);
+		throw new ScanInputError(`Invalid package.json in "${packageDir}": ${errorMessage(error)}`);
 	}
 };
+
+type NpmPackResult = { files: Array<{ path: string }> };
 
 // Asks npm so the `files` field and `.npmignore` apply exactly as on publish.
 const listPublishedFiles = (packageDir: string): string[] => {
@@ -580,12 +602,8 @@ const listPublishedFiles = (packageDir: string): string[] => {
 		throw new Error(`Could not list the package files: ${npmResult.stderr.trim()}`);
 	}
 
-	const [packResult]: unknown[] = JSON.parse(npmResult.stdout);
-	const files = field(packResult, 'files');
-	if (!Array.isArray(files)) {
-		throw new Error('Could not list the package files: unexpected "npm pack" output');
-	}
-	return files.map((file: unknown) => field(file, 'path')).filter((p) => typeof p === 'string');
+	const packResults: NpmPackResult[] = JSON.parse(npmResult.stdout);
+	return packResults.flatMap((packResult) => packResult.files.map((file) => file.path));
 };
 
 /**
@@ -597,7 +615,7 @@ export const analyzeLocalPackage = async (packageDir: string): Promise<PackageSc
 	const packageJson = readPackageJson(packageDir);
 	const packageName = field(packageJson, 'name');
 	if (typeof packageName !== 'string') {
-		throw new Error(`No package name in the package.json in "${packageDir}"`);
+		throw new ScanInputError(`No package name in the package.json in "${packageDir}"`);
 	}
 	const rawVersion = field(packageJson, 'version');
 	const version = typeof rawVersion === 'string' ? rawVersion : null;
@@ -620,7 +638,7 @@ export const analyzeLocalPackage = async (packageDir: string): Promise<PackageSc
 	);
 	writeAnalyzed(label, result);
 
-	return { packageName, version, ...result, skippedChecks: ['provenance', 'source'] };
+	return { packageName, version, ...result, skippedChecks: [CHECKS.PROVENANCE, CHECKS.SOURCE] };
 };
 
 export const analyzePackageByName = async (
@@ -648,7 +666,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				...provenanceResult,
-				check: 'provenance',
+				check: CHECKS.PROVENANCE,
 			};
 		}
 
@@ -688,7 +706,7 @@ export const analyzePackageByName = async (
 					packageName,
 					version: exactVersion,
 					passed: false,
-					check: 'source',
+					check: CHECKS.SOURCE,
 					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
 					error: sourceError,
 				};
@@ -698,7 +716,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				passed: false,
-				check: 'source',
+				check: CHECKS.SOURCE,
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
 			};
 		}

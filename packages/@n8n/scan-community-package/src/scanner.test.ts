@@ -18,6 +18,7 @@ import {
 	parseSourceRepo,
 	resolvePackage,
 	resolveVersion,
+	ScanInputError,
 	SOURCE_FILE_PATTERNS,
 } from './scanner.js';
 
@@ -557,6 +558,16 @@ describe('analyzeLocalPackage', () => {
 		await expect(analyzeLocalPackage(path.join(fixtureDir, 'missing'))).rejects.toThrow(
 			'No directory found',
 		);
+	});
+
+	it('classifies a path that cannot be scanned as an input error', async () => {
+		fixtureDir = makeFixturePackage({ 'package.json': '{ not json' });
+
+		await expect(analyzeLocalPackage(fixtureDir)).rejects.toBeInstanceOf(ScanInputError);
+		await expect(analyzeLocalPackage(path.join(fixtureDir, 'missing'))).rejects.toBeInstanceOf(
+			ScanInputError,
+		);
+		expect(() => resolvePackage('n8n-nodes-foo; rm -rf /')).toThrow(ScanInputError);
 	});
 
 	it('rejects a path to a file', async () => {

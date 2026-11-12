@@ -14,6 +14,7 @@ import {
 	formatPackageSpec,
 	getExitCode,
 	EXIT_CODES,
+	ScanInputError,
 	type PackageScan,
 	type ScanReport,
 } from './scanner.js';
@@ -80,13 +81,11 @@ const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number
 
 		return { report: buildReport(packageName, result), exitCode };
 	} catch (error: unknown) {
-		console.error('Analysis failed:', error);
-		const report = buildReport(spec, {
-			version: null,
-			passed: false,
-			message: `Analysis failed: ${errorMessage(error)}`,
-			error,
-		});
+		// An input error is the user's to fix, so a stack trace would only add noise
+		const message =
+			error instanceof ScanInputError ? error.message : `Analysis failed: ${errorMessage(error)}`;
+		console.error(error instanceof ScanInputError ? `❌ ${message}` : error);
+		const report = buildReport(spec, { version: null, passed: false, message, error });
 		return { report, exitCode: EXIT_CODES.INTERNAL_ERROR };
 	}
 };
