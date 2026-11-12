@@ -35,7 +35,7 @@ A hook wraps one method in a compiled n8n file. By default it pauses the call un
 | `kind` | `pause` (default: wait for release, then call through) or `observe` (log a hit only) |
 | `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
 | `once` | Fire once each time the hook is armed (default) |
-| `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, once per call |
+| `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call |
 | `where` | Conditions on the call, such as `[{ path: 'args.0.node.name', equals: 'Pause' }]`; a condition can use `truthy` instead of `equals` |
 | `detail` | Values to log with each hit, such as `{ executionId: 'args.0.executionId' }` |
 | `phase` | `before` the call (default) or `after` it resolves, when `where` and `detail` can also read `result` |
