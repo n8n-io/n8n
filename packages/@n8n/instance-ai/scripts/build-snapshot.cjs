@@ -20,8 +20,7 @@
  * of the bundler-only `module: src/index.ts` entry.
  *
  * Required env vars:
- *   DAYTONA_API_KEY   admin key with snapshot.create permissions, or sandbox
- *                     create/delete permissions in --verify-image mode
+ *   DAYTONA_API_KEY   admin key with snapshot create/delete permissions
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
  *   DAYTONA_SNAPSHOT_MAX_AGE_DAYS
  *                     prune versioned snapshots not used within this many days
@@ -39,7 +38,6 @@
  */
 
 const { Daytona } = require('@daytona/sdk');
-const { createSandbox, PORTABLE_WORKSPACE_ROOT } = require('@n8n/agents/sandbox');
 const {
 	BuilderTemplatesService,
 	SnapshotManager,
@@ -84,61 +82,63 @@ const consoleLogger = {
 	debug: () => {},
 };
 
-async function verifyImage(image, apiKey, apiUrl) {
+async function getSnapshotIfExists(daytona, name) {
+	try {
+		return await daytona.snapshot.get(name);
+	} catch (error) {
+		if (error && typeof error === 'object' && error.statusCode === 404) return null;
+		throw error;
+	}
+}
+
+async function deleteVerificationSnapshot(daytona, name) {
+	const snapshot = await getSnapshotIfExists(daytona, name);
+	if (!snapshot) return;
+
+	await daytona.snapshot.delete(snapshot);
+	const deadline = Date.now() + 60_000;
+	while (Date.now() < deadline) {
+		if (!(await getSnapshotIfExists(daytona, name))) return;
+		await new Promise((resolve) => setTimeout(resolve, 2_000));
+	}
+	throw new Error(`Timed out while deleting Daytona verification snapshot "${name}"`);
+}
+
+async function verifyImage(daytona, image) {
 	const runId = process.env.GITHUB_RUN_ID ?? `${process.pid}-${Date.now()}`;
 	const runAttempt = process.env.GITHUB_RUN_ATTEMPT ?? 'local';
-	const name = `n8n-image-verify-${runId}-${runAttempt}`;
-	const sandbox = await createSandbox(
-		{
-			enabled: true,
-			provider: 'daytona',
-			name,
-			daytonaApiKey: apiKey,
-			daytonaApiUrl: apiUrl,
-			image,
-			ephemeral: true,
-			timeout: 1_800_000,
-			createTimeoutSeconds: 1_800,
-			labels: { purpose: 'n8n-snapshot-image-verification' },
-		},
-		{ logger: consoleLogger },
-	);
-	if (!sandbox) throw new Error('Failed to create the Daytona verification sandbox');
+	const name = `n8n/instance-ai-verify:${runId}-${runAttempt}`;
+	let verificationError;
 
 	try {
-		const install = await sandbox.executeCommand(
-			'npm',
-			['install', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
-			{ cwd: PORTABLE_WORKSPACE_ROOT, timeout: 120_000 },
+		await daytona.snapshot.create(
+			{ name, image },
+			{ timeout: 1_800, onLogs: (chunk) => process.stdout.write(`${chunk}\n`) },
 		);
-		if (!install.success) {
-			throw new Error(`Verification npm install failed: ${install.stderr || install.stdout}`);
+		const snapshot = await daytona.snapshot.get(name);
+		if (snapshot.state !== 'active') {
+			throw new Error(`Daytona verification snapshot is ${snapshot.state}, not active`);
 		}
-
-		const sdk = await sandbox.executeCommand(
-			'node',
-			[
-				'--input-type=module',
-				'--eval',
-				"import { workflow } from '@n8n/workflow-sdk'; workflow('snapshot-image-smoke', 'Snapshot image smoke');",
-			],
-			{ cwd: PORTABLE_WORKSPACE_ROOT },
-		);
-		if (!sdk.success) {
-			throw new Error(`Workflow SDK verification failed: ${sdk.stderr || sdk.stdout}`);
-		}
+		consoleLogger.info('Daytona image verified', { name });
 	} catch (error) {
-		await sandbox.deleteRemote().catch((cleanupError) => {
-			consoleLogger.warn('Failed to delete Daytona verification sandbox', {
+		verificationError = error;
+	}
+
+	try {
+		await deleteVerificationSnapshot(daytona, name);
+		consoleLogger.info('Daytona verification snapshot deleted', { name });
+	} catch (cleanupError) {
+		if (verificationError) {
+			consoleLogger.warn('Failed to delete Daytona verification snapshot', {
 				name,
 				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
 			});
-		});
-		throw error;
+		} else {
+			throw cleanupError;
+		}
 	}
 
-	await sandbox.deleteRemote();
-	consoleLogger.info('Daytona image verified', { name });
+	if (verificationError) throw verificationError;
 }
 
 async function main() {
@@ -172,7 +172,7 @@ async function main() {
 		packWorkspacePackages: true,
 	});
 	if (isImageVerification(argv)) {
-		await verifyImage(await manager.ensureImage(), apiKey, apiUrl);
+		await verifyImage(daytona, await manager.ensureImage());
 		return;
 	}
 

@@ -9,7 +9,7 @@ on:
         required: true
         type: string
       verify_image_only:
-        description: 'Build and verify an ephemeral image without publishing a snapshot'
+        description: 'Build an image through a temporary snapshot and delete it'
         required: false
         default: false
         type: boolean
@@ -33,7 +33,7 @@ on:
         required: true
         type: string
       verify_image_only:
-        description: 'Build and verify an ephemeral dev image without publishing a snapshot'
+        description: 'Build a dev image through a temporary snapshot and delete it'
         required: false
         default: false
         type: boolean

@@ -153,9 +153,10 @@ gh workflow run release-build-daytona-snapshot.yml \
   -f verify_image_only=true
 ```
 
-This mode uses the dev Daytona environment. It creates an ephemeral sandbox
-from the branch's image descriptor, repeats the dependency install, loads the
-Workflow SDK, and deletes the sandbox. It does not create a named snapshot.
+This mode uses the dev Daytona environment. It builds the branch's image as a
+uniquely named, non-versioned verification snapshot. It requires the snapshot
+to become active and then deletes it. It does not publish or retain a release
+snapshot.
 
 The knowledge base has a manifest with a content hash. Setup compares the
 manifest hash with the expected hash. When the hashes do not match, setup
