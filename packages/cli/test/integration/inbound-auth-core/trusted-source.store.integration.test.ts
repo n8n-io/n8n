@@ -15,6 +15,11 @@ import { Cipher } from 'n8n-core';
 import { TrustedSourceIdentityEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source-identity.entity';
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
 import {
+	SYSTEM_TRUSTED_SOURCE_CONFIG,
+	SYSTEM_TRUSTED_SOURCE_ID,
+	SYSTEM_TRUSTED_SOURCE_NAME,
+} from '@/modules/inbound-auth-core/constants';
+import {
 	SystemTrustedSourceModificationError,
 	TrustedSourceDbStore,
 } from '@/modules/inbound-auth-core/trusted-source.store';
@@ -266,6 +271,18 @@ describe('TrustedSourceStore (integration)', () => {
 	});
 
 	describe('update', () => {
+		it('hands the cache keys of one source under a single hash tag', async () => {
+			const row = await seedRow({ issuer: 'https://old.example.com' });
+			const deleteMany = vi.spyOn(cacheService, 'deleteMany');
+
+			await store.update(row.id, { issuer: 'https://new.example.com' });
+
+			// A multi-key DEL is valid on cluster-mode Redis only when every key hashes to one slot.
+			const keys = deleteMany.mock.calls.flat(2);
+			expect(keys.length).toBeGreaterThan(1);
+			for (const key of keys) expect(key).toMatch(/^\{trusted-source\}:/);
+		});
+
 		it('rewrites the row and invalidates id, old issuer, new issuer and the list', async () => {
 			const row = await seedRow({ name: 'Old', issuer: 'https://old.example.com' });
 			// Prime every entry the write must invalidate.
@@ -507,6 +524,22 @@ describe('TrustedSourceStore (integration)', () => {
 			expect((await rows.findOneByOrFail({ id: row.id })).discoveryClaimToken).toBe(second);
 		});
 
+		it('keeps the lease when the cache invalidation fails after the claim', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			const token = await store.claimDiscovery(source);
+
+			expect(token).not.toBeNull();
+			expect((await rows.findOneByOrFail({ id: row.id })).discoveryClaimToken).toBe(token);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
+		});
+
 		it('rejects a record whose token does not hold the lease and leaves the row alone', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);
@@ -616,6 +649,49 @@ describe('TrustedSourceStore (integration)', () => {
 			const row = await seedRow({ metadata: 'not json' });
 
 			expect(await store.getById(row.id)).toMatchObject({ id: row.id, metadata: null });
+		});
+	});
+
+	describe('seedSystemSource', () => {
+		const seedInput = (issuer: string) => ({
+			id: SYSTEM_TRUSTED_SOURCE_ID,
+			name: SYSTEM_TRUSTED_SOURCE_NAME,
+			issuer,
+			config: SYSTEM_TRUSTED_SOURCE_CONFIG,
+		});
+
+		it('reports the insert when the cache invalidation fails afterwards', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.seedSystemSource(seedInput('https://n8n.example.com'))).toBe('inserted');
+
+			expect(await rows.findOneByOrFail({ id: SYSTEM_TRUSTED_SOURCE_ID })).toMatchObject({
+				managedBy: 'system',
+				issuer: 'https://n8n.example.com',
+			});
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: SYSTEM_TRUSTED_SOURCE_ID }),
+			);
+		});
+
+		it('reports the issuer move when the cache invalidation fails afterwards', async () => {
+			await store.seedSystemSource(seedInput('https://old.example.com'));
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.seedSystemSource(seedInput('https://new.example.com'))).toBe(
+				'issuer-updated',
+			);
+
+			expect((await rows.findOneByOrFail({ id: SYSTEM_TRUSTED_SOURCE_ID })).issuer).toBe(
+				'https://new.example.com',
+			);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: SYSTEM_TRUSTED_SOURCE_ID }),
+			);
 		});
 	});
 
