@@ -268,36 +268,42 @@ describe('SimulationSession', () => {
 		});
 	});
 
-	it('blocks MCP tools and refuses every MCP connection', async () => {
-		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+	it('sends MCP traffic to the world and returns its reply as an HTTP response', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: { jsonrpc: '2.0', id: 1, result: { content: [] } },
+		});
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
-			capabilities: [
-				{
-					toolName: 'linear',
-					kind: 'mcp',
-					testability: 'blocked',
-					reason: 'not_simulatable',
-					detail: 'MCP servers cannot run in a test run yet.',
-				},
-			],
+			capabilities: [{ toolName: 'https://mcp.linear.app', kind: 'mcp', testability: 'simulated' }],
 		});
-		const handler = vi.fn();
+		const mcpFetch = session.instrumentation().mcpFetch!;
 		const tool: BuiltTool = {
 			name: 'linear_create_issue',
 			description: '',
 			mcpTool: true,
-			mcpServerName: 'linear',
-			handler,
+			mcpServerName: 'https://mcp.linear.app',
+			handler: async () => {
+				const response = await mcpFetch('https://mcp.linear.app/mcp', {
+					method: 'POST',
+					body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call' }),
+				});
+				return await response.json();
+			},
 		};
 
-		await expect(runTool(session, tool)).rejects.toThrow(SimulationBlockedError);
-		expect(handler).not.toHaveBeenCalled();
-		await expect(
-			session.instrumentation().mcpFetch!('https://mcp.linear.app/mcp', { method: 'POST' }),
-		).rejects.toThrow(SimulationBlockedError);
-		expect(world.handleRequest).not.toHaveBeenCalled();
+		await expect(runTool(session, tool)).resolves.toMatchObject({ result: { content: [] } });
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				protocol: 'mcp',
+				body: expect.objectContaining({ method: 'tools/call' }),
+			}),
+			expect.anything(),
+		);
+		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'simulated_made_up' });
 	});
 
 	it('keeps the world state for the test chat', () => {

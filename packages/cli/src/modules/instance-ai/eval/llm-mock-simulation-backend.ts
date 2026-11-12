@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { InstanceAiEvalAgentScenarioSeed, ToolTestCapability } from '@n8n/api-types';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
+import type { FetchFn } from '@n8n/agents';
 import type { IHttpRequestMethods, INode, JsonObject } from 'n8n-workflow';
 
 import type {
@@ -14,14 +16,17 @@ import type {
 	SimulationWorld,
 } from '@/modules/agents/simulation/tool-simulation.contracts';
 
+import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
+import { createMcpMockFetch } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
+import { createWebSearchMock } from './web-search-mock';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
 
 /** Tool kinds the LLM mock can answer. n8n blocks the other kinds before they get here. */
-const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow']);
+const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow', 'mcp', 'web_search']);
 
 /**
  * The first simulation backend: the LLM mock that the agent evals use. Every
@@ -32,6 +37,11 @@ const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow']);
 @Service()
 export class LlmMockSimulationBackend implements SimulationBackend {
 	readonly id = 'llm-mock' as const;
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly moduleRegistry: ModuleRegistry,
+	) {}
 
 	async describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]> {
 		return await Promise.resolve(
@@ -65,18 +75,48 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				scenarioHints,
 			}));
 		const worldId = restored?.worldId ?? `llm-mock-${randomUUID()}`;
-		return this.buildWorld(worldId, seed, restored?.scenarioHints ?? scenarioHints);
+		return await this.buildWorld(worldId, agent, seed, restored?.scenarioHints ?? scenarioHints);
 	}
 
-	private buildWorld(
+	private async buildWorld(
 		worldId: string,
+		agent: SimulatedAgent,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioHints: string,
-	): SimulationWorld {
+	): Promise<SimulationWorld> {
 		const httpMock: EvalLlmMockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+		});
+		const mcpServers = agent.tools
+			.filter((tool) => tool.kind === 'mcp' && tool.url)
+			.map((tool) => ({ name: tool.toolName, url: tool.url!, description: tool.description }));
+		const mcpFetch: FetchFn = createMcpMockFetch({
+			servers: mcpServers,
+			agentInstructions: agent.instructions,
+			scenarioHints,
+			globalContext: seed.globalContext,
+			serverHints: seed.toolHints,
+			knownToolsByServer: await resolveCanonicalMcpCatalogs(
+				mcpServers.map((server) => ({
+					...server,
+					transport: 'streamableHttp' as const,
+					authentication: 'none',
+				})),
+				this.moduleRegistry,
+				this.logger,
+			),
+			logger: this.logger,
+			onToolCall: () => {},
+		});
+		const webSearch = createWebSearchMock({
+			agentInstructions: agent.instructions,
+			scenarioHints,
+			globalContext: seed.globalContext,
+			searchHint: seed.toolHints?.web_search,
+			logger: this.logger,
+			onSearch: () => {},
 		});
 
 		return {
@@ -88,6 +128,29 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				seed: seed as unknown as JsonObject,
 			}),
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
+				if (request.protocol === 'web_search') {
+					const body = await webSearch(request.body as Parameters<typeof webSearch>[0]);
+					return { outcome: 'served', source: 'made_up', status: 200, body };
+				}
+				if (request.protocol === 'mcp') {
+					const response = await mcpFetch(request.url, {
+						method: request.method,
+						headers: { 'content-type': 'application/json', ...(request.headers ?? {}) },
+						...(request.body === undefined
+							? {}
+							: {
+									body:
+										typeof request.body === 'string' ? request.body : JSON.stringify(request.body),
+								}),
+					});
+					return {
+						outcome: 'served',
+						source: 'made_up',
+						status: response.status,
+						headers: Object.fromEntries(response.headers.entries()),
+						body: await response.text(),
+					};
+				}
 				const node: INode = {
 					id: call.toolCallId ?? call.toolName,
 					name: call.toolName,
@@ -125,7 +188,7 @@ function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
 		.filter((tool) => SERVED_KINDS.has(tool.kind))
 		.map((tool) => ({
 			name: tool.toolName,
-			kind: tool.kind as AgentSeedToolSummary['kind'],
+			kind: tool.kind === 'web_search' ? 'other' : (tool.kind as AgentSeedToolSummary['kind']),
 			...(tool.description ? { description: tool.description } : {}),
 			...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
 		}));

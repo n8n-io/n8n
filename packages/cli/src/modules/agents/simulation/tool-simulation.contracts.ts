@@ -68,8 +68,12 @@ export interface SimulationWorld {
 }
 
 export interface OutboundRequest {
-	/** `http`: a request from a node tool or a workflow tool. */
-	protocol: 'http';
+	/**
+	 * `http`: a request from a node tool or a workflow tool.
+	 * `mcp`: a JSON-RPC request to an MCP server. `url` is the server URL.
+	 * `web_search`: a call of the fallback web search tool. `body` holds the search arguments.
+	 */
+	protocol: 'http' | 'mcp' | 'web_search';
 	method: string;
 	url: string;
 	/** Credentials and auth headers are removed. */
@@ -83,6 +87,8 @@ export interface ToolCallContext {
 	toolName: string;
 	/** The n8n node type that sent the request, for example `n8n-nodes-base.slack`. */
 	nodeType?: string;
+	/** For MCP requests: the configured server name. */
+	mcpServerName?: string;
 }
 
 export type SimulatedReply =
@@ -114,4 +120,6 @@ export interface SimulatedTool {
 	kind: ToolTestKind;
 	description?: string;
 	nodeType?: string;
+	/** For an MCP server: its URL. */
+	url?: string;
 }

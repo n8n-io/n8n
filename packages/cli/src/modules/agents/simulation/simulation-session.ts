@@ -225,6 +225,7 @@ export class SimulationSession {
 		return {
 			toolCallInterceptor: this.interceptor,
 			mcpFetch: this.mcpFetch,
+			...(this.capabilities.has(WEB_SEARCH_TOOL_NAME) ? { webSearch: this.webSearch } : {}),
 			configureToolAdditionalData: (additionalData, context) => {
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
 				additionalData.evalNodeMockHandler = this.nodeGuard;
@@ -256,7 +257,10 @@ export class SimulationSession {
 		return undefined;
 	}
 
-	private async ask(request: OutboundRequest, extra: { nodeType?: string }) {
+	private async ask(
+		request: OutboundRequest,
+		extra: { nodeType?: string; mcpServerName?: string },
+	) {
 		const active = this.activeCalls.getStore();
 		let reply: SimulatedReply;
 		if (!this.world) {
@@ -319,15 +323,39 @@ export class SimulationSession {
 		throw new SimulationBlockedError(decision);
 	};
 
-	/**
-	 * MCP servers are not simulated yet. Refuse every connection, so that no
-	 * MCP request reaches a real server. Their tools are blocked before they run.
-	 */
-	private readonly mcpFetch: FetchFn = async () => {
-		throw new SimulationBlockedError(
-			blocked('not_simulatable', 'MCP servers cannot run in a test run yet.'),
+	private readonly mcpFetch: FetchFn = async (input, init) => {
+		const url = input instanceof Request ? input.url : String(input);
+		const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+		const rawBody =
+			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
+		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
+		const reply = await this.ask(
+			{ protocol: 'mcp', method, url, body },
+			{ mcpServerName: this.mcpServerForUrl(url) },
 		);
+		if (reply.outcome !== 'served') throw new Error('Unexpected MCP reply');
+		const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
+		return new Response(reply.status === 204 ? null : payload, {
+			status: reply.status,
+			headers: { 'content-type': 'application/json', ...(reply.headers ?? {}) },
+		});
 	};
+
+	private readonly webSearch = async (args: Record<string, unknown>) => {
+		const reply = await this.ask(
+			{ protocol: 'web_search', method: 'POST', url: 'simulation://web-search', body: args },
+			{},
+		);
+		return reply.body;
+	};
+
+	private mcpServerForUrl(url: string): string | undefined {
+		for (const capability of this.capabilities.values()) {
+			if (capability.kind === 'mcp' && url.startsWith(capability.toolName))
+				return capability.toolName;
+		}
+		return undefined;
+	}
 }
 
 function classifyTool(tool: BuiltTool): ToolClassification {
@@ -386,4 +414,12 @@ function stripAuthHeaders(headers: IHttpRequestOptions['headers']): Record<strin
 			result[name] = value.filter((part) => typeof part === 'string').join(', ');
 	}
 	return result;
+}
+
+function parseJson(text: string): unknown {
+	try {
+		return JSON.parse(text) as unknown;
+	} catch {
+		return text;
+	}
 }

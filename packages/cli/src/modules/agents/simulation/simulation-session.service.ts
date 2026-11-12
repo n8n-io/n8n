@@ -139,13 +139,16 @@ export class SimulationSessionService {
 		const tools: SimulatedTool[] = [];
 		for (const tool of summarizeTools(config, saved.tools ?? {}, sanitizeToolName)) {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
+			const server =
+				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
 			tools.push({
 				toolName: tool.name,
 				kind,
 				...(tool.description ? { description: tool.description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
+				...(server ? { url: server.url } : {}),
 			});
-			const gap = this.hostGap(kind);
+			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
 		}
 		for (const ref of config.tools ?? []) {
@@ -171,7 +174,7 @@ export class SimulationSessionService {
 		};
 	}
 
-	private hostGap(kind: SimulatedTool['kind']): string | undefined {
+	private hostGap(kind: SimulatedTool['kind'], mcpTransport?: string): string | undefined {
 		switch (kind) {
 			case 'custom':
 				return 'Custom code tools can reach any service, so they cannot run in a test run yet.';
@@ -183,9 +186,9 @@ export class SimulationSessionService {
 					? 'Workflow tools cannot run in a test run in queue mode yet.'
 					: undefined;
 			case 'mcp':
-				return 'MCP servers cannot run in a test run yet.';
-			case 'web_search':
-				return 'Web search cannot run in a test run yet.';
+				return mcpTransport === 'sse'
+					? 'MCP servers that use the SSE transport cannot run in a test run yet.'
+					: undefined;
 			default:
 				return undefined;
 		}
