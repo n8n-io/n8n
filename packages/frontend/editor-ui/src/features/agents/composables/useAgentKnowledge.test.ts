@@ -10,6 +10,7 @@ import {
 	type AgentFileDto,
 } from '@n8n/api-types';
 
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { useAgentKnowledge, type UseAgentKnowledgeDeps } from './useAgentKnowledge';
 import type { AgentResource } from '../types';
@@ -81,11 +82,18 @@ function setup(overrides: Partial<UseAgentKnowledgeDeps> = {}) {
 		trackStartedFileUpload: vi.fn(),
 		trackRejectedFileUpload: vi.fn(),
 	};
-	const isStaleAgentTarget = vi.fn(() => false);
+	const projectId = ref('p1');
+	const agentId = ref('a1');
+	// The host's guard: a call made for another agent or project is stale. A test
+	// "navigates" by changing the ids while a request is in flight.
+	const isStaleAgentTarget = vi.fn(
+		(targetProjectId: string, targetAgentId: string) =>
+			projectId.value !== targetProjectId || agentId.value !== targetAgentId,
+	);
 	const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
 	const deps: UseAgentKnowledgeDeps = {
-		projectId: ref('p1'),
-		agentId: ref('a1'),
+		projectId,
+		agentId,
 		agent: ref<AgentResource | null>({ id: 'a1' } as AgentResource),
 		initialized: ref(true),
 		isUnsaved: ref(false),
@@ -95,7 +103,7 @@ function setup(overrides: Partial<UseAgentKnowledgeDeps> = {}) {
 		telemetry,
 		...overrides,
 	};
-	return { knowledge: useAgentKnowledge(deps), deps, telemetry, isStaleAgentTarget };
+	return { knowledge: useAgentKnowledge(deps), deps, agentId, telemetry };
 }
 
 describe('useAgentKnowledge', () => {
@@ -130,13 +138,17 @@ describe('useAgentKnowledge', () => {
 		});
 
 		it('drops a result that arrives after the user switched agents', async () => {
-			listAgentFilesMock.mockResolvedValue([makeAgentFile()]);
-			const { knowledge, isStaleAgentTarget } = setup();
-			isStaleAgentTarget.mockReturnValue(true);
+			const pending = createDeferredPromise<AgentFileDto[]>();
+			listAgentFilesMock.mockReturnValue(pending.promise);
+			const { knowledge, agentId } = setup();
 
-			await knowledge.fetchAgentFiles('p1', 'a1');
+			const fetching = knowledge.fetchAgentFiles();
+			agentId.value = 'a2';
+			pending.resolve([makeAgentFile()]);
+			await fetching;
 
 			expect(knowledge.agentFiles.value).toEqual([]);
+			// The loading state belongs to the agent the user left; the new agent's own fetch owns it now.
 			expect(knowledge.agentFilesLoading.value).toBe(true);
 		});
 
@@ -292,14 +304,22 @@ describe('useAgentKnowledge', () => {
 		});
 
 		it('drops an upload result that arrives after the user switched agents', async () => {
-			uploadAgentFilesMock.mockResolvedValue([makeAgentFile()]);
-			const { knowledge, isStaleAgentTarget } = setup();
-			isStaleAgentTarget.mockReturnValue(true);
+			const pending = createDeferredPromise<AgentFileDto[]>();
+			uploadAgentFilesMock.mockReturnValue(pending.promise);
+			const { knowledge, agentId } = setup();
 
-			await knowledge.uploadFiles([makeFile('a.txt')]);
+			const uploading = knowledge.uploadFiles([makeFile('a.txt')]);
+			await flushPromises();
+			expect(uploadAgentFilesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', [
+				expect.any(File),
+			]);
+			agentId.value = 'a2';
+			pending.resolve([makeAgentFile()]);
+			await uploading;
 
 			expect(knowledge.agentFiles.value).toEqual([]);
 			expect(showMessageSpy).not.toHaveBeenCalled();
+			expect(knowledge.agentFilesUploading.value).toBe(true);
 		});
 	});
 
@@ -363,13 +383,19 @@ describe('useAgentKnowledge', () => {
 
 	describe('warmKnowledgeSandbox', () => {
 		it('warms the sandbox once per agent', () => {
-			const { knowledge } = setup();
+			const { knowledge, agentId } = setup();
 
 			knowledge.warmKnowledgeSandbox();
 			knowledge.warmKnowledgeSandbox();
-
 			expect(warmSandboxMock).toHaveBeenCalledTimes(1);
 			expect(warmSandboxMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+
+			agentId.value = 'a2';
+			knowledge.warmKnowledgeSandbox();
+			knowledge.warmKnowledgeSandbox();
+
+			expect(warmSandboxMock).toHaveBeenCalledTimes(2);
+			expect(warmSandboxMock).toHaveBeenLastCalledWith(expect.anything(), 'p1', 'a2');
 		});
 
 		it.each([
@@ -396,14 +422,16 @@ describe('useAgentKnowledge', () => {
 			expect(warmSandboxMock).toHaveBeenCalledTimes(2);
 		});
 
-		it('keeps the key of a failed attempt that belongs to another agent', async () => {
-			warmSandboxMock.mockRejectedValueOnce(new Error('boom'));
-			const { knowledge, isStaleAgentTarget } = setup();
+		it('keeps the key when the failure arrives after the user switched agents', async () => {
+			const pending = createDeferredPromise<{ accepted: true }>();
+			warmSandboxMock.mockReturnValueOnce(pending.promise);
+			const { knowledge, agentId } = setup();
 
 			knowledge.warmKnowledgeSandbox();
-			isStaleAgentTarget.mockReturnValue(true);
+			agentId.value = 'a2';
+			pending.reject(new Error('boom'));
 			await flushPromises();
-			isStaleAgentTarget.mockReturnValue(false);
+			agentId.value = 'a1';
 			knowledge.warmKnowledgeSandbox();
 
 			expect(warmSandboxMock).toHaveBeenCalledTimes(1);
