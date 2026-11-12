@@ -222,4 +222,14 @@ export const engineRefusals: EngineRefusal[] = [
  * - An inline sub-workflow, a sub-workflow called more than once for one run of a
  *   node, and a sub-workflow call from a node other than Execute Sub-workflow:
  *   `sub-workflow-calls.ts`. No check rule.
+ *
+ * Not refused: engine v2 ignores these settings without an error, so no engine
+ * error can pin their check rules. The rules stay until engine v2 supports the
+ * setting.
+ *
+ * - ERROR_WORKFLOW: engine v2 runs the workflow but never starts its error workflow.
+ * - REDACTION_POLICY (a warning): the cli redacts a v2 execution when it is read,
+ *   but engine v2 is not fully tested with redaction.
+ * - END_USER_CREDENTIALS: engine v2 runs the workflow without the credential
+ *   resolver, so it does not use the end user's credentials.
  */

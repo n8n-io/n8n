@@ -13,7 +13,6 @@
  */
 
 import { validateExecutableGraph } from '@n8n/engine';
-import type { EngineV2ReasonCode } from '@n8n/workflow-engine-check';
 import { checkEngineV2Eligibility } from '@n8n/workflow-engine-check';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { isTriggerNodeType } from 'n8n-workflow';
@@ -29,6 +28,7 @@ import {
 	selfLoopV1Workflow,
 	setV1Workflow,
 } from './acceptance-fixtures';
+import type { EngineRefusal } from './engine-refusals';
 
 const converter = new V1WorkflowConverter();
 
@@ -103,14 +103,15 @@ export function expectEngineAndCheckAccept(workflow: IWorkflowBase): void {
 }
 
 /**
- * Asserts that the converter or the engine still refuses the workflow with
- * `engineError`. `whenAccepted` says what to change once engine v2 runs it.
+ * Asserts that the converter or the engine still refuses the row's workflow with
+ * its `engineError`, and that the check reports the row's code. When engine v2
+ * starts to run the workflow, the failure says what to remove.
  */
-export function expectEngineStillRefuses(
-	workflow: IWorkflowBase,
-	engineError: string | RegExp,
-	whenAccepted: string,
-): void {
+export function expectRefusalHolds({ workflow, engineError, check }: EngineRefusal): void {
+	const whenAccepted =
+		'code' in check
+			? `Remove the ${check.code} rule from @n8n/workflow-engine-check and this row from engine-refusals.ts.`
+			: `Remove this row from engine-refusals.ts, and do not add the rule planned in ${check.plannedIn}.`;
 	expect(
 		() => assertEngineAccepts(workflow),
 		`Engine v2 now runs this workflow. ${whenAccepted}`,
@@ -119,26 +120,12 @@ export function expectEngineStillRefuses(
 		() => assertEngineAccepts(workflow),
 		'Engine v2 refuses this workflow with a different error',
 	).toThrow(engineError);
-}
 
-/**
- * Pins a check rule to a workflow that engine v2 still refuses with `engineError`.
- * When an engine change makes the workflow run, this fails, because the rule now
- * blocks workflows that engine v2 runs.
- */
-export function expectEngineStillRejects(
-	workflow: IWorkflowBase,
-	code: EngineV2ReasonCode,
-	engineError: string | RegExp,
-): void {
-	const { reasons } = checkEngineV2Eligibility(workflow, []);
-	expect(
-		reasons.map((reason) => reason.code),
-		`The check does not report ${code}`,
-	).toContain(code);
-	expectEngineStillRefuses(
-		workflow,
-		engineError,
-		`Remove the ${code} rule from @n8n/workflow-engine-check.`,
-	);
+	if ('code' in check) {
+		const { reasons } = checkEngineV2Eligibility(workflow, []);
+		expect(
+			reasons.map((reason) => reason.code),
+			`The check does not report ${check.code}`,
+		).toContain(check.code);
+	}
 }
