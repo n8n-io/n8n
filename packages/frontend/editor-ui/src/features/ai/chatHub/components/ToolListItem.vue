@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nSwitch,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import {
 	describeTypeRestriction,
 	RestrictedNodePopover,
 } from '@n8n/frontend-module-type-availability-policies';
-import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -156,8 +162,9 @@ const toggleTooltip = computed(() => {
 
 				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
 					<!-- A restricted tool can still be turned off, so the chat works again, but not back on. -->
-					<ElSwitch
+					<N8nSwitch
 						:model-value="enabled"
+						size="large"
 						:disabled="!!restriction && !enabled"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"

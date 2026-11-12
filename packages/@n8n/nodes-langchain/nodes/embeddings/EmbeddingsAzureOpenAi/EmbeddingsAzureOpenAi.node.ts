@@ -19,6 +19,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 import { N8nOAuth2TokenCredential } from '../../llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential';
 import {
 	AuthenticationType,
@@ -253,7 +255,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		} else {
 			const credential = await this.getCredentials<AzureApiKeyCredential>(API_KEY_AUTH);
 			target = credential;
-			apiKey = credential.apiKey;
+			apiKey = getRequiredApiKey(this.getNode(), credential.apiKey);
 			credentialData = credential as unknown as ICredentialDataDecryptedObject;
 		}
 
@@ -327,7 +329,6 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
 			azureOpenAIApiInstanceName: !target.endpoint ? target.resourceName : undefined,
-			azureOpenAIApiKey: apiKey,
 			azureADTokenProvider: tokenProvider,
 			azureOpenAIApiVersion: target.apiVersion,
 			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
@@ -341,6 +342,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				},
 			},
 			...options,
+			// Set after options so nothing can unset it. An explicit '' keeps LangChain from
+			// reading AZURE_OPENAI_API_KEY when Entra ID is used
+			azureOpenAIApiKey: apiKey ?? '',
 		});
 
 		return {

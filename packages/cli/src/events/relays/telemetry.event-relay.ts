@@ -1,6 +1,6 @@
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -60,7 +60,6 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';

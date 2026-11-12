@@ -13,6 +13,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
 	makeN8nLlmFailedAttemptHandler,
@@ -307,7 +308,7 @@ export class LmChatGoogleGemini implements INodeType {
 
 		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new N8nChatGoogleGenerativeAI({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			baseUrl: credentials.host as string,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
 				await proxyFetch({ input, init, egressFilter }),

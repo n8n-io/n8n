@@ -19,7 +19,10 @@ import {
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
 import { settleAbandonedToolCallsInMemory } from '../memory/strip-orphaned-tool-messages';
-import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
+import {
+	MAX_EXACT_TOKENIZATION_BYTES,
+	MAX_MODEL_TOOL_RESULT_TOKENS,
+} from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = {
@@ -534,13 +537,13 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
-	it.each(['document', 'media'] as const)(
+	it.each(['document', 'media', 'uninterrupted'] as const)(
 		'bounds oversized %s results before observation',
 		async (kind) => {
 			const store = new InMemoryMemory();
-			const document = `DOCUMENT_START ${'Document text. '.repeat(6_000)} DOCUMENT_END`;
+			const document = `DOCUMENT_START ${kind === 'uninterrupted' ? 'x'.repeat(400_000) : 'Document text. '.repeat(6_000)} DOCUMENT_END`;
 			const output =
-				kind === 'document'
+				kind !== 'media'
 					? { content: document }
 					: {
 							type: 'content',
@@ -570,11 +573,12 @@ describe('runObservationLogObserver', () => {
 				],
 			});
 
+			const tokenCounter = vi.fn((text: string) => text.length);
 			await runObservationLogObserver({
 				memory: store,
 				observationScopeId: 'thread-1',
 				observationLogTailLimit: 20,
-				tokenCounter: (text) => text.length,
+				tokenCounter,
 				observe: async ({ transcript }) => {
 					expect(transcript).toContain('"_truncated":true');
 					expect(transcript).toContain('DOCUMENT_START');
@@ -583,6 +587,11 @@ describe('runObservationLogObserver', () => {
 					return 'NO_OBSERVATIONS';
 				},
 			});
+			expect(
+				tokenCounter.mock.calls.every(
+					([text]) => Buffer.byteLength(text, 'utf8') <= MAX_EXACT_TOKENIZATION_BYTES,
+				),
+			).toBe(true);
 		},
 	);
 
