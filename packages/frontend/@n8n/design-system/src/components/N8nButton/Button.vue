@@ -5,6 +5,7 @@ import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -94,13 +95,9 @@ const handleClick = (event: MouseEvent) => {
 		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
-		<Transition name="n8n-button-fade">
-			<div v-if="loading" :class="$style['loading-container']">
-				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
-					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
-				</div>
-			</div>
-		</Transition>
+		<div v-if="loading" :class="$style['loading-container']">
+			<N8nSpinner type="grid" :size="computedIconSize" aria-hidden="true" />
+		</div>
 
 		<div :class="$style['button-inner']">
 			<slot v-if="!loading" name="icon">
@@ -126,7 +123,6 @@ const handleClick = (event: MouseEvent) => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
-@use '../../css/mixins/motion';
 
 .button {
 	appearance: none;
@@ -420,20 +416,5 @@ const handleClick = (event: MouseEvent) => {
 .loading-container + .button-inner {
 	pointer-events: none;
 	opacity: 0;
-}
-
-.loading-spinner {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	@include motion.spin;
-}
-
-:global(.n8n-button-fade-enter-active) {
-	@include motion.fade-in-up;
-}
-
-:global(.n8n-button-fade-leave-active) {
-	@include motion.fade-out-down;
 }
 </style>
