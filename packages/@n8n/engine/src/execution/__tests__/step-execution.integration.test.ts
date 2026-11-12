@@ -1164,6 +1164,32 @@ describe('step execution (integration)', () => {
 			expect(requests.filter(({ node }) => node.id === 'model')).toHaveLength(0);
 		});
 
+		it.each([
+			['missing', undefined],
+			['a number', 42],
+			['empty', ''],
+		])(
+			'fails the agent step with an error naming the node when a call id is %s',
+			async (_, callId) => {
+				const action = { ...call('call-1'), callId } as unknown as ActionDeclaration;
+				const { executor } = agentExecutor([[action]]);
+
+				const { executionId, execution, steps } = await runWorkflow(executor, [[{}]], {
+					graph: agentGraph,
+				});
+
+				expect(execution.status).toBe('failed');
+				const agent = steps.find(({ nodeId }) => nodeId === 'agent');
+				expect(agent?.status).toBe('failed');
+				expect(agent?.error).toMatchObject({
+					name: 'InvalidActionsError',
+					message: expect.stringMatching(/"Agent".*call id/) as string,
+				});
+				expect(steps.filter(({ kind }) => kind === 'spawned')).toHaveLength(0);
+				expect(await loadRounds(executionId)).toHaveLength(0);
+			},
+		);
+
 		it('cancels the waiting agent and its pending spawned steps when the execution is cancelled', async () => {
 			const { executor } = agentExecutor([[call('call-1'), call('call-2')]], {
 				waiting: ['call-1'],

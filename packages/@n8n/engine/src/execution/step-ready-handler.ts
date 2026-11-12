@@ -43,7 +43,7 @@ import {
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
-import type { ActionLimits, StepRecord, StepStore } from './step-store';
+import type { ActionLimits, RecordRoundResult, StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
@@ -271,7 +271,16 @@ export class StepReadyHandler {
 		node: GraphNode,
 		actions: ActionsDeclaration,
 	): Promise<{ kind: 'done' } | { kind: 'error'; error: unknown }> {
-		const recorded = await this.stepStore.recordRound(step, actions, this.actionLimits);
+		// The round transaction rolled back on a throw, so the step is still
+		// `running` and failing it is the only way it settles.
+		// SPIKE: this also fails the step on a transient store error, which
+		// reconciliation (CAT-2938) could retry instead.
+		let recorded: RecordRoundResult;
+		try {
+			recorded = await this.stepStore.recordRound(step, actions, this.actionLimits);
+		} catch (error) {
+			return { kind: 'error', error };
+		}
 		if (recorded.kind === 'over-cap') {
 			const name = createNodeLabeler(execution.graph)(node.id);
 			const max = this.actionLimits[recorded.limit];
@@ -287,6 +296,9 @@ export class StepReadyHandler {
 		}
 		if (recorded.kind === 'lost') return { kind: 'done' };
 
+		// TODO(CAT-2938): a crash here, after the round committed and before the
+		// spawned steps are published, leaves them `queued` and the declaring step
+		// `waiting` with nothing to announce them. Reconciliation must re-publish them.
 		for (const spawned of recorded.spawned) {
 			await this.stepQueue.publish({
 				type: 'step:ready',

@@ -61,8 +61,19 @@ export function validateActionsDeclaration(
 		);
 	}
 
+	// SPIKE: the real fix keys spawned steps by declared position and treats the
+	// call id as opaque data. Providers and merged item batches can send missing
+	// or duplicate call ids, and today either fails the step.
 	const callIds = new Set<string>();
 	for (const action of declaration.actions) {
+		// A missing call id would break the spawned-step CHECK, an empty one the
+		// spawned-step lookup, and a non-string one the match by call id.
+		const callId: unknown = action.callId;
+		if (typeof callId !== 'string' || callId === '') {
+			throw new InvalidActionsError(
+				`${name(node.id)} declares an action without a call id; every action needs a non-empty string call id`,
+			);
+		}
 		if (callIds.has(action.callId)) {
 			throw new InvalidActionsError(
 				`${name(node.id)} declares the call id ${action.callId} more than once in one round`,
