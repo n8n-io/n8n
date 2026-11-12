@@ -11,6 +11,8 @@ import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availab
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { INodeUi } from '@/Interface';
 
+import { HttpHeaderAuth } from '../../../../../../nodes-base/credentials/HttpHeaderAuth.credentials';
+import { HttpMultipleHeadersAuth } from '../../../../../../nodes-base/credentials/HttpMultipleHeadersAuth.credentials';
 import CredentialsSelect from './CredentialsSelect.vue';
 import { useCredentialsStore } from '../credentials.store';
 
@@ -481,6 +483,24 @@ describe('CredentialsSelect — restricted credential types', () => {
 			genericType('httpBearerAuth', 'Bearer Auth'),
 			genericType('httpHeaderAuth', 'Header Auth'),
 		];
+
+		// NODE-6402: Use the real credential definitions to check their picker classification.
+		it.each([new HttpHeaderAuth(), new HttpMultipleHeadersAuth()])(
+			'lists $displayName only under generic authentication for HTTP Request',
+			async (credential) => {
+				const wrapper = mountSelect('n8n-nodes-base.httpRequest', [credential, slackApi], {
+					parameter: genericAuthParameter,
+				});
+
+				expect.soft(renderedCredentialNames(wrapper)).toContain(credential.name);
+				expect(renderedCredentialNames(wrapper)).not.toContain('slackApi');
+
+				await wrapper.setProps({ parameter: baseParameter });
+
+				expect(renderedCredentialNames(wrapper)).toContain('slackApi');
+				expect(renderedCredentialNames(wrapper)).not.toContain(credential.name);
+			},
+		);
 
 		it('puts a restricted generic type last and disables it', () => {
 			mockRestrictedCredentialTypes({ httpBasicAuth: 'instance' });
