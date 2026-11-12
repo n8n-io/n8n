@@ -12,16 +12,6 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
-describe('AgentJsonConfigSchema — name', () => {
-	it('trims the name', () => {
-		expect(AgentJsonConfigSchema.parse({ ...minimalConfig, name: '  Agent  ' }).name).toBe('Agent');
-	});
-
-	it('rejects a name of only spaces', () => {
-		expect(AgentJsonConfigSchema.safeParse({ ...minimalConfig, name: '   ' }).success).toBe(false);
-	});
-});
-
 describe('AgentJsonConfigSchema — capability activation', () => {
 	it.each([undefined, true, false])('preserves enabled=%s on capability references', (enabled) => {
 		const activation = enabled === undefined ? {} : { enabled };

@@ -1,6 +1,7 @@
 import { AgentsConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 
 import { ServiceAccountService } from '@/services/service-account.service';
 
@@ -21,6 +22,8 @@ export class AgentServiceAccountService {
 	 */
 	async assignToNewAgent(agent: ProjectAgent, ctx: OperationContext): Promise<void> {
 		if (!this.agentsConfig.serviceAccountsEnabled) return;
+		// The REST create trims the name, but an import takes it from the package.
+		if (agent.name.trim() === '') throw new BadRequestError('An agent needs a name');
 
 		const { serviceAccount } = await this.serviceAccountService.create(agent.name, ctx);
 		agent.identityId = serviceAccount.id;

@@ -2,7 +2,7 @@ import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backe
 import { AgentsConfig } from '@n8n/config';
 import { ProjectRepository, ServiceAccountDetails, ServiceAccountRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
@@ -82,6 +82,23 @@ describe('Agent service accounts', () => {
 		});
 
 		await expectServiceAccountWithPersonalProject(agent.id, 'Imported Agent');
+	});
+
+	it('rejects an imported agent with a blank name', async () => {
+		const project = await createTeamProject();
+		const owner = await createOwner();
+		const id = nanoid();
+
+		await expect(
+			agentsService.create(project.id, '   ', {
+				id,
+				definition: { name: '   ', tools: {}, config: null, tasks: new Map() },
+				user: owner,
+				actor: { kind: 'user', user: owner },
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		expect(await agentRepo.findOneBy({ id })).toBeNull();
 	});
 
 	it('does not save the agent when the service account cannot be created', async () => {
