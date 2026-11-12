@@ -3,7 +3,10 @@ import type { INode } from 'n8n-workflow';
 import { NODE_TYPE_DENYLIST, type NodeTypeDenylistEntry } from './node-type-denylist';
 import type { EngineV2Reason } from './types';
 
-/** The packages that n8n loads as its own nodes. Every other package is a community or custom package. */
+/**
+ * The packages that n8n loads as its own nodes. Every other package is a community
+ * or custom package. CET-785 removes this rule.
+ */
 const CORE_NODE_PACKAGES = ['n8n-nodes-base.', '@n8n/n8n-nodes-langchain.'];
 
 function matchesEntry(node: INode, entry: NodeTypeDenylistEntry): boolean {

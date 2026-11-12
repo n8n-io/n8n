@@ -80,7 +80,7 @@ const WAITING_TRIGGERS: Record<string, WaitingTrigger> = {
 
 /**
  * Mirrors `EngineV2ActiveTriggers`, which refuses a trigger that waits for its run
- * to finish. The trigger's settings decide whether it waits.
+ * to finish. The trigger's settings decide whether it waits. CET-299 removes this rule.
  */
 export function findTriggerWaitReasons(nodes: INode[]): EngineV2Reason[] {
 	return nodes.flatMap((node) => {

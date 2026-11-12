@@ -98,7 +98,7 @@ describe('node type rule', () => {
 	// Removing an entry lets workflows publish on engine v2. Do it only when the ticket lands.
 	it('pins the denylist', () => {
 		const entries = NODE_TYPE_DENYLIST.map(
-			({ type, code, ticket }) => `${type}: ${code} ${ticket ?? 'no ticket'}`,
+			({ type, code, ticket }) => `${type}: ${code} ${ticket}`,
 		);
 		expect(entries).toMatchInlineSnapshot(`
 			[
@@ -106,14 +106,14 @@ describe('node type rule', () => {
 			  "n8n-nodes-base.formTrigger: FORM_NODE CET-331",
 			  "@n8n/n8n-nodes-langchain.chat: CHAT_NODE CET-522",
 			  "@n8n/n8n-nodes-langchain.chatTrigger: CHAT_NODE CET-291",
-			  "@n8n/n8n-nodes-langchain.mcpTrigger: MCP_SERVER_TRIGGER no ticket",
-			  "@n8n/n8n-nodes-langchain.microsoftAgent365Trigger: MICROSOFT_AGENT365_TRIGGER no ticket",
-			  "n8n-nodes-base.executionData: EXECUTION_DATA_NODE no ticket",
-			  "n8n-nodes-base.timeSaved: TIME_SAVED_NODE no ticket",
-			  "n8n-nodes-base.messageAnAgent: MESSAGE_AN_AGENT_NODE no ticket",
-			  "n8n-nodes-base.evaluation: EVALUATION_NODE no ticket",
-			  "n8n-nodes-base.evaluationTrigger: EVALUATION_NODE no ticket",
-			  "@n8n/n8n-nodes-langchain.: AI_NODE CET-291",
+			  "@n8n/n8n-nodes-langchain.mcpTrigger: MCP_SERVER_TRIGGER CET-781",
+			  "@n8n/n8n-nodes-langchain.microsoftAgent365Trigger: MICROSOFT_AGENT365_TRIGGER CET-787",
+			  "n8n-nodes-base.executionData: EXECUTION_DATA_NODE CET-782",
+			  "n8n-nodes-base.timeSaved: TIME_SAVED_NODE CET-782",
+			  "n8n-nodes-base.messageAnAgent: MESSAGE_AN_AGENT_NODE CET-783",
+			  "n8n-nodes-base.evaluation: EVALUATION_NODE CET-784",
+			  "n8n-nodes-base.evaluationTrigger: EVALUATION_NODE CET-784",
+			  "@n8n/n8n-nodes-langchain.: AI_NODE CET-780",
 			]
 		`);
 	});
