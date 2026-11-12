@@ -55,6 +55,14 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 							"What ended the step's wait, recorded when it is resumed: a deadline, or a request. A request carries the outputs the node's resume path produced where the request arrived. The engine emits them and runs no node code.",
 					},
 					{
+						name: 'stale_after',
+						type: 'timestamptz',
+						precision: 3,
+						isNullable: true,
+						comment:
+							'When the engine treats a queued or running step as stuck. Written at each transition into those statuses. NULL in every other status.',
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -95,6 +103,13 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						name: 'idx_workflow_step_execution_unsettled',
 						columnNames: ['execution_id', 'status'],
 						where: "status IN ('queued', 'running', 'waiting')",
+					},
+					// For the search for stuck steps. `status` is first in the key, because
+					// each search reads one status. Other rows are not in the index.
+					{
+						name: 'idx_workflow_step_execution_stale_after',
+						columnNames: ['status', 'stale_after'],
+						where: "status IN ('queued', 'running')",
 					},
 				],
 				foreignKeys: [

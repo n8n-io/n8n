@@ -14,6 +14,7 @@ import {
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
+import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
 	StepNotFoundError,
 	type DueStep,
@@ -72,7 +73,17 @@ function stepKeyFilter(keys: StepKey[]): {
 
 /** TypeORM-backed `StepStore` adapter. */
 export class TypeOrmStepStore implements StepStore {
-	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
+	constructor(
+		private readonly repo: Repository<WorkflowStepExecution>,
+		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+	) {}
+
+	/** The `stale_after` value of a step that enters `status` now. */
+	private staleAfterFor(status: StepStatus): Date | null {
+		if (status === 'queued') return new Date(Date.now() + this.staleness.queuedMs);
+		if (status === 'running') return new Date(Date.now() + this.staleness.runningStepMs);
+		return null;
+	}
 
 	async createSteps(
 		executionId: string,
@@ -84,7 +95,12 @@ export class TypeOrmStepStore implements StepStore {
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
-		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
+		const rows = records.map((record) => ({
+			...record,
+			executionId,
+			id: generateId(),
+			staleAfter: this.staleAfterFor(record.status),
+		}));
 
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
@@ -155,7 +171,7 @@ export class TypeOrmStepStore implements StepStore {
 			const result = await manager
 				.createQueryBuilder()
 				.update(WorkflowStepExecution)
-				.set({ status: 'running' })
+				.set({ status: 'running', staleAfter: this.staleAfterFor('running') })
 				.where({ id, status: 'queued' })
 				.andWhere(
 					`NOT EXISTS (
@@ -214,7 +230,11 @@ export class TypeOrmStepStore implements StepStore {
 		const result = await this.repo
 			.createQueryBuilder()
 			.update(WorkflowStepExecution)
-			.set({ status: 'queued', resumeCause: { kind: 'deadline' } })
+			.set({
+				status: 'queued',
+				resumeCause: { kind: 'deadline' },
+				staleAfter: this.staleAfterFor('queued'),
+			})
 			.where(
 				`id IN (
 					SELECT id FROM workflow_step_execution
@@ -250,7 +270,7 @@ export class TypeOrmStepStore implements StepStore {
 	async cancelPendingSteps(executionId: string): Promise<void> {
 		await this.repo.update(
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
-			{ status: 'cancelled' },
+			{ status: 'cancelled', staleAfter: null },
 		);
 	}
 
@@ -280,7 +300,7 @@ export class TypeOrmStepStore implements StepStore {
 			const result = await manager.update(
 				WorkflowStepExecution,
 				{ id, status: from },
-				{ error, status: 'failed' },
+				{ error, status: 'failed', staleAfter: null },
 			);
 			return result.affected === 1;
 		});
@@ -289,6 +309,7 @@ export class TypeOrmStepStore implements StepStore {
 	/**
 	 * Compare-and-set on `status`, writing any result columns in the same
 	 * statement so a step's status and its outcome can't be observed apart.
+	 * The same statement writes `stale_after` for the new status.
 	 */
 	private async transition(
 		id: string,
@@ -302,7 +323,10 @@ export class TypeOrmStepStore implements StepStore {
 			resumeCause?: ResumeCause;
 		} = {},
 	): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
+		const result = await this.repo.update(
+			{ id, status: from },
+			{ ...fields, status: to, staleAfter: this.staleAfterFor(to) },
+		);
 		return result.affected === 1;
 	}
 
