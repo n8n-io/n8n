@@ -41,26 +41,27 @@ vi.mock('@/features/collaboration/projects/components/ProjectIcon.vue', () => ({
 vi.mock('@/features/core/folders/components/MoveToFolderDropdown.vue', () => ({
 	default: {
 		name: 'MoveToFolderDropdown',
-		props: [
-			'selectedLocation',
-			'selectedProjectId',
-			'currentProjectId',
-			'currentFolderId',
-			'parentFolderId',
-			'resourceType',
-			'teleported',
-		],
+		props: {
+			selectedLocation: null,
+			selectedProjectId: null,
+			currentProjectId: null,
+			currentFolderId: null,
+			parentFolderId: null,
+			resourceType: null,
+			teleported: null,
+			autofocus: Boolean,
+		},
 		emits: ['location:selected', 'load:error'],
 		template: '<div />',
 	},
 }));
 vi.mock('@n8n/design-system', () => ({
 	N8nInput: {
-		props: ['modelValue', 'readonly'],
+		props: ['modelValue', 'disabled'],
 		inheritAttrs: false,
 		emits: ['update:modelValue'],
 		template:
-			'<div><slot name="prefix" /><input v-bind="$attrs" :value="modelValue" :readonly="readonly" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
+			'<div><slot name="prefix" /><input v-bind="$attrs" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" /></div>',
 	},
 	N8nSelect: {
 		props: ['modelValue'],
@@ -145,13 +146,14 @@ describe('AgentFolderDialog', () => {
 		expect(wrapper.get('[data-testid="agent-move-project"]').element).toHaveValue(
 			'Customer operations',
 		);
-		expect(wrapper.get('[data-testid="agent-move-project"]').attributes('readonly')).toBeDefined();
+		expect(wrapper.get('[data-testid="agent-move-project"]').element).toBeDisabled();
 		expect(picker.props()).toMatchObject({
 			selectedProjectId: 'project',
 			currentProjectId: 'project',
 			parentFolderId: 'one',
 			resourceType: 'agent',
 			teleported: false,
+			autofocus: true,
 		});
 		expect(save.text()).toBe('Move Agent');
 		expect(save.attributes('disabled')).toBeDefined();

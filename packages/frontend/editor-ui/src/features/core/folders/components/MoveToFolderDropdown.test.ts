@@ -7,18 +7,29 @@ const { fetchFolders } = vi.hoisted(() => ({ fetchFolders: vi.fn() }));
 vi.mock('../folders.store', () => ({
 	useFoldersStore: () => ({ fetchFoldersAvailableForMove: fetchFolders }),
 }));
-vi.mock('@n8n/design-system', () => ({
-	N8nSelect: {
-		name: 'N8nSelect',
-		props: ['modelValue', 'filterable', 'remote', 'remoteMethod', 'teleported', 'popperOptions'],
-		emits: ['update:modelValue'],
-		template: '<div><slot name="prefix" /><slot /></div>',
-	},
-	N8nOption: { props: ['label', 'value'], template: '<div><slot /></div>' },
-	N8nLoading: { template: '<div data-testid="loading" />' },
-	N8nText: { template: '<span><slot /></span>' },
-	N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
-}));
+vi.mock('@n8n/design-system', async () => {
+	const { defineComponent, ref } = await import('vue');
+
+	return {
+		N8nSelect: defineComponent({
+			name: 'N8nSelect',
+			props: ['modelValue', 'filterable', 'remote', 'remoteMethod', 'teleported', 'popperOptions'],
+			emits: ['update:modelValue'],
+			setup(_, { expose }) {
+				const input = ref<HTMLInputElement>();
+				expose({ focus: () => input.value?.focus() });
+
+				return { input };
+			},
+			template:
+				'<div><input ref="input" data-testid="folder-input" /><slot name="prefix" /><slot /></div>',
+		}),
+		N8nOption: { props: ['label', 'value'], template: '<div><slot /></div>' },
+		N8nLoading: { template: '<div data-testid="loading" />' },
+		N8nText: { template: '<span><slot /></span>' },
+		N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
+	};
+});
 
 const folder = (id: string, name = id): ChangeLocationSearchResult => ({
 	id,
@@ -37,6 +48,28 @@ beforeEach(() => {
 });
 
 describe('MoveToFolderDropdown', () => {
+	it.each([false, true])('applies autofocus %s after the folders load', async (autofocus) => {
+		let finishLoading!: (folders: ChangeLocationSearchResult[]) => void;
+		fetchFolders.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishLoading = resolve;
+			}),
+		);
+		const wrapper = mount(MoveToFolderDropdown, {
+			attachTo: document.body,
+			props: { selectedProjectId: 'project', selectedLocation: null, autofocus },
+		});
+
+		expect(wrapper.find('[data-testid="folder-input"]').exists()).toBe(false);
+
+		finishLoading([folder('target')]);
+		await flushPromises();
+		const input = wrapper.get('[data-testid="folder-input"]').element;
+
+		expect(document.activeElement === input).toBe(autofocus);
+		wrapper.unmount();
+	});
+
 	it('keeps workflow defaults and offers project root', async () => {
 		const wrapper = mount(MoveToFolderDropdown, {
 			props: { selectedProjectId: 'project', selectedLocation: null },

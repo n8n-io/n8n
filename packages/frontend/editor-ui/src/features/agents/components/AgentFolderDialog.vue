@@ -254,7 +254,7 @@ async function save() {
 					<N8nInput
 						id="agent-move-project"
 						:model-value="projectName ?? ''"
-						readonly
+						disabled
 						:title="i18n.baseText('agents.folders.sameProject')"
 						data-testid="agent-move-project"
 					>
@@ -276,6 +276,7 @@ async function save() {
 						:current-folder-id="action?.mode === 'moveFolder' ? action.id : undefined"
 						:parent-folder-id="action?.parentFolderId ?? undefined"
 						resource-type="agent"
+						autofocus
 						:teleported="false"
 						data-testid="agent-folder-target"
 						@location:selected="onLocationSelected"

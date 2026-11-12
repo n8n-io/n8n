@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '../folders.types';
 import { useFoldersStore } from '../folders.store';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { FolderResourceType } from '@n8n/api-types';
 
 import { N8nIcon, N8nLoading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
@@ -22,6 +22,7 @@ type Props = {
 	resourceType?: FolderResourceType;
 	teleported?: boolean;
 	inputId?: string;
+	autofocus?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
 	resourceType: 'workflow',
 	teleported: true,
 	inputId: undefined,
+	autofocus: false,
 });
 
 const emit = defineEmits<{
@@ -42,6 +44,15 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const foldersStore = useFoldersStore();
+const moveFolderDropdown = useTemplateRef<InstanceType<typeof N8nSelect>>('moveFolderDropdown');
+
+watch(
+	moveFolderDropdown,
+	(select) => {
+		if (props.autofocus) select?.focus();
+	},
+	{ flush: 'post' },
+);
 
 const availableLocations = ref<ChangeLocationSearchResult[]>([]);
 const selectedLocationId = computed<string | null>({

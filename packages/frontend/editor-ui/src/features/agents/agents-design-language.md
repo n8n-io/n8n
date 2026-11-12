@@ -37,6 +37,7 @@ Match the workflow move dialog. Name the Agent or folder in the title. Show the
 current project and its icon above the shared searchable folder picker. Keep the
 project fixed. Offer project root and show nested folder paths. Use `Move Agent`
 or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
+Disable the fixed project field. Focus the folder picker after its options load.
 
 ## Agent card subtitles
 
