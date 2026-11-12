@@ -199,7 +199,7 @@ describe('createLifecycleEventCodec', () => {
 			ok: true,
 			result: withoutOutputs,
 		});
-		expect(logger.info).toHaveBeenCalledWith(
+		expect(logger.debug).toHaveBeenCalledWith(
 			'Sent a lifecycle event without its outputs: it exceeds the frame size limit',
 			{ executionId: 'exec-1', stepId: 'step-1', bytes: Buffer.byteLength(JSON.stringify(event)) },
 		);
@@ -226,7 +226,7 @@ describe('createLifecycleEventCodec', () => {
 
 		expect(codec.serialize(event)).toEqual({ ok: true, frame });
 		expect(logger.warn).not.toHaveBeenCalled();
-		expect(logger.info).not.toHaveBeenCalled();
+		expect(logger.debug).not.toHaveBeenCalled();
 	});
 
 	it('makes the sender publish nothing for an event it cannot encode', () => {

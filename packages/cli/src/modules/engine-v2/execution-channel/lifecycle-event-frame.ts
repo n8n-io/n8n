@@ -49,7 +49,7 @@ function serializeLifecycleEvent(
 		const { outputs: _outputs, ...withoutOutputs } = event;
 		const frame = JSON.stringify(withoutOutputs);
 		if (Buffer.byteLength(frame) <= maxFrameBytes) {
-			logger.info('Sent a lifecycle event without its outputs: it exceeds the frame size limit', {
+			logger.debug('Sent a lifecycle event without its outputs: it exceeds the frame size limit', {
 				executionId: event.executionId,
 				stepId: event.stepId,
 				bytes,
