@@ -47,11 +47,14 @@ describe('generateSchedule', () => {
 	});
 
 	it('restarts only restart targets', () => {
-		const restarts = generateSchedule(11, menu, 40, 600_000).filter(
-			(s) => s.fault.kind === 'kill' || s.fault.kind === 'stop',
-		);
+		const restarts = generateSchedule(
+			11,
+			{ ...menu, restartTargets: ['worker-2'] },
+			40,
+			600_000,
+		).filter((s) => s.fault.kind === 'kill' || s.fault.kind === 'stop');
 		expect(restarts.length).toBeGreaterThan(0);
-		expect(restarts.every((s) => s.fault.target !== 'main')).toBe(true);
+		expect(new Set(restarts.map((s) => s.fault.target))).toEqual(new Set(['worker-2']));
 	});
 
 	it('aims hook faults only at hook targets', () => {
