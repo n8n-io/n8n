@@ -32,6 +32,7 @@ export const MODULE_NAMES = [
 	'instance-registry',
 	'instance-ai',
 	'mcp-registry',
+	'mcp-guard',
 	'otel',
 	'token-exchange',
 	'instance-version-history',
