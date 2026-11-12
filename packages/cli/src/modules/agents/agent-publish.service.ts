@@ -17,7 +17,7 @@ import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
 	KnowledgeFileRepository,
@@ -145,6 +145,7 @@ export class AgentPublishService {
 	): Promise<PublishAgentResult> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
+		if (agent.isArchived) throw new BadRequestError('Cannot publish an archived agent');
 		if (expectedRevision !== undefined && agent.revision !== expectedRevision) {
 			throw new ConflictError('Agent was modified concurrently while publishing; please retry');
 		}
@@ -273,6 +274,7 @@ export class AgentPublishService {
 		by: AgentActor,
 		pushRef?: string,
 		expectedRevision?: number,
+		{ archive = false }: { archive?: boolean } = {},
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
@@ -282,7 +284,7 @@ export class AgentPublishService {
 		if (!agent.activeVersionId) return agent;
 		const expectedPublicationRevision = agent.publicationRevision;
 
-		await this.commitUnpublication(agent, expectedPublicationRevision, user);
+		await this.commitUnpublication(agent, expectedPublicationRevision, user, archive);
 		this.eventService.emit('agent-saved', { agentId });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 
@@ -294,6 +296,99 @@ export class AgentPublishService {
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
+	}
+
+	/**
+	 * Unpublishes the agent and marks it archived in one write. This disconnects channels
+	 * and stops scheduled tasks, and keeps all agent data.
+	 */
+	async archiveAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		pushRef?: string,
+		by: AgentActor = 'user',
+	): Promise<ProjectAgent> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		if (agent.isArchived) throw new BadRequestError('Agent is already archived.');
+
+		let current = agent;
+		if (agent.activeVersionId) {
+			current = await this.unpublishAndArchive(agentId, projectId, user, by, pushRef);
+		}
+		// A concurrent unpublication makes unpublishAgent skip the archive write.
+		if (!current.isArchived) await this.setArchived(agentId, projectId, true, pushRef, by);
+
+		this.reportArchived(agentId, projectId, user);
+		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
+	}
+
+	/** Reports the archive also when a step after the committed write fails. */
+	private async unpublishAndArchive(
+		agentId: string,
+		projectId: string,
+		user: User,
+		by: AgentActor,
+		pushRef?: string,
+	): Promise<ProjectAgent> {
+		try {
+			return await this.unpublishAgent(agentId, projectId, user, by, pushRef, undefined, {
+				archive: true,
+			});
+		} catch (error) {
+			// A conflict means that this request did not write the archive state.
+			const committed =
+				!(error instanceof ConflictError) &&
+				(await this.agentRepository.findById(agentId))?.isArchived;
+			if (committed) this.reportArchived(agentId, projectId, user);
+			throw error;
+		}
+	}
+
+	private reportArchived(agentId: string, projectId: string, user: User): void {
+		this.eventService.emit('agent-archived', { user, agentId, projectId });
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			event_version: '1',
+		});
+	}
+
+	/** Restores an archived agent as an unpublished draft. The user publishes it again. */
+	async unarchiveAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		pushRef?: string,
+	): Promise<ProjectAgent> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		if (!agent.isArchived) throw new BadRequestError('Agent is not archived.');
+
+		await this.setArchived(agentId, projectId, false, pushRef);
+
+		this.eventService.emit('agent-unarchived', { user, agentId, projectId });
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UNARCHIVED_AGENT, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			event_version: '1',
+		});
+		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
+	}
+
+	private async setArchived(
+		agentId: string,
+		projectId: string,
+		isArchived: boolean,
+		pushRef?: string,
+		by: AgentActor = 'user',
+	): Promise<void> {
+		if (!(await this.agentRepository.setArchived(agentId, isArchived))) {
+			throw new ConflictError('Agent was modified concurrently; please retry');
+		}
+		this.runtimeCacheService.clearRuntimes(agentId);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 	}
 
 	/** Make sure a failed read for the publish event never stops the publication. */
@@ -686,6 +781,7 @@ export class AgentPublishService {
 		agent: ProjectAgent,
 		expectedRevision: number,
 		user: User,
+		archive: boolean,
 	): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const won = await this.agentRepository.setActiveVersionFenced(
@@ -693,11 +789,13 @@ export class AgentPublishService {
 				expectedRevision,
 				null,
 				ctx,
+				{ archive },
 			);
 			if (!won) throw new ConflictError('Agent publication changed concurrently; please retry');
 			await this.publishHistory.record(agent.id, agent.activeVersionId, 'deactivated', user, ctx);
 			agent.activeVersionId = null;
 			agent.activeVersion = null;
+			if (archive) agent.isArchived = true;
 			agent.publicationRevision = expectedRevision + 1;
 		});
 	}

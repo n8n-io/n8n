@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
 	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
 	setTitle: vi.fn(),
 	executeWeeklySummary: vi.fn(),
 	isSummaryEnabled: false,
@@ -29,6 +30,7 @@ const mocks = vi.hoisted(() => ({
 	duplicateAgent: vi.fn(),
 	upsertProjectAgentsListCache: vi.fn(),
 	routeProjectId: undefined as string | undefined,
+	routeQuery: {} as Record<string, string>,
 	toastShowMessage: vi.fn(),
 	toastShowError: vi.fn(),
 	openModalWithData: vi.fn(),
@@ -48,8 +50,8 @@ vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
-		useRoute: () => ({ params: { projectId: mocks.routeProjectId }, query: {} }),
-		useRouter: () => ({ push: mocks.routerPush }),
+		useRoute: () => ({ params: { projectId: mocks.routeProjectId }, query: mocks.routeQuery }),
+		useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 	};
 });
 
@@ -203,6 +205,11 @@ const mountView = async () => {
 	activeWrappers.push(wrapper);
 	return wrapper;
 };
+
+// The route query is shared state. Reset it so no suite inherits it.
+beforeEach(() => {
+	mocks.routeQuery = {};
+});
 
 afterEach(() => {
 	let wrapper: (typeof activeWrappers)[number] | undefined;
@@ -384,6 +391,61 @@ describe('AgentsListView — project page', () => {
 				sortBy: 'name:asc',
 				filter: { query: 'Support' },
 			}),
+		);
+	});
+
+	it('requests archived agents and syncs the URL when the show-archived filter is on', async () => {
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: undefined }),
+		);
+
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+		layout.vm.$emit('update:filters', { search: '', homeProject: '', showArchived: true });
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ query: { showArchived: 'true' } });
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: { includeArchived: true } }),
+		);
+	});
+
+	it('starts with the show-archived filter on when the URL query sets it', async () => {
+		mocks.routeQuery = { showArchived: 'true' };
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+		expect(layout.vm.$attrs.filters).toEqual(expect.objectContaining({ showArchived: true }));
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: { includeArchived: true } }),
+		);
+	});
+
+	it('removes showArchived from the URL and refetches when the show-archived filter is off', async () => {
+		mocks.routeQuery = { showArchived: 'true' };
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+		layout.vm.$emit('update:filters', { search: '', homeProject: '', showArchived: false });
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ query: {} });
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(2);
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: undefined }),
 		);
 	});
 

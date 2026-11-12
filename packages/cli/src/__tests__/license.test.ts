@@ -230,6 +230,21 @@ describe('License', () => {
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
 
+	test('returns the ephemeral flag and device fingerprint from the license manager', () => {
+		vi.mocked(LicenseManager.prototype.isEphemeral).mockReturnValueOnce(true);
+		vi.mocked(LicenseManager.prototype.getDeviceFingerprint).mockReturnValueOnce('fingerprint');
+
+		expect(license.isEphemeral()).toBe(true);
+		expect(license.getDeviceFingerprint()).toBe('fingerprint');
+	});
+
+	test('returns not ephemeral and no device fingerprint before init', () => {
+		const uninitialized = new License(mockLogger(), instanceSettings, mock(), mock(), mock());
+
+		expect(uninitialized.isEphemeral()).toBe(false);
+		expect(uninitialized.getDeviceFingerprint()).toBeUndefined();
+	});
+
 	test('getMainPlan() returns the latest main entitlement', async () => {
 		// mock entitlements response
 		License.prototype.getCurrentEntitlements = vi.fn().mockReturnValue([

@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { findSessionExpiredError } from '../oauth2-token-provider';
 
