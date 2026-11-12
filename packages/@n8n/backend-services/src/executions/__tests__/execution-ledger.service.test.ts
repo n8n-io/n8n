@@ -33,19 +33,28 @@ describe('ExecutionLedger', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		writer.writeStarted.mockResolvedValue({ recorded: true });
-		writer.writeEnded.mockResolvedValue({ recorded: true });
+		writer.writeStarted.mockResolvedValue(true);
+		writer.writeEnded.mockResolvedValue(true);
 		ledger = new ExecutionLedger(logger, errorReporter);
 	});
 
 	describe('without a writer', () => {
 		it('does nothing', async () => {
-			await expect(ledger.recordStarted(startedFacts, {})).resolves.toBe(false);
-			await ledger.recordEndedInTransaction(endedFacts, {});
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(false);
+			await ledger.recordEndedInTransaction(endedFacts, txCtx);
 			await ledger.recordEnded(endedFacts);
 
 			expect(ledger.isEnabled).toBe(false);
 			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('rejects a context without a transaction', async () => {
+			await expect(ledger.recordStarted(startedFacts, {})).rejects.toThrow(
+				'A ledger insert needs an active transaction',
+			);
+			await expect(ledger.recordEndedInTransaction(endedFacts, {})).rejects.toThrow(
+				'A ledger insert needs an active transaction',
+			);
 		});
 	});
 
@@ -88,7 +97,7 @@ describe('ExecutionLedger', () => {
 		});
 
 		it('logs and reports a workflow without an owner project', async () => {
-			writer.writeStarted.mockResolvedValue({ recorded: false, reason: 'noOwnerProject' });
+			writer.writeStarted.mockResolvedValue(false);
 
 			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(false);
 
@@ -131,7 +140,7 @@ describe('ExecutionLedger', () => {
 		});
 
 		it('logs and reports a workflow without an owner project', async () => {
-			writer.writeEnded.mockResolvedValue({ recorded: false, reason: 'noOwnerProject' });
+			writer.writeEnded.mockResolvedValue(false);
 
 			await ledger.recordEnded(endedFacts);
 

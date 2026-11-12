@@ -87,7 +87,7 @@ export async function getAccessToken(
 			grant_type: 'client_credentials',
 			scope: 'api.organization',
 			deviceName: 'n8n',
-			deviceType: 2, // https://github.com/bitwarden/server/blob/master/src/Core/Enums/DeviceType.cs
+			deviceType: 2, // https://github.com/bitwarden/server/blob/main/src/Libraries/Clients/DeviceType.cs
 			deviceIdentifier: 'n8n',
 		},
 		uri: await getTokenUrl.call(this),

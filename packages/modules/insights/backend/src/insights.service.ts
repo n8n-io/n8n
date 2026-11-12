@@ -9,9 +9,8 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './insights-shared';
 import { NumberToType } from './insights-shared';
 import type { InsightsAccessFilter } from './insights-by-period.repository';

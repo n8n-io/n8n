@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -28,7 +29,6 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
-import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';
 
@@ -818,7 +818,7 @@ describe('SkillRepository', () => {
 	});
 
 	describe('findProjects', () => {
-		it('maps project ids to names and types', async () => {
+		it('maps project ids to names, types, and icons', async () => {
 			const personal = await getPersonalProject(user);
 
 			const projects = await skills.findProjects([
@@ -830,9 +830,9 @@ describe('SkillRepository', () => {
 
 			expect(projects).toEqual(
 				new Map([
-					[project.id, { name: 'Team', type: 'team' }],
-					[otherProject.id, { name: 'Other team', type: 'team' }],
-					[personal.id, { name: personal.name, type: 'personal' }],
+					[project.id, { name: 'Team', type: 'team', icon: null }],
+					[otherProject.id, { name: 'Other team', type: 'team', icon: null }],
+					[personal.id, { name: personal.name, type: 'personal', icon: null }],
 				]),
 			);
 		});

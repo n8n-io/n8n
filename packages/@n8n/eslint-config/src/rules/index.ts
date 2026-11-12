@@ -19,6 +19,7 @@ import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
+import { NoBaseErrorImportFromWorkflowRule } from './no-base-error-import-from-workflow.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
@@ -31,6 +32,7 @@ import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoRawEnumRule } from './no-raw-enum.js';
 import { NoStaticRuntimeImportRule } from './no-static-runtime-import.js';
+import { RequireMacroVariableNameRule } from './require-macro-variable-name.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -53,6 +55,7 @@ export const rules = {
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
 	'no-uncentralized-http': NoUncentralizedHttpRule,
 	'no-application-error': NoApplicationErrorRule,
+	'no-base-error-import-from-workflow': NoBaseErrorImportFromWorkflowRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
@@ -65,4 +68,5 @@ export const rules = {
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 	'no-raw-enum': NoRawEnumRule,
 	'no-static-runtime-import': NoStaticRuntimeImportRule,
+	'require-macro-variable-name': RequireMacroVariableNameRule,
 } satisfies Record<string, AnyRuleModule>;

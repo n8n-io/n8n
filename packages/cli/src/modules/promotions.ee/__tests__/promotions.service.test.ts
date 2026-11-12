@@ -1,6 +1,7 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -26,14 +27,17 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@n8n/backend-services';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import type { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
@@ -86,6 +90,7 @@ describe('PromotionsService', () => {
 	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
+	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
@@ -98,6 +103,7 @@ describe('PromotionsService', () => {
 	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
+	const publisher = mock<Publisher>();
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
@@ -137,6 +143,7 @@ describe('PromotionsService', () => {
 		await workingDirectory.writeDescriptor({
 			schemaVersion: 1,
 			environmentId: input.environmentId,
+			providerId: input.providerId,
 			remoteUrl: input.remote.remoteUrl,
 			checkoutBranchName: branchName,
 		});
@@ -146,6 +153,7 @@ describe('PromotionsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
+		publisher.publishCommand.mockResolvedValue();
 		folderService.getFoldersByIds.mockResolvedValue([]);
 		// Projects p1 and p2 exist on this instance.
 		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
@@ -169,11 +177,19 @@ describe('PromotionsService', () => {
 			projectRepository,
 			folderService,
 			mock(),
+			globalConfig,
 		);
 		service = new PromotionsService(
 			resolver,
 			providersService,
 			workingDirectory,
+			new PromotionCheckoutCleanupService(
+				workingDirectory,
+				mock<PromotionEnvironmentRepository>(),
+				logger,
+				publisher,
+				mock<InstanceSettings>({ isMultiMain: true }),
+			),
 			new WorkingCopyUpdater(
 				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
 				logger,
@@ -222,6 +238,7 @@ describe('PromotionsService', () => {
 				}),
 			);
 			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				providerId: 'prov1',
 				remoteUrl: REMOTE_URL,
 				checkoutBranchName: 'staging',
 			});
@@ -293,6 +310,24 @@ describe('PromotionsService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 			expect(result.hasCheckout).toBe(false);
+		});
+
+		it('asks the other mains to remove their checkouts', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+
+			await service.disconnect(ENVIRONMENT_ID);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'promotion-environment-changed',
+				payload: { environmentIds: [ENVIRONMENT_ID], change: 'checkout-disconnected' },
+			});
+		});
+
+		it('fails when the checkout removal fails', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValueOnce(new Error('EBUSY'));
+
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow('EBUSY');
 		});
 	});
 
@@ -626,7 +661,7 @@ describe('PromotionsService', () => {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					dependencyPolicy: ExportDependencyPolicy.Fail,
 					versionPolicy: ExportVersionPolicy.Latest,
 				},
@@ -777,6 +812,18 @@ describe('PromotionsService', () => {
 					},
 				}),
 			);
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				}),
+			).rejects.toThrow('not connected');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses to promote when the checkout was cloned with another provider', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput({ providerId: 'prov2' }));
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
@@ -1226,7 +1273,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					projectIds: ['p1'],
 					projectWorkflowIds: ['w1', 'w2'],
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,

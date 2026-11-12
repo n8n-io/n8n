@@ -1,4 +1,5 @@
-import { NodeApiError, UserError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
+import { NodeApiError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';

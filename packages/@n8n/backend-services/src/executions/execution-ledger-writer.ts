@@ -15,27 +15,29 @@ export type ExecutionLedgerStartedFacts = RunFacts;
 
 export type ExecutionLedgerBlockedReason = Exclude<ExecutionLedgerBlockedBy, 'none'>;
 
-export type ExecutionLedgerEndedFacts = RunFacts & {
+/** A blocked run did not start, so it has no runtime and saves no time. */
+type BlockedRun = {
+	outcome: 'blocked';
+	blockedBy: ExecutionLedgerBlockedReason;
+	runtimeMs?: never;
+	timeSavedMin?: never;
+};
+
+type FinishedRun = {
+	outcome: Exclude<ExecutionLedgerOutcome, 'none' | 'blocked'>;
+	blockedBy?: never;
 	runtimeMs: number;
 	timeSavedMin: number;
-} & (
-		| { outcome: 'blocked'; blockedBy: ExecutionLedgerBlockedReason }
-		| { outcome: Exclude<ExecutionLedgerOutcome, 'none' | 'blocked'>; blockedBy?: never }
-	);
+};
 
-/** A missing owner project is a result, not an error: a failed insert would abort a Postgres transaction. */
-export type ExecutionLedgerWriteResult =
-	| { recorded: true }
-	| { recorded: false; reason: 'noOwnerProject' };
+export type ExecutionLedgerEndedFacts = RunFacts & (BlockedRun | FinishedRun);
 
-/** Implemented by the `execution-ledger` module. Core code calls `ExecutionLedger` instead. */
+/**
+ * Implemented by the `execution-ledger` module. Core code calls `ExecutionLedger` instead.
+ * A write resolves to `false` when the workflow has no owner project. It does not throw
+ * for that case, because a failed insert would abort a Postgres transaction.
+ */
 export interface ExecutionLedgerWriter {
-	writeStarted(
-		facts: ExecutionLedgerStartedFacts,
-		ctx: OperationContext,
-	): Promise<ExecutionLedgerWriteResult>;
-	writeEnded(
-		facts: ExecutionLedgerEndedFacts,
-		ctx: OperationContext,
-	): Promise<ExecutionLedgerWriteResult>;
+	writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean>;
+	writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean>;
 }

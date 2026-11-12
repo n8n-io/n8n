@@ -18,7 +18,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -74,6 +74,7 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@n8n/backend-services';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -96,6 +97,7 @@ import { PromotionEnvironmentResolver } from '../promotion-environment.resolver'
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -127,7 +129,7 @@ let linkRepository: PromotionEnvironmentProjectRepository;
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 let packagesService: N8nPackagesService;
-let owner: User;
+let owner: Person;
 let testRoot: string;
 let remoteSeedRoot: string;
 let remoteSeed: Promise<TestRemote> | undefined;
@@ -197,8 +199,16 @@ beforeEach(async () => {
 	const instanceSettings = mock<InstanceSettings>({
 		n8nFolder: path.join(testRoot, 'instance'),
 		instanceId: 'inst-test',
+		isMultiMain: false,
 	});
 	workingDirectory = new PromotionWorkingDirectoryService(instanceSettings);
+	const checkoutCleanup = new PromotionCheckoutCleanupService(
+		workingDirectory,
+		environmentRepository,
+		logger,
+		mock<Publisher>(),
+		instanceSettings,
+	);
 	service = new PromotionsService(
 		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
 		new PromotionProvidersService(
@@ -208,8 +218,10 @@ beforeEach(async () => {
 			cipher,
 			mock<GitHostClients>(),
 			mock<EventService>(),
+			checkoutCleanup,
 		),
 		workingDirectory,
+		checkoutCleanup,
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,

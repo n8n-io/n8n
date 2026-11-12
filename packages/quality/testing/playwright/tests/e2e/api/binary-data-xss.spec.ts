@@ -61,7 +61,7 @@ return [{ json: { binaryDataId: data.id }, binary: { data } }];
 test.describe(
 	'Binary data endpoint XSS prevention',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should not execute inline JavaScript when serving HTML binary data', async ({

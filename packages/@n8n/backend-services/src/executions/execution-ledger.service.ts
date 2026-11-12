@@ -1,14 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type {
 	ExecutionLedgerEndedFacts,
 	ExecutionLedgerStartedFacts,
-	ExecutionLedgerWriteResult,
 	ExecutionLedgerWriter,
 } from './execution-ledger-writer';
 
@@ -44,22 +43,22 @@ export class ExecutionLedger {
 	 * Returns whether the row was written, so callers write no `ended` row for an unrecorded run.
 	 */
 	async recordStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
-		if (!this.writer) return false;
 		assertTransaction(ctx);
+		if (!this.writer) return false;
 
-		const result = await this.writer.writeStarted(facts, ctx);
-		this.reportUnrecorded(result, facts);
-		return result.recorded;
+		const recorded = await this.writer.writeStarted(facts, ctx);
+		if (!recorded) this.reportNoOwnerProject(facts);
+		return recorded;
 	}
 
 	async recordEndedInTransaction(
 		facts: ExecutionLedgerEndedFacts,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (!this.writer) return;
 		assertTransaction(ctx);
+		if (!this.writer) return;
 
-		this.reportUnrecorded(await this.writer.writeEnded(facts, ctx), facts);
+		if (!(await this.writer.writeEnded(facts, ctx))) this.reportNoOwnerProject(facts);
 	}
 
 	/**
@@ -70,7 +69,7 @@ export class ExecutionLedger {
 		if (!this.writer) return;
 
 		try {
-			this.reportUnrecorded(await this.writer.writeEnded(facts, {}), facts);
+			if (!(await this.writer.writeEnded(facts, {}))) this.reportNoOwnerProject(facts);
 		} catch (e) {
 			const error = ensureError(e);
 			const { executionId, workflowId } = facts;
@@ -86,32 +85,21 @@ export class ExecutionLedger {
 		}
 	}
 
-	private reportUnrecorded(
-		result: ExecutionLedgerWriteResult,
-		{ executionId, workflowId }: ExecutionLedgerStartedFacts,
-	) {
-		if (result.recorded) return;
-
-		const cause = UNRECORDED_CAUSES[result.reason];
+	private reportNoOwnerProject({ executionId, workflowId }: ExecutionLedgerStartedFacts) {
 		this.logger.error(
-			`Execution ${executionId} of workflow ${workflowId} is not in the execution ledger: ${cause}`,
+			`Execution ${executionId} of workflow ${workflowId} is not in the execution ledger: the workflow has no owner project`,
 			{ executionId, workflowId },
 		);
-		// No IDs in the reported message, so Sentry groups every case of a reason in one issue.
-		const error = new UnexpectedError(`The run is not in the execution ledger: ${cause}`, {
-			extra: { executionId, workflowId },
-		});
+		// No IDs in the reported message, so Sentry groups every case in one issue.
+		const error = new UnexpectedError(
+			'The run is not in the execution ledger: the workflow has no owner project',
+			{ extra: { executionId, workflowId } },
+		);
 		this.errorReporter.error(error, { shouldBeLogged: false });
 	}
 }
 
-type UnrecordedReason = Extract<ExecutionLedgerWriteResult, { recorded: false }>['reason'];
-
-/** A new reason needs its own text, so the type is exhaustive. */
-const UNRECORDED_CAUSES: Record<UnrecordedReason, string> = {
-	noOwnerProject: 'the workflow has no owner project',
-};
-
+/** Not gated on the writer: a caller without a transaction must also fail when the module is off. */
 function assertTransaction(ctx: OperationContext) {
 	if (!ctx.trx) throw new UnexpectedError('A ledger insert needs an active transaction');
 }

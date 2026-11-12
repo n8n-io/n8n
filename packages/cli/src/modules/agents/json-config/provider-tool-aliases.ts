@@ -23,7 +23,7 @@ const ANTHROPIC_TOOL_ALIASES: Record<string, string> = {
 	'anthropic.web_search': 'anthropic.web_search_20250305',
 };
 
-// OpenAI (https://platform.openai.com/docs/guides/tools-web-search)
+// OpenAI (https://developers.openai.com/api/docs/guides/tools-web-search)
 //
 // OpenAI tool IDs are unversioned (e.g. `openai.web_search`,
 // `openai.image_generation`), so no aliasing is needed today — the config

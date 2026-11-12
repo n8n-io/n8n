@@ -101,10 +101,18 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
+	ObservationResumeState,
+	BuiltObservationResumeStore,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
@@ -214,6 +222,9 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -311,7 +322,24 @@ export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
+	isRuntimeContextCue,
 } from './sdk/message';
+export {
+	createContextCueProvider,
+	parseAblatedContextCues,
+	whenSkillLoads,
+	whileSkillActive,
+} from './context-cues';
+export type {
+	ContextCue,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueRetrievalTrace,
+	ContextCueSet,
+	ContextCueSetPredicate,
+	ContextCueStepQuery,
+} from './context-cues';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,
@@ -386,6 +414,7 @@ export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
+export { PromptCacheParamsError } from './runtime/model/prompt-cache-params-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -441,6 +470,11 @@ export type {
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	fromObservationResumeColumns,
+	toObservationResumeColumns,
+	type ObservationResumeColumns,
+} from './runtime/memory/observation-resume-columns';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

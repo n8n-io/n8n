@@ -89,6 +89,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'agent-archived': (event) => this.agentArchived(event),
+			'agent-unarchived': (event) => this.agentUnarchived(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -119,6 +121,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-data-read': (event) => this.credentialsDataRead(event),
+			'credentials-list-data-read': (event) => this.credentialsListDataRead(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
@@ -228,7 +232,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
-		includeArchivedWorkflows,
+		includeArchived,
 		...rest
 	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
@@ -296,6 +300,22 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.unarchived',
 			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private agentArchived({ user, agentId, projectId }: RelayEventMap['agent-archived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.archived',
+			payload: { ...user, agentId, projectId },
+		});
+	}
+
+	@Redactable()
+	private agentUnarchived({ user, agentId, projectId }: RelayEventMap['agent-unarchived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.unarchived',
+			payload: { ...user, agentId, projectId },
 		});
 	}
 
@@ -805,6 +825,34 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, credentialType, credentialId },
+		});
+	}
+
+	@Redactable()
+	private credentialsDataRead({
+		user,
+		credentialType,
+		credentialId,
+		publicApi,
+	}: RelayEventMap['credentials-data-read']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.data.read',
+			payload: { ...user, credentialType, credentialId, publicApi },
+		});
+	}
+
+	@Redactable()
+	private credentialsListDataRead({
+		user,
+		credentialIds,
+		credentialCount,
+		chunk,
+		chunkCount,
+		publicApi,
+	}: RelayEventMap['credentials-list-data-read']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.list.data.read',
+			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
 		});
 	}
 

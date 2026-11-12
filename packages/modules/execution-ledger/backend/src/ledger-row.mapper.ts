@@ -36,11 +36,16 @@ export function toEndedRow(
 	projectId: string,
 	eventId: string,
 ): NewExecutionLedgerRow {
-	return {
+	const row: NewExecutionLedgerRow = {
 		...toStartedRow(facts, projectId, eventId),
 		event: 'ended',
 		outcome: facts.outcome,
-		blockedBy: facts.outcome === 'blocked' ? facts.blockedBy : 'none',
+	};
+
+	if (facts.outcome === 'blocked') return { ...row, blockedBy: facts.blockedBy };
+
+	return {
+		...row,
 		runtimeMs: toWholeNumber(facts.runtimeMs, BIGINT_COLUMN_MAX),
 		timeSavedMin: toWholeNumber(facts.timeSavedMin, INT_COLUMN_MAX),
 	};

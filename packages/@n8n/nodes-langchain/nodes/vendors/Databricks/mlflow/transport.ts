@@ -4,9 +4,9 @@ import {
 	getCredentialAllowedDomains,
 	NodeApiError,
 	NodeOperationError,
-	OperationalError,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { assertHttpsHost } from '@utils/databricks/constants';
 import {

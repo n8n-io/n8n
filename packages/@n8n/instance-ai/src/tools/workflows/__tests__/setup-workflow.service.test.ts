@@ -164,7 +164,7 @@ describe('buildSetupRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].parameterIssues?.model).toEqual([
 				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
-					'Pick a value the credential offers instead — use get_node_parameter_options to list allowed models.',
+					'Pick a value the credential offers instead — run get_node_parameter_options through call_tool to list allowed models.',
 			]);
 			expect(result[0].needsAction).toBe(true);
 		});
@@ -603,6 +603,23 @@ describe('buildSetupRequests', () => {
 		const node = makeNode();
 		const result = await buildSetupRequests(context, node);
 
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+	});
+
+	it('does not auto-apply Gateway credits when the gateway rejects the node itself', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		const getAiGatewayNodeRejection = vi.fn().mockResolvedValue('message.delete not supported');
+		Object.assign(context.credentialService, {
+			isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+			getAiGatewayNodeRejection,
+		});
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(getAiGatewayNodeRejection).toHaveBeenCalledWith(node, 'slackApi');
+		// The card asks for the user's own credential instead.
 		expect(result[0].isAutoApplied).toBeFalsy();
 		expect(result[0].node.credentials?.slackApi).toBeUndefined();
 	});

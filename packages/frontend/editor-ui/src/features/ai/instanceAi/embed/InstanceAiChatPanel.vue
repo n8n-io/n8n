@@ -55,6 +55,7 @@ import {
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import AssistantAgentPanelThread from './AssistantAgentPanelThread.vue';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
+import { useArtifactLinks } from '../artifactLinks';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
@@ -165,13 +166,10 @@ async function loadSubjectAgentThreads(): Promise<boolean> {
 
 // No preview panel here: artifact cards and chips open their resource in a new
 // tab, so the host page (and this conversation) stays put.
-function openInNewTab(path: string): boolean {
-	window.open(path, '_blank', 'noopener');
-	return true;
-}
-provide('openWorkflowPreview', (id: string) => openInNewTab(`/workflow/${id}`));
+const { openArtifactInNewTab } = useArtifactLinks();
+provide('openWorkflowPreview', (id: string) => openArtifactInNewTab('workflow', id));
 provide('openAgentPreview', (id: string, projectId: string) =>
-	openInNewTab(`/projects/${projectId}/agents/${id}`),
+	openArtifactInNewTab('agent', id, projectId),
 );
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.

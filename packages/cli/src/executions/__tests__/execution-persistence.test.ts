@@ -542,12 +542,7 @@ describe('ExecutionPersistence', () => {
 
 		describe('execution ledger', () => {
 			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
-			const blocked = {
-				outcome: 'blocked',
-				blockedBy: 'startFailed',
-				runtimeMs: 0,
-				timeSavedMin: 0,
-			};
+			const blocked = { outcome: 'blocked', blockedBy: 'startFailed' };
 			let mockTx: ReturnType<typeof createMockTransaction>;
 
 			beforeEach(() => {

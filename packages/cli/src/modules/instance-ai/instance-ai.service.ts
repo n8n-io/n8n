@@ -24,10 +24,11 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	TOOL_CATALOG_CALL_TOOL_NAME,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -97,7 +98,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -201,7 +202,10 @@ import {
 	type OrchestratorResumeReason,
 } from './tracing';
 import { buildResumeTraceInput } from './tracing/resume-trace-input';
-import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
+import {
+	buildSuspensionTraceMetadata,
+	buildSuspensionTraceOutputs,
+} from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
@@ -2117,8 +2121,11 @@ export class InstanceAiService {
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
 		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
-		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
-			return undefined;
+		// A deferred `setup_workflow` suspends under the tool catalog's `call_tool` name.
+		const isSetupTool =
+			toolName === TOOL_CATALOG_CALL_TOOL_NAME ||
+			resolveBuilderToolName(toolName, 'setup') === WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW;
+		if (!isSetupTool) return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}
@@ -2564,7 +2571,7 @@ export class InstanceAiService {
 					input: traceInput,
 					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
-					n8nVersion: N8N_VERSION,
+					n8nVersion: getN8nVersion(),
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
 					browserExtension,
 				});
@@ -2956,30 +2963,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 				return;
 			}
@@ -4055,30 +4044,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 
 				return;
@@ -5149,7 +5120,7 @@ export class InstanceAiService {
 				},
 				proxyConfig: baseTracing?.proxyConfig,
 				metadata: {
-					n8n_version: N8N_VERSION || undefined,
+					n8n_version: getN8nVersion() || undefined,
 					operation_name: 'thread_title',
 					trigger: 'run_completed',
 				},

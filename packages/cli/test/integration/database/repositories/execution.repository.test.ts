@@ -1,7 +1,8 @@
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
-import { ExecutionDataRepository, ExecutionRepository, ProjectRepository } from '@n8n/db';
+import { ExecutionData, ExecutionRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { WAIT_FOR_SUB_EXECUTION, WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -24,7 +25,7 @@ describe('ExecutionRepository', () => {
 	describe('run execution data migration', () => {
 		it('should automatically migrate IRunExecutionDataV0 to V1 when reading', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const executionDataRepo = Container.get(ExecutionDataRepository);
+			const executionDataRepo = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			// Create V0 data with string destinationNode

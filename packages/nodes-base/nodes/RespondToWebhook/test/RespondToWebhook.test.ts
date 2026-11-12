@@ -9,8 +9,8 @@ import {
 	type INodeExecutionData,
 	type NodeTypeAndVersion,
 	CHAT_TRIGGER_NODE_TYPE,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
 

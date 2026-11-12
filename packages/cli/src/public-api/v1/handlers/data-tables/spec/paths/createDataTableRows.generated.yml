@@ -2,7 +2,10 @@ operationId: createDataTableRows
 tags:
   - DataTable
 summary: Insert rows into a data table
-description: Insert one or more rows into a data table.
+description: |-
+  Insert one or more rows into a data table.
+
+  Requires the `dataTableRow:create` API key scope.
 x-required-scope: dataTableRow:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

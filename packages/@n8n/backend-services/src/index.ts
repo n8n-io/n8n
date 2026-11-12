@@ -56,6 +56,7 @@ export {
 export { FolderFinderService } from './services/folder-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
+export { PostHogClient } from './services/posthog-client';
 export {
 	classifyRestError,
 	isResponseError,
@@ -124,6 +125,10 @@ export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
+export {
+	NodeTypesProviderMissingError,
+	NodeTypesProxy,
+} from './services/node-types-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,

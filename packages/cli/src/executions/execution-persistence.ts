@@ -212,12 +212,7 @@ export class ExecutionPersistence {
 	): Promise<void> {
 		if (!this.executionLedger.isEnabled) return;
 
-		const blocked = {
-			outcome: 'blocked',
-			blockedBy: 'startFailed',
-			runtimeMs: 0,
-			timeSavedMin: 0,
-		} as const;
+		const blocked = { outcome: 'blocked', blockedBy: 'startFailed' } as const;
 
 		if (tombstone) {
 			// Same dedup key, so the same workflow: the name and the time come from the new run.

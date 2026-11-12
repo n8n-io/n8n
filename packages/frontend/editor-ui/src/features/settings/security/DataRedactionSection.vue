@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
@@ -10,6 +9,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -180,7 +180,7 @@ function goToUpgrade() {
 				</template>
 				<template #action>
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
-						<ElSwitch
+						<N8nSwitch
 							v-model="enforced"
 							size="large"
 							:disabled="props.managedByEnv || isSaving"
@@ -188,7 +188,7 @@ function goToUpgrade() {
 						/>
 						<template #fallback>
 							<N8nTooltip>
-								<ElSwitch
+								<N8nSwitch
 									:model-value="enforced"
 									size="large"
 									:disabled="true"
