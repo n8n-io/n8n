@@ -2,13 +2,13 @@ import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-import {
-	UnexpectedError,
-	type IDataObject,
-	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyOptions,
+import type {
+	IDataObject,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';

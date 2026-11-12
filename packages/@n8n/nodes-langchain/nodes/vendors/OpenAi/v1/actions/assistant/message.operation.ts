@@ -10,13 +10,8 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import {
-	BaseError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	OperationalError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { BaseError, OperationalError } from '@n8n/errors';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptionsDeprecated } from '@utils/descriptions';
