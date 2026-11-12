@@ -2,6 +2,14 @@ import { UnexpectedError } from '../common';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import type { WorkQueue } from './work-queue.types';
 
+/** Makes a synchronous throw a rejection, so `run()` cannot recurse on one stack. */
+async function callAsync<TMessage>(
+	handler: (message: TMessage) => Promise<void>,
+	message: TMessage,
+): Promise<void> {
+	await handler(message);
+}
+
 /**
  * In-memory `WorkQueue`. When a handler is registered, it runs up to
  * `concurrency` messages at once and starts them in the order they were
@@ -60,7 +68,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private async run(handler: (message: TMessage) => Promise<void>, message: TMessage) {
 		try {
-			await handler(message);
+			await callAsync(handler, message);
 		} catch (error) {
 			// Contained per message: a failed one must not strand those behind it.
 			this.logger.error('work queue handler failed', { error });

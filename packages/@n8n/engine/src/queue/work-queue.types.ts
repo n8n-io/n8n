@@ -40,7 +40,9 @@ export interface WorkQueue<TMessage> {
 	/**
 	 * Register the single consumer; dispatch begins for queued and future
 	 * messages. The adapter runs up to its concurrency limit of handlers at once
-	 * and does not promise a delivery order. A handler that throws frees its slot.
+	 * and does not promise a delivery order. When a handler finishes, the adapter
+	 * starts the next queued message. A handler that throws frees its slot. Its
+	 * error affects only its own message.
 	 */
 	start(handler: (message: TMessage) => Promise<void>): void;
 	/**

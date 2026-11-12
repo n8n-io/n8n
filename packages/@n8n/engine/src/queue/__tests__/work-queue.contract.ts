@@ -90,6 +90,12 @@ async function publishAll(queue: WorkQueue<ContractMessage>, ns: number[]): Prom
 
 const range = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
 
+async function expectDeliveredExactly(received: number[], expected: number[]): Promise<void> {
+	await eventually(() => expect([...received].sort((x, y) => x - y)).toEqual(expected));
+	await settleBriefly();
+	expect(received).toHaveLength(expected.length);
+}
+
 /**
  * The behaviour every `WorkQueue` adapter must have. The contract makes no
  * promise about delivery order, so no case here asserts one.
@@ -123,9 +129,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 
 				await publishAll(queue, range(20));
 
-				await eventually(() => expect([...received].sort((x, y) => x - y)).toEqual(range(20)));
-				await settleBriefly();
-				expect(received).toHaveLength(20);
+				await expectDeliveredExactly(received, range(20));
 			},
 		);
 
@@ -138,10 +142,10 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 				received.push(n);
 			});
 
-			await eventually(() => expect([...received].sort((x, y) => x - y)).toEqual([1, 2]));
+			await expectDeliveredExactly(received, [1, 2]);
 		});
 
-		it.each([1, 2, 4])('never runs more than %i handlers at once', async (concurrency) => {
+		it.each([1, 2, 3, 4])('never runs more than %i handlers at once', async (concurrency) => {
 			const queue = await build(concurrency);
 			const gated = gatedHandler();
 			queue.start(gated.handler);
@@ -202,9 +206,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 
 			await publishAll(queue, range(5));
 
-			await eventually(() =>
-				expect([...received].sort((x, y) => x - y)).toEqual([1, 2, 3, 4, 5, 11, 12, 13, 14, 15]),
-			);
+			await expectDeliveredExactly(received, [1, 2, 3, 4, 5, 11, 12, 13, 14, 15]);
 		});
 
 		it('waits in stop for every in-flight handler', async () => {

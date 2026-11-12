@@ -6,8 +6,14 @@ import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { TypeOrmStepStore, type EngineStores } from '../../database';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
+import { InMemoryWorkQueue } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
+
+vi.mock('../../queue', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../../queue')>();
+	return { ...actual, InMemoryWorkQueue: vi.fn(actual.InMemoryWorkQueue) };
+});
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
 const fakeDataSource = () => ({ getRepository: vi.fn(() => ({})) }) as unknown as DataSource;
@@ -123,11 +129,12 @@ describe('createEngineRuntime', () => {
 			.mockResolvedValue([]);
 		let inFlight = 0;
 		let maxInFlight = 0;
+		let stopping = false;
 		const gates: Array<() => void> = [];
 		vi.spyOn(TypeOrmStepStore.prototype, 'claimStep').mockImplementation(async () => {
 			inFlight += 1;
 			maxInFlight = Math.max(maxInFlight, inFlight);
-			await new Promise<void>((resolve) => gates.push(resolve));
+			if (!stopping) await new Promise<void>((resolve) => gates.push(resolve));
 			inFlight -= 1;
 			// Nothing to claim, so the handler ends here.
 			return null;
@@ -142,18 +149,39 @@ describe('createEngineRuntime', () => {
 		});
 		engine.start();
 
-		await vi.waitFor(() => expect(inFlight).toBe(3));
-		await new Promise((resolve) => setTimeout(resolve, 50));
-		expect(maxInFlight).toBe(3);
+		try {
+			await vi.waitFor(() => expect(inFlight).toBe(3));
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			expect(maxInFlight).toBe(3);
 
-		for (const release of gates.splice(0)) release();
-		await vi.waitFor(() => {
 			for (const release of gates.splice(0)) release();
-			expect(TypeOrmStepStore.prototype.claimStep).toHaveBeenCalledTimes(6);
-			expect(inFlight).toBe(0);
+			await vi.waitFor(() => {
+				for (const release of gates.splice(0)) release();
+				expect(TypeOrmStepStore.prototype.claimStep).toHaveBeenCalledTimes(6);
+				expect(inFlight).toBe(0);
+			});
+			expect(maxInFlight).toBe(3);
+		} finally {
+			stopping = true;
+			for (const release of gates.splice(0)) release();
+			await engine.stop();
+		}
+	});
+
+	it('gives the orchestration queue its own concurrency', () => {
+		vi.mocked(InMemoryWorkQueue).mockClear();
+
+		createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			concurrency: { orchestration: 2, step: 3 },
 		});
-		expect(maxInFlight).toBe(3);
-		await engine.stop();
+
+		expect(InMemoryWorkQueue).toHaveBeenCalledTimes(2);
+		expect(InMemoryWorkQueue).toHaveBeenCalledWith(expect.anything(), { concurrency: 2 });
+		expect(InMemoryWorkQueue).toHaveBeenCalledWith(expect.anything(), { concurrency: 3 });
 	});
 
 	it('starts and stops both workers', async () => {
