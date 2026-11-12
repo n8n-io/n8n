@@ -270,6 +270,15 @@ describe('CustomModelEndpointApi Credential', () => {
 			);
 		});
 
+		it('fails when the login server grants a token of a type n8n cannot send', async () => {
+			const { mint } = minting({
+				statusCode: 200,
+				body: { access_token: 'tok-abc', token_type: 'DPoP' },
+			});
+
+			await expect(mint(OAUTH2)).rejects.toThrow('DPoP');
+		});
+
 		it('fails when the login server returns no access token', async () => {
 			const { mint } = minting({ statusCode: 200, body: { token_type: 'Bearer' } });
 

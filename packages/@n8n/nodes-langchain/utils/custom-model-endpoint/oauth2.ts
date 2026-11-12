@@ -63,8 +63,19 @@ function refusedToSignIn(text: string, status: number): UserError {
 	});
 }
 
+/** RFC 6749 section 5.1 makes the type part of the grant, and every other type is proof of possession. */
+function assertBearerType(parsed: unknown): void {
+	const stated = isRecord(parsed) ? parsed.token_type : undefined;
+	if (typeof stated !== 'string' || stated.toLowerCase() === 'bearer') return;
+
+	throw new UserError(`The login server returned a ${stated} token, which n8n cannot send`, {
+		description: 'Ask the login server for a Bearer token, which this credential sends.',
+	});
+}
+
 /** Trimmed because `Headers` trims it anyway, and a padded token is not worth sending. */
 function accessTokenIn(parsed: unknown): string {
+	assertBearerType(parsed);
 	const stated =
 		isRecord(parsed) && typeof parsed.access_token === 'string' ? parsed.access_token : '';
 	const token = stated.trim();

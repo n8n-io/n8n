@@ -172,6 +172,28 @@ describe('createClientCredentialsTokenSource', () => {
 		);
 	});
 
+	it.each(['Bearer', 'bearer', 'BEARER', undefined])(
+		'sends a token the login server typed %s',
+		async (token_type) => {
+			const { fetchImpl } = granting({ ...GRANT, token_type });
+
+			await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).resolves.toBe(
+				'tok-abc-9f2a71c4',
+			);
+		},
+	);
+
+	it.each(['DPoP', 'mac'])(
+		'names the type when the login server grants a %s token',
+		async (token_type) => {
+			const { fetchImpl } = granting({ ...GRANT, token_type });
+
+			await expect(
+				createClientCredentialsTokenSource(login(), fetchImpl).getToken(),
+			).rejects.toThrow(token_type);
+		},
+	);
+
 	// A login server that grants nothing usable is a credential to correct, not a blip to retry
 	it.each<[string, Record<string, unknown>, string]>([
 		['the field is missing', { token_type: 'Bearer' }, 'no access token'],
