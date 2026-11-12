@@ -560,12 +560,15 @@ CI checks most of this. `packages/cli/test/migration/entity-schema-parity.test.t
 - Each entity table and column exists.
 - The type family agrees (string, number, uuid, json, datetime, bool, binary).
 - Nullability agrees.
-- Each entity foreign key and `@Index` exists. On SQLite, the index column order must also agree.
+- Each entity foreign key exists and references the same table and columns.
+- Each entity `@Index` exists. On SQLite, the index column order must also agree.
 - No database column is `NOT NULL` without a default and missing from the entity.
 
 The test does not compare defaults or `CHECK` constraints. Make sure they agree yourself.
 
-Known mismatches are in `packages/@n8n/db/src/migrations/entity-schema-parity.baseline.json`. Do not add new entries to this file. Fix the migration or the entity. When you fix a known mismatch, remove its entry. The test fails until you do. To regenerate the file, run the test with `UPDATE_PARITY_BASELINE=true`, once for each database:
+Known mismatches are in `packages/@n8n/db/src/migrations/entity-schema-parity.baseline.json`. If the test finds a new mismatch, fix the migration or the entity. Do not add it to this file. When you fix a known mismatch, remove its entry. The test fails until you do.
+
+The command below rewrites the file with all current mismatches, new ones included. Use it only to remove fixed entries, or for a change that the migrations-review team approved. Check the diff of the file before you commit it. Run it once for each database:
 
 ```bash
 cd packages/cli

@@ -23,13 +23,18 @@ function typeFamily(type: string, dbType: DbType): string {
 
 const columnKey = (columns: string[]) => [...columns].sort().join(',');
 
+const lastSegment = (path: string) => path.split('.').pop() ?? path;
+
 function compareEntity(
 	metadata: EntityMetadata,
 	table: Table,
 	tableName: string,
 	dataSource: DataSource,
 	dbType: DbType,
+	tablePrefix: string,
 ): string[] {
+	const stripPrefix = (name: string) =>
+		name.startsWith(tablePrefix) ? name.slice(tablePrefix.length) : name;
 	const findings: string[] = [];
 	const entityColumnNames = new Set<string>();
 
@@ -40,11 +45,13 @@ function compareEntity(
 			findings.push(`${tableName}.${column.databaseName}: column is missing in the database`);
 			continue;
 		}
-		// A join column without its own @Column takes type and nullability from the relation.
-		if (column.isVirtual) continue;
-
+		// A join column without its own @Column takes its type from the column it references.
+		const typeSource = column.isVirtual ? column.referencedColumn : column;
+		if (!typeSource) continue;
 		const entityType = String(
-			typeof column.type === 'string' ? column.type : dataSource.driver.normalizeType(column),
+			typeof typeSource.type === 'string'
+				? typeSource.type
+				: dataSource.driver.normalizeType(typeSource),
 		);
 		const expected = typeFamily(entityType, dbType);
 		const actual = typeFamily(dbColumn.type, dbType);
@@ -72,8 +79,16 @@ function compareEntity(
 
 	for (const foreignKey of metadata.foreignKeys) {
 		const key = columnKey(foreignKey.columnNames);
-		if (!table.foreignKeys.some((fk) => columnKey(fk.columnNames) === key)) {
-			findings.push(`${tableName}(${key}): foreign key is missing in the database`);
+		const target = `${lastSegment(foreignKey.referencedTablePath)}(${columnKey(foreignKey.referencedColumnNames)})`;
+		const found = table.foreignKeys.some(
+			(fk) =>
+				columnKey(fk.columnNames) === key &&
+				`${lastSegment(fk.referencedTableName)}(${columnKey(fk.referencedColumnNames)})` === target,
+		);
+		if (!found) {
+			findings.push(
+				`${tableName}(${key}): foreign key to ${stripPrefix(target)} is missing in the database`,
+			);
 		}
 	}
 
@@ -136,7 +151,14 @@ export async function findEntitySchemaMismatches(
 			findings.add(`${tableName}: table is missing in the database`);
 			continue;
 		}
-		for (const finding of compareEntity(metadata, table, tableName, dataSource, dbType)) {
+		for (const finding of compareEntity(
+			metadata,
+			table,
+			tableName,
+			dataSource,
+			dbType,
+			tablePrefix,
+		)) {
 			findings.add(finding);
 		}
 	}
