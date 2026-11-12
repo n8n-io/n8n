@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
-import type { EndNodeParams, StartWorkflowParams } from '../execution-level-tracer.types';
+import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
 import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
@@ -68,7 +68,7 @@ describe('ExecutionLevelTracer', () => {
 		custom: {
 			workflow?: Record<string, string>;
 			node?: Record<string, string>;
-			genAi?: EndNodeParams['genAiAttributes'];
+			genAi?: Record<string, string>;
 		} = {},
 	) => {
 		tracer.startWorkflow({
