@@ -4,14 +4,13 @@
 // 2. Turns ```mermaid fences into <pre class="mermaid"> so the browser renders them.
 // 3. Rewrites relative links. A link to another page in docs/backend becomes a site
 //    route. A link to anything else in the repository becomes a GitHub URL.
-// 4. Counts the words of the page and stores the count and the reading time in the
-//    front matter, so that the page title can show them.
+// 4. Counts the words of the page and stores the reading time in the front matter, so that
+//    the page title can show it.
 // 5. Adds a line break point after each `/` in inline code, so that a long path wraps
 //    between folders and not in the middle of a name.
 // 6. Turns a multiple choice self-check into a quiz. See `buildQuizzes` for the format.
 // 7. Turns a GitHub alert, such as `> [!NOTE]`, into an aside. GitHub renders the same syntax.
-// 8. Shows an ordered list after a `<!-- steps -->` comment as numbered steps.
-// 9. Shows a `<!-- contact: <login> -->` comment below a heading as the contact for that topic.
+// 8. Shows a `<!-- contact: <login> -->` comment below a heading as the contact for that topic.
 import { existsSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +30,7 @@ const WORDS_PER_MINUTE = 200;
 const toPosix = (path) => path.split('\\').join('/');
 
 /** Maps a relative link in `fromDir` to a site route or a GitHub URL. */
-export function rewriteLink(url, fromDir) {
+function rewriteLink(url, fromDir) {
 	const [target, hash] = url.split('#');
 	const suffix = hash ? `#${hash}` : '';
 	const absolute = resolve(fromDir, target);
@@ -159,31 +158,9 @@ function buildAsides(tree) {
 	});
 }
 
-function buildSteps(tree) {
-	walk(tree, (node) => {
-		const children = node.children;
-		if (!children) return;
-		for (let i = 0; i < children.length - 1; i++) {
-			const marker = children[i];
-			const list = children[i + 1];
-			if (marker.type !== 'html' || marker.value.trim() !== '<!-- steps -->') continue;
-			if (list.type !== 'list' || !list.ordered) continue;
-			list.data = { hProperties: { className: ['n8n-steps'] } };
-			// A step that starts with a bold-only paragraph shows that paragraph as its title.
-			for (const item of list.children) {
-				const lead = item.children[0];
-				if (lead?.type === 'paragraph' && lead.children.length === 1 && lead.children[0].type === 'strong') {
-					lead.data = { hProperties: { className: ['n8n-step-title'] } };
-				}
-			}
-			children.splice(i, 1);
-		}
-	});
-}
-
 const TOPIC_CONTACT = /^<!--\s*contact:\s*(\S+)\s*-->$/;
 
-/** A topic that another team owns names its own contact, below its heading. */
+/** A topic that another team owns names its own contact, in a comment below its heading. */
 function buildTopicContacts(tree, filePath) {
 	walk(tree, (node, index, parent) => {
 		const match = node.type === 'html' ? node.value.trim().match(TOPIC_CONTACT) : null;
@@ -236,11 +213,9 @@ export function remarkBackendDocs() {
 		});
 		buildQuizzes(tree);
 		buildAsides(tree);
-		buildSteps(tree);
 		buildTopicContacts(tree, filePath);
 		const frontmatter = file.data.astro?.frontmatter;
 		if (frontmatter) {
-			frontmatter.words = words;
 			frontmatter.minutes = Math.max(1, Math.round(words / WORDS_PER_MINUTE));
 		}
 	};
