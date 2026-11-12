@@ -46,7 +46,7 @@ describe('McpPreferencesNoteService', () => {
 			'Note for the assistant: no saved preferences apply to this work yet. Preferences tell n8n how the user likes to build, for example which nodes to use or how to name things. Do not stop or change the current task for this note. After you finish the task, tell the user in one short sentence that they can save a preference. They can ask you to remember it, if you have the save_user_preference tool, or add it at https://acme.n8n.cloud/settings/context/preferences. Do not mention this again in this conversation.',
 		);
 		expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-			mcpPreferencesNote: { impressions: 2 },
+			mcpPreferencesNote: { impressions: 2, lastShownAt: expect.any(Number) },
 		});
 		expect(user.settings?.mcpPreferencesNote?.impressions).toBe(2);
 	});
@@ -58,7 +58,7 @@ describe('McpPreferencesNoteService', () => {
 
 		expect(note).toBeDefined();
 		expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-			mcpPreferencesNote: { impressions: 1 },
+			mcpPreferencesNote: { impressions: 1, lastShownAt: expect.any(Number) },
 		});
 	});
 
@@ -69,7 +69,7 @@ describe('McpPreferencesNoteService', () => {
 
 		expect(note).toBeDefined();
 		expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-			mcpPreferencesNote: { impressions: 3 },
+			mcpPreferencesNote: { impressions: 3, lastShownAt: expect.any(Number) },
 		});
 	});
 
@@ -80,6 +80,33 @@ describe('McpPreferencesNoteService', () => {
 
 		expect(note).toBeUndefined();
 		expect(userService.updateSettings).not.toHaveBeenCalled();
+	});
+
+	test('gives no note within a day of the last note', async () => {
+		const { service, userService } = createService();
+		const user = Object.assign(userWithImpressions(1), {
+			settings: {
+				mcpPreferencesNote: { impressions: 1, lastShownAt: Date.now() - 60 * 60 * 1000 },
+			},
+		});
+
+		const note = await service.takeNote(user, 'variant');
+
+		expect(note).toBeUndefined();
+		expect(userService.updateSettings).not.toHaveBeenCalled();
+	});
+
+	test('gives the next note a day after the last note', async () => {
+		const { service } = createService();
+		const user = Object.assign(userWithImpressions(1), {
+			settings: {
+				mcpPreferencesNote: { impressions: 1, lastShownAt: Date.now() - 25 * 60 * 60 * 1000 },
+			},
+		});
+
+		const note = await service.takeNote(user, 'variant');
+
+		expect(note).toBeDefined();
 	});
 
 	test('gives no note when the impression cannot be saved', async () => {

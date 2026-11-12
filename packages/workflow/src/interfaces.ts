@@ -4682,6 +4682,7 @@ export interface IUserSettings {
 	};
 	mcpPreferencesNote?: {
 		impressions: number;
+		lastShownAt?: number;
 	};
 }
 

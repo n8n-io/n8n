@@ -470,6 +470,21 @@ describe('McpService', () => {
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
+		it.each([false, true, undefined])(
+			'labels a %s preferences note flag as unassigned',
+			async (flagValue) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue(
+					flagValue === undefined ? {} : { '140_mcp_empty_preferences_note': flagValue },
+				);
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					preferencesNoteVariant: 'unassigned',
+				});
+			},
+		);
+
 		it.each([true, false])(
 			'uses the same instance context answer for two users: %s',
 			async (enabled) => {

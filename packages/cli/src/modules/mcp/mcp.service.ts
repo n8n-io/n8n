@@ -314,13 +314,15 @@ export class McpService {
 			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
 		]);
 		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
+		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
-			preferencesNoteVariant: String(flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG] ?? 'unassigned'),
+			preferencesNoteVariant:
+				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
 		};
 	}
 

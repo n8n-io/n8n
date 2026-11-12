@@ -5,7 +5,10 @@ import { Service } from '@n8n/di';
 
 import { UserService } from '@/services/user.service';
 
-import { MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS } from './mcp.constants';
+import {
+	MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS,
+	MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS,
+} from './mcp.constants';
 import { preferencesSettingsUrl } from './tools/user-preference-tool.utils';
 
 const buildNote = (settingsUrl: string) =>
@@ -27,12 +30,13 @@ export class McpPreferencesNoteService {
 	async takeNote(user: User, variant: string | undefined): Promise<string | undefined> {
 		if (variant !== 'variant') return undefined;
 
-		const impressions = user.settings?.mcpPreferencesNote?.impressions ?? 0;
+		const { impressions = 0, lastShownAt = 0 } = user.settings?.mcpPreferencesNote ?? {};
 		if (impressions >= MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS) return undefined;
+		if (Date.now() - lastShownAt < MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS) return undefined;
 
 		try {
 			user.settings = await this.userService.updateSettings(user.id, {
-				mcpPreferencesNote: { impressions: impressions + 1 },
+				mcpPreferencesNote: { impressions: impressions + 1, lastShownAt: Date.now() },
 			});
 		} catch (error) {
 			this.logger.warn('Could not record the MCP preferences note impression', { error });
