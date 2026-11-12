@@ -599,7 +599,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
     - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
     - UI tests (if applicable)
     - Detailed steps under the "How to test" section of the PR template to cover how to manually test the feature or bug fix.
-    - The command that runs your tests under the "Test command" section of the PR template.
+    - The command that runs your tests, also under the "How to test" section.
   - For a **bug fix**, include at least one regression test that **fails against the latest `master`** without your change and passes with it. Tell us in the description how to see it fail, so we can verify the fix actually fixes something.
 - **Typos:**
   - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
