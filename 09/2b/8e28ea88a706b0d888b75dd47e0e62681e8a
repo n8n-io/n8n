@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/ToolExecutor.node.ts
+  s_ea243bd11a1db0::t_c3be9a906139d8 5,160-165
+  s_ea243bd11a1db0::t_bffd35920c181f 103
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_ea243bd11a1db0::t_c3be9a906139d8 46-49,51-55,59-62,64,289-294
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/test/ToolExecutor.node.test.ts
+  s_ea243bd11a1db0::t_ceed23c2fbc2a1 7-8,288-300,326,372-403
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "092b8e28ea88a706b0d888b75dd47e0e62681e8a",
+  "prompts": {},
+  "sessions": {
+    "s_ea243bd11a1db0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0511f34-1b43-4a87-aa54-605b6fdea81d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
