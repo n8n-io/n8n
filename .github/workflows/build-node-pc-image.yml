@@ -10,11 +10,11 @@ on:
     branches:
       - master
     paths:
-      - 'docker/images/node-pc/Dockerfile'
+      - 'docker/images/node-pc/**'
       - '.github/workflows/build-node-pc-image.yml'
   pull_request:
     paths:
-      - 'docker/images/node-pc/Dockerfile'
+      - 'docker/images/node-pc/**'
       - '.github/workflows/build-node-pc-image.yml'
   workflow_dispatch:
     inputs:
