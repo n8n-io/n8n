@@ -514,7 +514,7 @@ describe('InstanceAiSandboxService', () => {
 					runState: { getActiveRunId: vi.fn(() => runId.current) },
 				});
 				const workspace = {
-					init: vi.fn(async () => {
+					init: vi.fn(async (): Promise<void> => {
 						throw notReady;
 					}),
 					destroy: vi.fn(async () => {}),
