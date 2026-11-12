@@ -1,7 +1,7 @@
 import type { HookSpec } from './spec';
 import { FILES } from './spec';
 
-export type HookedMethod = Pick<HookSpec, 'file' | 'target' | 'method'> & {
+type HookedMethod = Pick<HookSpec, 'file' | 'target' | 'method'> & {
 	/** First release that has the method; scenarios on older images do not hook it. */
 	since?: string;
 };

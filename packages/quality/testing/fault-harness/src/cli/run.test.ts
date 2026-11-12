@@ -8,12 +8,7 @@ const row = { name: 'a', variant: 'before' as const, image: 'n8nio/n8n:1', passe
 
 describe('runFailed', () => {
 	it('fails when a variant did not pass every run', () => {
-		expect(
-			runFailed([
-				{ name: 'a', variant: 'before', image: 'n8nio/n8n:1', passed: 2, total: 2 },
-				{ name: 'a', variant: 'after', image: 'n8nio/n8n:2', passed: 1, total: 2 },
-			]),
-		).toBe(true);
+		expect(runFailed([row, { ...row, variant: 'after', passed: 1 }])).toBe(true);
 	});
 
 	it('passes when every variant passed every run', () => {
@@ -42,20 +37,9 @@ describe('parseRunArgs', () => {
 	it('reads scenarios, runs, variant, out, manifest and playwright dir', () => {
 		expect(
 			parseRunArgs(
-				[
-					'one',
-					'two',
-					'--runs',
-					'3',
-					'--variant',
-					'after',
-					'--out',
-					'/out',
-					'--manifest',
-					'/m.json',
-					'--playwright-dir',
-					'/pw',
-				],
+				'one two --runs 3 --variant after --out /out --manifest /m.json --playwright-dir /pw'.split(
+					' ',
+				),
 				now,
 			),
 		).toEqual({

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -12,7 +12,7 @@ import type { Variant } from '../scenario';
 const USAGE = `Usage: pnpm scenarios [scenario ...] [--runs N] [--variant before|after]
        [--out DIR] [--manifest FILE] [--playwright-dir DIR]`;
 
-export interface RunOptions {
+interface RunOptions {
 	scenarios: string[];
 	runs: number;
 	variants: Variant[];
@@ -52,7 +52,7 @@ export function parseRunArgs(argv: string[], now = new Date()): RunOptions {
 	};
 }
 
-export interface Row {
+interface Row {
 	name: string;
 	variant: Variant;
 	image: string;
@@ -65,7 +65,7 @@ export function runFailed(rows: Row[]): boolean {
 	return rows.some((row) => row.note !== undefined || row.passed !== row.total);
 }
 
-export function formatTable(rows: Row[]): string {
+function formatTable(rows: Row[]): string {
 	return [
 		'scenario | variant | image | passed',
 		...rows.map(
@@ -84,7 +84,6 @@ function ensureImage(image: string): boolean {
 const reportSchema = z.object({ stats: z.object({ expected: z.number() }) });
 
 function passedInReport(file: string): number {
-	if (!existsSync(file)) return 0;
 	try {
 		const report = reportSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')));
 		return report.success ? report.data.stats.expected : 0;

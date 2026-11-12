@@ -9,9 +9,7 @@ import { chain, nodes, webhookPath } from '../workflows';
 
 const images = [
 	...new Set(
-		Object.values(loadManifest()).flatMap((scenario) =>
-			[scenario.before, scenario.after].filter((image): image is string => image !== null),
-		),
+		Object.values(loadManifest()).flatMap((scenario) => [scenario.before, scenario.after]),
 	),
 ]
 	.filter(
@@ -34,34 +32,30 @@ describe.each(images.length ? images : [process.env.TEST_IMAGE_N8N ?? 'n8nio/n8n
 				hooks,
 				image,
 			});
-			try {
-				await harness.api.signIn();
-				const path = webhookPath('matrix');
-				const workflowId = await harness.api.createWorkflow(
-					chain('hook matrix', [
-						nodes.webhook(path),
-						nodes.code('Code', 'return [{ json: { ok: true } }];'),
-					]),
-				);
-				expect((await harness.api.webhook(path)).status).toBe(200);
-				const [executionId] = await harness.db.executionsOf(workflowId);
-				expect((await harness.db.waitForExecution(executionId, 60_000)).status).toBe('success');
+			await harness.api.signIn();
+			const path = webhookPath('matrix');
+			const workflowId = await harness.api.createWorkflow(
+				chain('hook matrix', [
+					nodes.webhook(path),
+					nodes.code('Code', 'return [{ json: { ok: true } }];'),
+				]),
+			);
+			expect((await harness.api.webhook(path)).status).toBe(200);
+			const [executionId] = await harness.db.executionsOf(workflowId);
+			expect((await harness.db.waitForExecution(executionId, 60_000)).status).toBe('success');
 
-				const events = (
-					await Promise.all(
-						harness.n8nContainers().map(async ({ container }) => await logs(container)),
-					)
+			const events = (
+				await Promise.all(
+					harness.n8nContainers().map(async ({ container }) => await logs(container)),
 				)
-					.join('\n')
-					.split('\n')
-					.map(parseHookLine);
-				const notInstalled = hooks
-					.filter((hook) => !events.some((e) => e?.point === hook.point && e.event === 'installed'))
-					.map((hook) => `${hook.file} ${hook.target}.${hook.method}`);
-				expect(notInstalled).toEqual([]);
-			} finally {
-				await harness.stop();
-			}
+			)
+				.join('\n')
+				.split('\n')
+				.map(parseHookLine);
+			const notInstalled = hooks
+				.filter((hook) => !events.some((e) => e?.point === hook.point && e.event === 'installed'))
+				.map((hook) => `${hook.file} ${hook.target}.${hook.method}`);
+			expect(notInstalled).toEqual([]);
 		});
 	},
 );
