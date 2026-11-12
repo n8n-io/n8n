@@ -227,11 +227,14 @@ describe('AgentFolderDialog', () => {
 		);
 	});
 
-	it('uses permanent deletion when the user cannot relocate contents', async () => {
+	it('offers archival when the user cannot relocate contents', async () => {
 		const wrapper = render({ mode: 'delete', id: 'folder', canRelocate: false });
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('This permanently deletes');
+		expect(wrapper.text()).toContain('It archives 3 Agents and moves them to the project root.');
+		expect(wrapper.text()).toContain('You can unarchive them later.');
+		expect(wrapper.text()).not.toContain('permanently');
+		expect(wrapper.get('[data-testid="agent-folder-save"]').text()).toBe('Delete folder');
 		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
 
 		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
@@ -243,6 +246,36 @@ describe('AgentFolderDialog', () => {
 			'folder',
 			undefined,
 		);
+	});
+
+	it('lets the user choose archival instead of relocating contents', async () => {
+		api.getFolderContent.mockResolvedValue({ totalAgents: 1 });
+		const wrapper = render({ mode: 'delete', id: 'folder' });
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-folder-removal"]').setValue('archive');
+
+		expect(wrapper.text()).toContain('It archives 1 Agent and moves it to the project root.');
+		expect(wrapper.text()).toContain('You can unarchive it later.');
+		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(false);
+
+		await wrapper.get('[data-testid="agent-folder-save"]').trigger('click');
+		await flushPromises();
+
+		expect(api.deleteFolder).toHaveBeenCalledWith(
+			{ baseUrl: '/rest' },
+			'project',
+			'folder',
+			undefined,
+		);
+		expect(api.invalidate).toHaveBeenCalledWith('project');
+	});
+
+	it('hides archival when the user can only relocate contents', async () => {
+		const wrapper = render({ mode: 'delete', id: 'folder', canDelete: false });
+		await flushPromises();
+
+		expect(wrapper.find('option[value="archive"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-folder-target"]').exists()).toBe(true);
 	});
 
 	it('blocks deletion until counts load and after a read failure', async () => {

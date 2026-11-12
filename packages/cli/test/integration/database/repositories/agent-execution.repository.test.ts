@@ -258,7 +258,12 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			checkpointStorage,
 			connection
-				? new AgentRepository(connection, txRunner, Container.get(GlobalConfig), mock<FolderRepository>())
+				? new AgentRepository(
+						connection,
+						txRunner,
+						Container.get(GlobalConfig),
+						mock<FolderRepository>(),
+					)
 				: agentRepo,
 			attachmentService,
 			queueUpdates,

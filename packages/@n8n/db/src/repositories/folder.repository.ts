@@ -45,6 +45,19 @@ export class FolderRepository extends BaseRepository<Folder> {
 		await manager.delete(Folder, { id: folderId, homeProject: { id: projectId }, resourceType });
 	}
 
+	async deleteFolderSubtree(
+		folderId: string,
+		projectId: string,
+		resourceType: FolderResourceType,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).delete(Folder, {
+			id: folderId,
+			homeProject: { id: projectId },
+			resourceType,
+		});
+	}
+
 	async getAncestorPath(
 		folderId: string,
 		projectId: string,

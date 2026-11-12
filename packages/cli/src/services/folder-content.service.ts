@@ -16,7 +16,8 @@ export interface FolderContentHandler {
 		toFolderId: string | null,
 		ctx: OperationContext,
 	): Promise<void>;
-	deleteContents(user: User, projectId: string, folderIds: string[]): Promise<void>;
+	archiveContents(user: User, projectId: string, folderIds: string[]): Promise<void>;
+	moveArchivedToRoot(projectId: string, folderIds: string[], ctx: OperationContext): Promise<void>;
 }
 
 @Service()

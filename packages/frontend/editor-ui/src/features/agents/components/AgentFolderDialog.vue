@@ -96,7 +96,7 @@ watch(
 
 		name.value = action.name ?? '';
 		target.value = action.parentFolderId ?? PROJECT_ROOT;
-		removal.value = action.canRelocate === false ? 'delete' : 'relocate';
+		removal.value = action.canRelocate === false ? 'archive' : 'relocate';
 		error.value = '';
 		count.value = 0;
 
@@ -212,7 +212,7 @@ async function save() {
 				context,
 				props.projectId,
 				action.id,
-				removal.value === 'delete' ? undefined : target.value,
+				removal.value === 'archive' ? undefined : target.value,
 			);
 		}
 
@@ -298,12 +298,17 @@ async function save() {
 					/>
 					<N8nOption
 						v-if="action?.canDelete !== false"
-						value="delete"
-						:label="i18n.baseText('agents.folders.permanent')"
+						value="archive"
+						:label="i18n.baseText('agents.folders.archive')"
 					/>
 				</N8nSelect>
-				<N8nText v-if="isDelete && removal === 'delete'">
-					{{ i18n.baseText('agents.folders.deleteDescription', { interpolate: { count } }) }}
+				<N8nText v-if="isDelete && removal === 'archive'">
+					{{
+						i18n.baseText('agents.folders.archiveDescription', {
+							adjustToNumber: count,
+							interpolate: { count },
+						})
+					}}
 				</N8nText>
 				<template v-else>
 					<label for="agent-folder-target">{{ i18n.baseText('agents.folders.destination') }}</label>
@@ -326,15 +331,15 @@ async function save() {
 		</form>
 		<template #footerActions>
 			<N8nButton
-				:variant="isDelete && removal === 'delete' ? 'destructive' : 'solid'"
+				:variant="isDelete ? 'destructive' : 'solid'"
 				:loading="busy"
 				:disabled="loading || loadFailed || (isMoving && !selectedLocation)"
 				data-testid="agent-folder-save"
 				@click="save"
 			>
 				{{
-					isDelete && removal === 'delete'
-						? i18n.baseText('agents.folders.permanent')
+					isDelete
+						? i18n.baseText('agents.folders.deleteTitle')
 						: isMoving
 							? moveLabel
 							: i18n.baseText('generic.save')

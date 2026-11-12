@@ -475,3 +475,43 @@ it('exports the folder ancestors of a selected Agent', async () => {
 		]),
 	);
 });
+
+it.each([undefined, false, true])(
+	'exports archived Agents from a selected folder with includeArchived=%s',
+	async (includeArchived) => {
+		const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+		await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
+		const active = await repository.save({
+			id: 'active',
+			name: 'Active',
+			projectId: project.id,
+			parentFolderId: folder.id,
+			schema: null,
+		});
+
+		const result = await exporter.export({
+			user: owner,
+			writer: new CapturingWriter(),
+			folderIds: [folder.id],
+			includeArchived,
+		});
+
+		expect(result.agentIds.sort()).toEqual(
+			includeArchived ? [active.id, parent.id].sort() : [active.id],
+		);
+	},
+);
+
+it('exports an archived Agent selected by ID with its folder ancestors', async () => {
+	const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+	await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
+
+	const result = await exporter.export({
+		user: owner,
+		writer: new CapturingWriter(),
+		agentIds: [parent.id],
+	});
+
+	expect(result.agentIds).toEqual([parent.id]);
+	expect(result.folderEntries?.map(({ id }) => id)).toEqual([folder.id]);
+});

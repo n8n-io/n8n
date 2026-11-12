@@ -4,11 +4,17 @@ import { Container } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { AgentFolderService } from '@/modules/agents/agent-folder.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { FolderContentService } from '@/services/folder-content.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { FolderService } from '@/services/folder.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -20,6 +26,8 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 
 const server = setupTestServer({ endpointGroups: ['folder'] });
 mockInstance(AgentUpdateBroadcaster);
+const channels = mockInstance(ChatIntegrationService);
+const tasks = mockInstance(AgentTaskService);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;
@@ -28,11 +36,13 @@ let service: FolderService;
 
 beforeEach(async () => {
 	server.license.enable('feat:folders');
+	tasks.requestReconcile.mockResolvedValue();
 	agents = Container.get(AgentRepository);
 	folders = Container.get(FolderRepository);
 	service = Container.get(FolderService);
 	Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
 	await agents.delete({});
+	await Container.get(AgentThreadRepository).delete({});
 	await testDb.truncate(['Folder', 'ProjectRelation', 'Project']);
 	owner = await createOwner();
 	project = await createTeamProject('Agent folders', owner);
@@ -164,7 +174,7 @@ it('rolls back content moves if the folder write fails', async () => {
 	expect(await folders.existsBy({ id: folder.id })).toBe(true);
 });
 
-it('retains folders when Agent lifecycle cleanup fails', async () => {
+it('retains folders and membership when Agent archival fails', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
 	await agents.save({
 		id: 'support',
@@ -172,14 +182,255 @@ it('retains folders when Agent lifecycle cleanup fails', async () => {
 		projectId: project.id,
 		parentFolderId: folder.id,
 	});
-	vi.spyOn(Container.get(AgentsService), 'delete').mockRejectedValueOnce(
-		new Error('Cleanup failed'),
+	vi.spyOn(Container.get(AgentPublishService), 'archiveAgent').mockRejectedValueOnce(
+		new Error('Archive failed'),
 	);
 
 	await expect(service.deleteFolder(owner, folder.id, project.id, {})).rejects.toThrow(
-		'Cleanup failed',
+		'Archive failed',
 	);
 	expect(await folders.existsBy({ id: folder.id })).toBe(true);
+	expect(await agents.findOneByOrFail({ id: 'support' })).toMatchObject({
+		parentFolderId: folder.id,
+		isArchived: false,
+	});
+});
+
+it('archives a folder tree at root and preserves Agent definitions, versions, sessions, and channels', async () => {
+	const folder = await createFolder(project, { resourceType: 'agent' });
+	const child = await createFolder(project, { resourceType: 'agent', parentFolder: folder });
+	const empty = await createFolder(project, { resourceType: 'agent', parentFolder: child });
+	const unrelated = await createFolder(project, { resourceType: 'agent' });
+	const schema = storedAgentConfig({
+		name: 'Support',
+		model: 'openai/gpt-4.1-mini',
+		instructions: 'Answer support requests',
+	});
+	const integrations = [{ type: 'slack' as const, credentialId: 'channel-credential' }];
+	const direct = await agents.save({
+		id: 'support',
+		name: 'Support',
+		projectId: project.id,
+		parentFolderId: folder.id,
+		versionId: 'saved-version',
+		schema,
+		integrations,
+	});
+	await Container.get(AgentHistoryRepository).saveVersion(
+		{
+			agentId: direct.id,
+			versionId: 'saved-version',
+			publishedBy: 'Folder test',
+			schema,
+			tools: {},
+		},
+		{},
+	);
+	await agents.setActiveVersionFenced(direct.id, direct.publicationRevision, 'saved-version');
+	const archived = await agents.save({
+		id: 'already-archived',
+		name: 'Archived',
+		projectId: project.id,
+		parentFolderId: child.id,
+		isArchived: true,
+	});
+	const untouched = await agents.save({
+		id: 'untouched',
+		name: 'Untouched',
+		projectId: project.id,
+		parentFolderId: unrelated.id,
+	});
+	const threads = Container.get(AgentThreadRepository);
+	const thread = await threads.save({
+		id: 'folder-session',
+		resourceId: direct.id,
+		title: 'Saved support session',
+		metadata: '{"source":"test"}',
+	});
+	const publish = Container.get(AgentPublishService);
+	const archive = vi.spyOn(publish, 'archiveAgent');
+	const hardDelete = vi.spyOn(Container.get(AgentsService), 'delete');
+
+	expect(await service.findFolderWithContentCounts(folder.id, project.id)).toMatchObject({
+		totalAgents: 1,
+		totalSubFolders: 2,
+	});
+	const [listed] = await service.getManyAndCount(project.id, { resourceType: 'agent' });
+
+	expect(listed.find(({ id }) => id === folder.id)?.agentCount).toBe(1);
+	expect(listed.find(({ id }) => id === child.id)?.agentCount).toBe(0);
+
+	await server
+		.authAgentFor(owner)
+		.delete(`/projects/${project.id}/folders/${folder.id}`)
+		.expect(200);
+
+	for (const id of [direct.id, archived.id]) {
+		expect(await agents.findOneByOrFail({ id })).toMatchObject({
+			parentFolderId: null,
+			isArchived: true,
+			activeVersionId: null,
+		});
+	}
+
+	expect(await agents.findOneByOrFail({ id: direct.id })).toMatchObject({
+		schema,
+		integrations,
+		versionId: 'saved-version',
+	});
+	expect(
+		await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
+			'saved-version',
+			direct.id,
+			{},
+		),
+	).toMatchObject({ schema, versionId: 'saved-version' });
+	expect(await threads.findOneByOrFail({ id: thread.id })).toMatchObject({
+		resourceId: direct.id,
+		title: thread.title,
+		metadata: thread.metadata,
+	});
+	expect(archive).toHaveBeenCalledExactlyOnceWith(
+		direct.id,
+		project.id,
+		expect.objectContaining({ id: owner.id }),
+	);
+	expect(hardDelete).not.toHaveBeenCalled();
+	expect(channels.disconnectChannel).toHaveBeenCalledWith(direct.id, integrations[0], {
+		deleteSubscriptions: false,
+	});
+
+	for (const id of [folder.id, child.id, empty.id]) {
+		expect(await folders.existsBy({ id })).toBe(false);
+	}
+
+	expect(await folders.existsBy({ id: unrelated.id })).toBe(true);
+	expect(await agents.findOneByOrFail({ id: untouched.id })).toMatchObject({
+		parentFolderId: unrelated.id,
+		isArchived: false,
+	});
+	const agentService = Container.get(AgentsService);
+	const options = { skip: 0, take: 20, filter: { parentFolderId: null } };
+	expect((await agentService.findByProjectIdPaginated(project.id, options)).data).toEqual([]);
+	expect(
+		(
+			await agentService.findByProjectIdPaginated(project.id, {
+				...options,
+				filter: { parentFolderId: null, includeArchived: true },
+			})
+		).data.map(({ id }) => id),
+	).toEqual(expect.arrayContaining([direct.id, archived.id]));
+
+	await publish.unarchiveAgent(direct.id, project.id, owner);
+
+	expect(await agents.findOneByOrFail({ id: direct.id })).toMatchObject({
+		parentFolderId: null,
+		isArchived: false,
+		activeVersionId: null,
+		schema,
+	});
+});
+
+it.each([false, true])(
+	'requires Agent delete permission for folder archival: %s',
+	async (allowed) => {
+		const folder = await createFolder(project, { resourceType: 'agent' });
+		await agents.save({
+			id: 'support',
+			name: 'Support',
+			projectId: project.id,
+			parentFolderId: folder.id,
+		});
+		const member = await createMember();
+		const role = await createCustomRoleWithScopeSlugs([
+			'folder:delete',
+			allowed ? 'agent:delete' : 'agent:update',
+		]);
+		await linkUserToProject(member, project, role.slug);
+
+		await server
+			.authAgentFor(member)
+			.delete(`/projects/${project.id}/folders/${folder.id}`)
+			.expect(allowed ? 200 : 403);
+
+		expect(await folders.existsBy({ id: folder.id })).toBe(!allowed);
+		expect(await agents.findOneByOrFail({ id: 'support' })).toMatchObject({
+			parentFolderId: allowed ? null : folder.id,
+			isArchived: allowed,
+		});
+	},
+);
+
+it('rolls back root placement when folder removal fails and permits a retry after archival', async () => {
+	const folder = await createFolder(project, { resourceType: 'agent' });
+	await agents.save({
+		id: 'support',
+		name: 'Support',
+		projectId: project.id,
+		parentFolderId: folder.id,
+	});
+	vi.spyOn(folders, 'deleteFolderSubtree').mockRejectedValueOnce(new Error('Write failed'));
+	const archive = vi.spyOn(Container.get(AgentPublishService), 'archiveAgent');
+
+	await expect(service.deleteFolder(owner, folder.id, project.id, {})).rejects.toThrow(
+		'Write failed',
+	);
+
+	expect(await agents.findOneByOrFail({ id: 'support' })).toMatchObject({
+		parentFolderId: folder.id,
+		isArchived: true,
+	});
+	expect(await folders.existsBy({ id: folder.id })).toBe(true);
+
+	await service.deleteFolder(owner, folder.id, project.id, {});
+
+	expect(archive).toHaveBeenCalledOnce();
+	expect(await agents.findOneByOrFail({ id: 'support' })).toMatchObject({
+		parentFolderId: null,
+		isArchived: true,
+	});
+	expect(await folders.existsBy({ id: folder.id })).toBe(false);
+});
+
+it('retains a folder when an active Agent arrives after archival', async () => {
+	const folder = await createFolder(project, { resourceType: 'agent' });
+	await agents.save({
+		id: 'support',
+		name: 'Support',
+		projectId: project.id,
+		parentFolderId: folder.id,
+	});
+	const handler = Container.get(AgentFolderService);
+	const archiveContents = handler.archiveContents.bind(handler);
+	vi.spyOn(handler, 'archiveContents').mockImplementationOnce(async (...args) => {
+		await archiveContents(...args);
+		await agents.save({
+			id: 'new-agent',
+			name: 'New Agent',
+			projectId: project.id,
+			parentFolderId: folder.id,
+		});
+	});
+
+	await expect(service.deleteFolder(owner, folder.id, project.id, {})).rejects.toThrow();
+
+	expect(await folders.existsBy({ id: folder.id })).toBe(true);
+	expect(await agents.findOneByOrFail({ id: 'support' })).toMatchObject({
+		parentFolderId: folder.id,
+		isArchived: true,
+	});
+	expect(await agents.findOneByOrFail({ id: 'new-agent' })).toMatchObject({
+		parentFolderId: folder.id,
+		isArchived: false,
+	});
+
+	await service.deleteFolder(owner, folder.id, project.id, {});
+
+	expect(await folders.existsBy({ id: folder.id })).toBe(false);
+	expect(await agents.findOneByOrFail({ id: 'new-agent' })).toMatchObject({
+		parentFolderId: null,
+		isArchived: true,
+	});
 });
 
 it('filters direct and descendant contents and validates placement before a move', async () => {

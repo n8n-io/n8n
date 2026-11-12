@@ -2,7 +2,7 @@
 import debounce from 'lodash/debounce';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nCheckbox } from '@n8n/design-system';
+import { N8nCheckbox, N8nInfoTip, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -101,6 +101,7 @@ const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
 const totalItems = ref(0);
+const hasArchivedAgents = ref(false);
 const loading = ref(true);
 
 const projectId = computed(() =>
@@ -160,6 +161,7 @@ function buildListFilter() {
 		...(filters.value.search ? { query: filters.value.search } : {}),
 		...(filters.value.showArchived === true ? { includeArchived: true } : {}),
 	};
+
 	return Object.keys(filter).length > 0 ? filter : undefined;
 }
 
@@ -226,6 +228,31 @@ async function fetchAgents() {
 		const { count, data } = requestProjectId
 			? await listAgentsPage(rootStore.restApiContext, requestProjectId, fetchOptions)
 			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
+
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
+		let archivedAgentsExist = false;
+
+		if (
+			!search &&
+			!filter?.includeArchived &&
+			count === 0 &&
+			folderPage.count === 0 &&
+			(!includeFolders || !requestFolderId)
+		) {
+			const archivedOptions = {
+				skip: 0,
+				take: 1,
+				filter: { ...filter, includeArchived: true },
+			};
+			const archivedPage = requestProjectId
+				? await listAgentsPage(rootStore.restApiContext, requestProjectId, archivedOptions)
+				: await listAgentsPageGlobal(rootStore.restApiContext, archivedOptions);
+			archivedAgentsExist = archivedPage.count > 0;
+		}
+
 		if (requestGeneration !== fetchGeneration) {
 			return;
 		}
@@ -233,6 +260,7 @@ async function fetchAgents() {
 		folders.value = folderPage.data;
 		allAgents.value = agentSlots > 0 ? data : [];
 		totalItems.value = folderPage.count + count;
+		hasArchivedAgents.value = archivedAgentsExist;
 	} finally {
 		delayedLoading.cancel();
 		if (requestGeneration === fetchGeneration) loading.value = false;
@@ -330,6 +358,7 @@ watch([projectId, folderId, showFolders], () => {
 	folders.value = [];
 	allAgents.value = [];
 	totalItems.value = 0;
+	hasArchivedAgents.value = false;
 
 	void fetchAgents();
 });
@@ -515,6 +544,16 @@ onMounted(async () => {
 			</template>
 
 			<template #empty>
+				<N8nInfoTip v-if="hasArchivedAgents" class="mb-s" :bold="false">
+					{{ locale.baseText('agents.list.archivedOnly.hint') }}
+					<N8nLink
+						size="small"
+						data-test-id="show-archived-agents"
+						@click="filters.showArchived = true"
+					>
+						{{ locale.baseText('agents.list.filters.showArchived') }}
+					</N8nLink>
+				</N8nInfoTip>
 				<AgentsListIntro
 					v-if="showTemplatesIntro"
 					:disabled="!canCreateAgent"
@@ -530,14 +569,14 @@ onMounted(async () => {
 				/>
 			</template>
 
-		<template #filters="{ setKeyValue }">
-			<N8nCheckbox
-				:label="locale.baseText('agents.list.filters.showArchived')"
-				:model-value="filters.showArchived === true"
-				data-test-id="agents-show-archived-checkbox"
-				@update:model-value="setKeyValue('showArchived', $event)"
-			/>
-		</template>
+			<template #filters="{ setKeyValue }">
+				<N8nCheckbox
+					:label="locale.baseText('agents.list.filters.showArchived')"
+					:model-value="filters.showArchived === true"
+					data-test-id="agents-show-archived-checkbox"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</template>
 
 			<template #item="{ item: data }">
 				<div

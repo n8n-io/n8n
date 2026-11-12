@@ -39,6 +39,14 @@ project fixed. Offer project root and show nested folder paths. Use `Move Agent`
 or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
 Disable the fixed project field. Focus the folder picker after its options load.
 
+## Folder removal
+
+Offer relocation or archival when a user deletes an Agent folder. Archival
+deletes the folder tree and moves its Agents to the project root. Keep all Agent
+data. Explain that users can unarchive the Agents later. Use `Delete folder` for
+the confirmation action. Do not offer permanent Agent deletion in this dialog.
+Keep a `Show archived agents` link in the empty state when only archived Agents remain.
+
 ## Agent card subtitles
 
 Use a separate element for each separator between metadata fields, as workflow

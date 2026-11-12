@@ -169,7 +169,9 @@ export class AgentSelectionExporter {
 			includeArchived: request.includeArchived,
 		});
 		const folderAgentIds = request.folderIds?.length
-			? await repository.findIdsInFoldersForExport(request.folderIds)
+			? await repository.findIdsInFoldersForExport(request.folderIds, {
+					includeArchived: request.includeArchived,
+				})
 			: [];
 		const pending = [
 			...new Set([...(request.agentIds ?? []), ...projectAgentIds, ...folderAgentIds]),

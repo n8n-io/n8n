@@ -1,6 +1,13 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
-import { DateTimeColumn, Folder, JsonColumn, Project, TagEntity, WithTimestampsAndStringId } from '@n8n/db';
+import {
+	DateTimeColumn,
+	Folder,
+	JsonColumn,
+	Project,
+	TagEntity,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
 import {
 	Column,
 	Entity,

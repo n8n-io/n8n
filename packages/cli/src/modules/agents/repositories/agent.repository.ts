@@ -612,12 +612,16 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	async findIdsInFoldersForExport(folderIds: string[]): Promise<string[]> {
+	async findIdsInFoldersForExport(
+		folderIds: string[],
+		{ includeArchived = false }: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const ids: string[] = [];
+		const archivedFilter = includeArchived ? {} : { isArchived: false };
 
 		for (const batch of chunkIds([...new Set(folderIds)])) {
 			const agents = await this.find({
-				where: { scope: projectScope, parentFolderId: In(batch) },
+				where: { scope: projectScope, parentFolderId: In(batch), ...archivedFilter },
 				select: { id: true },
 			});
 			ids.push(...agents.map((agent) => agent.id));
@@ -649,6 +653,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				.where(projectScopeSql)
 				.andWhere('agent.projectId = :projectId', { projectId })
 				.andWhere('agent.parentFolderId IN (:...folderIds)', { folderIds: batch })
+				.andWhere('agent.isArchived = :isArchived', { isArchived: false })
 				.groupBy('agent.parentFolderId')
 				.getRawMany<{ folderId: string; count: string }>();
 
@@ -671,6 +676,20 @@ export class AgentRepository extends BaseRepository<Agent> {
 			{ projectId, scope: projectScope, parentFolderId: fromFolderId },
 			{ parentFolderId: toFolderId },
 		);
+	}
+
+	async moveArchivedFolderContentsToRoot(
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			await this.managerFor(ctx).update(
+				Agent,
+				{ projectId, scope: projectScope, parentFolderId: In(batch), isArchived: true },
+				{ parentFolderId: null },
+			);
+		}
 	}
 
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {

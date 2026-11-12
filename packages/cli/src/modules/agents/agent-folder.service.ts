@@ -4,14 +4,14 @@ import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 
 import type { FolderContentHandler } from '@/services/folder-content.service';
-import { AgentsService } from './agents.service';
+import { AgentPublishService } from './agent-publish.service';
 import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
 export class AgentFolderService implements FolderContentHandler {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentsService: AgentsService,
+		private readonly agentPublishService: AgentPublishService,
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
@@ -42,12 +42,24 @@ export class AgentFolderService implements FolderContentHandler {
 		await this.agentRepository.relocateFolderContents(projectId, fromFolderId, toFolderId, ctx);
 	}
 
-	async deleteContents(user: User, projectId: string, folderIds: string[]): Promise<void> {
+	async archiveContents(user: User, projectId: string, folderIds: string[]): Promise<void> {
 		await this.assertAccess(user, projectId, 'delete');
 		const agents = await this.agentRepository.findInFolders(projectId, folderIds);
 
 		for (const agent of agents) {
-			await this.agentsService.delete(agent.id, projectId);
+			if (agent.isArchived) {
+				continue;
+			}
+
+			await this.agentPublishService.archiveAgent(agent.id, projectId, user);
 		}
+	}
+
+	async moveArchivedToRoot(
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.agentRepository.moveArchivedFolderContentsToRoot(projectId, folderIds, ctx);
 	}
 }

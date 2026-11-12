@@ -63,23 +63,27 @@ describe('Agent folder operations', () => {
 			null,
 			{},
 		);
-		expect(handler.deleteContents).not.toHaveBeenCalled();
+		expect(handler.archiveContents).not.toHaveBeenCalled();
+		expect(handler.moveArchivedToRoot).not.toHaveBeenCalled();
 	});
 
-	it('keeps all folders when Agent lifecycle cleanup fails', async () => {
-		handler.deleteContents.mockRejectedValue(new Error('Cleanup failed'));
+	it('keeps all folders and memberships when Agent archival fails', async () => {
+		handler.archiveContents.mockRejectedValue(new Error('Archive failed'));
 
 		await expect(service.deleteFolder(user, 'source', 'project', {})).rejects.toThrow(
-			'Cleanup failed',
+			'Archive failed',
 		);
 
 		expect(handler.assertAccess).toHaveBeenCalledWith(user, 'project', 'delete');
-		expect(handler.deleteContents).toHaveBeenCalledWith(user, 'project', ['source', 'child']);
-		expect(repository.delete).not.toHaveBeenCalled();
+		expect(handler.archiveContents).toHaveBeenCalledWith(user, 'project', ['source', 'child']);
+		expect(handler.relocate).not.toHaveBeenCalled();
+		expect(handler.moveArchivedToRoot).not.toHaveBeenCalled();
+		expect(repository.deleteFolderSubtree).not.toHaveBeenCalled();
+		expect(transactions.run).not.toHaveBeenCalled();
 		expect(events.emit).not.toHaveBeenCalled();
 	});
 
-	it('deletes folders only after successful Agent cleanup', async () => {
+	it('archives the subtree before moving its Agents to root and deleting its folders', async () => {
 		await service.deleteFolder(user, 'source', 'project', {});
 
 		expect(repository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith(
@@ -87,13 +91,16 @@ describe('Agent folder operations', () => {
 			'project',
 			'agent',
 		);
-		expect(repository.delete).toHaveBeenCalledWith({
-			id: 'source',
-			homeProject: { id: 'project' },
-			resourceType: 'agent',
-		});
-		expect(handler.deleteContents.mock.invocationCallOrder[0]).toBeLessThan(
-			repository.delete.mock.invocationCallOrder[0],
+		expect(handler.archiveContents).toHaveBeenCalledWith(user, 'project', ['source', 'child']);
+		expect(transactions.run).toHaveBeenCalledOnce();
+		expect(handler.moveArchivedToRoot).toHaveBeenCalledWith('project', ['source', 'child'], {});
+		expect(handler.relocate).not.toHaveBeenCalled();
+		expect(repository.deleteFolderSubtree).toHaveBeenCalledWith('source', 'project', 'agent', {});
+		expect(handler.archiveContents.mock.invocationCallOrder[0]).toBeLessThan(
+			handler.moveArchivedToRoot.mock.invocationCallOrder[0],
+		);
+		expect(handler.moveArchivedToRoot.mock.invocationCallOrder[0]).toBeLessThan(
+			repository.deleteFolderSubtree.mock.invocationCallOrder[0],
 		);
 	});
 

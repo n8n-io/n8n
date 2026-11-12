@@ -184,11 +184,13 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 				<div data-test-id="resources-list-layout">
 					<div data-test-id="resources-refreshing">{{ String(resourcesRefreshing) }}</div>
 					<div data-test-id="resources-total">{{ totalItems }}</div>
-					<slot name="list-prepend" />
-					<div v-for="(item, index) in resources" :key="item.id">
-						<slot name="item" :item="item" :index="index" />
-					</div>
-					<slot v-if="resources.length === 0 && !$slots['list-prepend']" name="empty" />
+					<slot v-if="resources.length === 0 && hasEmptyState !== false" name="empty" />
+					<template v-else>
+						<slot name="list-prepend" />
+						<div v-for="(item, index) in resources" :key="item.id">
+							<slot name="item" :item="item" :index="index" />
+						</div>
+					</template>
 				</div>
 			`,
 		}),
@@ -302,6 +304,62 @@ describe('AgentsListView — folder pagination', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('keeps the archive filter while browsing and searching a folder', async () => {
+		mocks.routeFolderId = 'support';
+		mocks.routeQuery = { showArchived: 'true' };
+		const wrapper = await mountView();
+
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({
+				filter: { parentFolderId: 'support', includeArchived: true },
+			}),
+		);
+
+		wrapper.findComponent({ name: 'ResourcesListLayout' }).vm.$emit('update:search', 'Support');
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({
+				filter: {
+					query: 'Support',
+					parentFolderId: 'support',
+					includeDescendants: true,
+					includeArchived: true,
+				},
+			}),
+		);
+	});
+
+	it('shows archived Agents from an empty project root', async () => {
+		const archived = { ...agent('archived', 'Archived Agent'), isArchived: true };
+		mocks.listAgentsPage
+			.mockResolvedValueOnce({ count: 0, data: [] })
+			.mockResolvedValue({ count: 1, data: [archived] });
+		const wrapper = await mountView();
+
+		expect(wrapper.find('[data-test-id="show-archived-agents"]').exists()).toBe(true);
+		expect(wrapper.findAll('[data-test-id="agent-card"]')).toHaveLength(0);
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({
+				take: 1,
+				filter: { parentFolderId: null, includeArchived: true },
+			}),
+		);
+
+		await wrapper.get('[data-test-id="show-archived-agents"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ query: { showArchived: 'true' } });
+		expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Archived Agent');
 	});
 
 	it('shares one page limit and total across folder-only, mixed, and Agent-only pages', async () => {
@@ -669,7 +727,8 @@ describe('AgentsListView — project page', () => {
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 
 		const wrapper = await mountView();
-		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+		expect(mocks.listAgentsPage).toHaveBeenNthCalledWith(
+			1,
 			expect.any(Object),
 			'project-1',
 			expect.objectContaining({ filter: undefined }),
@@ -712,11 +771,17 @@ describe('AgentsListView — project page', () => {
 		await flushPromises();
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ query: {} });
-		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(2);
-		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(3);
+		expect(mocks.listAgentsPage).toHaveBeenNthCalledWith(
+			2,
 			expect.any(Object),
 			'project-1',
 			expect.objectContaining({ filter: undefined }),
+		);
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ take: 1, filter: { includeArchived: true } }),
 		);
 	});
 

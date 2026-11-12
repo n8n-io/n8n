@@ -326,11 +326,12 @@ export class FolderService {
 				projectId,
 				'agent',
 			);
-			await handler.deleteContents(user, projectId, [folder.id, ...descendants]);
-			await this.folderRepository.delete({
-				id: folder.id,
-				homeProject: { id: projectId },
-				resourceType: 'agent',
+			const folderIds = [folder.id, ...descendants];
+			await handler.archiveContents(user, projectId, folderIds);
+
+			await this.transactionRunner.run({}, async (ctx) => {
+				await handler.moveArchivedToRoot(projectId, folderIds, ctx);
+				await this.folderRepository.deleteFolderSubtree(folder.id, projectId, 'agent', ctx);
 			});
 		}
 
