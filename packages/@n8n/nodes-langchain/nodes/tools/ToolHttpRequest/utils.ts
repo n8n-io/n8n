@@ -114,16 +114,12 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
-	if (genericType === 'httpTemplatedCustomAuth') {
-		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+	if (genericType === 'httpTemplatedCustomAuth' || genericType === 'httpMultipleHeadersAuth') {
+		const credentials = await ctx.getCredentials(genericType, itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			assertCredentialUrlAllowed(ctx, templatedAuth, options);
-			return await ctx.helpers.httpRequestWithAuthentication.call(
-				ctx,
-				'httpTemplatedCustomAuth',
-				options,
-			);
+			assertCredentialUrlAllowed(ctx, credentials, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(ctx, genericType, options);
 		};
 	}
 

