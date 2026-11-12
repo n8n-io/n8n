@@ -1714,6 +1714,46 @@ describe('useCanvasOperations', () => {
 				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledBefore(openEditor);
 			});
 
+			it.each([
+				['node positioning', 'getParentNodesByDepth'],
+				['prompt initialization', 'checkIfNodeHasChatOrManualChatParent'],
+			] as const)(
+				'should finish setup for each added node when %s fails',
+				async (_stage, action) => {
+					const error = new Error('Node initialization failed');
+					vi.mocked(workflowDocumentStoreInstance[action]).mockImplementationOnce(() => {
+						throw error;
+					});
+					const openEditor = vi.spyOn(
+						useNDVStore(workflowDocumentStoreInstance.documentId),
+						'setActiveNodeName',
+					);
+					const updateNodeParameterIssues = vi.fn();
+					const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+					vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+						...nodeHelpersOriginal,
+						updateNodeParameterIssues,
+					});
+					const nodes = [
+						{ type: AGENT_NODE_TYPE, name: 'Agent 1' },
+						{ type: AGENT_NODE_TYPE, name: 'Agent 2', openDetail: true },
+					];
+
+					await expect(useCanvasOperations().addNodesAndConnections(nodes, [], {})).rejects.toBe(
+						error,
+					);
+					await nextTick();
+
+					for (const { name } of nodes) {
+						expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(name, true);
+						expect(updateNodeParameterIssues).toHaveBeenCalledWith(
+							expect.objectContaining({ name }),
+						);
+					}
+					expect(openEditor).toHaveBeenCalledWith('Agent 2', 'added_new_node');
+				},
+			);
+
 			it.each(['auto', 'define'])(
 				'should keep an explicit %s prompt source',
 				async (promptType) => {

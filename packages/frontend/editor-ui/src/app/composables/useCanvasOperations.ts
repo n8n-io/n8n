@@ -3964,151 +3964,156 @@ export function useCanvasOperations() {
 		}
 
 		const initialization = Promise.withResolvers<undefined>();
-		const addedNodesByInputIndex = new Map<number, INodeUi>();
-		const addedNodes = await addNodes(nodes, {
-			...options,
-			trackHistory,
-			trackBulk: false,
-			telemetry: true,
-			addedNodesByInputIndex,
-			initializationDone: initialization.promise,
-		});
-
-		const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
-			const fromNode = addedNodesByInputIndex.get(from.nodeIndex);
-			const toNode = addedNodesByInputIndex.get(to.nodeIndex);
-			if (!fromNode || !toNode) return [];
-
-			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
-
-			return [
-				{
-					source: fromNode.id,
-					sourceHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Output,
-						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-						index: from.outputIndex ?? 0,
-					}),
-					target: toNode.id,
-					targetHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Input,
-						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-						index: to.inputIndex ?? 0,
-					}),
-					data: {
-						source: {
-							index: from.outputIndex ?? 0,
-							type,
-						},
-						target: {
-							index: to.inputIndex ?? 0,
-							type,
-						},
-					},
-				},
-			];
-		});
-
-		await addConnections(connections, { trackHistory, trackBulk: false });
-
-		let replacementGroupId: string | undefined;
-		if (addedNodes.length > 0 && options.replaceNodeId) {
-			// Auto-added helpers can follow the node that the user selected, so they
-			// must not become the replacement target.
-			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
-			const replacementNode =
-				replacementNodeIndex === -1
-					? addedNodes.at(-1)
-					: addedNodesByInputIndex.get(replacementNodeIndex);
-			if (replacementNode) {
-				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
-					trackHistory,
-					trackBulk: false,
-					// The batch connections are already part of the candidate graph. Let
-					// grouped replacement validate the whole batch as one unit before the
-					// remaining batch nodes are added to the group below.
-					additionalGroupNodeIds: addedNodes.map((node) => node.id),
-				});
-				if (didReplace) {
-					replacementGroupId = workflowDocumentStore.value.getGroupForNode(replacementNode.id)?.id;
-				}
-			}
-		}
-
-		if (replacementGroupId) {
-			const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
-			if (groupBeforeExtend) {
-				// A creator result can include helpers for the selected node. Keep the
-				// connected batch together when it replaces a grouped node.
-				const beforeSnapshot = { ...groupBeforeExtend, nodeIds: [...groupBeforeExtend.nodeIds] };
-				workflowDocumentStore.value.addNodesToGroup(
-					replacementGroupId,
-					addedNodes.map((node) => node.id),
-				);
-				const groupAfterExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
-				if (
-					trackHistory &&
-					groupAfterExtend &&
-					groupAfterExtend.nodeIds.length !== beforeSnapshot.nodeIds.length
-				) {
-					historyStore.pushCommandToUndo(
-						new UpdateNodeGroupCommand(
-							beforeSnapshot,
-							{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
-							Date.now(),
-						),
-					);
-				}
-			}
-		}
-
-		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
-		if (emptyGroupAnchorId && replacementGroupId) {
-			const groupAfterFill = workflowDocumentStore.value.getGroupById(replacementGroupId);
-			if (groupAfterFill) {
-				const nodeCountAfter = groupAfterFill.nodeIds.filter((nodeId) => {
-					const node = workflowDocumentStore.value.getNodeById(nodeId);
-					return node !== undefined && !isEmptyGroupAnchor(node);
-				}).length;
-				trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_FILLED_EMPTY_GROUP, {
-					...groupEventIdentity(groupAfterFill.id),
-					node_count_after: nodeCountAfter,
-					connection_count_before_fill: connectionCountBeforeFill,
-				});
-			}
-		}
-
-		// Resolve the default after batch and replacement connections exist.
-		// Use the supplied parameters so the chat-only text default does not carry over.
-		for (const [index, node] of addedNodesByInputIndex) {
-			if (
-				node.type !== AGENT_NODE_TYPE ||
-				nodes[index].parameters?.promptType !== undefined ||
-				node.parameters.promptType !== 'auto' ||
-				workflowDocumentStore.value.checkIfNodeHasChatOrManualChatParent(node.name)
-			) {
-				continue;
-			}
-
-			const updatedNode = {
-				...node,
-				parameters: { ...nodes[index].parameters, promptType: 'define' },
-			};
-			resolveNodeParameters(updatedNode, requireNodeTypeDescription(node.type, node.typeVersion));
-			replaceNodeParameters(node.id, node.parameters, updatedNode.parameters, {
+		try {
+			const addedNodesByInputIndex = new Map<number, INodeUi>();
+			const addedNodes = await addNodes(nodes, {
+				...options,
 				trackHistory,
 				trackBulk: false,
+				telemetry: true,
+				addedNodesByInputIndex,
+				initializationDone: initialization.promise,
 			});
+
+			const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
+				const fromNode = addedNodesByInputIndex.get(from.nodeIndex);
+				const toNode = addedNodesByInputIndex.get(to.nodeIndex);
+				if (!fromNode || !toNode) return [];
+
+				const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
+
+				return [
+					{
+						source: fromNode.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Output,
+							type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
+							index: from.outputIndex ?? 0,
+						}),
+						target: toNode.id,
+						targetHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
+							index: to.inputIndex ?? 0,
+						}),
+						data: {
+							source: {
+								index: from.outputIndex ?? 0,
+								type,
+							},
+							target: {
+								index: to.inputIndex ?? 0,
+								type,
+							},
+						},
+					},
+				];
+			});
+
+			await addConnections(connections, { trackHistory, trackBulk: false });
+
+			let replacementGroupId: string | undefined;
+			if (addedNodes.length > 0 && options.replaceNodeId) {
+				// Auto-added helpers can follow the node that the user selected, so they
+				// must not become the replacement target.
+				const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
+				const replacementNode =
+					replacementNodeIndex === -1
+						? addedNodes.at(-1)
+						: addedNodesByInputIndex.get(replacementNodeIndex);
+				if (replacementNode) {
+					const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
+						trackHistory,
+						trackBulk: false,
+						// The batch connections are already part of the candidate graph. Let
+						// grouped replacement validate the whole batch as one unit before the
+						// remaining batch nodes are added to the group below.
+						additionalGroupNodeIds: addedNodes.map((node) => node.id),
+					});
+					if (didReplace) {
+						replacementGroupId = workflowDocumentStore.value.getGroupForNode(
+							replacementNode.id,
+						)?.id;
+					}
+				}
+			}
+
+			if (replacementGroupId) {
+				const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+				if (groupBeforeExtend) {
+					// A creator result can include helpers for the selected node. Keep the
+					// connected batch together when it replaces a grouped node.
+					const beforeSnapshot = { ...groupBeforeExtend, nodeIds: [...groupBeforeExtend.nodeIds] };
+					workflowDocumentStore.value.addNodesToGroup(
+						replacementGroupId,
+						addedNodes.map((node) => node.id),
+					);
+					const groupAfterExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+					if (
+						trackHistory &&
+						groupAfterExtend &&
+						groupAfterExtend.nodeIds.length !== beforeSnapshot.nodeIds.length
+					) {
+						historyStore.pushCommandToUndo(
+							new UpdateNodeGroupCommand(
+								beforeSnapshot,
+								{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+								Date.now(),
+							),
+						);
+					}
+				}
+			}
+
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			if (emptyGroupAnchorId && replacementGroupId) {
+				const groupAfterFill = workflowDocumentStore.value.getGroupById(replacementGroupId);
+				if (groupAfterFill) {
+					const nodeCountAfter = groupAfterFill.nodeIds.filter((nodeId) => {
+						const node = workflowDocumentStore.value.getNodeById(nodeId);
+						return node !== undefined && !isEmptyGroupAnchor(node);
+					}).length;
+					trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_FILLED_EMPTY_GROUP, {
+						...groupEventIdentity(groupAfterFill.id),
+						node_count_after: nodeCountAfter,
+						connection_count_before_fill: connectionCountBeforeFill,
+					});
+				}
+			}
+
+			// Resolve the default after batch and replacement connections exist.
+			// Use the supplied parameters so the chat-only text default does not carry over.
+			for (const [index, node] of addedNodesByInputIndex) {
+				if (
+					node.type !== AGENT_NODE_TYPE ||
+					nodes[index].parameters?.promptType !== undefined ||
+					node.parameters.promptType !== 'auto' ||
+					workflowDocumentStore.value.checkIfNodeHasChatOrManualChatParent(node.name)
+				) {
+					continue;
+				}
+
+				const updatedNode = {
+					...node,
+					parameters: { ...nodes[index].parameters, promptType: 'define' },
+				};
+				resolveNodeParameters(updatedNode, requireNodeTypeDescription(node.type, node.typeVersion));
+				replaceNodeParameters(node.id, node.parameters, updatedNode.parameters, {
+					trackHistory,
+					trackBulk: false,
+				});
+			}
+
+			uiStore.resetLastInteractedWith();
+
+			if (trackHistory && trackBulk) {
+				historyStore.stopRecordingUndo();
+			}
+
+			return { addedNodes };
+		} finally {
+			initialization.resolve(undefined);
 		}
-		initialization.resolve(undefined);
-
-		uiStore.resetLastInteractedWith();
-
-		if (trackHistory && trackBulk) {
-			historyStore.stopRecordingUndo();
-		}
-
-		return { addedNodes };
 	}
 
 	function fitView() {
