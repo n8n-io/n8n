@@ -167,7 +167,7 @@ describe('CanvasNodeAgent', () => {
 
 	it.each([
 		['running', { running: true }],
-		['waiting', { status: 'waiting' as const }],
+		['waiting', { running: false, status: 'waiting' as const }],
 	])('renders the status ring while the node is %s', (state, execution) => {
 		const { getByTestId } = renderComponent({
 			global: {
