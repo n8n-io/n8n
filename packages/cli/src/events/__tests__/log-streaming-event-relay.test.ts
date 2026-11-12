@@ -3723,6 +3723,37 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('public API rate limit events', () => {
+		it('should log `public-api-rate-limit.updated` with redacted user and the changed values', () => {
+			const event: RelayEventMap['public-api-rate-limit-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { globalReadLimit: 1200 },
+				after: { globalReadLimit: 100 },
+			};
+
+			eventService.emit('public-api-rate-limit-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.updated',
+				payload: {
+					userId: 'user404',
+					_email: 'admin7@example.com',
+					_firstName: 'Seventh',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { globalReadLimit: 1200 },
+					after: { globalReadLimit: 100 },
+				},
+			});
+		});
+	});
+
 	describe('MCP server events', () => {
 		it('should log on `mcp-oauth-completed` event', () => {
 			const event: RelayEventMap['mcp-oauth-completed'] = {
