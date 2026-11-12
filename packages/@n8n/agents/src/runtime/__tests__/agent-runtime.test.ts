@@ -12795,4 +12795,43 @@ describe('AgentRuntime — tool call interceptor', () => {
 		const secondCall = generateText.mock.calls[1][0] as { messages: Array<{ content: unknown }> };
 		expect(JSON.stringify(secondCall.messages)).toContain('Blocked in a test run');
 	});
+
+	it('hands a call_tool dispatch to the interceptor as the dispatched tool', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const deferred: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const seen: string[] = [];
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferred],
+			toolDeferral: { mode: 'tool-catalog' },
+			eventBus: new AgentEventBus(),
+			toolCallInterceptor: async (call) => {
+				seen.push(call.tool.name);
+				throw new Error('Blocked in a test run');
+			},
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-1',
+						toolName: 'call_tool',
+						args: { tool: 'send_message', arguments: { text: 'hi' } },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('send it');
+
+		expect(seen).toEqual(['send_message']);
+		expect(handler).not.toHaveBeenCalled();
+	});
 });

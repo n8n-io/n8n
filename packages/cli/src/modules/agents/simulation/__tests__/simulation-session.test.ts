@@ -453,4 +453,24 @@ describe('SimulationSession', () => {
 		).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
 	});
+
+	it('blocks a node tool without a node type, even with a simulated list entry', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [slackCapability],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, {
+				name: 'send_slack',
+				description: '',
+				metadata: { kind: 'node' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
 });
