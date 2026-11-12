@@ -50,11 +50,8 @@ async function writeInContainer(container: Container, file: string, content: str
 }
 
 async function removeInContainer(container: Container, file: string) {
-	await container.exec([
-		'node',
-		'-e',
-		`require('fs').rmSync(${JSON.stringify(file)},{force:true})`,
-	]);
+	const script = `require('fs').rmSync(${JSON.stringify(file)},{force:true})`;
+	return (await container.exec(['node', '-e', script])).exitCode === 0;
 }
 
 /**
@@ -73,7 +70,12 @@ export function hook(containers: Container[], point: string) {
 			);
 		},
 		async disarm() {
-			await Promise.all(containers.map(async (c) => await removeInContainer(c, path('arm'))));
+			await Promise.all(
+				containers.map(async (c) => {
+					if (!(await removeInContainer(c, path('arm'))))
+						throw new Error(`hook ${point}: disarm failed in ${c.getName()}`);
+				}),
+			);
 		},
 		async waitHit(timeoutMs: number, abort?: AbortSignal): Promise<HookHit> {
 			const { container, line, at } = await waitForLog(
