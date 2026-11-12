@@ -1,0 +1,36 @@
+packages/cli/src/modules/otel/tracing-context.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 4-15,20-42,66-67
+packages/cli/src/modules/otel/__tests__/tracing-context.test.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 3-8,11-36
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 3-5,27-28,57,60,95,185,228,277-279,282-288,297-298,326
+packages/cli/src/modules/otel/otel.module.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 33,38
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 1211-1223
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/factory-trace-headers.test.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 30
+packages/workflow/src/interfaces.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 4172-4174
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 1341
+packages/cli/src/modules/otel/README.md
+  s_0f4e16b2c3bd63::t_6ca76578cc88e2 33-37,122-123
+  s_0f4e16b2c3bd63::t_c77dc31abf8710 64-65,95-97,131-132,141-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f64853a855e768df2dc34d905cfca1e7cfa9eb5",
+  "prompts": {},
+  "sessions": {
+    "s_0f4e16b2c3bd63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24b72644-fa4d-4fed-b88a-ff65b01be832",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

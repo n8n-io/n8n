@@ -1,0 +1,23 @@
+.github/scripts/workflow-validation.test.mjs
+  s_1d52571436bccf::t_b15ad9be73177f 278
+.github/WORKFLOWS.md
+  s_1d52571436bccf::t_b15ad9be73177f 581,786-787
+.github/workflows/release-publish-new-package.yml
+  s_1d52571436bccf::t_b15ad9be73177f 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4aba37d6754cebb73df931960ff774c335829da",
+  "prompts": {},
+  "sessions": {
+    "s_1d52571436bccf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3ffa9729ffefZ1DjSxFPcn28r",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

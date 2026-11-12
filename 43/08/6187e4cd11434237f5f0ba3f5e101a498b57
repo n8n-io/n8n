@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCardSubtitle.vue
+  s_dddd9c68314b1b::t_98db5a516269de 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43086187e4cd11434237f5f0ba3f5e101a498b57",
+  "prompts": {},
+  "sessions": {
+    "s_dddd9c68314b1b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c624-7b80-77f3-88b5-5b4ee2a2590e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

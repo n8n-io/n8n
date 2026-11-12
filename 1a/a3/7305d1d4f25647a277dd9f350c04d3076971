@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_d46ca4db5f4801::t_f2c6ecf0332151 730-752
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1aa37305d1d4f25647a277dd9f350c04d3076971",
+  "prompts": {},
+  "sessions": {
+    "s_d46ca4db5f4801": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df22eceb-2c62-4533-8e79-e90ec5a427bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
+  s_ce738d6d516de0::t_6d48c236d2065b 76-82,184-185
+packages/@n8n/nodes-langchain/utils/agent-execution/test/leadingText.test.ts
+  s_ce738d6d516de0::t_5a2f0628b335aa 1-227
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_ce738d6d516de0::t_6d48c236d2065b 2,207-221,264,300
+packages/@n8n/nodes-langchain/utils/agent-execution/buildSteps.ts
+  s_ce738d6d516de0::t_f3ffa455cb8260 11,15-20,96,106-107,114-115,138-140,145-146,152-153,160-161,167-173,176-177,245,247,254,263-264,270-271,281,283,301,307,317-318,320-324,370,376,387,476-479,484,488-492,512-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ea24731d7b0394c71097f1c75c0c75bbf2aeaaf",
+  "prompts": {},
+  "sessions": {
+    "s_ce738d6d516de0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c41907fa-8936-450d-8858-f80cf9a9de9e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

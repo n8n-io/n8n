@@ -1,0 +1,34 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-true.json
+  s_23fd60228fbb58::t_3074b12c62499d 48,69,95,185,206,232,336,357,383,507,528,554
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-true.json
+  s_23fd60228fbb58::t_3074b12c62499d 48,69,96,187,208,235,340,361,388,513,534,561
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_23fd60228fbb58::t_275b3264f06e26 77-87
+  s_23fd60228fbb58::t_69f94c31cd05e8 108-110
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_23fd60228fbb58::t_3074b12c62499d 57,76,235,254,431,450,675,694
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_23fd60228fbb58::t_3074b12c62499d 57,76,241,260,443,462,693,712
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_23fd60228fbb58::t_34ae511a5b07c0 381-395
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-false.json
+  s_23fd60228fbb58::t_3074b12c62499d 49,70,96,160,220,241,267,331,405,426,452,516,583,643,664,690
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  s_23fd60228fbb58::t_3074b12c62499d 49,70,97,162,222,243,270,335,409,430,457,522,589,649,670,697
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "632a1b5a9e8a04c39512ee65034c4cbc21296568",
+  "prompts": {},
+  "sessions": {
+    "s_23fd60228fbb58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95c13e9b-0726-4252-a257-46830ea1b72b",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

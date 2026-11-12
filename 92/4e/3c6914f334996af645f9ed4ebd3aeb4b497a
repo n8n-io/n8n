@@ -22,6 +22,7 @@ packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
   s_50b1b090121afc::t_f8f9671ffe1351 271-273
 packages/cli/src/credentials/credential-data-merge.ts
   s_50b1b090121afc::t_fa74ea803ad2de 2,98
+  s_50b1b090121afc::t_9588e1ddce8bd4 1,3-97,99-103
 packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
   s_50b1b090121afc::t_55e821169814a5 3438,3509
 packages/cli/src/events/relays/telemetry.event-relay.ts
@@ -96,7 +97,20 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
   s_50b1b090121afc::t_c667b20478f5bc 232-233
   s_50b1b090121afc::t_c8b05ca11dfcb0 7,13,124,223-231
 packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
-  s_50b1b090121afc::t_d731fa1e4d466c 168-203
+  s_50b1b090121afc::t_d731fa1e4d466c 168-203,168-190,192-193,196-201,203
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.credentials.test.ts
+  s_50b1b090121afc::t_ad424064521ef6 1-106,115-127,134-143,146-205
+  s_50b1b090121afc::t_7fbfe5dda4aa33 128-133,144-145
+  s_50b1b090121afc::t_a57110617154af 107,114
+  h_9b272a633435fb 108-113
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_50b1b090121afc::t_36f09449e321bc 19,77-81
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_999ca94ca9b959::t_4176ffe2d7d938 99
+packages/cli/src/credentials/__tests__/credential-data-merge.test.ts
+  s_50b1b090121afc::t_0ba0a806d95248 1-261
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_50b1b090121afc::t_e6a530da141fe1 32-35,146-162,439-474
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -116,6 +130,14 @@ packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated
         "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_999ca94ca9b959": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54a76de5-9240-4ff3-a4c9-8d8fb1d03861",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
     },
     "s_a6870d3b039cb7": {
       "agent_id": {

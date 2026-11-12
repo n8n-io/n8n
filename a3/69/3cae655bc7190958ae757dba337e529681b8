@@ -26,7 +26,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.
 packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
   s_0b0df9fc8eb30f::t_b341359c644b4d 95-97,146-148,185-186
   s_0b0df9fc8eb30f::t_790b3d5c9c9260 1,10,139,141-145,149-157,159-161
-  s_0b0df9fc8eb30f::t_108d7001a40123 3,5,7-9,12-13,15-19,22-23,35-36,43-44,47-54,67-68,73-75,87,94,98-138,140,158,162-184,187-204
+  s_0b0df9fc8eb30f::t_108d7001a40123 3,5,7-9,12-13,15-19,22-23,22-24,35-36,43-44,47-54,47-51,52-54,67-68,73-75,87,94,98-138,140,158,162-184,187-204
 packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
   s_0b0df9fc8eb30f::t_e989220d0b2eec 14,45,89,100-106,136-146,229-232,272
 packages/cli/src/scaling/pubsub/pubsub.event-map.ts

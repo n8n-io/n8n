@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_f0ccaac41280b8::t_8286da541e5638 154,165,690-693,741-787
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0bd5f2c60094c45cb3cc36a514f9e2469fefed9a",
+  "prompts": {},
+  "sessions": {
+    "s_f0ccaac41280b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f810e460-60cf-474c-95a5-0bbc8d1b96b6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
