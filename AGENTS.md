@@ -173,7 +173,9 @@ The monorepo is organized into these key packages:
 - **Backend:** Node.js + TypeScript + Express + TypeORM
 - **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
-- **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
+- **Code Quality:** Biome (for formatting) + Oxlint + Vize (Vue templates in
+  the frontend packages) + ESLint (the node packages and a few others) +
+  lefthook git hooks
 
 ### Key Architectural Patterns
 
@@ -302,8 +304,14 @@ config picks exactly one:
 |---|---|---|
 | `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
 | `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
-| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages outside `packages/frontend/` and `packages/modules/`, such as `@n8n/mcp-apps` |
 | `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`)
+do not run ESLint. Their `oxlint.config.mts` extends
+`@n8n/oxlint-config/frontend`, and `vize lint` checks their Vue templates with a
+config from `@n8n/oxlint-config/vize`. The same layering rules apply to these
+configs.
 
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule

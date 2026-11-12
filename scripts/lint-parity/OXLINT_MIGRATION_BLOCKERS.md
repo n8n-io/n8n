@@ -1,6 +1,6 @@
 # Oxlint migration blockers
 
-Last reviewed: 2026-11-11
+Last reviewed: 2026-11-12
 Oxlint version: 1.78.0
 Vize version: 0.715.0
 
@@ -78,7 +78,7 @@ Reconsider this exception only if the package removal plan changes.
 
 ## Frontend: Oxlint and Vize
 
-The frontend packages that dropped ESLint run two tools:
+The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`) do not run ESLint. They run two tools:
 
 - Oxlint lints the TypeScript files and the `<script>` blocks of each SFC, through `@n8n/oxlint-config/frontend`.
 - Native `vize lint` lints the Vue templates and the SFC structure, through `@n8n/oxlint-config/vize`. Each package passes a config file to `vize lint -c`. Vize does not read a file named `vize.config.*` as a `-c` file.
@@ -126,6 +126,8 @@ Measured with Oxlint 1.78.0 and Vize 0.715.0. ESLint enforced these rules at `er
 
 `n8n-local-rules/require-macro-variable-name` is the Oxlint port of `vue/require-macro-variable-name`. It checks the `<script setup>` block, as the original does.
 
+editor-ui test files (`*.test.ts`) keep the coverage that they had before the move, and no more. The old Oxlint pass skipped them, and the old ESLint pass turned off the rules that Oxlint ran. So rules such as `eqeqeq`, `prefer-const` and `no-floating-promises` do not run on them. The `**/*.test.ts` override in `packages/frontend/editor-ui/oxlint.config.mts` lists these rules.
+
 The parity check compares a union of rules across a package's sample files, so it cannot see a rule that still runs on some files but not on others. The `frontend/*` entries with a `rules` list record these partial gaps. The parity check does not read them.
 
 ## Node package migration
@@ -165,7 +167,6 @@ The main exceptions are:
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
 5. Migrate the remaining package-specific AST selector restrictions.
-6. Move the remaining frontend packages to Oxlint and Vize.
 
 ## Validation commands
 
