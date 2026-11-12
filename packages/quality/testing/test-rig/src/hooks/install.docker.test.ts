@@ -12,6 +12,7 @@ const images = [
 		Object.values(loadManifest()).flatMap((scenario) => [scenario.before, scenario.after]),
 	),
 ]
+	.filter((image): image is string => image !== null)
 	.filter(
 		(image) => spawnSync('docker', ['image', 'inspect', image], { stdio: 'ignore' }).status === 0,
 	)
