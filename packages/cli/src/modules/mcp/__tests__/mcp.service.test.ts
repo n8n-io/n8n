@@ -455,6 +455,7 @@ describe('McpService', () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+				'140_mcp_empty_preferences_note': 'variant',
 			});
 			const service = buildResolutionService({ postHogClient });
 
@@ -463,6 +464,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'variant',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -606,6 +608,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -625,6 +628,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);

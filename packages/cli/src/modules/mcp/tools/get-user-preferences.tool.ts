@@ -99,6 +99,7 @@ export const createGetUserPreferencesTool = (
 	aiPreferenceService: AiPreferenceService,
 	telemetry: Telemetry,
 	preferencesNoteService: McpPreferencesNoteService,
+	preferencesNoteVariant: string | undefined,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	config: {
@@ -134,10 +135,9 @@ export const createGetUserPreferencesTool = (
 				: projectId
 					? NOTHING_SAVED_FOR_PROJECT
 					: NOTHING_SAVED;
-			const noteDecision = hasPreferences
+			const note = hasPreferences
 				? undefined
-				: await preferencesNoteService.decideForEmptyResult(user);
-			const note = noteDecision?.note;
+				: await preferencesNoteService.takeNote(user, preferencesNoteVariant);
 
 			// Count, scopes and the size of the rendered text, never the text itself, which is
 			// the person's own writing. The length is what reviews the caps: the caps need a new
@@ -152,8 +152,8 @@ export const createGetUserPreferencesTool = (
 					count: items.length,
 					scopes,
 					rendered_length: renderedLength,
-					...(noteDecision && {
-						preferences_note_variant: noteDecision.variant,
+					...(!hasPreferences && {
+						preferences_note_variant: preferencesNoteVariant,
 						preferences_note_shown: note !== undefined,
 					}),
 				},

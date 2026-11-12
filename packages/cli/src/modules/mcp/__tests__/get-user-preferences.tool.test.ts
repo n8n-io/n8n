@@ -45,7 +45,7 @@ const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
 	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	const preferencesNoteService = mockInstance(McpPreferencesNoteService, {
-		decideForEmptyResult: vi.fn().mockResolvedValue({ variant: 'control' }),
+		takeNote: vi.fn().mockResolvedValue(undefined),
 	});
 	return { aiPreferenceService, telemetry, preferencesNoteService };
 };
@@ -67,6 +67,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			expect(tool.name).toBe('get_user_preferences');
@@ -80,6 +81,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			expect(tool.config.description).toBe(DESCRIPTION);
@@ -93,6 +95,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			expect(Object.keys(tool.config.inputSchema!)).toEqual(['projectId']);
@@ -109,6 +112,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			expect(tool.config.annotations).toMatchObject({
@@ -132,6 +136,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -150,6 +155,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
@@ -183,6 +189,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
@@ -198,6 +205,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -218,6 +226,7 @@ describe('get-user-preferences MCP tool', () => {
 					aiPreferenceService,
 					telemetry,
 					preferencesNoteService,
+					'control',
 				);
 
 				const result = await tool.handler({ projectId: 'p-1' });
@@ -238,6 +247,7 @@ describe('get-user-preferences MCP tool', () => {
 					aiPreferenceService,
 					telemetry,
 					preferencesNoteService,
+					'control',
 				);
 
 				const result = await tool.handler({ projectId: 'p-1' });
@@ -255,6 +265,7 @@ describe('get-user-preferences MCP tool', () => {
 					aiPreferenceService,
 					telemetry,
 					preferencesNoteService,
+					'control',
 				);
 
 				const result = await tool.handler({ projectId: 'p-9' });
@@ -327,6 +338,7 @@ describe('get-user-preferences MCP tool', () => {
 						aiPreferenceService,
 						telemetry,
 						preferencesNoteService,
+						'control',
 					);
 
 					const result = await tool.handler({});
@@ -349,20 +361,18 @@ describe('get-user-preferences MCP tool', () => {
 
 		test('appends the note to an empty result when the service gives one', async () => {
 			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
-			preferencesNoteService.decideForEmptyResult.mockResolvedValue({
-				variant: 'variant',
-				note: NOTE,
-			});
+			preferencesNoteService.takeNote.mockResolvedValue(NOTE);
 			const tool = createGetUserPreferencesTool(
 				user,
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'variant',
 			);
 
 			const result = await tool.handler({});
 
-			expect(preferencesNoteService.decideForEmptyResult).toHaveBeenCalledWith(user);
+			expect(preferencesNoteService.takeNote).toHaveBeenCalledWith(user, 'variant');
 			expect(result.content).toEqual([{ type: 'text', text: `${NOTHING_SAVED}\n\n${NOTE}` }]);
 			expect(result.structuredContent).toEqual({
 				hasPreferences: false,
@@ -386,6 +396,34 @@ describe('get-user-preferences MCP tool', () => {
 			);
 		});
 
+		test('records a variant read without a note as not shown', async () => {
+			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(
+				user,
+				aiPreferenceService,
+				telemetry,
+				preferencesNoteService,
+				'variant',
+			);
+
+			const result = await tool.handler({});
+
+			expect(result.content).toEqual([{ type: 'text', text: NOTHING_SAVED }]);
+			expect(result.structuredContent).not.toHaveProperty('note');
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: {
+						success: true,
+						data: expect.objectContaining({
+							preferences_note_variant: 'variant',
+							preferences_note_shown: false,
+						}),
+					},
+				}),
+			);
+		});
+
 		test('does not ask for a note when preferences are saved', async () => {
 			const { aiPreferenceService, telemetry, preferencesNoteService } = createMocks({
 				instance: [],
@@ -397,11 +435,12 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
 
-			expect(preferencesNoteService.decideForEmptyResult).not.toHaveBeenCalled();
+			expect(preferencesNoteService.takeNote).not.toHaveBeenCalled();
 			expect(result.structuredContent).not.toHaveProperty('note');
 		});
 	});
@@ -416,6 +455,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
@@ -441,6 +481,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
@@ -463,6 +504,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -494,6 +536,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -517,6 +560,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({ projectId: 'p-1' });
@@ -535,6 +579,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -552,6 +597,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -592,6 +638,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			const result = await tool.handler({});
@@ -626,6 +673,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({});
@@ -645,6 +693,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({ projectId: 'p-1' });
@@ -664,6 +713,7 @@ describe('get-user-preferences MCP tool', () => {
 				aiPreferenceService,
 				telemetry,
 				preferencesNoteService,
+				'control',
 			);
 
 			await tool.handler({ projectId: 'p-9' });
