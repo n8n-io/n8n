@@ -130,7 +130,7 @@
 	"inbox.promotionReview.approve.error.title": "Couldn't approve and merge",
 	"inbox.promotionReview.close.button": "Close review",
 	"inbox.promotionReview.close.confirm.title": "Close this promotion review?",
-	"inbox.promotionReview.close.confirm.description": "n8n closes this review and can't reopen it. The merge request stays open on GitLab.",
+	"inbox.promotionReview.close.confirm.description": "This closes the review in n8n and can't be undone. The merge request stays open on GitLab.",
 	"inbox.promotionReview.close.error.title": "Couldn't close review",
 	"_reusableBaseText": {
 		"cancel": "Cancel",

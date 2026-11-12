@@ -69,8 +69,14 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	 * Closes one review for a user. It changes a row only while the row is still on the host and
 	 * has no live approval claim, so a merge in progress is never hidden. Returns whether it closed.
 	 */
-	async closeByUser(id: string, at: Date, staleBefore: Date): Promise<boolean> {
-		const result = await this.update(
+	async closeByUser(
+		id: string,
+		at: Date,
+		staleBefore: Date,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			PromotionReview,
 			{ id, state: In(OPEN_STATES), approvedAt: Or(IsNull(), LessThan(staleBefore)) },
 			{ state: 'closed', lastStateChangeAt: at },
 		);

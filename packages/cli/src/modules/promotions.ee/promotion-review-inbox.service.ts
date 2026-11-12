@@ -190,9 +190,9 @@ export class PromotionReviewInboxService {
 	}
 
 	/**
-	 * Closes a review in n8n only. The merge request stays open on the host. The host is read
-	 * first, so a merge request that already ended is recorded and not closed over. A host that
-	 * cannot answer for good does not block the close, because that is the reason to close.
+	 * Closes the review within n8n. Reads the host first and records merged or closed states.
+	 * Allows the close when the merge request is missing, or the host configuration is invalid or
+	 * absent. Refuses transient host failures.
 	 */
 	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
 		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
@@ -223,7 +223,9 @@ export class PromotionReviewInboxService {
 		onHostStatus: (status: ClosedHostStatus) => void,
 	): Promise<InboxPromotionReviewItem> {
 		if (review.state === 'merged' || review.state === 'closed') {
-			throw new ConflictError(`This promotion review is already ${review.state}.`);
+			throw new ConflictError(
+				`This promotion review is already ${review.state}. Reload the Inbox.`,
+			);
 		}
 
 		const run = (await this.newestRuns([review])).get(review.id);
@@ -232,6 +234,8 @@ export class PromotionReviewInboxService {
 			const host = await this.readMergeRequest(review, run);
 			if (host) view = { mergeRequest: host.mergeRequest, remoteError: null };
 		} catch (error) {
+			// An unexpected error, such as an invalid GitLab response, is a bug and must not read as a host outage.
+			if (!isHostAccessError(error)) throw error;
 			view = failed(remoteErrorOf(error));
 		}
 		const { mergeRequest, remoteError } = view;
@@ -254,10 +258,12 @@ export class PromotionReviewInboxService {
 
 		const at = new Date();
 		const staleBefore = new Date(at.getTime() - APPROVAL_CLAIM_TTL_MS);
-		if (!(await this.reviewRepository.closeByUser(review.id, at, staleBefore))) {
+		if (!(await this.reviewRepository.closeByUser(review.id, at, staleBefore, {}))) {
 			const current = await this.reviewRepository.findByIdWithRelations(review.id);
 			if (current?.state === 'merged' || current?.state === 'closed') {
-				throw new ConflictError(`This promotion review is already ${current.state}.`);
+				throw new ConflictError(
+					`This promotion review is already ${current.state}. Reload the Inbox.`,
+				);
 			}
 			throw new ConflictError(
 				'Someone is approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
@@ -475,6 +481,13 @@ const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,
 	remoteError,
 });
+
+/** The errors that the GitLab client throws when it cannot read the merge request. */
+const isHostAccessError = (error: unknown) =>
+	error instanceof NotFoundError ||
+	error instanceof BadRequestError ||
+	error instanceof ServiceUnavailableError ||
+	error instanceof TooManyRequestsError;
 
 // The GitLab client throws BadRequestError for token, certificate, and URL problems,
 // and ServiceUnavailableError or TooManyRequestsError when GitLab cannot answer.

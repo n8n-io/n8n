@@ -292,7 +292,15 @@ describe('close', () => {
 		const { getByRole, getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
 
 		await userEvent.click(getByTestId('inbox-promotion-review-close'));
-		expect(within(getByRole('dialog')).getByText(/stays open on GitLab/)).toBeInTheDocument();
+		const dialog = within(getByRole('dialog'));
+		expect(dialog.getByTestId('inbox-promotion-review-close-title')).toHaveTextContent(
+			'Promote the thing',
+		);
+		expect(
+			dialog.getByText(
+				/This closes the review in n8n and can't be undone\. The merge request stays open on GitLab\./,
+			),
+		).toBeInTheDocument();
 		await userEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
 		expect(closePromotionReview).not.toHaveBeenCalled();

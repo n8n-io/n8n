@@ -792,6 +792,51 @@ describe('Promotion reviews in the Inbox', () => {
 			);
 		});
 
+		it('reports an invalid GitLab answer as an unexpected failure, not as a host outage', async () => {
+			const reviewId = await insertReview(1);
+			nock(baseUrl)
+				.matchHeader('PRIVATE-TOKEN', token)
+				.get(`/api/v4/projects/${projectId}/merge_requests/1`)
+				.reply(200, { iid: 'not a number' });
+
+			const response = await close(await createAdmin(), reviewId);
+
+			expect(response.status).toBe(500);
+			expect(response.body.message).not.toContain('Try again');
+			expect(await stateOf(reviewId)).toBe('open');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'unexpected' }),
+			);
+		});
+
+		it('keeps a review closed when a sync that read it while open writes its older state later', async () => {
+			const reviewId = await insertReview(1);
+			// The sync reads the review as open. GitLab answers slowly, then reports a new state.
+			gitlab(
+				{ 1: { state: 'opened', detailed_merge_status: 'requested_changes' } },
+				{ delayMs: 400 },
+			);
+			const admin = await createAdmin();
+			const recordHostState = vi.spyOn(reviewRepository, 'recordHostState');
+			const sync = inbox(admin, { state: 'open' });
+
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			// The user closes the review while the sync waits for GitLab.
+			const closedAt = new Date();
+			expect(await reviewRepository.closeByUser(reviewId, closedAt, new Date(0), {})).toBe(true);
+			await sync;
+
+			// The sync tried to record `changes_requested`. The database refused it.
+			expect(recordHostState).toHaveBeenCalledWith(reviewId, 'changes_requested', expect.any(Date));
+			await expect(recordHostState.mock.results[0].value).resolves.toBe(false);
+			expect(await reviewRepository.findOneByOrFail({ id: reviewId })).toMatchObject({
+				state: 'closed',
+				lastStateChangeAt: closedAt,
+			});
+			recordHostState.mockRestore();
+		});
+
 		it('closes a review that GitLab cannot find, or whose environment no longer uses GitLab', async () => {
 			const missing = await insertReview(1);
 			const withoutHost = await insertReview(2, {
