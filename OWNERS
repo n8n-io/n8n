@@ -28,7 +28,8 @@ packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/db/                                       @n8n-io/core-execution
 packages/@n8n/typeorm/                                  @n8n-io/core-execution
 packages/@n8n/blob-storage/                             @n8n-io/core-execution
-packages/@n8n/engine/                                   @n8n-io/core-execution
+packages/@n8n/engine/                                   @n8n-io/core-execution required
+packages/@n8n/node-engine-compatibility/                @n8n-io/core-execution required
 packages/@n8n/task-runner/                              @n8n-io/core-execution
 packages/@n8n/task-runner-python/                       @n8n-io/core-execution
 packages/@n8n/expression-runtime/                       @n8n-io/core-execution
@@ -100,7 +101,7 @@ packages/cli/src/task-runners/                          @n8n-io/core-execution
 packages/cli/src/binary-data/                           @n8n-io/core-execution
 packages/cli/src/eventbus/                              @n8n-io/core-execution
 packages/cli/src/events/                                @n8n-io/core-execution
-packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution
+packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution required
 packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
 packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
 packages/cli/src/active-executions.ts                   @n8n-io/core-execution
