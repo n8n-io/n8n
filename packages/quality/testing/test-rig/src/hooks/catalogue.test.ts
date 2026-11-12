@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { HookedMethod } from './catalogue';
 import { HOOKED_METHODS, olderThan } from './catalogue';
 import { FILES } from './spec';
 import { PLAYWRIGHT_DIR, SPEC_DIR } from '../cli/manifest';
@@ -9,7 +8,8 @@ import { LEADER_HOOKS } from '../multi-main';
 
 const specDir = join(PLAYWRIGHT_DIR, SPEC_DIR);
 const methodRef = /file: FILES\.(\w+),\s*target: '([^']*)',\s*method: '(\w+)'/g;
-const refOf = (ref: HookedMethod) => `${ref.file} ${ref.target}.${ref.method}`;
+const refOf = (ref: { file: string; target: string; method: string }) =>
+	`${ref.file} ${ref.target}.${ref.method}`;
 const listed = new Set(HOOKED_METHODS.map(refOf));
 
 describe('HOOKED_METHODS', () => {
