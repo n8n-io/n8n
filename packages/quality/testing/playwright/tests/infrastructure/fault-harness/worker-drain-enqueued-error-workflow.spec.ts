@@ -67,7 +67,8 @@ test(
 			const point = hook([worker], 'enqueue-before-add');
 			await s.step('armed', async () => await point.arm());
 			const hit = point.waitHit(30_000);
-			await s.step('webhook', async () => await harness.api.webhook(path));
+			const response = await s.step('webhook', async () => await harness.api.webhook(path));
+			expect(response.status, `webhook response: ${response.body}`).toBe(200);
 			const { detail } = await hit;
 			s.mark('hit', detail);
 			const errorExecutionId = String(detail.executionId);
