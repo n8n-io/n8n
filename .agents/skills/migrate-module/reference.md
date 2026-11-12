@@ -17,7 +17,7 @@ Examples come from the backend modularization PRs from September to November
 | Moved integration tests run on SQLite only | #40261 | Add `test:postgres` to the package |
 | A test depends on test order or leaks config | #42431 `data-table-package.test.ts` | Load the package in each test. Restore config in `afterEach` |
 | A test depends on an import side effect | #42955: the version was set only because another import ran first | Set the state in the test |
-| A large refactor before the move stalls | `ProjectService` (#40313 to #40316), scope access (#40511 to #40517), `OwnershipService` (#40854), `userHasScopes` (#42938) | Make the narrowest port that unblocks the module |
+| A large refactor before the move stalls | `ProjectService` (#40313 to #40316), scope access (#40511 to #40517), `OwnershipService` (#40854), `userHasScopes` (#42938) | Extract only the methods that the module needs into a separate service. Get approval before a larger refactor |
 | A low-level package gets high-level dependencies | #39907: REST error code in `@n8n/backend-common` added `express-openapi-validator` to `n8n-core` and `@n8n/db` | Put REST, express and cache code in `@n8n/backend-services` |
 | A shared file has a generic name | #39907: `http-error-classifier` mapped errors to REST responses | Name the file for its purpose (`rest-error-response`) |
 | A move makes a folder layout mandatory | #40261: a `database/` folder in the guide | Enforce the boundary with code health, not with folder names |

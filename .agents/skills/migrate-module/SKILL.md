@@ -40,12 +40,22 @@ Use the first option that applies:
 | A shared package already has it | Import it from there |
 | Only this module uses it | Move it into the module |
 | Two or more modules use it, and it has no `@/` imports | Move it to `@n8n/backend-services` |
-| The module calls one or two methods of a large cli service | Add a narrow port: a `*Proxy` in `@n8n/backend-services` that cli registers, or one small method on a shared service |
+| The module calls one or two methods of a large cli service | Follow the steps below |
 | The module only tells cli that something happened | Emit an event; a cli listener does the work |
 
-Prefer a narrow port to moving a large cli service. Moves of `ProjectService`,
-`OwnershipService` and `userHasScopes` stalled. A narrow port such as
-`ProjectScopeService.hasScopes` merged in one PR.
+When the module needs part of a large cli service, do these steps in order:
+
+1. Examine if you can extract the methods and their dependencies into a
+   separate service in `@n8n/backend-services`. Example:
+   `ProjectScopeService.hasScopes` replaced the module calls to
+   `userHasScopes` and merged in one PR.
+2. Examine if a larger refactor of the cli service is worth the cost. Tell
+   the user how many PRs it needs and which other modules it unblocks. The
+   full moves of `ProjectService`, `OwnershipService` and `userHasScopes`
+   stalled, so get approval first.
+3. As a fallback, add a `*Proxy` in
+   `@n8n/backend-services` that cli registers (for example
+   `NodeTypesProxy`).
 
 Put REST, express and cache code in `@n8n/backend-services`, not in
 `@n8n/backend-common`. `n8n-core` and `@n8n/db` depend on
