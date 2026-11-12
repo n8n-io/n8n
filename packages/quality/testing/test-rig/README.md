@@ -47,7 +47,7 @@ Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`.
 
 Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check names every hook that does not install. Log text can change between versions.
 
-The runners image follows `TEST_IMAGE_N8N` with the same tag (`n8nio/runners:<tag>`). The `image` option of `RigStack.start` changes only the n8n image, so use it only with internal runners.
+The runners image follows `TEST_IMAGE_N8N` with the same registry, organisation and tag: `ghcr.io/n8n-io/n8n:pr-1` gives `ghcr.io/n8n-io/runners:pr-1`. `TEST_IMAGE_TASK_RUNNER` overrides it. The `image` option of `RigStack.start` changes only the n8n image, so use it only with internal runners.
 
 A test with shortened timeouts shows the mechanism of a bug, not its timing in production.
 
