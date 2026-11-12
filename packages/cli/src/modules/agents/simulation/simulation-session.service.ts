@@ -48,12 +48,13 @@ export class SimulationSessionService {
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
+		// A chat that is already a test run stays one, even if the flag reads off for a moment.
 		const cached = this.sessions.get(input.testChatId);
 		if (cached) {
 			this.sessions.touch(input.testChatId);
 			return cached;
 		}
+		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
 
 		const backend = this.registry.get();
 		let world: SimulationWorld | undefined;

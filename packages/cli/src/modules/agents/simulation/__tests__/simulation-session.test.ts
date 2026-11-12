@@ -326,4 +326,35 @@ describe('SimulationSession', () => {
 		const [request] = vi.mocked(world.handleRequest).mock.calls[0];
 		expect(request.url).toBe('https://api.telegram.org/bot[REDACTED]/sendMessage');
 	});
+
+	it('sends query parameters from `qs` to the world, without secret values', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({ testChatId: 't', world });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		session
+			.instrumentation()
+			.configureToolAdditionalData?.(additionalData, { toolName: 'search', toolKind: 'node' });
+		const tool = nodeTool(
+			'search',
+			'n8n-nodes-base.slack',
+			async () =>
+				await additionalData.evalLlmMockHandler!(
+					{
+						url: '/search.messages',
+						baseURL: 'https://slack.com/api',
+						qs: { query: 'release', count: 20, api_key: 'abcdefgh1234' },
+					},
+					slackNode,
+				),
+		);
+
+		await runTool(session, tool);
+
+		const [request] = vi.mocked(world.handleRequest).mock.calls[0];
+		const url = new URL(request.url);
+		expect(url.pathname).toBe('/api/search.messages');
+		expect(url.searchParams.get('query')).toBe('release');
+		expect(url.searchParams.get('count')).toBe('20');
+		expect(url.searchParams.get('api_key')).toBe('[REDACTED]');
+	});
 });

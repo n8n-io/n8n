@@ -316,12 +316,25 @@ function blocked(reason: ToolCallReason, detail?: string): ToolCallSimulation {
 }
 
 function requestUrl(options: IHttpRequestOptions): string {
-	if (!options.baseURL) return options.url;
+	// Join like axios: a relative path is appended to `baseURL`, keeping the base path.
+	const joined =
+		options.baseURL && !/^[a-z][a-z\d+.-]*:\/\//i.test(options.url)
+			? `${options.baseURL.replace(/\/+$/, '')}/${options.url.replace(/^\/+/, '')}`
+			: options.url;
+	let url: URL;
 	try {
-		return new URL(options.url, options.baseURL).toString();
+		url = new URL(joined);
 	} catch {
-		return `${options.baseURL}${options.url}`;
+		return joined;
 	}
+	// Nodes often pass search terms, filters and ids in `qs` instead of the URL.
+	for (const [name, value] of Object.entries(options.qs ?? {})) {
+		for (const item of Array.isArray(value) ? value : [value]) {
+			if (item === undefined || item === null) continue;
+			url.searchParams.append(name, typeof item === 'object' ? JSON.stringify(item) : `${item}`);
+		}
+	}
+	return url.toString();
 }
 
 function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, string> {
