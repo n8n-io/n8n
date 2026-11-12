@@ -13,7 +13,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -25,7 +25,7 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	@Post('/')
@@ -143,6 +143,6 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
+		return await this.agentWriteLockService.getAgentWriteLock(req.params.projectId, agentId);
 	}
 }

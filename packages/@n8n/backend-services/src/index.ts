@@ -44,6 +44,11 @@ export {
 	type FavoriteResourceResolver,
 	type ResolvedFavoriteResourceType,
 } from './services/favorite-resource-resolver.registry';
+export { CollaborationState, type WriteLock } from './collaboration/collaboration.state';
+export {
+	AgentProjectLookupProxy,
+	type AgentProjectLookup,
+} from './collaboration/agent-project-lookup-proxy.service';
 export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,

@@ -11,7 +11,7 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -29,7 +29,7 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
 	skillRefs = createAgentSkillRefsService(),
 }: {
 	agentsService?: Mocked<
@@ -42,7 +42,7 @@ function makeController({
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
 	skillRefs?: ReturnType<typeof createAgentSkillRefsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
@@ -57,7 +57,7 @@ function makeController({
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
 			agentDefaultModelResolverService,
-			collaborationService,
+			agentWriteLockService,
 		),
 		agentsService,
 		agentPublishService,
@@ -409,10 +409,10 @@ describe('AgentsController agent resource', () => {
 
 describe('AgentsController.getWriteLock', () => {
 	it('passes the agent id from the route param, not the response object', async () => {
-		const collaborationService = mock<CollaborationService>();
+		const agentWriteLockService = mock<AgentWriteLockService>();
 		const lock = { clientId: 'tab-1', userId: 'user-1' };
-		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
-		const { controller } = makeController({ collaborationService });
+		agentWriteLockService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ agentWriteLockService });
 
 		// The registry calls handlers as (req, res, ...decoratedArgs).
 		const result = await controller.getWriteLock(
@@ -424,7 +424,7 @@ describe('AgentsController.getWriteLock', () => {
 			'agent-1',
 		);
 
-		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(agentWriteLockService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toEqual(lock);
 	});
 });
