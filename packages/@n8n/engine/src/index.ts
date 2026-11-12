@@ -27,6 +27,7 @@ export type {
 	CancelExecutionResponse,
 	EngineErrorResponse,
 	ExecutionSnapshot,
+	RoundDetail,
 	StepDetail,
 } from './server';
 export type {
@@ -87,9 +88,10 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig } from './graph';
+export { deriveLoops, findActionTargetPath, isBatchStepConfig } from './graph';
 export type {
 	BatchStepConfig,
+	GraphAttachment,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
@@ -128,7 +130,20 @@ export type {
 } from './queue';
 
 export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	ActionLimitError,
+	DEFAULT_MAX_ROUNDS_PER_EXECUTION,
+	DEFAULT_MAX_SPAWNED_STEPS_PER_EXECUTION,
+	InvalidActionsError,
+} from './execution';
 export type {
+	ActionContinuation,
+	ActionDeclaration,
+	ActionOutcome,
+	ActionsDeclaration,
+	ActionsResumeCause,
+	ContinuationRound,
+	SpawnedAction,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,
@@ -155,6 +170,9 @@ export type {
 	StepStatus,
 	StepStore,
 	StepView,
+	RoundView,
+	StepKind,
+	ActionLimits,
 	SeededSteps,
 	TriggerOutputs,
 	ExecutorWaitDeclaration,

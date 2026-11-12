@@ -1,9 +1,21 @@
 import { isBatchStepConfig } from '@n8n/engine';
-import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
+import type {
+	BatchStepConfig,
+	GraphAttachment,
+	GraphEdge,
+	GraphNode,
+	WorkflowGraph,
+} from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
-import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
+import {
+	getChildNodes,
+	getParentNodes,
+	isTriggerNodeType,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 
 import {
+	AI_TOOL_CONNECTION_TYPE,
 	DEFAULT_BATCH_SIZE,
 	MAIN_CONNECTION_TYPE,
 	MERGE_TYPE,
@@ -56,6 +68,13 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
  * nesting level, is through its batch node. Hence cycles with no batch node,
  * loops entered mid-body, and loops with more than one candidate entry are
  * all rejected.
+ *
+ * Sub-nodes (a chat model, a memory, a tool) connect to their root node over
+ * non-main connections. Each enabled sub-node of a kept node, recursively,
+ * becomes an `attached` node, and each of its non-main connections becomes an
+ * attachment (ADR-20261109-attach-sub-nodes-to-the-graph-outside-its-edges,
+ * decision 6). A node that has an `ai_tool` attachment may declare actions on
+ * its tools, so it gets `actionTargetKinds: ['ai_tool']`.
  */
 export interface ConvertOptions {
 	/**
@@ -74,7 +93,10 @@ export class V1WorkflowConverter {
 	): WorkflowGraph {
 		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName, options);
 		// Rooted first: a disabled node must not cut the reachable set short.
-		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
+		const { rooted, subNodeNames } =
+			trigger === undefined
+				? { rooted: workflow, subNodeNames: new Set<string>() }
+				: rootAt(workflow, trigger);
 
 		// In canvas order, top to bottom and then left to right, as v1 orders the
 		// branches it runs. Anything that reads the graph in node order sees the same order.
@@ -85,14 +107,33 @@ export class V1WorkflowConverter {
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);
 
-		const nodes = liveNodes.map((node) => this.toGraphNode(node, trigger?.id));
+		const nodes = liveNodes.map((node) =>
+			subNodeNames.has(node.name) ? this.toAttachedNode(node) : this.toGraphNode(node, trigger?.id),
+		);
 
-		let edges = this.toEdges(rooted);
-		edges = this.spliceOutDisabledNodes(edges, disabledNodeIds);
+		const connections = this.toEdgesAndAttachments(rooted, subNodeNames);
+		let edges = this.spliceOutDisabledNodes(connections.edges, disabledNodeIds);
 		edges = this.dedupeEdges(edges);
 		this.markBackEdges(nodes, edges);
 
-		return { nodes, edges };
+		const liveNodeIds = new Set(nodes.map((node) => node.id));
+		const attachments = this.dedupeAttachments(
+			connections.attachments.filter(
+				(attachment) => liveNodeIds.has(attachment.from) && liveNodeIds.has(attachment.to),
+			),
+		);
+		if (attachments.length === 0) return { nodes, edges };
+
+		const toolRootIds = new Set(
+			attachments
+				.filter((attachment) => attachment.kind === AI_TOOL_CONNECTION_TYPE)
+				.map((attachment) => attachment.to),
+		);
+		for (const node of nodes) {
+			if (toolRootIds.has(node.id)) node.actionTargetKinds = [AI_TOOL_CONNECTION_TYPE];
+		}
+
+		return { nodes, edges, attachments };
 	}
 
 	/** What counts as a trigger is a type heuristic: there is no `INodeTypes` here. */
@@ -160,6 +201,25 @@ export class V1WorkflowConverter {
 	}
 
 	/**
+	 * A sub-node runs inside its root's step or as a spawned step, never from an
+	 * edge. So its error output never routes, and `continueErrorOutput` is not
+	 * rejected here.
+	 */
+	private toAttachedNode(node: INode): GraphNode {
+		const config: V1NodeStepConfig = {
+			nodeType: node.type,
+			typeVersion: node.typeVersion,
+			parameters: node.parameters,
+			// SPIKE: a tool with onError=continueErrorOutput maps to continueOnFail=false.
+			// v1 hands any tool error back to the agent, see FINDINGS.md.
+			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
+		};
+		if (node.credentials !== undefined) config.credentials = node.credentials;
+
+		return { id: node.id, name: node.name, type: 'attached', config };
+	}
+
+	/**
 	 * chooseBranch waits for data on every input, but the engine runs a node
 	 * once any input is live. An expression-valued mode could resolve to
 	 * chooseBranch at run time (`noDataExpression` only binds the UI), so it
@@ -179,12 +239,48 @@ export class V1WorkflowConverter {
 		}
 	}
 
-	private toEdges(workflow: IWorkflowBase): GraphEdge[] {
+	private toEdgesAndAttachments(
+		workflow: IWorkflowBase,
+		subNodeNames: Set<string>,
+	): { edges: GraphEdge[]; attachments: GraphAttachment[] } {
 		const idsByName = new Map(workflow.nodes.map((node) => [node.name, node.id]));
+		const edges: GraphEdge[] = [];
+		const attachments: GraphAttachment[] = [];
 
-		return Object.entries(workflow.connections).flatMap(([sourceName, connectionsByType]) =>
-			this.toEdgesForSource(sourceName, connectionsByType, idsByName),
-		);
+		for (const [sourceName, connectionsByType] of Object.entries(workflow.connections)) {
+			if (subNodeNames.has(sourceName)) {
+				attachments.push(...this.toAttachmentsForSource(sourceName, connectionsByType, idsByName));
+			} else {
+				edges.push(...this.toEdgesForSource(sourceName, connectionsByType, idsByName));
+			}
+		}
+
+		return { edges, attachments };
+	}
+
+	/**
+	 * `rootAt` keeps only the non-main connections of a sub-node. The output
+	 * slot is not kept: a v1 sub-node has one output per connection type.
+	 */
+	private toAttachmentsForSource(
+		sourceName: string,
+		connectionsByType: INodeConnections,
+		idsByName: Map<string, string>,
+	): GraphAttachment[] {
+		const from = idsByName.get(sourceName);
+		const attachments: GraphAttachment[] = [];
+
+		for (const outputSlots of Object.values(connectionsByType)) {
+			for (const connection of outputSlots.flat()) {
+				if (connection === null) continue;
+				const to = idsByName.get(connection.node);
+				if (from === undefined || to === undefined) continue;
+
+				attachments.push({ from, to, kind: connection.type, inputIndex: connection.index });
+			}
+		}
+
+		return attachments;
 	}
 
 	/**
@@ -260,6 +356,15 @@ export class V1WorkflowConverter {
 		const byKey = new Map<string, GraphEdge>();
 		for (const edge of edges) {
 			byKey.set(`${edge.from}|${edge.to}|${edge.outputIndex}|${edge.inputIndex}`, edge);
+		}
+		return [...byKey.values()];
+	}
+
+	private dedupeAttachments(attachments: GraphAttachment[]): GraphAttachment[] {
+		const byKey = new Map<string, GraphAttachment>();
+		for (const attachment of attachments) {
+			const { from, to, kind, inputIndex } = attachment;
+			byKey.set(`${from}|${to}|${kind}|${inputIndex}`, attachment);
 		}
 		return [...byKey.values()];
 	}
@@ -413,24 +518,69 @@ export class V1WorkflowConverter {
 }
 
 /**
- * Keeps the trigger and everything it reaches.
+ * Keeps the trigger, everything it reaches, and the sub-nodes of the enabled
+ * nodes among them.
  *
  * Connections go too, not just nodes: a dropped branch's connection type is
- * still checked, and would fail a conversion it has no part in.
+ * still checked, and would fail a conversion it has no part in. A sub-node
+ * keeps only its non-main connections, since main ones lead out of reach.
  */
-function rootAt(workflow: IWorkflowBase, trigger: INode): IWorkflowBase {
+function rootAt(
+	workflow: IWorkflowBase,
+	trigger: INode,
+): { rooted: IWorkflowBase; subNodeNames: Set<string> } {
 	const reachable = new Set([
 		trigger.name,
 		...getChildNodes(workflow.connections, trigger.name, MAIN_CONNECTION_TYPE, -1),
 	]);
+	const subNodeNames = collectSubNodeNames(workflow, reachable);
+
+	const connections = Object.entries(workflow.connections).flatMap(
+		([sourceName, connectionsByType]): Array<[string, INodeConnections]> => {
+			if (reachable.has(sourceName)) return [[sourceName, connectionsByType]];
+			if (!subNodeNames.has(sourceName)) return [];
+			const { [MAIN_CONNECTION_TYPE]: _, ...nonMain } = connectionsByType;
+			return [[sourceName, nonMain]];
+		},
+	);
 
 	return {
-		...workflow,
-		nodes: workflow.nodes.filter((node) => reachable.has(node.name)),
-		connections: Object.fromEntries(
-			Object.entries(workflow.connections).filter(([sourceName]) => reachable.has(sourceName)),
-		),
+		rooted: {
+			...workflow,
+			nodes: workflow.nodes.filter(
+				(node) => reachable.has(node.name) || subNodeNames.has(node.name),
+			),
+			connections: Object.fromEntries(connections),
+		},
+		subNodeNames,
 	};
+}
+
+/**
+ * The enabled nodes that connect over a non-main connection to an enabled
+ * node of `roots`, or to another such sub-node. A disabled node cuts the
+ * chain: its own sub-nodes are not kept.
+ */
+function collectSubNodeNames(workflow: IWorkflowBase, roots: Set<string>): Set<string> {
+	const enabled = new Set(
+		workflow.nodes.filter((node) => node.disabled !== true).map((node) => node.name),
+	);
+	const byDestination = mapConnectionsByDestination(workflow.connections);
+	const subNodeNames = new Set<string>();
+	const queue = [...roots].filter((name) => enabled.has(name));
+
+	while (queue.length > 0) {
+		const name = queue.pop()!;
+		for (const parent of getParentNodes(byDestination, name, 'ALL_NON_MAIN', 1)) {
+			// SPIKE: a node the trigger reaches over main stays a v1-node, even when it
+			// also connects as a sub-node. Its non-main connection is then rejected.
+			if (!enabled.has(parent) || roots.has(parent) || subNodeNames.has(parent)) continue;
+			subNodeNames.add(parent);
+			queue.push(parent);
+		}
+	}
+
+	return subNodeNames;
 }
 
 function toBatchConfig(node: INode): BatchStepConfig {

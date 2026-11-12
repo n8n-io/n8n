@@ -1,4 +1,5 @@
 import type { StoredWorkflowGraph } from '../graph';
+import type { ActionDeclaration } from './actions.types';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
@@ -8,6 +9,7 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from './execution.types';
+import type { StepKind } from './step-store';
 
 /**
  * Timestamps come back however the store's driver reports them: the only
@@ -91,12 +93,27 @@ export interface StepView {
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;
+	/** `spawned` for a step that ran one action of a declaring step. */
+	kind?: StepKind;
+	/** For a spawned step only. */
+	declaringStepId?: string | null;
+	round?: number | null;
+	callId?: string | null;
+}
+
+/** A round of a declaring step, without its payload. */
+export interface RoundView {
+	stepId: string;
+	round: number;
+	actions: ActionDeclaration[];
 }
 
 /** An execution with its steps, read as one query so the two cannot disagree. */
 export interface ExecutionWithStepsView extends ExecutionView {
 	/** Every step of the execution, oldest first. Empty if it has run none yet. */
 	steps: StepView[];
+	/** Every round of every declaring step, by step and round. */
+	rounds?: RoundView[];
 }
 
 /**

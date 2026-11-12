@@ -5,7 +5,7 @@ import { MAX_SLOT_INDEX } from '../graph';
 
 export const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
-const stepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
+const stepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch', 'attached']);
 
 // Non-empty: lifecycle events reship both as identifiers.
 const graphNodeSchema = z.object({
@@ -13,6 +13,14 @@ const graphNodeSchema = z.object({
 	name: z.string().min(1),
 	type: stepTypeSchema,
 	config: z.unknown().optional(),
+	actionTargetKinds: z.array(z.string().min(1)).optional(),
+});
+
+const graphAttachmentSchema = z.object({
+	from: z.string().min(1),
+	to: z.string().min(1),
+	kind: z.string().min(1),
+	inputIndex: z.number().int().nonnegative().default(0),
 });
 
 const graphEdgeSchema = z.object({
@@ -29,6 +37,7 @@ const graphEdgeSchema = z.object({
 export const workflowGraphSchema = z.object({
 	nodes: z.array(graphNodeSchema),
 	edges: z.array(graphEdgeSchema),
+	attachments: z.array(graphAttachmentSchema).optional(),
 });
 
 /** Trigger output slots. Empty means "no payload": send `null` or omit instead. */

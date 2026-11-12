@@ -87,6 +87,13 @@ export class EngineRequestNotSupportedError extends UserError {
 	}
 }
 
+/** An action names a node that the graph does not have. */
+export class UnknownActionTargetError extends UnexpectedError {
+	constructor(nodeName: string) {
+		super(`An action targets the node "${nodeName}", which is not in the workflow graph.`);
+	}
+}
+
 /** A wait that engine v2 cannot end yet. */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {

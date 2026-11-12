@@ -1,4 +1,12 @@
-import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	ActionDeclaration,
+	JsonObject,
+	JsonValue,
+	SpawnedAction,
+	StepExecutionResult,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { mintApprovalCallback } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
@@ -63,8 +71,8 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 
 /** The outputs of a result, for a test that feeds one step's output into the next. */
 function outputsOf(result: StepExecutionResult): StepSlots {
-	if (result.wait || result.subExecution) {
-		throw new Error('the step declared a wait, but the test expects outputs');
+	if (result.wait || result.subExecution || result.actions) {
+		throw new Error('the step declared no outputs, but the test expects outputs');
 	}
 	return result.outputs;
 }
@@ -978,5 +986,206 @@ describe('approval callback layout', () => {
 		const parsed = parseHitlCallbackReference(mintApprovalCallback('secret', stepId, 'd'));
 
 		expect(parsed).toMatchObject({ kind: 'step', stepId, decision: 'd' });
+	});
+});
+
+describe('actions (ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps)', () => {
+	/**
+	 * Manual → Agent, with Tool attached to Agent over `ai_tool`. Built by hand,
+	 * so the test does not depend on how the converter emits attachments.
+	 */
+	function agentGraph(toolParameters: IDataObject = {}): WorkflowGraph {
+		const graph = graphWith('test.declaresToolCall', { tool: 'Tool' });
+		graph.nodes.find((node) => node.id === 'n')!.actionTargetKinds = ['ai_tool'];
+		graph.nodes.push({
+			id: 'tool',
+			name: 'Tool',
+			type: 'attached',
+			config: {
+				nodeType: 'test.fromAiTool',
+				typeVersion: 1,
+				parameters: toolParameters as JsonObject,
+				continueOnFail: false,
+			},
+		});
+		graph.attachments = [{ from: 'tool', to: 'n', kind: 'ai_tool', inputIndex: 0 }];
+		return graph;
+	}
+
+	const toolAction = (callId: string): ActionDeclaration => ({
+		targetNodeId: 'tool',
+		callId,
+		itemIndex: 0,
+		arguments: { a: 2 },
+		metadata: { type: 'ai_tool', actionMetadata: { itemIndex: 0 } },
+	});
+
+	it('turns an EngineRequest into actions with a JSON payload when the node lists action target kinds', async () => {
+		const graph = agentGraph();
+
+		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
+
+		expect(result).toEqual({
+			actions: {
+				actions: [
+					{
+						targetNodeId: 'tool',
+						callId: 'call-1',
+						itemIndex: 0,
+						arguments: { a: 2 },
+						metadata: {
+							type: 'ai_tool',
+							actionMetadata: { itemIndex: 0, at: '2026-01-01T00:00:00.000Z' },
+						},
+					},
+				],
+				payload: { previousRequests: [], iterationCount: 1 },
+			},
+		});
+	});
+
+	it('refuses an EngineRequest when the node lists no action target kinds, even with continueOnFail', async () => {
+		const graph = agentGraph();
+		const agent = graph.nodes.find((node) => node.id === 'n')!;
+		agent.actionTargetKinds = [];
+		(agent.config as { continueOnFail: boolean }).continueOnFail = true;
+
+		const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
+
+		await expect(execution).rejects.toThrow(EngineRequestNotSupportedError);
+	});
+
+	it('hands the node the payload and the action results of the last round, in declared order', async () => {
+		const graph = agentGraph();
+		const request = stepRequest(graph, 'n', items({}));
+		request.continuation = {
+			rounds: [
+				{
+					round: 0,
+					payload: { iterationCount: 1 },
+					actions: [
+						{ ...toolAction('call-0'), outcome: { status: 'completed', outputs: items({}) } },
+					],
+				},
+				{
+					round: 1,
+					payload: { iterationCount: 2 },
+					actions: [
+						{
+							...toolAction('call-1'),
+							outcome: { status: 'completed', outputs: items({ response: '4' }) },
+						},
+						{
+							...toolAction('call-2'),
+							outcome: { status: 'failed', error: { name: 'Error', message: 'tool broke' } },
+						},
+					],
+				},
+			],
+		};
+
+		const result = await testStepExecutor(graph).execute(request);
+
+		const v1Action = (id: string) => ({
+			actionType: 'ExecutionNodeAction',
+			nodeName: 'Tool',
+			input: { a: 2 },
+			type: 'ai_tool',
+			id,
+			metadata: { itemIndex: 0 },
+		});
+		expect(outputsOf(result)).toEqual([
+			[
+				{
+					json: {
+						response: {
+							metadata: { iterationCount: 2 },
+							actionResponses: [
+								{
+									action: v1Action('call-1'),
+									data: expect.objectContaining({
+										executionStatus: 'success',
+										data: { ai_tool: [[{ json: { response: '4' } }]] },
+									}),
+								},
+								{
+									action: v1Action('call-2'),
+									data: expect.objectContaining({
+										executionStatus: 'error',
+										data: { ai_tool: [[{ json: { error: 'tool broke' } }]] },
+										error: expect.objectContaining({ message: 'tool broke' }),
+									}),
+								},
+							],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('runs a spawned step on the declaring item merged with the arguments, and resolves $fromAI and paired items', async () => {
+		const graph = agentGraph({
+			value: "={{ $fromAI('a') }}",
+			triggerValue: "={{ $('Manual').item.json.who }}",
+		});
+		const declaringInputs = items({ who: 'first' }, { who: 'second' });
+		const request = stepRequest(graph, 'tool', []);
+		request.spawnedAction = {
+			declaringStepId: 'agent-step',
+			declaringNodeId: 'n',
+			round: 0,
+			action: { ...toolAction('call-1'), itemIndex: 1, arguments: { a: 'from the llm' } },
+			declaringInputs,
+			kind: 'ai_tool',
+			attachedToNodeId: 'n',
+		};
+
+		const result = await testStepExecutor(graph, { t: declaringInputs }).execute(request);
+
+		expect(outputsOf(result)).toEqual([
+			[
+				{
+					json: {
+						value: 'from the llm',
+						triggerValue: 'second',
+						input: { who: 'second', a: 'from the llm', toolCallId: 'call-1' },
+					},
+				},
+			],
+		]);
+	});
+
+	it('derives the input of a nested spawned step from the action of its declaring step', async () => {
+		const graph = agentGraph();
+		const outer: SpawnedAction = {
+			declaringStepId: 'agent-step',
+			declaringNodeId: 'n',
+			round: 0,
+			action: { ...toolAction('outer-call'), arguments: { task: 'sum' } },
+			declaringInputs: items({ who: 'first' }),
+			kind: 'ai_tool',
+			attachedToNodeId: 'n',
+		};
+		const request = stepRequest(graph, 'tool', []);
+		request.spawnedAction = {
+			...outer,
+			declaringStepId: 'agent-tool-step',
+			action: toolAction('inner-call'),
+			declaringInputs: [],
+			declaringAction: outer,
+		};
+
+		const result = await testStepExecutor(graph).execute(request);
+
+		expect(outputsOf(result)).toEqual([
+			[
+				expect.objectContaining({
+					json: expect.objectContaining({
+						input: { who: 'first', task: 'sum', a: 2, toolCallId: 'inner-call' },
+					}),
+				}),
+			],
+		]);
 	});
 });

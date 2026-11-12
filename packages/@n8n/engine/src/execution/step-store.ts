@@ -1,3 +1,5 @@
+import type { JsonValue } from '../common';
+import type { ActionDeclaration, ActionsDeclaration } from './actions.types';
 import type {
 	StepError,
 	StepKey,
@@ -26,6 +28,12 @@ export type NewStepRecord = { nodeId: string; iteration: number } & (
 );
 
 /**
+ * A graph step follows from the graph. A spawned step runs one action of a
+ * declaring step (ADR-20261109-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps).
+ */
+export type StepKind = 'graph' | 'spawned';
+
+/**
  * Type of what running and settling a step needs of its row
  */
 export interface StepRecord {
@@ -42,7 +50,42 @@ export interface StepRecord {
 	resumeCause: ResumeCause | null;
 	/** Why the step failed; absent unless it did. */
 	error?: StepError | null;
+	// SPIKE: the four fields below are optional so that the existing test
+	// fixtures stay valid. An absent `kind` means `graph`. Make them required.
+	kind?: StepKind;
+	/** For a spawned step: the step that declared its action. */
+	declaringStepId?: string | null;
+	/** For a spawned step: the round of the declaring step. */
+	round?: number | null;
+	/** For a spawned step: the call id of its action. */
+	callId?: string | null;
 }
+
+/** One round of a declaring step that ended with actions. */
+export interface RoundRecord {
+	stepId: string;
+	round: number;
+	/** In declared order. */
+	actions: ActionDeclaration[];
+	payload: JsonValue;
+}
+
+/** Per-execution caps on actions (ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps, decision 8). */
+export interface ActionLimits {
+	maxRoundsPerExecution: number;
+	maxSpawnedStepsPerExecution: number;
+}
+
+/** What `recordRound` did. */
+export type RecordRoundResult =
+	/** The round, the wait and the spawned steps are stored. `spawned` is in declared order. */
+	| { kind: 'recorded'; round: number; spawned: Array<{ id: string }> }
+	/** The step is no longer `running`: something else took it over. Nothing is stored. */
+	| { kind: 'lost' }
+	/** The execution ended, or a graph step of it failed. Nothing is stored. */
+	| { kind: 'execution-ended' }
+	/** The round would go over a cap. Nothing is stored. */
+	| { kind: 'over-cap'; limit: keyof ActionLimits; value: number };
 
 /**
  * Planning view of a step row: everything a settlement decision needs, and no
@@ -84,7 +127,7 @@ export interface StepStore {
 	 * the same node is a new row, not a duplicate. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
 	 *
-	 * Creates nothing once any step in the execution has failed (serialized with
+	 * Creates nothing once any graph step in the execution has failed (serialized with
 	 * `failStep`), so a planning insert cannot land after the failure's
 	 * cancellation sweep and strand rows `queued` forever.
 	 */
@@ -101,7 +144,7 @@ export interface StepStore {
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
 	 *
-	 * The claim also refuses once any step in the execution has failed
+	 * The claim also refuses once any graph step in the execution has failed
 	 * (serialized with `failStep`), so fail-fast holds even for a `step:ready`
 	 * published before the failure landed.
 	 *
@@ -203,7 +246,7 @@ export interface StepStore {
 	cancelPendingSteps(executionId: string): Promise<void>;
 
 	/**
-	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A
+	 * Graph step rows of the given keys within an execution, keyed by `stepKeyId`. A
 	 * key with no row yet is absent from the result — absence always means
 	 * "not planned yet", never "forgotten".
 	 *
@@ -237,7 +280,8 @@ export interface StepStore {
 	): Promise<Record<string, StepSummary>>;
 
 	/**
-	 * Every step of the execution, at every iteration.
+	 * Every graph step of the execution, at every iteration. Spawned steps are
+	 * left out: expressions cannot read the outputs of an action.
 	 *
 	 * For the v1 shim, which resolves expressions against whatever the execution
 	 * has produced so far and cannot know in advance which steps a given
@@ -245,7 +289,7 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
-	/** The steps of the given nodes, every pass of each, with their outputs. */
+	/** The graph steps of the given nodes, every pass of each, with their outputs. */
 	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
 
 	/**
@@ -256,7 +300,7 @@ export interface StepStore {
 	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
 
 	/**
-	 * How many of the execution's steps have settled (completed, failed,
+	 * How many of the execution's graph steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
 	 * for reachable nodes, and never unsettle, so comparing this against the
 	 * number of rows the execution owes answers "has everything settled?" exactly.
@@ -265,9 +309,49 @@ export interface StepStore {
 	 */
 	countSettledSteps(executionId: string): Promise<number>;
 
-	/** Whether any of the execution's steps failed. */
+	/** Whether any of the execution's graph steps failed. A failed action is data. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
 
-	/** The execution's failed steps, by node and then by pass. */
+	/** The execution's failed graph steps, by node and then by pass. */
 	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
+
+	/**
+	 * Record a round that ended with actions, in one transaction: store the
+	 * round row, suspend the step (`running -> waiting` with a `{ round }`
+	 * wait) and create one queued spawned step for each action. So the
+	 * execution never shows a round without its spawned steps.
+	 *
+	 * The round number is the count of the step's earlier rounds. The caps
+	 * are counted inside the same transaction.
+	 */
+	recordRound(
+		step: Pick<StepRecord, 'id' | 'executionId' | 'iteration'>,
+		declaration: ActionsDeclaration,
+		limits: ActionLimits,
+	): Promise<RecordRoundResult>;
+
+	/** One round of a step, or `null` if it has none with that number. */
+	loadRound(stepId: string, round: number): Promise<RoundRecord | null>;
+
+	/** Every round of a step, in round order. */
+	loadRounds(stepId: string): Promise<RoundRecord[]>;
+
+	/** The spawned steps of a declaring step, of every round. */
+	loadSpawnedSteps(declaringStepId: string): Promise<StepRecord[]>;
+
+	/**
+	 * Whether every spawned step of the round has settled. Call it only after
+	 * the caller's own settlement committed, as a separate statement, so the
+	 * last action to settle always sees all the others.
+	 */
+	allActionsSettled(declaringStepId: string, round: number): Promise<boolean>;
+
+	/**
+	 * Wake a declaring step whose actions of `round` all settled
+	 * (`waiting -> queued`, resume cause `{ kind: 'actions', round }`). A
+	 * compare-and-set on `waiting` and on the round of the wait, so a late
+	 * settlement of an earlier round cannot wake a later round, and a step
+	 * that was cancelled with its execution is not woken.
+	 */
+	resumeStepForActions(stepId: string, round: number): Promise<boolean>;
 }

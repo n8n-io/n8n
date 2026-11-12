@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { StepSlots, StepStatus } from '../execution.types';
 import type { StepRecord } from '../step-store';
-import { collectSubExecutionResult } from '../sub-execution-resume';
+import { collectSubExecutionResult, terminalNodeIds } from '../sub-execution-resume';
 
 function row(
 	nodeId: string,
@@ -98,5 +98,21 @@ describe('collectSubExecutionResult', () => {
 		expect(result).toEqual([
 			{ nodeId: 'after', iteration: 0, outputs: [[{ json: { after: true } }]] },
 		]);
+	});
+});
+
+describe('terminalNodeIds', () => {
+	it('skips attached nodes, which have no edges but are not part of the flow', () => {
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'T', type: 'trigger' },
+				{ id: 'agent', name: 'Agent', type: 'v1-node' },
+				{ id: 'tool', name: 'Tool', type: 'attached' },
+			],
+			edges: [{ from: 'trigger', to: 'agent', outputIndex: 0, inputIndex: 0 }],
+			attachments: [{ from: 'tool', to: 'agent', kind: 'ai_tool', inputIndex: 0 }],
+		};
+
+		expect(terminalNodeIds(graph)).toEqual(['agent']);
 	});
 });

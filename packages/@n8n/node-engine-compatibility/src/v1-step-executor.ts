@@ -5,7 +5,7 @@ import type {
 	StepExecutionResult,
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { EngineRequest, INodeExecutionData, ISourceData } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
 	Expression,
@@ -25,8 +25,15 @@ import {
 	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from './errors';
+import { isEngineRequest, toActionsDeclaration, toEngineResponse } from './engine-actions';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import {
+	recordSpawnedRun,
+	spawnedKind,
+	toSpawnedInputItem,
+	toSpawnedSource,
+} from './spawned-action';
 import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
@@ -90,7 +97,7 @@ function toStepResult(
 }
 
 /**
- * Runs `v1-node` steps by adapting them to the v1 node runtime.
+ * Runs `v1-node` and `attached` steps by adapting them to the v1 node runtime.
  *
  * A step is executable when its type is `v1-node`, its config is a valid
  * `V1NodeStepConfig`, and the config names a registered node type with an
@@ -118,6 +125,31 @@ export class V1StepExecutor implements IStepExecutor {
 			request.node.id,
 			request.context.iteration,
 		);
+
+		// A spawned step runs one action. Its input is the declaring step's item
+		// plus the action's arguments, and it reads as a run under the node its
+		// target attaches to, as in v1.
+		const { spawnedAction } = request;
+		let source: Array<ISourceData | null> = toV1Sources(stepData.graph).get(node.id) ?? [];
+		let itemsByConnection = fromStepInputs(request.inputs);
+		if (spawnedAction) {
+			const spawnedSource = toSpawnedSource(
+				spawnedAction,
+				stepData.graph,
+				request.context.iteration,
+			);
+			source = spawnedSource;
+			itemsByConnection = [[toSpawnedInputItem(spawnedAction, stepData.graph)]];
+			node.rewireOutputLogTo = spawnedKind(spawnedAction);
+			recordSpawnedRun(
+				execution.runData,
+				node.name,
+				spawnedAction,
+				spawnedSource,
+				request.context.iteration,
+			);
+		}
+
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
 		const additionalData = await this.deps.additionalDataFactory(
@@ -129,10 +161,10 @@ export class V1StepExecutor implements IStepExecutor {
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source,
 			additionalData,
 			stepContext: request.context,
-			itemsByConnection: fromStepInputs(request.inputs),
+			itemsByConnection,
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
 			subExecutionResume: request.resume,
@@ -140,10 +172,17 @@ export class V1StepExecutor implements IStepExecutor {
 				stepBoundResumeToken: this.deps.stepBoundResumeToken,
 				approvalCallback: this.deps.approvalCallback,
 			},
+			subNodeExecutionResults: request.continuation
+				? toEngineResponse(request.continuation, stepData.graph)
+				: undefined,
 		});
 
+		const declaresActions = (request.node.actionTargetKinds?.length ?? 0) > 0;
 		return await workflow.expression.withIsolate(async () => {
-			const nodeResult = await this.runNode({ nodeType, context });
+			const nodeResult = await this.runNode({ nodeType, context, declaresActions });
+			if (isEngineRequest(nodeResult)) {
+				return { actions: toActionsDeclaration(nodeResult, stepData.graph) };
+			}
 			return toStepResult(context, nodeResult);
 		});
 	}
@@ -157,7 +196,8 @@ export class V1StepExecutor implements IStepExecutor {
 	}
 
 	private validateStepConfig({ type, name, config }: GraphNode): V1NodeStepConfig {
-		if (type !== 'v1-node') throw new UnsupportedStepTypeError(type);
+		// An attached node runs as a v1 node when an action targets it.
+		if (type !== 'v1-node' && type !== 'attached') throw new UnsupportedStepTypeError(type);
 		if (!isV1NodeStepConfig(config)) throw new MalformedStepConfigError(name);
 
 		return config;
@@ -184,14 +224,20 @@ export class V1StepExecutor implements IStepExecutor {
 	 *
 	 * Cleanup errors propagate only when the node itself succeeded. A node
 	 * failure with `continueOnFail` passes the input items through as output.
-	 * A null result yields no output.
+	 * A null result yields no output. An `EngineRequest` passes through only for
+	 * a node that may declare actions; continueOnFail does not hide a refusal.
 	 */
-	private async runNode({ nodeType, context }: RunNodeParams): Promise<INodeExecutionData[][]> {
+	private async runNode({
+		nodeType,
+		context,
+		declaresActions,
+	}: RunNodeParams): Promise<INodeExecutionData[][] | EngineRequest> {
+		const response = context.subNodeExecutionResults;
 		let result: NodeRunResult;
 		try {
 			const value = isNodeClassInstance(nodeType)
-				? await nodeType.execute(context)
-				: await nodeType.execute.call(context);
+				? await nodeType.execute(context, response)
+				: await nodeType.execute.call(context, response);
 			result = { ok: true, value };
 		} catch (error) {
 			result = { ok: false, error };
@@ -225,6 +271,8 @@ export class V1StepExecutor implements IStepExecutor {
 			// The node failed, so do not start a sub-execution it may have declared
 			// before failing. This holds for continueOnFail too.
 			context.subWorkflowCalls.declaration = undefined;
+			// SPIKE: v1 turns the error of a tool with continueOnFail into an
+			// `{ error }` item. Here the tool passes its merged input through.
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}
@@ -232,6 +280,8 @@ export class V1StepExecutor implements IStepExecutor {
 		if (result.value === null || result.value === undefined) return [];
 
 		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
+
+		if (declaresActions && isEngineRequest(result.value)) return result.value;
 
 		throw new EngineRequestNotSupportedError(context.getNode().type);
 	}

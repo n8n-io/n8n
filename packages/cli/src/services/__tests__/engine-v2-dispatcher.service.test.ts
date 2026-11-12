@@ -734,6 +734,31 @@ describe('EngineV2Dispatcher', () => {
 				]);
 			});
 
+			it('never seeds a sub-node, even when the plan names one', async () => {
+				const tool = node('tool-id', 'Calculator', '@n8n/n8n-nodes-langchain.toolCalculator');
+				const base = workflow();
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					workflow: {
+						...base,
+						nodes: [...base.nodes, tool],
+						connections: {
+							...base.connections,
+							[tool.name]: { ai_tool: [[{ node: SET_NODE.name, type: 'ai_tool', index: 0 }]] },
+						},
+					},
+					seeded: [...plan.seeded, { nodeId: tool.id, outputs: [[{ json: { pinned: true } }]] }],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				const request = proxy.startExecution.mock.calls[0][0];
+				expect(request.graph.nodes.find(({ id }) => id === tool.id)?.type).toBe('attached');
+				expect(Object.keys(request.seededSteps ?? {})).toEqual([SET_NODE.id]);
+			});
+
 			it('sends no seeded steps for an unplanned run', async () => {
 				manualRunPlanner.applies.mockReturnValue(false);
 

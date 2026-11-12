@@ -7,6 +7,7 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
+import type { ActionDeclaration } from '../execution/actions.types';
 import type { ExecutionListFilter, ExecutionListQuery } from '../execution/execution-view-store';
 import type { StoredWorkflowGraph } from '../graph';
 
@@ -33,7 +34,7 @@ export interface CancelExecutionResponse {
 /** `T` without its `K` fields. */
 type Without<T, K extends keyof T> = Omit<T, K>;
 
-export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps'>;
+export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps' | 'rounds'>;
 
 export interface SearchExecutionsResponse {
 	items: ExecutionListItem[];
@@ -70,6 +71,8 @@ export interface ExecutionSnapshot {
 	finishedAt: string | null;
 	/** Only set when the request asked for steps. Oldest first. */
 	steps?: StepDetail[];
+	/** Only set when the request asked for steps. By step and round. */
+	rounds?: RoundDetail[];
 }
 
 /**
@@ -88,6 +91,19 @@ export interface StepDetail {
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;
+	/** `spawned` for a step that ran one action of a declaring step. Absent from older engines. */
+	kind?: 'graph' | 'spawned';
+	/** For a spawned step only. */
+	declaringStepId?: string | null;
+	round?: number | null;
+	callId?: string | null;
+}
+
+/** A round of a declaring step, without its payload. */
+export interface RoundDetail {
+	stepId: string;
+	round: number;
+	actions: ActionDeclaration[];
 }
 
 /**

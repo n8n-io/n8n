@@ -1,4 +1,4 @@
-import type { StepDetail, StepStatus, WorkflowGraph } from '@n8n/engine';
+import type { RoundDetail, StepDetail, StepStatus, WorkflowGraph } from '@n8n/engine';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
@@ -360,6 +360,230 @@ describe('toV1RunExecutionData', () => {
 			for (const run of data.resultData.runData.Loop) {
 				expect(run.source).toEqual([{ previousNode: 'Trigger', previousNodeOutput: 0 }]);
 			}
+		});
+	});
+
+	describe('agent actions', () => {
+		// Trigger ──► Agent ──► Tail. Calculator and Math Agent attach to Agent
+		// as tools; Sub Calculator attaches to Math Agent.
+		const agentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'a', name: 'Agent', type: 'v1-node', actionTargetKinds: ['ai_tool'] },
+				{ id: 'x', name: 'Tail', type: 'v1-node' },
+				{ id: 'c', name: 'Calculator', type: 'attached' },
+				{ id: 'm', name: 'Math Agent', type: 'attached', actionTargetKinds: ['ai_tool'] },
+				{ id: 'mc', name: 'Sub Calculator', type: 'attached' },
+			],
+			edges: [
+				{ from: 't', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'x', outputIndex: 0, inputIndex: 0 },
+			],
+			attachments: [
+				{ from: 'c', to: 'a', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'm', to: 'a', kind: 'ai_tool', inputIndex: 0 },
+				{ from: 'mc', to: 'm', kind: 'ai_tool', inputIndex: 0 },
+			],
+		};
+
+		const agent = (overrides: Partial<StepDetail> = {}) =>
+			step({ id: 'agent', nodeId: 'a', outputs: [[{ json: { output: 'done' } }]], ...overrides });
+
+		const toolCall = (
+			id: string,
+			callId: string,
+			overrides: Partial<StepDetail> = {},
+		): StepDetail =>
+			step({
+				id,
+				nodeId: 'c',
+				outputs: [[{ json: { response: callId } }]],
+				kind: 'spawned',
+				declaringStepId: 'agent',
+				round: 0,
+				callId,
+				...overrides,
+			});
+
+		const round = (
+			stepId: string,
+			roundIndex: number,
+			calls: Array<{ callId: string; targetNodeId: string; input: string }>,
+		): RoundDetail => ({
+			stepId,
+			round: roundIndex,
+			actions: calls.map(({ callId, targetNodeId, input }) => ({
+				callId,
+				targetNodeId,
+				itemIndex: 0,
+				arguments: { input },
+				metadata: { type: 'ai_tool' },
+			})),
+		});
+
+		it('reports each tool call as its own run under `ai_tool`, with the arguments as input', () => {
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[step(), agent(), toolCall('s-1', 'call-1')],
+				undefined,
+				[round('agent', 0, [{ callId: 'call-1', targetNodeId: 'c', input: '2+3' }])],
+			);
+
+			expect(data.resultData.runData.Calculator).toEqual([
+				expect.objectContaining({
+					executionStatus: 'success',
+					data: { ai_tool: [[{ json: { response: 'call-1' } }]] },
+					inputOverride: { ai_tool: [[{ json: { input: '2+3' } }]] },
+					source: [{ previousNode: 'Agent', previousNodeOutput: 0, previousNodeRun: 0 }],
+				}),
+			]);
+			expect(data.resultData.runData.Agent).toHaveLength(1);
+		});
+
+		it('numbers the runs of a tool by round, then by the order the round declared the calls in', () => {
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[
+					step(),
+					agent(),
+					// The data plane lists calls of one round in no declared order.
+					toolCall('s-2', 'call-2'),
+					toolCall('s-1', 'call-1'),
+					toolCall('s-3', 'call-3', { round: 1 }),
+				],
+				undefined,
+				[
+					round('agent', 0, [
+						{ callId: 'call-1', targetNodeId: 'c', input: '1' },
+						{ callId: 'call-2', targetNodeId: 'c', input: '2' },
+					]),
+					round('agent', 1, [{ callId: 'call-3', targetNodeId: 'c', input: '3' }]),
+				],
+			);
+
+			const inputs = data.resultData.runData.Calculator.map(
+				(run) => run.inputOverride?.ai_tool?.[0]?.[0]?.json.input,
+			);
+			expect(inputs).toEqual(['1', '2', '3']);
+		});
+
+		it('points a tool call at the iteration of its declaring step', () => {
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[agent({ iteration: 1 }), toolCall('s-1', 'call-1')],
+				undefined,
+				[round('agent', 0, [{ callId: 'call-1', targetNodeId: 'c', input: '1' }])],
+			);
+
+			expect(data.resultData.runData.Calculator[0].source).toEqual([
+				{ previousNode: 'Agent', previousNodeOutput: 0, previousNodeRun: 1 },
+			]);
+		});
+
+		it('points a nested tool call at the run of the agent tool that declared it', () => {
+			const subCall = (id: string, declaringStepId: string, callId: string) =>
+				step({
+					id,
+					nodeId: 'mc',
+					kind: 'spawned',
+					declaringStepId,
+					round: 0,
+					callId,
+				});
+
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[
+					step(),
+					agent(),
+					toolCall('m-2', 'call-m2', { nodeId: 'm' }),
+					toolCall('m-1', 'call-m1', { nodeId: 'm' }),
+					subCall('mc-1', 'm-1', 'call-mc1'),
+					subCall('mc-2', 'm-2', 'call-mc2'),
+				],
+				undefined,
+				[
+					round('agent', 0, [
+						{ callId: 'call-m1', targetNodeId: 'm', input: 'first' },
+						{ callId: 'call-m2', targetNodeId: 'm', input: 'second' },
+					]),
+					round('m-1', 0, [{ callId: 'call-mc1', targetNodeId: 'mc', input: '2+3' }]),
+					round('m-2', 0, [{ callId: 'call-mc2', targetNodeId: 'mc', input: '7*6' }]),
+				],
+			);
+
+			const { runData } = data.resultData;
+			expect(runData['Math Agent'].map((run) => run.source)).toEqual([
+				[{ previousNode: 'Agent', previousNodeOutput: 0, previousNodeRun: 0 }],
+				[{ previousNode: 'Agent', previousNodeOutput: 0, previousNodeRun: 0 }],
+			]);
+			expect(
+				runData['Sub Calculator'].map((run) => [
+					run.inputOverride?.ai_tool?.[0]?.[0]?.json.input,
+					run.source[0]?.previousNodeRun,
+				]),
+			).toEqual([
+				['2+3', 0],
+				['7*6', 1],
+			]);
+		});
+
+		it('points a gated tool call at the node it attaches to on the action path', () => {
+			const gated: WorkflowGraph = {
+				...agentGraph,
+				nodes: [
+					...agentGraph.nodes,
+					{ id: 'g', name: 'Approval', type: 'attached', actionTargetKinds: ['ai_tool'] },
+				],
+				attachments: [
+					{ from: 'g', to: 'a', kind: 'ai_tool', inputIndex: 0 },
+					{ from: 'c', to: 'g', kind: 'ai_tool', inputIndex: 0 },
+				],
+			};
+
+			const data = toV1RunExecutionData(gated, [agent(), toolCall('s-1', 'call-1')], undefined, [
+				round('agent', 0, [{ callId: 'call-1', targetNodeId: 'c', input: '1' }]),
+			]);
+
+			expect(data.resultData.runData.Calculator[0].source[0]?.previousNode).toBe('Approval');
+		});
+
+		it('reports a declaring step that waits on its round as running', () => {
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[
+					agent({ status: 'waiting', outputs: null }),
+					toolCall('s-1', 'call-1', { status: 'running' }),
+				],
+				undefined,
+				[round('agent', 0, [{ callId: 'call-1', targetNodeId: 'c', input: '1' }])],
+			);
+
+			expect(data.resultData.runData.Agent[0].executionStatus).toBe('running');
+			expect(data.resultData.runData.Calculator[0].executionStatus).toBe('running');
+		});
+
+		it('takes the last node executed and the execution error from graph steps only', () => {
+			const data = toV1RunExecutionData(
+				agentGraph,
+				[
+					step(),
+					agent({ updatedAt: '2026-08-25T10:00:01.000Z' }),
+					// Settles after the agent; a failed action is data for the agent.
+					toolCall('s-1', 'call-1', {
+						status: 'failed',
+						outputs: null,
+						error: { name: 'NodeOperationError', message: 'Tool broke' },
+						updatedAt: '2026-08-25T10:00:09.000Z',
+					}),
+				],
+				undefined,
+				[round('agent', 0, [{ callId: 'call-1', targetNodeId: 'c', input: '1' }])],
+			);
+
+			expect(data.resultData.runData.Calculator[0].error).toMatchObject({ message: 'Tool broke' });
+			expect(data.resultData.error).toBeUndefined();
+			expect(data.resultData.lastNodeExecuted).toBe('Agent');
 		});
 	});
 });

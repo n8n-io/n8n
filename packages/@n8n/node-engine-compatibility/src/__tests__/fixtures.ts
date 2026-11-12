@@ -7,6 +7,8 @@ import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type {
 	CloseFunction,
+	EngineRequest,
+	EngineResponse,
 	IConnections,
 	IDataObject,
 	INodeCredentials,
@@ -207,6 +209,77 @@ class ReturnsEngineRequest extends Node {
 			actions: [],
 			metadata: {},
 		} as unknown as INodeExecutionData[][]);
+	}
+}
+
+/**
+ * Asks for one tool call on its first run, as Agent V3 does with an
+ * `EngineRequest`. When it runs again, it returns the `EngineResponse` it got,
+ * so a test can read what the shim handed it.
+ */
+class DeclaresToolCall extends Node {
+	description = {
+		displayName: 'Declares Tool Call',
+		name: 'declaresToolCall',
+		group: ['transform'],
+		version: 1,
+		description: 'Requests a tool call, then echoes the response',
+		defaults: { name: 'Declares Tool Call' },
+		inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [{ displayName: 'Tool', name: 'tool', type: 'string', default: 'Tool' }],
+	} as unknown as INodeTypeDescription;
+
+	async execute(
+		context: IExecuteFunctions,
+		response?: EngineResponse,
+	): Promise<INodeExecutionData[][] | EngineRequest> {
+		if (response) {
+			return [[{ json: { response: response as unknown as IDataObject } }]];
+		}
+		return await Promise.resolve({
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: context.getNodeParameter('tool', 0) as string,
+					input: { a: 2 },
+					type: NodeConnectionTypes.AiTool,
+					id: 'call-1',
+					metadata: { itemIndex: 0, at: new Date('2026-01-01T00:00:00.000Z') },
+				},
+			],
+			metadata: { previousRequests: [], iterationCount: 1 },
+		});
+	}
+}
+
+/** A tool whose parameters the LLM fills: it returns what `$fromAI` and its input resolve to. */
+class FromAiTool implements INodeType {
+	description = {
+		displayName: 'From AI Tool',
+		name: 'fromAiTool',
+		group: ['transform'],
+		version: 1,
+		description: 'Resolves $fromAI parameters',
+		defaults: { name: 'From AI Tool' },
+		inputs: [],
+		outputs: [NodeConnectionTypes.AiTool],
+		properties: [
+			{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+			{ displayName: 'Trigger Value', name: 'triggerValue', type: 'string', default: '' },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([
+			this.getInputData().map((item, i) => ({
+				json: {
+					value: this.getNodeParameter('value', i) as string,
+					triggerValue: this.getNodeParameter('triggerValue', i) as string,
+					input: item.json,
+				},
+			})),
+		]);
 	}
 }
 
@@ -459,6 +532,8 @@ const registry = new Map<string, INodeType>([
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
+	['test.declaresToolCall', new DeclaresToolCall() as unknown as INodeType],
+	['test.fromAiTool', new FromAiTool()],
 	['test.waitsUntil', new WaitsUntil()],
 	// The shim serves `executeWorkflow` for the Execute Sub-workflow node only, so the
 	// fixtures that call it stand in for that node by its type.

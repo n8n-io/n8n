@@ -3690,6 +3690,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/n8n-nodes-langchain':
+        specifier: workspace:*
+        version: link:../nodes-langchain
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config

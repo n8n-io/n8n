@@ -1,5 +1,5 @@
 import { Container, Service } from '@n8n/di';
-import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
+import type { SeededSteps, StartExecutionRequest, WorkflowGraph } from '@n8n/engine';
 import {
 	ConflictError,
 	NotFoundError,
@@ -246,7 +246,7 @@ export class EngineV2Dispatcher {
 			pinData: this.resolvePinData(data),
 		});
 		// One pass per node: a planned run seeds nothing inside a loop yet.
-		const seededSteps = await this.toSeededSteps(plan);
+		const seededSteps = await this.toSeededSteps(plan, payload.graph);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
@@ -427,12 +427,23 @@ export class EngineV2Dispatcher {
 		return withoutNullSlots(main);
 	}
 
-	private async toSeededSteps(plan: ManualRunPlan | undefined): Promise<SeededSteps | undefined> {
+	private async toSeededSteps(
+		plan: ManualRunPlan | undefined,
+		graph: WorkflowGraph,
+	): Promise<SeededSteps | undefined> {
 		if (!plan) return undefined;
 		// Lazily imported, as in `toEngineWorkflowPayload`.
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		// The engine never seeds a sub-node: it rejects a seeded step it cannot reach over edges.
+		// SPIKE: pinned data on a sub-node is ignored and the sub-node runs. v1 uses the
+		// pinned output of a tool. See FINDINGS.md.
+		const attachedIds = new Set(
+			graph.nodes.filter((node) => node.type === 'attached').map((node) => node.id),
+		);
 		return Object.fromEntries(
-			plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
+			plan.seeded
+				.filter(({ nodeId }) => !attachedIds.has(nodeId))
+				.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
 		);
 	}
 }

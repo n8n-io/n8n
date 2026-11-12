@@ -3,11 +3,11 @@ import { Service } from '@n8n/di';
 import type { LifecycleEvent } from '@n8n/engine';
 import { fromStepInputs } from '@n8n/node-engine-compatibility';
 import type { ExecutionStatus, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, WorkflowOperationError } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
-import type { EngineV2PushSession } from '@/services/engine-v2-push-session';
+import type { EngineV2PushSession, EngineV2RunPlacement } from '@/services/engine-v2-push-session';
 import { EngineV2StepRun } from '@/services/engine-v2-push-session';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 
@@ -116,9 +116,7 @@ export class EngineLifecycleEventPushRelay {
 		}
 		if (known) return;
 
-		const run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
-		session.steps.set(update.stepId, run);
-
+		const run = this.newRun(update, session);
 		this.sendNodeExecuteBefore(update.executionId, update.nodeName, run, session);
 	}
 
@@ -163,11 +161,53 @@ export class EngineLifecycleEventPushRelay {
 
 	/** The run `step:started` opened, or a new one so a lost start loses nothing else. */
 	private runFor(update: StepUpdate, session: EngineV2PushSession): EngineV2StepRun {
-		const run =
-			session.steps.get(update.stepId) ??
-			new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
+		return session.steps.get(update.stepId) ?? this.newRun(update, session);
+	}
+
+	private newRun(update: StepUpdate, session: EngineV2PushSession): EngineV2StepRun {
+		const run = new EngineV2StepRun(
+			session.nextExecutionIndex++,
+			Date.parse(update.at),
+			this.placementOf(update, session),
+		);
 		session.steps.set(update.stepId, run);
 		return run;
+	}
+
+	/**
+	 * A graph step is run `iteration` of its node. A spawned step (one tool
+	 * call) is the next run of its node, under the run of the step that declared
+	 * it, as in v1.
+	 *
+	 * SPIKE: the event has no attachment kind, action arguments or gate node.
+	 * So a tool call is always `ai_tool`, has no `inputOverride`, and sits under
+	 * the declaring node also when a gate (HITL) is between them. The read after
+	 * the run ends (`toV1RunExecutionData`) reports all three.
+	 */
+	private placementOf(update: StepUpdate, session: EngineV2PushSession): EngineV2RunPlacement {
+		const { nodeName, declaringStepId } = update;
+		if (declaringStepId === undefined) {
+			return { nodeName, runIndex: update.iteration, connectionType: 'main', source: [] };
+		}
+
+		const runIndex = session.spawnedRunCountByNode.get(nodeName) ?? 0;
+		session.spawnedRunCountByNode.set(nodeName, runIndex + 1);
+		const declaring = session.steps.get(declaringStepId)?.placement;
+
+		return {
+			nodeName,
+			runIndex,
+			connectionType: NodeConnectionTypes.AiTool,
+			source: declaring?.nodeName
+				? [
+						{
+							previousNode: declaring.nodeName,
+							previousNodeOutput: 0,
+							previousNodeRun: declaring.runIndex,
+						},
+					]
+				: [],
+		};
 	}
 
 	private executionTimeOf(update: StepUpdate, run: EngineV2StepRun): number {
@@ -203,8 +243,12 @@ export class EngineLifecycleEventPushRelay {
 					executionId,
 					nodeName,
 					sequenceNumber: session.sequenceNumber++,
-					// No input lineage to report, so `source` is empty. See CAT-4265.
-					data: { startTime: run.startTime, executionIndex: run.executionIndex, source: [] },
+					// No input lineage for a graph step, so its `source` is empty. See CAT-4265.
+					data: {
+						startTime: run.startTime,
+						executionIndex: run.executionIndex,
+						source: run.placement.source,
+					},
 				},
 			},
 			session.pushRef,
@@ -223,14 +267,13 @@ export class EngineLifecycleEventPushRelay {
 		},
 	): void {
 		const { executionTime, executionStatus, outputs } = result;
-		// Every output slot is `main`: no other connection type exists here.
-		const data = outputs ? { main: outputs } : undefined;
+		const data = outputs ? { [run.placement.connectionType]: outputs } : undefined;
 
 		const taskData: ITaskData = {
 			startTime: run.startTime,
 			executionIndex: run.executionIndex,
-			// No input lineage to report, so `source` is empty. See CAT-4265.
-			source: [],
+			// No input lineage for a graph step, so its `source` is empty. See CAT-4265.
+			source: run.placement.source,
 			executionTime,
 			executionStatus,
 			data,

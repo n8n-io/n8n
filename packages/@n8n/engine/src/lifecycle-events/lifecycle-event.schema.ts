@@ -22,6 +22,13 @@ const stepFields = {
 	/** Loop iteration this step ran at; `0` for a node outside a loop. */
 	iteration: z.number().int().nonnegative(),
 	at: z.string().datetime(),
+	/**
+	 * Set for a spawned step only: the step that declared its action, the round
+	 * and the call id. A consumer shows the step under its declaring step.
+	 */
+	declaringStepId: z.string().min(1).optional(),
+	round: z.number().int().nonnegative().optional(),
+	callId: z.string().min(1).optional(),
 };
 
 /** The one definition of an event's shape. `LifecycleEvent` is inferred from it. */
@@ -53,7 +60,17 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
 	/** The step paused until a deadline or a resume request. It has no outcome yet. */
 	z.object({ type: z.literal('step:waiting'), ...stepFields }),
-]);
+]).superRefine((event, ctx) => {
+	if (!('stepId' in event)) return;
+	const spawnedFields = [event.declaringStepId, event.round, event.callId];
+	const setCount = spawnedFields.filter((field) => field !== undefined).length;
+	if (setCount !== 0 && setCount !== spawnedFields.length) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'A spawned step event must set declaringStepId, round and callId together',
+		});
+	}
+});
 
 /** Body of the host's lifecycle event endpoint. */
 export const lifecycleEventBatchSchema = z.object({

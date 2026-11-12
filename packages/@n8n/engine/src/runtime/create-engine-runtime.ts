@@ -20,6 +20,7 @@ import {
 	StepWorker,
 	WaitSweeper,
 } from '../execution';
+import type { ActionLimits } from '../execution';
 import {
 	BatchingLifecycleEventPublisher,
 	LifecycleEventPublisherFactory,
@@ -62,6 +63,8 @@ export interface EngineRuntimeOptions {
 	resumeSecret?: string;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
+	/** Per-execution caps on rounds and spawned steps. Defaults to `DEFAULT_ACTION_LIMITS`. */
+	actionLimits?: ActionLimits;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -91,6 +94,7 @@ export function createEngineRuntime({
 	externalDependencies,
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
+	actionLimits,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -147,12 +151,14 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
+			stepQueue,
 			dependencies,
 			lifecycleEventPublisherFactory,
 			responseSender,
 			startExecution,
 			// A deadline set after the sweeper armed would otherwise wait for its next pass.
 			() => waitSweeper.noteSuspended(),
+			actionLimits,
 		),
 	);
 

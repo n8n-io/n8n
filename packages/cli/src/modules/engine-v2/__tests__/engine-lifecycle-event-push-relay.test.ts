@@ -401,6 +401,91 @@ describe('EngineLifecycleEventPushRelay', () => {
 		});
 	});
 
+	describe('spawned steps (tool calls)', () => {
+		const agentStarted: LifecycleEvent = {
+			...stepFields,
+			type: 'step:started',
+			stepId: 'agent-step',
+			nodeName: 'AI Agent',
+			iteration: 1,
+			at: '2026-08-25T10:00:01.000Z',
+		};
+
+		const toolCall = (stepId: string, declaringStepId: string, nodeName = 'Calculator') => ({
+			...stepFields,
+			stepId,
+			nodeName,
+			declaringStepId,
+			round: 0,
+			callId: `call-${stepId}`,
+		});
+
+		const toolStarted = (stepId: string, declaringStepId = 'agent-step', nodeName?: string) =>
+			({
+				...toolCall(stepId, declaringStepId, nodeName),
+				type: 'step:started',
+				at: '2026-08-25T10:00:02.000Z',
+			}) satisfies LifecycleEvent;
+
+		const toolCompleted = (stepId: string, declaringStepId = 'agent-step', nodeName?: string) =>
+			({
+				...toolCall(stepId, declaringStepId, nodeName),
+				type: 'step:completed',
+				outputs: [[{ json: { response: '5' } }]],
+				at: '2026-08-25T10:00:03.000Z',
+			}) satisfies LifecycleEvent;
+
+		it('reports a tool call under `ai_tool`, nested under the run of its declaring step', () => {
+			register();
+
+			relay.relay([agentStarted, toolStarted('tool-1'), toolCompleted('tool-1')]);
+
+			const source = [{ previousNode: 'AI Agent', previousNodeOutput: 0, previousNodeRun: 1 }];
+			const [, toolBefore] = sentOfType('nodeExecuteBefore');
+			expect(toolBefore.data.nodeName).toBe('Calculator');
+			expect(toolBefore.data.data.source).toEqual(source);
+
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.source).toEqual(source);
+			expect(after.data.itemCountByConnectionType).toEqual({ ai_tool: [1] });
+			expect(sentOfType('nodeExecuteAfterData')[0].data.data.data).toEqual({
+				ai_tool: [[{ json: { response: '5' } }]],
+			});
+		});
+
+		it('points a nested tool call at the run of the agent tool that declared it', () => {
+			register();
+
+			relay.relay([
+				agentStarted,
+				toolStarted('math-1', 'agent-step', 'Math Agent'),
+				toolStarted('math-2', 'agent-step', 'Math Agent'),
+				toolStarted('sub-1', 'math-2', 'Sub Calculator'),
+			]);
+
+			const sources = sentOfType('nodeExecuteBefore').map((m) => m.data.data.source);
+			expect(sources.slice(1)).toEqual([
+				[{ previousNode: 'AI Agent', previousNodeOutput: 0, previousNodeRun: 1 }],
+				[{ previousNode: 'AI Agent', previousNodeOutput: 0, previousNodeRun: 1 }],
+				[{ previousNode: 'Math Agent', previousNodeOutput: 0, previousNodeRun: 1 }],
+			]);
+		});
+
+		it('sends no second nodeExecuteBefore for the declaring step', () => {
+			register();
+
+			relay.relay([
+				agentStarted,
+				toolStarted('tool-1'),
+				toolCompleted('tool-1'),
+				{ ...agentStarted, type: 'step:completed', outputs: [[]], at: '2026-08-25T10:00:04Z' },
+			]);
+
+			const names = sentOfType('nodeExecuteBefore').map((m) => m.data.nodeName);
+			expect(names).toEqual(['AI Agent', 'Calculator']);
+		});
+	});
+
 	describe('the end of an execution', () => {
 		it.each([
 			['execution:completed', 'success'],

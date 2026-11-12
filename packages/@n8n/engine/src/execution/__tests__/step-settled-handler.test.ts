@@ -135,6 +135,12 @@ function makeStepStore(
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		loadFailedSteps: vi.fn().mockResolvedValue([]),
+		recordRound: vi.fn(),
+		loadRound: vi.fn().mockResolvedValue(null),
+		loadRounds: vi.fn().mockResolvedValue([]),
+		loadSpawnedSteps: vi.fn().mockResolvedValue([]),
+		allActionsSettled: vi.fn().mockResolvedValue(false),
+		resumeStepForActions: vi.fn().mockResolvedValue(false),
 		...overrides,
 	} satisfies StepStore;
 }

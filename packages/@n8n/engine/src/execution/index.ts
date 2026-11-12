@@ -8,6 +8,15 @@ export type {
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
+	ActionContinuation,
+	ActionDeclaration,
+	ActionOutcome,
+	ActionsDeclaration,
+	ContinuationRound,
+	SpawnedAction,
+} from './actions.types';
+export type {
+	ActionsResumeCause,
 	CallerContext,
 	SubExecutionOutcome,
 	SubExecutionResult,
@@ -35,10 +44,29 @@ export type {
 	ExecutionView,
 	ExecutionWithStepsView,
 	ExecutionListFilter,
+	RoundView,
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
-export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export type {
+	ActionLimits,
+	DueStep,
+	NewStepRecord,
+	RecordRoundResult,
+	RoundRecord,
+	StepKind,
+	StepRecord,
+	StepStore,
+	StepSummary,
+} from './step-store';
+export {
+	ActionLimitError,
+	buildContinuation,
+	DEFAULT_ACTION_LIMITS,
+	DEFAULT_MAX_ROUNDS_PER_EXECUTION,
+	DEFAULT_MAX_SPAWNED_STEPS_PER_EXECUTION,
+	InvalidActionsError,
+} from './actions';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';

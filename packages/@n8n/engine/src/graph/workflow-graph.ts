@@ -4,7 +4,7 @@
  * start, immutable for the execution's lifetime.
  */
 
-export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch';
+export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch' | 'attached';
 
 /**
  * Per-step configuration. The engine persists it with the graph without
@@ -38,6 +38,29 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
+	/**
+	 * Attachment kinds this node accepts as action targets
+	 * (ADR-20261109-attach-sub-nodes-to-the-graph-outside-its-edges, decision 5).
+	 * A node with a non-empty list may declare actions; the engine fails any
+	 * other node that does. Opaque strings, compared only.
+	 */
+	actionTargetKinds?: string[];
+}
+
+/**
+ * A sub-node attached to another node, outside the edges
+ * (ADR-20261109-attach-sub-nodes-to-the-graph-outside-its-edges). No algorithm
+ * that follows edges reads it.
+ */
+export interface GraphAttachment {
+	/** The `attached` sub-node. */
+	from: string;
+	/** The node it attaches to. */
+	to: string;
+	/** The v1 connection type, for example `ai_tool`. Opaque to the engine. */
+	kind: string;
+	/** Which input of `to` of this kind the sub-node fills. */
+	inputIndex: number;
 }
 
 export interface GraphEdge {
@@ -56,6 +79,8 @@ export interface GraphEdge {
 export interface WorkflowGraph {
 	nodes: GraphNode[];
 	edges: GraphEdge[];
+	/** Absent on graphs stored before attachments existed: read as empty. */
+	attachments?: GraphAttachment[];
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 	type LifecycleEvent,
 } from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import {
 	stepKeyId,
@@ -73,11 +73,13 @@ function makeHandler(
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 	subExecutionStarter: SubExecutionStarter = makeSubExecutionStarter(),
+	stepQueue: WorkQueue<StepMessage> = makeStepQueue(),
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
 		stepStore,
 		queue,
+		stepQueue,
 		dependencies,
 		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
@@ -152,8 +154,18 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
+		recordRound: vi.fn(),
+		loadRound: vi.fn().mockResolvedValue(null),
+		loadRounds: vi.fn().mockResolvedValue([]),
+		loadSpawnedSteps: vi.fn().mockResolvedValue([]),
+		allActionsSettled: vi.fn().mockResolvedValue(false),
+		resumeStepForActions: vi.fn().mockResolvedValue(false),
 		...overrides,
 	} satisfies StepStore;
+}
+
+function makeStepQueue(): WorkQueue<StepMessage> {
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
@@ -983,6 +995,61 @@ describe('StepReadyHandler waits', () => {
 			});
 		},
 	);
+});
+
+describe('StepReadyHandler actions', () => {
+	/** trigger -> a, with `tool` attached to `a` as an action target. */
+	const agentGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'trigger', name: 'T', type: 'trigger' },
+			{ id: 'a', name: 'A', type: 'v1-node', actionTargetKinds: ['ai_tool'] },
+			{ id: 'tool', name: 'Tool', type: 'attached' },
+		],
+		edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
+		attachments: [{ from: 'tool', to: 'a', kind: 'ai_tool', inputIndex: 0 }],
+	};
+
+	it('fails the declaring step when recording its round throws', async () => {
+		const stepStore = makeStepStore(
+			{},
+			{ recordRound: vi.fn().mockRejectedValue(new Error('check constraint violated')) },
+		);
+		const queue = makeQueue();
+		const stepQueue = makeStepQueue();
+		const handler = makeHandler(
+			makeExecutionStore({ graph: agentGraph }),
+			stepStore,
+			queue,
+			{
+				v1StepExecutor: makeExecutor({
+					actions: {
+						actions: [
+							{ targetNodeId: 'tool', callId: 'call-1', itemIndex: 0, arguments: {}, metadata: {} },
+						],
+						payload: {},
+					},
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			stepQueue,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: 'check constraint violated' }),
+		);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
 });
 
 describe('StepReadyHandler resumes', () => {

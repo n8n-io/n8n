@@ -132,6 +132,10 @@ const config: KnipConfig = {
 				'uuid',
 			],
 		}),
+		'packages/@n8n/node-engine-compatibility': pkg({
+			// An integration test loads the AI nodes from the nodes-langchain dist through createRequire.
+			ignoreDependencies: ['@n8n/n8n-nodes-langchain'],
+		}),
 		'packages/@n8n/ai-workflow-builder.ee': pkg({
 			// Pinned so npm installs of the published package resolve one langgraph version.
 			ignoreDependencies: ['@langchain/langgraph-checkpoint'],

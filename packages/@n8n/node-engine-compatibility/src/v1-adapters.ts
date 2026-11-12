@@ -35,6 +35,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	isNodeConnectionType,
 	UnexpectedError,
 	Workflow,
 	WorkflowExecuteModeList,
@@ -83,6 +84,8 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 			return [toV1BatchNode(graphNode)];
 		}
 
+		// `v1-node` and `attached` nodes both carry a V1NodeStepConfig. The root
+		// node of an `attached` node needs it in the workflow to resolve it.
 		if (!isV1NodeStepConfig(graphNode.config)) return [];
 
 		return [toV1Node(graphNode, graphNode.config)];
@@ -108,6 +111,23 @@ function toV1Connections(graph: WorkflowGraph): IConnections {
 			type: MAIN_CONNECTION_TYPE,
 			index: edge.inputIndex ?? 0,
 		});
+	}
+
+	// v1 keys a sub-node connection by the sub-node, like an edge by its source.
+	for (const attachment of graph.attachments ?? []) {
+		const fromName = namesById.get(attachment.from);
+		const toName = namesById.get(attachment.to);
+		if (fromName === undefined || toName === undefined) continue;
+		if (!isNodeConnectionType(attachment.kind)) {
+			throw new UnexpectedError(
+				`Attachment "${fromName}" -> "${toName}" has kind "${attachment.kind}", which is not a v1 connection type`,
+			);
+		}
+
+		// SPIKE: every attachment leaves output slot 0. The converter does not keep
+		// the output slot, because a v1 sub-node has one output of each type.
+		const outputs = ((connections[fromName] ??= {})[attachment.kind] ??= [[]]);
+		outputs[0]!.push({ node: toName, type: attachment.kind, index: attachment.inputIndex });
 	}
 
 	return connections;
@@ -374,6 +394,7 @@ export function toV1ExecuteContext({
 	subWorkflowCalls,
 	subExecutionResume,
 	resumeMinters,
+	subNodeExecutionResults,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
@@ -413,6 +434,8 @@ export function toV1ExecuteContext({
 		inputData,
 		executeData,
 		[],
+		undefined,
+		subNodeExecutionResults,
 	);
 	context.subWorkflowCalls = subWorkflowCalls;
 	context.subExecutionResume = subExecutionResume;

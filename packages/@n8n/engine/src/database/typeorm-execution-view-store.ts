@@ -8,6 +8,7 @@ import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	RoundView,
 	StepView,
 	ExecutionListFilter,
 	ExecutionListQuery,
@@ -15,7 +16,7 @@ import type {
 } from '../execution/execution-view-store';
 
 /** The execution row, with its steps aggregated into one column. */
-type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
+type ExecutionWithStepsRow = ExecutionView & { steps: StepView[]; rounds: RoundView[] };
 
 const hostMode = (alias: string) => `${alias}.caller_context->>'hostMode'`;
 
@@ -183,9 +184,10 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	private withSteps(
 		qb: SelectQueryBuilder<WorkflowExecution>,
 	): SelectQueryBuilder<WorkflowExecution> {
-		return qb
-			.addSelect(
-				`COALESCE(
+		return (
+			qb
+				.addSelect(
+					`COALESCE(
 					json_agg(
 						json_build_object(
 							'id', step.id,
@@ -195,15 +197,31 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 							'outputs', step.outputs,
 							'error', step.error,
 							'createdAt', step.created_at,
-							'updatedAt', step.updated_at
+							'updatedAt', step.updated_at,
+							'kind', step.kind,
+							'declaringStepId', step.declaring_step_id,
+							'round', step.round,
+							'callId', step.call_id
 						)
 						ORDER BY step.created_at ASC, step.node_id ASC, step.iteration ASC
 					) FILTER (WHERE step.id IS NOT NULL),
 					'[]'
 				)`,
-				'steps',
-			)
-			.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
-			.groupBy('execution.id');
+					'steps',
+				)
+				// Without the payload: it can be large, and no reader needs it yet.
+				.addSelect(
+					`(SELECT COALESCE(
+					json_agg(
+						json_build_object('stepId', round.step_id, 'round', round.round, 'actions', round.actions)
+						ORDER BY round.step_id, round.round
+					),
+					'[]'
+				) FROM workflow_step_round round WHERE round.execution_id = execution.id)`,
+					'rounds',
+				)
+				.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
+				.groupBy('execution.id')
+		);
 	}
 }

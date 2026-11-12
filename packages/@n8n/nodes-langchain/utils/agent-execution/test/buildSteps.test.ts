@@ -1,3 +1,4 @@
+import { AIMessage } from '@langchain/core/messages';
 import fc from 'fast-check';
 import type { EngineResponse, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -370,6 +371,54 @@ describe('buildSteps', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
 			});
+
+			const aiMessageWithToolCall = () =>
+				new AIMessage({
+					content: 'Calling calculator',
+					tool_calls: [
+						{ id: 'call_prev', name: 'calculator', args: { input: '2+3' }, type: 'tool_call' },
+					],
+				});
+
+			it.each([
+				['its serialized constructor form', () => aiMessageWithToolCall()],
+				['a plain object of its fields', () => ({ ...aiMessageWithToolCall() })],
+			])(
+				'should revive a JSON round-tripped messageLog from %s into an AIMessage with tool_calls',
+				(_, messageLike) => {
+					// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify -- the engine's JSON round trip calls `toJSON`, deepCopy does not
+					const previousRequests: unknown = JSON.parse(
+						JSON.stringify([
+							{
+								action: {
+									tool: 'calculator',
+									toolInput: { input: '2+3' },
+									log: 'Calling calculator',
+									messageLog: [messageLike()],
+									toolCallId: 'call_prev',
+									type: 'tool_call',
+								},
+								observation: '5',
+							},
+						]),
+					);
+
+					const result = buildSteps(
+						{
+							actionResponses: [],
+							metadata: { previousRequests } as RequestResponseMetadata,
+						},
+						itemIndex,
+					);
+
+					const [message] = result[0].action.messageLog ?? [];
+					expect(message).toBeInstanceOf(AIMessage);
+					expect(message.tool_calls).toEqual([
+						{ id: 'call_prev', name: 'calculator', args: { input: '2+3' }, type: 'tool_call' },
+					]);
+					expect(message.toDict().type).toBe('ai');
+				},
+			);
 		});
 
 		describe('Synthetic AI message creation', () => {

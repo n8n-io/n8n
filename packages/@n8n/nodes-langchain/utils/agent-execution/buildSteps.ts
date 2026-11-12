@@ -1,4 +1,4 @@
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, coerceMessageLikeToMessage } from '@langchain/core/messages';
 import omit from 'lodash/omit';
 import { nodeNameToToolName } from 'n8n-workflow';
 import type { EngineResponse, EngineResult, IDataObject } from 'n8n-workflow';
@@ -412,6 +412,26 @@ function buildObservation(toolData: {
 }
 
 /**
+ * Engine v2 stores the agent's metadata as JSON, so `messageLog` comes back as
+ * plain objects. Memory saves call `toDict()` on every message, so turn them
+ * back into `AIMessage` instances.
+ */
+function reviveMessageLog(step: ToolCallData): ToolCallData {
+	const { messageLog } = step.action;
+	if (!messageLog?.length) return step;
+	return {
+		...step,
+		action: {
+			...step.action,
+			messageLog: messageLog.map((message) => {
+				const revived = coerceMessageLikeToMessage(message);
+				return AIMessage.isInstance(revived) ? revived : message;
+			}),
+		},
+	};
+}
+
+/**
  * Rebuilds the agent steps from previous tool call responses.
  * This is used to continue agent execution after tool calls have been made.
  *
@@ -437,7 +457,7 @@ export function buildSteps(
 	const responses = response.actionResponses ?? [];
 
 	if (response.metadata?.previousRequests) {
-		steps.push(...response.metadata.previousRequests);
+		steps.push(...response.metadata.previousRequests.map(reviveMessageLog));
 	}
 
 	// First pass: collect all valid tool responses for this batch

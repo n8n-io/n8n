@@ -1,5 +1,8 @@
 import type {
+	ActionContinuation,
+	ActionsDeclaration,
 	CallerContext,
+	SpawnedAction,
 	SubExecutionResumeCause,
 	ExecutionMode,
 	StepSlots,
@@ -66,6 +69,16 @@ export interface StepExecutionRequest {
 	 * answers the node's sub-execution call from it instead of asking for a sub-execution again.
 	 */
 	resume?: SubExecutionResumeCause;
+	/**
+	 * Set when the step continues after its actions settled. Lists every earlier
+	 * round. `inputs` are the same as in the first round.
+	 */
+	continuation?: ActionContinuation;
+	/**
+	 * Set for a spawned step: the action it runs. `inputs` is then empty, and
+	 * the executor derives the input from the action.
+	 */
+	spawnedAction?: SpawnedAction;
 }
 
 /**
@@ -110,16 +123,26 @@ export type StepExecutionResult =
 			outputs: StepSlots;
 			wait?: never;
 			subExecution?: never;
+			actions?: never;
 	  }
 	| {
 			wait: ExecutorWaitDeclaration;
 			outputs?: never;
 			subExecution?: never;
+			actions?: never;
 	  }
 	| {
 			subExecution: SubExecutionDeclaration;
 			outputs?: never;
 			wait?: never;
+			actions?: never;
+	  }
+	| {
+			/** The engine runs each action as a spawned step and then continues this step. */
+			actions: ActionsDeclaration;
+			outputs?: never;
+			wait?: never;
+			subExecution?: never;
 	  };
 
 /**

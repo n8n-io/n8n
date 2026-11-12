@@ -1,11 +1,13 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, Not, type Repository } from '@n8n/typeorm';
 
-import { WorkflowStepExecution } from './entities';
+import { WorkflowStepExecution, WorkflowStepRound } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
+	isLiveExecutionStatus,
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type ExecutionStatus,
 	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
@@ -14,10 +16,15 @@ import {
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
+import type { ActionsDeclaration } from '../execution/actions.types';
 import {
 	StepNotFoundError,
+	type ActionLimits,
 	type DueStep,
 	type NewStepRecord,
+	type RecordRoundResult,
+	type RoundRecord,
+	type StepKind,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -49,6 +56,10 @@ type ClaimedStepRow = {
 	iteration: number;
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
+	kind: StepKind;
+	declaring_step_id: string | null;
+	round: number | null;
+	call_id: string | null;
 };
 type DueStepRow = { id: string; execution_id: string };
 
@@ -95,7 +106,7 @@ export class TypeOrmStepStore implements StepStore {
 			]);
 			const [failed] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_step_execution
-				 WHERE execution_id = $1 AND status = 'failed'
+				 WHERE execution_id = $1 AND status = 'failed' AND kind = 'graph'
 				 LIMIT 1`,
 				[executionId],
 			);
@@ -161,10 +172,22 @@ export class TypeOrmStepStore implements StepStore {
 					`NOT EXISTS (
 						SELECT 1 FROM workflow_step_execution sibling
 						WHERE sibling.execution_id = :executionId AND sibling.status = 'failed'
+							AND sibling.kind = 'graph'
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
+				.returning([
+					'id',
+					'executionId',
+					'nodeId',
+					'iteration',
+					'waitDeclaration',
+					'resumeCause',
+					'kind',
+					'declaringStepId',
+					'round',
+					'callId',
+				])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -179,6 +202,10 @@ export class TypeOrmStepStore implements StepStore {
 				outputs: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
+				kind: row.kind,
+				declaringStepId: row.declaring_step_id,
+				round: row.round,
+				callId: row.call_id,
 			};
 		});
 	}
@@ -316,6 +343,7 @@ export class TypeOrmStepStore implements StepStore {
 		const rows = await this.repo
 			.createQueryBuilder('step')
 			.where('step.execution_id = :executionId', { executionId })
+			.andWhere("step.kind = 'graph'")
 			.andWhere(fragment, parameters)
 			.getMany();
 		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
@@ -336,6 +364,7 @@ export class TypeOrmStepStore implements StepStore {
 			.addSelect('step.status', 'status')
 			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
+			.andWhere("step.kind = 'graph'")
 			.andWhere(fragment, parameters)
 			.getRawMany();
 
@@ -357,6 +386,7 @@ export class TypeOrmStepStore implements StepStore {
 			.addSelect('step.status', 'status')
 			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
+			.andWhere("step.kind = 'graph'")
 			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
 			.orderBy('step.node_id')
 			.addOrderBy('step.iteration', 'DESC')
@@ -367,7 +397,7 @@ export class TypeOrmStepStore implements StepStore {
 
 	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
 		return await this.repo.find({
-			where: { executionId },
+			where: { executionId, kind: 'graph' },
 			order: { nodeId: 'ASC', iteration: 'ASC' },
 		});
 	}
@@ -375,7 +405,7 @@ export class TypeOrmStepStore implements StepStore {
 	async loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]> {
 		if (nodeIds.length === 0) return [];
 		return await this.repo.find({
-			where: { executionId, nodeId: In(nodeIds) },
+			where: { executionId, kind: 'graph', nodeId: In(nodeIds) },
 			order: { nodeId: 'ASC', iteration: 'ASC' },
 		});
 	}
@@ -386,20 +416,165 @@ export class TypeOrmStepStore implements StepStore {
 
 	async countSettledSteps(executionId: string): Promise<number> {
 		return await this.repo.count({
-			where: { executionId, status: In([...SETTLED_STEP_STATUSES]) },
+			where: { executionId, kind: 'graph', status: In([...SETTLED_STEP_STATUSES]) },
 		});
 	}
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
-		return await this.repo.exists({ where: { executionId, status: 'failed' } });
+		return await this.repo.exists({ where: { executionId, kind: 'graph', status: 'failed' } });
 	}
 
 	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
 		return await this.repo.find({
-			where: { executionId, status: 'failed' },
+			where: { executionId, kind: 'graph', status: 'failed' },
 			order: { nodeId: 'ASC', iteration: 'ASC' },
 		});
 	}
+
+	async recordRound(
+		step: Pick<StepRecord, 'id' | 'executionId' | 'iteration'>,
+		declaration: ActionsDeclaration,
+		limits: ActionLimits,
+	): Promise<RecordRoundResult> {
+		const { id, executionId, iteration } = step;
+		// Every check comes before the first write, so a refusal returns without a
+		// rollback.
+		return await this.repo.manager.transaction(async (manager) => {
+			// As in `createSteps`: serialize with `failStep` and with the end of the
+			// execution, so no spawned row lands after the cancellation sweep.
+			// Unlike `createSteps`, this also reads the status: a waiting declaring
+			// step that lands after a cancel's sweep would never be woken or settled.
+			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
+				'SELECT status FROM workflow_execution WHERE id = $1 FOR SHARE',
+				[executionId],
+			);
+			if (!execution || !isLiveExecutionStatus(execution.status)) {
+				return { kind: 'execution-ended' };
+			}
+			const [failed] = await manager.query<Array<{ id: string }>>(
+				`SELECT id FROM workflow_step_execution
+				 WHERE execution_id = $1 AND status = 'failed' AND kind = 'graph'
+				 LIMIT 1`,
+				[executionId],
+			);
+			if (failed) return { kind: 'execution-ended' };
+
+			// SPIKE: a soft cap. The shared lock lets two rounds of one execution
+			// count at the same time, so both can pass and go over the cap by one round.
+			// SPIKE: the count reads the `actions` of every round of the execution.
+			// A counter on the execution row is cheaper for long runs.
+			const [usage] = await manager.query<Array<{ rounds: number; actions: number }>>(
+				`SELECT count(*)::int AS rounds,
+				        COALESCE(sum(jsonb_array_length(actions)), 0)::int AS actions
+				 FROM workflow_step_round WHERE execution_id = $1`,
+				[executionId],
+			);
+			const rounds = usage?.rounds ?? 0;
+			const actions = (usage?.actions ?? 0) + declaration.actions.length;
+			if (rounds + 1 > limits.maxRoundsPerExecution) {
+				return { kind: 'over-cap', limit: 'maxRoundsPerExecution', value: rounds + 1 };
+			}
+			if (actions > limits.maxSpawnedStepsPerExecution) {
+				return { kind: 'over-cap', limit: 'maxSpawnedStepsPerExecution', value: actions };
+			}
+
+			const [own] = await manager.query<Array<{ count: number }>>(
+				'SELECT count(*)::int AS count FROM workflow_step_round WHERE step_id = $1',
+				[id],
+			);
+			const round = own?.count ?? 0;
+
+			// The compare-and-set also locks the step row, so a second writer for the
+			// same step waits here and then finds it no longer `running`.
+			const suspended = await manager.update(
+				WorkflowStepExecution,
+				{ id, status: 'running' },
+				{ status: 'waiting', waitDeclaration: { round }, waitTill: null },
+			);
+			if (suspended.affected !== 1) return { kind: 'lost' };
+
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(WorkflowStepRound)
+				.values({
+					stepId: id,
+					round,
+					executionId,
+					actions: declaration.actions,
+					payload: declaration.payload,
+				})
+				.orIgnore()
+				.execute();
+
+			const rows = declaration.actions.map((action) => ({
+				id: generateId(),
+				executionId,
+				nodeId: action.targetNodeId,
+				iteration,
+				status: 'queued' as const,
+				kind: 'spawned' as const,
+				declaringStepId: id,
+				round,
+				callId: action.callId,
+			}));
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(WorkflowStepExecution)
+				.values(rows)
+				.orIgnore()
+				.execute();
+
+			return { kind: 'recorded', round, spawned: rows.map((row) => ({ id: row.id })) };
+		});
+	}
+
+	async loadRound(stepId: string, round: number): Promise<RoundRecord | null> {
+		const row = await this.rounds().findOne({ where: { stepId, round } });
+		return row ? toRoundRecord(row) : null;
+	}
+
+	async loadRounds(stepId: string): Promise<RoundRecord[]> {
+		const rows = await this.rounds().find({ where: { stepId }, order: { round: 'ASC' } });
+		return rows.map(toRoundRecord);
+	}
+
+	async loadSpawnedSteps(declaringStepId: string): Promise<StepRecord[]> {
+		return await this.repo.find({ where: { declaringStepId, kind: 'spawned' } });
+	}
+
+	async allActionsSettled(declaringStepId: string, round: number): Promise<boolean> {
+		const unsettled = await this.repo.exists({
+			where: {
+				declaringStepId,
+				round,
+				kind: 'spawned',
+				status: Not(In([...SETTLED_STEP_STATUSES])),
+			},
+		});
+		return !unsettled;
+	}
+
+	async resumeStepForActions(stepId: string, round: number): Promise<boolean> {
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({ status: 'queued', resumeCause: { kind: 'actions', round } })
+			.where({ id: stepId, status: 'waiting' })
+			.andWhere("(wait_declaration->>'round')::int = :round", { round })
+			.execute();
+		return result.affected === 1;
+	}
+
+	/** The round table, reached through the step repository's manager as `loadSeededOutputs` does. */
+	private rounds() {
+		return this.repo.manager.getRepository(WorkflowStepRound);
+	}
+}
+
+function toRoundRecord(row: WorkflowStepRound): RoundRecord {
+	return { stepId: row.stepId, round: row.round, actions: row.actions, payload: row.payload };
 }
 
 const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skipped'];
