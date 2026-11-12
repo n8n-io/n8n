@@ -58,12 +58,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:size="effectiveIconSize"
 		/>
 		<slot name="leading" />
-		<N8nText
-			v-if="$slots.default"
-			:class="[$style.label, { [$style.hasIcon]: props.leadingIcon || props.trailingIcon }]"
-			:step="effectiveTextSize"
-			bold
-		>
+		<N8nText v-if="$slots.default" :class="$style.label" :step="effectiveTextSize" bold>
 			<slot></slot>
 		</N8nText>
 		<slot name="trailing" />
@@ -108,6 +103,10 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .label {
 	@include utils.utils-ellipsis;
+	/* Chromium rounds the font ascent and descent to whole pixels. A fractional line box,
+	   such as 1.3 × 12px, then puts the baseline about 1px high. The line box of
+	   `normal` is the rounded font box, so flex centers the text exactly. */
+	line-height: normal;
 }
 
 .clickable {
@@ -239,11 +238,5 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .label + .trailingIcon {
 	margin-inline-start: calc(var(--n8n-badge--padding-inline-start) * 0.2);
-}
-
-/* At small sizes the capitals sit above the middle of the icon. A label without an icon stays put. */
-.xxsmall .hasIcon,
-.xsmall .hasIcon {
-	transform: translateY(1px);
 }
 </style>
