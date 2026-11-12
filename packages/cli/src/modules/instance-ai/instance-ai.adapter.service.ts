@@ -205,9 +205,9 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-runtime';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
 import { SkillsGate } from '@/modules/skills';
@@ -564,7 +564,9 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
 			 *  A getter for the same reason as the bypass predicate. */
-			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
+			getCredentialTestTarget?: (
+				credentialType: string,
+			) => AssistantCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
@@ -3023,7 +3025,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
-		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
+		getCredentialTestTarget?: (credentialType: string) => AssistantCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,

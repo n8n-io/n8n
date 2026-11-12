@@ -19,7 +19,10 @@ import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 /** The thread memory that the turn setup reads and the agent writes. */
 export type AssistantTurnMemory = ObservationLogObserverMemory;
 
-/** Where the connection tests of one credential type go instead of the provider. */
+/**
+ * Where the connection tests of one credential type go instead of the provider.
+ * See `InstanceAiEvalCredentialTestTargetRequest`.
+ */
 export interface AssistantCredentialTestTarget {
 	credentialType: string;
 	baseUrl: string;
