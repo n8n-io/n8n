@@ -15,8 +15,6 @@ import type {
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { z } from 'zod';
-import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import {
@@ -41,60 +39,20 @@ import {
 	resolvePublicApiRoutes,
 	resolveRouteArgs,
 	resolveSuccessStatus,
-	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
 import { toPublicApiResult } from '@/public-api/public-api-result';
+import {
+	matchesPathTemplate,
+	parsePathParam,
+	toRequestPath,
+	toEndpointPath,
+	toRouteName,
+} from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
-	const output = z.object({ [key]: schema }).safeParse(params);
-
-	if (!output.success) {
-		throw new BadRequestError(formatValidationError('params', output.error));
-	}
-
-	return output.data[key];
-}
-
-/**
- * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
- * segment matches any single segment. Any other segment must be equal.
- */
-function matchesPathTemplate(template: string, path: string): boolean {
-	const templateSegments = template.split('/');
-	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
-		'/',
-	);
-	return (
-		templateSegments.length === pathSegments.length &&
-		templateSegments.every(
-			(segment, i) =>
-				segment.startsWith(':') || segment.toLowerCase() === pathSegments[i].toLowerCase(),
-		)
-	);
-}
-
-// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
-function routePath(prefix: string, req: Request): string {
-	const path = (prefix === '/' ? '' : prefix) + req.path;
-	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-}
-
-// Leaves out the version prefix. The name then matches the path that the controller declares.
-function toRouteName(method: string, prefix: string, routeTemplate: string): string {
-	const path = (prefix === '/' ? '' : prefix) + routeTemplate;
-	const trimmedPath = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-	return `${method.toUpperCase()} ${toOpenApiPathTemplate(trimmedPath)}`;
-}
-
-function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
-	const path = `/${apiVersion}${prefix === '/' ? '' : prefix}${routeTemplate}`;
-	return path.endsWith('/') ? path.slice(0, -1) : path;
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -372,7 +330,7 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.emitInvocationOnFinish(res, {
 					userId,
-					path: routePath(prefix, req),
+					path: toRequestPath(prefix, req),
 					method: req.method,
 					route: routeName,
 					apiVersion,
