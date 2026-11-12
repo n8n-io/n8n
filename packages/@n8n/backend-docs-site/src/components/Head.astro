@@ -256,7 +256,7 @@ import Default from '@astrojs/starlight/components/Head.astro';
 
 	// After the name of each read page, the sidebar shows a tick. When the quiz of the page is
 	// also done, the tick sits in a filled circle. The mark names its meaning on hover.
-	const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>';
+	const CHECK = '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>';
 	const showMarks = () => {
 		for (const link of document.querySelectorAll<HTMLAnchorElement>('.sidebar-content a[href]')) {
 			const path = normalize(new URL(link.href).pathname);
@@ -334,7 +334,7 @@ import Default from '@astrojs/starlight/components/Head.astro';
 		retry.type = 'button';
 		retry.className = 'quiz-retry';
 		retry.innerHTML =
-			'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.77M2.75 2.75v2.5h2.5" /></svg>Clear';
+			'<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.77M2.75 2.75v2.5h2.5" /></svg>Clear';
 		head.append(verdict, retry);
 		explanation?.prepend(head);
 

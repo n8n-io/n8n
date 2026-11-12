@@ -2,8 +2,9 @@
 import logo from '../../../../frontend/@n8n/design-system/src/components/N8nLogo/logo-icon.svg?raw';
 
 // The logomark is inline so that it takes the text color of the active theme, as on docs.n8n.io.
+// The width and height keep it small when the page paints before the stylesheet applies.
 const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
-const mark = logo.replace('<svg ', '<svg aria-hidden="true" fill="currentColor" ');
+const mark = logo.replace('<svg ', '<svg aria-hidden="true" fill="currentColor" width="32" height="12.8" ');
 ---
 
 <a href={siteTitleHref} class="site-title sl-flex">
