@@ -134,6 +134,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
 const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => props.contextNode?.type,
 	credentialType: () => props.credentialType.name,
 });
 

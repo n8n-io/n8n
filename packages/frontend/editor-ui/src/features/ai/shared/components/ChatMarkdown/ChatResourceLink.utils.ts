@@ -57,24 +57,16 @@ export function decodeResourceId(value: string): string {
 	}
 }
 
-export function buildResourceUrl(
-	type: string,
-	id: string,
-	projectId: string | undefined,
-	buildAppHref?: (projectId: string, id: string) => string,
-	buildSkillHref?: (id: string) => string,
-): string {
+export function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
 	const encodedId = encodeURIComponent(id);
 	if (projectId) {
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${encodedId}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${encodedId}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${encodedId}`;
-		if (type === 'app' && buildAppHref) return buildAppHref(projectId, id);
 	}
 	if (type === 'workflow') return `/workflow/${encodedId}`;
 	if (type === 'credential') return `/home/credentials/${encodedId}`;
 	if (type === 'data-table') return '/home/datatables';
 	if (type === 'agent') return '/home/agents';
-	if (type === 'skill' && buildSkillHref) return buildSkillHref(id);
 	return '#';
 }

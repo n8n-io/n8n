@@ -32,7 +32,6 @@
     "@n8n/stores": "workspace:*",
     "@n8n/telemetry": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "element-plus": "catalog:frontend",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",

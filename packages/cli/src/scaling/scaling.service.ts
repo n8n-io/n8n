@@ -3,7 +3,12 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import {
+	HIGHEST_SHUTDOWN_PRIORITY,
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnShutdown,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -14,7 +19,6 @@ import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
-import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';

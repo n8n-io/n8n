@@ -63,6 +63,7 @@ const integrationActionSuspendSchema = z.object({
 	action: z.string(),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
+	files: z.unknown().optional(),
 });
 
 /**

@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 

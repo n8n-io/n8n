@@ -20,7 +20,12 @@ import {
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptionsDeprecated } from '@utils/descriptions';
-import { getConnectedTools, getPromptInputByType, mergeCustomHeaders } from '@utils/helpers';
+import {
+	getConnectedTools,
+	getPromptInputByType,
+	mergeCustomHeaders,
+	getRequiredApiKey,
+} from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
@@ -192,7 +197,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const timeout = options.timeout;
 
 	const client = new OpenAIClient({
-		apiKey: credentials.apiKey as string,
+		apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 		maxRetries: options.maxRetries ?? 2,
 		timeout: timeout ?? 10000,
 		baseURL,

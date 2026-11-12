@@ -1,3 +1,4 @@
+import type { InterruptibleToolContext } from '@n8n/agents';
 import type { Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -6,6 +7,7 @@ import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import type { ChatIntegrationService } from '../chat-integration.service';
+import { encodeIntegrationMessageContext } from '../integration-message-context';
 import { createIntegrationActionTool } from '../integration-tools';
 import type {
 	IntegrationMessageContext,
@@ -322,6 +324,96 @@ describe('internal integration dispatch', () => {
 			attachmentService.getReadable.mockResolvedValueOnce(null);
 			const result = await executor.execute(respondWithFile);
 			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
+		});
+
+		describe('with a card', () => {
+			const tool = createIntegrationActionTool({
+				descriptor,
+				messageContextStore: mock(),
+				actionExecutor: executor,
+				projectId: 'project-1',
+			}).build();
+			const makeCtx = (overrides: Partial<InterruptibleToolContext> = {}) =>
+				({
+					resumeData: undefined,
+					suspend: vi.fn().mockResolvedValue(undefined as never),
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource-1',
+						hostMetadata: encodeIntegrationMessageContext(makeContext()),
+					},
+					...overrides,
+				}) satisfies InterruptibleToolContext;
+			const respondWithCard = (components: unknown[]) => ({
+				action: 'respond',
+				input: { message: { card: { components } }, fileIds: ['file-1'] },
+			});
+
+			it('returns the files of a static card after the read check', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(file);
+				const ctx = makeCtx();
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'section', text: 'The report' }]),
+					ctx,
+				);
+
+				expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+				expect(result).toMatchObject({ ok: true, files: [outputFile] });
+				expect(ctx.suspend).not.toHaveBeenCalled();
+			});
+
+			it('suspends an interactive card with its files after the read check', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(file);
+				const ctx = makeCtx();
+
+				await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+				expect(ctx.suspend).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'integration_action', files: [outputFile] }),
+					expect.anything(),
+				);
+			});
+
+			it('does not suspend an interactive card with a file that the thread cannot read', async () => {
+				attachmentService.getReadable.mockResolvedValueOnce(null);
+				const ctx = makeCtx();
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(result).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
+				expect(ctx.suspend).not.toHaveBeenCalled();
+			});
+
+			it('returns the answer of the user on resume and does not send the card again', async () => {
+				attachmentService.getReadable.mockClear();
+				const ctx = makeCtx({
+					resumeData: { value: 'approve' },
+					suspendPayload: {
+						type: 'integration_action',
+						action: 'respond',
+						integrationConnectionId: 'n8n_chat',
+						files: [outputFile],
+					},
+				});
+
+				const result = await tool.handler!(
+					respondWithCard([{ type: 'button', label: 'Approve', value: 'approve' }]),
+					ctx,
+				);
+
+				expect(result).toEqual({ value: 'approve' });
+				expect(attachmentService.getReadable).not.toHaveBeenCalled();
+			});
 		});
 	});
 
