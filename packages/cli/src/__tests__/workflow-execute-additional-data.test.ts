@@ -759,11 +759,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 			});
 
-			it('marks the run as start failed when it cannot be set to running', async () => {
-				executionRepository.setRunning.mockRejectedValueOnce(new Error('database unavailable'));
-
-				await expect(runSubWorkflow(true)).resolves.toBeDefined();
-
+			const expectFinalizedAsStartFailed = async () =>
 				await vi.waitFor(() =>
 					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
 						EXECUTION_ID,
@@ -774,6 +770,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 						}),
 					),
 				);
+
+			it('marks the run as start failed when it cannot be set to running', async () => {
+				executionRepository.setRunning.mockRejectedValueOnce(new Error('database unavailable'));
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await expectFinalizedAsStartFailed();
 			});
 
 			it('marks the run as start failed when the engine throws before it starts', async () => {
@@ -783,16 +786,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await expect(runSubWorkflow(true)).resolves.toBeDefined();
 
-				await vi.waitFor(() =>
-					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
-						EXECUTION_ID,
-						expect.objectContaining({
-							data: expect.objectContaining({
-								resultData: expect.objectContaining({ failedBeforeStart: 'startFailed' }),
-							}),
-						}),
-					),
-				);
+				await expectFinalizedAsStartFailed();
 			});
 
 			it('starts the sub-workflow error workflow when the caller does not wait', async () => {

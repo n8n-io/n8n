@@ -881,9 +881,11 @@ export class WorkflowRunner {
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			// Without a job, no worker can have run a node.
-			const neverQueued =
+			const failedBeforeStart =
 				job === undefined &&
-				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId);
+				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId)
+					? 'startFailed'
+					: undefined;
 			await this.processError(
 				error,
 				new Date(),
@@ -891,7 +893,7 @@ export class WorkflowRunner {
 				executionId,
 				lifecycleHooks,
 				undefined,
-				neverQueued ? 'startFailed' : undefined,
+				failedBeforeStart,
 			);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
 			if (job) this.scalingService.popJobResult(job);

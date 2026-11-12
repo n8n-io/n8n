@@ -650,8 +650,6 @@ async function startExecution(
 		);
 
 	let hooks: ExecutionLifecycleHooks | undefined;
-	let callerAllowed = false;
-	let credentialChecksPassed = false;
 	// Why the run stopped, while no node of the sub-workflow can have run.
 	let blockedReason: ExecutionBlockedReason | undefined = 'startFailed';
 
@@ -691,7 +689,6 @@ async function startExecution(
 			options.node,
 			additionalData.userId,
 		);
-		callerAllowed = true;
 		blockedReason = 'credentialAccess';
 
 		if (isInlineSubworkflow && additionalData.userId && isUserInitiated(rootExecutionMode)) {
@@ -720,7 +717,6 @@ async function startExecution(
 			);
 			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
-		credentialChecksPassed = true;
 		blockedReason = 'startFailed';
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -822,7 +818,7 @@ async function startExecution(
 			});
 
 		try {
-			if (hooks && callerAllowed && !credentialChecksPassed) {
+			if (hooks && blockedReason === 'credentialAccess') {
 				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
 				// does for a top-level run. The save hook stores the failure and starts the error workflow.
 				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.

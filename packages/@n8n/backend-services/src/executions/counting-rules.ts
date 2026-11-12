@@ -197,14 +197,9 @@ export function isLedgerFact(row: Record<keyof LedgerFact, string>): row is Ledg
 }
 
 // The ledger stores a refused caller as `policy`.
-const ledgerBlockedBy = {
-	policy: 'policy',
-	callerPolicy: 'policy',
-	credentialAccess: 'credentialAccess',
-	invalidWorkflow: 'invalidWorkflow',
-	contextHook: 'contextHook',
-	startFailed: 'startFailed',
-} satisfies Record<ExecutionBlockedReason, Exclude<LedgerBlockedBy, 'none'>>;
+function toLedgerBlockedBy(reason: ExecutionBlockedReason): Exclude<LedgerBlockedBy, 'none'> {
+	return reason === 'callerPolicy' ? 'policy' : reason;
+}
 
 function toBlockedReason(run: CompletedRun): ExecutionBlockedReason | undefined {
 	const marker = run.data?.resultData?.failedBeforeStart;
@@ -223,7 +218,7 @@ export function toLedgerOutcome(run: CompletedRun): {
 	const isFailure = outcome === 'error' || outcome === 'crashed';
 	const reason = isFailure ? toBlockedReason(run) : undefined;
 	if (!reason) return { outcome, blockedBy: 'none' };
-	return { outcome: 'blocked', blockedBy: ledgerBlockedBy[reason] };
+	return { outcome: 'blocked', blockedBy: toLedgerBlockedBy(reason) };
 }
 
 export function toLedgerFact(run: CompletedRun, source?: WorkflowExecutionSource): LedgerFact {
