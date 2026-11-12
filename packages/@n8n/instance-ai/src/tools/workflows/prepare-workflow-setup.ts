@@ -1,5 +1,5 @@
 import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import {
 	buildSetupItemsFromAnnouncement,
