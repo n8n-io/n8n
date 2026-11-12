@@ -2,7 +2,7 @@ import { NotFoundError } from '@n8n/errors';
 import type { AgentPublishHistory } from '../entities/agent-publish-history.entity';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -17,7 +17,6 @@ import type { InstanceSettings } from 'n8n-core';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
-import type { Telemetry } from '@/telemetry';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -122,7 +121,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 	const taskService = mock<AgentTaskService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const eventService = mock<EventService>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const ctx: OperationContext = { trx: mock<Transaction>() };

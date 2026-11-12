@@ -18,8 +18,7 @@ import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -1050,7 +1049,7 @@ export const createUpdateWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,

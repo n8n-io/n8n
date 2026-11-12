@@ -24,8 +24,12 @@ import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subw
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService, WorkflowPublishedDataService, NodeTypesProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import {
+	UrlService,
+	WorkflowPublishedDataService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
@@ -90,7 +94,7 @@ describe('update-workflow MCP tool', () => {
 	let workflowService: WorkflowService;
 	let updateMock: Mock;
 	let urlService: UrlService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
@@ -140,7 +144,7 @@ describe('update-workflow MCP tool', () => {
 		urlService = mockInstance(UrlService, {
 			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		credentialsService = mockInstance(CredentialsService);
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),

@@ -5,8 +5,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentTelemetryMemoryType,
 	IAgentConfigurationTelemetryProperties,
-} from '@/interfaces';
-
+} from './agent-telemetry.types';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { toAgentDocument } from './json-config/agent-document';
 import type { AgentRunSource } from './utils/agent-published-snapshot';

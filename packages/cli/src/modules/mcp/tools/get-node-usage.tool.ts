@@ -9,11 +9,11 @@
  * is why the activity feed and the execution search both filter. Names and counts sit on the
  * visible side of that line.
  */
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -85,7 +85,7 @@ type GetNodeUsageParams = {
 export const createGetNodeUsageTool = (
 	user: User,
 	workflowDependencyQueryService: WorkflowDependencyQueryService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: GET_NODE_USAGE_TOOL_NAME,
 	config: {

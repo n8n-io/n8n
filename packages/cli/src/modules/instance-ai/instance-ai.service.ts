@@ -29,7 +29,7 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, Publisher } from '@n8n/backend-services';
+import { EventService, Publisher, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
@@ -109,7 +109,6 @@ import {
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
@@ -489,7 +488,7 @@ export class InstanceAiService {
 		private readonly observationRepo: InstanceAiObservationRepository,
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly userRepository: UserRepository,
 		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,

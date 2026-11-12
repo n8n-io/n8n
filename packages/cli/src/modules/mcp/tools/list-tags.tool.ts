@@ -1,9 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { TagService } from '@/services/tag.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -61,7 +61,7 @@ export type ListTagsResult = {
 export const createListTagsTool = (
 	user: User,
 	tagService: TagService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'list_workflow_tags',
 	config: {

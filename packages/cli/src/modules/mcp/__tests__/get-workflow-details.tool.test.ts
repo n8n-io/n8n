@@ -6,8 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { type CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { type CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -32,7 +31,7 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: vi.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
-			const telemetry = mockInstance(Telemetry, {
+			const telemetry = mockInstance(TelemetryProxy, {
 				track: vi.fn(),
 			});
 			const roleService = mockInstance(RoleService, {

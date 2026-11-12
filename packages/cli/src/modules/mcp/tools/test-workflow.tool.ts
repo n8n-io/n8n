@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -17,7 +18,6 @@ import z from 'zod';
 import type { ActiveExecutions } from '@/active-executions';
 import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -77,7 +77,7 @@ export const createTestWorkflowTool = (
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	nodeTypes: INodeTypes,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	mcpService: McpService,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({

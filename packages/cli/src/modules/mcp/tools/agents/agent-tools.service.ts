@@ -66,8 +66,12 @@ import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-cred
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService, UrlService, NodeTypesProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import {
+	ProjectScopeService,
+	UrlService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
@@ -464,7 +468,7 @@ type MutationResource = {
 @Service()
 export class McpAgentToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,

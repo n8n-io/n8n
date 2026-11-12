@@ -1,3 +1,4 @@
+import { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAbortError,
@@ -52,13 +53,11 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypesProxy } from '@n8n/backend-services';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -518,7 +517,7 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,

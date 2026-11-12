@@ -1,7 +1,6 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { Telemetry } from '@/telemetry';
 
 import { createValidateNodeTool } from '../tools/workflow-builder/validate-node.tool';
 
@@ -24,11 +23,11 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 
 describe('validate-node MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	});
 
 	const createTool = () => createValidateNodeTool(user, telemetry);

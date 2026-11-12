@@ -5,6 +5,7 @@
  * That needs a real primary key, which is what these cover.
  */
 
+import { TelemetryProxy } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -17,7 +18,6 @@ import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaste
 import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { Telemetry } from '@/telemetry';
 
 import { createOwner } from '../shared/db/users';
 
@@ -27,7 +27,7 @@ const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 describe('AgentsService.create — client-minted id', () => {
 	let agentsService: AgentsService;
 	let agentRepo: AgentRepository;
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	mockInstance(AgentUpdateBroadcaster);
 	mockInstance(NodeToolAiGatewayService);
 

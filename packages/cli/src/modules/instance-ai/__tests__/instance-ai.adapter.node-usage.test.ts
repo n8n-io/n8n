@@ -39,6 +39,7 @@ import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
 	type NodeTypesProxy,
+	type TelemetryProxy,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
@@ -73,7 +74,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { TagService } from '@/services/tag.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -128,7 +128,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		mock<ExecutionPersistence>(),
 		mock<EventService>(),
 		mock<RoleService>(),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 		mock<AiBuilderTemporaryWorkflowRepository>(),
 		mock<OutboundHttp>(),
 		mock<AiGatewayService>(),

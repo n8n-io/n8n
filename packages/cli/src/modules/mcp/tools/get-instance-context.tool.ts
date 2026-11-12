@@ -7,6 +7,7 @@
  * reach the clients that read them, the tool reaches the rest, and the instructions are what makes
  * either get called.
  */
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
@@ -14,7 +15,6 @@ import type {
 	InstanceContextScope,
 	InstanceContextService,
 } from '@/modules/instance-ai/instance-context.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -117,7 +117,7 @@ const buildScope = (executionGranted: boolean, projectId?: string): InstanceCont
 export const createGetInstanceContextTool = (
 	user: User,
 	instanceContext: InstanceContextService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	options: { executionGranted: boolean },
 ): ToolDefinition<typeof inputSchema> => ({
 	name: GET_INSTANCE_CONTEXT_TOOL_NAME,

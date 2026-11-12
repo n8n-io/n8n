@@ -7,12 +7,12 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
 import { AssistantSkillsFlagGate, SkillService, toSkillToolRefusal } from '@/modules/skills';
-import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { RegisterToolFn, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -114,7 +114,7 @@ function details(detail: SkillDetail, flags: SkillAvailabilityFlags) {
 @Service()
 export class McpSkillToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillService: SkillService,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 	) {}

@@ -1,6 +1,6 @@
 import { packagedModules } from '@/modules/modules.manifest';
 import { LicenseState } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -23,7 +23,6 @@ import { License } from '@/license';
 import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
 import { DataTableRepository } from '@n8n/backend-module-data-table';
 import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createDataTable } from '@test-integration/db/data-tables';
@@ -33,7 +32,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 
 describe('Instance AI writes outside the bound project (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 	const workflowRunner = mockInstance(WorkflowRunner);
 

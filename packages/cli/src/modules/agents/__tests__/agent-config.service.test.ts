@@ -1,6 +1,6 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -17,8 +17,6 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-
-import type { Telemetry } from '@/telemetry';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -102,7 +100,7 @@ function makeService() {
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const agentPolicyService = mock<AgentPolicyService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
@@ -1484,7 +1482,7 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		function modifiedEvent(telemetry: Mocked<Telemetry>, entry: unknown) {
+		function modifiedEvent(telemetry: Mocked<TelemetryProxy>, entry: unknown) {
 			return telemetry.track.mock.calls.find(([called]) => called === entry)?.[1];
 		}
 

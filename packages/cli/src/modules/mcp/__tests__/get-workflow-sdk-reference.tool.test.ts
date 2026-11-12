@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -5,8 +6,6 @@ import {
 	WORKFLOW_PATTERNS_DETAILED,
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
-
-import { Telemetry } from '@/telemetry';
 
 import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content';
@@ -25,11 +24,11 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('get-workflow-sdk-reference MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	});
 
 	test('returns canonical workflow SDK patterns', () => {

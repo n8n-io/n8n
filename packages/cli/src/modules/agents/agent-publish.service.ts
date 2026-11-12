@@ -9,7 +9,7 @@ import {
 	type PublishAgentDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
 import { TransactionRunner, isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -23,7 +23,6 @@ import {
 	KnowledgeFileRepository,
 	type AgentKnowledgeTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
-import { Telemetry } from '@/telemetry';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -117,7 +116,7 @@ export class AgentPublishService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,

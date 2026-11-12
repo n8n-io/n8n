@@ -1,9 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -51,7 +51,7 @@ export const createRestoreWorkflowVersionTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowHistoryService: WorkflowHistoryService,
 	workflowService: WorkflowService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'restore_workflow_version',

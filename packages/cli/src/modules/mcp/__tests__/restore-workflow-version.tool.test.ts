@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -29,14 +29,14 @@ describe('restore-workflow-version MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let workflowHistoryService: WorkflowHistoryService;
 	let workflowService: WorkflowService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowHistoryService = mockInstance(WorkflowHistoryService);
 		workflowService = mockInstance(WorkflowService);
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		collaborationService = mockInstance(CollaborationService, {
 			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),

@@ -33,10 +33,10 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
-import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -229,7 +229,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		new SystemAgentRegistry(),
 	);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<AgentUsageTelemetryService>();
 	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const contextService = new IntegrationMessageContextService(

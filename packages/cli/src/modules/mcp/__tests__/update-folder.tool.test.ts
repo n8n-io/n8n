@@ -1,10 +1,10 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 
 import { createUpdateFolderTool } from '../tools/update-folder.tool';
 
@@ -32,7 +32,7 @@ describe('update-folder MCP tool', () => {
 				.mockResolvedValue(projectAccessible ? { id: 'proj-1', type: 'team' } : null),
 		});
 
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		return { folderService, projectService, telemetry };
 	};

@@ -1,7 +1,6 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-
-import { Telemetry } from '@/telemetry';
 
 /**
  * Reports how far a WhatsApp setup got on the n8n side. The credential step is
@@ -10,7 +9,7 @@ import { Telemetry } from '@/telemetry';
  */
 @Service()
 export class WhatsAppSetupTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(private readonly telemetry: TelemetryProxy) {}
 
 	/** Never throws: this runs before the answer to Meta, which must get one even if tracking fails. */
 	webhookVerified(agentId: string, phase: 'setup' | 'connected'): void {

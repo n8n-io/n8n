@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -31,7 +31,7 @@ const addRowsOutputSchema = {
 export const createAddDataTableRowsTool = (
 	user: User,
 	dataTableOps: DataTableUserOperations,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof addRowsInputSchema> => ({
 	name: 'add_data_table_rows',
 	config: {

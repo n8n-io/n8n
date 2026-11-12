@@ -1,6 +1,7 @@
 import type { InstanceAiVerificationFailure } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -26,8 +27,6 @@ import type { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiVerificationService } from '../instance-ai-verification.service';
 
-import type { Telemetry } from '@/telemetry';
-
 describe('InstanceAiVerificationService', () => {
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: {
@@ -41,7 +40,7 @@ describe('InstanceAiVerificationService', () => {
 		} as unknown as InstanceAiConfig,
 	});
 	const logger = mock<Logger>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelService = mock<InstanceAiModelService>();
 	const outboundHttp = mock<OutboundHttp>();

@@ -1,4 +1,5 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type {
 	INode,
@@ -6,12 +7,10 @@ import type {
 	INodeCredentialDescription,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NodeHelpers } from 'n8n-workflow';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { NodeTypesProxy } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
 
 import {
 	autoPopulateNodeCredentials,
@@ -998,7 +997,7 @@ describe('node type lookup failures', () => {
 });
 
 describe('trackAutoassignOutcomes', () => {
-	const makeTelemetry = () => ({ track: vi.fn() }) as unknown as Telemetry;
+	const makeTelemetry = () => ({ track: vi.fn() }) as unknown as TelemetryProxy;
 
 	const gatewayOutcome: SlotOutcome = {
 		nodeName: 'Slack',

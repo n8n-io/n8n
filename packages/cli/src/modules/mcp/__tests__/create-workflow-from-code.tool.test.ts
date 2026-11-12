@@ -12,8 +12,7 @@ import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/crea
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import { UrlService, NodeTypesProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { UrlService, NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -99,7 +98,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	let workflowCreationService: WorkflowCreationService;
 	let createWorkflowMock: Mock;
 	let urlService: UrlService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 	let dataTableOps: DataTableOpsMock;
 
@@ -117,7 +116,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		urlService = mockInstance(UrlService, {
 			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypesProxy);

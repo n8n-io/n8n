@@ -1,4 +1,5 @@
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +10,6 @@ import {
 	type SkillService,
 } from '@/modules/skills';
 import { SkillSyncedError } from '@/modules/skills/testing';
-import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -52,7 +52,7 @@ const detail: SkillDetail = {
 
 describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const skillService = mock<SkillService>();
 	const rollout = mock<AssistantSkillsFlagGate>();
 	const service = new McpSkillToolsService(telemetry, skillService, rollout);

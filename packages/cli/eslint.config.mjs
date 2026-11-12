@@ -92,7 +92,6 @@ const skillsModuleIsolation = {
 	group: [
 		'@/*',
 		'!@/posthog',
-		'!@/telemetry',
 		'@/*/**',
 		// Any depth, so files in subfolders of the skills module are covered too.
 		'../**/agents/**',

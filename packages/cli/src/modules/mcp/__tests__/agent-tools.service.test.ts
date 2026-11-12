@@ -7,6 +7,7 @@ import {
 	ProjectScopeService,
 	UrlService,
 	NodeTypesProxy,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -74,7 +75,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -145,7 +145,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 describe('McpAgentToolsService', () => {
 	// One fake skill refs seam for the MCP service and the services it writes through.
 	const agentSkillRefs = createAgentSkillRefsService();
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
 	const agentConfigService = mockInstance(AgentConfigService);
@@ -239,7 +239,7 @@ describe('McpAgentToolsService', () => {
 	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
-		const lifecycleTelemetry = mock<Telemetry>();
+		const lifecycleTelemetry = mock<TelemetryProxy>();
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
 			mock<InstanceSettings>(),

@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { User } from '@n8n/db';
 import { NodeApiError, type INode } from 'n8n-workflow';
@@ -8,7 +9,6 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createExploreNodeResourcesTool } from '../tools/workflow-builder/explore-node-resources.tool';
 
 import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
-import type { Telemetry } from '@/telemetry';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search_nodes', displayTitle: 'Search' },
@@ -36,12 +36,12 @@ describe('explore-node-resources MCP tool', () => {
 		parameters: {},
 	};
 	let nodeResourceExplorerService: Mocked<NodeResourceExplorerService>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		nodeResourceExplorerService = mock<NodeResourceExplorerService>();
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 	});
 
 	const createTool = () =>

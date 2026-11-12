@@ -6,8 +6,8 @@ import {
 	type AiPreferenceService,
 	flattenAiPreferences,
 	renderAiPreferences,
+	type TelemetryProxy,
 } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -92,7 +92,7 @@ const outputSchema = {
 export const createGetUserPreferencesTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	config: {
