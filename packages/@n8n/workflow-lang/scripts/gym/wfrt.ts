@@ -181,12 +181,16 @@ export class WfrtClient {
 		}
 	}
 
-	/** Starts a manual run with trace on and waits for its end or the timeout. */
+	/**
+	 * Starts a manual run with trace on and waits for its end or the timeout. `clockOffsetMs`
+	 * gives the run the start clock of a recorded run; `wfrt serve --test-clock` allows it.
+	 */
 	async run(
 		workflowId: string,
 		executionId: string,
 		trigger: unknown,
 		timeoutMs: number,
+		clockOffsetMs?: number,
 	): Promise<ExecutionEvents> {
 		const result = new Promise<ExecutionEvents>((resolve) => {
 			const waiter: Waiter = { events: [], done: resolve };
@@ -203,6 +207,7 @@ export class WfrtClient {
 			executionId,
 			trigger,
 			trace: true,
+			...(clockOffsetMs === undefined ? {} : { clockOffsetMs }),
 		});
 		const out = await result;
 		// A waiting or `needs_attention` execution stays parked and keeps its module: end it.

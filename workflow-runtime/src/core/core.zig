@@ -257,6 +257,13 @@ pub const formatExecId = heap.formatExecId;
 /// Longest resume URL base and variables document.
 pub const max_base: usize = 192;
 pub const max_vars: usize = 1 << 20;
+/// Largest clock offset an execution may take: 10 years, in ms
+/// (CLOCK-OFFSET).
+pub const max_clock_offset_ms: i64 = 10 * 365 * 24 * 60 * 60 * 1000;
+/// Start of the clock offset line of a `manual` payload (CLOCK-OFFSET).
+/// The line is absent when the offset is 0, and in a log that is older than
+/// this field, so both replay with offset 0.
+pub const clock_offset_prefix: []const u8 = "clock:";
 
 pub const ModState = enum(u8) {
     /// The current version of its workflow, or a module from `--module`.
@@ -1154,8 +1161,31 @@ fn rejectEvent(s: *State, conn: u64, status: u32, body: []const u8) StepError!vo
     try reply(s, conn, status, body);
 }
 
+const bad_clock_body = "{\"error\":\"bad clock offset\"}";
+
+/// A `manual` event payload after its clock offset line (CLOCK-OFFSET).
+pub const ManualPayload = struct {
+    clock_offset_ms: i64 = 0,
+    /// The workflow id line, the version id line and the trigger.
+    rest: []const u8,
+};
+
+/// Read the clock offset line of a `manual` payload. A test bed gives the
+/// execution its own start clock: a `clock:<ms>` line before the workflow
+/// id. A payload without the line, from a log that is older than this field
+/// or from a runner that gives no offset, has offset 0. Null: a broken line.
+pub fn manualPayload(payload: []const u8) ?ManualPayload {
+    if (!std.mem.startsWith(u8, payload, clock_offset_prefix)) return .{ .rest = payload };
+    const nl = std.mem.indexOfScalar(u8, payload, '\n') orelse return null;
+    const clock = std.fmt.parseInt(i64, payload[clock_offset_prefix.len..nl], 10) catch return null;
+    if (clock > max_clock_offset_ms or clock < -max_clock_offset_ms) return null;
+    return .{ .clock_offset_ms = clock, .rest = payload[nl + 1 ..] };
+}
+
 fn manualRun(s: *State, ev: Event, scratch: *Arena) StepError!void {
-    var it = std.mem.splitScalar(u8, ev.payload, '\n');
+    const manual = manualPayload(ev.payload) orelse return rejectEvent(s, ev.conn, 400, bad_clock_body);
+    const clock_offset_ms = manual.clock_offset_ms;
+    var it = std.mem.splitScalar(u8, manual.rest, '\n');
     const id = it.next() orelse "";
     const version = it.next() orelse "";
     const trigger = it.rest();
@@ -1165,7 +1195,7 @@ fn manualRun(s: *State, ev: Event, scratch: *Arena) StepError!void {
     if (s.knowsExecution(ev.exec_id)) return rejectEvent(s, ev.conn, 409, "{\"error\":\"the execution id is in use\"}");
     // The none tier keeps no record; a given id needs no reservation.
     if (s.modules[mod].durability == .none) s.log_modes[s.cur_event] = .skip;
-    const started = try startExecution(s, mod, if (trigger.len == 0) "null" else trigger, ev.conn, 0xFFFF, .{ .flags = ev.seq | heap.exec_flag_manual, .id = ev.exec_id, .quiet = true }, scratch);
+    const started = try startExecution(s, mod, if (trigger.len == 0) "null" else trigger, ev.conn, 0xFFFF, .{ .flags = ev.seq | heap.exec_flag_manual, .id = ev.exec_id, .quiet = true, .clock_offset_ms = clock_offset_ms }, scratch);
     if (!started) {
         s.log_modes[s.cur_event] = .skip;
         return;
@@ -1696,11 +1726,15 @@ pub const StartOptions = struct {
     id: u64 = 0,
     /// Reply on `conn` only when the start fails.
     quiet: bool = false,
+    /// The clock offset of the execution, in ms (CLOCK-OFFSET). A test bed
+    /// gives it, so the run reads the time of the recorded run.
+    clock_offset_ms: i64 = 0,
 };
 
 /// Create an execution and decode its trigger. Returns false when the shard
 /// has no slot or memory; the caller then replies with a limit status.
 fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u16, opts: StartOptions, scratch: *Arena) StepError!bool {
+    std.debug.assert(opts.clock_offset_ms >= -max_clock_offset_ms and opts.clock_offset_ms <= max_clock_offset_ms);
     if (mod >= s.nmodules or s.modules[mod].state != .live) {
         try reply(s, conn, 404, "{\"error\":\"unknown module\"}");
         return false;
@@ -1765,6 +1799,7 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     var flags = opts.flags & (heap.exec_flag_trace | heap.exec_flag_manual | heap.exec_flag_quiet);
     if (flags & heap.exec_flag_trace != 0 or s.modules[mod].save_data) flags |= heap.exec_flag_data;
     s.regions[slot].exec().flags = flags;
+    s.regions[slot].exec().clock_offset_ms = opts.clock_offset_ms;
     modRef(s, mod);
     // A quiet poll run says `started` only when it finds items (`announce`).
     if (s.cfg.lifecycle and flags & heap.exec_flag_quiet == 0) {
@@ -1881,7 +1916,7 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
     while (true) {
         var vm = vmFor(s, slot, scratch);
         const t = scratch.begin();
-        const out = interp.run(&vm, @floatFromInt(s.now_ms), &fuel, s.cfg.limits);
+        const out = interp.run(&vm, @floatFromInt(clockNow(s, slot)), &fuel, s.cfg.limits);
         switch (out) {
             .effect => |req| {
                 fulls = 0;
@@ -1950,7 +1985,10 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
             return true;
         },
         .wait => {
-            const ms = waitMs(vm, req.args, s.now_ms);
+            // The date the workflow waits for is on its own clock, the
+            // timer that ends the wait is on the shard clock: a relative
+            // wait of 5 s is still 5 s (CLOCK-OFFSET).
+            const ms = waitMs(vm, req.args, clockNow(s, slot));
             try addTimer(s, .{ .at_ms = s.now_ms + ms, .exec_id = exec_id, .seq = req.seq, .kind = .wait });
             if (ms >= s.cfg.evict_wait_ms) s.slot_long_wait[slot] = true;
             try statusEvent(s, slot, req.step, .waiting, "", s.now_ms + ms);
@@ -2003,6 +2041,15 @@ fn joinScratch(scratch: *Arena, parts: []const []const u8) StepError![]const u8 
     var b = scratch.builder();
     for (parts) |p| b.append(p) catch return error.ArenaFull;
     return b.finish();
+}
+
+/// The time one execution reads (`Date.now`, `new Date`): the shard clock
+/// plus the offset that a test bed gave it (CLOCK-OFFSET). Timers, retries,
+/// schedules and rate limits stay on `s.now_ms`.
+fn clockNow(s: *const State, slot: SlotId) i64 {
+    const offset = s.regions[slot].exec().clock_offset_ms;
+    std.debug.assert(offset >= -max_clock_offset_ms and offset <= max_clock_offset_ms);
+    return s.now_ms + offset;
 }
 
 fn waitMs(vm: *ops.Vm, args: Value, now_ms: i64) i64 {
@@ -2563,7 +2610,9 @@ pub const SnapHeader = extern struct {
 pub const snap_magic: u32 = 0x50414E53;
 /// 2: the execution root has the static data fields (128 bytes), and the
 /// checksum is `logfmt.checksum` (XXH3), not CRC-32.
-pub const snap_version: u32 = 2;
+/// 3: the execution root has the clock offset (CLOCK-OFFSET, 136 bytes). A
+/// snapshot of version 2 is not read.
+pub const snap_version: u32 = 3;
 
 comptime {
     // Both go into the log: add_route payloads and snapshots.

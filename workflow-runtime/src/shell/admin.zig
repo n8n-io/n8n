@@ -79,7 +79,13 @@ pub fn headerValue(head: []const u8, name: []const u8) ?[]const u8 {
     return null;
 }
 
-pub const BodyError = error{ BadBody, BadModule, BadExecutionId, OutOfMemory };
+pub const BodyError = error{ BadBody, BadModule, BadExecutionId, BadClockOffset, ClockDisabled, OutOfMemory };
+
+/// The error of `POST /_admin/executions` with `clockOffsetMs` when `wfrt
+/// serve` runs without `--test-clock` (CLOCK-OFFSET).
+pub const clock_disabled_body = "{\"error\":\"clockOffsetMs needs wfrt serve --test-clock\"}";
+/// The error when the offset is not an integer of at most 10 years in ms.
+pub const clock_range_body = "{\"error\":\"clockOffsetMs must be an integer of at most 10 years in ms\"}";
 
 /// `PUT /_admin/workflows/<id>`: the load_workflow payload, a JSON header
 /// line, a newline, then the module bytes.
@@ -124,11 +130,12 @@ pub fn loadPayload(gpa: std.mem.Allocator, workflow_id: []const u8, body: []cons
     return out.toOwnedSlice(gpa);
 }
 
-pub const Manual = struct { exec_id: u64, flags: u32, payload: []u8 };
+pub const Manual = struct { exec_id: u64, flags: u32, payload: []u8, clock_offset_ms: i64 = 0 };
 
 /// `POST /_admin/executions`: the manual event. n8n execution ids are
-/// numeric strings; a JSON number is accepted too.
-pub fn manualEvent(gpa: std.mem.Allocator, body: []const u8) BodyError!Manual {
+/// numeric strings; a JSON number is accepted too. `test_clock` allows the
+/// `clockOffsetMs` field, which only a test bed sets (CLOCK-OFFSET).
+pub fn manualEvent(gpa: std.mem.Allocator, body: []const u8, test_clock: bool) BodyError!Manual {
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
     const root = std.json.parseFromSliceLeaky(std.json.Value, arena.allocator(), body, .{ .parse_numbers = false }) catch return error.BadBody;
@@ -144,12 +151,29 @@ pub fn manualEvent(gpa: std.mem.Allocator, body: []const u8) BodyError!Manual {
     const exec_id = core.parseExecId(id_text) orelse return error.BadExecutionId;
     if (exec_id & core.given_id_flag == 0) return error.BadExecutionId;
     if (std.mem.indexOfScalar(u8, wf, '\n') != null or std.mem.indexOfScalar(u8, version, '\n') != null) return error.BadBody;
+    // A test bed can move the clock of this execution (CLOCK-OFFSET).
+    var clock_offset_ms: i64 = 0;
+    if (o.get("clockOffsetMs")) |v| {
+        if (!test_clock) return error.ClockDisabled;
+        // The body parses with `parse_numbers = false`, so the digits are
+        // text: a float has a point or an exponent and fails the parse.
+        clock_offset_ms = switch (v) {
+            .number_string => |text| std.fmt.parseInt(i64, text, 10) catch return error.BadClockOffset,
+            .integer => |n| n,
+            else => return error.BadClockOffset,
+        };
+        if (clock_offset_ms > core.max_clock_offset_ms or clock_offset_ms < -core.max_clock_offset_ms) return error.BadClockOffset;
+    }
     // Keep the trigger text as n8n sent it: numbers keep their digits.
     const trigger = if (http.member(body, "trigger")) |raw| std.mem.trim(u8, raw, " \t\r\n") else "null";
     var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(gpa);
+    // The offset goes first, on its own line: the trigger can hold newlines,
+    // so it must stay last (CLOCK-OFFSET).
+    // Always written, so a workflow id can never be read as the clock line.
+    try out.print(gpa, "{s}{d}\n", .{ core.clock_offset_prefix, clock_offset_ms });
     try out.print(gpa, "{s}\n{s}\n{s}", .{ wf, version, if (trigger.len == 0) "null" else trigger });
-    return .{ .exec_id = exec_id, .flags = if (boolField(o, "trace")) heap.exec_flag_trace else 0, .payload = try out.toOwnedSlice(gpa) };
+    return .{ .exec_id = exec_id, .flags = if (boolField(o, "trace")) heap.exec_flag_trace else 0, .payload = try out.toOwnedSlice(gpa), .clock_offset_ms = clock_offset_ms };
 }
 
 /// JSON without the white space between tokens, so it fits on one line.
@@ -634,16 +658,62 @@ test "load payload" {
 
 test "manual event" {
     const gpa = std.testing.allocator;
-    const m = try manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"1234\",\"trigger\": {\"n\":1.50},\"trace\":true}");
+    const m = try manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"1234\",\"trigger\": {\"n\":1.50},\"trace\":true}", true);
     defer gpa.free(m.payload);
     try std.testing.expectEqual(@as(u64, 1234) | core.given_id_flag, m.exec_id);
     try std.testing.expectEqual(heap.exec_flag_trace, m.flags);
-    try std.testing.expectEqualStrings("wf1\n\n{\"n\":1.50}", m.payload);
-    const n = try manualEvent(gpa, "{\"workflowId\":\"wf1\",\"versionId\":\"v1\",\"executionId\":77}");
+    try std.testing.expectEqual(@as(i64, 0), m.clock_offset_ms);
+    try std.testing.expectEqualStrings("clock:0\nwf1\n\n{\"n\":1.50}", m.payload);
+    const n = try manualEvent(gpa, "{\"workflowId\":\"wf1\",\"versionId\":\"v1\",\"executionId\":77}", true);
     defer gpa.free(n.payload);
-    try std.testing.expectEqualStrings("wf1\nv1\nnull", n.payload);
-    try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"wfrt-3\"}"));
-    try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"abc\"}"));
+    try std.testing.expectEqualStrings("clock:0\nwf1\nv1\nnull", n.payload);
+    try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"wfrt-3\"}", true));
+    try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"abc\"}", true));
+}
+
+/// The body of `POST /_admin/executions` with a clock offset (CLOCK-OFFSET).
+fn clockBody(comptime offset: []const u8) []const u8 {
+    return std.fmt.comptimePrint("{{\"workflowId\":\"wf1\",\"executionId\":\"77\",\"clockOffsetMs\":{s}}}", .{offset});
+}
+
+test "manual event: the clock offset of a test run" {
+    const gpa = std.testing.allocator;
+    // No field: the payload keeps its time. That is the body of the gym and
+    // of the fixture runner, and the offset line is absent.
+    {
+        const m = try manualEvent(gpa, clockBody("0"), true);
+        defer gpa.free(m.payload);
+        try std.testing.expectEqual(@as(i64, 0), m.clock_offset_ms);
+        try std.testing.expectEqualStrings("clock:0\nwf1\n\nnull", m.payload);
+    }
+    // A negative and a positive offset go on the first line of the payload.
+    {
+        const m = try manualEvent(gpa, clockBody("-86400000"), true);
+        defer gpa.free(m.payload);
+        try std.testing.expectEqual(@as(i64, -86_400_000), m.clock_offset_ms);
+        try std.testing.expectEqualStrings("clock:-86400000\nwf1\n\nnull", m.payload);
+    }
+    {
+        const m = try manualEvent(gpa, clockBody("1500"), true);
+        defer gpa.free(m.payload);
+        try std.testing.expectEqual(@as(i64, 1500), m.clock_offset_ms);
+        try std.testing.expectEqualStrings("clock:1500\nwf1\n\nnull", m.payload);
+    }
+    // Without `--test-clock` the field is refused, also when it is 0.
+    try std.testing.expectError(error.ClockDisabled, manualEvent(gpa, clockBody("0"), false));
+    try std.testing.expectError(error.ClockDisabled, manualEvent(gpa, clockBody("-86400000"), false));
+    // Only an integer: a float, an exponent, a string and null are not.
+    inline for ([_][]const u8{ "1.5", "1e6", "\"-86400000\"", "null", "true" }) |bad| {
+        try std.testing.expectError(error.BadClockOffset, manualEvent(gpa, clockBody(bad), true));
+    }
+    // At most 10 years in ms, in each direction.
+    const max = clockBody("315360000000");
+    const m = try manualEvent(gpa, max, true);
+    defer gpa.free(m.payload);
+    try std.testing.expectEqual(@as(i64, 315_360_000_000), m.clock_offset_ms);
+    inline for ([_][]const u8{ "315360000001", "-315360000001", "99999999999999999999" }) |bad| {
+        try std.testing.expectError(error.BadClockOffset, manualEvent(gpa, clockBody(bad), true));
+    }
 }
 
 test "execution ids" {

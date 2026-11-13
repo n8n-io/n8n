@@ -22,7 +22,7 @@ const usage =
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
     \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
-    \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M]
+    \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
     \\        [--slots N] [--target-rate R --vendor-latency-ms L [--memory-mb M]]
@@ -214,6 +214,11 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         const k = args[i];
         if (std.mem.eql(u8, k, "--log-fires")) {
             opts.log_fires = true;
+            continue;
+        }
+        if (std.mem.eql(u8, k, "--test-clock")) {
+            // A test bed sets the start clock of each run (CLOCK-OFFSET).
+            opts.test_clock = true;
             continue;
         }
         if (std.mem.eql(u8, k, "--stats")) {

@@ -154,6 +154,10 @@ pub const Exec = extern struct {
     /// sets the same bits.
     flags: u32,
     _pad: u32,
+    /// The clock offset of this execution, in ms (CLOCK-OFFSET): a test bed
+    /// gives it, so the workflow reads the time of the recorded run. It comes
+    /// from the start event, so a replay sets the same offset.
+    clock_offset_ms: i64 = 0,
     /// The workflow variables at the start, as JSON text (a string), or
     /// undefined. ctx.vars() decodes a fresh object from it.
     vars: Value,
@@ -226,7 +230,7 @@ comptime {
     std.debug.assert(@sizeOf(Frame) == 24);
     std.debug.assert(@sizeOf(Exec) % 8 == 0);
     // Exec is part of each snapshot, which the log keeps.
-    std.debug.assert(@sizeOf(Exec) == 128);
+    std.debug.assert(@sizeOf(Exec) == 136);
     // Every format of the runtime is little-endian and written as memory.
     std.debug.assert(@import("builtin").cpu.arch.endian() == .little);
 }
