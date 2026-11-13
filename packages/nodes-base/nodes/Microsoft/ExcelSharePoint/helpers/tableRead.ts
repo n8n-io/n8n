@@ -1,4 +1,5 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { AuthContext } from './interfaces';
 import { resolveWorkbookRoot, validatePathSegment } from './utils';
@@ -9,9 +10,9 @@ export type GraphTableRow = IDataObject & { values?: unknown[][] };
 export async function resolveTableEndpoint(
 	this: IExecuteFunctions,
 	itemIndex: number,
-	workbookRootCache: Map<string, string>,
+	workbookRootCache: Map<string, RequestPath>,
 	siteIdCache: Map<string, string>,
-): Promise<string> {
+): Promise<RequestPath> {
 	const workbookRoot = await resolveWorkbookRoot.call(
 		this,
 		itemIndex,
@@ -23,16 +24,16 @@ export async function resolveTableEndpoint(
 		'Table',
 		this.getNodeParameter('table', itemIndex, '', { extractValue: true }) as string,
 	);
-	return `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
+	return requestPath`${workbookRoot}/workbook/tables/${tableId}`;
 }
 
 export async function fetchTableColumnNames(
 	this: AuthContext,
-	tableEndpoint: string,
+	tableEndpoint: RequestPath,
 ): Promise<string[]> {
 	const columns = await (microsoftApiRequestAllItems<IDataObject & { name?: string }>).call(
 		this,
-		`${tableEndpoint}/columns`,
+		requestPath`${tableEndpoint}/columns`,
 		{ $select: 'name' },
 	);
 	return columns.map((column) => String(column.name));

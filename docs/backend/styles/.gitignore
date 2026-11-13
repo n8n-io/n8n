@@ -1,0 +1,3 @@
+# Vale downloads packages listed in ../.vale.ini into this folder on `vale sync`.
+# The local style n8n-backend-docs is committed. Downloaded packages are not.
+write-good/

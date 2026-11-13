@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -31,7 +37,7 @@ export async function execute(
 
 	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
 	// so a pasted Workbook/Site address is resolved once, not once per item.
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
@@ -47,7 +53,7 @@ export async function execute(
 			await microsoftApiRequest.call(
 				this,
 				'DELETE',
-				`${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}`,
+				requestPath`${workbookRoot}/workbook/worksheets/${worksheetId}`,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(

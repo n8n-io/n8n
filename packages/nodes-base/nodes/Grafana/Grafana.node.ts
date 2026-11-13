@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	dashboardFields,
@@ -93,7 +93,7 @@ export class Grafana implements INodeType {
 				const dashboards = (await grafanaApiRequest.call(
 					this,
 					'GET',
-					'/search',
+					requestPath`/search`,
 					{},
 					{ qs: 'dash-db' },
 				)) as LoadedDashboards;
@@ -101,17 +101,29 @@ export class Grafana implements INodeType {
 			},
 
 			async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const folders = (await grafanaApiRequest.call(this, 'GET', '/folders')) as LoadedFolders;
+				const folders = (await grafanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/folders`,
+				)) as LoadedFolders;
 				return folders.map(({ id, title }) => ({ value: id, name: title }));
 			},
 
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const res = (await grafanaApiRequest.call(this, 'GET', '/teams/search')) as LoadedTeams;
+				const res = (await grafanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/teams/search`,
+				)) as LoadedTeams;
 				return res.teams.map(({ id, name }) => ({ value: id, name }));
 			},
 
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const users = (await grafanaApiRequest.call(this, 'GET', '/org/users')) as LoadedUsers;
+				const users = (await grafanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/org/users`,
+				)) as LoadedUsers;
 				return users.map(({ userId, email }) => ({ value: userId, name: email }));
 			},
 		},
@@ -155,7 +167,12 @@ export class Grafana implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'POST', '/dashboards/db', body);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'POST',
+							requestPath`/dashboards/db`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            dashboard: delete
@@ -165,7 +182,7 @@ export class Grafana implements INodeType {
 
 						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i) as string;
 						const uid = deriveUid.call(this, uidOrUrl);
-						const endpoint = `/dashboards/uid/${uid}`;
+						const endpoint = requestPath`/dashboards/uid/${uid}`;
 						responseData = await grafanaApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -176,7 +193,7 @@ export class Grafana implements INodeType {
 
 						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i) as string;
 						const uid = deriveUid.call(this, uidOrUrl);
-						const endpoint = `/dashboards/uid/${uid}`;
+						const endpoint = requestPath`/dashboards/uid/${uid}`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -202,7 +219,7 @@ export class Grafana implements INodeType {
 							Object.assign(qs, { limit });
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'GET', '/search', {}, qs);
+						responseData = await grafanaApiRequest.call(this, 'GET', requestPath`/search`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            dashboard: update
@@ -214,7 +231,7 @@ export class Grafana implements INodeType {
 						const uid = deriveUid.call(this, uidOrUrl);
 
 						// ensure dashboard to update exists
-						await grafanaApiRequest.call(this, 'GET', `/dashboards/uid/${uid}`);
+						await grafanaApiRequest.call(this, 'GET', requestPath`/dashboards/uid/${uid}`);
 
 						const body: DashboardUpdatePayload = {
 							overwrite: true,
@@ -231,11 +248,15 @@ export class Grafana implements INodeType {
 							const { dashboard } = await grafanaApiRequest.call(
 								this,
 								'GET',
-								`/dashboards/uid/${uid}`,
+								requestPath`/dashboards/uid/${uid}`,
 							);
 							body.dashboard.title = dashboard.title;
 						} else {
-							const dashboards = (await grafanaApiRequest.call(this, 'GET', '/search')) as Array<{
+							const dashboards = (await grafanaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/search`,
+							)) as Array<{
 								title: string;
 							}>;
 							const titles = dashboards.map(({ title: entry }) => entry);
@@ -258,7 +279,12 @@ export class Grafana implements INodeType {
 							Object.assign(body, rest);
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'POST', '/dashboards/db', body);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'POST',
+							requestPath`/dashboards/db`,
+							body,
+						);
 					}
 				} else if (resource === 'team') {
 					// **********************************************************************
@@ -282,7 +308,7 @@ export class Grafana implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'POST', '/teams', body);
+						responseData = await grafanaApiRequest.call(this, 'POST', requestPath`/teams`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               team: delete
@@ -291,7 +317,11 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/team/#delete-team-by-id
 
 						const teamId = this.getNodeParameter('teamId', i);
-						responseData = await grafanaApiRequest.call(this, 'DELETE', `/teams/${teamId}`);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/teams/${teamId}`,
+						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//                team: get
@@ -300,7 +330,7 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/team/#get-team-by-id
 
 						const teamId = this.getNodeParameter('teamId', i);
-						responseData = await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+						responseData = await grafanaApiRequest.call(this, 'GET', requestPath`/teams/${teamId}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               team: getAll
@@ -316,7 +346,13 @@ export class Grafana implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'GET', '/teams/search', {}, qs);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'GET',
+							requestPath`/teams/search`,
+							{},
+							qs,
+						);
 						responseData = responseData.teams;
 
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -341,11 +377,15 @@ export class Grafana implements INodeType {
 						const teamId = this.getNodeParameter('teamId', i);
 
 						// check if team exists, since API does not specify update failure reason
-						await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+						await grafanaApiRequest.call(this, 'GET', requestPath`/teams/${teamId}`);
 
 						// prevent email from being overridden to empty
 						if (!updateFields.email) {
-							const { email } = await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+							const { email } = await grafanaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/teams/${teamId}`,
+							);
 							body.email = email;
 						}
 
@@ -353,7 +393,12 @@ export class Grafana implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						responseData = await grafanaApiRequest.call(this, 'PUT', `/teams/${teamId}`, body);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/teams/${teamId}`,
+							body,
+						);
 					}
 				} else if (resource === 'teamMember') {
 					// **********************************************************************
@@ -374,7 +419,7 @@ export class Grafana implements INodeType {
 						};
 
 						const teamId = this.getNodeParameter('teamId', i);
-						const endpoint = `/teams/${teamId}/members`;
+						const endpoint = requestPath`/teams/${teamId}/members`;
 						responseData = await grafanaApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
@@ -385,7 +430,7 @@ export class Grafana implements INodeType {
 
 						const teamId = this.getNodeParameter('teamId', i);
 						const memberId = this.getNodeParameter('memberId', i);
-						const endpoint = `/teams/${teamId}/members/${memberId}`;
+						const endpoint = requestPath`/teams/${teamId}/members/${memberId}`;
 						responseData = await grafanaApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -397,9 +442,9 @@ export class Grafana implements INodeType {
 						const teamId = this.getNodeParameter('teamId', i);
 
 						// check if team exists, since API returns all members if team does not exist
-						await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+						await grafanaApiRequest.call(this, 'GET', requestPath`/teams/${teamId}`);
 
-						const endpoint = `/teams/${teamId}/members`;
+						const endpoint = requestPath`/teams/${teamId}/members`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -426,7 +471,12 @@ export class Grafana implements INodeType {
 							loginOrEmail: this.getNodeParameter('loginOrEmail', i),
 						};
 
-						responseData = await grafanaApiRequest.call(this, 'POST', '/org/users', body);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'POST',
+							requestPath`/org/users`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//                user: delete
@@ -435,7 +485,11 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/org/#delete-user-in-current-organization
 
 						const userId = this.getNodeParameter('userId', i);
-						responseData = await grafanaApiRequest.call(this, 'DELETE', `/org/users/${userId}`);
+						responseData = await grafanaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/org/users/${userId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               user: getAll
@@ -443,7 +497,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/org/#get-all-users-within-the-current-organization
 
-						responseData = await grafanaApiRequest.call(this, 'GET', '/org/users');
+						responseData = await grafanaApiRequest.call(this, 'GET', requestPath`/org/users`);
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -471,7 +525,7 @@ export class Grafana implements INodeType {
 						responseData = await grafanaApiRequest.call(
 							this,
 							'PATCH',
-							`/org/users/${userId}`,
+							requestPath`/org/users/${userId}`,
 							body,
 						);
 					}

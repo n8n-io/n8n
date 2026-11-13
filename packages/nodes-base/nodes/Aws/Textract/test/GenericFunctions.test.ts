@@ -53,6 +53,22 @@ describe('AWS Textract Generic Functions', () => {
 			expect(mockSign).not.toHaveBeenCalled();
 			expect(helpers.request).not.toHaveBeenCalled();
 		});
+
+		it('should send the request to the STS endpoint of the region', async () => {
+			const { context, helpers } = buildContext();
+			helpers.request.mockResolvedValue('<GetCallerIdentityResponse />');
+
+			await validateCredentials.call(
+				context,
+				{ ...baseCredentials, region: 'eu-central-1' },
+				'sts',
+			);
+
+			const [options] = helpers.request.mock.calls[0];
+			expect(String(options.uri)).toBe(
+				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+			);
+		});
 	});
 
 	describe('simplify function', () => {

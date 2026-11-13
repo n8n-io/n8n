@@ -226,9 +226,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:admin' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:admin' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -247,9 +249,11 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(user, project.id, [
-				{ userId: user.id, role: 'project:editor' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId: project.id,
+				relations: [{ userId: user.id, role: 'project:editor' }],
+			});
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });
@@ -487,9 +491,11 @@ describe('ProjectService', () => {
 				}),
 			).toBe(true);
 
-			await projectService.addUsersToProject(serviceAccount, project.id, [
-				{ userId: person.id, role: 'project:editor' },
-			]);
+			await projectService.addUsersToProject({
+				user: serviceAccount,
+				projectId: project.id,
+				relations: [{ userId: person.id, role: 'project:editor' }],
+			});
 			const added = await Container.get(ProjectRelationRepository).findOne({
 				where: { projectId: project.id, userId: person.id },
 				relations: { role: true },

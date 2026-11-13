@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	alertCommonFields,
@@ -34,7 +35,7 @@ export async function loadResponders(this: ILoadOptionsFunctions): Promise<INode
 	const responders = await theHiveApiRequest.call(
 		this,
 		'GET',
-		`/connector/cortex/responder/${resource}/${resourceId}`,
+		requestPath`/connector/cortex/responder/${resource}/${resourceId}`,
 	);
 
 	const returnData: INodePropertyOptions[] = [];
@@ -58,7 +59,7 @@ export async function loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodeP
 	const requestResult = await theHiveApiRequest.call(
 		this,
 		'GET',
-		`/connector/cortex/analyzer/type/${dataType}`,
+		requestPath`/connector/cortex/analyzer/type/${dataType}`,
 	);
 
 	for (const analyzer of requestResult) {
@@ -77,7 +78,7 @@ export async function loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodeP
 export async function loadCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const requestResult = await theHiveApiRequest.call(this, 'GET', '/customField');
+	const requestResult = await theHiveApiRequest.call(this, 'GET', requestPath`/customField`);
 
 	const returnData: INodePropertyOptions[] = [];
 
@@ -105,7 +106,7 @@ export async function loadObservableTypes(
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({
@@ -133,7 +134,7 @@ export async function loadCaseAttachments(
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({
@@ -161,7 +162,7 @@ export async function loadLogAttachments(
 	};
 
 	// extract log object from array
-	const [response] = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const [response] = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of (response.attachments as IDataObject[]) || []) {
 		returnData.push({
@@ -186,7 +187,7 @@ export async function loadAlertStatus(
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({
@@ -209,7 +210,7 @@ export async function loadCaseStatus(this: ILoadOptionsFunctions): Promise<INode
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({
@@ -234,7 +235,7 @@ export async function loadCaseTemplate(
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({
@@ -256,7 +257,7 @@ export async function loadUsers(this: ILoadOptionsFunctions): Promise<INodePrope
 		],
 	};
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	for (const entry of response) {
 		returnData.push({

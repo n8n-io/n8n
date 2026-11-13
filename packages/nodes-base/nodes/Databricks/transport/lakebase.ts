@@ -6,7 +6,7 @@ import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
-	databricksApiRequest,
+	databricksApiRequestWithUrl,
 	getActiveCredentialType,
 	makePermissionErrorLegible,
 	type DatabricksContext,
@@ -79,7 +79,7 @@ export async function lakebaseApiRequest(
 		try {
 			// Lakebase returns 403 for permission denied. 403 is also the credential's
 			// tokenExpiredStatusCode, so core refreshes on it only when the stored token has expired.
-			return await databricksApiRequest(context, 'databricksOAuth2Api', options, {
+			return await databricksApiRequestWithUrl(context, 'databricksOAuth2Api', options, {
 				oauth2: { skipRefreshWhileTokenIsFresh: true },
 			});
 		} catch (error) {

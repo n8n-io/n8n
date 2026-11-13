@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { twilioTriggerApiRequest } from './GenericFunctions';
@@ -78,7 +79,8 @@ export class TwilioTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const { sinks } = (await twilioTriggerApiRequest.call(this, 'GET', 'Sinks')) || {};
+				const { sinks } =
+					(await twilioTriggerApiRequest.call(this, 'GET', requestPath`Sinks`)) || {};
 
 				const sink = sinks.find(
 					(entry: { sink_configuration: { destination: string | undefined } }) =>
@@ -87,7 +89,7 @@ export class TwilioTrigger implements INodeType {
 
 				if (sink) {
 					const { subscriptions } =
-						(await twilioTriggerApiRequest.call(this, 'GET', 'Subscriptions')) || {};
+						(await twilioTriggerApiRequest.call(this, 'GET', requestPath`Subscriptions`)) || {};
 
 					const subscription = subscriptions.find(
 						(entry: { sink_sid: any }) => entry.sink_sid === sink.sid,
@@ -98,7 +100,7 @@ export class TwilioTrigger implements INodeType {
 							(await twilioTriggerApiRequest.call(
 								this,
 								'GET',
-								`Subscriptions/${subscription.sid}/SubscribedEvents`,
+								requestPath`Subscriptions/${subscription.sid}/SubscribedEvents`,
 							)) || {};
 
 						const typesFound = types.map((type: { type: any }) => type.type);
@@ -127,7 +129,7 @@ export class TwilioTrigger implements INodeType {
 					SinkType: 'webhook',
 				};
 
-				const sink = await twilioTriggerApiRequest.call(this, 'POST', 'Sinks', bodySink);
+				const sink = await twilioTriggerApiRequest.call(this, 'POST', requestPath`Sinks`, bodySink);
 
 				workflowData.sinkId = sink.sid;
 
@@ -140,7 +142,7 @@ export class TwilioTrigger implements INodeType {
 				const subscription = await twilioTriggerApiRequest.call(
 					this,
 					'POST',
-					'Subscriptions',
+					requestPath`Subscriptions`,
 					body,
 				);
 				workflowData.subscriptionId = subscription.sid;
@@ -150,7 +152,7 @@ export class TwilioTrigger implements INodeType {
 						await twilioTriggerApiRequest.call(
 							this,
 							'POST',
-							`Subscriptions/${workflowData.subscriptionId}/SubscribedEvents`,
+							requestPath`Subscriptions/${workflowData.subscriptionId}/SubscribedEvents`,
 							{
 								Type: allowedUpdates[index],
 							},
@@ -168,14 +170,14 @@ export class TwilioTrigger implements INodeType {
 
 				try {
 					if (sinkId) {
-						await twilioTriggerApiRequest.call(this, 'DELETE', `Sinks/${sinkId}`, {});
+						await twilioTriggerApiRequest.call(this, 'DELETE', requestPath`Sinks/${sinkId}`, {});
 						workflowData.sinkId = '';
 					}
 					if (subscriptionId) {
 						await twilioTriggerApiRequest.call(
 							this,
 							'DELETE',
-							`Subscriptions/${subscriptionId}`,
+							requestPath`Subscriptions/${subscriptionId}`,
 							{},
 						);
 						workflowData.subscriptionId = '';

@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { BaserowCredentials, LoadedResource } from './types';
 
@@ -131,7 +133,7 @@ export function normalizeFilterFieldId(field: string | number): string {
 export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	credentialType: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -139,11 +141,11 @@ export async function baserowApiRequest(
 	const credentials = await this.getCredentials<BaserowCredentials>(credentialType);
 	const host = (credentials.host as string).replace(/\/$/, '');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `${host}${endpoint}`,
+		uri: requestUrl`${host}${endpoint}`,
 		json: true,
 	};
 
@@ -168,7 +170,7 @@ export async function baserowApiRequest(
 export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	credentialType: string,
 	body: IDataObject,
 	qs: IDataObject = {},
@@ -201,7 +203,7 @@ export async function getFieldNamesAndIds(
 	tableId: string,
 	credentialType: string,
 ) {
-	const endpoint = `/api/database/fields/table/${tableId}/`;
+	const endpoint = requestPath`/api/database/fields/table/${tableId}/`;
 	const response = (await baserowApiRequest.call(
 		this,
 		'GET',
@@ -233,7 +235,7 @@ export class TableFieldMapper {
 		table: string,
 		credentialType: string,
 	): Promise<LoadedResource[]> {
-		const endpoint = `/api/database/fields/table/${table}/`;
+		const endpoint = requestPath`/api/database/fields/table/${table}/`;
 		return await baserowApiRequest.call(this, 'GET', endpoint, credentialType);
 	}
 

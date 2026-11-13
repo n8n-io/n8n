@@ -24,6 +24,17 @@ const stepFields = {
 	at: z.string().datetime(),
 };
 
+/**
+ * The error a failed step recorded, as persisted. `details` is opaque to the
+ * engine, like a step's outputs, so only its presence is validated.
+ */
+const stepErrorSchema = z.object({
+	name: z.string(),
+	message: z.string(),
+	stack: z.string().optional(),
+	details: z.custom<JsonValue>().optional(),
+});
+
 /** The one definition of an event's shape. `LifecycleEvent` is inferred from it. */
 export const lifecycleEventSchema = z.discriminatedUnion('type', [
 	z.object({
@@ -54,7 +65,16 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		 */
 		outputs: z.array(z.custom<JsonValue>()).optional(),
 	}),
-	z.object({ type: z.literal('step:failed'), ...stepFields }),
+	z.object({
+		type: z.literal('step:failed'),
+		...stepFields,
+		/**
+		 * Rides along for the same reason outputs do: the host renders the failure
+		 * at once, with no read. A sender over its size limit may drop `details`,
+		 * then `stack`; the message always arrives.
+		 */
+		error: stepErrorSchema,
+	}),
 	/** The step paused until a deadline or a resume request. It has no outcome yet. */
 	z.object({ type: z.literal('step:waiting'), ...stepFields }),
 ]);

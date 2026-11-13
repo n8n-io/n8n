@@ -1,5 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { S3 } from '../S3.node';
@@ -53,7 +54,14 @@ describe('S3 Node - Bucket Delete', () => {
 		const result = await node.execute.call(executeFunctionsMock);
 
 		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledTimes(1);
-		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledWith('test-bucket', 'DELETE', '', '', {}, {});
+		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledWith(
+			'test-bucket',
+			'DELETE',
+			requestPath``,
+			'',
+			{},
+			{},
+		);
 
 		expect(result).toEqual([[{ json: { success: true } }]]);
 	});

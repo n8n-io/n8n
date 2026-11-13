@@ -1,0 +1,160 @@
+{
+	"name": "Cortex Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "analyzer",
+				"operation": "execute",
+				"analyzer": "a1b2c3d4e5f6::Abuse_Finder_3_0",
+				"observableType": "domain",
+				"observableValue": "example.com",
+				"tlp": 2,
+				"additionalFields": {
+					"timeout": 10
+				}
+			},
+			"id": "node-0",
+			"name": "Analyzer Execute",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"cortexApi": {
+					"id": "1",
+					"name": "Cortex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "get",
+				"jobId": "AXt8bW1eCt7ZpQ9vYx3k"
+			},
+			"id": "node-1",
+			"name": "Job Get",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"cortexApi": {
+					"id": "1",
+					"name": "Cortex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "report",
+				"jobId": "AXt8bW1eCt7ZpQ9vYx3k"
+			},
+			"id": "node-2",
+			"name": "Job Report",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "1",
+					"name": "Cortex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "responder",
+				"operation": "execute",
+				"responder": "f6e5d4c3b2a1::Mailer_1_0",
+				"entityType": "case",
+				"jsonObject": true,
+				"objectData": "{\"caseId\": 12, \"title\": \"Phishing\"}"
+			},
+			"id": "node-3",
+			"name": "Responder Execute",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"cortexApi": {
+					"id": "1",
+					"name": "Cortex account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Analyzer Execute": [
+			{
+				"json": {
+					"id": "AXt8bW1eCt7ZpQ9vYx3k",
+					"status": "Success"
+				}
+			}
+		],
+		"Job Get": [
+			{
+				"json": {
+					"id": "AXt8bW1eCt7ZpQ9vYx3k",
+					"status": "Waiting"
+				}
+			}
+		],
+		"Job Report": [
+			{
+				"json": {
+					"id": "AXt8bW1eCt7ZpQ9vYx3k",
+					"status": "Success"
+				}
+			}
+		],
+		"Responder Execute": [
+			{
+				"json": {
+					"id": "AXt8bW1eCt7ZpQ9vYx3k",
+					"status": "Waiting"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Analyzer Execute",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Report",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Responder Execute",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

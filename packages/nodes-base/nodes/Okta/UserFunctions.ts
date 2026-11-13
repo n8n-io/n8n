@@ -12,7 +12,10 @@ import type {
 	INodeExecutionData,
 	INodeListSearchResult,
 	INodePropertyOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 type OktaUser = {
 	status: string;
@@ -33,24 +36,20 @@ type OktaUser = {
 export async function oktaApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	url?: string,
-	option: IDataObject = {},
 ): Promise<OktaUser[]> {
 	const credentials = await this.getCredentials('oktaApi');
-	const baseUrl = `${credentials.url as string}/api/v1/${resource}`;
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body: Object.keys(body).length ? body : undefined,
 		qs: Object.keys(qs).length ? qs : undefined,
-		url: url ?? baseUrl,
+		url: requestUrl`${credentials.url}/api/v1/${resource}`,
 		json: true,
-		...option,
 	};
 	return await (this.helpers.httpRequestWithAuthentication.call(
 		this,
@@ -63,7 +62,7 @@ export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const responseData: OktaUser[] = await oktaApiRequest.call(this, 'GET', '/users/');
+	const responseData: OktaUser[] = await oktaApiRequest.call(this, 'GET', requestPath`/users/`);
 	const filteredUsers = responseData.filter((user) => {
 		if (!filter) return true;
 		const username = `${user.profile.login}`.toLowerCase();

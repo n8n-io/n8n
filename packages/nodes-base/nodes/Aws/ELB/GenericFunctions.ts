@@ -8,16 +8,17 @@ import type {
 	IHttpRequestOptions,
 	JsonObject,
 	IHttpRequestMethods,
+	RequestPath,
 } from 'n8n-workflow';
 import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
-import { getAwsCredentials } from '../GenericFunctions';
+import { awsRequestPath, getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
@@ -28,9 +29,8 @@ export async function awsApiRequest(
 
 	const requestOptions = {
 		qs: {
-			...query,
 			service,
-			path,
+			path: awsRequestPath(path, query),
 		},
 		headers,
 		method,
@@ -50,7 +50,7 @@ export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers?: object,
@@ -79,7 +79,7 @@ export async function awsApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
@@ -124,7 +124,7 @@ export async function awsApiRequestSOAPAllItems(
 	propertyName: string,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers: IDataObject = {},

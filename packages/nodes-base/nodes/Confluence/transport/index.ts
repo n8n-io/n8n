@@ -8,8 +8,10 @@ import type {
 	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { getAtlassianApiBaseUrl, resolveAtlassianCloudId } from '@utils/atlassian';
 
@@ -150,7 +152,7 @@ export async function getConfluenceCloudId(
 export async function confluenceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
@@ -159,9 +161,9 @@ export async function confluenceApiRequest(
 
 	// The URL is concatenated onto the api.atlassian.com base, so caller input can't
 	// change the host; a future verbatim-URL param needs an origin check first.
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
-		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		url: requestUrl`${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
 		body,
 		qs,
 		json: true,
@@ -186,16 +188,19 @@ export async function confluenceApiRequest(
  */
 export async function confluenceApiRequestBinary(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
+	qs: IDataObject = {},
 ): Promise<Buffer> {
 	const cloudId = await getConfluenceCloudId.call(this);
 	const credentialType = getConfluenceCredentialName(this);
 
 	// Downloads 302 to the Atlassian media host, which authenticates the hop via its
 	// own signed token in the redirect URL; the OAuth header must not follow cross-origin.
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'GET',
-		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		url: requestUrl`${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		qs,
+		arrayFormat: 'repeat',
 		encoding: 'arraybuffer',
 		sendCredentialsOnCrossOriginRedirect: false,
 	};
@@ -233,15 +238,15 @@ export async function confluenceApiRequestBinary(
  */
 export async function confluenceApiRequestUpload(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	formData: FormData,
 ): Promise<IDataObject> {
 	const cloudId = await getConfluenceCloudId.call(this);
 	const credentialType = getConfluenceCredentialName(this);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'PUT',
-		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		url: requestUrl`${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
 		body: formData,
 		// Bypasses XSRF checks on this v1 endpoint; without it the gateway answers
 		// 403 "XSRF check failed" before the request ever reaches Confluence.

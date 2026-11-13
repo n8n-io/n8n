@@ -8,7 +8,7 @@ import type {
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 type AtlassianContext =
 	| IHookFunctions
@@ -53,7 +53,7 @@ export function extractAtlassianSiteHostname(siteUrl: string): string {
 }
 
 export function getAtlassianApiBaseUrl(product: AtlassianProduct, cloudId: string): string {
-	return `https://api.atlassian.com/ex/${product}/${encodeURIComponent(cloudId)}`;
+	return `https://api.atlassian.com/ex/${product}/${toPathSegment(cloudId)}`;
 }
 
 async function loadAccessibleResources(

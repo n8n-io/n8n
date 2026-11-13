@@ -1,0 +1,146 @@
+{
+	"name": "Google BigQuery V1 records",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b6c2b7e-5d0a-4a0e-9b3e-1f4c6f1a2d01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [360, 340]
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"operation": "create",
+				"projectId": "test-project",
+				"datasetId": "sales_dataset",
+				"tableId": "orders",
+				"columns": "id",
+				"options": {
+					"traceId": "trace_id"
+				}
+			},
+			"id": "0b6c2b7e-5d0a-4a0e-9b3e-1f4c6f1a2d02",
+			"name": "Create",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 1,
+			"position": [620, 140],
+			"credentials": {
+				"googleApi": {
+					"id": "66",
+					"name": "Google account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"operation": "getAll",
+				"projectId": "test-project",
+				"datasetId": "sales_dataset",
+				"tableId": "orders",
+				"limit": 2,
+				"options": {}
+			},
+			"id": "0b6c2b7e-5d0a-4a0e-9b3e-1f4c6f1a2d03",
+			"name": "Get Many",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 1,
+			"position": [620, 340],
+			"credentials": {
+				"googleApi": {
+					"id": "66",
+					"name": "Google account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"operation": "getAll",
+				"projectId": "test-project",
+				"datasetId": "sales_dataset",
+				"tableId": "orders",
+				"returnAll": true,
+				"simple": false,
+				"options": {}
+			},
+			"id": "0b6c2b7e-5d0a-4a0e-9b3e-1f4c6f1a2d04",
+			"name": "Get Many Return All",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 1,
+			"position": [620, 540],
+			"credentials": {
+				"googleApi": {
+					"id": "66",
+					"name": "Google account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create": [
+			{
+				"json": {
+					"kind": "bigquery#tableDataInsertAllResponse"
+				}
+			}
+		],
+		"Get Many": [
+			{
+				"json": {
+					"id": "1"
+				}
+			},
+			{
+				"json": {
+					"id": "2"
+				}
+			}
+		],
+		"Get Many Return All": [
+			{
+				"json": {
+					"f": [{ "v": "1" }]
+				}
+			},
+			{
+				"json": {
+					"f": [{ "v": "2" }]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Return All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "a1f0c7a4-7a52-4b8e-8d0e-3c2f1f9e6b11",
+	"id": "157",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { JSONSafeParse } from '../../helpers';
 import { apiRequest } from '../../transport';
@@ -176,7 +177,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	const qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
@@ -200,7 +201,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const uploadMode = this.getNodeParameter('uploadMode', i) as string;
 
 			if (uploadMode === 'base64') {
-				endPoint = `/api/v3/data/${baseId}/${table}/records/${id}/fields/${uploadFieldName}/upload`;
+				endPoint = requestPath`/api/v3/data/${baseId}/${table}/records/${id}/fields/${uploadFieldName}/upload`;
 				const contentType = this.getNodeParameter('contentType', i, undefined, {
 					extractValue: true,
 				}) as string;
@@ -222,7 +223,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 				returnData.push.apply(returnData, executionData);
 			} else {
-				endPoint = `/api/v3/data/${baseId}/${table}/records/${id}`;
+				endPoint = requestPath`/api/v3/data/${baseId}/${table}/records/${id}`;
 				// uploadMode = url
 				const url = this.getNodeParameter('url', i) as string;
 				const existingData: IDataObject = await apiRequest.call(this, 'GET', endPoint, {}, qs);
@@ -251,7 +252,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					},
 				];
 
-				endPoint = `/api/v3/data/${baseId}/${table}/records`;
+				endPoint = requestPath`/api/v3/data/${baseId}/${table}/records`;
 				responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData.records as IDataObject[]),

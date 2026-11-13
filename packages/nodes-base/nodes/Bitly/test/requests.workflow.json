@@ -1,0 +1,106 @@
+{
+	"name": "Bitly Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"longUrl": "https://n8n.io/",
+				"additionalFields": {},
+				"deeplink": {}
+			},
+			"id": "node-0",
+			"name": "Link Create",
+			"type": "n8n-nodes-base.bitly",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"bitlyApi": {
+					"id": "1",
+					"name": "Bitly account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"id": "bit.ly/22u3ypK"
+			},
+			"id": "node-1",
+			"name": "Link Get",
+			"type": "n8n-nodes-base.bitly",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"bitlyApi": {
+					"id": "1",
+					"name": "Bitly account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"id": "bit.ly/22u3ypK",
+				"updateFields": {
+					"title": "n8n"
+				},
+				"deeplink": {}
+			},
+			"id": "node-2",
+			"name": "Link Update",
+			"type": "n8n-nodes-base.bitly",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"bitlyApi": {
+					"id": "1",
+					"name": "Bitly account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "Link Create", "type": "main", "index": 0 },
+					{ "node": "Link Get", "type": "main", "index": 0 },
+					{ "node": "Link Update", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Link Create": [
+			{
+				"json": {
+					"id": "bit.ly/22u3ypK",
+					"long_url": "https://n8n.io/"
+				}
+			}
+		],
+		"Link Get": [
+			{
+				"json": {
+					"id": "bit.ly/22u3ypK",
+					"long_url": "https://n8n.io/"
+				}
+			}
+		],
+		"Link Update": [
+			{
+				"json": {
+					"id": "bit.ly/22u3ypK",
+					"title": "n8n"
+				}
+			}
+		]
+	}
+}
