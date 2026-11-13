@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { type EventService, PostHogClient } from '@n8n/backend-services';
 import { mockInstance, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { HTML_NONCE_PLACEHOLDER } from '@n8n/constants';
+import { EMBEDDED_SETTINGS_GLOBAL, HTML_NONCE_PLACEHOLDER } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
@@ -13,7 +13,7 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, EMBEDDED_SETTINGS_TIMEOUT_MS } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -22,7 +22,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
-import type { FrontendService } from '@/services/frontend.service';
+import type { FrontendService, PublicFrontendSettings } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 
 import { createOwner } from './shared/db/users';
@@ -47,10 +47,36 @@ const ICON_MARKER = 'node-icon-marker';
 const SCHEMA_MARKER = 'node-schema-marker';
 const BROWSER_ID = 'test-browser-id';
 
+const PUBLIC_SETTINGS = {
+	settingsMode: 'public',
+	defaultLocale: 'en',
+	activeModules: ['data-table', 'insights'],
+	authCookie: { secure: true },
+} as unknown as PublicFrontendSettings;
+
+/** Finds each embedded settings script and returns its nonce and the assigned value. */
+const findEmbeddedSettings = (html: string) =>
+	[
+		...html.matchAll(
+			new RegExp(
+				`<script nonce="([^"]*)">window\\.${EMBEDDED_SETTINGS_GLOBAL} = (.*?);</script>`,
+				'g',
+			),
+		),
+	].map(([, nonce, json]) => ({ nonce, settings: JSON.parse(json) as unknown }));
+
+/** Returns the nonce of every other script in the page. */
+const findOtherScriptNonces = (html: string) =>
+	[...html.matchAll(/<script nonce="([^"]*)"><\/script>/g)].map(([, nonce]) => nonce);
+
 describe('Server static assets', () => {
 	const httpServers: http.Server[] = [];
 	const ports = {} as Record<Mount, number>;
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const logger = mockLogger();
+	const frontendService = mock<FrontendService>({
+		getSettings: vi.fn(async () => mock<Awaited<ReturnType<FrontendService['getSettings']>>>()),
+	});
 	let authCookie: string;
 
 	// Raw `http.request` rather than `supertest`: superagent normalises a path
@@ -93,7 +119,7 @@ describe('Server static assets', () => {
 		writeFileSync(path.join(staticCacheDir, 'types', 'node-versions.json'), '{"a-node":1}');
 		writeFileSync(
 			path.join(staticCacheDir, 'index.html'),
-			`<html><script nonce="${HTML_NONCE_PLACEHOLDER}"></script></html>`,
+			`<html><head><script nonce="${HTML_NONCE_PLACEHOLDER}"></script></head><body></body></html>`,
 		);
 		writeFileSync(path.join(staticCacheDir, 'public-asset.txt'), 'public');
 		writeFileSync(path.join(staticCacheDir, 'types-extra.txt'), 'extra');
@@ -107,7 +133,7 @@ describe('Server static assets', () => {
 		loadNodesAndCredentials.resolveIcon.mockReturnValue(iconFilePath);
 		loadNodesAndCredentials.resolveSchema.mockReturnValue(schemaFilePath);
 
-		Container.set(Logger, mockLogger());
+		Container.set(Logger, logger);
 		mockInstance(PostHogClient);
 		mockInstance(Push);
 		mockInstance(Telemetry);
@@ -146,13 +172,7 @@ describe('Server static assets', () => {
 			if (mount === 'with a frontend service') {
 				// Both are set by `start()`, which the test does not run
 				Reflect.set(server, 'externalHooks', externalHooks);
-				Reflect.set(
-					server,
-					'frontendService',
-					mock<FrontendService>({
-						getSettings: async () => mock<Awaited<ReturnType<FrontendService['getSettings']>>>(),
-					}),
-				);
+				Reflect.set(server, 'frontendService', frontendService);
 			}
 
 			await server.configure();
@@ -170,6 +190,12 @@ describe('Server static assets', () => {
 			}
 		}
 		await testDb.terminate();
+	});
+
+	beforeEach(() => {
+		frontendService.getPublicSettings.mockReset();
+		frontendService.getPublicSettings.mockResolvedValue(PUBLIC_SETTINGS);
+		vi.mocked(logger.warn).mockClear();
 	});
 
 	describe.each(MOUNTS)('%s', (mount) => {
@@ -426,6 +452,105 @@ describe('Server static assets', () => {
 			} else {
 				expect(response.body).toBe('public');
 			}
+		});
+
+		describe('embedded settings', () => {
+			const getPage = async (requestPath = '/', headers: http.OutgoingHttpHeaders = {}) =>
+				await get(requestPath, ports[mount], { accept: 'text/html', ...headers });
+
+			test.runIf(mount === 'with a frontend service').each(['/', '/home/workflows'])(
+				'embeds the public settings in %s with the request nonce',
+				async (requestPath) => {
+					const { statusCode, body } = await getPage(requestPath);
+
+					expect(statusCode).toBe(200);
+					const embedded = findEmbeddedSettings(body);
+					expect(embedded).toHaveLength(1);
+					expect(embedded[0].settings).toEqual(PUBLIC_SETTINGS);
+
+					const otherNonces = findOtherScriptNonces(body);
+					expect(otherNonces).toHaveLength(1);
+					expect(otherNonces[0]).not.toBe(HTML_NONCE_PLACEHOLDER);
+					expect(embedded[0].nonce).toBe(otherNonces[0]);
+
+					const head = body.slice(body.indexOf('<head>'), body.indexOf('</head>'));
+					expect(head).toContain(`window.${EMBEDDED_SETTINGS_GLOBAL} = `);
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'embeds only the public settings for a signed-in user',
+				async () => {
+					frontendService.getSettings.mockClear();
+
+					const { body } = await getPage('/', { cookie: authCookie });
+
+					expect(frontendService.getPublicSettings).toHaveBeenCalledWith(false);
+					expect(frontendService.getSettings).not.toHaveBeenCalled();
+					expect(findEmbeddedSettings(body)[0].settings).toEqual(PUBLIC_SETTINGS);
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'keeps markup in a setting value inside the script',
+				async () => {
+					const loginUrl = '</script><script>alert(1)</script>&\u2028\u2029';
+					frontendService.getPublicSettings.mockResolvedValue({
+						...PUBLIC_SETTINGS,
+						sso: { oidc: { loginEnabled: true, loginUrl } },
+					} as PublicFrontendSettings);
+
+					const { body } = await getPage();
+
+					expect(body).not.toContain('</script><script>alert(1)');
+					expect(body).not.toContain('\u2028');
+					expect(body).not.toContain('\u2029');
+					const embedded = findEmbeddedSettings(body);
+					expect(embedded).toHaveLength(1);
+					expect(embedded[0].settings).toMatchObject({ sso: { oidc: { loginUrl } } });
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'serves the page without settings when they cannot be built',
+				async () => {
+					frontendService.getPublicSettings.mockRejectedValue(new Error('Database unavailable'));
+
+					const { statusCode, body } = await getPage();
+
+					expect(statusCode).toBe(200);
+					expect(body).toContain('<body></body>');
+					expect(body).not.toContain(EMBEDDED_SETTINGS_GLOBAL);
+					expect(logger.warn).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'serves the page without settings when they are not built in time',
+				async () => {
+					frontendService.getPublicSettings.mockReturnValue(new Promise(() => {}));
+
+					const start = Date.now();
+					const { statusCode, body } = await getPage();
+
+					expect(statusCode).toBe(200);
+					expect(Date.now() - start).toBeGreaterThanOrEqual(EMBEDDED_SETTINGS_TIMEOUT_MS - 50);
+					expect(body).toContain('<body></body>');
+					expect(body).not.toContain(EMBEDDED_SETTINGS_GLOBAL);
+					expect(logger.warn).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			test.runIf(mount === 'without a frontend service')(
+				'serves the page without settings',
+				async () => {
+					const { statusCode, body } = await getPage('/index.html');
+
+					expect(statusCode).toBe(200);
+					expect(body).toContain('<head>');
+					expect(body).not.toContain(EMBEDDED_SETTINGS_GLOBAL);
+				},
+			);
 		});
 
 		// A malformed percent sequence anywhere in the path is undecodable as a whole, so the

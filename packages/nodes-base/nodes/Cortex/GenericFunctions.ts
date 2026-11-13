@@ -6,25 +6,27 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function cortexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('cortexApi');
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		qs: query,
-		uri: uri || `${credentials.host}/api${resource}`,
+		uri: requestUrl`${credentials.host}/api${resource}`,
 		body,
 		json: true,
 	};

@@ -11,6 +11,8 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	type RequestPath,
+	requestPath,
 } from 'n8n-workflow';
 
 import { verifySignature } from '../CalTriggerHelpers';
@@ -37,12 +39,12 @@ interface CalWebhook {
 	secret?: string;
 }
 
-function getWebhookEndpoint(eventTypeId: IDataObject[string]): string {
+function getWebhookEndpoint(eventTypeId: IDataObject[string]): RequestPath {
 	if (typeof eventTypeId === 'number' || (typeof eventTypeId === 'string' && eventTypeId)) {
-		return `/event-types/${encodeURIComponent(eventTypeId)}/webhooks`;
+		return requestPath`/event-types/${eventTypeId}/webhooks`;
 	}
 
-	return '/webhooks';
+	return requestPath`/webhooks`;
 }
 
 export class CalTriggerV2 implements INodeType {
@@ -142,7 +144,7 @@ export class CalTriggerV2 implements INodeType {
 				const response = await (calApiRequestV2<CalApiResponse<CalEventType[]>>).call(
 					this,
 					'GET',
-					'/event-types',
+					requestPath`/event-types`,
 					{},
 					{},
 					{ headers: { 'cal-api-version': '2024-06-14' } },
@@ -248,7 +250,7 @@ export class CalTriggerV2 implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId === undefined) return true;
 
-				const endpoint = `${getWebhookEndpoint(webhookData.webhookEventTypeId)}/${webhookData.webhookId}`;
+				const endpoint = requestPath`${getWebhookEndpoint(webhookData.webhookEventTypeId)}/${webhookData.webhookId}`;
 				try {
 					await calApiRequestV2.call(this, 'DELETE', endpoint);
 				} catch {

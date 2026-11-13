@@ -1,0 +1,591 @@
+{
+	"name": "Splunk v2 Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "getReport"
+			},
+			"id": "splunk-0",
+			"name": "Alert Get Report",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 0],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "getMetrics"
+			},
+			"id": "splunk-1",
+			"name": "Alert Get Metrics",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 150],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "create",
+				"name": "Daily errors",
+				"searchJobId": {
+					"__rl": true,
+					"value": "1718944376.178",
+					"mode": "id"
+				}
+			},
+			"id": "splunk-2",
+			"name": "Report Create",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "deleteReport",
+				"reportId": {
+					"__rl": true,
+					"value": "Errors%20in%20the%20last%20hour",
+					"mode": "id"
+				}
+			},
+			"id": "splunk-3",
+			"name": "Report Delete",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 450],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"reportId": {
+					"__rl": true,
+					"value": "Errors%20in%20the%20last%20hour",
+					"mode": "list"
+				}
+			},
+			"id": "splunk-4",
+			"name": "Report Get",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 600],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "splunk-5",
+			"name": "Report Get Many",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 750],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "create",
+				"search": "search index=_internal"
+			},
+			"id": "splunk-6",
+			"name": "Search Create",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 900],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "deleteJob",
+				"searchJobId": {
+					"__rl": true,
+					"value": "1718944376.178",
+					"mode": "id"
+				}
+			},
+			"id": "splunk-7",
+			"name": "Search Delete",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1050],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "get",
+				"searchJobId": {
+					"__rl": true,
+					"value": "1718944376.178",
+					"mode": "list"
+				}
+			},
+			"id": "splunk-8",
+			"name": "Search Get",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1200],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "splunk-9",
+			"name": "Search Get Many",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1350],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"operation": "getResult",
+				"searchJobId": {
+					"__rl": true,
+					"value": "1718944376.178",
+					"mode": "id"
+				},
+				"limit": 5
+			},
+			"id": "splunk-10",
+			"name": "Search Get Result",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1500],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "create",
+				"name": "nathan",
+				"roles": ["user"],
+				"password": "fake-password"
+			},
+			"id": "splunk-11",
+			"name": "User Create",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1650],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "deleteUser",
+				"userId": {
+					"__rl": true,
+					"value": "nathan",
+					"mode": "id"
+				}
+			},
+			"id": "splunk-12",
+			"name": "User Delete",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1800],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": {
+					"__rl": true,
+					"value": "nathan",
+					"mode": "list"
+				}
+			},
+			"id": "splunk-13",
+			"name": "User Get",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 1950],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "splunk-14",
+			"name": "User Get Many",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 2100],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "update",
+				"userId": {
+					"__rl": true,
+					"value": "nathan",
+					"mode": "id"
+				},
+				"updateFields": {
+					"email": "nathan@example.com"
+				}
+			},
+			"id": "splunk-15",
+			"name": "User Update",
+			"type": "n8n-nodes-base.splunk",
+			"typeVersion": 2,
+			"position": [300, 2250],
+			"credentials": {
+				"splunkApi": {
+					"id": "1",
+					"name": "Splunk account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Alert Get Report": [
+			{
+				"json": {
+					"id": "a1",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/alerts/fired_alerts/a1"
+				}
+			}
+		],
+		"Alert Get Metrics": [
+			{
+				"json": {
+					"id": "m1",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/alerts/metric_alerts/m1"
+				}
+			}
+		],
+		"Report Create": [
+			{
+				"json": {
+					"title": "Entry",
+					"id": "Errors%20in%20the%20last%20hour",
+					"status": "ok",
+					"owner": "admin",
+					"entryUrl": "https://splunk.example.com:8089/services/saved/searches/Errors%20in%20the%20last%20hour"
+				}
+			}
+		],
+		"Report Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Report Get": [
+			{
+				"json": {
+					"id": "Errors%20in%20the%20last%20hour",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/saved/searches/Errors%20in%20the%20last%20hour"
+				}
+			}
+		],
+		"Report Get Many": [
+			{
+				"json": {
+					"id": "Errors%20in%20the%20last%20hour",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/saved/searches/Errors%20in%20the%20last%20hour"
+				}
+			}
+		],
+		"Search Create": [
+			{
+				"json": {
+					"id": "1718944376.178",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/search/jobs/1718944376.178"
+				}
+			}
+		],
+		"Search Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Search Get": [
+			{
+				"json": {
+					"id": "1718944376.178",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/search/jobs/1718944376.178"
+				}
+			}
+		],
+		"Search Get Many": [
+			{
+				"json": {
+					"id": "1718944376.178",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/search/jobs/1718944376.178"
+				}
+			}
+		],
+		"Search Get Result": [
+			{
+				"json": {
+					"results": [
+						{
+							"host": "web-01"
+						}
+					]
+				}
+			}
+		],
+		"User Create": [
+			{
+				"json": {
+					"title": "Entry",
+					"id": "nathan",
+					"status": "ok",
+					"owner": "admin",
+					"entryUrl": "https://splunk.example.com:8089/services/authentication/users/nathan"
+				}
+			}
+		],
+		"User Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"User Get": [
+			{
+				"json": {
+					"id": "nathan",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/authentication/users/nathan"
+				}
+			}
+		],
+		"User Get Many": [
+			{
+				"json": {
+					"id": "nathan",
+					"name": "Entry",
+					"status": "ok",
+					"entryUrl": "https://splunk.example.com:8089/services/authentication/users/nathan"
+				}
+			}
+		],
+		"User Update": [
+			{
+				"json": {
+					"title": "Entry",
+					"id": "nathan",
+					"status": "ok",
+					"owner": "admin",
+					"entryUrl": "https://splunk.example.com:8089/services/authentication/users/nathan"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Alert Get Report",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Get Metrics",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Get Result",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

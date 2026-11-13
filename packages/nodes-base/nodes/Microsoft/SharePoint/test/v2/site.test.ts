@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -41,7 +41,7 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 		// Graph quirk: `search`, not `$search`
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites',
+			requestPath`/v1.0/sites`,
 			{},
 			{
 				search: 'marketing',
@@ -63,7 +63,7 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites',
+			requestPath`/v1.0/sites`,
 			{},
 			{
 				search: '*',
@@ -94,7 +94,7 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 		const secondPage = await getSites.call(ctx, undefined, nextLink);
 
 		// The link is a complete address — passed through verbatim, never rebuilt
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', requestPath`/v1.0/sites`, {}, {}, nextLink);
 		// The second page's rows must surface, not just its token bookkeeping
 		expect(secondPage.results).toEqual([{ name: 'Two', value: 's2', url: undefined }]);
 		expect(secondPage.paginationToken).toBeUndefined();
@@ -236,17 +236,45 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', endpoint, {}, { $select: 'id' });
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			expect.objectContaining({ value: endpoint }),
+			{},
+			{ $select: 'id' },
+		);
 	});
 
-	it("re-encodes path segments so a raw ':' can't escape the {host}:{path} shape", async () => {
-		setSite({ mode: 'url', value: 'https://contoso.sharepoint.com/sites/a:b' });
+	it.each([
+		['https://contoso.sharepoint.com/sites/a:b', '/v1.0/sites/contoso.sharepoint.com:/sites/a%3Ab'],
+		[
+			'https://contoso.sharepoint.com/sites/a%3Ab',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a%3Ab',
+		],
+		[
+			'https://contoso.sharepoint.com/sites/a:/drive',
+			'/v1.0/sites/contoso.sharepoint.com:/sites/a%3A/drive',
+		],
+	])('encodes ":" in the site URL path %s', async (value, endpoint) => {
+		setSite({ mode: 'url', value });
 
 		await resolveSiteId.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/a%3Ab',
+			expect.objectContaining({ value: endpoint }),
+			{},
+			{ $select: 'id' },
+		);
+	});
+
+	it('encodes each site URL path segment as one segment', async () => {
+		setSite({ mode: 'url', value: 'https://contoso.sharepoint.com/sites/a%2Fb%3Fc/sub' });
+
+		await resolveSiteId.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/a%2Fb%3Fc/sub' }),
 			{},
 			{ $select: 'id' },
 		);
@@ -259,7 +287,7 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/My%20Site',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/My%20Site' }),
 			{},
 			{ $select: 'id' },
 		);

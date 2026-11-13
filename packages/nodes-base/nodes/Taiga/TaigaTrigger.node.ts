@@ -8,6 +8,7 @@ import {
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
@@ -125,9 +126,15 @@ export class TaigaTrigger implements INodeType {
 			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
+				const { id } = await taigaApiRequest.call(this, 'GET', requestPath`/users/me`);
 
-				const projects = await taigaApiRequest.call(this, 'GET', '/projects', {}, { member: id });
+				const projects = await taigaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/projects`,
+					{},
+					{ member: id },
+				);
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
@@ -148,7 +155,7 @@ export class TaigaTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const webhooks = await taigaApiRequest.call(this, 'GET', endpoint);
 
@@ -179,7 +186,7 @@ export class TaigaTrigger implements INodeType {
 					key,
 					project: projectId,
 				};
-				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
+				const { id } = await taigaApiRequest.call(this, 'POST', requestPath`/webhooks`, body);
 
 				webhookData.webhookId = id;
 				webhookData.key = key;
@@ -189,7 +196,11 @@ export class TaigaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await taigaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`);
+					await taigaApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/webhooks/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}

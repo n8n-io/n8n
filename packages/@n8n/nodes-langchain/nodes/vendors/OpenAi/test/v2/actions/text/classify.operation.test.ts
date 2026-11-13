@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -35,7 +36,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'omni-moderation-latest' },
 		});
 		expect(result).toEqual([
@@ -63,7 +64,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'text-moderation-stable' },
 		});
 		expect(result).toEqual([
@@ -91,7 +92,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'text-moderation-latest' },
 		});
 		expect(result).toEqual([

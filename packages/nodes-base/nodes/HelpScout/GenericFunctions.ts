@@ -7,27 +7,27 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function helpscoutApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
-	let options: IRequestOptions = {
+	let options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.helpscout.net${resource}`,
 		json: true,
 	};
 	try {
@@ -37,7 +37,13 @@ export async function helpscoutApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(
+			this,
+			'helpScoutOAuth2Api',
+			uri
+				? { ...options, uri }
+				: { ...options, uri: requestUrl`https://api.helpscout.net${resource}` },
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -47,7 +53,7 @@ export async function helpscoutApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

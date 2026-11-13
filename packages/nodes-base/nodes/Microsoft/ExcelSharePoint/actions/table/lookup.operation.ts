@@ -1,5 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -74,7 +79,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	return await runPerItem.call(this, items, async (i) => {
@@ -85,7 +90,7 @@ export async function execute(
 		const tableEndpoint = await resolveTableEndpoint.call(this, i, workbookRootCache, siteIdCache);
 		const rows = await (microsoftApiRequestAllItems<GraphTableRow>).call(
 			this,
-			`${tableEndpoint}/rows`,
+			requestPath`${tableEndpoint}/rows`,
 		);
 		const columnNames = await fetchTableColumnNames.call(this, tableEndpoint);
 

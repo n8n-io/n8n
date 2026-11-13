@@ -15,6 +15,7 @@ import { useSkillsStore } from './skills.store';
 const list = vi.fn();
 const sources = vi.fn();
 const checkSource = vi.fn();
+const deleteSource = vi.fn();
 const creators = vi.fn();
 const agents = vi.fn();
 const discoverSource = vi.fn();
@@ -27,6 +28,7 @@ const saveSkill = vi.fn();
 vi.mock('./skills.api', () => ({
 	listSkillSources: async (...args: unknown[]) => await sources(...args),
 	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
+	deleteSkillSource: async (...args: unknown[]) => await deleteSource(...args),
 	getSkill: async (...args: unknown[]) => await getSkill(...args),
 	saveSkill: async (...args: unknown[]) => await saveSkill(...args),
 	getSkills: async (...args: unknown[]) => await list(...args),
@@ -78,6 +80,14 @@ describe('useSkillsStore', () => {
 		const store = useSkillsStore();
 		expect(await store.checkSource('source-1')).toBe(result);
 		expect(checkSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
+	});
+
+	it('deletes a source with the REST context', async () => {
+		const store = useSkillsStore();
+
+		await store.deleteSource('source-1');
+
+		expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
 	});
 
 	it('keeps the previous sources when a read fails', async () => {

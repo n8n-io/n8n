@@ -11,7 +11,7 @@ describe('Test MicrosoftExcelV2, Service Principal worksheet => readRows fails o
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get(
-			'/users/jane%40contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
+			'/users/jane@contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
 		)
 		.reply(200, { values: [['row'], ['jane-row']] });
 

@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
@@ -144,7 +145,7 @@ export async function execute(
 	}
 
 	const method = 'POST';
-	const endpoint = '/v4/userActivity:search';
+	const endpoint = requestPath`/v4/userActivity:search`;
 
 	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);

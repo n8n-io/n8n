@@ -1,0 +1,261 @@
+{
+	"name": "SendGrid Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "dec35682-e240-5f6f-b143-0d553f9334d8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "65bf44c2-c821-507a-a707-714c60b995af",
+			"name": "Contact > Get Many",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {
+					"query": "email LIKE 'ada%'"
+				}
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "065d2282-65ef-5669-abda-88d7ccd65192",
+			"name": "Contact > Get Many With Query",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"by": "id",
+				"contactId": "ab12cd34-5678-90ef-1234-567890abcdef"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "c16e326e-54a5-5a6c-a4f3-000d83aae76c",
+			"name": "Contact > Get By ID",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "upsert",
+				"email": "ada@example.com"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "d56c2090-3fd3-57e8-8ac6-ea258eb93d55",
+			"name": "Contact > Upsert",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"ids": "ab12cd34-5678-90ef-1234-567890abcdef"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "7aa7dbc3-c0aa-54b6-adff-d754ed0aac79",
+			"name": "Contact > Delete",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "c36716ba-32be-5cdd-bdfe-258b4a9bd575",
+			"name": "List > Get Many",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "get",
+				"listId": "f1e2d3c4-b5a6-4789-9012-3456789abcde"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "34dfabb5-e6df-5b60-84aa-7c47f38bb13f",
+			"name": "List > Get",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"name": "Newsletter"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "e1c96bec-90d7-5ac6-940c-8d97af3686da",
+			"name": "List > Create",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "delete",
+				"listId": "f1e2d3c4-b5a6-4789-9012-3456789abcde"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "b6a3fc53-c4f7-511d-8a27-3b0ddd59f45b",
+			"name": "List > Delete",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "update",
+				"listId": "f1e2d3c4-b5a6-4789-9012-3456789abcde",
+				"name": "Weekly Newsletter"
+			},
+			"type": "n8n-nodes-base.sendGrid",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "567eec6d-0cef-57c7-8704-4daefd8e6ea7",
+			"name": "List > Update",
+			"credentials": {
+				"sendGridApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Contact > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Get Many With Query",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Get By ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

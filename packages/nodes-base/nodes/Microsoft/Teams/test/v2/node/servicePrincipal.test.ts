@@ -6,6 +6,7 @@ import {
 	type IExecuteFunctions,
 	type INode,
 	type NodeParameterValueType,
+	requestPath,
 } from 'n8n-workflow';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
@@ -172,9 +173,10 @@ describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+			requestPath`/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages`,
 		);
-		const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2] as string;
+		const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2]
+			.value as string;
 		expect(calledPath).not.toContain('%3A');
 		// no `/me` user-scope segment (the `me` in `/messages` is not a segment)
 		expect(calledPath).not.toMatch(/\/me(\/|$)/);
@@ -202,10 +204,11 @@ describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 			expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/v1.0/planner/plans/plan-123/tasks',
+				requestPath`/v1.0/planner/plans/plan-123/tasks`,
 			);
 			// app-only must never hit /me
-			const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2] as string;
+			const calledPath = (transport.microsoftApiRequestAllItems as Mock).mock.calls[0][2]
+				.value as string;
 			expect(calledPath).not.toContain('/me');
 		});
 
@@ -242,9 +245,9 @@ describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 
 			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/teams/1111-2222-3333/channels/19:abc@thread.tacv2',
+				requestPath`/v1.0/teams/1111-2222-3333/channels/19:abc@thread.tacv2`,
 			);
-			const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1] as string;
+			const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1].value as string;
 			expect(calledPath).not.toContain('%3A');
 			expect(calledPath).not.toContain('%40');
 			expect(calledPath).not.toContain('/me');
@@ -332,7 +335,7 @@ describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 
 			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v1.0/planner/tasks',
+				requestPath`/v1.0/planner/tasks`,
 				expect.objectContaining({
 					planId: 'plan-1',
 					bucketId: 'bucket-1',
@@ -388,7 +391,7 @@ describe('Microsoft Teams V2, Service Principal runtime guards', () => {
 			expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages',
+				requestPath`/beta/teams/1111-2222-3333/channels/19:abc@thread.tacv2/messages`,
 				{},
 				{ $top: 1 },
 				1,

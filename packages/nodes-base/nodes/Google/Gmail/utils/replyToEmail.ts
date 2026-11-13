@@ -1,5 +1,10 @@
 import uniq from 'lodash/uniq';
-import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	requestPath,
+	type IDataObject,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
 import addressparser from 'nodemailer/lib/addressparser';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
@@ -55,7 +60,7 @@ export async function replyToEmail(
 		}
 	}
 
-	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
+	const endpoint = requestPath`/gmail/v1/users/me/messages/${gmailId}`;
 
 	qs.format = 'metadata';
 	const { payload, threadId } = (await googleApiRequest.call(
@@ -79,7 +84,7 @@ export async function replyToEmail(
 	const { emailAddress } = (await googleApiRequest.call(
 		this,
 		'GET',
-		'/gmail/v1/users/me/profile',
+		requestPath`/gmail/v1/users/me/profile`,
 	)) as GmailUserProfile;
 
 	const to: string[] = [];
@@ -146,7 +151,7 @@ export async function replyToEmail(
 	return (await googleApiRequest.call(
 		this,
 		'POST',
-		'/gmail/v1/users/me/messages/send',
+		requestPath`/gmail/v1/users/me/messages/send`,
 		body,
 		qs,
 	)) as GmailMessage;

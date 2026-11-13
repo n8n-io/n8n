@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -11,7 +12,7 @@ export async function muteAlert(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `rmm_alerts/${id}/mute`;
+	const endpoint = requestPath`rmm_alerts/${id}/mute`;
 	const body = {} as IDataObject;
 
 	body.id = id;

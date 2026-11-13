@@ -1,0 +1,175 @@
+{
+	"name": "Brandfetch request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e01",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "data",
+				"type": "domain",
+				"identifier": "n8n.io"
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e02",
+			"name": "Get Brand Data",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 2,
+			"position": [220, -300],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "colors",
+				"type": "ticker",
+				"identifier": "AAPL"
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e03",
+			"name": "Get Brand Colors",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 2,
+			"position": [220, -150],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "logo",
+				"type": "isin",
+				"identifier": "US0378331005",
+				"download": true
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e04",
+			"name": "Download Brand Logo",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "context",
+				"domain": "n8n.io",
+				"outputFormat": "json",
+				"cachedOnly": true
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e05",
+			"name": "Get Brand Context",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 2,
+			"position": [220, 150],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "context",
+				"domain": "example.com",
+				"outputFormat": "markdown"
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e06",
+			"name": "Get Brand Context Markdown",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 2,
+			"position": [220, 300],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "color",
+				"domain": "n8n.io"
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e07",
+			"name": "Get Colors V1",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 1,
+			"position": [220, 450],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "logo",
+				"domain": "example.com",
+				"download": true,
+				"imageTypes": ["logo"],
+				"imageFormats": ["png"]
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e08",
+			"name": "Download Logo V1",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"brandfetchApi": { "id": "1", "name": "Brandfetch account" }
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{ "node": "Get Brand Data", "type": "main", "index": 0 },
+					{ "node": "Get Brand Colors", "type": "main", "index": 0 },
+					{ "node": "Download Brand Logo", "type": "main", "index": 0 },
+					{ "node": "Get Brand Context", "type": "main", "index": 0 },
+					{ "node": "Get Brand Context Markdown", "type": "main", "index": 0 },
+					{ "node": "Get Colors V1", "type": "main", "index": 0 },
+					{ "node": "Download Logo V1", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Brand Data": [
+			{
+				"json": {
+					"name": "n8n",
+					"domain": "n8n.io",
+					"colors": [{ "hex": "#ea4b71", "type": "brand" }]
+				}
+			}
+		],
+		"Get Brand Colors": [{ "json": { "hex": "#000000", "type": "dark" } }],
+		"Download Brand Logo": [
+			{
+				"json": [
+					{
+						"type": "logo",
+						"theme": "light",
+						"formats": [{ "src": "https://cdn.brandfetch.io/idbrand/logo.png", "format": "png" }]
+					}
+				]
+			}
+		],
+		"Get Brand Context": [{ "json": { "domain": "n8n.io", "identity": { "name": "n8n" } } }],
+		"Get Brand Context Markdown": [
+			{ "json": { "context": "# Example\n\nExample brand context." } }
+		],
+		"Get Colors V1": [{ "json": { "hex": "#ea4b71", "type": "brand" } }],
+		"Download Logo V1": [
+			{
+				"json": [
+					{
+						"type": "logo",
+						"theme": "light",
+						"formats": [{ "src": "https://cdn.brandfetch.io/idbrand/logo.png", "format": "png" }]
+					}
+				]
+			}
+		]
+	}
+}
