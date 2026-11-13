@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { renderComponent } from '@/__tests__/render';
 import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
+import { EditorView } from '@codemirror/view';
 import { userEvent } from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
@@ -15,6 +16,11 @@ const DEFAULT_SETUP = {
 		isReadOnly: false,
 	},
 };
+
+function editorState(container: Element) {
+	const dom = container.querySelector<HTMLElement>('.cm-editor');
+	return dom ? EditorView.findFromDOM(dom)?.state : undefined;
+}
 
 describe('HtmlEditor.vue', () => {
 	const pinia = createTestingPinia({
@@ -72,5 +78,24 @@ describe('HtmlEditor.vue', () => {
 				['<div>Content</div><html><ul><li>one</li><li>two</li></ul></html>'],
 			]),
 		);
+	});
+
+	// HtmlEditor already tracks read-only through its reactive `extensions`, unlike
+	// the other CodeMirror editors. Lock that in so the wiring is not simplified away.
+	it('follows the read-only prop when it toggles at runtime', async () => {
+		const { container, rerender } = renderComponent(HtmlEditor, {
+			...DEFAULT_SETUP,
+			props: { ...DEFAULT_SETUP.props, isReadOnly: true },
+		});
+
+		await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
+
+		await rerender({ isReadOnly: false });
+
+		await waitFor(() => expect(editorState(container)?.readOnly).toBe(false));
+
+		await rerender({ isReadOnly: true });
+
+		await waitFor(() => expect(editorState(container)?.readOnly).toBe(true));
 	});
 });
