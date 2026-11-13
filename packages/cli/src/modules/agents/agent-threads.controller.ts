@@ -68,6 +68,7 @@ export class AgentThreadsController {
 			ownerId: _ownerId,
 			accessScope: _accessScope,
 			owner: _owner,
+			simulation: _simulation,
 			...thread
 		} = result.thread;
 		const source = result.executions.find((execution) => execution.source !== null)?.source;

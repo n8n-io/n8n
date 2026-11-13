@@ -15,7 +15,7 @@ import type {
 } from '@/modules/agents/simulation/tool-simulation.contracts';
 
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
-import { createLlmMockHandler } from './mock-handler';
+import { createLlmMockHandler, type WriteLedgerEntry } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
@@ -63,18 +63,26 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				scenarioHints,
 			}));
 		const worldId = restored?.worldId ?? `llm-mock-${randomUUID()}`;
-		return this.buildWorld(worldId, seed, restored?.scenarioHints ?? scenarioHints);
+		return this.buildWorld(
+			worldId,
+			seed,
+			restored?.scenarioHints ?? scenarioHints,
+			restored?.writeLedger ?? [],
+		);
 	}
 
 	private buildWorld(
 		worldId: string,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioHints: string,
+		writeLedger: WriteLedgerEntry[],
 	): SimulationWorld {
+		// Shared with the handler, which appends each simulated write, so it can be saved.
 		const httpMock: EvalLlmMockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+			writeLedger,
 		});
 
 		return {
@@ -84,6 +92,8 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				worldId,
 				scenarioHints,
 				seed: seed as unknown as JsonObject,
+				// A later turn, after a restart too, must still see what earlier turns wrote.
+				writeLedger: writeLedger.slice(-MAX_SAVED_WRITES) as unknown as JsonObject[],
 			}),
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
 				const node: INode = {
@@ -133,9 +143,17 @@ function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
 		}));
 }
 
-function parseSaved(
-	saved: SavedSimulationWorld | undefined,
-): { worldId: string; scenarioHints: string; seed: InstanceAiEvalAgentScenarioSeed } | undefined {
+/** Writes kept with a saved world: enough for later reads, small enough for the thread row. */
+const MAX_SAVED_WRITES = 50;
+
+function parseSaved(saved: SavedSimulationWorld | undefined):
+	| {
+			worldId: string;
+			scenarioHints: string;
+			seed: InstanceAiEvalAgentScenarioSeed;
+			writeLedger: WriteLedgerEntry[];
+	  }
+	| undefined {
 	if (!saved) return undefined;
 	const { worldId, scenarioHints, seed } = saved;
 	if (typeof worldId !== 'string' || typeof scenarioHints !== 'string') return undefined;
@@ -143,7 +161,25 @@ function parseSaved(
 	if (typeof seed.globalContext !== 'string' || typeof seed.openingMessage !== 'string') {
 		return undefined;
 	}
-	return { worldId, scenarioHints, seed: seed as unknown as InstanceAiEvalAgentScenarioSeed };
+	return {
+		worldId,
+		scenarioHints,
+		seed: seed as unknown as InstanceAiEvalAgentScenarioSeed,
+		writeLedger: parseWriteLedger(saved.writeLedger),
+	};
+}
+
+function parseWriteLedger(value: unknown): WriteLedgerEntry[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(entry): entry is WriteLedgerEntry =>
+			typeof entry === 'object' &&
+			entry !== null &&
+			typeof (entry as WriteLedgerEntry).hostname === 'string' &&
+			typeof (entry as WriteLedgerEntry).method === 'string' &&
+			typeof (entry as WriteLedgerEntry).endpoint === 'string' &&
+			typeof (entry as WriteLedgerEntry).nodeName === 'string',
+	);
 }
 
 function isMockGenerationError(body: unknown): boolean {
