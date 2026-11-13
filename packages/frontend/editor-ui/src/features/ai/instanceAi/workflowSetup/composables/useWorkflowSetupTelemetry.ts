@@ -1,7 +1,7 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type AssistantRuntime, type InferTelemetryProps } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
@@ -25,6 +25,7 @@ type WorkflowSetupStepTelemetryPayload = {
 	input_thread_id: string;
 	instance_id: string;
 	type: 'setup';
+	runtime: AssistantRuntime;
 	request_id: string;
 	step_index: number;
 	step_count: number;
@@ -34,7 +35,13 @@ type WorkflowSetupStepTelemetryPayload = {
 
 type SetupTelemetryContext = Pick<
 	WorkflowSetupStepTelemetryPayload,
-	'session_id' | 'workflow_id' | 'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
+	| 'session_id'
+	| 'workflow_id'
+	| 'thread_id'
+	| 'input_thread_id'
+	| 'instance_id'
+	| 'type'
+	| 'runtime'
 >;
 
 interface WorkflowSetupTelemetryInputAccessors {
@@ -53,6 +60,8 @@ export function useWorkflowSetupTelemetry(deps: {
 	threadId: Ref<string>;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId: Ref<string | undefined>;
+	/** The Assistant runtime that showed the card. */
+	runtime: Ref<AssistantRuntime>;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
@@ -70,6 +79,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			input_thread_id: deps.inputThreadId.value ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
+			runtime: deps.runtime.value,
 		};
 	}
 

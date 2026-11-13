@@ -105,6 +105,7 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 		applyMachine: { apply, defer },
 		threadId: ref('thread-1'),
 		inputThreadId: ref<string | undefined>('input-thread-1'),
+		runtime: ref('agents' as const),
 	});
 
 	return {
@@ -154,6 +155,7 @@ describe('useWorkflowSetupActions', () => {
 					workflow_id: 'workflow-1',
 					thread_id: 'thread-1',
 					session_id: 'session-1',
+					runtime: 'agents',
 				});
 				if (typeof variant === 'string') {
 					expect(payload).toMatchObject({

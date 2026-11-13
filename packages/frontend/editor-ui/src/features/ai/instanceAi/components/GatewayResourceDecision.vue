@@ -6,7 +6,7 @@ import { computed } from 'vue';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { redactTelemetryProperties } from '@n8n/telemetry';
+import { redactTelemetryProperties, type AssistantRuntime } from '@n8n/telemetry';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -33,6 +33,8 @@ const props = defineProps<{
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId?: string;
+	/** The Assistant runtime that showed the card. */
+	runtime: AssistantRuntime;
 }>();
 
 const emit = defineEmits<{
@@ -84,6 +86,7 @@ function confirm(decision: InstanceGatewayResourceDecision) {
 		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
+		runtime: props.runtime,
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
 	};

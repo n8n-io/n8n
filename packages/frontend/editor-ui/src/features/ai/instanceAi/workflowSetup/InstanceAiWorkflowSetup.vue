@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { provide, toRef } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import type { AssistantRuntime } from '@n8n/telemetry';
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
@@ -17,6 +18,8 @@ const props = defineProps<{
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId?: string;
+	/** The Assistant runtime that showed the card. */
+	runtime: AssistantRuntime;
 	/** How the parent settled the last answer. A new object for each answer. */
 	outcome?: WorkflowSetupOutcome;
 }>();
@@ -37,6 +40,7 @@ const ctx = provideWorkflowSetupContext({
 	credentialFlow: toRef(props, 'credentialFlow'),
 	threadId: toRef(props, 'threadId'),
 	inputThreadId: toRef(props, 'inputThreadId'),
+	runtime: toRef(props, 'runtime'),
 	outcome: toRef(props, 'outcome'),
 	emitApply: (payload) => emit('apply', payload),
 	emitDefer: () => emit('defer'),

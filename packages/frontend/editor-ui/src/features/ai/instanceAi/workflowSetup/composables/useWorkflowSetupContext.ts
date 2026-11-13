@@ -10,6 +10,7 @@ import {
 	type Ref,
 } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import type { AssistantRuntime } from '@n8n/telemetry';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
 import type {
@@ -65,6 +66,8 @@ interface ProvideOptions {
 	threadId: Ref<string>;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId: Ref<string | undefined>;
+	/** The Assistant runtime that showed the card. */
+	runtime: Ref<AssistantRuntime>;
 	/** How the parent settled the last answer. */
 	outcome: Ref<WorkflowSetupOutcome | undefined>;
 	/** Hands the user's apply to the parent, which sends it. */
@@ -142,6 +145,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		},
 		threadId: opts.threadId,
 		inputThreadId: opts.inputThreadId,
+		runtime: opts.runtime,
 	});
 
 	// Clamp currentStepIndex when the section list shrinks beneath it.

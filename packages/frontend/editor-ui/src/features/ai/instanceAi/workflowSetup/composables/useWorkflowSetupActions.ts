@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
+import type { AssistantRuntime } from '@n8n/telemetry';
 import type { WorkflowSetupApplyPayload, WorkflowSetupSection } from '../workflowSetup.types';
 import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
 import { useWorkflowSetupTelemetry } from './useWorkflowSetupTelemetry';
@@ -39,6 +40,7 @@ export function useWorkflowSetupActions(deps: {
 	applyMachine: ApplyMachine;
 	threadId: Ref<string>;
 	inputThreadId: Ref<string | undefined>;
+	runtime: Ref<AssistantRuntime>;
 }): WorkflowSetupActions {
 	const isActionPending = ref(false);
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
@@ -53,6 +55,7 @@ export function useWorkflowSetupActions(deps: {
 		},
 		threadId: deps.threadId,
 		inputThreadId: deps.inputThreadId,
+		runtime: deps.runtime,
 	});
 
 	/**

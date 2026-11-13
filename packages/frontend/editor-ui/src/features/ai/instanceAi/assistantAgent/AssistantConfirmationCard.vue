@@ -366,6 +366,7 @@ function onApprovalSelect(key: string) {
 			:workflow-id="input.workflowId"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
+			runtime="agents"
 			:outcome="workflowSetupOutcome"
 			@apply="onWorkflowSetupApply"
 			@defer="onWorkflowSetupDefer"
@@ -379,6 +380,7 @@ function onApprovalSelect(key: string) {
 			:require-user-selection="input.requireUserSelection"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
+			runtime="agents"
 			@decide="(body) => submit(body)"
 		/>
 		<GatewayResourceDecision
@@ -388,6 +390,7 @@ function onApprovalSelect(key: string) {
 			:options="input.resourceDecision.options"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
+			runtime="agents"
 			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
 		/>
 		<InstanceAiChannelSetup

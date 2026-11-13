@@ -149,7 +149,7 @@ const decide = vi.fn();
 function renderComponent(options: Parameters<typeof renderCard>[0] = {}) {
 	return renderCard({
 		...options,
-		props: { threadId: 'thread-1', onDecide: decide, ...options.props },
+		props: { threadId: 'thread-1', runtime: 'instance-ai', onDecide: decide, ...options.props },
 	});
 }
 
@@ -551,6 +551,29 @@ describe('InstanceAiCredentialSetup', () => {
 				kind: 'approval',
 				approved: false,
 			});
+		});
+
+		it('reports the runtime that it is given when the user answers', async () => {
+			mockTelemetryTrack.mockClear();
+			const { getByText } = renderComponent({
+				props: {
+					credentialRequests: makeCredentialRequests(1),
+					message: 'Set up credentials',
+					inputThreadId: 'input-thread-1',
+					runtime: 'agents',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					input_thread_id: 'input-thread-1',
+					type: 'credential-setup',
+					runtime: 'agents',
+				}),
+			);
 		});
 
 		it('auto-continues when single credential is selected', async () => {
@@ -999,7 +1022,13 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(decide).toHaveBeenCalledWith({ kind: 'approval', approved: false }, 'deferred');
 			expect(queryByText('instanceAi.credential.deny')).toBeNull();
 
-			await rerender({ threadId: 'thread-1', onDecide: decide, ...props, failedAttempts: 1 });
+			await rerender({
+				threadId: 'thread-1',
+				runtime: 'instance-ai',
+				onDecide: decide,
+				...props,
+				failedAttempts: 1,
+			});
 
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
 		});

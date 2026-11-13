@@ -48,8 +48,8 @@ vi.mock('../../components/InstanceAiMcpConnectCard.vue', () => ({
 function eventStub(testId: string, emitExpression: string) {
 	return {
 		default: {
-			props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
-			template: `<button data-test-id="${testId}" :data-project-id="projectId" @click="${emitExpression}" />`,
+			props: ['projectId', 'threadId', 'inputThreadId', 'runtime', 'outcome'],
+			template: `<button data-test-id="${testId}" :data-project-id="projectId" :data-runtime="runtime" @click="${emitExpression}" />`,
 		},
 	};
 }
@@ -62,9 +62,9 @@ vi.mock('../../components/InstanceAiCredentialSetup.vue', () =>
 );
 vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
-		props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+		props: ['projectId', 'threadId', 'inputThreadId', 'runtime', 'outcome'],
 		template: `<div>
-			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" @click="$emit('defer')" />
+			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" :data-runtime="runtime" @click="$emit('defer')" />
 			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } })" />
 			<span data-test-id="stub-workflow-setup-outcome">{{ outcome?.state }}</span>
 		</div>`,
@@ -313,6 +313,18 @@ describe('AssistantConfirmationCard', () => {
 		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'credentialDestination', approved: true, origin: 'https://api.example.com' }],
 		]);
+	});
+
+	it.each([
+		['stub-workflow-setup', { setupRequests: [{ id: 'x' }] }],
+		['stub-credential-setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
+	])('passes the agents runtime to %s for its telemetry', (testId, fields) => {
+		const input = { requestId: 'req-s', message: 'Set up Slack', ...fields };
+		const { getByTestId } = renderComponent({
+			props: { input: input as AssistantConfirmationInput },
+		});
+
+		expect(getByTestId(testId)).toHaveAttribute('data-runtime', 'agents');
 	});
 
 	// Minimal payloads: the card only needs each field to choose its setup variant.

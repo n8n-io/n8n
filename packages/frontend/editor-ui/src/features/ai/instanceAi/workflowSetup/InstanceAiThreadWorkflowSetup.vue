@@ -47,6 +47,7 @@ async function onDefer() {
 		:credential-flow="credentialFlow"
 		:thread-id="thread.id"
 		:input-thread-id="inputThreadId"
+		runtime="instance-ai"
 		:outcome="outcome"
 		@apply="onApply"
 		@defer="onDefer"
