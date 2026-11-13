@@ -12,10 +12,13 @@ configure({ testIdAttribute: 'data-testid' });
 const global = { stubs: { AgentModal: AgentModalTestStub } };
 
 describe('AgentNewTestRunButton', () => {
-	const renderButton = createComponentRenderer(AgentNewTestRunButton, { global });
+	const renderButton = createComponentRenderer(AgentNewTestRunButton, {
+		global,
+		props: { busy: false },
+	});
 
 	it('asks for confirmation before it starts a new test run', async () => {
-		const { getByTestId, queryByRole, getByRole, emitted } = renderButton();
+		const { getByTestId, queryByRole, getByRole, emitted, rerender } = renderButton();
 
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
 		const button = getByTestId('agent-new-test-run-button');
@@ -30,7 +33,20 @@ describe('AgentNewTestRunButton', () => {
 		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
 		expect(emitted('confirm')).toHaveLength(1);
 		expect(emitted('cancel')).toBeUndefined();
+		expect(getByRole('dialog')).toHaveAttribute('data-busy', 'true');
+		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		expect(emitted('confirm')).toHaveLength(1);
+
+		await rerender({ busy: true, disabled: true });
+		expect(getByRole('dialog')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-modal-cancel'));
+		expect(emitted('cancel')).toBeUndefined();
+		await rerender({ busy: false, disabled: false });
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		await fireEvent.click(getByTestId('agent-new-test-run-confirm'));
+		expect(emitted('confirm')).toHaveLength(2);
 	});
 
 	it('closes an open confirmation when it becomes disabled, without resetting', async () => {
@@ -67,14 +83,27 @@ describe('AgentNewTestRunButton', () => {
 	});
 
 	it('starts at once when there is nothing to reset', async () => {
-		const { getByTestId, queryByRole, emitted } = renderButton({
+		const { getByTestId, queryByRole, emitted, rerender } = renderButton({
 			props: { requireConfirmation: false },
 		});
 
 		await fireEvent.click(getByTestId('agent-new-test-run-button'));
 
 		expect(queryByRole('dialog')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
 		expect(emitted('confirm')).toHaveLength(1);
+		await rerender({ busy: true });
+		await rerender({ busy: false });
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		expect(emitted('confirm')).toHaveLength(2);
+	});
+
+	it('does nothing when the caller already has a reset in progress', async () => {
+		const { getByTestId, queryByRole, emitted } = renderButton({ props: { busy: true } });
+		expect(getByTestId('agent-new-test-run-button')).toBeDisabled();
+		await fireEvent.click(getByTestId('agent-new-test-run-button'));
+		expect(queryByRole('dialog')).not.toBeInTheDocument();
+		expect(emitted('confirm')).toBeUndefined();
 	});
 
 	it('does nothing while disabled', async () => {

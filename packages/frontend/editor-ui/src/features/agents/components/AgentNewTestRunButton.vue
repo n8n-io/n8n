@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import AgentNewTestRunModal from './AgentNewTestRunModal.vue';
 
@@ -10,6 +10,8 @@ const props = withDefaults(
 		/** False when the chat has nothing to reset, so the action starts at once. */
 		requireConfirmation?: boolean;
 		disabled?: boolean;
+		/** Set true on confirm, then false when reset settles, including on failure. */
+		busy: boolean;
 	}>(),
 	{ requireConfirmation: true, disabled: false },
 );
@@ -21,10 +23,23 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const confirmationOpen = ref(false);
+const submitted = ref(false);
+const isBusy = computed(() => props.busy || submitted.value);
+
+watch(
+	() => props.busy,
+	(busy, wasBusy) => {
+		if (wasBusy && !busy) {
+			submitted.value = false;
+			confirmationOpen.value = false;
+		}
+	},
+);
 
 function onClick() {
-	if (props.disabled) return;
+	if (props.disabled || isBusy.value) return;
 	if (!props.requireConfirmation) {
+		submitted.value = true;
 		emit('confirm');
 		return;
 	}
@@ -35,7 +50,7 @@ function onClick() {
 watch(
 	() => props.disabled,
 	(disabled) => {
-		if (disabled && confirmationOpen.value) {
+		if (disabled && confirmationOpen.value && !isBusy.value) {
 			confirmationOpen.value = false;
 			emit('cancel');
 		}
@@ -43,8 +58,9 @@ watch(
 );
 
 function onConfirm() {
-	if (props.disabled) return;
-	confirmationOpen.value = false;
+	if (props.disabled || isBusy.value) return;
+	// Lock before emitting, so the caller can update busy on the next render.
+	submitted.value = true;
 	emit('confirm');
 }
 </script>
@@ -55,13 +71,14 @@ function onConfirm() {
 			variant="outline"
 			size="medium"
 			icon="message-circle-plus"
-			:disabled="props.disabled"
+			:disabled="props.disabled || isBusy"
 			:label="i18n.baseText('agents.testRun.reset.action')"
 			data-testid="agent-new-test-run-button"
 			@click="onClick"
 		/>
 		<AgentNewTestRunModal
 			v-model:open="confirmationOpen"
+			:busy="isBusy"
 			@confirm="onConfirm"
 			@cancel="emit('cancel')"
 		/>

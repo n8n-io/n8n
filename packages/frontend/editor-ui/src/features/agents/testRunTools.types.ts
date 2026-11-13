@@ -31,7 +31,7 @@ export interface ToolTestCapability {
 	toolName: string;
 	kind: ToolTestKind;
 	testability: ToolTestability;
-	/** Set when the tool is blocked. */
+	/** Explains why the tool is blocked or reads real data. */
 	reason?: ToolCallReason;
 	/** Short and safe to show. */
 	detail?: string;
