@@ -3867,6 +3867,7 @@ interface IWorkflowHistory {
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
 	authors: string;
+	settings?: IWorkflowSettings;
 	name: string | null;
 	description: string | null;
 	createdAt: Date;

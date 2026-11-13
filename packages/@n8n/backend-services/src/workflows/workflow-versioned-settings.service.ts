@@ -1,5 +1,10 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import {
+	applyVersionedSettings,
+	pickVersionedSettings,
+	type IWorkflowSettings,
+} from 'n8n-workflow';
 
 /**
  * Version-scoped workflow settings, such as the engine, are saved with each
@@ -10,8 +15,27 @@ import { Service } from '@n8n/di';
 export class WorkflowVersionedSettingsService {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
-	// Read at call time: modules become active after services are constructed.
+	// Read the module config, not the active modules: the module starts only on main,
+	// but webhook and worker instances also run published versions.
 	isEnabled(): boolean {
-		return this.moduleRegistry.isActive('engine-v2');
+		return this.moduleRegistry.eligibleModules.includes('engine-v2');
+	}
+
+	/**
+	 * The settings of a production run: the live settings of the workflow, and
+	 * the version-scoped settings of the published version. Every path that runs
+	 * the published version uses this, so production never runs the draft engine.
+	 * A version saved before history stored settings has no engine and runs on v1.
+	 */
+	forPublishedRun(
+		workflowSettings: IWorkflowSettings | undefined,
+		publishedVersion: { settings?: IWorkflowSettings },
+	): IWorkflowSettings | undefined {
+		if (!this.isEnabled()) return workflowSettings;
+
+		return applyVersionedSettings(
+			workflowSettings,
+			pickVersionedSettings(publishedVersion.settings),
+		);
 	}
 }

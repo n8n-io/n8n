@@ -13,7 +13,7 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
@@ -330,12 +330,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			select: { isArchived: true },
 			where: { id: workflowId },
 		});
-	}
-
-	/** The settings of a workflow, or `undefined` when it has none or no longer exists. */
-	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
-		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
-		return workflow?.settings;
 	}
 
 	async getAllActiveIds() {
