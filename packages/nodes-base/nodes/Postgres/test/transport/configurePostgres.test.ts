@@ -37,6 +37,7 @@ const credentials = {
 } as PostgresNodeCredentials;
 
 const TIMESTAMPTZ_VALUE = '2026-10-21 06:33:06.148+00';
+const TIMESTAMP_VALUE = '2026-10-21 06:33:06.148123';
 const DATE_VALUE = '2026-10-21';
 
 describe('configurePostgres type parsers', () => {
@@ -92,7 +93,7 @@ describe('configurePostgres type parsers', () => {
 		});
 	});
 
-	describe.each([2.7, 2.8])('node version %s', (nodeVersion) => {
+	describe.each([2.7, 2.8, 2.9])('node version %s', (nodeVersion) => {
 		it('should not change the global parsers', async () => {
 			const timestamptz = readGlobalParser(builtins.TIMESTAMPTZ);
 			const date = readGlobalParser(builtins.DATE);
@@ -111,6 +112,21 @@ describe('configurePostgres type parsers', () => {
 			);
 			expect(options.types?.getTypeParser(builtins.DATE, 'text')(DATE_VALUE)).toBe(DATE_VALUE);
 		});
+	});
+
+	// A `timestamp without time zone` carries no offset, so only 2.9 stops reading it as one.
+	// Both expectations hold in any process time zone: 2.7 and 2.8 keep producing a UTC instant,
+	// and 2.9 returns the exact reading the server sent. utils/postgres.test.ts pins the parsers.
+	it.each([
+		[2.7, /Z$/],
+		[2.8, /Z$/],
+		[2.9, /^2026-10-21T06:33:06\.148123$/],
+	])('should return TIMESTAMP matching %s on node version %s', async (nodeVersion, expected) => {
+		const { options } = await configure(nodeVersion);
+
+		expect(options.types?.getTypeParser(builtins.TIMESTAMP, 'text')(TIMESTAMP_VALUE)).toMatch(
+			expected,
+		);
 	});
 
 	it.each([undefined, 1, 2])(
