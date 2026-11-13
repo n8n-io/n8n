@@ -88,8 +88,6 @@ interface Bundle {
 		pinData?: Record<string, Array<{ json: JsonRecord }>>;
 		timeoutS?: number;
 	};
-	/** ISO time of the snapshot (newer bundles): the clock the record of the run reads. */
-	clockAt?: string;
 }
 
 type Summarise = (wf: JsonRecord, status: string, resultData: JsonRecord) => unknown;
@@ -671,10 +669,12 @@ export async function execute(bundle: Bundle): Promise<unknown> {
 			credentials,
 		});
 		const timeoutMs = (bundle.run.timeoutS ?? 300) * 1000;
-		// The recorded run read the tenant clock of the snapshot: give this run the same. The
-		// offset is measured here, as the harness rebases the clock of the gym.
-		const clockAt = bundle.clockAt === undefined ? NaN : Date.parse(bundle.clockAt);
-		const clockOffsetMs = Number.isNaN(clockAt) ? undefined : clockAt - Date.now();
+		// n8n recorded the run on the wall clock at prepare time (`prepared_at`, written right
+		// after the snapshot), not on the tenant clock of the gym (`clockAt`, a simulated time):
+		// give this run that start time, so a branch on the day or the hour goes the same way.
+		const preparedAt =
+			typeof bundle.meta.prepared_at === 'string' ? Date.parse(bundle.meta.prepared_at) : NaN;
+		const clockOffsetMs = Number.isNaN(preparedAt) ? undefined : preparedAt - Date.now();
 		const run = await wfrt.run(
 			workflowId,
 			executionId,
