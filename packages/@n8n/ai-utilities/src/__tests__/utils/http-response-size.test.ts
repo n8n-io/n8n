@@ -21,22 +21,22 @@ afterEach(() => {
 	vi.unstubAllEnvs();
 });
 
-describe('aiClientFetch', () => {
+describe('boundedAiClientFetch', () => {
 	it('passes a response within the cap', async () => {
 		global.fetch = vi.fn(async () => new Response(new Uint8Array(5)));
-		const { aiClientFetch } = await loadModule('1000');
+		const { boundedAiClientFetch } = await loadModule('1000');
 
-		const response = await aiClientFetch('https://provider.test');
+		const response = await boundedAiClientFetch('https://provider.test');
 
 		await expect(response.arrayBuffer()).resolves.toHaveProperty('byteLength', 5);
 	});
 
 	it('aborts a response over the cap', async () => {
 		global.fetch = vi.fn(async () => new Response(new Uint8Array(100)));
-		const { aiClientFetch } = await loadModule('10');
+		const { boundedAiClientFetch } = await loadModule('10');
 
 		await expect(
-			aiClientFetch('https://provider.test').then(
+			boundedAiClientFetch('https://provider.test').then(
 				async (response: Response) => await response.text(),
 			),
 		).rejects.toThrow(/exceeded the maximum allowed size/);
@@ -44,9 +44,9 @@ describe('aiClientFetch', () => {
 
 	it('throws an OperationalError when the cap is exceeded', async () => {
 		global.fetch = vi.fn(async () => new Response(new Uint8Array(100)));
-		const { aiClientFetch } = await loadModule('10');
+		const { boundedAiClientFetch } = await loadModule('10');
 
-		const error = await aiClientFetch('https://provider.test')
+		const error = await boundedAiClientFetch('https://provider.test')
 			.then(async (response: Response) => await response.text())
 			.catch((caught: unknown) => caught);
 
@@ -56,19 +56,19 @@ describe('aiClientFetch', () => {
 
 	it('does not cap the response when the value is 0', async () => {
 		global.fetch = vi.fn(async () => new Response(new Uint8Array(100)));
-		const { aiClientFetch } = await loadModule('0');
+		const { boundedAiClientFetch } = await loadModule('0');
 
-		const response = await aiClientFetch('https://provider.test');
+		const response = await boundedAiClientFetch('https://provider.test');
 
 		await expect(response.arrayBuffer()).resolves.toHaveProperty('byteLength', 100);
 	});
 
 	it('falls back to the default cap when the value is malformed', async () => {
 		global.fetch = vi.fn(async () => new Response(new Uint8Array(100)));
-		const { aiClientFetch } = await loadModule('not-a-number');
+		const { boundedAiClientFetch } = await loadModule('not-a-number');
 
 		// The default cap is 100 MB, so a 100-byte response passes.
-		const response = await aiClientFetch('https://provider.test');
+		const response = await boundedAiClientFetch('https://provider.test');
 
 		await expect(response.arrayBuffer()).resolves.toHaveProperty('byteLength', 100);
 	});

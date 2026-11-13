@@ -213,9 +213,12 @@ export async function proxyFetch({
  * (with the dispatcher passed through `fetchOptions`), so HTTP mocks that patch
  * the global undici still see the request.
  */
-export async function aiClientFetch(...args: Parameters<typeof fetch>): Promise<Response> {
+export async function boundedAiClientFetch(...args: Parameters<typeof fetch>): Promise<Response> {
 	return limitResponseBody(await fetch(...args), responseSizeLimit);
 }
+
+/** @deprecated Use `createAiClientFetch(ctx)`, which also sends the trace headers of the node. */
+export const aiClientFetch = boundedAiClientFetch;
 
 /**
  * Returns a Node.js HTTP/HTTPS proxy agent for use with AWS SDK v3 clients.
