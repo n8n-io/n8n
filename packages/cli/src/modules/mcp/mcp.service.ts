@@ -27,6 +27,8 @@ import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
 	registerWorkflowPreviewApp,
+	registerAppPlanApp,
+	APP_PLAN_APP_URI,
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
@@ -132,6 +134,7 @@ import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSaveUserPreferenceTool } from './tools/save-user-preference.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
+import { createPreviewAppPlanTool } from './tools/preview-app-plan.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
@@ -1107,6 +1110,15 @@ export class McpService {
 			});
 		} else {
 			registerIfAllowed(createTool);
+		}
+
+		if (featureFlags.mcpApps.enabled) {
+			const previewAppPlanTool = createPreviewAppPlanTool();
+			registerAppPlanApp(server);
+			registerIfAllowed({
+				...previewAppPlanTool,
+				config: { ...previewAppPlanTool.config, _meta: mcpAppToolMeta(APP_PLAN_APP_URI) },
+			});
 		}
 
 		const searchProjectsTool = createSearchProjectsTool(

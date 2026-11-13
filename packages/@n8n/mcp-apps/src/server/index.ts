@@ -2,7 +2,9 @@ export {
 	RESOURCE_MIME_TYPE,
 	RESOURCE_URI_META_KEY,
 	WORKFLOW_PREVIEW_APP_URI,
+	APP_PLAN_APP_URI,
 } from './constants';
+export { registerAppPlanApp, APP_PLAN_HTML } from './apps/app-plan';
 export { registerMcpAppTool, mcpAppToolMeta, type McpAppToolConfig } from './register-mcp-app-tool';
 export {
 	registerWorkflowPreviewApp,
