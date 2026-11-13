@@ -197,10 +197,9 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Caps simulated-user follow-ups, in the orchestrator chat loop and in the
 	// multi-turn `claude` loop alike.
 	messageBudget: 'supported',
-	// Drives the Instance AI orchestrator's progressive-building loop; a
-	// single-shot `claude` build has no mode to set, so a case that pins it
-	// explicitly must run through the orchestrator.
-	buildMode: 'orchestrator-only',
+	// Selects the Instance AI orchestrator's prompt profile; a single-shot
+	// `claude` build has no profile to set, so a case that pins one explicitly
+	// must run through the orchestrator.
 	promptVersion: 'orchestrator-only',
 	allowUserExecution: 'orchestrator-only',
 	requiresMemoryCompaction: 'orchestrator-only',

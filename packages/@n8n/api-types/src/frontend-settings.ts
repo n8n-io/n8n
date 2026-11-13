@@ -464,6 +464,25 @@ export type FrontendModuleSettings = {
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
 	};
+
+	/**
+	 * Client settings for the knowledge module.
+	 */
+	knowledge?: {
+		/**
+		 * The upload limits the backend enforces, so the editor can reject an
+		 * upload with the same limits before the request. Configured through
+		 * the `N8N_KNOWLEDGE_*` environment variables.
+		 */
+		limits: {
+			/** Largest single file, in bytes. */
+			maxFileSizeBytes: number;
+			/** Most files in one upload request. */
+			maxFilesPerUpload: number;
+			/** Most bytes one knowledge base can hold across all its files. */
+			maxTotalSizeBytes: number;
+		};
+	};
 };
 
 export type N8nEnvFeatFlagValue = boolean | string | number | undefined;

@@ -232,6 +232,33 @@ describe('SkillSourceConnectDialog', () => {
 		showErrorMock.mockClear();
 	});
 
+	it('shows the project scope and its icon in the review', async () => {
+		mockedStore(useProjectsStore).myProjects[0].icon = { type: 'emoji', value: '🚀' };
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render();
+		await selectScope(view, 'project:team-1');
+		await review(view);
+
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
+	});
+
+	it('shows the icon of the scope option in the review when the project is not listed', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render([
+			...SCOPES,
+			{
+				value: 'project:team-unlisted',
+				label: 'Finance',
+				icon: 'layers',
+				projectIcon: { type: 'emoji', value: '💰' },
+			},
+		]);
+		await selectScope(view, 'project:team-unlisted');
+		await review(view);
+
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Finance/);
+	});
+
 	describe('the connect form', () => {
 		it('asks for the scope, the credential and the repository in one modal', async () => {
 			const view = render();
@@ -685,6 +712,79 @@ describe('SkillSourceConnectDialog', () => {
 			);
 		});
 
+		it.each(['click', 'keyboard'])(
+			'goes directly to a file from the index by %s',
+			async (action) => {
+				const path = 'references/nested/tone #1?.md';
+				const previewFiles = [
+					{ path: 'SKILL.md', text: SKILL_MD },
+					...Array.from({ length: 18 }, (_, index) => ({
+						path: `references/guide-${index}.md`,
+						text: 'Guide.\n'.repeat(100),
+					})),
+					{ path, text: 'Tone.' },
+				];
+				skillsStore.discoverSource.mockResolvedValue(
+					discovery({ skills: [discovered({ previewFiles })] }),
+				);
+				const view = render();
+				await review(view);
+				const index = view.getByRole('navigation', { name: 'Skill files' });
+				expect(
+					within(index)
+						.getAllByRole('link')
+						.map((link) => link.textContent?.trim()),
+				).toEqual(previewFiles.map((file) => file.path));
+				const target = view.getByRole('region', { name: `skills/brand-voice/${path}` });
+				const scrollIntoView = vi.fn();
+				target.scrollIntoView = scrollIntoView;
+				const link = within(index).getByRole('link', { name: path });
+				expect(link).toHaveAttribute('href', `#${encodeURIComponent(target.id)}`);
+
+				if (action === 'keyboard') {
+					link.focus();
+					await userEvent.keyboard('{Enter}');
+				} else {
+					await userEvent.click(link);
+				}
+
+				expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', inline: 'nearest' });
+				expect(target).toHaveFocus();
+			},
+		);
+
+		it('indexes only the files that the preview can show', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ skills: [{ ...warning, previewTruncated: true }] }),
+			);
+			const view = render();
+			await review(view);
+
+			const index = view.getByRole('navigation', { name: 'Skill files' });
+			expect(
+				within(index)
+					.getAllByRole('link')
+					.map((link) => link.textContent?.trim()),
+			).toEqual(['SKILL.md', 'references/tone.md']);
+			expect(view.getAllByTestId('skill-source-skipped-file')).toHaveLength(2);
+			expect(view.getByTestId('skill-source-preview-truncated')).toBeInTheDocument();
+		});
+
+		it.each([0, 1])('omits the index when the preview has %s files', async (count) => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					skills: [
+						discovered({ previewFiles: [{ path: 'SKILL.md', text: SKILL_MD }].slice(0, count) }),
+					],
+				}),
+			);
+			const view = render();
+			await review(view);
+
+			expect(view.queryByRole('navigation', { name: 'Skill files' })).not.toBeInTheDocument();
+			expect(view.queryAllByTestId('skill-source-file')).toHaveLength(count);
+		});
+
 		it('lists a finding in a part of the skill that the preview leaves out above the files', async () => {
 			const skill = discovered({
 				previewTruncated: true,
@@ -764,11 +864,15 @@ describe('SkillSourceConnectDialog', () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();
 			await review(view);
+			expect(view.getByRole('navigation', { name: 'Skill files' })).toBeInTheDocument();
+			const previousContent = view.getByTestId('skill-source-file-content');
 
 			await userEvent.click(tab(view, 'Passed'));
 			await userEvent.click(within(view.getByTestId('skill-source-skills')).getByText('lint'));
 
 			expect(view.getByTestId('skill-source-preview')).toHaveTextContent('tools/lint/SKILL.md');
+			expect(view.queryByRole('navigation', { name: 'Skill files' })).not.toBeInTheDocument();
+			expect(previousContent).not.toBeInTheDocument();
 		});
 
 		it('says when a skill is too large to show in full', async () => {

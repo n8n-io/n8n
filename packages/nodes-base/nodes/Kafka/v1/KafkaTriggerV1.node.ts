@@ -7,12 +7,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import {
-	NodeConnectionTypes,
-	NodeOperationError,
-	TriggerCloseError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	type KafkaTriggerOptions,

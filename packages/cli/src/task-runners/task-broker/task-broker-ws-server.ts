@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnShutdown } from '@n8n/decorators';
+import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { sleep } from '@n8n/utils/sleep';
@@ -10,7 +10,7 @@ import { jsonStringify } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type WebSocket from 'ws';
 
-import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
+import { WsStatusCodes } from '@/constants';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,

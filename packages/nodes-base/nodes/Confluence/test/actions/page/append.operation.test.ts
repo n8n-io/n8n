@@ -1,4 +1,4 @@
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute, mergeAdfDocuments } from '../../../actions/page/append.operation';
@@ -47,11 +47,11 @@ describe('page:append', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ 'body-format': 'storage' },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'Doc',
@@ -110,11 +110,11 @@ describe('page:append', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ 'body-format': 'atlas_doc_format' },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'Doc',
@@ -140,7 +140,7 @@ describe('page:append', () => {
 			0,
 		);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'Doc',

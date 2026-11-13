@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -37,6 +37,67 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('uri override', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+			});
+		});
+
+		it('should send a uri on the credential origin', async () => {
+			mockRequestWithAuthentication.mockResolvedValue({ value: [] });
+			const nextLink = 'https://graph.microsoft.com/v1.0/me/contacts?$skip=100';
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/contacts`,
+				0,
+				{},
+				{},
+				nextLink,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftOutlookOAuth2Api',
+				expect.objectContaining({ uri: nextLink }),
+			);
+		});
+
+		it.each([
+			'https://other.example/x',
+			'not a url',
+			'https://graph.microsoft.com.other.example/x',
+		])('should throw and make no request for the uri %s', async (uri) => {
+			await expect(
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/contacts`,
+					0,
+					{},
+					{},
+					uri,
+				),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should throw and make no request when the credential base URL is not a valid URL', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+				graphApiBaseUrl: 'not a url',
+			});
+
+			await expect(
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/contacts`, 0),
+			).rejects.toThrow('The Graph API base URL is not a valid URL');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('graphApiBaseUrl from credentials (OAuth2 /me)', () => {
 		it('should use base URL from credentials', async () => {
 			mockRequestWithAuthentication.mockResolvedValue({ data: 'test' });
@@ -45,13 +106,13 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://graph.microsoft.us',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://graph.microsoft.us/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/me/messages`,
 					json: true,
 				}),
 			);
@@ -64,12 +125,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: '',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -80,12 +141,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				oauthTokenData: { access_token: 'test-access-token' },
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -96,12 +157,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://graph.microsoft.com/',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -112,12 +173,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://graph.microsoft.com///',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -128,12 +189,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://graph.microsoft.us',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.us/v1.0/me/messages',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -144,12 +205,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://dod-graph.microsoft.us',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://dod-graph.microsoft.us/v1.0/me/messages',
+					uri: requestUrl`https://dod-graph.microsoft.us/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -160,12 +221,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/messages',
+					uri: requestUrl`https://microsoftgraph.chinacloudapi.cn/v1.0/me/messages`,
 				}),
 			);
 		});
@@ -177,12 +238,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 			mockExecuteFunctions.getCredentials.mockResolvedValue({});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOutlookOAuth2Api');
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/me/messages' }),
+				expect.objectContaining({ uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages` }),
 			);
 		});
 
@@ -191,12 +252,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 			mockExecuteFunctions.getCredentials.mockResolvedValue({});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/me/messages' }),
+				expect.objectContaining({ uri: requestUrl`https://graph.microsoft.com/v1.0/me/messages` }),
 			);
 			// generic OAuth2 must never reach the Service Principal credential
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalledWith(
@@ -215,12 +276,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				userPrincipalName: 'shared@example.com',
 			});
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftOutlookOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/shared@example.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/shared@example.com/messages`,
 				}),
 			);
 			// shared-mailbox OAuth2 must never reach the Service Principal credential
@@ -254,7 +315,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		it('should target /users/{encoded-mailbox} and resolve the SP credential', async () => {
 			setupSP({ mailbox: 'user@example.com' });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
@@ -263,8 +324,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
 					method: 'GET',
-					// @ is encoded exactly once: user@example.com -> user%40example.com
-					uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/messages`,
 				}),
 			);
 		});
@@ -274,12 +334,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			// this covers the isResourceLocatorValue(raw) ? raw.value branch directly.
 			setupSP({ mailbox: { __rl: true, mode: 'id', value: 'user@example.com' } });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/messages`,
 				}),
 			);
 		});
@@ -287,12 +347,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		it('should pass a GUID mailbox through verbatim (nothing to percent-encode)', async () => {
 			setupSP({ mailbox: '11111111-1111-1111-1111-111111111111' });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/11111111-1111-1111-1111-111111111111/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/11111111-1111-1111-1111-111111111111/messages`,
 				}),
 			);
 		});
@@ -300,12 +360,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		it('should carry a B2B guest (#EXT#) mailbox end-to-end into an encoded /users/{id} uri', async () => {
 			setupSP({ mailbox: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23@tenant.onmicrosoft.com/messages`,
 				}),
 			);
 		});
@@ -313,12 +373,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		it('should carry a "^"/"!" mailbox end-to-end into an encoded /users/{id} uri', async () => {
 			setupSP({ mailbox: 'joe^smith@contoso.com' });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/joe%5Esmith%40contoso.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/joe%5Esmith@contoso.com/messages`,
 				}),
 			);
 		});
@@ -326,12 +386,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 		it('should target the sovereign cloud base for the SP mailbox', async () => {
 			setupSP({ mailbox: 'user@example.com', graphApiBaseUrl: 'https://graph.microsoft.us' });
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.us/v1.0/users/user%40example.com/messages',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/users/user@example.com/messages`,
 				}),
 			);
 		});
@@ -341,7 +401,15 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			const nextLink =
 				'https://graph.microsoft.com/v1.0/users/user%40example.com/messages?$skip=10&$top=10';
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0, {}, {}, nextLink);
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/messages`,
+				0,
+				{},
+				{},
+				nextLink,
+			);
 
 			const callArgs = mockRequestWithAuthentication.mock.calls[0][1] as IDataObject;
 			expect(callArgs.uri).toBe(nextLink);
@@ -353,10 +421,10 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			setupSP({ mailbox: '' });
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0),
 			).rejects.toThrow(NodeOperationError);
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0),
 			).rejects.toThrow('A mailbox is required for the Service Principal');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
@@ -366,7 +434,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			setupSP({ mailbox: '   ' });
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0),
 			).rejects.toThrow('A mailbox is required for the Service Principal');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
@@ -377,7 +445,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			setupSP({ mailbox: 'contoso.com' });
 
 			await expect(
-				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0),
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/messages`, 0),
 			).rejects.toThrow('The mailbox is not valid');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
@@ -403,7 +471,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				{},
 				{},
@@ -414,7 +482,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				1,
 				{},
 				{},
@@ -427,14 +495,14 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				1,
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user1%40example.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user1@example.com/messages`,
 				}),
 			);
 			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
 				2,
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user2@example.com/messages`,
 				}),
 			);
 		});
@@ -454,7 +522,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/messages',
+					requestPath`/messages`,
 					2,
 					{},
 					{},
@@ -485,12 +553,12 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 				1,
 			);
 
-			const uris = mockRequestWithAuthentication.mock.calls.map(
-				(call) => (call[1] as IDataObject).uri,
+			const uris = mockRequestWithAuthentication.mock.calls.map((call) =>
+				String((call[1] as IDataObject).uri),
 			);
 			expect(uris).toEqual([
-				'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/attachments',
-				'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/attachments/att1/$value',
+				'https://graph.microsoft.com/v1.0/users/user2@example.com/messages/MSG1/attachments',
+				'https://graph.microsoft.com/v1.0/users/user2@example.com/messages/MSG1/attachments/att1/$value',
 			]);
 		});
 
@@ -507,7 +575,7 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user2%40example.com/messages/MSG1/$value',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/users/user2@example.com/messages/MSG1/$value`,
 				}),
 			);
 		});

@@ -1,3 +1,5 @@
+import { ChatCohere } from '@langchain/cohere';
+
 import { createCohereV2ChatClient } from './cohereV2Client';
 
 describe('Cohere v2 chat client', () => {
@@ -140,5 +142,85 @@ describe('Cohere v2 chat client', () => {
 		expect((requestBody as { messages: Array<{ role: string }> }).messages).not.toContainEqual(
 			expect.objectContaining({ role: 'tool' }),
 		);
+	});
+
+	// AGENT-1557: Streamed tool calls must remain valid for the agent to run tools.
+	it.each([false, true])('should return valid tool calls with streaming=%s', async (streaming) => {
+		const toolCall = {
+			id: 'call_1',
+			type: 'function',
+			function: { name: 'calculator', arguments: '' },
+		};
+		const usage = { tokens: { input_tokens: 5, output_tokens: 3 } };
+		const events = [
+			{
+				type: 'message-start',
+				id: 'message-1',
+				delta: { message: { role: 'assistant' } },
+			},
+			{
+				type: 'tool-call-start',
+				index: 0,
+				delta: { message: { tool_calls: toolCall } },
+			},
+			{
+				type: 'tool-call-delta',
+				index: 0,
+				delta: { message: { tool_calls: { function: { arguments: '{"expression":' } } } },
+			},
+			{
+				type: 'tool-call-delta',
+				index: 0,
+				delta: { message: { tool_calls: { function: { arguments: '"2 + 2"}' } } } },
+			},
+			{ type: 'tool-call-end', index: 0 },
+			{ type: 'message-end', delta: { finish_reason: 'TOOL_CALL', usage } },
+		];
+		const body = streaming
+			? events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')
+			: JSON.stringify({
+					id: 'message-1',
+					message: {
+						role: 'assistant',
+						content: [],
+						tool_calls: [
+							{
+								...toolCall,
+								function: { name: 'calculator', arguments: '{"expression":"2 + 2"}' },
+							},
+						],
+					},
+					finish_reason: 'TOOL_CALL',
+					usage,
+				});
+		vi.stubGlobal('fetch', async () => {
+			return new Response(body, {
+				headers: { 'content-type': streaming ? 'text/event-stream' : 'application/json' },
+			});
+		});
+
+		const model = new ChatCohere({
+			client: createCohereV2ChatClient({ apiKey: 'test-api-key' }),
+			model: 'command-a-03-2025',
+			streaming,
+			maxRetries: 0,
+		}).bindTools([
+			{
+				name: 'calculator',
+				description: 'Evaluate a math expression',
+				parameterDefinitions: { expression: { type: 'string', required: true } },
+			},
+		]);
+		const result = await model.invoke('What is 2 + 2?');
+
+		expect(result.usage_metadata).toEqual({ input_tokens: 5, output_tokens: 3, total_tokens: 8 });
+		expect(result.tool_calls).toEqual([
+			expect.objectContaining({
+				id: expect.any(String),
+				name: 'calculator',
+				args: { expression: '2 + 2' },
+			}),
+		]);
+		expect(result.invalid_tool_calls).toEqual([]);
 	});
 });

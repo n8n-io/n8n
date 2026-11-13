@@ -16,8 +16,10 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	IWebhookFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, toPathSegment } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -131,17 +133,15 @@ export async function highLevelApiRequest(
 		| IHookFunctions
 		| ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ) {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
+		uri: requestUrl`https://rest.gohighlevel.com/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -150,7 +150,6 @@ export async function highLevelApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 	return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
 }
 
@@ -162,7 +161,7 @@ export async function opportunityUpdatePreSendAction(
 	if (!body.status || !body.title) {
 		const pipelineId = this.getNodeParameter('pipelineId');
 		const opportunityId = this.getNodeParameter('opportunityId');
-		const resource = `/pipelines/${toPathSegment(pipelineId)}/opportunities/${toPathSegment(opportunityId)}`;
+		const resource = requestPath`/pipelines/${pipelineId}/opportunities/${opportunityId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.status = body.status || responseData.status;
 		body.title = body.title || responseData.name;
@@ -179,7 +178,7 @@ export async function taskUpdatePreSendAction(
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
-		const resource = `/contacts/${toPathSegment(contactId)}/tasks/${toPathSegment(taskId)}`;
+		const resource = requestPath`/contacts/${contactId}/tasks/${taskId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update
@@ -239,7 +238,7 @@ export async function getPipelineStages(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/pipelines');
+	const responseData = await highLevelApiRequest.call(this, 'GET', requestPath`/pipelines`);
 	const pipelines = responseData.pipelines as [
 		{ id: string; stages: [{ id: string; name: string }] },
 	];
@@ -256,7 +255,7 @@ export async function getPipelineStages(
 }
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/users');
+	const responseData = await highLevelApiRequest.call(this, 'GET', requestPath`/users`);
 	const users = responseData.users as [{ id: string; name: string; email: string }];
 	const options: INodePropertyOptions[] = users.map((user) => {
 		const name = user.name;
@@ -267,7 +266,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 }
 
 export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/timezones');
+	const responseData = await highLevelApiRequest.call(this, 'GET', requestPath`/timezones`);
 	const timezones = responseData.timezones as string[];
 	return timezones.map((zone) => ({
 		name: zone,

@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -889,6 +890,19 @@ describe('WaitingForms', () => {
 			expect(req.headers.cookie).not.toContain('n8n-auth=');
 			expect(req.cookies['n8n-auth']).toBeUndefined();
 		});
+	});
+
+	it('throws NotFoundError for an execution id that cannot name a v1 row', async () => {
+		executionPersistence.findSingleExecution.mockClear();
+		const req = mock<WaitingWebhookRequest>({
+			headers: {},
+			params: { path: 'abc', suffix: undefined },
+		});
+
+		await expect(waitingForms.executeWebhook(req, mock<express.Response>())).rejects.toThrowError(
+			NotFoundError,
+		);
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 });
 

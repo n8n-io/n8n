@@ -60,7 +60,13 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
-/** Persistence interface for executions. */
+/**
+ * Persistence interface for executions.
+ *
+ * A write that makes an execution `queued` also records when the engine treats
+ * it as stuck in that status (see `StalenessThresholds`). A transition out of
+ * `queued` clears that time.
+ */
 export interface ExecutionStore {
 	/** Persist a new execution record under the caller-minted `record.id`. */
 	createExecution(record: NewExecutionRecord): Promise<void>;

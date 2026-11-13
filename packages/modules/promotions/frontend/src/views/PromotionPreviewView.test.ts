@@ -1150,6 +1150,31 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
+		it.each([false, true])(
+			'should keep the preview after a locked Apply (confirmation: %s)',
+			async (destructive) => {
+				vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+					instancePreview(destructive ? { conflicts: [projectDeletion] } : {}),
+				);
+				const apply = destructive ? settingsApi.continueApplyPromotion : settingsApi.applyPromotion;
+				vi.mocked(apply).mockRejectedValue(
+					new ResponseError('Environment is locked', { httpStatusCode: 423 }),
+				);
+				confirm.mockResolvedValue('confirm');
+				const { getByTestId } = await renderInstance();
+
+				await userEvent.click(getByTestId('promotion-preview-submit'));
+
+				expect(apply).toHaveBeenCalledTimes(1);
+				expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
+					'Nothing was applied. Another operation is running on this environment. Try again when it finishes.',
+				);
+				expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+				expect(api.getPromotionEnvironmentChanges).toHaveBeenCalledTimes(1);
+				expect(router.currentRoute.value.path).toBe('/promotions/apply');
+			},
+		);
+
 		it('should list a deleted project with its workflows, confirm the deletion and apply the reviewed state', async () => {
 			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
 				instancePreview({

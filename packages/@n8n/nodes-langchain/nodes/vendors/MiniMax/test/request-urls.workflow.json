@@ -1,0 +1,100 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a4c2e8f1-5b3d-4a6e-9c71-0d2e3f4a5b01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "text",
+				"operation": "message",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "MiniMax-M3"
+				},
+				"messages": {
+					"values": [
+						{
+							"content": "Write a haiku about the sea"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.minimax",
+			"typeVersion": 1.2,
+			"position": [220, 0],
+			"id": "a4c2e8f1-5b3d-4a6e-9c71-0d2e3f4a5b02",
+			"name": "Message a Model",
+			"credentials": {
+				"minimaxApi": {
+					"id": "123",
+					"name": "MiniMax account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "textToVideo",
+				"modelId": "MiniMax-H3",
+				"prompt": "A calico cat playing a piano on stage",
+				"h3Duration": 5,
+				"h3Resolution": "2K",
+				"ratio": "16:9",
+				"downloadVideo": false
+			},
+			"type": "@n8n/n8n-nodes-langchain.minimax",
+			"typeVersion": 1.2,
+			"position": [440, 0],
+			"id": "a4c2e8f1-5b3d-4a6e-9c71-0d2e3f4a5b03",
+			"name": "Generate Video V2",
+			"credentials": {
+				"minimaxApi": {
+					"id": "123",
+					"name": "MiniMax account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "textToVideo",
+				"modelId": "MiniMax-Hailuo-2.3",
+				"prompt": "A calico cat playing a piano on stage",
+				"duration": 6,
+				"resolution": "768P",
+				"downloadVideo": false,
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.minimax",
+			"typeVersion": 1.2,
+			"position": [660, 0],
+			"id": "a4c2e8f1-5b3d-4a6e-9c71-0d2e3f4a5b04",
+			"name": "Generate Video V1",
+			"credentials": {
+				"minimaxApi": {
+					"id": "123",
+					"name": "MiniMax account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Message a Model", "type": "main", "index": 0 }]]
+		},
+		"Message a Model": {
+			"main": [[{ "node": "Generate Video V2", "type": "main", "index": 0 }]]
+		},
+		"Generate Video V2": {
+			"main": [[{ "node": "Generate Video V1", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

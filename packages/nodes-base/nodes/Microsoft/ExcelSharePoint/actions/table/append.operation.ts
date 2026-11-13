@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
@@ -178,7 +178,7 @@ export async function execute(
 			'Table',
 			this.getNodeParameter('table', 0, '', { extractValue: true }) as string,
 		);
-		const tableEndpoint = `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
+		const tableEndpoint = requestPath`${workbookRoot}/workbook/tables/${tableId}`;
 
 		const dataMode = this.getNodeParameter('dataMode', 0) as string;
 		const columnsRow = await fetchTableColumnNames.call(this, tableEndpoint);
@@ -217,7 +217,7 @@ export async function execute(
 					await (microsoftApiRequest<ExcelResponse>).call(
 						this,
 						'POST',
-						`${tableEndpoint}/rows/add`,
+						requestPath`${tableEndpoint}/rows/add`,
 						body,
 						{},
 						undefined,

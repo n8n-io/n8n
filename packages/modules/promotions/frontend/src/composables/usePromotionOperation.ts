@@ -8,6 +8,7 @@ import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import { isLockedError } from '../promotionErrors';
 import type { OperationSelection } from '../promotionOperation';
 import {
 	applyProjectSelection,
@@ -240,7 +241,14 @@ export function usePromotionOperation(
 					: undefined;
 			error.value = explained
 				? { message: explained, kind: 'explained' }
-				: { message: cause instanceof Error ? cause.message : String(cause), kind };
+				: {
+						message: isLockedError(cause)
+							? i18n.baseText('promotions.bindings.error.locked')
+							: cause instanceof Error
+								? cause.message
+								: String(cause),
+						kind,
+					};
 			// The reloaded preview shows what the page knows about the cause, such as a moved folder.
 			if (kind !== 'rejected') await refresh();
 			// A failed instance Apply can stop after it created or deleted projects.

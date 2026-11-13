@@ -9,7 +9,7 @@ import type {
 	NodeEgressFilter,
 	PostReceiveAction,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';

@@ -18,10 +18,8 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -37,6 +35,7 @@ import {
 	InstanceWriteAccessService,
 	AiPreferenceService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -204,9 +203,9 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
 import { SkillsGate } from '@/modules/skills';
@@ -228,7 +227,7 @@ import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { PostHogClient } from '@/posthog';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
@@ -271,6 +270,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
@@ -423,8 +423,6 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
-	/** Progressive workflow policy and planning-tool selection. */
-	progressiveBuildingEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -562,7 +560,9 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
 			 *  A getter for the same reason as the bypass predicate. */
-			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
+			getCredentialTestTarget?: (
+				credentialType: string,
+			) => AssistantCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
@@ -840,9 +840,6 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-			progressiveBuildingEnabled:
-				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
-				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -2366,6 +2363,12 @@ export class InstanceAiAdapterService {
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 
+				// A verification run tests the workflow logic, not the passage of time.
+				// Without this, each retry or throttle wait adds its real duration.
+				const waits = options?.isVerificationRun
+					? skipTimeBasedWaits(nodes)
+					: { nodes, skippedNodeNames: [] };
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -2375,6 +2378,7 @@ export class InstanceAiAdapterService {
 					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
+						nodes: waits.nodes,
 						connections,
 						settings: {
 							...workflow.settings,
@@ -2549,10 +2553,16 @@ export class InstanceAiAdapterService {
 							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
 							? triggerNode.name
 							: undefined;
+					// Report only the waits this run reached; the rest never executed.
+					const reachedNodeNames = new Set(result.executedNodeNames);
+					const skippedWaitNodeNames = waits.skippedNodeNames.filter((name) =>
+						reachedNodeNames.has(name),
+					);
 					return {
 						...result,
 						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+						...(skippedWaitNodeNames.length > 0 ? { skippedWaitNodeNames } : {}),
 					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
@@ -3008,13 +3018,14 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
-		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
+		getCredentialTestTarget?: (credentialType: string) => AssistantCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,
 			credentialsFinderService,
 			loadNodesAndCredentials,
 			aiGatewayService,
+			nodeTypes,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const { assertCredentialInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
@@ -3430,6 +3441,34 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getAiGatewayNodeRejection(node, credType) {
+				const config = await getGatewayConfig();
+				if (!config?.credentialTypes.includes(credType)) return undefined;
+				const parameters = (node.parameters ?? {}) as INodeParameters;
+				// The engine applies node defaults before it runs this check, so a node
+				// that relies on its default action is judged by that action.
+				let resolvedParameters: INodeParameters | undefined;
+				try {
+					const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolvedParameters = resolveDisplayedDefaults(
+						description.properties,
+						parameters,
+						node.type,
+						node.typeVersion,
+						description,
+					);
+				} catch {
+					// Unknown node type: the engine also keeps the raw parameters.
+				}
+				const result = checkAiGatewayEligibility(
+					{ type: node.type, typeVersion: node.typeVersion, parameters },
+					credType,
+					config,
+					resolvedParameters,
+				);
+				return result.eligible ? undefined : (result.details ?? result.reason);
 			},
 
 			async getAiGatewayWallet(): Promise<{ balance: number } | null> {

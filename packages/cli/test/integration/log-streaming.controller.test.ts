@@ -1,9 +1,11 @@
-import { mockInstance } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import nock from 'nock';
 import { v4 as uuid } from 'uuid';
+import type { MockInstance } from 'vitest';
 
 import { CredentialsFinderService, Publisher } from '@n8n/backend-services';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -12,8 +14,9 @@ import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database
 import { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
+import { saveCredential } from './shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
-import { createUser } from './shared/db/users';
+import { addApiKey, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
@@ -21,10 +24,9 @@ vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 mockInstance(Publisher);
 mockInstance(ExecutionRecoveryService);
-const credentialsFinderService = mockInstance(CredentialsFinderService);
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['eventBus'],
+	endpointGroups: ['eventBus', 'publicApi'],
 	enabledFeatures: ['feat:logStreaming'],
 	modules: ['log-streaming'],
 });
@@ -321,6 +323,15 @@ describe('POST /eventbus/destination', () => {
 });
 
 describe('credential access enforcement', () => {
+	let findCredentialForUser: MockInstance<CredentialsFinderService['findCredentialForUser']>;
+
+	beforeEach(() => {
+		findCredentialForUser = vi.spyOn(
+			Container.get(CredentialsFinderService),
+			'findCredentialForUser',
+		);
+	});
+
 	const payloadWithCredential = (credentialId: string) => ({
 		__type: '$$MessageEventBusDestinationWebhook',
 		url: 'http://localhost:3456',
@@ -335,26 +346,27 @@ describe('credential access enforcement', () => {
 	});
 
 	afterEach(() => {
-		credentialsFinderService.findCredentialForUser.mockReset();
+		findCredentialForUser.mockRestore();
 	});
 
 	test('rejects with 403 when the user cannot access the referenced credential', async () => {
-		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		findCredentialForUser.mockResolvedValue(null);
 
 		const response = await authOwnerAgent
 			.post('/eventbus/destination')
 			.send(payloadWithCredential('some-credential-id'));
 
 		expect(response.statusCode).toBe(403);
-		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+		expect(findCredentialForUser).toHaveBeenCalledWith(
 			'some-credential-id',
 			expect.objectContaining({ id: owner.id }),
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 	});
 
 	test('allows creation when the user can access the referenced credential', async () => {
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+		findCredentialForUser.mockResolvedValue({
 			id: 'some-credential-id',
 		} as CredentialsEntity);
 
@@ -368,7 +380,7 @@ describe('credential access enforcement', () => {
 
 	test('rejects testing a destination whose credentials the user cannot access with 403', async () => {
 		// create it while access is granted, so a destination with credentials is persisted
-		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+		findCredentialForUser.mockResolvedValue({
 			id: 'some-credential-id',
 		} as CredentialsEntity);
 		const created = await authOwnerAgent
@@ -378,11 +390,140 @@ describe('credential access enforcement', () => {
 		const { id } = created.body.data;
 
 		// access revoked → testing must be rejected before the credential is decrypted/sent
-		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		findCredentialForUser.mockResolvedValue(null);
 		const response = await authOwnerAgent.get('/eventbus/testmessage').query({ id });
 
 		expect(response.statusCode).toBe(403);
 	});
+});
+
+describe('destination credential project roles', () => {
+	const headerValue = 'Bearer test-destination-value';
+	const roles = [
+		{ role: 'project:viewer', statusCode: 403 },
+		{ role: 'project:editor', statusCode: 200 },
+		{ role: 'global:owner', statusCode: 200 },
+	] as const;
+	let agents: Record<(typeof roles)[number]['role'], SuperAgentTest>;
+	let publicAgents: Record<(typeof roles)[number]['role'], SuperAgentTest>;
+	let credential: CredentialsEntity;
+	let destinationId: string;
+
+	const destinationPayload = () => ({
+		id: destinationId,
+		__type: MessageEventBusDestinationTypeNames.webhook,
+		url: 'https://example.com/events',
+		method: 'POST',
+		label: 'Project destination',
+		enabled: true,
+		subscribedEvents: ['n8n.test.message'],
+		authentication: 'genericCredentialType',
+		genericAuthType: 'httpHeaderAuth',
+		credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+		options: {},
+	});
+
+	beforeAll(async () => {
+		await utils.initCredentialsTypes();
+		const role = await createCustomRoleWithScopeSlugs(
+			['eventBusDestination:create', 'eventBusDestination:list', 'eventBusDestination:test'],
+			{ roleType: 'global' },
+		);
+		const viewer = await createUser({ role });
+		const editor = await createUser({ role });
+		const project = await createTeamProject('Destination project', owner);
+		await linkUserToProject(viewer, project, 'project:viewer');
+		await linkUserToProject(editor, project, 'project:editor');
+		agents = {
+			'project:viewer': testServer.authAgentFor(viewer),
+			'project:editor': testServer.authAgentFor(editor),
+			'global:owner': authOwnerAgent,
+		};
+		publicAgents = {
+			'project:viewer': testServer.publicApiAgentWithApiKey((await addApiKey(viewer)).apiKey),
+			'project:editor': testServer.publicApiAgentWithApiKey((await addApiKey(editor)).apiKey),
+			'global:owner': testServer.publicApiAgentWithApiKey((await addApiKey(owner)).apiKey),
+		};
+		credential = await saveCredential(
+			{
+				name: 'Destination Header Auth',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: headerValue },
+			},
+			{ project, role: 'credential:owner' },
+		);
+	});
+
+	beforeEach(() => {
+		destinationId = uuid();
+	});
+
+	afterEach(async () => {
+		await Container.get(LogStreamingDestinationService).removeDestination(destinationId, false);
+		nock.cleanAll();
+	});
+
+	test.each(roles)(
+		'POST /eventbus/destination returns $statusCode for $role with a project credential',
+		async ({ role, statusCode }) => {
+			const response = await agents[role].post('/eventbus/destination').send(destinationPayload());
+
+			expect(response.statusCode).toBe(statusCode);
+			const stored = await Container.get(EventDestinationsRepository).findOneBy({
+				id: destinationId,
+			});
+			if (statusCode === 403) {
+				expect(stored).toBeNull();
+				expect(
+					await Container.get(LogStreamingDestinationService).findDestination(destinationId),
+				).toEqual([]);
+			} else {
+				expect(stored?.destination).toMatchObject(destinationPayload());
+			}
+		},
+	);
+
+	test.each(roles)(
+		'GET /eventbus/testmessage returns $statusCode for $role with a project credential',
+		async ({ role, statusCode }) => {
+			await agents['project:editor']
+				.post('/eventbus/destination')
+				.send(destinationPayload())
+				.expect(200);
+			const receiver = nock('https://example.com')
+				.post('/events')
+				.matchHeader('Authorization', headerValue)
+				.reply(200, {});
+
+			const response = await agents[role].get('/eventbus/testmessage').query({ id: destinationId });
+
+			expect.soft(response.statusCode).toBe(statusCode);
+			expect(receiver.isDone()).toBe(statusCode === 200);
+			if (statusCode === 200) expect(response.body.data).toBe(true);
+		},
+	);
+
+	test.each(roles)(
+		'POST /settings/log-streaming/destinations/:id/test returns $statusCode for $role with a project credential',
+		async ({ role, statusCode }) => {
+			await agents['project:editor']
+				.post('/eventbus/destination')
+				.send(destinationPayload())
+				.expect(200);
+			const receiver = nock('https://example.com')
+				.post('/events')
+				.matchHeader('Authorization', headerValue)
+				.reply(200, {});
+
+			const response = await publicAgents[role].post(
+				`/settings/log-streaming/destinations/${destinationId}/test`,
+			);
+
+			expect.soft(response.statusCode).toBe(statusCode);
+			expect(receiver.isDone()).toBe(statusCode === 200);
+			if (statusCode === 200) expect(response.body).toEqual({ success: true });
+		},
+	);
 });
 
 describe('when log streaming is managed by env', () => {

@@ -21,7 +21,7 @@ test.describe(
 	'Engine v2 split database webhook throughput',
 	{
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Execution' },
 			{ type: 'question', description: 'engine-v2-split-db-webhook' },
 		],
 	},

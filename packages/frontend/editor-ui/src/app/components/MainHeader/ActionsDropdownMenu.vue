@@ -178,7 +178,10 @@ function handleFileImport() {
 			// Gate here, at the emitter: NodeView's 'importWorkflowData' handler is shared with
 			// the AI builder's version restore, which must not nudge.
 			void mcpJsonNudgeTrigger.gate('import_file', () =>
-				nodeViewEventBus.emit('importWorkflowData', { data: workflowData }),
+				nodeViewEventBus.emit('importWorkflowData', {
+					data: workflowData,
+					warnRestrictedNodes: true,
+				}),
 			);
 		};
 		reader.readAsText(inputRef.files[0]);

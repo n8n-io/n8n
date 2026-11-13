@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { type ImpactMap, type InternedImpactMap, encodeImpactMap } from './impact-map.js';
-import { selectTests } from './select.js';
+import { runtimeDepScopeDirs, selectTests } from './select.js';
 
 // The handler's fail-open contract is its safety guarantee: every failure mode
 // of the map source must degrade to mode 'broad', never to an empty spec set
@@ -274,6 +274,87 @@ describe('selectTests — fail-open contract', () => {
 			},
 		});
 		expect(result.mode).toBe('broad');
+	});
+
+	describe('runtime-dep manifest change scoped by the lockfile signal', () => {
+		// cli, nodes-base and apps all declare semver. The PR adds it to apps only.
+		const map: ImpactMap = {
+			'packages/cli/src/x.ts': { '10': ['tests/e2e/cli.spec.ts'] },
+			'packages/nodes-base/nodes/y.ts': { '10': ['tests/e2e/nodes.spec.ts'] },
+			'packages/modules/apps/backend/src/z.ts': { '10': ['tests/e2e/apps.spec.ts'] },
+		};
+		const importers = {
+			'packages/cli': ['semver'],
+			'packages/nodes-base': ['semver'],
+			'packages/modules/apps/backend': ['semver'],
+		};
+		const select = (lockfileImpactedDirs: string[] | null) => {
+			const mapPath = path.join(tempDir, 'map-dep-scope.json');
+			fs.writeFileSync(mapPath, JSON.stringify(map));
+			return selectTests({
+				changedFiles: ['packages/modules/apps/backend/package.json', 'pnpm-lock.yaml'],
+				mapFile: mapPath,
+				allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+				manifests: {
+					'packages/modules/apps/backend/package.json': {
+						before: JSON.stringify({ dependencies: { tar: '1' } }),
+						after: JSON.stringify({ dependencies: { tar: '1', semver: '7' } }),
+					},
+				},
+				lockfileImporters: importers,
+				lockfileImpactedDirs,
+			});
+		};
+
+		it('scopes only the package whose manifest changed when no resolution changed elsewhere', () => {
+			expect(select([]).specs).toEqual(['tests/e2e/apps.spec.ts']);
+		});
+
+		it('adds the packages whose resolved dependencies changed', () => {
+			expect(select(['packages/cli']).specs).toEqual([
+				'tests/e2e/apps.spec.ts',
+				'tests/e2e/cli.spec.ts',
+			]);
+		});
+
+		it('scopes every declaring package when the lockfile signal is unknown', () => {
+			expect(select(null).specs).toEqual([
+				'tests/e2e/apps.spec.ts',
+				'tests/e2e/cli.spec.ts',
+				'tests/e2e/nodes.spec.ts',
+			]);
+		});
+
+		it('scopes every declaring package when the lockfile reports a root change', () => {
+			const apps = {
+				'packages/modules/apps/backend/package.json': {
+					before: JSON.stringify({ dependencies: {} }),
+					after: JSON.stringify({ dependencies: { semver: '7' } }),
+				},
+			};
+			expect(runtimeDepScopeDirs(apps, ['.'])).toBeUndefined();
+		});
+
+		it('runs every spec when the root manifest changed a runtime dep', () => {
+			const mapPath = path.join(tempDir, 'map-dep-root.json');
+			fs.writeFileSync(mapPath, JSON.stringify(map));
+			const result = selectTests({
+				changedFiles: ['package.json', 'pnpm-lock.yaml'],
+				mapFile: mapPath,
+				allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+				manifests: {
+					// A removed root dependency is no longer listed for the root in the lockfile.
+					'package.json': {
+						before: JSON.stringify({ dependencies: { semver: '7' } }),
+						after: JSON.stringify({ dependencies: {} }),
+					},
+				},
+				lockfileImporters: importers,
+				lockfileImpactedDirs: [],
+			});
+			expect(result.mode).toBe('broad');
+			expect(result.specs).toEqual([...ALL_SPECS].sort());
+		});
 	});
 
 	// A stray `paths` entry re-points every spec's imports — the regression this guards.

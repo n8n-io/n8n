@@ -196,7 +196,7 @@ export class SourceControlStatusService {
 			...projectsResult.files,
 		];
 
-		const publicApi = options.origin === 'publicApi';
+		const publicApi = options.publicApi ?? false;
 
 		if (options.direction === 'push') {
 			const trackingInformation = getTrackingInformationFromPrePushResult(

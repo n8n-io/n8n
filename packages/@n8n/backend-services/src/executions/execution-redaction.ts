@@ -8,7 +8,8 @@ export type ExecutionRedactionOptions = {
 	userAgent?: string;
 	/** When true, the original execution is never mutated. If redaction is needed,
 	 *  a structuredClone is created and returned. If no redaction is needed, the
-	 *  original is returned as-is (caller can check referential equality). */
+	 *  original is returned as-is (caller can check referential equality).
+	 *  The proxy still deletes the push session fields in place. */
 	keepOriginal?: boolean;
 } & Pick<ExecutionRedactionQueryDto, 'redactExecutionData'>;
 
@@ -36,7 +37,10 @@ export type RedactableExecution = {
 	id?: string;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	data: Pick<IRunExecutionData, 'resultData' | 'executionData' | 'redactionInfo'>;
+	data: Pick<
+		IRunExecutionData,
+		'resultData' | 'executionData' | 'redactionInfo' | 'pushRef' | 'pushRefUserId'
+	>;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
 };
 

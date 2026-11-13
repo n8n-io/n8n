@@ -9,7 +9,7 @@ import {
 } from './agent-skill.schema';
 import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
-import type { ProjectType } from '../schemas/project.schema';
+import type { ProjectIcon, ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
@@ -60,6 +60,8 @@ export type SkillListItem = {
 	projectName: string | null;
 	/** Lets the editor name another member's personal project, which it does not list. */
 	projectType: ProjectType | null;
+	/** The icon of a project skill's project, for the scope badge. */
+	projectIcon?: ProjectIcon | null;
 	source: SkillSource;
 	/** Null when the creator is unknown or the user no longer exists. */
 	createdBy: SkillUserDto | null;

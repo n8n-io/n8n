@@ -1,0 +1,351 @@
+{
+	"name": "Google Chat request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f00",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "space",
+				"operation": "get",
+				"spaceId": "spaces/AAAAx1y2z3"
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f01",
+			"name": "Get Space",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "space",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f02",
+			"name": "Get Many Spaces",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "member",
+				"operation": "get",
+				"memberId": "spaces/AAAAx1y2z3/members/115839216493"
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f03",
+			"name": "Get Member",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "member",
+				"operation": "getAll",
+				"spaceId": "spaces/AAAAx1y2z3",
+				"limit": 2
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f04",
+			"name": "Get Many Members",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "create",
+				"spaceId": "spaces/AAAAx1y2z3",
+				"messageUi": {
+					"text": "Weekly sync starts now"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f05",
+			"name": "Create Message",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "get",
+				"messageId": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV"
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1320, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f06",
+			"name": "Get Message",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "update",
+				"messageId": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV",
+				"updateFieldsUi": {
+					"text": "Weekly sync moved to 10:00"
+				}
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1540, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f07",
+			"name": "Update Message",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "message",
+				"operation": "delete",
+				"messageId": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV"
+			},
+			"type": "n8n-nodes-base.googleChat",
+			"typeVersion": 1,
+			"position": [1760, 0],
+			"id": "8c1d5e2a-4f6b-4a3c-9d7e-1b2c3d4e5f08",
+			"name": "Delete Message",
+			"credentials": {
+				"googleChatOAuth2Api": {
+					"id": "gchat-cred-1",
+					"name": "Google Chat account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Space": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3",
+					"spaceType": "SPACE",
+					"displayName": "Team Planning"
+				}
+			}
+		],
+		"Get Many Spaces": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3",
+					"spaceType": "SPACE",
+					"displayName": "Team Planning"
+				}
+			}
+		],
+		"Get Member": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3/members/115839216493",
+					"state": "JOINED",
+					"member": {
+						"name": "users/115839216493",
+						"type": "HUMAN"
+					}
+				}
+			}
+		],
+		"Get Many Members": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3/members/115839216493",
+					"state": "JOINED",
+					"member": {
+						"name": "users/115839216493",
+						"type": "HUMAN"
+					}
+				}
+			}
+		],
+		"Create Message": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV",
+					"text": "Weekly sync starts now",
+					"space": {
+						"name": "spaces/AAAAx1y2z3"
+					}
+				}
+			}
+		],
+		"Get Message": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV",
+					"text": "Weekly sync starts now",
+					"space": {
+						"name": "spaces/AAAAx1y2z3"
+					}
+				}
+			}
+		],
+		"Update Message": [
+			{
+				"json": {
+					"name": "spaces/AAAAx1y2z3/messages/Kp2qR7sT9uV.Kp2qR7sT9uV",
+					"text": "Weekly sync moved to 10:00",
+					"space": {
+						"name": "spaces/AAAAx1y2z3"
+					}
+				}
+			}
+		],
+		"Delete Message": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Space",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Space": {
+			"main": [
+				[
+					{
+						"node": "Get Many Spaces",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Many Spaces": {
+			"main": [
+				[
+					{
+						"node": "Get Member",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Member": {
+			"main": [
+				[
+					{
+						"node": "Get Many Members",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Many Members": {
+			"main": [
+				[
+					{
+						"node": "Create Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Message": {
+			"main": [
+				[
+					{
+						"node": "Get Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Message": {
+			"main": [
+				[
+					{
+						"node": "Update Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Message": {
+			"main": [
+				[
+					{
+						"node": "Delete Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

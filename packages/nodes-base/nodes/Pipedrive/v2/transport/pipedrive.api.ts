@@ -7,8 +7,10 @@ import type {
 	INodePropertyOptions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 export interface ICustomInterface {
 	name: string;
@@ -30,24 +32,24 @@ export interface IPipedriveApiOption {
 export async function pipedriveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 	option: IPipedriveApiOption = {},
 ): Promise<{ additionalData: IDataObject; data: IDataObject[] | IDataObject }> {
 	const apiVersion = option.apiVersion ?? 'v2';
-	const baseUrl =
-		apiVersion === 'v1' ? 'https://api.pipedrive.com/v1' : 'https://api.pipedrive.com/api/v2';
-
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 		},
 		method,
 		qs: query,
-		uri: `${baseUrl}${endpoint}`,
+		uri:
+			apiVersion === 'v1'
+				? requestUrl`https://api.pipedrive.com/v1${endpoint}`
+				: requestUrl`https://api.pipedrive.com/api/v2${endpoint}`,
 	};
 
 	if (option.downloadFile === true) {
@@ -96,7 +98,7 @@ export async function pipedriveApiRequest(
 export async function pipedriveApiRequestAllItemsCursor(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 ): Promise<{ data: IDataObject[] }> {
@@ -126,7 +128,7 @@ export async function pipedriveApiRequestAllItemsCursor(
 export async function pipedriveApiRequestAllItemsOffset(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 ): Promise<{ data: IDataObject[] }> {
@@ -171,16 +173,16 @@ export async function pipedriveGetCustomProperties(
 	this: IHookFunctions | IExecuteFunctions,
 	resource: string,
 ): Promise<ICustomProperties> {
-	const v2Endpoints: Record<string, string> = {
-		activity: '/activityFields',
-		deal: '/dealFields',
-		organization: '/organizationFields',
-		person: '/personFields',
-		product: '/productFields',
+	const v2Endpoints: Record<string, RequestPath> = {
+		activity: requestPath`/activityFields`,
+		deal: requestPath`/dealFields`,
+		organization: requestPath`/organizationFields`,
+		person: requestPath`/personFields`,
+		product: requestPath`/productFields`,
 	};
 
-	const v1Endpoints: Record<string, string> = {
-		lead: '/leadFields',
+	const v1Endpoints: Record<string, RequestPath> = {
+		lead: requestPath`/leadFields`,
 	};
 
 	let responseData;

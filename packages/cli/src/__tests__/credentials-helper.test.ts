@@ -24,7 +24,7 @@ import type {
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
+import { deepCopy, jsonParse, requestUrl, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -3298,7 +3298,7 @@ describe('CredentialsHelper', () => {
 			expect(result).toMatchObject({ token: 'SESSION_TOKEN' });
 			expect(httpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
-					url: 'https://wekan.example.com/users/login',
+					url: requestUrl`https://wekan.example.com/users/login`,
 					allowedDomains: 'wekan.example.com',
 				}),
 			);
@@ -3313,7 +3313,7 @@ describe('CredentialsHelper', () => {
 
 			expect(httpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
-					url: 'https://other.example/users/login',
+					url: requestUrl`https://other.example/users/login`,
 					allowedDomains: 'wekan.example.com',
 				}),
 			);
@@ -3324,7 +3324,7 @@ describe('CredentialsHelper', () => {
 
 			expect(httpRequest).toHaveBeenCalledWith({
 				method: 'POST',
-				url: 'https://wekan.example.com/users/login',
+				url: requestUrl`https://wekan.example.com/users/login`,
 				body: { username: 'admin', password: 'secret' },
 			});
 		});

@@ -768,6 +768,16 @@ describe('PollTriggerTaskHandler', () => {
 			);
 		});
 
+		test('skips the occurrence without polling when the workflow is unpublished but its published version remains', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ activeVersionId: null }),
+			);
+
+			await handler.execute(buildTask(), report, runOf(leaseSignal));
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+		});
+
 		test.each([
 			['gone from', [] as INode[]],
 			['disabled in', [{ ...triggerNode, disabled: true }]],

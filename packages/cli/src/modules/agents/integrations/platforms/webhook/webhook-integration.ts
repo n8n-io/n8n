@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, UnexpectedError } from '@n8n/errors';
 
 import { AgentChatIntegration } from '../../agent-chat-integration';
+import type { IntegrationActionDefinition } from '../../integration-tool-types';
 
 /**
  * The webhook channel: an external caller sends a message over HTTP and gets the
@@ -20,19 +21,26 @@ export class WebhookIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['httpHeaderAuth', 'jwtAuth'];
 
-	readonly displayLabel = 'Webhook';
+	readonly displayLabel = 'API';
 
-	readonly displayIcon = 'webhook';
+	readonly displayIcon = 'plug';
 
 	readonly requiresChatInstance = false;
 
 	/** There is one URL for each agent, so a request cannot tell two connections apart. */
 	readonly singleConnectionPerAgent = true;
 
+	/**
+	 * The reply is the agent's text in the HTTP response, so the channel has no
+	 * action tool. Without actions, the channel offers no approval setting.
+	 */
+	readonly actionToolDefinitions: IntegrationActionDefinition[] = [];
+
 	readonly builderGuidance = {
 		capabilities: [
 			'Let an external system or a backend send a message to the published agent over HTTP and get the reply in the same response.',
 			'Continue a conversation when the caller sends back the conversation ID.',
+			'Ask the caller to approve an action that needs approval: the reply gives a URL, and the caller sends the decision to it.',
 		],
 		useIntegrationWhen: [
 			'The user wants to call the agent from their own backend or server-side app over HTTP. Browser apps cannot call it yet.',
@@ -53,14 +61,14 @@ export class WebhookIntegration extends AgentChatIntegration {
 		if (integration.type !== this.type) return;
 		const authentication = webhookAuthentication(integration);
 		if (!authentication) {
-			throw new BadRequestError('Webhook authentication is required');
+			throw new BadRequestError('Choose an authentication for the API channel');
 		}
 		const hasCredential = integration.credentialId.trim() !== '';
 		if (authentication === 'none' && hasCredential) {
-			throw new BadRequestError('A webhook without authentication takes no credential');
+			throw new BadRequestError('An API channel without authentication takes no credential');
 		}
 		if (authentication !== 'none' && !hasCredential) {
-			throw new BadRequestError('This webhook authentication needs a credential');
+			throw new BadRequestError('This API channel authentication needs a credential');
 		}
 	}
 

@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -28,7 +29,6 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
-import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';
 

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -12,7 +13,7 @@ export async function create(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'users';
+	const endpoint = requestPath`users`;
 	const body = {} as IDataObject;
 
 	body.auth_service = authService;

@@ -6,6 +6,7 @@ import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { computed, ref } from 'vue';
 
@@ -15,17 +16,24 @@ import * as api from './selfHealingResults.api';
 import { result, resultSelection, suggestion } from './selfHealingResults.test.utils';
 
 vi.mock('./selfHealingResults.api');
-const { push, showError, showMessage, startChat } = vi.hoisted(() => ({
+const { push, showError, showMessage, startChat, track } = vi.hoisted(() => ({
 	push: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 	startChat: vi.fn(),
+	track: vi.fn(),
 }));
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: () => ({ push }),
+	useRouter: () => ({
+		push,
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/workflow/${params.workflowId}`,
+		}),
+	}),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const onItemChange = vi.fn();
 const chatAvailable = ref(true);
@@ -41,8 +49,15 @@ const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	global: {
 		stubs: {
 			SelfHealingResultContent: {
-				props: ['detail', 'pendingAction', 'publishAccess', 'canChat'],
-				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess" :data-can-chat="canChat">
+				props: [
+					'detail',
+					'workflowNames',
+					'projectName',
+					'pendingAction',
+					'publishAccess',
+					'canChat',
+				],
+				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess" :data-can-chat="canChat" :data-project-name="projectName" :data-workflow-name="workflowNames.get(detail.workflowId)">
 <span>{{ detail.report }}</span>
 <button v-for="action in ['editor', 'approve-and-publish', 'dismiss', 'chat']" :key="action" :data-test-id="action" @click="$emit('action', action)" />
 <slot name="notice" />
@@ -110,9 +125,9 @@ it.each([
 	async ({ outcome, destination, withSuggestion }) => {
 		const detail = result({
 			outcome,
-			suggestion: withSuggestion
-				? suggestion({ resultKind: outcome === 'fix_ready' ? 'fix_ready' : 'needs_you' })
-				: null,
+			suggestions: withSuggestion
+				? [suggestion({ resultKind: outcome === 'fix_ready' ? 'fix_ready' : 'needs_you' })]
+				: [],
 		});
 		const closedResult = result({
 			...detail,
@@ -138,6 +153,7 @@ it.each([
 			useRootStore().restApiContext,
 			resultSelection,
 			withSuggestion ? 'apply' : 'dismiss',
+			destination === 'chat' ? 'continue' : 'open_editor',
 		);
 		expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
 		expect(itemChangeCountAtNavigation).toBe(0);
@@ -161,7 +177,7 @@ it.each([
 	},
 );
 
-it.each(['editor', 'approve-and-publish', 'chat'] as const)(
+it.each(['editor', 'chat'] as const)(
 	'keeps the result open until %s navigation finishes',
 	async (action) => {
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult());
@@ -243,7 +259,7 @@ it.each([
 	async ({ withSuggestion, reviewState }) => {
 		const detail = result({
 			outcome: 'needs_you',
-			suggestion: withSuggestion ? suggestion({ resultKind: 'needs_you' }) : null,
+			suggestions: withSuggestion ? [suggestion({ resultKind: 'needs_you' })] : [],
 		});
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
 		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(
@@ -279,7 +295,7 @@ it.each(['editor', 'chat'] as const)(
 	},
 );
 
-it.each(['applied', 'outdated', 'discarded', 'dismissed', 'closed'] as const)(
+it.each(['applied', 'outdated', 'dismissed', 'closed'] as const)(
 	'ignores every action on a %s result',
 	async (reviewState) => {
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState }));
@@ -343,7 +359,7 @@ it('offers chat without starting it when a lost Apply response is followed by ap
 	expect(view.queryByTestId('self-healing-chat-retry')).not.toBeInTheDocument();
 });
 
-it.each(['open', 'outdated', 'discarded'] as const)(
+it.each(['open', 'outdated', 'dismissed'] as const)(
 	'does not continue when a lost Apply response is followed by %s state',
 	async (reviewState) => {
 		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
@@ -580,6 +596,7 @@ it('retains applied state and opens the editor when publication returns an error
 		useRootStore().restApiContext,
 		resultSelection,
 		'approve-and-publish',
+		'publish',
 	);
 	expect(useSelfHealingResultStore().detail?.reviewState).toBe('applied');
 	expect(showMessage).toHaveBeenCalledWith(
@@ -610,7 +627,7 @@ it('opens the editor with an unknown publication status after a lost approval re
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 });
 
-it.each(['discarded', 'outdated'] as const)(
+it.each(['dismissed', 'outdated'] as const)(
 	'does not navigate after a competing %s closure during approval',
 	async (reviewState) => {
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(result({ reviewState }));
@@ -659,8 +676,177 @@ it('treats publish access as unknown until workflow permissions load', async () 
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
 });
 
+it.each([
+	{ homeProject: { type: 'personal', name: 'Nathan Smith <nathan@n8n.io>' }, expected: 'Personal' },
+	{ homeProject: { type: 'team', name: 'Operations' }, expected: 'Operations' },
+	{ homeProject: undefined, expected: null },
+] as const)(
+	'names the project $expected of the failing workflow',
+	async ({ homeProject, expected }) => {
+		vi.mocked(api.fetchResultWorkflow).mockResolvedValue({
+			name: 'Daily report',
+			scopes: ['workflow:read'],
+			homeProject,
+		});
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content').getAttribute('data-project-name')).toBe(expected);
+	},
+);
+
+it('names an unchanged failing workflow from the result when its metadata does not load', async () => {
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+		result({
+			suggestions: [suggestion({ workflowId: 'sub-workflow-1' })],
+			workflows: [
+				{ workflowId: 'workflow-1', name: 'Daily report', change: 'unchanged', suggestionId: null },
+			],
+		}),
+	);
+	vi.mocked(api.fetchResultWorkflow).mockRejectedValue(new Error('Offline'));
+	const view = renderComponent();
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-workflow-name', 'Daily report');
+});
+
+describe('a fix that changes sub-workflows', () => {
+	const multiWorkflowResult = (overrides: Partial<ResultDetail> = {}) =>
+		result({
+			suggestions: [
+				suggestion(),
+				suggestion({
+					suggestionId: 'suggestion-2',
+					workflowId: 'sub-workflow-1',
+					payload: {
+						...suggestion().payload,
+						original: { ...suggestion().payload.original, name: 'Saved child' },
+					},
+				}),
+			],
+			...overrides,
+		});
+	const metadata = (name: string, publish = true) => ({
+		name,
+		scopes: ['workflow:read', 'workflow:update', ...(publish ? ['workflow:publish'] : [])],
+	});
+
+	beforeEach(() => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(multiWorkflowResult());
+	});
+
+	it('loads the permissions of every workflow of the fix', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			metadata(id === 'workflow-1' ? 'Daily report' : 'Child workflow'),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(api.fetchResultWorkflow).toHaveBeenCalledWith(expect.anything(), 'workflow-1');
+		expect(api.fetchResultWorkflow).toHaveBeenCalledWith(expect.anything(), 'sub-workflow-1');
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+	});
+
+	it('prevents publication when a sub-workflow cannot be published', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			id === 'workflow-1' ? metadata('Daily report') : metadata('Child workflow', false),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'denied');
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	});
+
+	it('allows publication when only the unchanged failing workflow cannot be published', async () => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			multiWorkflowResult({ suggestions: [multiWorkflowResult().suggestions[1]] }),
+		);
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			id === 'workflow-1' ? metadata('Daily report', false) : metadata('Child workflow'),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+	});
+
+	it('loads the sub-workflow permissions when the result loads on retry', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			metadata(id === 'workflow-1' ? 'Daily report' : 'Child workflow'),
+		);
+		vi.mocked(api.fetchSelfHealingResult).mockRejectedValueOnce(new Error('Offline'));
+		const view = renderComponent();
+		await waitAllPromises();
+		expect(view.queryByTestId('result-content')).not.toBeInTheDocument();
+		expect(api.fetchResultWorkflow).not.toHaveBeenCalledWith(expect.anything(), 'sub-workflow-1');
+
+		view.getByRole('button', { name: 'Retry' }).click();
+		await waitAllPromises();
+
+		expect(api.fetchResultWorkflow).toHaveBeenCalledWith(expect.anything(), 'sub-workflow-1');
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+	});
+
+	it('treats publish access as unknown when sub-workflow permissions are refused', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) => {
+			if (id === 'workflow-1') return metadata('Daily report');
+			throw new ResponseError('Forbidden', { httpStatusCode: 403 });
+		});
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'unknown');
+		expect(view.getByText(/Couldn't load workflow permissions/)).toBeInTheDocument();
+
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			metadata(id === 'workflow-1' ? 'Daily report' : 'Child workflow'),
+		);
+		view.getByRole('button', { name: 'Retry' }).click();
+		await waitAllPromises();
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+	});
+
+	it('reports a publication error and the restoration error of a sub-workflow', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			metadata(id === 'workflow-1' ? 'Daily report' : 'Child workflow'),
+		);
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue({
+			...multiWorkflowResult({ reviewState: 'applied' }),
+			publishError: 'Activation failed',
+			restorationError: { workflowId: 'sub-workflow-1', error: 'Version missing' },
+		});
+		const view = renderComponent();
+		await waitAllPromises();
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'warning',
+				title: expect.stringContaining('n8n tried to restore'),
+				message: 'Activation failed',
+			}),
+		);
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: "Couldn't restore the previous published version of Child workflow",
+				message: 'Version missing',
+			}),
+		);
+		expect(push).toHaveBeenCalledWith({
+			name: expect.any(String),
+			params: { workflowId: 'workflow-1' },
+		});
+	});
+});
+
 const dismissals = [
-	{ outcome: 'fix_ready', reviewState: 'discarded' },
+	{ outcome: 'fix_ready', reviewState: 'dismissed' },
 	{ outcome: 'needs_you', reviewState: 'dismissed' },
 ] as const;
 
@@ -698,14 +884,45 @@ it.each(dismissals)(
 			useRootStore().restApiContext,
 			resultSelection,
 			'dismiss',
+			'dismiss',
 		);
 		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({ id: resultSelection.id, state: 'closed' }),
+			expect.objectContaining({ id: resultSelection.id, state: 'closed', advance: true }),
 		);
 		expect(showError).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 		expect(startChat).not.toHaveBeenCalled();
+	},
+);
+
+it.each([
+	{ count: 1, title: 'Fix published' },
+	{ count: 2, title: 'Fix published to 2 workflows' },
+])(
+	'stays in the Inbox after publishing $count workflows and links to the workflow',
+	async ({ count, title }) => {
+		const suggestions = Array.from({ length: count }, (_, index) =>
+			suggestion({ workflowId: `workflow-${index}` }),
+		);
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ suggestions }));
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult({ suggestions }));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+
+		expect(push).not.toHaveBeenCalled();
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+			type: 'success',
+			title,
+			message: `<a href="/workflow/${resultSelection.workflowId}" target="_blank">Open workflow</a>`,
+		});
+		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ id: resultSelection.id, state: 'closed', advance: true }),
+		);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
 	},
 );
 
@@ -800,16 +1017,17 @@ it('scopes a pending action to its result', async () => {
 		useRootStore().restApiContext,
 		secondSelection,
 		'dismiss',
+		'dismiss',
 	);
 
-	firstAction.resolve(result({ reviewState: 'discarded' }));
+	firstAction.resolve(result({ reviewState: 'dismissed' }));
 	await waitAllPromises();
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', 'dismiss');
 
 	await changeSelection(view, resultSelection);
 	expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
 
-	secondAction.resolve(result({ resultId: secondSelection.id, reviewState: 'discarded' }));
+	secondAction.resolve(result({ resultId: secondSelection.id, reviewState: 'dismissed' }));
 	await waitAllPromises();
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledTimes(2);
 });
@@ -836,4 +1054,101 @@ it('does not repeat an action that is still pending when its result is selected 
 	await waitAllPromises();
 	expect(push).toHaveBeenCalledOnce();
 	expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
+});
+
+describe('telemetry', () => {
+	const { USER_VIEWED_SELF_HEALING_RESULT, USER_CLICKED_SELF_HEALING_ACTION } =
+		TELEMETRY_EVENT.SELF_HEALING;
+	const identity = {
+		result_id: resultSelection.id,
+		workflow_id: resultSelection.workflowId,
+		project_id: resultSelection.projectId,
+	};
+	const tracked = (event: unknown) => track.mock.calls.filter(([sent]) => sent === event);
+
+	it('tracks one view each time the user opens a result, not after an action', async () => {
+		const detail = result({ outcome: 'fix_ready', suggestions: [suggestion()] });
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult(detail));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(track).toHaveBeenCalledExactlyOnceWith(USER_VIEWED_SELF_HEALING_RESULT, {
+			...identity,
+			result_kind: 'fix_ready',
+			current_state: 'open',
+		});
+
+		// The action replaces the detail on screen. It is the same view.
+		view.getByTestId('editor').click();
+		await waitAllPromises();
+		expect(tracked(USER_VIEWED_SELF_HEALING_RESULT)).toHaveLength(1);
+
+		mockResultForEachSelection();
+		await changeSelection(view, secondSelection);
+		expect(tracked(USER_VIEWED_SELF_HEALING_RESULT)).toHaveLength(2);
+	});
+
+	it('does not track a view of a Could not fix result or of a failed load', async () => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'could_not_fix' }));
+		const view = renderComponent();
+		await waitAllPromises();
+
+		vi.mocked(api.fetchSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+		await changeSelection(view, secondSelection);
+
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['approve-and-publish', 'publish', 'approve-and-publish'],
+		['chat', 'continue', 'apply'],
+		['editor', 'open_editor', 'apply'],
+		['dismiss', 'dismiss', 'dismiss'],
+	] as const)(
+		'tracks a click on %s as %s before the request',
+		async (button, originalAction, reviewAction) => {
+			const detail = result({ outcome: 'fix_ready', suggestions: [suggestion()] });
+			vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+			// The click is tracked even when the request never gets a response.
+			vi.mocked(api.reviewSelfHealingResult).mockImplementation(async () => {
+				expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toHaveLength(1);
+				throw new Error('Disconnected');
+			});
+			const view = renderComponent();
+			await waitAllPromises();
+
+			view.getByTestId(button).click();
+			await waitAllPromises();
+
+			expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toEqual([
+				[
+					USER_CLICKED_SELF_HEALING_ACTION,
+					{ ...identity, result_kind: 'fix_ready', original_action: originalAction },
+				],
+			]);
+			expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
+				useRootStore().restApiContext,
+				resultSelection,
+				reviewAction,
+				originalAction,
+			);
+		},
+	);
+
+	it('does not track a click that starts no request', async () => {
+		vi.mocked(api.fetchResultWorkflow).mockResolvedValue({ name: 'Daily report', scopes: [] });
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			result({ outcome: 'fix_ready', suggestions: [suggestion()] }),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		// The user has no publish access, so the action does nothing.
+		view.getByTestId('approve-and-publish').click();
+		await waitAllPromises();
+
+		expect(tracked(USER_CLICKED_SELF_HEALING_ACTION)).toHaveLength(0);
+		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	});
 });

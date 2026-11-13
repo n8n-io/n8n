@@ -16,7 +16,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:send', () => {
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.post('/v1.0/users/user%40example.com/sendMail', {
+			.post('/v1.0/users/user@example.com/sendMail', {
 				message: {
 					body: { content: 'message description', contentType: 'Text' },
 					replyTo: [{ emailAddress: { address: 'reply@mail.com' } }],

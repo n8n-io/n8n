@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as getMany from '../../../actions/file/getMany.operation';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -65,7 +66,7 @@ describe('Test Airtop, get many files operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'GET',
-			'/files',
+			requestPath`/files`,
 			{},
 			{
 				limit: 100,
@@ -97,7 +98,7 @@ describe('Test Airtop, get many files operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'GET',
-			'/files',
+			requestPath`/files`,
 			{},
 			{
 				limit: 1,

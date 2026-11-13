@@ -1,0 +1,160 @@
+{
+	"name": "Netscaler ADC Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"fileName": "server.crt",
+				"fileLocation": "/nsconfig/ssl/"
+			},
+			"id": "citrixadc-0",
+			"name": "File Delete",
+			"type": "n8n-nodes-base.citrixAdc",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"citrixAdcApi": {
+					"id": "1",
+					"name": "Netscaler ADC account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"fileName": "server.key",
+				"fileLocation": "/nsconfig/ssl/"
+			},
+			"id": "citrixadc-1",
+			"name": "File Download",
+			"type": "n8n-nodes-base.citrixAdc",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"citrixAdcApi": {
+					"id": "1",
+					"name": "Netscaler ADC account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "create",
+				"certificateFileName": "root.crt",
+				"certificateFormat": "PEM",
+				"certificateType": "ROOT_CERT",
+				"certificateRequestFileName": "root.csr",
+				"privateKeyFileName": "root.key",
+				"additionalFields": {}
+			},
+			"id": "citrixadc-2",
+			"name": "Certificate Create",
+			"type": "n8n-nodes-base.citrixAdc",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"citrixAdcApi": {
+					"id": "1",
+					"name": "Netscaler ADC account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "certificate",
+				"operation": "install",
+				"certificateKeyPairName": "web-cert",
+				"certificateFileName": "web.crt",
+				"privateKeyFileName": "web.key",
+				"certificateFormat": "DER",
+				"notifyExpiration": false
+			},
+			"id": "citrixadc-3",
+			"name": "Certificate Install",
+			"type": "n8n-nodes-base.citrixAdc",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"citrixAdcApi": {
+					"id": "1",
+					"name": "Netscaler ADC account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"File Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {
+					"filename": "server.key",
+					"filecontent": "aGVsbG8=",
+					"filelocation": "/nsconfig/ssl"
+				}
+			}
+		],
+		"Certificate Create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Certificate Install": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "File Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Install",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

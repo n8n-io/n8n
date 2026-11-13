@@ -7,7 +7,7 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	MIGRATION_REPORT_CONTEXT_CLOSE_TAG,

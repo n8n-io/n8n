@@ -46,7 +46,7 @@ const slowWebhookWorkflow = (path: string): Partial<IWorkflowBase> => ({
 test.describe(
 	'Stop execution enqueued by a webhook process @mode:queue',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should free the running job on the worker', async ({ api, processUrls }) => {

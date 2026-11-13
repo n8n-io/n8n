@@ -7,6 +7,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { INodeUi } from '@/Interface';
 import type { ITaskData } from 'n8n-workflow';
 
@@ -1909,6 +1910,140 @@ describe('useWorkflowSetupState', () => {
 			const nodeCredCard = state.setupCards.value.find((c) => c.state?.node === node1);
 			expect(nodeCredCard).toBeDefined();
 			expect(nodeCredCard?.state?.credentialType).toBe('httpHeaderAuth');
+		});
+	});
+
+	describe('restricted nodes', () => {
+		const GMAIL_TRIGGER = 'n8n-nodes-base.gmailTrigger';
+
+		const restrictNodeTypes = (...types: string[]) => {
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability = vi.fn(
+				(name: string) =>
+					types.includes(name)
+						? { name, available: false, scope: 'instance' as const }
+						: { name, available: true },
+			);
+		};
+		const restrictGmailTrigger = () => restrictNodeTypes(GMAIL_TRIGGER);
+
+		it('treats a restricted node as a normal node unless the host opts in', () => {
+			restrictGmailTrigger();
+			mockWorkflowDocumentStore.allNodes = [createNode({ name: 'New email', type: GMAIL_TRIGGER })];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'gmailOAuth2' }]);
+
+			const { setupCards } = useWorkflowSetupState();
+
+			expect(setupCards.value).toHaveLength(1);
+			expect(setupCards.value[0].state).toMatchObject({ credentialType: 'gmailOAuth2' });
+			expect(setupCards.value[0].state!.restriction).toBeUndefined();
+		});
+
+		it('follows the opt-in when it changes', () => {
+			restrictGmailTrigger();
+			mockWorkflowDocumentStore.allNodes = [createNode({ name: 'New email', type: GMAIL_TRIGGER })];
+			const includeRestricted = ref(false);
+
+			const { setupCards } = useWorkflowSetupState(undefined, { includeRestricted });
+			expect(setupCards.value.some(({ state }) => state?.restriction)).toBe(false);
+
+			includeRestricted.value = true;
+			expect(setupCards.value.some(({ state }) => state?.restriction)).toBe(true);
+		});
+
+		it('gives a restricted node a card even when it needs no setup', () => {
+			restrictGmailTrigger();
+			const node = createNode({ name: 'New email', type: GMAIL_TRIGGER });
+			mockWorkflowDocumentStore.allNodes = [node];
+
+			const { setupCards } = useWorkflowSetupState(undefined, { includeRestricted: true });
+
+			expect(setupCards.value).toHaveLength(1);
+			expect(setupCards.value[0].state).toMatchObject({
+				node: expect.objectContaining({ name: 'New email' }),
+				restriction: { scope: 'instance' },
+				isComplete: false,
+			});
+		});
+
+		it('does not ask a restricted node for its credential', () => {
+			restrictGmailTrigger();
+			const node = createNode({ name: 'New email', type: GMAIL_TRIGGER });
+			mockWorkflowDocumentStore.allNodes = [node];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'gmailOAuth2' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ pollTimes: ['Required'] });
+
+			const { setupCards, credentialTypeStates, nodeStates } = useWorkflowSetupState(undefined, {
+				includeRestricted: true,
+			});
+
+			expect(credentialTypeStates.value).toEqual([]);
+			expect(nodeStates.value).toEqual([]);
+			expect(setupCards.value).toHaveLength(1);
+			expect(setupCards.value[0].state!.credentialType).toBeUndefined();
+			expect(setupCards.value[0].state!.restriction).toBeDefined();
+		});
+
+		it('never reports the workflow as ready while a restricted node is in it', () => {
+			restrictGmailTrigger();
+			mockWorkflowDocumentStore.allNodes = [createNode({ name: 'New email', type: GMAIL_TRIGGER })];
+
+			const { isAllComplete } = useWorkflowSetupState(undefined, { includeRestricted: true });
+
+			expect(isAllComplete.value).toBe(false);
+		});
+
+		it('replaces the restricted card with a normal card for the new node', async () => {
+			restrictGmailTrigger();
+			const nodes = ref([createNode({ id: 'old', name: 'New email', type: GMAIL_TRIGGER })]);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true, properties: [] });
+			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store: unknown, node: INodeUi) =>
+				node.type === 'n8n-nodes-base.emailReadImap' ? [{ name: 'imap' }] : [],
+			);
+
+			const { setupCards } = useWorkflowSetupState(nodes, { includeRestricted: true });
+			expect(setupCards.value.map((card) => card.state?.node.name)).toEqual(['New email']);
+
+			nodes.value = [
+				createNode({
+					id: 'new',
+					name: 'Email Trigger (IMAP)',
+					type: 'n8n-nodes-base.emailReadImap',
+				}),
+			];
+			await nextTick();
+
+			expect(setupCards.value).toHaveLength(1);
+			expect(setupCards.value[0].state).toMatchObject({
+				node: expect.objectContaining({ name: 'Email Trigger (IMAP)' }),
+				credentialType: 'imap',
+			});
+			expect(setupCards.value[0].state!.restriction).toBeUndefined();
+		});
+
+		it('keeps a restricted sub-node out of its parent group', () => {
+			const MODEL = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
+			restrictNodeTypes(MODEL);
+			const agent = createNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' });
+			const model = createNode({ name: 'Model', type: MODEL });
+			const memory = createNode({ name: 'Memory', type: '@n8n/n8n-nodes-langchain.memory' });
+			mockWorkflowDocumentStore.allNodes = [agent, model, memory];
+			mockWorkflowDocumentStore.connectionsByDestinationNode = {
+				Agent: {
+					ai_languageModel: [[{ node: 'Model', type: 'ai_languageModel', index: 0 }]],
+					ai_memory: [[{ node: 'Memory', type: 'ai_memory', index: 0 }]],
+				},
+			};
+			mockGetNodeParametersIssues.mockImplementation((_store: unknown, node: INodeUi) =>
+				node.name === 'Memory' ? { sessionKey: ['Required'] } : {},
+			);
+
+			const { setupCards } = useWorkflowSetupState(undefined, { includeRestricted: true });
+
+			const restrictedCard = setupCards.value.find((card) => card.state?.restriction);
+			const group = setupCards.value.find((card) => card.nodeGroup)?.nodeGroup;
+			expect(restrictedCard?.state?.node.name).toBe('Model');
+			expect(group?.subnodeCards.map((card) => card.node.name)).toEqual(['Memory']);
 		});
 	});
 });

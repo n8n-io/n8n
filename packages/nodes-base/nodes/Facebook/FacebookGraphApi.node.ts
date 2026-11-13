@@ -7,8 +7,21 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 	JsonObject,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
+
+const HOST_URL_OPTIONS = [
+	{ name: 'Default', value: 'graph.facebook.com' },
+	{ name: 'Video Uploads', value: 'graph-video.facebook.com' },
+];
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +29,8 @@ export class FacebookGraphApi implements INodeType {
 		name: 'facebookGraphApi',
 		icon: 'file:facebook.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
@@ -66,16 +80,7 @@ export class FacebookGraphApi implements INodeType {
 				displayName: 'Host URL',
 				name: 'hostUrl',
 				type: 'options',
-				options: [
-					{
-						name: 'Default',
-						value: 'graph.facebook.com',
-					},
-					{
-						name: 'Video Uploads',
-						value: 'graph-video.facebook.com',
-					},
-				],
+				options: HOST_URL_OPTIONS,
 				default: 'graph.facebook.com',
 				description:
 					'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
@@ -365,6 +370,8 @@ export class FacebookGraphApi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const toPathValue = (value: string) =>
+			this.getNode().typeVersion < 1.1 ? decodePathValue(value) : value;
 
 		let response: any;
 		const returnItems: INodeExecutionData[] = [];
@@ -386,25 +393,16 @@ export class FacebookGraphApi implements INodeType {
 				'httpRequestMethod',
 				itemIndex,
 			) as IHttpRequestMethods;
-			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
-			const node = this.getNodeParameter('node', itemIndex) as string;
-			const edge = this.getNodeParameter('edge', itemIndex) as string;
+			const graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
+			const node = String(this.getNodeParameter('node', itemIndex));
+			const edge = String(this.getNodeParameter('edge', itemIndex) ?? '');
 			const options = this.getNodeParameter('options', itemIndex, {});
 
-			if (graphApiVersion !== '') {
-				graphApiVersion += '/';
-			}
-
-			let uri = `https://${hostUrl}/${graphApiVersion}${node}`;
-			if (edge) {
-				uri = `${uri}/${edge}`;
-			}
-			const requestOptions: IRequestOptions = {
+			const requestOptions: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
 				},
 				method: httpRequestMethod,
-				uri,
 				json: true,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
@@ -477,15 +475,37 @@ export class FacebookGraphApi implements INodeType {
 			}
 
 			try {
+				if (!HOST_URL_OPTIONS.some((option) => option.value === hostUrl)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The Host URL "${hostUrl}" is not supported`,
+						{ itemIndex },
+					);
+				}
+				const base = graphApiVersion !== '' ? requestPath`/${graphApiVersion}` : requestPath``;
+				let path = node
+					.split('/')
+					.reduce(
+						(parent, part) =>
+							part ? requestPath`${parent}/${toPathValue(part)}` : requestPath`${parent}/`,
+						base,
+					);
+				if (edge) {
+					path = requestPath`${path}/${toPathValue(edge)}`;
+				}
+				const request: WithRequestTarget<IRequestOptions, 'uri'> = {
+					...requestOptions,
+					uri: requestUrl`https://${hostUrl}${path}`,
+				};
 				// Now that the options are all set make the actual http request
 				if (authType === 'oAuth2') {
 					response = await this.helpers.requestWithAuthentication.call(
 						this,
 						'facebookGraphApiOAuth2Api',
-						requestOptions,
+						request,
 					);
 				} else {
-					response = await this.helpers.request(requestOptions);
+					response = await this.helpers.request(request);
 				}
 			} catch (error) {
 				const apiError = new NodeApiError(this.getNode(), error as JsonObject);

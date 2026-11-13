@@ -82,6 +82,19 @@ describe('N8nFormInput', () => {
 		expect(emitted('validate')).toEqual([[false]]);
 	});
 
+	it('names a toggle after its field label', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				modelValue: false,
+				label: 'Enable LDAP',
+				name: 'ldap',
+				type: 'toggle',
+			},
+		});
+
+		expect(getByRole('switch', { name: 'Enable LDAP' })).toBeInTheDocument();
+	});
+
 	it('emits enter on Enter but not while the user confirms an IME composition', async () => {
 		const { getByRole, emitted } = renderComponent({ props: { modelValue: '', label: 'Name' } });
 		const input = getByRole('textbox');

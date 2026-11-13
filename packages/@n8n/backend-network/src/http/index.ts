@@ -18,6 +18,7 @@ export {
 	type HttpTransport,
 	type TypedHttpFullResponse,
 } from './outbound-http';
+export { ReloadingHttpRequestClient } from './reloading-http-request-client';
 export { markNonRetryable, retryabilityFromError } from './retryability';
 export { HttpResponseSizeLimitError } from './response-size-limit.error';
 export {

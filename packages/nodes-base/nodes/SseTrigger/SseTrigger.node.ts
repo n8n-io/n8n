@@ -7,7 +7,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, OperationalError, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 // These statuses reconnect and resend `Last-Event-ID`, as eventsource v2 did.
 // eventsource v3 closes the stream on any non-200 status.

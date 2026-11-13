@@ -20,6 +20,7 @@ import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
 import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
+import AgentChannelWebhookRemoveConfirmation from './webhook/AgentChannelWebhookRemoveConfirmation.vue';
 import AgentChannelWebhookSetup from './webhook/AgentChannelWebhookSetup.vue';
 import type {
 	AgentChannelPlatform,
@@ -88,6 +89,7 @@ const platforms = {
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>
 			isPublished && isSlackChannelRuntime(runtime) && runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.slack.listDescription'),
 		presentDisconnectWarning: (warning, { text }) => {
 			if (!isSlackNotDeletedWarning(warning)) {
 				return null;
@@ -115,6 +117,7 @@ const platforms = {
 		setupComponent: AgentChannelLinearSetup,
 		editComponent: AgentChannelLinearEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.linear.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.linear'),
 	},
 	telegram: {
@@ -122,6 +125,7 @@ const platforms = {
 		setupComponent: AgentChannelTelegramSetup,
 		editComponent: AgentChannelTelegramEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.telegram.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.telegram'),
 	},
 	discord: {
@@ -129,12 +133,14 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.discord.listDescription'),
 	},
 	whatsapp: {
 		type: 'whatsapp',
 		setupComponent: AgentChannelWhatsAppSetup,
 		editComponent: AgentChannelWhatsAppEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.whatsapp.listDescription'),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
 		disconnectConfirmationComponent: AgentChannelWhatsAppRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
@@ -186,6 +192,7 @@ const platforms = {
 		shouldConfirmDisconnect: () => true,
 		createRuntime: useTeamsChannelRuntime,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.teams.listDescription'),
 		presentDisconnectWarning: (warning, { text }) => {
 			if (!isTeamsResourcesNotDeletedWarning(warning)) {
 				return null;
@@ -225,12 +232,16 @@ const platforms = {
 		setupComponent: AgentChannelWebhookSetup,
 		editComponent: AgentChannelWebhookSetup,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.webhook.listDescription'),
+		disconnectConfirmationComponent: AgentChannelWebhookRemoveConfirmation,
+		shouldConfirmDisconnect: () => true,
 	},
 	[N8N_CHAT_INTEGRATION_TYPE]: {
 		type: N8N_CHAT_INTEGRATION_TYPE,
 		setupComponent: AgentChannelN8nChatView,
 		editComponent: AgentChannelN8nChatView,
 		getConnectAction: ({ text }) => ({ label: text('agents.channels.n8nChat.makeAvailable') }),
+		getListDescription: ({ text }) => text('agents.channels.n8nChat.listDescription'),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

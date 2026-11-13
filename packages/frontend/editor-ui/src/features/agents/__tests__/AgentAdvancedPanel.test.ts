@@ -498,20 +498,67 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(findStubComponent(wrapper, 'agent-prompt-caching-toggle').props('modelValue')).toBe(
+			true,
+		);
 		const ttlSelect = findStubComponent(wrapper, 'agent-prompt-caching-ttl-select');
 		expect(ttlSelect.exists()).toBe(true);
 		expect(ttlSelect.props('modelValue')).toBe('1h');
 	});
 
-	it('hides the prompt-caching row entirely for OpenAI (mandatory, no user-facing control)', () => {
+	it('shows the prompt caching toggle without a cache duration for OpenAI', () => {
 		const config = makeConfig({ model: 'openai/gpt-5.1' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(findStubComponent(wrapper, 'agent-prompt-caching-toggle').props('modelValue')).toBe(
+			true,
+		);
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('saves enabled: false when the user turns prompt caching off', async () => {
+		const config = makeConfig({
+			model: 'openai/gpt-5.1',
+			config: { promptCaching: { enabled: true } },
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.promptCaching).toEqual({ enabled: false });
+	});
+
+	it('shows prompt caching as off and hides the cache duration when the config turned it off', () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-sonnet-4-5',
+			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(findStubComponent(wrapper, 'agent-prompt-caching-toggle').props('modelValue')).toBe(
+			false,
+		);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('keeps the Anthropic cache duration when the user turns prompt caching back on', async () => {
+		const config = makeConfig({
+			model: 'anthropic/claude-sonnet-4-5',
+			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
 	});
 
 	it.each([

@@ -7,26 +7,27 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IHttpRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function bitbucketApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 ): Promise<any> {
 	try {
 		const authentication = this.getNodeParameter('authentication', 0) as 'password' | 'accessToken';
+		const url = requestUrl`https://api.bitbucket.org/2.0${resource}`;
 
 		if (authentication === 'accessToken') {
-			const httpRequestOptions: IHttpRequestOptions = {
+			const httpRequestOptions: Omit<IHttpRequestOptions, 'url' | 'baseURL'> = {
 				method,
 				qs,
 				body,
-				url: uri || `https://api.bitbucket.org/2.0${resource}`,
 				json: true,
 			};
 
@@ -37,12 +38,12 @@ export async function bitbucketApiRequest(
 			return await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				'bitbucketAccessTokenApi',
-				httpRequestOptions,
+				uri ? { ...httpRequestOptions, url: uri } : { ...httpRequestOptions, url },
 			);
 		}
 
 		const credentials = await this.getCredentials('bitbucketApi');
-		const options: IRequestOptions = {
+		const options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 			method,
 			auth: {
 				user: credentials.username as string,
@@ -50,7 +51,6 @@ export async function bitbucketApiRequest(
 			},
 			qs,
 			body,
-			uri: uri || `https://api.bitbucket.org/2.0${resource}`,
 			json: true,
 		};
 
@@ -58,7 +58,7 @@ export async function bitbucketApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.request(options);
+		return await this.helpers.request(uri ? { ...options, uri } : { ...options, uri: url });
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -72,7 +72,7 @@ export async function bitbucketApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

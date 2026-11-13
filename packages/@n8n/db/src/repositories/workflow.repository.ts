@@ -13,7 +13,8 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, UnexpectedError, UserError, type IWorkflowSettings } from 'n8n-workflow';
+import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
@@ -733,6 +734,25 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await this.find({
 			select: MIGRATION_SCAN_FIELDS,
 			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/**
+	 * One page of unarchived workflows for the engine v2 eligibility report, keyset-paged like
+	 * `getIdsAfter`. It returns the draft only.
+	 */
+	async findEngineEligibilityScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: ['id', 'nodes', 'connections', 'settings'],
+			where:
+				afterId === undefined
+					? { isArchived: false }
+					: { isArchived: false, id: MoreThan(afterId) },
 			take,
 			order: { id: 'ASC' },
 		});

@@ -3,7 +3,7 @@ import { DataSource, In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishedVersion } from '../entities';
+import { WorkflowPublishedVersion, type WorkflowHistory } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type PublishedWorkflowDataForExecution = Pick<
@@ -56,6 +56,33 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			select: ['workflowId'],
 		});
 		return new Set(rows.map((row) => row.workflowId));
+	}
+
+	/**
+	 * The nodes and connections of the live published version of each of these workflows.
+	 * A workflow without a published version has no entry.
+	 */
+	async findPublishedVersionContents(
+		workflowIds: string[],
+	): Promise<Map<string, Pick<WorkflowHistory, 'nodes' | 'connections'>>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const rows = await this.createQueryBuilder('mapping')
+			.innerJoin('mapping.publishedVersion', 'publishedVersion')
+			.select([
+				'mapping.workflowId',
+				'publishedVersion.versionId',
+				'publishedVersion.nodes',
+				'publishedVersion.connections',
+			])
+			.where('mapping.workflowId IN (:...workflowIds)', { workflowIds })
+			.getMany();
+		return new Map(
+			rows.map(({ workflowId, publishedVersion: { nodes, connections } }) => [
+				workflowId,
+				{ nodes, connections },
+			]),
+		);
 	}
 
 	/**

@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-param-default-missing */
 import type { IDataObject, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath, NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
-import { NodeApiError } from 'n8n-workflow';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { getMappingColumns, itemColumns } from '../../../v2/list/columns';
@@ -23,7 +23,6 @@ vi.mock('../../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = '58a279af-1f06-4392-a5ed-2b37fa1d6c1d';
 
 const contentTypesReply = (columns: SharePointListColumn[]): IDataObject => ({
@@ -297,7 +296,7 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/contentTypes`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/contentTypes`,
 			{},
 			{ expand: 'columns' },
 		);
@@ -511,7 +510,7 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 
 		expect(apiRequest).toHaveBeenLastCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/columns`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/columns`,
 		);
 		expect(result.fields.map(({ id, type }) => ({ id, type }))).toEqual([
 			{ id: 'Title', type: 'string' },
@@ -557,7 +556,9 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/My%20List%201/contentTypes`,
+			expect.objectContaining({
+				value: `/v1.0/sites/${SITE_ID}/lists/My%20List%201/contentTypes`,
+			}),
 			{},
 			{ expand: 'columns' },
 		);

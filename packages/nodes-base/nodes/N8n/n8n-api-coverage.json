@@ -5,6 +5,9 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"DELETE /agents/{agentId}": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},

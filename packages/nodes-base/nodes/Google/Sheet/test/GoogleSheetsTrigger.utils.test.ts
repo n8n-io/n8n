@@ -1,5 +1,6 @@
 import * as XLSX from '@e965/xlsx';
 import type { IPollFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import type { Mock } from 'vitest';
 import {
@@ -38,26 +39,28 @@ describe('GoogleSheetsTrigger.utils', () => {
 	});
 
 	describe('getRevisionFile', () => {
+		const documentId = 'doc1';
+		const exportLink = `https://docs.google.com/spreadsheets/export?id=${documentId}&exportFormat=xlsx`;
+		const mockPollFunctions: Partial<IPollFunctions> = {
+			getNode: vi.fn(),
+		};
+
 		it('should make correct API call and return buffer', async () => {
-			const mockPollFunctions: Partial<IPollFunctions> = {
-				getNode: vi.fn(),
-			};
-			const exportLink = 'https://example.com/export';
-			const mockResponse = {
-				body: 'mock binary data',
-			};
+			(apiRequest.call as Mock).mockResolvedValue({ body: 'mock binary data' });
 
-			(apiRequest.call as Mock).mockResolvedValue(mockResponse);
-
-			const result = await getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink);
+			const result = await getRevisionFile.call(
+				mockPollFunctions as IPollFunctions,
+				exportLink,
+				documentId,
+			);
 
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockPollFunctions,
 				'GET',
-				'',
+				requestPath``,
 				undefined,
-				{ mimeType: BINARY_MIME_TYPE },
-				exportLink,
+				{ mimeType: BINARY_MIME_TYPE, id: documentId, exportFormat: 'xlsx' },
+				requestUrl`https://docs.google.com/spreadsheets/export`,
 				undefined,
 				{
 					resolveWithFullResponse: true,
@@ -71,17 +74,26 @@ describe('GoogleSheetsTrigger.utils', () => {
 		});
 
 		it('should handle API request errors', async () => {
-			const mockPollFunctions: Partial<IPollFunctions> = {
-				getNode: vi.fn(),
-			};
-			const exportLink = 'https://example.com/export';
-			const error = new Error('API request failed');
-
-			(apiRequest.call as Mock).mockRejectedValue(error);
+			(apiRequest.call as Mock).mockRejectedValue(new Error('API request failed'));
 
 			await expect(
-				getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink),
+				getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink, documentId),
 			).rejects.toThrow('API request failed');
+		});
+
+		it.each([
+			'https://example.com/spreadsheets/export?id=doc1',
+			'http://docs.google.com/spreadsheets/export?id=doc1',
+			'https://docs.google.com/other?id=doc1',
+			'https://docs.google.com/spreadsheets/export?id=doc2',
+			'https://docs.google.com/spreadsheets/export',
+			'not a url',
+		])('should send no request for the link %s', async (link) => {
+			await expect(
+				getRevisionFile.call(mockPollFunctions as IPollFunctions, link, documentId),
+			).rejects.toThrow('Unexpected revision export link');
+
+			expect(apiRequest.call).not.toHaveBeenCalled();
 		});
 	});
 

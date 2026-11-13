@@ -76,7 +76,7 @@ const props = defineProps<{
 
 const childrenDisabled = computed(() => !props.canEditAgent);
 provideAgentPersonalisation(
-	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+	() => props.localConfig?.personalisation ?? props.agent?.config?.personalisation,
 );
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);

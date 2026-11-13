@@ -83,6 +83,7 @@ import { WorkflowActivationBadRequestError } from '@/errors/response-errors/work
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -94,11 +95,10 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
-import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
-import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -130,7 +130,7 @@ type WorkflowUpdateOptions = {
 	tagIds?: string[];
 	parentFolderId?: string;
 	forceSave?: boolean;
-	publicApi?: boolean;
+	publicApi?: PublicApiCaller;
 	publishIfActive?: boolean;
 	/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
 	apiKeyScopes?: readonly string[];
@@ -146,9 +146,13 @@ type WorkflowUpdateOptions = {
 	allowUnresolvedErrorWorkflow?: boolean;
 	/** The history version this update restores, so its nodes keep their credentials. */
 	restoredFromVersionId?: string;
+	/** What happens when a read-only node has edits. `restore` keeps the stored node `reject` fails the save. */
+	readOnlyNodeEdits?: 'restore' | 'reject';
+	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
+	unsentNodeFields?: readonly string[];
 };
 
-type PreparedWorkflowUpdate = {
+export type PreparedWorkflowUpdate = {
 	user: User;
 	previousWorkflow: WorkflowEntity;
 	workflow: WorkflowEntity;
@@ -193,8 +197,6 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
-		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
-		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
@@ -593,6 +595,8 @@ export class WorkflowService {
 			allowArchivedUpdate = false,
 			allowUnresolvedErrorWorkflow = false,
 			restoredFromVersionId,
+			readOnlyNodeEdits = 'restore',
+			unsentNodeFields = [],
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -636,7 +640,8 @@ export class WorkflowService {
 
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
-		// cannot access and revert edits to existing read-only credential nodes.
+		// cannot access and revert edits to existing read-only credential nodes. A caller that
+		// sets `readOnlyNodeEdits` to `reject` fails the save instead, because it cannot see the restore.
 		// Runs after replaceInvalidCredentials so old-format/name references are
 		// already resolved to IDs before the check.
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
@@ -668,6 +673,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
+				{ readOnlyNodeEdits, unsentNodeFields },
 			);
 		}
 
@@ -1001,6 +1007,7 @@ export class WorkflowService {
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
+				publicApi,
 			});
 			// oxlint-disable-next-line typescript/no-deprecated
 			updatedWorkflow.active = publishedWorkflow.active;
@@ -1010,6 +1017,7 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				publicApi,
 				publishHistory: 'none',
 			});
 		}
@@ -1056,12 +1064,14 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		options: { source: WorkflowActionSource } = { source: 'ui' },
+		options: { source: WorkflowActionSource; publicApi?: PublicApiCaller } = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
 			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
 				actor: { kind: 'user', user },
+				// The publish record for this user is written only after `add` succeeds.
+				publisherId: user.id,
 			});
 			didPublish = true;
 		} catch (error) {
@@ -1069,19 +1079,22 @@ export class WorkflowService {
 			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
 			// which otherwise may cause them to start unintended executions.
 			// Done before the rollback below so the active version is still
-			// resolvable by `clearWebhooks`.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
+			// resolvable by `clearWebhooks`. A credential refusal registers nothing,
+			// and the teardown would call the trigger nodes with the refused credentials.
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
 
-				this.logger.warn(
-					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
-					{ workflowId },
-				);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+					this.logger.warn(
+						`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+						{ workflowId },
+					);
+				} catch (cleanupError) {
+					this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+						workflowId,
+						error: cleanupError,
+					});
+				}
 			}
 
 			const rollbackPayload = {
@@ -1119,7 +1132,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: options.source === 'api',
+					publicApi: options.publicApi ?? false,
 					source: options.source,
 				});
 			}
@@ -1174,7 +1187,6 @@ export class WorkflowService {
 	 * @param user - The user activating the workflow
 	 * @param workflowId - The ID of the workflow to activate
 	 * @param options - Optional versionId, name and description updates
-	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
 	// eslint-disable-next-line complexity
@@ -1187,11 +1199,12 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publicApi?: PublicApiCaller;
 			publishHistory?: PublishHistoryScope;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source === 'api';
+		const publicApi = options?.publicApi ?? false;
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -1400,7 +1413,7 @@ export class WorkflowService {
 				workflowId,
 				workflowForActivation,
 				activationMode,
-				{ source },
+				{ source, publicApi },
 			);
 		}
 
@@ -1452,7 +1465,7 @@ export class WorkflowService {
 	 * Deactivates a workflow by removing it from the active workflow manager and setting activeVersionId to null.
 	 * @param user - The user deactivating the workflow
 	 * @param workflowId - The ID of the workflow to deactivate
-	 * @param options - Optional settings including expectedChecksum for conflict detection and publicApi flag
+	 * @param options - Optional settings including expectedChecksum for conflict detection and the public API caller
 	 * @returns The deactivated workflow
 	 */
 	async deactivateWorkflow(
@@ -1461,10 +1474,11 @@ export class WorkflowService {
 		options?: {
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publicApi?: PublicApiCaller;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source === 'api';
+		const publicApi = options?.publicApi ?? false;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -1730,7 +1744,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		force = false,
-		options?: { publicApi?: boolean },
+		options?: { publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
@@ -1839,7 +1853,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1900,7 +1914,7 @@ export class WorkflowService {
 	async unarchive(
 		user: User,
 		workflowId: string,
-		options?: { publicApi?: boolean },
+		options?: { publicApi?: PublicApiCaller },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1935,17 +1949,29 @@ export class WorkflowService {
 		return workflow;
 	}
 
-	async archiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		return await this.archive(user, workflowId, { skipArchived: true, publicApi: true });
+	async archiveForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client });
 	}
 
-	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		return await this.unarchive(user, workflowId, { publicApi: true });
+	async unarchiveForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
+		return await this.unarchive(user, workflowId, { publicApi: client });
 	}
 
-	async deleteForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async deleteForPublicApi(
+		user: User,
+		workflowId: string,
+		client: PublicApiClient,
+	): Promise<WorkflowEntity | undefined> {
 		// The public API deletes without requiring the workflow to be archived first.
-		return await this.delete(user, workflowId, true, { publicApi: true });
+		return await this.delete(user, workflowId, true, { publicApi: client });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
@@ -2326,12 +2352,6 @@ export class WorkflowService {
 				WorkflowPublicationReason.Publish,
 				trx,
 			);
-
-			// Durable jobs are DB state, so their removal commits here rather than
-			// waiting on the leader's outbox handler: a lost hand-off would otherwise
-			// leave them firing a workflow already marked inactive.
-			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
-			await this.pollTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without

@@ -1,4 +1,4 @@
-import { InstanceWriteAccessService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, PostHogClient } from '@n8n/backend-services';
 import { createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
@@ -7,7 +7,6 @@ import { ErrorReporter } from 'n8n-core';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';

@@ -1,0 +1,361 @@
+{
+	"name": "CoinGecko Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "get",
+				"coinId": "bitcoin",
+				"options": {}
+			},
+			"id": "node-0",
+			"name": "Coin Get",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 0]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "get",
+				"coinId": "tether",
+				"searchBy": "contractAddress",
+				"platformId": "ethereum",
+				"contractAddress": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+				"options": {}
+			},
+			"id": "node-1",
+			"name": "Coin Get By Contract",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 150]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"id": "node-2",
+			"name": "Coin Get Many",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "market",
+				"baseCurrency": "usd",
+				"limit": 1,
+				"options": {}
+			},
+			"id": "node-3",
+			"name": "Coin Market",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 450]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "price",
+				"baseCurrencies": ["bitcoin"],
+				"quoteCurrencies": ["usd"],
+				"options": {}
+			},
+			"id": "node-4",
+			"name": "Coin Price",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 600]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "price",
+				"searchBy": "contractAddress",
+				"platformId": "ethereum",
+				"contractAddresses": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+				"quoteCurrencies": ["usd"],
+				"options": {}
+			},
+			"id": "node-5",
+			"name": "Coin Price By Contract",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 750]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "ticker",
+				"coinId": "bitcoin",
+				"limit": 1,
+				"options": {}
+			},
+			"id": "node-6",
+			"name": "Coin Ticker",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 900]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "history",
+				"coinId": "bitcoin",
+				"date": "2024-01-15T00:00:00",
+				"options": {}
+			},
+			"id": "node-7",
+			"name": "Coin History",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 1050]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "marketChart",
+				"baseCurrency": "bitcoin",
+				"quoteCurrency": "usd",
+				"days": "1"
+			},
+			"id": "node-8",
+			"name": "Coin Market Chart",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 1200]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "marketChart",
+				"searchBy": "contractAddress",
+				"platformId": "ethereum",
+				"contractAddress": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+				"quoteCurrency": "usd",
+				"days": "1"
+			},
+			"id": "node-9",
+			"name": "Coin Market Chart By Contract",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 1350]
+		},
+		{
+			"parameters": {
+				"resource": "coin",
+				"operation": "candlestick",
+				"baseCurrency": "bitcoin",
+				"quoteCurrency": "usd",
+				"days": "1"
+			},
+			"id": "node-10",
+			"name": "Coin Candlestick",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 1500]
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {}
+			},
+			"id": "node-11",
+			"name": "Event Get Many",
+			"type": "n8n-nodes-base.coinGecko",
+			"typeVersion": 1,
+			"position": [300, 1650]
+		}
+	],
+	"pinData": {
+		"Coin Get": [
+			{
+				"json": {
+					"id": "bitcoin",
+					"symbol": "btc"
+				}
+			}
+		],
+		"Coin Get By Contract": [
+			{
+				"json": {
+					"id": "tether",
+					"symbol": "usdt"
+				}
+			}
+		],
+		"Coin Get Many": [
+			{
+				"json": {
+					"id": "bitcoin",
+					"symbol": "btc"
+				}
+			}
+		],
+		"Coin Market": [
+			{
+				"json": {
+					"id": "bitcoin",
+					"current_price": 42000
+				}
+			}
+		],
+		"Coin Price": [
+			{
+				"json": {
+					"bitcoin": {
+						"usd": 42000
+					}
+				}
+			}
+		],
+		"Coin Price By Contract": [
+			{
+				"json": {
+					"0xdac17f958d2ee523a2206206994597c13d831ec7": {
+						"usd": 1
+					}
+				}
+			}
+		],
+		"Coin Ticker": [
+			{
+				"json": {
+					"base": "BTC",
+					"target": "USD"
+				}
+			}
+		],
+		"Coin History": [
+			{
+				"json": {
+					"id": "bitcoin",
+					"symbol": "btc"
+				}
+			}
+		],
+		"Coin Market Chart": [
+			{
+				"json": {
+					"time": "2024-01-15T00:00:00.000Z",
+					"price": 42000,
+					"marketCaps": 800000,
+					"totalVolume": 20000
+				}
+			}
+		],
+		"Coin Market Chart By Contract": [
+			{
+				"json": {
+					"time": "2024-01-15T00:00:00.000Z",
+					"price": 1,
+					"marketCaps": 900,
+					"totalVolume": 300
+				}
+			}
+		],
+		"Coin Candlestick": [
+			{
+				"json": {
+					"time": "2024-01-15T00:00:00.000Z",
+					"open": 42000,
+					"high": 43000,
+					"low": 41000,
+					"close": 42500
+				}
+			}
+		],
+		"Event Get Many": [
+			{
+				"json": {
+					"title": "Bitcoin Conference"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Coin Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Get By Contract",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Market",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Price",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Price By Contract",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Ticker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin History",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Market Chart",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Market Chart By Contract",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coin Candlestick",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

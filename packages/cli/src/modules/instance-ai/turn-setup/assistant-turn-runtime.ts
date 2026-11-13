@@ -1,9 +1,5 @@
 import type { ObservationLogObserverMemory, Workspace } from '@n8n/agents';
-import type {
-	InstanceAiBuildMode,
-	InstanceAiPromptConfiguration,
-	InstanceAiSetupItem,
-} from '@n8n/api-types';
+import type { InstanceAiPromptConfiguration, InstanceAiSetupItem } from '@n8n/api-types';
 import type {
 	CreateInstanceAgentOptions,
 	DomainAccessTracker,
@@ -21,8 +17,6 @@ export type AssistantTurnMemory = ObservationLogObserverMemory;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
-	getBuildMode(): InstanceAiBuildMode | undefined;
-	setBuildMode(mode: InstanceAiBuildMode): void;
 	getPromptVersion(): string | undefined;
 	setPromptConfiguration(configuration: InstanceAiPromptConfiguration): void;
 	setSetupPanelEnabled(enabled: boolean): void;

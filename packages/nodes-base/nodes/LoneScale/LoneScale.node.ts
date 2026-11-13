@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import * as company from './actions/company';
 import * as contact from './actions/contact';
@@ -96,7 +96,7 @@ export class LoneScale implements INodeType {
 				const data: ListsResponse = await lonescaleApiRequest.call(
 					this,
 					'GET',
-					'/lists',
+					requestPath`/lists`,
 					{},
 					{ entity: type },
 				);

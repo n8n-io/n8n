@@ -283,10 +283,14 @@ function buildOpenAiCompatibleChat(
 }
 
 /**
- * Defaults a custom endpoint's Responses calls to `store: false`. The runtime
- * replays the whole history each turn, but with the SDK default (`store: true`)
- * earlier output goes out as `item_reference` items. Proxies such as LiteLLM
- * serve /responses without storing them, so every turn after the first fails.
+ * Defaults Responses calls to `store: false`. The runtime replays the whole
+ * history each turn, but with the SDK default (`store: true`) earlier output
+ * goes out as `item_reference` items. Only the server and the OpenAI org that
+ * stored them can resolve these. Proxies such as LiteLLM do not store them, and
+ * a new API key (for example after a switch away from Gateway credits) belongs
+ * to a different org. In both cases every later turn fails. With `store: false`
+ * the SDK sends full items, asks for encrypted reasoning, and drops replayed
+ * reasoning that has no encrypted content, so broken sessions recover.
  */
 function statelessResponses(
 	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
@@ -476,7 +480,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// dropdown also stops this endpoint from being probed.
 			if (baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
 				const provider = createOpenAI({ ...providerCreds, fetch });
-				return apiStyle === 'chat' ? provider.chat(model) : provider(model);
+				return apiStyle === 'chat' ? provider.chat(model) : statelessResponses(provider(model));
 			}
 			// A custom baseURL can sit behind a reverse proxy whose catch-all answers
 			// 200 with an HTML page, which the SDK stream parser accepts as an empty

@@ -13,6 +13,7 @@ import {
 	type INodeListSearchResult,
 	type INodeProperties,
 	type ISupplyDataFunctions,
+	requestUrl,
 } from 'n8n-workflow';
 
 import { resolveVertexLocation } from '../nodes/llms/gemini-common/vertex-location';
@@ -109,7 +110,7 @@ export async function googleVertexAiCredentialTest(
 		// Check project access without running a model or requiring the Resource Manager API.
 		await this.helpers.request({
 			method: 'GET',
-			uri: `https://aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations`,
+			uri: requestUrl`https://aiplatform.googleapis.com/v1/projects/${projectId.trim()}/locations`,
 			headers: { Authorization: `Bearer ${token.access_token}` },
 			qs: { pageSize: 1 },
 			json: true,
