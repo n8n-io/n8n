@@ -169,6 +169,17 @@ export class OutboundRedactor {
 			return `[binary body, ${value.byteLength} bytes]`;
 		}
 		if (value instanceof URLSearchParams) return this.scrub(value.toString());
+		// Multipart fields tell the simulator what the request does; files are only described.
+		if (value instanceof FormData) {
+			const fields: Record<string, unknown> = {};
+			for (const [name, entry] of value.entries()) {
+				fields[name] =
+					typeof entry === 'string'
+						? this.redactValue(entry, name)
+						: `[file ${entry.name}, ${entry.size} bytes]`;
+			}
+			return fields;
+		}
 		if (isRecord(value) && !isPlainObject(value)) {
 			return `[${value.constructor?.name ?? 'non-JSON'} body]`;
 		}
