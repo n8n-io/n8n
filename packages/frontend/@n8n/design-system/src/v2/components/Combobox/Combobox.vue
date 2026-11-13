@@ -101,7 +101,7 @@ const rootModelValue = computed(() => (isModelControlled ? props.modelValue : in
 const inputRef = useTemplateRef<
 	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
 >('input');
-const viewportRef = useTemplateRef('viewportRef');
+const viewportRef = useTemplateRef<InstanceType<typeof ComboboxViewport>>('viewportRef');
 const { canScrollBottom } = useScrollEdges(viewportRef, { axis: 'vertical' });
 
 function getInputElement(): HTMLInputElement | undefined {
