@@ -39,6 +39,19 @@ function normalize(value) {
 
 const oneLine = (text, max) => text.replace(/\s+/g, ' ').slice(0, max);
 
+// Multiset difference, so a line that repeats a different number of times shows up.
+function linesNotIn(text, other) {
+	const remaining = new Map();
+	for (const line of other.split('\n')) remaining.set(line, (remaining.get(line) ?? 0) + 1);
+	const result = [];
+	for (const line of text.split('\n')) {
+		const count = remaining.get(line) ?? 0;
+		if (count > 0) remaining.set(line, count - 1);
+		else result.push(line.trim());
+	}
+	return result.sort();
+}
+
 const keys = [...new Set([...Object.keys(master), ...Object.keys(branch)])].sort();
 const missing = [];
 const statusDiffs = [];
@@ -83,17 +96,9 @@ if (bodyDiffs.length) {
 	console.log('\n=== BODY DIFFS, SAME STATUS (key order ignored, grouped by cause) ===');
 	const groups = new Map();
 	for (const { key, masterBody, branchBody } of bodyDiffs) {
-		const masterLines = masterBody.split('\n');
-		const branchLines = branchBody.split('\n');
 		const signature = JSON.stringify({
-			masterOnly: masterLines
-				.filter((line) => !branchLines.includes(line))
-				.map((s) => s.trim())
-				.sort(),
-			branchOnly: branchLines
-				.filter((line) => !masterLines.includes(line))
-				.map((s) => s.trim())
-				.sort(),
+			masterOnly: linesNotIn(masterBody, branchBody),
+			branchOnly: linesNotIn(branchBody, masterBody),
 		});
 		if (!groups.has(signature)) groups.set(signature, []);
 		groups.get(signature).push(key);

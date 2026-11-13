@@ -63,7 +63,10 @@ async function setup() {
 	const projects = await projRes.json();
 	const personal = projects?.data?.find((p) => p.type === 'personal') ?? projects?.data?.[0];
 
-	return { apiKey, projectId: personal?.id ?? personal?.project?.id };
+	const projectId = personal?.id ?? personal?.project?.id;
+	if (!projectId) throw new Error(`personal project not found: ${projRes.status}`);
+
+	return { apiKey, projectId };
 }
 
 async function api(apiKey, method, path, body) {
@@ -90,46 +93,72 @@ function substituteProjectId(value, projectId) {
 async function main() {
 	const { apiKey, projectId } = await setup();
 	const results = {};
+	const createdIds = [];
+	const track = (response) => {
+		const id = response.body?.id;
+		if (response.status >= 200 && response.status < 300 && typeof id === 'string')
+			createdIds.push(id);
+		return id;
+	};
 
-	// POST
-	for (const testCase of bodyCases) {
-		const body = substituteProjectId(testCase.body, projectId);
-		results[`POST:${testCase.name}`] = await api(apiKey, 'POST', '/api/v1/workflows', body);
-	}
-
-	// PUT — each case needs its own fresh workflow so ordering cannot leak state.
-	for (const testCase of bodyCases) {
-		const created = await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow);
-		const id = created.body?.id;
-		if (!id) {
-			results[`PUT:${testCase.name}`] = { status: 'SETUP_FAILED', body: created };
-			continue;
+	try {
+		// POST
+		for (const testCase of bodyCases) {
+			const body = substituteProjectId(testCase.body, projectId);
+			const response = await api(apiKey, 'POST', '/api/v1/workflows', body);
+			track(response);
+			results[`POST:${testCase.name}`] = response;
 		}
-		const body = substituteProjectId(testCase.body, projectId);
-		results[`PUT:${testCase.name}`] = await api(apiKey, 'PUT', `/api/v1/workflows/${id}`, body);
-	}
 
-	// DELETE
-	{
-		const created = await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow);
-		results['DELETE:existing'] = await api(
+		// If the valid case fails, both sides can fail the same way and the diff passes falsely.
+		const baseline = results['POST:minimal'];
+		if (baseline.status < 200 || baseline.status >= 300) {
+			throw new Error(
+				`baseline create failed, results are not comparable: ${baseline.status} ${JSON.stringify(baseline.body)}`,
+			);
+		}
+
+		// PUT — each case needs its own fresh workflow so ordering cannot leak state.
+		for (const testCase of bodyCases) {
+			const id = track(await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow));
+			if (!id) {
+				results[`PUT:${testCase.name}`] = { status: 'SETUP_FAILED' };
+				continue;
+			}
+			const body = substituteProjectId(testCase.body, projectId);
+			results[`PUT:${testCase.name}`] = await api(apiKey, 'PUT', `/api/v1/workflows/${id}`, body);
+		}
+
+		// DELETE
+		{
+			const created = await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow);
+			results['DELETE:existing'] = await api(
+				apiKey,
+				'DELETE',
+				`/api/v1/workflows/${created.body?.id}`,
+			);
+			results['DELETE:again'] = await api(
+				apiKey,
+				'DELETE',
+				`/api/v1/workflows/${created.body?.id}`,
+			);
+		}
+		results['DELETE:unknown-id'] = await api(apiKey, 'DELETE', '/api/v1/workflows/doesnotexist1');
+		results['PUT:unknown-id'] = await api(
 			apiKey,
-			'DELETE',
-			`/api/v1/workflows/${created.body?.id}`,
+			'PUT',
+			'/api/v1/workflows/doesnotexist1',
+			minimalWorkflow,
 		);
-		results['DELETE:again'] = await api(apiKey, 'DELETE', `/api/v1/workflows/${created.body?.id}`);
-	}
-	results['DELETE:unknown-id'] = await api(apiKey, 'DELETE', '/api/v1/workflows/doesnotexist1');
-	results['PUT:unknown-id'] = await api(
-		apiKey,
-		'PUT',
-		'/api/v1/workflows/doesnotexist1',
-		minimalWorkflow,
-	);
-	results['GET:unknown-id'] = await api(apiKey, 'GET', '/api/v1/workflows/doesnotexist1');
+		results['GET:unknown-id'] = await api(apiKey, 'GET', '/api/v1/workflows/doesnotexist1');
 
-	writeFileSync(outFile, JSON.stringify(results, null, 2));
-	console.log(`wrote ${Object.keys(results).length} results to ${outFile}`);
+		writeFileSync(outFile, JSON.stringify(results, null, 2));
+		console.log(`wrote ${Object.keys(results).length} results to ${outFile}`);
+	} finally {
+		// A shared instance, such as a Nathan preview, must not keep the test workflows.
+		for (const id of createdIds) await api(apiKey, 'DELETE', `/api/v1/workflows/${id}`);
+		console.log(`deleted ${createdIds.length} test workflows`);
+	}
 }
 
 main().catch((error) => {

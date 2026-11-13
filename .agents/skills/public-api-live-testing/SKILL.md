@@ -51,8 +51,10 @@ Give each instance its own port pair. A normal `pnpm dev` holds 5678 and 5679.
 
 `/api/v1` accepts `X-N8N-API-KEY`. `/rest` accepts only the `n8n-auth`
 session cookie from `/rest/owner/setup` or `/rest/login`. Some fixtures need
-`/rest`: for example, no Public API endpoint runs a workflow, so an execution
-fixture comes from `POST /rest/workflows/:workflowId/run`.
+`/rest`. For example, the Public API cannot start a manual run of a workflow
+(`POST /executions/:executionId/retry` needs an execution that already
+exists), so the first execution fixture comes from
+`POST /rest/workflows/:workflowId/run`.
 
 Two causes give the same `401 {"status":"error","message":"Unauthorized"}`:
 
@@ -73,7 +75,10 @@ cd packages/cli && pnpm build:unchecked
 N8N_USER_FOLDER=/tmp/n8n-test-instance N8N_PORT=5681 N8N_RUNNERS_BROKER_PORT=5691 \
   N8N_DIAGNOSTICS_ENABLED=false N8N_SECURE_COOKIE=false pnpm start
 
-# 3. In a different terminal, before step 4: make sure the isolation works.
+# 3. In a different terminal, before step 4: wait until the instance is ready,
+#    then make sure the isolation works. /healthz answers 200 before the /rest
+#    routes exist; /healthz/readiness does not.
+until curl -sf http://localhost:5681/healthz/readiness >/dev/null; do sleep 1; done
 ls /tmp/n8n-test-instance/.n8n
 
 # 4. Create the owner. This also logs you in and saves the cookie.
@@ -108,9 +113,11 @@ the harness found 22 status-code differences and two `500` responses that code
 review did not find.
 
 ```bash
-# 1. Make a master worktree and build it.
+# 1. Make a master worktree. Build master and the branch the same way, so that
+#    each instance runs its own code and not an old dist.
 git worktree add ../n8n-parity-master origin/master --detach
-(cd ../n8n-parity-master && pnpm install --frozen-lockfile && pnpm build)
+(cd ../n8n-parity-master && pnpm install --frozen-lockfile && pnpm build > build.log 2>&1)
+pnpm install --frozen-lockfile && pnpm build > build.log 2>&1
 
 # 2. Start master and the branch, each with its own data folder and port pair.
 (cd ../n8n-parity-master/packages/cli && N8N_USER_FOLDER=/tmp/parity/master \
@@ -120,12 +127,17 @@ git worktree add ../n8n-parity-master origin/master --detach
   N8N_PORT=5682 N8N_RUNNERS_BROKER_PORT=5692 N8N_DIAGNOSTICS_ENABLED=false \
   N8N_SECURE_COOKIE=false pnpm start)
 
-# 3. Replay the same requests against both, then group the differences.
+# 3. When both answer on /healthz/readiness, replay the same requests against
+#    both, then group the differences.
 H=.agents/skills/public-api-live-testing/scripts/parity
 node $H/run.mjs http://localhost:5681 /tmp/parity/master.json
 node $H/run.mjs http://localhost:5682 /tmp/parity/branch.json
 node $H/sortdiff.mjs /tmp/parity/master.json /tmp/parity/branch.json
 ```
+
+`run.mjs` stops with an error if the valid `minimal` case fails, because then
+the two sides can fail in the same way and the diff passes falsely. At the end,
+it deletes each workflow that it created.
 
 `run.mjs` creates the owner and an API key on a new instance. For an instance
 that already has an owner, such as a Nathan preview (see
