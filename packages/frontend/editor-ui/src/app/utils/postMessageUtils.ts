@@ -16,37 +16,16 @@ export function isPostMessageOriginAllowed(origin: string) {
 	return origin === window.location.origin || allowedOrigins.includes(origin);
 }
 
-function hasParent(value: unknown): value is Pick<Window, 'parent'> {
-	return typeof value === 'object' && value !== null && 'parent' in value;
-}
-
-/** The most frame levels to walk up. Real pages nest a few at most. */
-const MAX_FRAME_DEPTH = 32;
-
 /**
- * Whether a message comes from a frame inside this window, such as a side panel
- * view. Commands come from the page that embeds the editor, or from the editor
- * itself, never from a frame that the editor holds.
+ * Whether a `postMessage` command may come from this source: the editor window
+ * itself, or the page that embeds the editor. A frame inside the editor (such as
+ * a side panel view), a frame that was removed, and other windows are not trusted.
  */
-export function isMessageFromChildFrame(source: MessageEventSource | null) {
-	if (!hasParent(source) || source === window) return false;
-
-	const ownFrames = new Set<unknown>(
-		Array.from(document.querySelectorAll('iframe'), (frame) => frame.contentWindow),
-	);
-
-	try {
-		let current: Pick<Window, 'parent'> = source;
-		for (let depth = 0; depth < MAX_FRAME_DEPTH; depth++) {
-			if (ownFrames.has(current)) return true;
-			const parent = current.parent;
-			if (parent === window) return true;
-			if (!parent || parent === current) return false;
-			current = parent;
-		}
-	} catch {
-		// A window that can't be inspected is not trusted.
-		return true;
-	}
-	return true;
+export function isTrustedCommandSource(
+	source: MessageEventSource | null,
+	self: Pick<Window, 'parent'> = window,
+): boolean {
+	if (source === null) return false;
+	if (source === self) return true;
+	return self.parent !== self && source === self.parent;
 }
