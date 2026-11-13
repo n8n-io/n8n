@@ -1,6 +1,4 @@
 import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -13,7 +11,7 @@ import {
 
 import { shuffleArray } from '@utils/utilities';
 
-import { sortByCode } from './utils';
+import { compareSortValues, sortByCode } from './utils';
 
 export class Sort implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +21,7 @@ export class Sort implements INodeType {
 		iconColor: 'lavender',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Change items order',
 		defaults: {
 			name: 'Sort',
@@ -165,6 +163,8 @@ export class Sort implements INodeType {
 		const items = this.getInputData();
 		let returnData = [...items];
 		const type = this.getNodeParameter('type', 0) as string;
+		const nodeVersion = this.getNode().typeVersion;
+		const numericStrings = nodeVersion >= 1.1;
 		const disableDotNotation = this.getNodeParameter(
 			'options.disableDotNotation',
 			0,
@@ -224,63 +224,17 @@ export class Sort implements INodeType {
 			}));
 
 			returnData.sort((a, b) => {
-				let result = 0;
 				for (const field of sortFieldsWithDirection) {
-					let equal;
-					if (!disableDotNotation) {
-						const _a =
-							typeof get(a.json, field.name) === 'string'
-								? (get(a.json, field.name) as string).toLowerCase()
-								: get(a.json, field.name);
-						const _b =
-							typeof get(b.json, field.name) === 'string'
-								? (get(b.json, field.name) as string).toLowerCase()
-								: get(b.json, field.name);
-						equal = isEqual(_a, _b);
-					} else {
-						const _a =
-							typeof a.json[field.name] === 'string'
-								? (a.json[field.name] as string).toLowerCase()
-								: a.json[field.name];
-						const _b =
-							typeof b.json[field.name] === 'string'
-								? (b.json[field.name] as string).toLowerCase()
-								: b.json[field.name];
-						equal = isEqual(_a, _b);
-					}
+					const aValue = disableDotNotation ? a.json[field.name] : get(a.json, field.name);
+					const bValue = disableDotNotation ? b.json[field.name] : get(b.json, field.name);
+					const comparison = compareSortValues(aValue, bValue, numericStrings);
 
-					if (!equal) {
-						let lessThan;
-						if (!disableDotNotation) {
-							const _a =
-								typeof get(a.json, field.name) === 'string'
-									? (get(a.json, field.name) as string).toLowerCase()
-									: get(a.json, field.name);
-							const _b =
-								typeof get(b.json, field.name) === 'string'
-									? (get(b.json, field.name) as string).toLowerCase()
-									: get(b.json, field.name);
-							lessThan = lt(_a, _b);
-						} else {
-							const _a =
-								typeof a.json[field.name] === 'string'
-									? (a.json[field.name] as string).toLowerCase()
-									: a.json[field.name];
-							const _b =
-								typeof b.json[field.name] === 'string'
-									? (b.json[field.name] as string).toLowerCase()
-									: b.json[field.name];
-							lessThan = lt(_a, _b);
-						}
-						if (lessThan) {
-							result = -1 * field.dir;
-						} else {
-							result = 1 * field.dir;
-						}
-						break;
+					if (comparison !== 0) {
+						return comparison * field.dir;
 					}
 				}
-				return result;
+
+				return 0;
 			});
 		} else {
 			returnData = await sortByCode.call(this);
