@@ -8,6 +8,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Person } from '@n8n/db';
 import type { TransactionRunner, OperationContext, Transaction } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -1818,6 +1819,38 @@ describe('AgentPublishService', () => {
 			agentId,
 			projectId,
 		});
+	});
+
+	it('adds the login of the operation context to the archive events', async () => {
+		const { service, agentRepository, chatIntegrationService, eventService } = makeService();
+		const loginCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+		agentRepository.setArchived.mockResolvedValue(true);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await service.archiveAgent(agentId, projectId, person, undefined, 'user', loginCtx);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'credential-1' }],
+			}),
+		);
+		chatIntegrationService.disconnectChannel.mockRejectedValue(new Error('disconnect failed'));
+		await expect(
+			service.archiveAgent(agentId, projectId, person, undefined, 'user', loginCtx),
+		).rejects.toThrow('disconnect failed');
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		await service.unarchiveAgent(agentId, projectId, person, undefined, loginCtx);
+
+		const loginIds = (eventName: string) =>
+			eventService.emit.mock.calls
+				.filter(([name]) => name === eventName)
+				.map(([, payload]) => (payload as { loginId?: string }).loginId);
+		expect(loginIds('agent-archived')).toEqual(['login-1', 'login-1']);
+		expect(loginIds('agent-unarchived')).toEqual(['login-1']);
 	});
 
 	it('reports a conflict when the agent is published during the archive', async () => {

@@ -1,7 +1,12 @@
-import { ExportPackageRequestDto } from '@n8n/api-types';
+import {
+	ExportPackageRequestDto,
+	type ImportPackageRequestDto,
+	type ImportPackageSelectionRequestDto,
+} from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, OperationContext, User } from '@n8n/db';
 import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
@@ -13,6 +18,7 @@ import {
 	PackageExportBlockedError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import { N8nPackagesPublicController } from '../n8n-packages.public.controller';
 
@@ -432,6 +438,118 @@ describe('N8nPackagesPublicController', () => {
 				workflowIds: ['wf-1'],
 				includeTags: false,
 			});
+		});
+	});
+
+	describe('operation context', () => {
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+		const importBody = {
+			package: { buffer: Buffer.from('package-bytes') },
+			bindings: {},
+		} as unknown as ImportPackageRequestDto;
+		const selectionBody = {
+			package: { buffer: Buffer.from('package-bytes') },
+			selectedProjectId: 'project-1',
+			selectedWorkflowIds: [],
+		} as unknown as ImportPackageSelectionRequestDto;
+
+		const requestWith = (requestCtx: OperationContext | undefined, apiKeyScopes: string[]) =>
+			Object.assign(mock<PublicApiRequest>(), {
+				user: mock<User>({ id: 'user-1' }),
+				tokenGrant: { apiKeyScopes },
+				ctx: requestCtx,
+				publicApiClient: 'other' as const,
+			});
+
+		it('passes the operation context of the request to the export', async () => {
+			mockExportStream();
+
+			await controller.exportPackage(
+				requestWith(ctx, ['workflow:export']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+			);
+
+			expect(mockService.exportPackage.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('passes the operation context of the request to the import', async () => {
+			await controller.importPackage(
+				requestWith(ctx, ['workflow:import']),
+				mock<Response>(),
+				importBody,
+			);
+
+			expect(mockService.importPackage.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('passes the operation context of the request to the selection import', async () => {
+			await controller.importPackageSelection(
+				requestWith(ctx, ['workflow:import']),
+				mock<Response>(),
+				selectionBody,
+			);
+
+			expect(mockService.importPackageSelection.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('adds the login to a failed export event', async () => {
+			mockService.exportPackage.mockRejectedValue(new NotFoundError('missing'));
+
+			await expect(
+				controller.exportPackage(
+					requestWith(ctx, ['workflow:export']),
+					mock<Response>(),
+					ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-export-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds the login to a failed import event', async () => {
+			mockService.importPackage.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackage(
+					requestWith(ctx, ['workflow:import']),
+					mock<Response>(),
+					importBody,
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds the login to a failed selection import event', async () => {
+			mockService.importPackageSelection.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackageSelection(
+					requestWith(ctx, ['workflow:import']),
+					mock<Response>(),
+					selectionBody,
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds no login when the request has no operation context', async () => {
+			mockService.importPackage.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackage(
+					requestWith(undefined, ['workflow:import']),
+					mock<Response>(),
+					importBody,
+				),
+			).rejects.toThrow();
+
+			expect(mockService.importPackage.mock.calls[0][0].ctx).toBeUndefined();
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBeUndefined();
 		});
 	});
 });
